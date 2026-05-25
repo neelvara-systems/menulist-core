@@ -15,6 +15,7 @@ import {
     promoteCandidate,
     mergeCandidateStatus,
 } from '@database/canonica/entityCandidates';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaEntityCandidate } from '@type/canonica';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -44,7 +45,7 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             const result = await getPendingCandidates(tId, sId);
             setCandidates(result || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load candidates');
+            setError(getCanonicaUiErrorMessage(err, 'Could not load candidates'));
         } finally {
             setLoading(false);
         }
@@ -60,7 +61,7 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             message.success('Candidate approved');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to approve');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not approve candidate'));
         }
     }, [refresh]);
 
@@ -70,7 +71,7 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             message.success('Candidate rejected');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to reject');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not reject candidate'));
         }
     }, [refresh]);
 
@@ -80,7 +81,7 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             message.success('Candidate promoted to entity');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to promote');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not promote candidate'));
         }
     }, [tId, sId, refresh]);
 
@@ -90,7 +91,7 @@ export function useEntityCandidates(tId: number, sId: number): UseEntityCandidat
             message.success('Candidate marked as merged');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to merge');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not merge candidate'));
         }
     }, [refresh]);
 

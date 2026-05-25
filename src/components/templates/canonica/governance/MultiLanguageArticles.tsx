@@ -31,6 +31,7 @@ import {
     Statistic,
     Tag,
     Typography,
+    theme,
     message
 } from 'antd';
 import { useState } from 'react';
@@ -95,6 +96,7 @@ export default function MultiLanguageArticles({
     enabledLocales = ['en-US'],
     onTranslate,
 }: Props) {
+    const { token } = theme.useToken();
     const [selectedArticle, setSelectedArticle] = useState<ArticleSummary | null>(null);
     const [translating, setTranslating] = useState(false);
     const screens = Grid.useBreakpoint();
@@ -174,8 +176,8 @@ export default function MultiLanguageArticles({
                             value={coveragePercent}
                             suffix="%"
                             valueStyle={{
-                                color: coveragePercent >= 80 ? '#52c41a' :
-                                    coveragePercent >= 50 ? '#faad14' : '#ff4d4f'
+                                color: coveragePercent >= 80 ? token.colorSuccess :
+                                    coveragePercent >= 50 ? token.colorWarning : token.colorError
                             }}
                         />
                     </Card>

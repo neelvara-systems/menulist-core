@@ -14,7 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useEntityCandidates } from '@hook/canonica/useEntityCandidates';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { CanonicaEntityCandidate } from '@type/canonica';
-import { Badge, Button, Card, Empty, Flex, List, Popconfirm, Space, Tag, Typography } from 'antd';
+import { Badge, Button, Card, Empty, Flex, List, Popconfirm, Space, Tag, Typography, theme } from 'antd';
 import { LuCheck, LuGitMerge, LuRefreshCw, LuRocket, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -42,6 +42,8 @@ function CandidateItem({
     onPromote: (id: string) => void;
     onMerge: (id: string) => void;
 }) {
+    const { token } = theme.useToken();
+
     return (
         <List.Item
             actions={[
@@ -51,9 +53,9 @@ function CandidateItem({
                     description="Creates a real entity + search index entry from this candidate."
                     onConfirm={() => onPromote(candidate.id)}
                     okText="Promote"
-                    okButtonProps={{ style: { backgroundColor: '#1677ff' } }}
+                    okButtonProps={{ style: { backgroundColor: token.colorPrimary } }}
                 >
-                    <Button type="text" icon={<LuRocket />} style={{ color: '#1677ff' }}>
+                    <Button type="text" icon={<LuRocket />} style={{ color: token.colorPrimary }}>
                         Promote
                     </Button>
                 </Popconfirm>,
@@ -62,9 +64,9 @@ function CandidateItem({
                     title="Approve this candidate?"
                     onConfirm={() => onApprove(candidate.id)}
                     okText="Approve"
-                    okButtonProps={{ style: { backgroundColor: '#52c41a' } }}
+                    okButtonProps={{ style: { backgroundColor: token.colorSuccess } }}
                 >
-                    <Button type="text" icon={<LuCheck />} style={{ color: '#52c41a' }} size="small">
+                    <Button type="text" icon={<LuCheck />} style={{ color: token.colorSuccess }} size="small">
                         Approve
                     </Button>
                 </Popconfirm>,
@@ -119,6 +121,7 @@ function CandidateItem({
 
 export default function EntityCandidateReview() {
     const session = useClientAuthSession();
+    const { token } = theme.useToken();
     const { candidates, loading, approve, reject, promote, merge, refresh } = useEntityCandidates(
         session?.tId || 0,
         session?.sId || 0,
@@ -133,7 +136,7 @@ export default function EntityCandidateReview() {
             <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                 <Space>
                     <Title level={5} style={{ margin: 0 }}>Entity Candidates</Title>
-                    <Badge count={candidates.length} style={{ backgroundColor: candidates.length > 0 ? '#1677ff' : '#d9d9d9' }} />
+                    <Badge count={candidates.length} style={{ backgroundColor: candidates.length > 0 ? token.colorPrimary : token.colorFill }} />
                 </Space>
                 <Button
                     icon={<LuRefreshCw />}

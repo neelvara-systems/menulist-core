@@ -16,6 +16,7 @@ import {
     rejectMutationProposal,
 } from '@database/canonica/mutationProposals';
 import { regenerateDraftForProposal } from '@lib/canonica/draftGenerator';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaMutationProposal } from '@type/canonica';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -54,7 +55,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             const result = await getPendingMutationProposals(tId, sId);
             setProposals(result || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load proposals');
+            setError(getCanonicaUiErrorMessage(err, 'Could not load proposals'));
         } finally {
             setLoading(false);
         }
@@ -70,7 +71,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Proposal approved');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to approve');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not approve proposal'));
         }
     }, [refresh]);
 
@@ -80,7 +81,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Proposal rejected');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to reject');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not reject proposal'));
         }
     }, [refresh]);
 
@@ -90,7 +91,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Proposal marked as implemented');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to mark implemented');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not mark proposal as implemented'));
         }
     }, [refresh]);
 
@@ -100,7 +101,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Canonical answer published');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to publish canonical answer');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not publish canonical answer'));
             throw err;
         }
     }, [refresh, sId, tId]);
@@ -131,7 +132,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Draft generated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to generate draft');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not generate draft'));
             throw err;
         }
     }, [refresh, sId, tId]);

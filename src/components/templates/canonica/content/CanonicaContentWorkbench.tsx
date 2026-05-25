@@ -6,7 +6,7 @@ import {
     getCanonicaGovernanceRoute,
 } from '@constant/canonica/navigations';
 import type { CanonicaActivationSummary } from '@type/canonica';
-import { Button, Card, Flex, List, Tag, Typography } from 'antd';
+import { Button, Card, Flex, List, Tag, Typography, theme } from 'antd';
 import {
     LuBookOpen,
     LuHelpCircle,
@@ -32,6 +32,7 @@ export default function CanonicaContentWorkbench({
     isMobile = false,
     onOpen,
 }: CanonicaContentWorkbenchProps) {
+    const { token } = theme.useToken();
     const productProfileReady = Boolean(summary.workspace.productUrl && summary.workspace.supportEmail);
     const widgetReady = summary.widget.hasWidgetKey && summary.widget.allowedOriginCount > 0;
 
@@ -152,9 +153,9 @@ export default function CanonicaContentWorkbench({
                                     style={{
                                         minHeight: 92,
                                         padding: 12,
-                                        border: '1px solid #f0f0f0',
-                                        borderRadius: 8,
-                                        background: '#fff',
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: token.borderRadiusLG,
+                                        background: token.colorBgContainer,
                                     }}
                                 >
                                     <Flex align="flex-start" gap={10}>
@@ -169,7 +170,7 @@ export default function CanonicaContentWorkbench({
                                             <Text type="secondary">{item.description}</Text>
                                         </Flex>
                                     </Flex>
-                                    <Button onClick={() => onOpen(item.route)} style={{ minHeight: 36 }}>
+                                    <Button onClick={() => onOpen(item.route)} style={{ minHeight: 44 }}>
                                         {item.action}
                                     </Button>
                                 </Flex>

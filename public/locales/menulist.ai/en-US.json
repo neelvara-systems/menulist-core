@@ -1073,6 +1073,8 @@
         "contactUsDesc": "Contact us if you have any questions or need assistance.",
         "whatsNew": "What's New",
         "whatsNewDesc": "View our changelog to see what's new and what's been updated.",
+        "governance": "Governance",
+        "governanceDesc": "Manage canonical answers, entities, drift detection, and knowledge health.",
         "home": "Home",
         "browseByCategory": "Browse by Category",
         "noCategories": "No categories available",

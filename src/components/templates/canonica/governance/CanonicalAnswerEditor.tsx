@@ -50,6 +50,7 @@ import {
     Tag,
     Tooltip,
     Typography,
+    theme,
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useMemo, useState } from 'react';
@@ -103,6 +104,7 @@ const DEFAULT_STEP: CanonicaProcedureStep = { stepOrder: 1, action: 'click', ins
 export default function CanonicalAnswerEditor() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
@@ -324,7 +326,7 @@ export default function CanonicalAnswerEditor() {
                     </Text>
                     {record.governance.driftFlag && (
                         <Tooltip title={record.governance.driftReason || 'Drifted'}>
-                            <LuAlertTriangle style={{ color: '#faad14' }} />
+                            <LuAlertTriangle style={{ color: token.colorWarning }} />
                         </Tooltip>
                     )}
                 </Space>
@@ -375,7 +377,7 @@ export default function CanonicalAnswerEditor() {
             width: 100,
             render: (_: any, record: CanonicaCanonicalAnswer) => {
                 const score = Math.round((record.validation?.confidenceScore || 0) * 100);
-                const color = score >= 80 ? '#52c41a' : score >= 50 ? '#faad14' : '#ff4d4f';
+                const color = score >= 80 ? token.colorSuccess : score >= 50 ? token.colorWarning : token.colorError;
                 return <Text style={{ color }}>{score}%</Text>;
             },
             sorter: (a: CanonicaCanonicalAnswer, b: CanonicaCanonicalAnswer) =>
@@ -415,9 +417,9 @@ export default function CanonicalAnswerEditor() {
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Canonical Answers</Title>
-                        <Badge count={answers.length} style={{ backgroundColor: '#1677ff' }} />
+                        <Badge count={answers.length} style={{ backgroundColor: token.colorPrimary }} />
                         {driftedAnswers.length > 0 && (
-                            <Badge count={`${driftedAnswers.length} drifted`} style={{ backgroundColor: '#faad14' }} />
+                            <Badge count={`${driftedAnswers.length} drifted`} style={{ backgroundColor: token.colorWarning }} />
                         )}
                     </Space>
                     <Space>
@@ -468,9 +470,9 @@ export default function CanonicalAnswerEditor() {
                             </Descriptions.Item>
                             <Descriptions.Item label="Governance">
                                 {selectedAnswer.governance.driftFlag ? (
-                                    <Space><LuShieldAlert style={{ color: '#faad14' }} /><Text type="warning">Drifted</Text></Space>
+                                    <Space><LuShieldAlert style={{ color: token.colorWarning }} /><Text type="warning">Drifted</Text></Space>
                                 ) : (
-                                    <Space><LuCheck style={{ color: '#52c41a' }} /><Text type="success">Clean</Text></Space>
+                                    <Space><LuCheck style={{ color: token.colorSuccess }} /><Text type="success">Clean</Text></Space>
                                 )}
                             </Descriptions.Item>
                             {selectedAnswer.governance.driftReason && (

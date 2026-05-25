@@ -13,7 +13,9 @@ import {
     Tag,
     Typography,
     message,
+    theme,
 } from 'antd';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import type { CanonicaOperationsStatusSummary, CanonicaOwnerOperationStatus } from '@type/canonica';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -72,14 +74,6 @@ const getStatusLabel = (status: CanonicaOwnerOperationStatus | 'unknown' | null 
 const getStatusColor = (status: CanonicaOwnerOperationStatus | 'unknown' | null | undefined): string =>
     STATUS_COLOR[status || 'unknown'] || STATUS_COLOR.unknown;
 
-const metricBoxStyle: CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-    border: '1px solid #f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-};
-
 const actionButtonStyle: CSSProperties = {
     minHeight: 44,
 };
@@ -91,6 +85,7 @@ export default function CanonicaOperationsPanel({
     isMobile: boolean;
     onOpenSettings?: () => void;
 }) {
+    const { token } = theme.useToken();
     const [operations, setOperations] = useState<CanonicaOperationsStatusSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -109,8 +104,8 @@ export default function CanonicaOperationsPanel({
                 throw new Error(data.error || 'Failed to load operations status');
             }
             setOperations(data.operations);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load operations status');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load operations status'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -132,6 +127,13 @@ export default function CanonicaOperationsPanel({
         }
         return 'No completed workspace run has been recorded yet.';
     }, [operations]);
+    const metricBoxStyle: CSSProperties = {
+        flex: 1,
+        minWidth: 0,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: token.borderRadiusLG,
+        padding: 12,
+    };
 
     if (loading) {
         return <Card title="Daily Governance"><Skeleton active paragraph={{ rows: 4 }} /></Card>;
@@ -205,7 +207,12 @@ export default function CanonicaOperationsPanel({
                         <Text>{formatDuration(operations.masterScheduler.governanceTask.lastDurationMs)}</Text>
                     </Flex>
                     {operations.masterScheduler.governanceTask.lastError && (
-                        <Text type="danger">{operations.masterScheduler.governanceTask.lastError}</Text>
+                        <Text type="danger">
+                            {getCanonicaUiErrorMessage(
+                                operations.masterScheduler.governanceTask.lastError,
+                                'Last run needs review',
+                            )}
+                        </Text>
                     )}
                 </Space>
 

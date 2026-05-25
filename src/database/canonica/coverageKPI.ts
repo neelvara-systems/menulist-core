@@ -12,7 +12,6 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { doc, getDoc } from "@firebase/firestore";
-import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 
 export interface CanonicaCoverageData {
@@ -31,15 +30,10 @@ export interface CanonicaCoverageData {
  * Reads from platformSummary/coverage_{tId}_{sId} (1 read).
  */
 export const getCanonicaCoverage = async (tId: number, sId: number): Promise<CanonicaCoverageData | null> => {
-    return await apiCallComposer(
-        async () => {
-            const docRef = doc(canonicaFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `coverage_${tId}_${sId}`);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                return docSnap.data() as CanonicaCoverageData;
-            }
-            return null;
-        },
-        "getCanonicaCoverage"
-    );
+    const docRef = doc(canonicaFirebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `coverage_${tId}_${sId}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as CanonicaCoverageData;
+    }
+    return null;
 };

@@ -1,12 +1,12 @@
 .shell {
   min-height: 100vh;
-  background: #f7f8fb;
-  color: #111827;
+  background: var(--hosted-help-shell-bg);
+  color: var(--hosted-help-text);
 }
 
 .hero {
-  background: #111827;
-  color: #ffffff;
+  background: var(--hosted-help-hero-bg);
+  color: var(--hosted-help-hero-text);
   padding: 56px 20px 44px;
 }
 
@@ -16,7 +16,7 @@
 }
 
 .eyebrow {
-  color: #a5b4fc;
+  color: var(--hosted-help-hero-text);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -32,7 +32,7 @@
 }
 
 .description {
-  color: #d1d5db;
+  color: var(--hosted-help-hero-text);
   font-size: 17px;
   line-height: 1.65;
   margin: 18px 0 0;
@@ -45,9 +45,11 @@
 }
 
 .searchInput {
-  border: 1px solid #d1d5db;
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border-strong);
   border-radius: 12px;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--hosted-help-search-shadow);
+  color: var(--hosted-help-text);
   font-size: 16px;
   min-height: 52px;
   outline: none;
@@ -56,8 +58,8 @@
 }
 
 .nav {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--hosted-help-card-bg);
+  border-bottom: 1px solid var(--hosted-help-border);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -72,7 +74,7 @@
 
 .navLink {
   border-radius: 999px;
-  color: #374151;
+  color: var(--hosted-help-text);
   font-size: 14px;
   font-weight: 700;
   padding: 10px 14px;
@@ -82,8 +84,8 @@
 
 .navLink:hover,
 .navLinkActive {
-  background: #eef2ff;
-  color: #4338ca;
+  background: var(--hosted-help-active-bg);
+  color: var(--hosted-help-active-text);
 }
 
 .main {
@@ -114,8 +116,8 @@
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
   border-radius: 10px;
   color: inherit;
   display: block;
@@ -124,8 +126,8 @@
 }
 
 .card:hover {
-  border-color: #c7d2fe;
-  box-shadow: 0 10px 30px rgba(67, 56, 202, 0.08);
+  border-color: var(--hosted-help-active-text);
+  box-shadow: var(--hosted-help-search-shadow);
 }
 
 .cardTitle {
@@ -134,7 +136,7 @@
 }
 
 .muted {
-  color: #6b7280;
+  color: var(--hosted-help-muted);
   font-size: 14px;
   line-height: 1.55;
   margin: 0;
@@ -152,8 +154,8 @@
 }
 
 .article {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
   border-radius: 12px;
   padding: 28px;
 }
@@ -161,17 +163,17 @@
 .article h1,
 .article h2,
 .article h3 {
-  color: #111827;
+  color: var(--hosted-help-text);
 }
 
 .article p,
 .article li {
-  color: #374151;
+  color: var(--hosted-help-text);
   line-height: 1.75;
 }
 
 .article a {
-  color: #4338ca;
+  color: var(--hosted-help-link);
 }
 
 .article table {
@@ -183,14 +185,14 @@
 
 .article td,
 .article th {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--hosted-help-border);
   padding: 8px 10px;
 }
 
 .sidePanel {
   align-self: start;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
   border-radius: 12px;
   padding: 18px;
   position: sticky;
@@ -198,17 +200,17 @@
 }
 
 .empty {
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
+  background: var(--hosted-help-card-bg);
+  border: 1px dashed var(--hosted-help-border-strong);
   border-radius: 12px;
-  color: #64748b;
+  color: var(--hosted-help-muted);
   padding: 32px;
   text-align: center;
 }
 
 .footer {
-  border-top: 1px solid #e5e7eb;
-  color: #6b7280;
+  border-top: 1px solid var(--hosted-help-border);
+  color: var(--hosted-help-muted);
   padding: 24px 0;
 }
 
@@ -233,4 +235,3 @@
     position: static;
   }
 }
-

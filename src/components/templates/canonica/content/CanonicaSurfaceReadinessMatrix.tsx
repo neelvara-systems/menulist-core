@@ -2,7 +2,7 @@
 
 import type { CanonicaActivationSummary, CanonicaSurfaceReadinessItem } from '@type/canonica';
 import { CANONICA_ROUTES } from '@constant/canonica/navigations';
-import { Button, Card, Empty, Flex, List, Space, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Flex, List, Space, Tag, Typography, theme } from 'antd';
 import { LuBookOpen, LuCheckCircle2, LuHelpCircle, LuGitPullRequest, LuLayers, LuRouter } from 'react-icons/lu';
 
 const { Paragraph, Text } = Typography;
@@ -60,6 +60,7 @@ export default function CanonicaSurfaceReadinessMatrix({
     isMobile = false,
     onOpen,
 }: CanonicaSurfaceReadinessMatrixProps) {
+    const { token } = theme.useToken();
     const surfaces = summary.content.surfaceReadiness || [];
 
     return (
@@ -98,9 +99,9 @@ export default function CanonicaSurfaceReadinessMatrix({
                                         style={{
                                             minHeight: 154,
                                             padding: 12,
-                                            border: '1px solid #f0f0f0',
-                                            borderRadius: 8,
-                                            background: '#fff',
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: token.borderRadiusLG,
+                                            background: token.colorBgContainer,
                                         }}
                                     >
                                         <Flex align="flex-start" justify="space-between" gap={12}>

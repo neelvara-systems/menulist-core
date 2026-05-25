@@ -6,7 +6,7 @@ import {
     CANONICA_GOVERNANCE_TABS,
 } from '@constant/canonica/navigations';
 import type { CanonicaActivationSummary } from '@type/canonica';
-import { Button, Card, Flex, List, Tag, Typography } from 'antd';
+import { Button, Card, Flex, List, Tag, Typography, theme } from 'antd';
 import {
     LuBookOpen,
     LuCheckCircle2,
@@ -48,6 +48,7 @@ export default function CanonicaCustomerFlowChecklist({
     isMobile = false,
     onOpen,
 }: CanonicaCustomerFlowChecklistProps) {
+    const { token } = theme.useToken();
     const hasPublicKnowledge = (summary.content.articleCount + (summary.content.faqCount || 0)) > 0;
     const hasWidgetInstall = summary.widget.hasWidgetKey && summary.widget.allowedOriginCount > 0;
     const hasWidgetSeen = Boolean(summary.widget.runtimeStatus?.lastSeenAt);
@@ -156,9 +157,9 @@ export default function CanonicaCustomerFlowChecklist({
                                     style={{
                                         minHeight: 108,
                                         padding: 12,
-                                        border: '1px solid #f0f0f0',
-                                        borderRadius: 8,
-                                        background: '#fff',
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: token.borderRadiusLG,
+                                        background: token.colorBgContainer,
                                     }}
                                 >
                                     <Flex align="flex-start" gap={10} style={{ minWidth: 0 }}>
@@ -173,7 +174,7 @@ export default function CanonicaCustomerFlowChecklist({
                                             <Text type="secondary">{item.description}</Text>
                                         </Flex>
                                     </Flex>
-                                    <Button onClick={() => onOpen(item.route)} style={{ minHeight: 36 }}>
+                                    <Button onClick={() => onOpen(item.route)} style={{ minHeight: 44 }}>
                                         {item.actionLabel}
                                     </Button>
                                 </Flex>

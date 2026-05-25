@@ -676,6 +676,7 @@ export default function DecisionBlocks({
     const useHorizontalScroller = !isDesktopLayout && !isSingleBlock;
     const featuredItemGap = canUseFeaturedVisualLayout ? 10 : 8;
     const featuredListMode = !canUseFeaturedVisualLayout;
+    const useDesktopFeaturedRow = isDesktopLayout && !isSingleBlock;
 
     return (
         <section
@@ -752,16 +753,18 @@ export default function DecisionBlocks({
                             ? isDesktopLayout
                                 ? 'grid'
                                 : 'flex'
-                            : 'flex',
+                            : useDesktopFeaturedRow
+                                ? 'grid'
+                                : 'flex',
                         flexDirection: undefined,
                         gap: featuredItemGap,
-                        gridTemplateColumns: canUseFeaturedVisualLayout && isDesktopLayout
+                        gridTemplateColumns: (canUseFeaturedVisualLayout || featuredListMode) && useDesktopFeaturedRow
                             ? `repeat(${blocks.length}, minmax(0, 1fr))`
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
                         paddingRight: useHorizontalScroller ? 14 : 0,
-                        width: canUseFeaturedVisualLayout && (isDesktopLayout || isSingleBlock)
+                        width: (canUseFeaturedVisualLayout || useDesktopFeaturedRow) && (isDesktopLayout || isSingleBlock)
                             ? '100%'
                             : useHorizontalScroller
                                 ? 'fit-content'
@@ -792,12 +795,15 @@ export default function DecisionBlocks({
                             ? categoryLabel
                             : translateReason(rec.reason, rec.reasonParams);
 
-                        const featuredImageSize = featuredListMode ? 56 : 58;
+                        const visualImageHeight = isDesktopLayout ? 96 : 92;
+                        const featuredImageSize = featuredListMode ? 56 : visualImageHeight;
                         const featuredRowMinHeight = featuredListMode
                             ? itemImage
                                 ? 78
                                 : 72
-                            : 86;
+                            : isDesktopLayout
+                                ? 176
+                                : 168;
 
                         return (
                             <button
@@ -813,11 +819,7 @@ export default function DecisionBlocks({
                                 className="flex-shrink-0 transition-all duration-150 active:scale-[0.98] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
                                 style={{
                                     '--tw-ring-color': `${moodConfig.accentColor}AA`,
-                                    alignItems: featuredListMode
-                                        ? 'center'
-                                        : itemImage
-                                            ? 'center'
-                                            : 'stretch',
+                                    alignItems: featuredListMode ? 'center' : 'stretch',
                                     appearance: 'none',
                                     background: moodConfig.itemStyle.background,
                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
@@ -826,8 +828,9 @@ export default function DecisionBlocks({
                                     color: moodConfig.bodyColor,
                                     cursor: 'pointer',
                                     display: 'flex',
+                                    flexDirection: featuredListMode ? 'row' : 'column',
                                     flexShrink: useHorizontalScroller ? 0 : 1,
-                                    gap: itemImage ? 10 : 0,
+                                    gap: itemImage ? (featuredListMode ? 10 : 8) : 0,
                                     minHeight: featuredRowMinHeight,
                                     outline: 'none',
                                     overflow: 'hidden',
@@ -859,8 +862,8 @@ export default function DecisionBlocks({
                                             borderRadius: Math.min(8, moodConfig.itemStyle.imageRadius || 8),
                                             height: featuredImageSize,
                                             minHeight: featuredImageSize,
-                                            minWidth: featuredImageSize,
-                                            width: featuredImageSize,
+                                            minWidth: featuredListMode ? featuredImageSize : '100%',
+                                            width: featuredListMode ? featuredImageSize : '100%',
                                         }}
                                     >
                                         <Image

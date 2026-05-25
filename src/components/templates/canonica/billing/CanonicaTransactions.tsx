@@ -6,7 +6,7 @@ import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { logger } from '@lib/monitoring/logger';
 import type { BillingHistoryItem } from '@type/razorpay';
-import { Alert, Button, Card, Flex, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Grid, Spin, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,8 @@ const getCurrentHostname = () => (typeof window === 'undefined' ? undefined : wi
 export default function CanonicaTransactions() {
     const { data: session, status } = useSession();
     const scope = useMemo(() => resolveCanonicaSessionScope(session), [session]);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const formatter = useFormatter();
     const router = useRouter();
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
@@ -58,10 +60,10 @@ export default function CanonicaTransactions() {
     }, [fetchBillingHistory, status]);
 
     return (
-        <Flex vertical gap={16} style={{ width: '100%' }}>
-            <Flex align="flex-start" justify="space-between" gap={16} wrap>
+        <Flex vertical gap={16} style={{ width: '100%', paddingBottom: isMobile ? 'calc(24px + env(safe-area-inset-bottom))' : 0 }}>
+            <Flex align={isMobile ? 'stretch' : 'flex-start'} justify="space-between" gap={16} vertical={isMobile} wrap={!isMobile}>
                 <Flex vertical gap={4}>
-                    <Title level={2} style={{ margin: 0 }}>Transactions</Title>
+                    <Title level={isMobile ? 4 : 2} style={{ margin: 0 }}>Transactions</Title>
                     <Text type="secondary">Invoices, subscription charges, and Canonica support credit purchases.</Text>
                 </Flex>
                 <Flex gap={8} wrap>

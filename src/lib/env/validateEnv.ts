@@ -11,6 +11,13 @@
  * @see __docs__/production-readiness/dev-prod-environment-guide.md
  */
 
+import {
+    type DeploymentProductId,
+    getDeploymentStage,
+    getExpectedFirebaseProjectId,
+    getProductDeploymentTarget,
+} from '@constant/deploymentTargets';
+
 interface EnvValidationResult {
     valid: boolean;
     missing: string[];
@@ -58,6 +65,24 @@ const OPTIONAL_VARS: readonly string[] = [
     'GA_PRIVATE_KEY',               // Analytics
 ] as const;
 
+const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
+    menulist: [
+        'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+        'FIREBASE_PROJECT_ID',
+    ],
+    canonica: [
+        'NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID',
+        'CANONICA_FIREBASE_PROJECT_ID',
+    ],
+} as const;
+
+const PLATFORM_ALIAS_VAR = 'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES';
+
+const describeProduct = (productId: DeploymentProductId) =>
+    productId === 'menulist' ? 'MenuList' : 'Canonica';
+
+const getEnvValue = (varName: string) => process.env[varName]?.trim();
+
 /**
  * Validate all environment variables.
  * Returns validation result with missing vars and warnings.
@@ -65,6 +90,8 @@ const OPTIONAL_VARS: readonly string[] = [
 export function validateEnvironment(): EnvValidationResult {
     const missing: string[] = [];
     const warnings: string[] = [];
+    const stage = getDeploymentStage();
+    const isVercel = process.env.VERCEL === '1';
     const isEnvAliasGroup = (requirement: EnvRequirement): requirement is readonly string[] =>
         typeof requirement !== 'string';
     const hasAnyEnvVar = (requirement: EnvRequirement) =>
@@ -99,6 +126,53 @@ export function validateEnvironment(): EnvValidationResult {
     for (const varName of OPTIONAL_VARS) {
         if (!process.env[varName]) {
             warnings.push(`${varName} not set — feature requires configuration when enabled`);
+        }
+    }
+
+    (['menulist', 'canonica'] as DeploymentProductId[]).forEach((productId) => {
+        const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
+        PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
+            const actualProjectId = getEnvValue(varName);
+            const message = `${varName} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
+
+            if (!actualProjectId) {
+                if (productId === 'canonica') {
+                    warnings.push(`${message} — Canonica will not use the required ${stage} Firebase project`);
+                }
+                return;
+            }
+
+            if (actualProjectId !== expectedProjectId) {
+                if (isVercel) {
+                    missing.push(`${message} (currently ${actualProjectId})`);
+                } else {
+                    warnings.push(`${message} (currently ${actualProjectId})`);
+                }
+            }
+        });
+    });
+
+    const platformDomain = getEnvValue('NEXT_PUBLIC_PLATFORM_DOMAIN');
+    const expectedPlatformDomain = getProductDeploymentTarget('menulist', stage).domains[0];
+    if (stage !== 'local' && platformDomain && expectedPlatformDomain && platformDomain !== expectedPlatformDomain) {
+        const message = `NEXT_PUBLIC_PLATFORM_DOMAIN must be ${expectedPlatformDomain} for ${stage} MenuList (currently ${platformDomain})`;
+        if (isVercel) missing.push(message);
+        else warnings.push(message);
+    }
+
+    const aliasValue = getEnvValue(PLATFORM_ALIAS_VAR);
+    if (aliasValue && stage !== 'local') {
+        const expectedAliases = new Set(getProductDeploymentTarget('menulist', stage).domains);
+        const configuredAliases = aliasValue
+            .split(',')
+            .map((alias) => alias.trim().toLowerCase())
+            .filter(Boolean);
+        const unexpectedAliases = configuredAliases.filter((alias) => !expectedAliases.has(alias));
+
+        if (unexpectedAliases.length > 0) {
+            const message = `${PLATFORM_ALIAS_VAR} contains non-${stage} MenuList domains: ${unexpectedAliases.join(', ')}`;
+            if (isVercel) missing.push(message);
+            else warnings.push(message);
         }
     }
 

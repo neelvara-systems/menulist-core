@@ -17,6 +17,7 @@ import {
 import CanonicaContentWorkbench from '@template/canonica/content/CanonicaContentWorkbench';
 import CanonicaCustomerFlowChecklist from '@template/canonica/content/CanonicaCustomerFlowChecklist';
 import CanonicaSurfaceReadinessMatrix from '@template/canonica/content/CanonicaSurfaceReadinessMatrix';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
 import {
     Alert,
@@ -35,6 +36,7 @@ import {
     Tag,
     Typography,
     message,
+    theme,
 } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -69,6 +71,7 @@ const getStepMeta = (step: CanonicaActivationStep) => STATUS_META[step.status] |
 export default function CanonicaDashboardPage() {
     const screens = Grid.useBreakpoint();
     const router = useRouter();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const [summary, setSummary] = useState<CanonicaActivationSummary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -90,8 +93,8 @@ export default function CanonicaDashboardPage() {
                 throw new Error(data.error || 'Failed to load readiness metrics');
             }
             setSummary(data.summary);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load readiness metrics');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load readiness metrics'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -136,7 +139,7 @@ export default function CanonicaDashboardPage() {
     const activeAnswerCount = activeAnswersStep?.description.match(/^\d+/)?.[0] || '0';
 
     return (
-        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 76 : 0 }}>
+        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(76px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Readiness Metrics</Title>
@@ -169,7 +172,7 @@ export default function CanonicaDashboardPage() {
                                 type="circle"
                                 percent={summary.readinessScore}
                                 size={isMobile ? 84 : 104}
-                                strokeColor={summary.readinessScore >= 85 ? '#52c41a' : '#1677ff'}
+                                strokeColor={summary.readinessScore >= 85 ? token.colorSuccess : token.colorPrimary}
                             />
                             <div>
                                 <Text type="secondary">Launch readiness</Text>

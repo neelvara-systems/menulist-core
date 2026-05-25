@@ -2,7 +2,9 @@
  * Canonica Cloud Functions — Entry Point
  * 
  * All Canonica-specific Cloud Functions are exported from here.
- * Deploys to the "canonica" Firebase project (separate from MenuList's ecomsai).
+ * Deploys to Canonica Firebase projects:
+ * - QA/staging: canonica-qa
+ * - Production: canonica
  * 
  * Exported Functions:
  * - canonicaNightly: Scheduled Canonica master scheduler alias

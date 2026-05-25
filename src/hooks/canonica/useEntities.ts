@@ -22,6 +22,7 @@ import {
     updateEntity,
     upsertEntitySearchIndex,
 } from '@database/canonica/entities';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaEntity, CanonicaEntityRelation, CanonicaEntitySearchIndex } from '@type/canonica';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -69,7 +70,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             setRelations(relationsResult || []);
             setSearchIndex(indexResult || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load entities');
+            setError(getCanonicaUiErrorMessage(err, 'Could not load entities'));
         } finally {
             setLoading(false);
         }
@@ -98,7 +99,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             }
             return result;
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to create entity');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not create entity'));
             return null;
         }
     }, [tId, sId, refresh]);
@@ -119,7 +120,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Entity updated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to update entity');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not update entity'));
         }
     }, [tId, sId, refresh]);
 
@@ -129,7 +130,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Entity deprecated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to deprecate entity');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not deprecate entity'));
         }
     }, [refresh]);
 
@@ -154,7 +155,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Aliases updated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to update aliases');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not update aliases'));
         }
     }, [tId, sId, refresh]);
 
@@ -166,7 +167,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
                 await refresh();
             }
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Merge failed');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not merge entities'));
         }
     }, [tId, sId, refresh]);
 
@@ -176,7 +177,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Relation added');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to add relation');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not add relation'));
         }
     }, [refresh]);
 
@@ -186,7 +187,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Relation removed');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to remove relation');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not remove relation'));
         }
     }, [refresh]);
 
@@ -196,7 +197,7 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
             message.success('Search index updated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to update search index');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not update search index'));
         }
     }, [refresh]);
 

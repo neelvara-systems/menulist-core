@@ -1,6 +1,7 @@
 'use client';
 
 import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
 import { Alert, Button, Card, Col, Empty, Flex, Grid, List, Row, Skeleton, Space, Statistic, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -41,8 +42,8 @@ export default function CanonicaWeeklyDigest() {
                 throw new Error(data.error || 'Failed to load weekly digest');
             }
             setSummary(data.summary);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load weekly digest');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load weekly digest'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -89,7 +90,7 @@ export default function CanonicaWeeklyDigest() {
     }
 
     return (
-        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 80 : 0 }}>
+        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Weekly Digest</Title>
@@ -97,7 +98,7 @@ export default function CanonicaWeeklyDigest() {
                         Review launch health, support gaps, and the next knowledge work for {summary.workspace.productName || 'this product'}.
                     </Text>
                 </div>
-                <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)} style={{ minHeight: 40 }}>
+                <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>
                     Refresh
                 </Button>
             </Flex>

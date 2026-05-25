@@ -10,6 +10,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getFrictionInsight, getFrictionSnapshot } from '@database/canonica/frictionStats';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaFrictionInsight, CanonicaFrictionSnapshot } from '@type/canonica';
 import { useEffect, useState } from 'react';
 
@@ -49,7 +50,7 @@ export function useFrictionInsights(tId: number, sId: number): UseFrictionInsigh
             })
             .catch((err) => {
                 if (cancelled) return;
-                setError(err?.message || 'Failed to load friction data');
+                setError(getCanonicaUiErrorMessage(err, 'Could not load friction data'));
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);

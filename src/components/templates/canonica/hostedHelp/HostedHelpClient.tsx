@@ -1,8 +1,9 @@
 'use client';
 
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import { theme } from 'antd';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
 import styles from './HostedHelp.module.scss';
 
 type HostedHelpView = 'home' | 'docs' | 'article' | 'faq' | 'changelog';
@@ -110,9 +111,24 @@ export default function HostedHelpClient({
     site,
     view,
 }: HostedHelpClientProps) {
+    const { token } = theme.useToken();
     const [query, setQuery] = useState('');
     const articles = useMemo(() => getArticles(categories), [categories]);
     const latestChangelog = changelogPage?.entries || [];
+    const hostedHelpThemeVars = {
+        '--hosted-help-active-bg': token.colorPrimaryBg,
+        '--hosted-help-active-text': token.colorPrimary,
+        '--hosted-help-border': token.colorBorderSecondary,
+        '--hosted-help-border-strong': token.colorBorder,
+        '--hosted-help-card-bg': token.colorBgContainer,
+        '--hosted-help-hero-bg': token.colorPrimary,
+        '--hosted-help-hero-text': token.colorTextLightSolid,
+        '--hosted-help-link': token.colorPrimary,
+        '--hosted-help-muted': token.colorTextSecondary,
+        '--hosted-help-search-shadow': token.boxShadowSecondary,
+        '--hosted-help-shell-bg': token.colorBgLayout,
+        '--hosted-help-text': token.colorText,
+    } as CSSProperties;
 
     const results = useMemo(() => {
         const normalized = query.trim().toLowerCase();
@@ -160,7 +176,7 @@ export default function HostedHelpClient({
     ];
 
     return (
-        <div className={styles.shell}>
+        <div className={styles.shell} style={hostedHelpThemeVars}>
             <header className={styles.hero}>
                 <div className={styles.container}>
                     <p className={styles.eyebrow}>Help Center</p>

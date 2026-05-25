@@ -1,4 +1,5 @@
 import getActiveSession from "@lib/auth/getActiveSession";
+import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
@@ -41,12 +42,13 @@ export const apiCallComposerClient = async (fn, ...args) => {
         console.log(`%c🔥 Firebase%c ${functionName} success`, DAL_LOG_BADGE, DAL_SUCCESS_TEXT);
         return response;
     } catch (error) {
+        const fallbackMessage = 'Could not load data. Please try again.';
         console.error(`%c🔥 Firebase%c ${functionName} failed`, DAL_LOG_BADGE, DAL_ERROR_TEXT, {
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
             params: summarizeDalArgs(args),
         });
         reduxStore.dispatch(stopLoader(requestId));
-        reduxStore.dispatch(showErrorToast(`Error: ${error.message}`));
+        reduxStore.dispatch(showErrorToast(getSafeUiErrorMessage(error, fallbackMessage)));
         
         // Return an empty array for data fetching operations to avoid 'not a function' errors
         // This makes sure components expecting arrays don't crash

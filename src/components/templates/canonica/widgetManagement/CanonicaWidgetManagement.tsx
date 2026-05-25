@@ -20,6 +20,7 @@ import {
     Tag,
     Tabs,
     Typography,
+    theme,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -54,6 +55,7 @@ import {
     normalizeHostedHelpConfig,
     normalizeHostedHelpDomains,
 } from '@lib/canonica/hostedHelpConfig';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { normalizeHostedHelpDomain } from '@constant/canonica/hostedHelp';
 import type { CanonicaWidgetRuntimeStatus } from '@type/canonica';
 
@@ -165,6 +167,7 @@ const isRuntimePathBlocked = (path: string | null | undefined, blockedRoutes: st
 };
 
 export default function CanonicaWidgetManagement({ embeddedMobile = false }: CanonicaWidgetManagementProps) {
+    const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
 
@@ -217,8 +220,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             }
 
             setDirty(false);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load widget settings');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load widget settings'));
         } finally {
             setLoading(false);
         }
@@ -253,8 +256,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             }
             setDirty(false);
             message.success('Widget settings saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save widget settings');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save widget settings'));
         } finally {
             setSaving(false);
         }
@@ -274,8 +277,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setKeyPrefix(data.keyPrefix || data.apiKey.slice(0, 7));
             setHasWidgetKey(true);
             message.success('Widget key created');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to create widget key');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not create widget key'));
         } finally {
             setGeneratingKey(false);
         }
@@ -294,8 +297,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setKeyPrefix(null);
             setHasWidgetKey(false);
             message.success('Widget key revoked');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to revoke widget key');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not revoke widget key'));
         }
     }, []);
 
@@ -384,8 +387,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setHostedHelpDomainStatuses(data.domainStatuses || []);
             setHostedHelpDirty(false);
             message.success('Hosted Help Center settings saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save hosted help settings');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save hosted help settings'));
         } finally {
             setSavingHostedHelp(false);
         }
@@ -400,8 +403,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setHostedHelpConfig(normalizeHostedHelpConfig(data.config));
             setHostedHelpDomainStatuses(data.domainStatuses || []);
             message.success('Hosted Help DNS status updated');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to check hosted help DNS');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not check hosted help DNS'));
         } finally {
             setCheckingHostedDomains(false);
         }
@@ -583,7 +586,17 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     }
 
     return (
-        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? (embeddedMobile ? 128 : 76) : 0 }}>
+        <Flex
+            vertical
+            gap={isMobile ? 14 : 20}
+            style={{
+                paddingBottom: isMobile
+                    ? embeddedMobile
+                        ? 'calc(128px + env(safe-area-inset-bottom))'
+                        : 'calc(76px + env(safe-area-inset-bottom))'
+                    : 0,
+            }}
+        >
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Widget Management</Title>
@@ -839,7 +852,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                 value={activeSnippet}
                                                 readOnly
                                                 rows={snippetType === 'html' ? 8 : 15}
-                                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
+                                                style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                                             />
                                             <Text type="secondary" style={{ fontSize: 12 }}>
                                                 The script reads saved dashboard settings automatically. The typed SDK validates safe page context before calling the widget runtime.
@@ -893,7 +906,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                 value={spaSnippet}
                                                 readOnly
                                                 rows={7}
-                                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
+                                                style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                                             />
                                             <Button icon={<LuCopy size={14} />} onClick={() => copyText(spaSnippet, 'Context snippet copied')} style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}>
                                                 Copy Context Snippet
@@ -1259,8 +1272,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                     bottom: embeddedMobile ? 'calc(env(safe-area-inset-bottom) + 88px)' : 0,
                     zIndex: 20,
                     padding: '10px 12px',
-                    background: '#ffffff',
-                    borderTop: '1px solid #e5e7eb',
+                    background: token.colorBgContainer,
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
                 }}>
                     <Button block type="primary" icon={<LuSave size={14} />} loading={saving} onClick={handleSave}>
                         Save Widget Settings
@@ -1272,6 +1285,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
 }
 
 function WidgetPreview({ config, mode }: { config: CanonicaWidgetConfig; mode: 'desktop' | 'mobile' }) {
+    const { token } = theme.useToken();
     const isPill = config.shape === 'pill';
     const isMobile = mode === 'mobile';
     const frameWidth = isMobile ? 280 : '100%';
@@ -1300,27 +1314,27 @@ function WidgetPreview({ config, mode }: { config: CanonicaWidgetConfig; mode: '
                 height: frameHeight,
                 position: 'relative',
                 overflow: 'hidden',
-                border: '1px solid #e5e7eb',
+                border: `1px solid ${token.colorBorderSecondary}`,
                 borderRadius: isMobile ? 18 : 8,
-                background: '#f8fafc',
+                background: token.colorBgLayout,
             }}>
                 <div style={{
                     height: 46,
-                    borderBottom: '1px solid #e5e7eb',
-                    background: '#ffffff',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                    background: token.colorBgContainer,
                     display: 'flex',
                     alignItems: 'center',
                     padding: '0 14px',
                     gap: 6,
                 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: token.colorError }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: token.colorWarning }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: token.colorSuccess }} />
                 </div>
                 <div style={{ padding: 16 }}>
-                    <div style={{ width: '48%', height: 12, borderRadius: 6, background: '#e5e7eb', marginBottom: 10 }} />
-                    <div style={{ width: '72%', height: 10, borderRadius: 6, background: '#eef2f7', marginBottom: 8 }} />
-                    <div style={{ width: '62%', height: 10, borderRadius: 6, background: '#eef2f7' }} />
+                    <div style={{ width: '48%', height: 12, borderRadius: 6, background: token.colorFillSecondary, marginBottom: 10 }} />
+                    <div style={{ width: '72%', height: 10, borderRadius: 6, background: token.colorFillTertiary, marginBottom: 8 }} />
+                    <div style={{ width: '62%', height: 10, borderRadius: 6, background: token.colorFillTertiary }} />
                 </div>
                 {config.mobileVisibility === 'hide' && isMobile ? (
                     <Tag style={{ position: 'absolute', bottom: 16, right: 16 }}>Hidden on mobile</Tag>
@@ -1333,9 +1347,9 @@ function WidgetPreview({ config, mode }: { config: CanonicaWidgetConfig; mode: '
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: config.accentColor,
-                        color: '#fff',
+                        color: token.colorWhite,
                         fontWeight: 700,
-                        boxShadow: '0 8px 24px rgba(15,23,42,0.18)',
+                        boxShadow: token.boxShadowSecondary,
                         ...launcherStyle,
                     }}>
                         {config.label}
@@ -1350,6 +1364,8 @@ function WidgetPreview({ config, mode }: { config: CanonicaWidgetConfig; mode: '
 }
 
 function PageAwarePreview() {
+    const { token } = theme.useToken();
+
     return (
         <Card size="small" styles={{ body: { padding: 12 } }}>
             <Flex vertical gap={8}>
@@ -1366,10 +1382,10 @@ function PageAwarePreview() {
                     <Tag>Plans</Tag>
                 </Flex>
                 <div style={{
-                    border: '1px solid #e5e7eb',
+                    border: `1px solid ${token.colorBorderSecondary}`,
                     borderRadius: 8,
                     padding: 10,
-                    background: '#f8fafc',
+                    background: token.colorFillTertiary,
                     fontSize: 13,
                     lineHeight: 1.5,
                 }}>

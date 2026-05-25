@@ -162,6 +162,7 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 - **Create redundant code** - consolidate always
 - **Skip mobile support** - mandatory for features
 - **Run `npm run build`** only when explicitly requested by the user for this session
+- **Run Vercel deploys or Vercel remote builds** only when the user explicitly requests a Vercel deploy in the current session
 
 ---
 

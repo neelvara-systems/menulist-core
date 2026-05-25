@@ -201,7 +201,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 All product domains are registered here. The middleware reads the hostname and rewrites to the correct internal route.
 
 ```
-canonica.app/*  →  middleware  →  /sites/canonica/*
+canonica.app/*  →  middleware  →  /sites/canonica/*        (production)
+ecomsai.com/*   →  middleware  →  /sites/canonica/*        (Vercel Preview / QA)
 localhost/__canonica/*  →  middleware  →  /sites/canonica/*  (dev only)
 ```
 
@@ -210,7 +211,7 @@ localhost/__canonica/*  →  middleware  →  /sites/canonica/*  (dev only)
 **File:** `src/middleware.ts`
 
 Priority order:
-1. Product website domains (canonica.app → /sites/canonica)
+1. Active product website domains (QA ecomsai.com / production canonica.app → /sites/canonica)
 2. Dev path prefixes (/__canonica → /sites/canonica) — local dev only
 3. Client tenant domains (*.menulist.ai → /_client)
 4. Platform domain (menulist.ai → (website) route group)

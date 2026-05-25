@@ -1,8 +1,9 @@
 /**
  * Canonica Firebase Admin — Server-side initialization
  *
- * Canonica Functions can use a dedicated production Firebase project/database
- * or intentionally share the MenuList DB in local/test.
+ * Canonica Functions run against Canonica Firebase targets:
+ * QA/staging deploys to canonica-qa; production deploys to canonica.
+ * Shared mode is only an explicit legacy/emulator override.
  *
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
  */

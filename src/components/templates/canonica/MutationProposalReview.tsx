@@ -14,7 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useMutationProposals } from '@hook/canonica/useMutationProposals';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { CanonicaMutationProposal } from '@type/canonica';
-import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography, theme } from 'antd';
 import { useCallback, useState } from 'react';
 import { LuCheck, LuFileCheck, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
@@ -52,6 +52,7 @@ function ProposalItem({
     regenerating: boolean;
     isMobile?: boolean;
 }) {
+    const { token } = theme.useToken();
     const hasGeneratedDraft = proposal.mutationType === 'new_answer_required'
         && proposal.suggestedChange?.draftStatus === 'generated'
         && Boolean(proposal.suggestedChange?.draftTitle);
@@ -106,9 +107,9 @@ function ProposalItem({
                 description="This marks the proposal as approved for implementation."
                 onConfirm={() => onApprove(proposal.id)}
                 okText="Approve"
-                okButtonProps={{ style: { backgroundColor: '#52c41a' } }}
+                okButtonProps={{ style: { backgroundColor: token.colorSuccess } }}
             >
-                <Button type="text" icon={<LuCheck />} style={{ color: '#52c41a' }}>
+                <Button type="text" icon={<LuCheck />} style={{ color: token.colorSuccess }}>
                     Approve
                 </Button>
             </Popconfirm>,
@@ -148,7 +149,7 @@ function ProposalItem({
                             {proposal.signalSummary.chatCount} chat negative
                         </Text>
                         {hasGeneratedDraft && (
-                            <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, background: '#fafafa' }}>
+                            <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG, padding: 12, background: token.colorFillTertiary }}>
                                 <Flex vertical gap={8}>
                                     <Text strong>{proposal.suggestedChange.draftTitle}</Text>
                                     <Text type="secondary">{proposal.suggestedChange.structuredSummary}</Text>
@@ -197,6 +198,7 @@ function ProposalItem({
 export default function MutationProposalReview() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const { proposals, loading, approve, reject, approveDraft, regenerateDraft, refresh } = useMutationProposals(
         session?.tId || 0,
@@ -258,7 +260,7 @@ export default function MutationProposalReview() {
             <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile} style={{ marginBottom: 16 }}>
                 <Space wrap>
                     <Title level={5} style={{ margin: 0 }}>Signal-to-Knowledge Queue</Title>
-                    <Badge count={proposals.length} style={{ backgroundColor: proposals.length > 0 ? '#1677ff' : '#d9d9d9' }} />
+                    <Badge count={proposals.length} style={{ backgroundColor: proposals.length > 0 ? token.colorPrimary : token.colorFill }} />
                 </Space>
                 <Button
                     icon={<LuRefreshCw />}

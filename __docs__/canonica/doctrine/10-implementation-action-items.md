@@ -52,19 +52,21 @@ Open `.env` and fill in the empty Canonica values (lines 50-59):
 NEXT_PUBLIC_CANONICA_FIREBASE_MODE=separate
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=<from Firebase console>
 NEXT_PUBLIC_CANONICA_FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=<project-id>
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa  # local/preview
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica     # production
 NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET=<project-id>.appspot.com
 NEXT_PUBLIC_CANONICA_FIREBASE_MESSAGING_SENDER_ID=<from Firebase console>
 NEXT_PUBLIC_CANONICA_FIREBASE_APP_ID=<from Firebase console>
 NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID=<optional database id>
 CANONICA_FIREBASE_MODE=separate
-CANONICA_FIREBASE_PROJECT_ID=<project-id>
+CANONICA_FIREBASE_PROJECT_ID=canonica-qa              # local/preview
+CANONICA_FIREBASE_PROJECT_ID=canonica                 # production
 CANONICA_FIREBASE_PRIVATE_KEY=<from service account JSON>
 CANONICA_FIREBASE_CLIENT_EMAIL=<from service account JSON>
 CANONICA_FIRESTORE_DATABASE_ID=<optional database id>
 ```
 
-For local/test environments that intentionally reuse MenuList's DB, set `NEXT_PUBLIC_CANONICA_FIREBASE_MODE=shared` and `CANONICA_FIREBASE_MODE=shared`. Production must use `separate` with Canonica credentials.
+The active local and preview path uses `separate` mode with `canonica-qa`. Production uses `separate` mode with `canonica`. Use `shared` only for explicit legacy/emulator recovery.
 
 Also download the service account JSON and save as `canonica-service-account.json` in project root.
 
@@ -75,11 +77,15 @@ Go to Vercel project settings → Environment Variables → add all `CANONICA_FI
 ### 4. Deploy
 
 ```bash
-# Deploy MenuList functions
+# Deploy MenuList functions (local/preview target)
 firebase deploy --only functions --project ecomsai
 
+# Deploy MenuList functions (production target)
+firebase deploy --only functions --project menulist
+
 # Deploy Canonica functions
-cd functions-canonica && npm run deploy
+cd functions-canonica && npm run deploy:qa
+cd functions-canonica && npm run deploy:prod
 ```
 
 ### 5. Create Canonica Client Registry

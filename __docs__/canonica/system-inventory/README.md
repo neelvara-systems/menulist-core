@@ -1,7 +1,7 @@
 # Canonica System Inventory
 
 > **Status:** Codebase-first inventory  
-> **Last Updated:** 2026-05-24
+> **Last Updated:** 2026-05-25
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
 > **Product Boundary:** Canonica is a separate product. MenuList is only a client/test host and shared codebase neighbor.
 
@@ -33,6 +33,16 @@ The inventory was built from these live sources first:
 Docs under `__docs__/canonica/` were cross-checked after code discovery. When docs and code disagree, this inventory follows code.
 
 ---
+
+## Environment Target Matrix
+
+| Environment | MenuList URL | MenuList Firebase | Canonica URL | Canonica Firebase |
+| --- | --- | --- | --- | --- |
+| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__canonica/` | `canonica-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `canonica-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist` | `https://canonica.app` | `canonica` |
+
+`src/constants/deploymentTargets.ts` is the code-level source of truth for this matrix. Domain routing, environment validation, Firebase aliases, and Canonica deploy scripts must stay in sync with it.
 
 ## Canonica Operating Model
 

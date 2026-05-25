@@ -5,8 +5,12 @@
  * Never hardcode domain strings in components, API routes, or lib files.
  *
  * Domain Architecture (Multi-Product):
- *   menulist.ai              — MenuList marketing website
- *   canonica.app             — Canonica marketing website
+ *   Local: localhost:3000     — MenuList marketing/app shell
+ *   Local: /__canonica        — Canonica website
+ *   QA: menulist.online       — MenuList preview/staging
+ *   QA: ecomsai.com           — Canonica preview/staging
+ *   Prod: menulist.ai         — MenuList production
+ *   Prod: canonica.app        — Canonica production
  *   [future].app             — SurfaceOS / GrowthOS / VisualMeta websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.ai  — Customer-facing digital menu (public)
@@ -20,6 +24,10 @@
  */
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
+import {
+    getActiveProductDomains,
+    getDeploymentStage,
+} from './deploymentTargets';
 
 // ═══════════════════════════════════════════════════════════════
 // Base Domain
@@ -35,28 +43,44 @@ const sanitizeDomain = (value?: string | null): string => {
 };
 
 /** Root domain — used for marketing site, SEO, and canonical URLs */
-export const PLATFORM_DOMAIN = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN) || 'menulist.ai';
+const activeMenulistDomains = getActiveProductDomains('menulist').map((domain) => sanitizeDomain(domain));
+const activeExternalMenulistDomains = activeMenulistDomains.filter((domain) =>
+    domain
+    && domain !== 'localhost'
+    && domain !== '127.0.0.1'
+    && !domain.startsWith('192.168.')
+);
+const defaultPlatformDomain = getDeploymentStage() === 'local'
+    ? 'menulist.ai'
+    : activeExternalMenulistDomains[0] || 'menulist.ai';
+
+const configuredPlatformDomain = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN);
+const isConfiguredPlatformDomainAllowed = getDeploymentStage() === 'local'
+    || configuredPlatformDomain === defaultPlatformDomain;
+
+export const PLATFORM_DOMAIN = (isConfiguredPlatformDomainAllowed ? configuredPlatformDomain : '') || defaultPlatformDomain;
 
 /**
- * Alias domains that behave identically to PLATFORM_DOMAIN.
- * Used for staging/testing environments (e.g., menulist.online).
- * These serve the same marketing website — no redirect.
+ * Alias domains that behave identically to PLATFORM_DOMAIN for the active
+ * runtime environment. Vercel preview should use menulist.online; production
+ * should use menulist.ai. Non-local alias env values are filtered to the
+ * active deployment's MenuList domains.
  */
 const envDomainAliases = (process.env.NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES || '')
     .split(',')
     .map((entry) => sanitizeDomain(entry))
     .filter(Boolean);
+const allowedEnvDomainAliases = getDeploymentStage() === 'local'
+    ? envDomainAliases
+    : envDomainAliases.filter((alias) => activeExternalMenulistDomains.includes(alias));
 
 const defaultDomainAliases = [
-    'menulist.ai',
-    'www.menulist.ai',
-    'menulist.online',
-    'www.menulist.online',
+    ...activeExternalMenulistDomains,
 ].filter((alias) => alias !== PLATFORM_DOMAIN && alias !== `www.${PLATFORM_DOMAIN}`);
 
 export const PLATFORM_DOMAIN_ALIASES = Array.from(new Set([
     ...defaultDomainAliases,
-    ...envDomainAliases.filter((alias) => alias !== PLATFORM_DOMAIN && alias !== `www.${PLATFORM_DOMAIN}`),
+    ...allowedEnvDomainAliases.filter((alias) => alias !== PLATFORM_DOMAIN && alias !== `www.${PLATFORM_DOMAIN}`),
 ]));
 
 /** Full root URL with protocol */

@@ -14,7 +14,7 @@
 import { getAnswerVersionHistory } from '@database/canonica/auditLogs';
 import { getCanonicalAnswers } from '@database/canonica/canonicalAnswers';
 import { CanonicaAuditLog, CanonicaCanonicalAnswer } from '@type/canonica';
-import { Badge, Card, Empty, Select, Spin, Tag, Timeline, Typography } from 'antd';
+import { Badge, Card, Empty, Select, Spin, Tag, Timeline, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import {
     LuCheckCircle,
@@ -60,6 +60,7 @@ function formatTimestamp(ts: any): string {
 }
 
 export default function AnswerVersionHistory({ tId, sId }: Props) {
+    const { token } = theme.useToken();
     const [answers, setAnswers] = useState<CanonicaCanonicalAnswer[]>([]);
     const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
     const [history, setHistory] = useState<CanonicaAuditLog[]>([]);
@@ -125,7 +126,7 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
                 {selectedAnswerId && (
                     <Badge
                         count={history.length}
-                        style={{ backgroundColor: '#1677ff' }}
+                        style={{ backgroundColor: token.colorPrimary }}
                         overflowCount={99}
                     />
                 )}

@@ -325,17 +325,21 @@ src/lib/firebase/canonicaFirebaseAdmin.ts       → Canonica admin (new)
 **4. Two sets of environment variables:**
 
 ```
-# MenuList (existing — no changes)
+# MenuList
 NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai
-FIREBASE_PROJECT_ID=ecomsai
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai   # local/preview
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist  # production
+FIREBASE_PROJECT_ID=ecomsai               # local/preview
+FIREBASE_PROJECT_ID=menulist              # production
 FIREBASE_PRIVATE_KEY=...
 FIREBASE_CLIENT_EMAIL=...
 
-# Canonica (new)
+# Canonica
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=...
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica
-CANONICA_FIREBASE_PROJECT_ID=canonica
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa   # local/preview
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica      # production
+CANONICA_FIREBASE_PROJECT_ID=canonica-qa               # local/preview
+CANONICA_FIREBASE_PROJECT_ID=canonica                  # production
 CANONICA_FIREBASE_PRIVATE_KEY=...
 CANONICA_FIREBASE_CLIENT_EMAIL=...
 ```
@@ -430,13 +434,15 @@ Everything else: menu processing, analytics, messaging, billing, monitoring, dec
 
 ```bash
 firebase deploy --only functions --project ecomsai
-firebase deploy --only functions --project canonica --config firebase-canonica.json
+firebase deploy --only functions --project menulist
+firebase deploy --only functions:canonica --project canonica-qa --config firebase-canonica.json
+firebase deploy --only functions:canonica --project canonica --config firebase-canonica.json
 ```
 
 Two `firebase.json` configs at dashboard root:
 
-- `firebase.json` → ecomsai (existing)
-- `firebase-canonica.json` → canonica (new, `"functions": { "source": "functions-canonica" }`)
+- `firebase.json` → MenuList targets (`ecomsai` for local/preview, `menulist` for production)
+- `firebase-canonica.json` → Canonica targets (`canonica-qa` for local/preview, `canonica` for production)
 
 ### Client-Side Callable Functions
 

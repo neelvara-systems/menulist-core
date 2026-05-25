@@ -3,8 +3,8 @@
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * Routing Priority:
- * 1. Product website domains (canonica.app → /_sites/canonica)
- * 2. Dev path prefixes (/__canonica → /_sites/canonica) — local dev only
+ * 1. Active product website domains (QA ecomsai.com / prod canonica.app → /sites/canonica)
+ * 2. Dev path prefixes (/__canonica → /sites/canonica) — local dev only
  * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
@@ -24,6 +24,11 @@ import {
     CANONICA_PRODUCT_PASSTHROUGH_PATHS,
     getCanonicaDashboardRewritePath,
 } from '@constant/canonica/domains';
+import {
+    getProductDeploymentTarget,
+    isActiveProductDomain,
+    resolveKnownProductIdByHostname,
+} from '@constant/deploymentTargets';
 import {
     CANONICA_HOSTED_HELP_DEV_PREFIX,
     CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH,
@@ -156,6 +161,19 @@ export function middleware(request: NextRequest) {
     const hostname = request.headers.get('host');
     const pathname = request.nextUrl.pathname;
     const domainInfo = resolveDomain(hostname);
+    const knownProductId = resolveKnownProductIdByHostname(hostname);
+
+    if (
+        process.env.VERCEL === '1'
+        && knownProductId
+        && !isActiveProductDomain(knownProductId, hostname)
+        && !shouldBypassDomainRouting(pathname)
+    ) {
+        const target = getProductDeploymentTarget(knownProductId);
+        const url = new URL(request.nextUrl.pathname, target.url);
+        url.search = request.nextUrl.search;
+        return NextResponse.redirect(url, 308);
+    }
 
     // ═══════════════════════════════════════════════════════════
     // Priority 1: Multi-Product Website Routing
@@ -212,7 +230,9 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    // 1a. Production: hostname-based product routing (canonica.app → /sites/canonica)
+    // 1a. Vercel hostname-based product routing.
+    // QA: ecomsai.com → /sites/canonica
+    // Production: canonica.app → /sites/canonica
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
 
@@ -248,7 +268,7 @@ export function middleware(request: NextRequest) {
         return applySecurityHeaders(request, response);
     }
 
-    // 1b. Local dev: path-prefix product routing (/__canonica/pricing → /_sites/canonica/pricing)
+    // 1b. Local dev: path-prefix product routing (/__canonica/pricing → /sites/canonica/pricing)
     if (process.env.NODE_ENV === 'development' || !process.env.VERCEL) {
         if (pathname === CANONICA_HOSTED_HELP_DEV_PREFIX || pathname.startsWith(`${CANONICA_HOSTED_HELP_DEV_PREFIX}/`)) {
             const url = request.nextUrl.clone();

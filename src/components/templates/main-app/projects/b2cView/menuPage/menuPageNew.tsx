@@ -344,9 +344,12 @@ function MenuPageNew({
     // Grid layout is a merchant-selected output mode, so mobile must honor it.
     // List/Card remain single-column for fast scanning on handheld screens.
     const isGridLayout = resolvedLayout === MenuLayout.GRID;
+    const isDesktopCardLayout = isDesktop && resolvedLayout === MenuLayout.CARD;
     const gridColumns = isGridLayout
         ? (isMobile ? 2 : isTablet ? 2 : Math.max(1, layoutConfig.itemsPerRow))
-        : (isDesktop ? Math.max(1, layoutConfig.itemsPerRow) : 1);
+        : isDesktopCardLayout
+            ? 2
+            : (isDesktop ? Math.max(1, layoutConfig.itemsPerRow) : 1);
     const isCompactGrid = gridColumns > 1 && !isDesktop;
 
     // State
@@ -2205,7 +2208,7 @@ function MenuPageNew({
                                 }}
                                 aria-label="Menu categories"
                             >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                                     {allCategories.map((cat: any) => {
                                         const isActive = displayActiveCategory?.id === cat.id;
                                         return (
@@ -2217,7 +2220,7 @@ function MenuPageNew({
                                                     handleBrowseCategorySelect(cat, 'CATEGORY-ANCHOR');
                                                 }}
                                                 style={{
-                                                    padding: '10px 16px',
+                                                    padding: '10px 14px',
                                                     borderRadius: categoryNavRadius,
                                                     border: 'none',
                                                     background: isActive ? `${moodConfig.accentColor}15` : 'transparent',
@@ -2225,6 +2228,7 @@ function MenuPageNew({
                                                     fontFamily: moodConfig.bodyFont,
                                                     fontSize: 14,
                                                     fontWeight: isActive ? 600 : 400,
+                                                    lineHeight: '19px',
                                                     textAlign: 'left',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.15s ease',
@@ -2233,9 +2237,10 @@ function MenuPageNew({
                                                         : `${Math.max(3, categoryNavBorderWidth)}px solid transparent`,
                                                     display: 'block',
                                                     textDecoration: 'none',
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'normal',
+                                                    overflow: 'visible',
+                                                    textOverflow: 'clip',
+                                                    wordBreak: 'break-word',
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (!isActive) {
@@ -2248,16 +2253,18 @@ function MenuPageNew({
                                                     }
                                                 }}
                                             >
-                                                <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}>
+                                                <span style={{ alignItems: 'flex-start', display: 'flex', gap: 8, width: '100%' }}>
                                                     {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
-                                                        <CategoryIcon
-                                                            color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
-                                                            defaultIcon="LuTag"
-                                                            icon={cat.icon}
-                                                            size={15}
-                                                        />
+                                                        <span style={{ display: 'inline-flex', flexShrink: 0, lineHeight: 0, marginTop: 2 }}>
+                                                            <CategoryIcon
+                                                                color={isActive ? moodConfig.accentColor : moodConfig.bodyColor}
+                                                                defaultIcon="LuTag"
+                                                                icon={cat.icon}
+                                                                size={15}
+                                                            />
+                                                        </span>
                                                     ) : null}
-                                                    <span>{getMenuText(cat.name)}</span>
+                                                    <span style={{ flex: '1 1 auto', minWidth: 0 }}>{getMenuText(cat.name)}</span>
                                                 </span>
                                             </a>
                                         );

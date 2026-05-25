@@ -6,8 +6,12 @@
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions --config ../firebase-canonica.json",
     "shell": "npm run build && firebase functions:shell --config ../firebase-canonica.json",
-    "deploy": "firebase deploy --only functions --project canonica --config ../firebase-canonica.json",
-    "logs": "firebase functions:log --project canonica"
+    "deploy": "npm run deploy:prod",
+    "deploy:qa": "firebase deploy --only functions:canonica --project canonica-qa --config ../firebase-canonica.json",
+    "deploy:prod": "firebase deploy --only functions:canonica --project canonica --config ../firebase-canonica.json",
+    "logs": "npm run logs:prod",
+    "logs:qa": "firebase functions:log --project canonica-qa --config ../firebase-canonica.json",
+    "logs:prod": "firebase functions:log --project canonica --config ../firebase-canonica.json"
   },
   "engines": {
     "node": "22"

@@ -33,6 +33,7 @@ import {
     Tag,
     Tooltip,
     Typography,
+    theme,
 } from 'antd';
 import { useMemo } from 'react';
 import {
@@ -125,11 +126,11 @@ function computeEntityHealth(
     };
 }
 
-function getHealthColor(score: number): string {
-    if (score >= 80) return '#52c41a';
-    if (score >= 60) return '#1677ff';
-    if (score >= 40) return '#faad14';
-    return '#ff4d4f';
+function getHealthColor(score: number, token: ReturnType<typeof theme.useToken>['token']): string {
+    if (score >= 80) return token.colorSuccess;
+    if (score >= 60) return token.colorPrimary;
+    if (score >= 40) return token.colorWarning;
+    return token.colorError;
 }
 
 function getHealthLabel(score: number): string {
@@ -141,6 +142,7 @@ function getHealthLabel(score: number): string {
 
 export default function EntityHealthScore() {
     const session = useClientAuthSession();
+    const { token } = theme.useToken();
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
@@ -202,7 +204,7 @@ export default function EntityHealthScore() {
                     <Progress
                         percent={score}
                         size="small"
-                        strokeColor={getHealthColor(score)}
+                        strokeColor={getHealthColor(score, token)}
                         style={{ width: 80 }}
                         format={pct => `${pct}%`}
                     />
@@ -276,7 +278,7 @@ export default function EntityHealthScore() {
                         value={aggregated.avg}
                         suffix="%"
                         prefix={<LuHeart />}
-                        valueStyle={{ fontSize: 22, color: getHealthColor(aggregated.avg) }}
+                        valueStyle={{ fontSize: 22, color: getHealthColor(aggregated.avg, token) }}
                     />
                 </Card>
                 <Card size="small" style={{ minWidth: 130 }}>
@@ -284,7 +286,7 @@ export default function EntityHealthScore() {
                         title="Healthy"
                         value={aggregated.healthy}
                         prefix={<LuShieldCheck />}
-                        valueStyle={{ fontSize: 22, color: '#52c41a' }}
+                        valueStyle={{ fontSize: 22, color: token.colorSuccess }}
                     />
                 </Card>
                 <Card size="small" style={{ minWidth: 130 }}>
@@ -292,7 +294,7 @@ export default function EntityHealthScore() {
                         title="Attention"
                         value={aggregated.attention}
                         prefix={<LuShieldAlert />}
-                        valueStyle={{ fontSize: 22, color: aggregated.attention > 0 ? '#faad14' : '#52c41a' }}
+                        valueStyle={{ fontSize: 22, color: aggregated.attention > 0 ? token.colorWarning : token.colorSuccess }}
                     />
                 </Card>
                 <Card size="small" style={{ minWidth: 130 }}>
@@ -300,7 +302,7 @@ export default function EntityHealthScore() {
                         title="Critical"
                         value={aggregated.critical}
                         prefix={<LuActivity />}
-                        valueStyle={{ fontSize: 22, color: aggregated.critical > 0 ? '#ff4d4f' : '#52c41a' }}
+                        valueStyle={{ fontSize: 22, color: aggregated.critical > 0 ? token.colorError : token.colorSuccess }}
                     />
                 </Card>
             </Flex>

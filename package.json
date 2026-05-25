@@ -16,6 +16,7 @@
     "docs:generate": "node scripts/generate-docs-index.js",
     "generate:canonica-splash": "node scripts/website-assets/generate-canonica-splash.js",
     "verify:agent-readiness": "node scripts/verification/verify-agent-readiness.js",
+    "verify:env-targets": "node scripts/verification/verify-agent-readiness.js --env-targets-only",
     "verify:canonica-pwa": "node scripts/verification/verify-canonica-pwa-assets.js",
     "verify:customer-app-pwa": "node scripts/verification/verify-customer-app-pwa.js",
     "verify:catalog-analytics": "npm --prefix functions run build && node scripts/verification/verify-catalog-analytics-intelligence.js",

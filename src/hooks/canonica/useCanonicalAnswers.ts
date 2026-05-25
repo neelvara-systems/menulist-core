@@ -16,6 +16,7 @@ import {
     getDriftedAnswers,
 } from '@database/canonica/canonicalAnswers';
 import { addAuditLog } from '@database/canonica/auditLogs';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaCanonicalAnswer } from '@type/canonica';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -54,7 +55,7 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             setAnswers(allAnswers || []);
             setDriftedAnswers(drifted || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load canonical answers');
+            setError(getCanonicaUiErrorMessage(err, 'Could not load canonical answers'));
         } finally {
             setLoading(false);
         }
@@ -83,7 +84,7 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             }
             return result;
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to create answer');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not create answer'));
             return null;
         }
     }, [tId, sId, refresh]);
@@ -104,7 +105,7 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
             message.success('Answer updated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to update answer');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not update answer'));
         }
     }, [tId, sId, refresh]);
 

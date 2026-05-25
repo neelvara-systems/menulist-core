@@ -1,8 +1,9 @@
 /**
  * Canonica Firebase Admin — shared or separate Firebase runtime.
  *
- * Server-side Canonica access keeps a single import surface while allowing
- * local/test to share MenuList DB and production to use a dedicated project/DB.
+ * Server-side Canonica access keeps a single import surface while local,
+ * preview, and production use the Canonica Firebase target for that stage.
+ * Shared mode is only an explicit legacy/emulator override.
  *
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md v4.3.0
  */

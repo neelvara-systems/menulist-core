@@ -4,6 +4,7 @@ import { CANONICA_GOVERNANCE_TABS, CANONICA_ROUTES, getCanonicaGovernanceRoute, 
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
 import CanonicaCustomerFlowChecklist from '@template/canonica/content/CanonicaCustomerFlowChecklist';
 import CanonicaContentWorkbench from '@template/canonica/content/CanonicaContentWorkbench';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import CanonicaOperationsPanel from './CanonicaOperationsPanel';
 import {
     Alert,
@@ -21,6 +22,7 @@ import {
     Tag,
     Typography,
     message,
+    theme,
 } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -96,6 +98,7 @@ const getStepIcon = (step: CanonicaActivationStep) => {
 export default function CanonicaActivationCommandCenter() {
     const screens = Grid.useBreakpoint();
     const router = useRouter();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const [summary, setSummary] = useState<ActivationSummaryResponse['summary']>(null);
     const [loading, setLoading] = useState(true);
@@ -119,8 +122,8 @@ export default function CanonicaActivationCommandCenter() {
                 throw new Error(data.error || 'Failed to load activation summary');
             }
             setSummary(data.summary);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load activation summary');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load activation summary'));
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -177,8 +180,8 @@ export default function CanonicaActivationCommandCenter() {
             }
             message.success(`Test email sent to ${data.recipientEmail}`);
             await loadSummary(true);
-        } catch (error: any) {
-            message.error(error?.message || 'Notification test failed');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not send test notification'));
         } finally {
             setTestingNotification(false);
         }
@@ -200,8 +203,8 @@ export default function CanonicaActivationCommandCenter() {
                 ? `Compiled context v${data.manifest.bundleVersion} is ready`
                 : 'Compiled context rebuild finished');
             await loadSummary(true);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to rebuild compiled context');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not rebuild compiled context'));
         } finally {
             setRebuildingContext(false);
         }
@@ -234,7 +237,7 @@ export default function CanonicaActivationCommandCenter() {
     };
 
     return (
-        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 80 : 0 }}>
+        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Launch Support Setup</Title>
@@ -247,7 +250,7 @@ export default function CanonicaActivationCommandCenter() {
                         icon={<LuRefreshCw />}
                         loading={refreshing}
                         onClick={() => loadSummary(true)}
-                        style={{ minHeight: 40 }}
+                        style={{ minHeight: 44 }}
                     >
                         Refresh
                     </Button>
@@ -256,7 +259,7 @@ export default function CanonicaActivationCommandCenter() {
                             type="primary"
                             icon={<LuExternalLink />}
                             onClick={() => openRoute(nextStep.route)}
-                            style={{ minHeight: 40 }}
+                            style={{ minHeight: 44 }}
                         >
                             {nextStep.actionLabel || 'Continue'}
                         </Button>
@@ -283,7 +286,7 @@ export default function CanonicaActivationCommandCenter() {
                                     <Text strong>{mode.title}</Text>
                                 </Flex>
                                 <Text type="secondary">{mode.description}</Text>
-                                <Button onClick={() => openRoute(mode.route)} style={{ minHeight: 40 }}>
+                                <Button onClick={() => openRoute(mode.route)} style={{ minHeight: 44 }}>
                                     {mode.action}
                                 </Button>
                             </Flex>
@@ -300,7 +303,7 @@ export default function CanonicaActivationCommandCenter() {
                                 type="circle"
                                 percent={summary.readinessScore}
                                 size={isMobile ? 84 : 104}
-                                strokeColor={summary.readinessScore >= 85 ? '#52c41a' : '#1677ff'}
+                                strokeColor={summary.readinessScore >= 85 ? token.colorSuccess : token.colorPrimary}
                             />
                             <div>
                                 <Text type="secondary">Required steps</Text>
@@ -546,10 +549,10 @@ export default function CanonicaActivationCommandCenter() {
             </Row>
 
             <Flex justify={isMobile ? 'stretch' : 'end'} gap={8} vertical={isMobile}>
-                <Button onClick={() => openRoute(CANONICA_ROUTES.PRODUCT_SURFACES)} style={{ minHeight: 40 }}>
+                <Button onClick={() => openRoute(CANONICA_ROUTES.PRODUCT_SURFACES)} style={{ minHeight: 44 }}>
                     Product Surfaces
                 </Button>
-                <Button onClick={() => openRoute(CANONICA_ROUTES.WIDGET)} style={{ minHeight: 40 }}>
+                <Button onClick={() => openRoute(CANONICA_ROUTES.WIDGET)} style={{ minHeight: 44 }}>
                     Widget Settings
                 </Button>
             </Flex>

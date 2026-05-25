@@ -37,6 +37,7 @@ import {
     Table,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -75,6 +76,7 @@ const ENTITY_TYPE_OPTIONS = Object.entries(CANONICA_ENTITY_TYPES).map(([key, val
 export default function EntityManagementDashboard() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
@@ -227,7 +229,7 @@ export default function EntityManagementDashboard() {
             width: 80,
             render: (_: any, record: CanonicaEntity) => {
                 const count = entityRelationCounts.get(record.id) || 0;
-                return count > 0 ? <Badge count={count} style={{ backgroundColor: '#1677ff' }} /> : <Text type="secondary">0</Text>;
+                return count > 0 ? <Badge count={count} style={{ backgroundColor: token.colorPrimary }} /> : <Text type="secondary">0</Text>;
             },
         },
         {
@@ -270,7 +272,7 @@ export default function EntityManagementDashboard() {
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Product Ontology</Title>
-                        <Badge count={entities.length} style={{ backgroundColor: '#1677ff' }} />
+                        <Badge count={entities.length} style={{ backgroundColor: token.colorPrimary }} />
                     </Space>
                     <Space>
                         <Input

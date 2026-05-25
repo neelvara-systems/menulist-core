@@ -29,6 +29,7 @@ import {
     Table,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { useMemo } from 'react';
 import {
@@ -56,6 +57,7 @@ interface AnswerUsageRow {
 
 export default function AnswerUsageAnalytics() {
     const session = useClientAuthSession();
+    const { token } = theme.useToken();
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
@@ -159,7 +161,7 @@ export default function AnswerUsageAnalytics() {
             width: 90,
             sorter: (a: AnswerUsageRow, b: AnswerUsageRow) => a.negativeFeedback - b.negativeFeedback,
             render: (val: number) => (
-                <Text style={{ color: val > 0 ? '#ff4d4f' : '#52c41a' }}>{val}</Text>
+                <Text style={{ color: val > 0 ? token.colorError : token.colorSuccess }}>{val}</Text>
             ),
         },
         {
@@ -170,7 +172,7 @@ export default function AnswerUsageAnalytics() {
             sorter: (a: AnswerUsageRow, b: AnswerUsageRow) => a.confidenceScore - b.confidenceScore,
             render: (val: number) => {
                 const pct = Math.round(val * 100);
-                const color = pct >= 80 ? '#52c41a' : pct >= 50 ? '#faad14' : '#ff4d4f';
+                const color = pct >= 80 ? token.colorSuccess : pct >= 50 ? token.colorWarning : token.colorError;
                 return <Progress percent={pct} size="small" strokeColor={color} style={{ width: 80 }} />;
             },
         },
@@ -191,7 +193,7 @@ export default function AnswerUsageAnalytics() {
                         title="Avg Confidence"
                         value={Math.round(analytics.avgConfidence * 100)}
                         suffix="%"
-                        valueStyle={{ fontSize: 22, color: analytics.avgConfidence >= 0.7 ? '#52c41a' : '#faad14' }}
+                        valueStyle={{ fontSize: 22, color: analytics.avgConfidence >= 0.7 ? token.colorSuccess : token.colorWarning }}
                     />
                 </Card>
                 <Card size="small" style={{ minWidth: 140 }}>
@@ -199,7 +201,7 @@ export default function AnswerUsageAnalytics() {
                         title="Never Used"
                         value={analytics.neverUsedCount}
                         prefix={<LuFileQuestion />}
-                        valueStyle={{ fontSize: 22, color: analytics.neverUsedCount > 0 ? '#faad14' : '#52c41a' }}
+                        valueStyle={{ fontSize: 22, color: analytics.neverUsedCount > 0 ? token.colorWarning : token.colorSuccess }}
                     />
                 </Card>
                 {contentGaps.length > 0 && (
@@ -207,7 +209,7 @@ export default function AnswerUsageAnalytics() {
                         <Statistic
                             title="Content Gaps"
                             value={contentGaps.length}
-                            valueStyle={{ fontSize: 22, color: '#ff4d4f' }}
+                            valueStyle={{ fontSize: 22, color: token.colorError }}
                         />
                     </Card>
                 )}
@@ -216,7 +218,7 @@ export default function AnswerUsageAnalytics() {
             {/* Top & Bottom Lists */}
             <Flex gap={16} wrap="wrap">
                 {analytics.mostUsed.length > 0 && (
-                    <Card size="small" title={<Space><LuTrendingUp style={{ color: '#52c41a' }} /> Most Used</Space>} style={{ flex: 1, minWidth: 280 }}>
+                    <Card size="small" title={<Space><LuTrendingUp style={{ color: token.colorSuccess }} /> Most Used</Space>} style={{ flex: 1, minWidth: 280 }}>
                         <List
                             size="small"
                             dataSource={analytics.mostUsed}
@@ -232,7 +234,7 @@ export default function AnswerUsageAnalytics() {
                 )}
 
                 {analytics.neverUsed.length > 0 && (
-                    <Card size="small" title={<Space><LuTrendingDown style={{ color: '#faad14' }} /> Never Used</Space>} style={{ flex: 1, minWidth: 280 }}>
+                    <Card size="small" title={<Space><LuTrendingDown style={{ color: token.colorWarning }} /> Never Used</Space>} style={{ flex: 1, minWidth: 280 }}>
                         <List
                             size="small"
                             dataSource={analytics.neverUsed.slice(0, 5)}
@@ -252,7 +254,7 @@ export default function AnswerUsageAnalytics() {
                 )}
 
                 {analytics.highNegative.length > 0 && (
-                    <Card size="small" title={<Space><LuBarChart3 style={{ color: '#ff4d4f' }} /> High Negative Feedback</Space>} style={{ flex: 1, minWidth: 280 }}>
+                    <Card size="small" title={<Space><LuBarChart3 style={{ color: token.colorError }} /> High Negative Feedback</Space>} style={{ flex: 1, minWidth: 280 }}>
                         <List
                             size="small"
                             dataSource={analytics.highNegative}

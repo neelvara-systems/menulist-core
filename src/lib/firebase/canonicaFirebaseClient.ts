@@ -1,8 +1,9 @@
 /**
  * Canonica Firebase Client — shared or separate Firebase runtime.
  *
- * Canonica DAL files import from this file so local/test can reuse MenuList's
- * default DB and production can point at a dedicated Canonica project/database.
+ * Canonica DAL files import from this file so local, preview, and production
+ * use the Canonica Firebase target configured for that deployment stage.
+ * Shared mode is only an explicit legacy/emulator override.
  *
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md v4.3.0
  */

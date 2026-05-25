@@ -6,6 +6,20 @@
 
 ---
 
+## May 25, 2026 — Environment Target Matrix
+
+### Changed
+
+- **MenuList and Canonica environment targets are now explicit** — Local development uses MenuList at `http://localhost:3000/` with Firebase `ecomsai` and Canonica at `http://localhost:3000/__canonica/` with Firebase `canonica-qa`.
+- **Preview and production routing are separated** — Vercel Preview uses `menulist.online` + `ecomsai` for MenuList and `ecomsai.com` + `canonica-qa` for Canonica; Vercel Production uses `menulist.ai` + `menulist` and `canonica.app` + `canonica`.
+- **Deploy and verification commands were aligned** — Canonica Functions now have explicit QA and production deploy scripts, Firebase aliases include both product targets, and `npm run verify:env-targets` checks the matrix.
+
+### Cost
+
+- **No Firebase reads or writes added** — This is routing, environment validation, CLI alias, and documentation work only. It does not add listeners, scheduled functions, storage operations, or database calls.
+
+---
+
 ## May 25, 2026 — Canonica Website Day-One Launch Pack
 
 ### Changed

@@ -39,6 +39,7 @@ import {
     Tooltip,
     Typography,
     message,
+    theme,
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useMemo, useState } from 'react';
@@ -56,32 +57,32 @@ import {
 
 const { Text, Title, Paragraph } = Typography;
 
-const DRIFT_CLASS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> = {
+const getDriftClassConfig = (token: ReturnType<typeof theme.useToken>['token']): Record<string, { label: string; color: string; icon: React.ReactNode; description: string }> => ({
     version_mismatch: {
         label: 'Version Drift',
-        color: '#faad14',
+        color: token.colorWarning,
         icon: <LuGitBranch />,
         description: 'Entity changed in release but answer not revalidated',
     },
     signal_anomaly: {
         label: 'Signal Drift',
-        color: '#ff4d4f',
+        color: token.colorError,
         icon: <LuZap />,
         description: 'Negative feedback or ticket spike above threshold',
     },
     scope_conflict: {
         label: 'Scope Conflict',
-        color: '#722ed1',
+        color: token.colorPrimary,
         icon: <LuLayers />,
         description: 'Multiple active answers overlap on same entity+scope',
     },
     deprecated_entity: {
         label: 'Orphan Drift',
-        color: '#eb2f96',
+        color: token.colorError,
         icon: <LuTrash2 />,
         description: 'Deprecated entity still bound to active answer',
     },
-};
+});
 
 interface DriftClassBreakdown {
     driftClass: string;
@@ -92,6 +93,7 @@ interface DriftClassBreakdown {
 export default function DriftDashboard() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
@@ -198,7 +200,8 @@ export default function DriftDashboard() {
     const driftedCount = driftedAnswers.length;
     const cleanCount = totalAnswers - driftedCount;
     const healthPercent = totalAnswers > 0 ? Math.round((cleanCount / totalAnswers) * 100) : 100;
-    const healthColor = healthPercent >= 80 ? '#52c41a' : healthPercent >= 50 ? '#faad14' : '#ff4d4f';
+    const healthColor = healthPercent >= 80 ? token.colorSuccess : healthPercent >= 50 ? token.colorWarning : token.colorError;
+    const driftClassConfig = getDriftClassConfig(token);
 
     return (
         <>
@@ -207,7 +210,7 @@ export default function DriftDashboard() {
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Drift Governance</Title>
                         {driftedCount > 0 ? (
-                            <Badge count={`${driftedCount} drifted`} style={{ backgroundColor: '#faad14' }} />
+                            <Badge count={`${driftedCount} drifted`} style={{ backgroundColor: token.colorWarning }} />
                         ) : (
                             <Tag color="green" icon={<LuShieldCheck style={{ verticalAlign: 'middle', marginRight: 2 }} />}>
                                 All Clean
@@ -240,7 +243,7 @@ export default function DriftDashboard() {
                         <Statistic
                             title="Clean"
                             value={cleanCount}
-                            valueStyle={{ fontSize: 24, color: '#52c41a' }}
+                            valueStyle={{ fontSize: 24, color: token.colorSuccess }}
                             prefix={<LuShieldCheck />}
                         />
                     </Card>
@@ -248,7 +251,7 @@ export default function DriftDashboard() {
                         <Statistic
                             title="Drifted"
                             value={driftedCount}
-                            valueStyle={{ fontSize: 24, color: driftedCount > 0 ? '#faad14' : '#52c41a' }}
+                            valueStyle={{ fontSize: 24, color: driftedCount > 0 ? token.colorWarning : token.colorSuccess }}
                             prefix={<LuShieldAlert />}
                         />
                     </Card>
@@ -267,18 +270,18 @@ export default function DriftDashboard() {
                     <Card size="small" title="Drift Class Breakdown" style={{ marginBottom: 16 }}>
                         <Flex gap={12} wrap="wrap">
                             {driftBreakdown.map(item => {
-                                const config = DRIFT_CLASS_CONFIG[item.driftClass];
+                                const config = driftClassConfig[item.driftClass];
                                 return (
                                     <Card
                                         key={item.driftClass}
                                         size="small"
                                         style={{
                                             minWidth: 180,
-                                            borderLeft: `3px solid ${config?.color || '#d9d9d9'}`,
+                                            borderLeft: `3px solid ${config?.color || token.colorBorder}`,
                                         }}
                                     >
                                         <Flex align="center" gap={8}>
-                                            <span style={{ color: config?.color || '#999' }}>{config?.icon || <LuAlertTriangle />}</span>
+                                            <span style={{ color: config?.color || token.colorTextSecondary }}>{config?.icon || <LuAlertTriangle />}</span>
                                             <div>
                                                 <Text strong style={{ fontSize: 14 }}>
                                                     {config?.label || item.driftClass}
@@ -308,7 +311,7 @@ export default function DriftDashboard() {
                                     key="resolve"
                                     type="text"
                                     icon={<LuCheck />}
-                                    style={{ color: '#52c41a' }}
+                                    style={{ color: token.colorSuccess }}
                                     onClick={() => { setSelectedDrifted(answer); setDetailModalOpen(true); }}
                                 >
                                     Review
@@ -316,7 +319,7 @@ export default function DriftDashboard() {
                             ]}
                         >
                             <List.Item.Meta
-                                avatar={<LuAlertTriangle style={{ color: '#faad14', fontSize: 20, marginTop: 4 }} />}
+                                avatar={<LuAlertTriangle style={{ color: token.colorWarning, fontSize: 20, marginTop: 4 }} />}
                                 title={<Text strong>{answer.title}</Text>}
                                 description={
                                     <Flex vertical gap={4}>

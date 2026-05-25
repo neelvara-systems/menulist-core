@@ -1,8 +1,9 @@
 /**
  * Canonica Firebase Configuration
  *
- * Production can run Canonica on a separate Firebase project/database, while
- * local and test environments can intentionally reuse the MenuList Firebase DB.
+ * Canonica uses a separate Firebase project in all active environments:
+ * local + Vercel preview use canonica-qa, Vercel production uses canonica.
+ * Shared mode remains only as an explicit legacy/emulator override.
  *
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md v4.3.0
  * @see __docs__/canonica/doctrine/09-multi-product-doctrine.md

@@ -7,7 +7,7 @@
  *
  * Routing Flow:
  *   1. Middleware reads hostname
- *   2. resolveProductSite() matches hostname → product config
+ *   2. resolveProductSite() matches hostname against the active deployment target
  *   3. Middleware rewrites: canonica.app/pricing → /sites/canonica/pricing
  *   4. Next.js renders sites/canonica/pricing/page.tsx
  *
@@ -21,7 +21,10 @@
  * @see src/constants/urls.ts — MenuList-specific URL constants
  */
 
-import { CANONICA_PRODUCT_DOMAINS } from './canonica/domains';
+import {
+    getActiveProductDomains,
+    getProductDeploymentTarget,
+} from './deploymentTargets';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
@@ -45,7 +48,7 @@ export interface ProductDomainConfig {
     /**
      * Internal route path for middleware rewrite.
      * Empty string = root (website) route group (MenuList only).
-     * All others: '/_sites/{productId}'
+     * All others: '/sites/{productId}'
      */
     internalBasePath: string;
     /** Whether this product's website is currently active */
@@ -56,10 +59,7 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
     {
         id: 'menulist',
         name: 'MenuList',
-        domains: [
-            'menulist.ai',
-            'www.menulist.ai',
-        ],
+        domains: getActiveProductDomains('menulist'),
         devPathPrefix: '', // default — no prefix needed
         internalBasePath: '', // served from (website) route group at root
         enabled: true,
@@ -67,8 +67,8 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
     {
         id: 'canonica',
         name: 'Canonica',
-        domains: [...CANONICA_PRODUCT_DOMAINS],
-        devPathPrefix: '/__canonica',
+        domains: getActiveProductDomains('canonica'),
+        devPathPrefix: getProductDeploymentTarget('canonica', 'local').devPathPrefix,
         internalBasePath: '/sites/canonica',
         enabled: true,
     },
@@ -112,8 +112,9 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * All product website domains (for PLATFORM_DOMAINS inclusion).
- * These hostnames should NOT be treated as client tenant subdomains.
+ * Active product website domains for this deployment stage (for
+ * PLATFORM_DOMAINS inclusion). These hostnames should NOT be treated as
+ * client tenant subdomains.
  */
 export const ALL_PRODUCT_DOMAINS: string[] = PRODUCT_SITES.flatMap(p => p.domains);
 

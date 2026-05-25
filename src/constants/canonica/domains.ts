@@ -5,20 +5,24 @@
  * routing does not accumulate Canonica-specific static values.
  */
 
-export const CANONICA_STAGING_DOMAINS = [
-    'ecomsai.com',
-    'www.ecomsai.com',
-] as const;
+import {
+    DEPLOYMENT_TARGETS,
+    getActiveProductDomains,
+    getProductDeploymentTarget,
+} from '@constant/deploymentTargets';
 
-export const CANONICA_PRODUCTION_DOMAINS = [
-    'canonica.app',
-    'www.canonica.app',
-] as const;
+export const CANONICA_LOCAL_DEV_PATH_PREFIX = getProductDeploymentTarget('canonica', 'local').devPathPrefix;
+
+export const CANONICA_STAGING_DOMAINS = DEPLOYMENT_TARGETS.preview.canonica.domains;
+
+export const CANONICA_PRODUCTION_DOMAINS = DEPLOYMENT_TARGETS.production.canonica.domains;
 
 export const CANONICA_PRODUCT_DOMAINS = [
     ...CANONICA_STAGING_DOMAINS,
     ...CANONICA_PRODUCTION_DOMAINS,
 ] as const;
+
+export const ACTIVE_CANONICA_PRODUCT_DOMAINS = getActiveProductDomains('canonica');
 
 export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'activation',
@@ -44,11 +48,11 @@ export const CANONICA_PRODUCT_PASSTHROUGH_PATHS = [
     '/unauthorized',
 ] as const;
 
-const CANONICA_PRODUCT_DOMAIN_SET = new Set<string>(CANONICA_PRODUCT_DOMAINS);
+const ACTIVE_CANONICA_PRODUCT_DOMAIN_SET = new Set<string>(ACTIVE_CANONICA_PRODUCT_DOMAINS);
 const CANONICA_DASHBOARD_ROUTE_ROOT_SET = new Set<string>(CANONICA_DASHBOARD_ROUTE_ROOTS);
 
 export function isCanonicaProductHostname(hostname?: string | null) {
-    return Boolean(hostname && CANONICA_PRODUCT_DOMAIN_SET.has(hostname.split(':')[0].toLowerCase()));
+    return Boolean(hostname && ACTIVE_CANONICA_PRODUCT_DOMAIN_SET.has(hostname.split(':')[0].toLowerCase()));
 }
 
 export function getCanonicaDashboardRewritePath(pathname: string): string | null {

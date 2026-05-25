@@ -11,6 +11,7 @@ import {
 } from '@database/canonica/productSurfaces';
 import { CANONICA_SURFACE_TEMPLATES, type CanonicaSurfaceTemplate } from '@data/canonica/surfaceTemplates';
 import { buildSurfaceKeyFromLabel, normalizeSurfaceKey } from '@lib/canonica/productSurfaceContent';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import type { CanonicaEntity, CanonicaProductSurface, CanonicaSurfaceContentItem, CanonicaSurfaceContentSummary } from '@type/canonica';
 import {
     Alert,
@@ -34,6 +35,7 @@ import {
     Tabs,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -73,6 +75,7 @@ const getSurfaceSummary = (
 export default function CanonicaProductSurfaces() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const [form] = Form.useForm();
 
@@ -124,8 +127,8 @@ export default function CanonicaProductSurfaces() {
             setSelectedSurfaceId(prev => prev && surfaceList?.some(surface => surface.id === prev)
                 ? prev
                 : surfaceList?.[0]?.id || null);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load product surfaces');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load product surfaces'));
         } finally {
             setLoading(false);
         }
@@ -170,8 +173,8 @@ export default function CanonicaProductSurfaces() {
             await rebuildProductSurfaceContentSummary();
             await loadData();
             message.success('Product surface saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save product surface');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save product surface'));
         } finally {
             setSaving(false);
         }
@@ -185,8 +188,8 @@ export default function CanonicaProductSurfaces() {
             await rebuildProductSurfaceContentSummary();
             await loadData();
             message.success('Product surface archived');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to archive product surface');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not archive product surface'));
         } finally {
             setSaving(false);
         }
@@ -198,8 +201,8 @@ export default function CanonicaProductSurfaces() {
             const nextSummary = await rebuildProductSurfaceContentSummary();
             setSummary(nextSummary || null);
             message.success('Context summary rebuilt');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to rebuild context summary');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not rebuild context summary'));
         } finally {
             setRebuilding(false);
         }
@@ -236,8 +239,8 @@ export default function CanonicaProductSurfaces() {
             await loadData();
             setSelectedSurfaceId(saved[0]?.id || null);
             message.success(`${saved.length} starter surface${saved.length === 1 ? '' : 's'} added`);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to apply starter surfaces');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not apply starter surfaces'));
         } finally {
             setApplyingTemplates(false);
         }
@@ -245,8 +248,21 @@ export default function CanonicaProductSurfaces() {
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return null;
 
+    const addMissingTemplatesButton = (
+        <Button
+            block={isMobile}
+            icon={<LuSparkles />}
+            loading={applyingTemplates}
+            onClick={() => saveTemplates(CANONICA_SURFACE_TEMPLATES)}
+            size={isMobile ? 'middle' : 'small'}
+            style={{ minHeight: 44 }}
+        >
+            Add missing templates
+        </Button>
+    );
+
     return (
-        <div style={{ padding: isMobile ? 16 : 24 }}>
+        <div style={{ padding: isMobile ? '16px 16px calc(16px + env(safe-area-inset-bottom))' : 24 }}>
             <Flex justify="space-between" align={isMobile ? 'flex-start' : 'center'} gap={12} vertical={isMobile}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Product Surfaces</Title>
@@ -274,21 +290,17 @@ export default function CanonicaProductSurfaces() {
                 <>
                     <Card
                         title={<Flex align="center" gap={8}><LuSparkles /> Starter surface templates</Flex>}
-                        extra={(
-                            <Button
-                                size="small"
-                                icon={<LuSparkles />}
-                                loading={applyingTemplates}
-                                onClick={() => saveTemplates(CANONICA_SURFACE_TEMPLATES)}
-                            >
-                                Add missing templates
-                            </Button>
-                        )}
+                        extra={!isMobile ? addMissingTemplatesButton : null}
                         style={{ marginBottom: 16 }}
                     >
                         <Paragraph type="secondary" style={{ marginTop: 0 }}>
                             Seed the six product pages most SaaS apps support first. Templates create product surfaces only; starter questions stay as prompts for owner-reviewed articles, FAQs, and approved answers.
                         </Paragraph>
+                        {isMobile ? (
+                            <Flex style={{ marginBottom: 12 }}>
+                                {addMissingTemplatesButton}
+                            </Flex>
+                        ) : null}
                         <Row gutter={[12, 12]}>
                             {CANONICA_SURFACE_TEMPLATES.map((template) => {
                                 const exists = existingTemplateKeys.has(template.key);
@@ -306,6 +318,7 @@ export default function CanonicaProductSurfaces() {
                                                     disabled={exists}
                                                     loading={applyingTemplates}
                                                     onClick={() => saveTemplates([template])}
+                                                    style={{ minHeight: isMobile ? 44 : undefined }}
                                                 >
                                                     Add template
                                                 </Button>,
@@ -343,12 +356,12 @@ export default function CanonicaProductSurfaces() {
                                                 style={{
                                                     cursor: 'pointer',
                                                     padding: 14,
-                                                    background: active ? '#eef2ff' : undefined,
-                                                    borderLeft: active ? '3px solid #6366f1' : '3px solid transparent',
+                                                    background: active ? token.colorPrimaryBg : undefined,
+                                                    borderLeft: active ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
                                                 }}
                                             >
                                                 <List.Item.Meta
-                                                    avatar={<LuLayers style={{ marginTop: 4, color: active ? '#4338ca' : '#64748b' }} />}
+                                                    avatar={<LuLayers style={{ marginTop: 4, color: active ? token.colorPrimary : token.colorTextSecondary }} />}
                                                     title={<Flex justify="space-between" gap={8}><Text strong>{surface.label}</Text>{surface.active === false && <Tag>Archived</Tag>}</Flex>}
                                                     description={(
                                                         <Space direction="vertical" size={4} style={{ width: '100%' }}>

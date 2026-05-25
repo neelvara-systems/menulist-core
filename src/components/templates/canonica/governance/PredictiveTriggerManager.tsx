@@ -36,6 +36,7 @@ import {
     Table,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import {
@@ -82,6 +83,7 @@ interface PredictiveTriggerManagerProps {
 }
 
 export default function PredictiveTriggerManager({ tId, sId }: PredictiveTriggerManagerProps) {
+    const { token } = theme.useToken();
     const { triggers, loading, error, create, update, activate, disable, remove, refresh } = usePredictiveTriggers(tId, sId);
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
@@ -266,7 +268,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 }
                 const { impressions, clicks, score } = record.effectiveness;
                 const pct = Math.round(score * 100);
-                const color = pct >= 15 ? '#52c41a' : pct >= 0 ? '#faad14' : '#ff4d4f';
+                const color = pct >= 15 ? token.colorSuccess : pct >= 0 ? token.colorWarning : token.colorError;
                 return (
                     <Space direction="vertical" size={0}>
                         <Text style={{ color, fontWeight: 600 }}>{pct}%</Text>
@@ -367,10 +369,10 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
             {/* Summary Stats */}
             <Flex gap={16} style={{ marginBottom: 16 }} wrap="wrap">
                 <Card size="small" style={{ minWidth: 120 }}>
-                    <Statistic title="Active" value={stats.active} valueStyle={{ color: '#52c41a' }} prefix={<LuZap />} />
+                    <Statistic title="Active" value={stats.active} valueStyle={{ color: token.colorSuccess }} prefix={<LuZap />} />
                 </Card>
                 <Card size="small" style={{ minWidth: 120 }}>
-                    <Statistic title="Suggested" value={stats.suggested} valueStyle={{ color: '#faad14' }} prefix={<LuTarget />} />
+                    <Statistic title="Suggested" value={stats.suggested} valueStyle={{ color: token.colorWarning }} prefix={<LuTarget />} />
                 </Card>
                 <Card size="small" style={{ minWidth: 120 }}>
                     <Statistic title="Total" value={stats.total} />
@@ -382,7 +384,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 <Space>
                     <Title level={5} style={{ margin: 0 }}>Predictive Triggers</Title>
                     {stats.suggested > 0 && (
-                        <Badge count={`${stats.suggested} pending review`} style={{ backgroundColor: '#faad14' }} />
+                        <Badge count={`${stats.suggested} pending review`} style={{ backgroundColor: token.colorWarning }} />
                     )}
                 </Space>
                 <Space>

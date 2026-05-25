@@ -2,8 +2,8 @@
 
 > **Feature:** Public marketing website for Canonica product
 > **Status:** ✅ IMPLEMENTED — refreshed for AI-built SaaS founders, self-service Canonica, and agent-readable public discovery
-> **Date:** 2026-05-24
-> **Domain:** canonica.app (production) | localhost:3000/__canonica (dev)
+> **Date:** 2026-05-25
+> **Domain:** canonica.app (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
 
@@ -164,6 +164,9 @@
 ```
 Production:
   canonica.app/*  →  middleware detects hostname  →  rewrites to /sites/canonica/*
+
+Vercel Preview / QA:
+  ecomsai.com/*   →  middleware detects hostname  →  rewrites to /sites/canonica/*
 
 Local Dev:
   localhost:3000/__canonica/*  →  middleware detects dev prefix  →  rewrites to /sites/canonica/*

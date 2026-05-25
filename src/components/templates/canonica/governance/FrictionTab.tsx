@@ -20,7 +20,7 @@ import {
     CanonicaFrictionHealth,
     CanonicaFrictionTrendDirection,
 } from '@type/canonica';
-import { Badge, Card, Empty, Skeleton, Space, Table, Tag, Typography } from 'antd';
+import { Badge, Card, Empty, Skeleton, Space, Table, Tag, Typography, theme } from 'antd';
 import {
     LuAlertTriangle,
     LuArrowDown,
@@ -43,10 +43,10 @@ interface FrictionTabProps {
 // ═══════════════════════════════════════════════════════════════
 
 function HealthBadge({ health }: { health: CanonicaFrictionHealth }) {
-    const config: Record<CanonicaFrictionHealth, { color: string; status: 'success' | 'warning' | 'error' }> = {
-        LOW: { color: '#52c41a', status: 'success' },
-        MODERATE: { color: '#faad14', status: 'warning' },
-        HIGH: { color: '#ff4d4f', status: 'error' },
+    const config: Record<CanonicaFrictionHealth, { status: 'success' | 'warning' | 'error' }> = {
+        LOW: { status: 'success' },
+        MODERATE: { status: 'warning' },
+        HIGH: { status: 'error' },
     };
 
     const { status } = config[health] || config.LOW;
@@ -170,6 +170,8 @@ function TopFrictionTable({ entities }: { entities: CanonicaFrictionEntitySummar
 // ═══════════════════════════════════════════════════════════════
 
 function EmergingTopicsCard({ topics }: { topics: CanonicaFrictionEmergingTopic[] }) {
+    const { token } = theme.useToken();
+
     if (!topics || topics.length === 0) return null;
 
     return (
@@ -177,7 +179,7 @@ function EmergingTopicsCard({ topics }: { topics: CanonicaFrictionEmergingTopic[
             size="small"
             title={
                 <Space>
-                    <LuAlertTriangle style={{ color: '#faad14' }} />
+                    <LuAlertTriangle style={{ color: token.colorWarning }} />
                     <Text strong>Emerging Topics</Text>
                 </Space>
             }

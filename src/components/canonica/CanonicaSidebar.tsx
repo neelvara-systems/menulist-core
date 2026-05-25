@@ -27,6 +27,7 @@ import type { MenuProps } from 'antd';
 import { Layout, Menu, theme, Typography } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
+import { LuPalette } from 'react-icons/lu';
 
 const { Sider } = Layout;
 const { Text } = Typography;
@@ -34,9 +35,10 @@ const { Text } = Typography;
 interface CanonicaSidebarProps {
     mobile?: boolean;
     onNavigate?: () => void;
+    onOpenAppSettings?: () => void;
 }
 
-export default function CanonicaSidebar({ mobile = false, onNavigate }: CanonicaSidebarProps) {
+export default function CanonicaSidebar({ mobile = false, onNavigate, onOpenAppSettings }: CanonicaSidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -83,8 +85,21 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
             });
         });
 
+        if (mobile && onOpenAppSettings) {
+            items.push({ type: 'divider' });
+            items.push({
+                key: 'app-appearance',
+                icon: <LuPalette />,
+                label: 'App Appearance',
+                onClick: () => {
+                    onOpenAppSettings();
+                    onNavigate?.();
+                },
+            });
+        }
+
         return items;
-    }, [canUseManagementSurfaces, currentHostname, onNavigate, router]);
+    }, [canUseManagementSurfaces, currentHostname, mobile, onNavigate, onOpenAppSettings, router]);
 
     // Determine selected key from pathname
     const selectedKey = useMemo(() => {
@@ -141,10 +156,14 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         return (
             <div
                 style={{
-                    height: '100%',
+                    background: token.colorBgContainer,
+                    boxSizing: 'border-box',
+                    height: '100dvh',
                     minHeight: '100dvh',
                     overflowY: 'auto',
-                    background: token.colorBgContainer,
+                    paddingBottom: 'env(safe-area-inset-bottom)',
+                    paddingTop: 'env(safe-area-inset-top)',
+                    WebkitOverflowScrolling: 'touch',
                 }}
             >
                 {sidebarContent}
@@ -158,7 +177,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
             style={{
                 background: token.colorBgContainer,
                 borderRight: `1px solid ${token.colorBorderSecondary}`,
-                height: '100vh',
+                height: '100dvh',
                 position: 'fixed',
                 left: 0,
                 top: 0,

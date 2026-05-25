@@ -10,7 +10,7 @@ interface CanonicaLinkProps extends Omit<React.ComponentProps<typeof Link>, 'hre
 
 /**
  * Product-aware Link for Canonica website.
- * In production (canonica.app): basePath="" → links work naturally
+ * On product hosts (QA ecomsai.com, production canonica.app): basePath="" → links work naturally
  * In dev mode: basePath="/__canonica" → links prefixed automatically
  */
 export default function CanonicaLink({ href, basePath = '', children, ...props }: CanonicaLinkProps) {

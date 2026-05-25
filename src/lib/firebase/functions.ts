@@ -4,10 +4,10 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { canonicaFunctions } from './canonicaFirebaseClient';
 import { firebaseApp } from './firebaseClient';
 
-// MenuList Cloud Functions (ecomsai project)
+// MenuList Cloud Functions (ecomsai locally/preview; menulist in production)
 const functions = getFunctions(firebaseApp);
 
-// Canonica Cloud Functions — use canonicaFunctions (canonica project)
+// Canonica Cloud Functions — canonica-qa locally/preview; canonica in production
 export const regenerateEmbedding = async (articleId: string) => {
     const regenerateEmbeddingFn = httpsCallable(canonicaFunctions, 'regenerateEmbedding');
     try {

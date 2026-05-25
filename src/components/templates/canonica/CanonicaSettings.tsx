@@ -10,6 +10,7 @@
 import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
 import TIMEZONES_LIST from '@data/timeZones';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { Alert, Button, Card, Checkbox, Descriptions, Divider, Flex, Form, Grid, Input, Select, Skeleton, Space, Switch, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -103,8 +104,8 @@ export default function CanonicaSettings() {
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || 'Failed to load product details');
             form.setFieldsValue(data.profile || {});
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load product details');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load product details'));
         } finally {
             setLoadingProfile(false);
         }
@@ -134,8 +135,8 @@ export default function CanonicaSettings() {
                     eventFilters: data.email?.eventFilters?.length ? data.email.eventFilters : defaults,
                 },
             });
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load workflow notifications');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load workflow notifications'));
         } finally {
             setLoadingIntegrations(false);
         }
@@ -159,8 +160,8 @@ export default function CanonicaSettings() {
             if (!response.ok) throw new Error(data.error || 'Failed to save product details');
             form.setFieldsValue(data.profile || values);
             message.success('Product details saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save product details');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save product details'));
         } finally {
             setSavingProfile(false);
         }
@@ -194,8 +195,8 @@ export default function CanonicaSettings() {
                 },
             });
             message.success('Workflow notifications saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save workflow notifications');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save workflow notifications'));
         } finally {
             setSavingIntegrations(false);
         }
@@ -209,8 +210,8 @@ export default function CanonicaSettings() {
             if (!response.ok) throw new Error(data.error || 'Failed to send test notification');
             message.success(data.message || 'Test notification queued');
             window.setTimeout(loadIntegrations, 2500);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to send test notification');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not send test notification'));
         } finally {
             setTestingIntegrations(false);
         }
@@ -231,7 +232,11 @@ export default function CanonicaSettings() {
                     <Tag color={color}>{status.lastStatus || 'unknown'}</Tag>
                     <Text type="secondary">{new Date(status.lastAttemptAt).toLocaleString()}</Text>
                 </Space>
-                {status.lastError && <Text type="secondary">{status.lastError}</Text>}
+                {status.lastError && (
+                    <Text type="secondary">
+                        {getCanonicaUiErrorMessage(status.lastError, 'Last delivery needs review')}
+                    </Text>
+                )}
             </Flex>
         );
     };

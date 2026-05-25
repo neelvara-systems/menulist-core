@@ -73,6 +73,12 @@ This loop is the default for every non-trivial repo request. The user does not n
 - Use the smallest safe deploy target: MenuList uses the `ecomsai` Firebase project and default `firebase.json`; Canonica uses `firebase-canonica.json`, `firestore-canonica.rules`, `firestore-canonica.indexes.json`, and `functions-canonica/`.
 - If validation or deploy fails, fix and retry when safe; if blocked by credentials, project access, missing secrets, or destructive deploy risk, report the blocker with the exact command and error.
 
+### Vercel Deployment Guard
+
+- Do not run Vercel deploys, production deploys, preview deploys, or Vercel remote builds unless the user explicitly asks for a Vercel deploy in the current session.
+- This opt-in rule applies even when app-side code, website code, Next.js routes, middleware, or production smoke testing is involved. Report the required Vercel deploy command as a pending step instead of running it.
+- Firebase infrastructure auto-deploy remains limited to Firebase rules, indexes, and Cloud Function logic only; it does not imply Vercel deployment permission.
+
 ### IDE Prompt Registry
 
 - `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md`: universal laws; read before feature, docs, implementation, audit, or refactor work.

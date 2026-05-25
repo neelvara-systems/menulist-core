@@ -14,7 +14,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getTrustMetrics } from '@database/canonica/trustMetrics';
 import { CanonicaTrustMetrics } from '@type/canonica';
-import { Card, Empty, Flex, Progress, Space, Spin, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
+import { Card, Empty, Flex, Progress, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import {
     LuActivity,
@@ -39,28 +39,28 @@ interface FounderTrustDashboardProps {
 // COLOR + TREND HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-function getMetricColor(metric: string, value: number): string {
+function getMetricColor(metric: string, value: number, token: ReturnType<typeof theme.useToken>['token']): string {
     if (metric === 'drift') {
-        if (value <= 5) return '#52c41a';
-        if (value <= 15) return '#faad14';
-        return '#ff4d4f';
+        if (value <= 5) return token.colorSuccess;
+        if (value <= 15) return token.colorWarning;
+        return token.colorError;
     }
-    if (value >= 80) return '#52c41a';
-    if (value >= 60) return '#faad14';
-    return '#ff4d4f';
+    if (value >= 80) return token.colorSuccess;
+    if (value >= 60) return token.colorWarning;
+    return token.colorError;
 }
 
-function getTrend(current: number, previous: number, inverted?: boolean): { icon: React.ReactNode; color: string; label: string } {
+function getTrend(current: number, previous: number, token: ReturnType<typeof theme.useToken>['token'], inverted?: boolean): { icon: React.ReactNode; color: string; label: string } {
     const delta = current - previous;
-    if (Math.abs(delta) < 2) return { icon: <LuArrowRight />, color: '#8c8c8c', label: 'Stable' };
+    if (Math.abs(delta) < 2) return { icon: <LuArrowRight />, color: token.colorTextSecondary, label: 'Stable' };
     if (inverted) {
         return delta > 0
-            ? { icon: <LuArrowUp />, color: '#ff4d4f', label: `+${delta}%` }
-            : { icon: <LuArrowDown />, color: '#52c41a', label: `${delta}%` };
+            ? { icon: <LuArrowUp />, color: token.colorError, label: `+${delta}%` }
+            : { icon: <LuArrowDown />, color: token.colorSuccess, label: `${delta}%` };
     }
     return delta > 0
-        ? { icon: <LuArrowUp />, color: '#52c41a', label: `+${delta}%` }
-        : { icon: <LuArrowDown />, color: '#ff4d4f', label: `${delta}%` };
+        ? { icon: <LuArrowUp />, color: token.colorSuccess, label: `+${delta}%` }
+        : { icon: <LuArrowDown />, color: token.colorError, label: `${delta}%` };
 }
 
 function getHealthLabel(score: number): string {
@@ -75,6 +75,7 @@ function getHealthLabel(score: number): string {
 // ═══════════════════════════════════════════════════════════════
 
 export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboardProps) {
+    const { token } = theme.useToken();
     const [data, setData] = useState<CanonicaTrustMetrics | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -120,10 +121,10 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
         );
     }
 
-    const coverageTrend = getTrend(data.coverage.rate, data.coverage.previousRate);
-    const resolutionTrend = getTrend(data.resolution.rate, data.resolution.previousRate);
-    const driftTrend = getTrend(data.drift.rate, data.drift.previousRate, true);
-    const healthTrend = getTrend(data.entityHealth.avgScore, data.entityHealth.previousAvgScore);
+    const coverageTrend = getTrend(data.coverage.rate, data.coverage.previousRate, token);
+    const resolutionTrend = getTrend(data.resolution.rate, data.resolution.previousRate, token);
+    const driftTrend = getTrend(data.drift.rate, data.drift.previousRate, token, true);
+    const healthTrend = getTrend(data.entityHealth.avgScore, data.entityHealth.previousAvgScore, token);
 
     const failingColumns = [
         {
@@ -148,7 +149,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 <Progress
                     percent={score}
                     size="small"
-                    strokeColor={getMetricColor('standard', score)}
+                    strokeColor={getMetricColor('standard', score, token)}
                     style={{ width: 80 }}
                     format={pct => `${pct}%`}
                 />
@@ -173,11 +174,11 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
     ];
 
     const escalationItems = data.escalationBreakdown && escalationTotal > 0 ? [
-        { label: 'Knowledge Gap', count: data.escalationBreakdown.knowledgeGap, color: '#ff7875' },
-        { label: 'Low Confidence', count: data.escalationBreakdown.lowConfidence, color: '#ffa940' },
-        { label: 'Entity Mismatch', count: data.escalationBreakdown.entityMismatch, color: '#597ef7' },
-        { label: 'Retrieval Failure', count: data.escalationBreakdown.retrievalFailure, color: '#ff4d4f' },
-        { label: 'User Requested', count: data.escalationBreakdown.userRequested, color: '#8c8c8c' },
+        { label: 'Knowledge Gap', count: data.escalationBreakdown.knowledgeGap, color: token.colorError },
+        { label: 'Low Confidence', count: data.escalationBreakdown.lowConfidence, color: token.colorWarning },
+        { label: 'Entity Mismatch', count: data.escalationBreakdown.entityMismatch, color: token.colorInfo },
+        { label: 'Retrieval Failure', count: data.escalationBreakdown.retrievalFailure, color: token.colorError },
+        { label: 'User Requested', count: data.escalationBreakdown.userRequested, color: token.colorTextSecondary },
     ].filter(item => item.count > 0) : [];
 
     return (
@@ -201,7 +202,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         title={<Space><LuTarget size={14} /> Coverage</Space>}
                         value={data.coverage.rate}
                         suffix="%"
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.coverage.rate) }}
+                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.coverage.rate, token) }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
                         <span style={{ color: coverageTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
@@ -219,7 +220,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         title={<Space><LuBarChart3 size={14} /> Resolution</Space>}
                         value={data.resolution.rate}
                         suffix="%"
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.resolution.rate) }}
+                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.resolution.rate, token) }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
                         <span style={{ color: resolutionTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
@@ -238,7 +239,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                             title={<Space><LuShieldAlert size={14} /> Drift</Space>}
                             value={data.drift.rate}
                             suffix="%"
-                            valueStyle={{ fontSize: 28, color: getMetricColor('drift', data.drift.rate) }}
+                            valueStyle={{ fontSize: 28, color: getMetricColor('drift', data.drift.rate, token) }}
                         />
                     </Tooltip>
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
@@ -257,7 +258,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         title={<Space><LuHeart size={14} /> Entity Health</Space>}
                         value={data.entityHealth.avgScore}
                         suffix={<Text type="secondary" style={{ fontSize: 14 }}>/ 100</Text>}
-                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.entityHealth.avgScore) }}
+                        valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.entityHealth.avgScore, token) }}
                     />
                     <Flex align="center" gap={4} style={{ marginTop: 4 }}>
                         <span style={{ color: healthTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>

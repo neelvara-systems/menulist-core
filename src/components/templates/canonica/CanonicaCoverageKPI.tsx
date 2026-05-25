@@ -15,13 +15,14 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { CanonicaCoverageData, getCanonicaCoverage } from '@database/canonica/coverageKPI';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { Card, Progress, Spin, Typography } from 'antd';
+import { Card, Progress, Spin, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 
 const { Text } = Typography;
 
 export default function CanonicaCoverageKPI() {
     const session = useClientAuthSession();
+    const { token } = theme.useToken();
     const [data, setData] = useState<CanonicaCoverageData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -66,7 +67,7 @@ export default function CanonicaCoverageKPI() {
     }
 
     const rate = coverage.rate || 0;
-    const strokeColor = rate >= 50 ? '#52c41a' : rate >= 20 ? '#faad14' : '#ff4d4f';
+    const strokeColor = rate >= 50 ? token.colorSuccess : rate >= 20 ? token.colorWarning : token.colorError;
 
     return (
         <Card size="small" style={{ minWidth: 200 }}>

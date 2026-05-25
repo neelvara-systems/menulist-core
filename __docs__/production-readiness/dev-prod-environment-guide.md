@@ -1,9 +1,24 @@
 # Dev vs Prod Environment Guide — MenuList Production Readiness
 
 **Created:** March 22, 2026  
+**Last Updated:** May 25, 2026
 **Source:** ChatGPT strategic session → Cascade full codebase audit + validation  
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
+
+## Active Environment Target Matrix
+
+This is the current source-of-truth contract for the shared Vercel app. Code mirrors this in `src/constants/deploymentTargets.ts`, and `npm run verify:env-targets` checks that routing, aliases, and deploy scripts stay aligned.
+
+| Environment | Vercel env | MenuList URL | MenuList Firebase | Canonica URL | Canonica Firebase |
+| --- | --- | --- | --- | --- | --- |
+| Local development | local | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__canonica/` | `canonica-qa` |
+| Staging / QA | Preview | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `canonica-qa` |
+| Production | Production | `https://menulist.ai` | `menulist` | `https://canonica.app` | `canonica` |
+
+Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `ecomsai`; only Vercel production switches MenuList to the production Firebase project `menulist`. Canonica is separate in every active environment: `canonica-qa` for local/preview and `canonica` for production.
+
+Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
 ---
 
@@ -13,7 +28,7 @@
 
 | #   | ChatGPT Claim                                    | Verdict            | Codebase Evidence                                                                                                              |
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Separate Firebase projects for dev/prod          | **AGREE**          | Currently using single project `ecomsai`. Need `menulist-dev` + `menulist-prod`                                                |
+| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `ecomsai`, production MenuList uses `menulist`; local/preview Canonica uses `canonica-qa`, production Canonica uses `canonica`. |
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `ecomsai.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | Single `GEMINI_AI_KEY` used everywhere. Multi-key rotation exists but all keys are for same project                            |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
@@ -32,7 +47,7 @@
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
 | 18  | Deployment safety checks                         | **PARTIAL**        | `tsc --noEmit` enforced, Vercel build checks, but no pre-deploy invariant checker                                              |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
-| 20  | Over-engineering staging env                     | **AGREE**          | 2 environments only (dev + prod). No staging needed at this scale                                                              |
+| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `menulist.online` + `ecomsai.com`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
 | 22  | Failure playbook                                 | **MISSING**        | No documented runbook for production incidents. Need to create                                                                 |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
@@ -47,7 +62,7 @@
 
 ### What ChatGPT Got Right (Implement These)
 
-1. Separate Firebase projects for dev/prod
+1. Separate Firebase targets per environment/product
 2. Runtime environment guards at app startup
 3. Failure/incident response playbook
 4. Pre-deploy checklist automation
@@ -88,7 +103,7 @@
 
 | Gap                                            | Priority  | Effort    |
 | ---------------------------------------------- | --------- | --------- |
-| **Separate Firebase projects** (dev vs prod)   | 🔴 HIGH   | 2-3 hours |
+| **Vercel env values for production Firebase targets** | 🔴 HIGH   | Console setup |
 | **Environment variable validation at startup** | 🔴 HIGH   | 30 min    |
 | **Feature flags that differ between dev/prod** | 🟡 MEDIUM | 1 hour    |
 | **Incident response playbook**                 | 🟡 MEDIUM | 1 hour    |
@@ -102,8 +117,8 @@
 
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
-| 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Same project currently         | **NEEDS: Separate project** |
-| 2   | **Firebase (Canonica)** | Same packages                                | Canonica product database               | `NEXT_PUBLIC_CANONICA_FIREBASE_*` (6 vars), `NEXT_PUBLIC_CANONICA_FIREBASE_MODE`, optional `NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID` | `CANONICA_FIREBASE_*`, optional `CANONICA_FIRESTORE_DATABASE_ID` | `shared` mode may reuse MenuList DB | `separate` mode with dedicated project/DB |
+| 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `ecomsai`       | Production: `menulist` |
+| 2   | **Firebase (Canonica)** | Same packages                                | Canonica product database               | `NEXT_PUBLIC_CANONICA_FIREBASE_*` (6 vars), `NEXT_PUBLIC_CANONICA_FIREBASE_MODE`, optional `NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID` | `CANONICA_FIREBASE_*`, optional `CANONICA_FIRESTORE_DATABASE_ID` | Local/Preview: `canonica-qa` | Production: `canonica` |
 | 3   | **Razorpay**            | `razorpay` v2.9.6                            | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
 | 4   | **Google Gemini AI**    | `@google/genai` v0.12.0                      | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
 | 5   | **Upstash Redis**       | `@upstash/redis` v1.35.6                     | Rate limiting, Canonica cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
@@ -120,7 +135,8 @@
 
 | Service                 | Why Separate                                                       | How                                    |
 | ----------------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| **Firebase (MenuList)** | Data isolation — dev data must never mix with customer data        | Create `menulist-dev` Firebase project |
+| **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `ecomsai`; set Vercel Production vars to `menulist` |
+| **Firebase (Canonica)** | Canonica data must stay separate from MenuList and from production | Use `canonica-qa` locally/in Preview; use `canonica` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Already configured: 2 DSNs in code     |
 | **Upstash**             | Prevent dev rate limit data from affecting prod                    | Can share OR create separate DB        |
@@ -277,28 +293,30 @@ CANONICA_FIRESTORE_DATABASE_ID=
 
 ---
 
-## Execution Plan: Dev/Prod Separation
+## Execution Plan: Environment Separation
 
-### Phase 1: Firebase Project Separation (HIGHEST PRIORITY)
+### Phase 1: Firebase Target Separation (HIGHEST PRIORITY)
 
-**Step 1: Create `menulist-dev` Firebase Project**
+**Step 1: Keep Local/Preview Targets Stable**
 
-1. Go to Firebase Console → Add Project → `menulist-dev`
-2. Enable Firestore, Storage, Auth (same configuration as `ecomsai`)
-3. Copy security rules from `ecomsai`
-4. Deploy indexes: `firebase deploy --only firestore:indexes --project menulist-dev`
+1. Local MenuList uses `http://localhost:3000/` and Firebase `ecomsai`.
+2. Local Canonica uses `http://localhost:3000/__canonica/` and Firebase `canonica-qa`.
+3. Vercel Preview MenuList uses `https://menulist.online` and Firebase `ecomsai`.
+4. Vercel Preview Canonica uses `https://ecomsai.com` and Firebase `canonica-qa`.
 
 **Step 2: Configure Local Development**
 
-1. Create `.env.local` with `menulist-dev` Firebase credentials
-2. Update `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` to dev project service account
-3. All `NEXT_PUBLIC_FIREBASE_*` vars point to dev project
+1. MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` point to `ecomsai`.
+2. Canonica `NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID` and `CANONICA_FIREBASE_PROJECT_ID` point to `canonica-qa`.
+3. Canonica local site access stays under `/__canonica`; do not add local host aliases for Canonica website work.
 
 **Step 3: Configure Vercel Production**
 
 1. In Vercel Dashboard → Settings → Environment Variables
-2. Ensure all `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars point to `ecomsai` (prod project)
-3. Set environment scope to "Production" only
+2. Set all MenuList `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars to the production Firebase project `menulist`.
+3. Set all Canonica `CANONICA_FIREBASE_*` and `NEXT_PUBLIC_CANONICA_FIREBASE_*` vars to the production Firebase project `canonica`.
+4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` in Production and `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online` in Preview.
+5. Run `npm run verify:env-targets` after env/documentation edits.
 
 **Step 4: Seed Dev Data**
 
@@ -438,16 +456,15 @@ These are mandatory before launch. Without them, core features break.
 
 #### 1. Firebase (MenuList) — Already Exists
 
-- **What you have:** `ecomsai` project (production)
-- **What to create:** `menulist-dev` project (development)
-- **Where:** https://console.firebase.google.com → Add Project → `menulist-dev`
+- **What you have:** `ecomsai` project for local/preview QA
+- **What production needs:** `menulist` project credentials in Vercel Production
+- **Where:** Firebase Console → project settings → web app + service account for `menulist`
 - **Steps:**
-  1. Create project with name "MenuList Dev"
-  2. Enable Firestore, Storage, Auth, Functions
-  3. Copy security rules from `ecomsai`
-  4. Deploy indexes: `firebase deploy --only firestore:indexes --project menulist-dev`
+  1. Keep local/Preview env vars pointed at `ecomsai`.
+  2. Set Production `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` to `menulist`.
+  3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` when production infrastructure changes.
 - **Env vars provided:** `NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_*` (14 vars)
-- **Cost:** Free tier covers dev usage
+- **Cost:** No new local/preview project; production costs move to `menulist`.
 
 #### 2. Razorpay — Test Keys (Already Have), Live Keys Needed
 
@@ -666,7 +683,8 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 
 **Before Launch (P0):**
 
-- [ ] Create `menulist-dev` Firebase project
+- [ ] Configure MenuList production Firebase env vars for `menulist`
+- [ ] Configure Canonica production Firebase env vars for `canonica`
 - [ ] Get Razorpay live API keys
 - [ ] Configure Vercel env vars (Preview + Production)
 

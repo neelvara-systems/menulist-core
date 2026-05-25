@@ -13,6 +13,7 @@ import {
 } from '@database/canonica/productSurfaces';
 import { getCategories } from '@database/knowledgeBase/categories';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import {
     CANONICA_FAQ_SOURCE,
     CANONICA_FAQ_STATUS,
@@ -43,6 +44,7 @@ import {
     Tabs,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuArchive, LuHelpCircle, LuPlus, LuRefreshCw, LuSave } from 'react-icons/lu';
@@ -113,6 +115,7 @@ const flattenArticleOptions = (categoriesData?: KnowledgeBaseCategoriesType | nu
 export default function CanonicaFaqManagement() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
     const [form] = Form.useForm();
 
@@ -160,8 +163,8 @@ export default function CanonicaFaqManagement() {
             setSelectedFaqId(prev => prev && faqList?.some(faq => faq.id === prev)
                 ? prev
                 : faqList?.[0]?.id || null);
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to load FAQs');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not load FAQs'));
         } finally {
             setLoading(false);
         }
@@ -226,8 +229,8 @@ export default function CanonicaFaqManagement() {
                 return;
             }
             message.success(willBePublished ? 'FAQ published' : 'FAQ saved');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to save FAQ');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not save FAQ'));
         } finally {
             setSaving(false);
         }
@@ -255,8 +258,8 @@ export default function CanonicaFaqManagement() {
                 return;
             }
             message.success('FAQ archived');
-        } catch (error: any) {
-            message.error(error?.message || 'Failed to archive FAQ');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not archive FAQ'));
         } finally {
             setSaving(false);
         }
@@ -265,7 +268,7 @@ export default function CanonicaFaqManagement() {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT) return null;
 
     return (
-        <div style={{ padding: isMobile ? 16 : 24 }}>
+        <div style={{ padding: isMobile ? '16px 16px calc(16px + env(safe-area-inset-bottom))' : 24 }}>
             <Flex justify="space-between" align={isMobile ? 'flex-start' : 'center'} gap={12} vertical={isMobile}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>FAQs</Title>
@@ -306,12 +309,12 @@ export default function CanonicaFaqManagement() {
                                                 style={{
                                                     cursor: 'pointer',
                                                     padding: 14,
-                                                    background: active ? '#eef2ff' : undefined,
-                                                    borderLeft: active ? '3px solid #6366f1' : '3px solid transparent',
+                                                    background: active ? token.colorPrimaryBg : undefined,
+                                                    borderLeft: active ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
                                                 }}
                                             >
                                                 <List.Item.Meta
-                                                    avatar={<LuHelpCircle style={{ marginTop: 4, color: active ? '#4338ca' : '#64748b' }} />}
+                                                    avatar={<LuHelpCircle style={{ marginTop: 4, color: active ? token.colorPrimary : token.colorTextSecondary }} />}
                                                     title={(
                                                         <Flex justify="space-between" gap={8}>
                                                             <Text strong ellipsis>{faq.question}</Text>

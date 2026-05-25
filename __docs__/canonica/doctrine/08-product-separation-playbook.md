@@ -1,18 +1,23 @@
 # Product Separation Playbook — Canonica
 
-> **v1.1.0** | 2026-05-21 | Ref: 07-multi-product-tenancy.md v4.1.0
-> QA separate-mode live path exists. Production still requires production Canonica Firebase credentials and deploy verification.
+> **v1.2.0** | 2026-05-25 | Ref: 07-multi-product-tenancy.md v4.1.0
+> Local and QA separate-mode paths are fixed on `canonica-qa`. Production uses the `canonica` Firebase project and still requires production credentials/deploy verification.
 
 > QA deployment status is tracked in `__docs__/canonica/deployment/canonica-qa-deployment-runbook.md`.
 
-## Current Domain Split
+## Current Domain And Firebase Split
 
-Canonica and MenuList share the same Vercel project, but product hostnames route to separate product surfaces:
+Canonica and MenuList share the same Vercel project, but product hostnames route to separate product surfaces and Firebase targets:
 
-| Product | Staging host | Production host | Dashboard paths |
-| --- | --- | --- | --- |
-| MenuList | `menulist.online` | `menulist.ai` | MenuList owner app routes |
-| Canonica | `ecomsai.com` | `canonica.app` | `/dashboard`, `/widget`, `/settings`, `/knowledge-base`, `/kb-generation`, `/tickets`, `/conversations`, `/governance`, `/changelog`, `/docs`, `/help`, `/support`, `/release-notes` |
+| Environment | MenuList URL | MenuList Firebase | Canonica URL | Canonica Firebase |
+| --- | --- | --- | --- | --- |
+| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__canonica/` | `canonica-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `canonica-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist` | `https://canonica.app` | `canonica` |
+
+The source-of-truth code for this matrix is `src/constants/deploymentTargets.ts`. Run `npm run verify:env-targets` after changing domain, Firebase, or deploy-script configuration.
+
+Known product domains are stage-scoped. If a Vercel Production deployment receives a QA hostname, or a Vercel Preview deployment receives a production hostname, middleware redirects the request to the active hostname for that product instead of letting it fall through as a tenant/custom domain.
 
 Canonica product hosts must pass through `/api/*`, `/_next/*`, `/signin`, `/unauthorized`, and `/widget/*` runtime/embed paths. Only dashboard paths rewrite into the Canonica dashboard route group; marketing paths rewrite into `src/app/sites/canonica/`.
 
@@ -108,25 +113,27 @@ functions-canonica/
 
 ### New Environment Variables
 
-Staging uses the Canonica QA Firebase project. Production must use the production Canonica Firebase project values, not the QA values.
+Local development and staging use the Canonica QA Firebase project. Production must use the production Canonica Firebase project values, not the QA values.
 
 ```
 NEXT_PUBLIC_CANONICA_FIREBASE_MODE=separate
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=...
 NEXT_PUBLIC_CANONICA_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa   # local/preview
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica      # production
 NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET=...
 NEXT_PUBLIC_CANONICA_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_CANONICA_FIREBASE_APP_ID=...
 NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID=
 CANONICA_FIREBASE_MODE=separate
-CANONICA_FIREBASE_PROJECT_ID=canonica-qa
+CANONICA_FIREBASE_PROJECT_ID=canonica-qa               # local/preview
+CANONICA_FIREBASE_PROJECT_ID=canonica                  # production
 CANONICA_FIREBASE_PRIVATE_KEY=...
 CANONICA_FIREBASE_CLIENT_EMAIL=...
 CANONICA_FIRESTORE_DATABASE_ID=
 ```
 
-Use `shared` mode only for local/test environments that intentionally point Canonica at the MenuList DB. Production stays `separate`.
+Use `shared` mode only for explicit legacy/emulator recovery. The active local path is separate mode against `canonica-qa`, and production stays separate against `canonica`.
 
 ---
 
@@ -205,19 +212,28 @@ useEntityCandidates.ts, useMutationProposals.ts
 
 Canonica nightly has been removed from `functions/src/decisionBlocksScoring.ts`; do not re-add Canonica scheduled work to MenuList functions.
 
-Keep the legacy MenuList exports for now as shared-mode compatibility. In `NEXT_PUBLIC_CANONICA_FIREBASE_MODE=shared`, `canonicaFunctions` resolves to the MenuList Firebase Functions app, so removing the legacy exports would break local/test deployments that intentionally reuse MenuList Firebase. Production separate-mode calls the same function names from `functions-canonica/`.
+Keep the legacy MenuList exports for now as explicit shared-mode/emulator recovery compatibility. In `NEXT_PUBLIC_CANONICA_FIREBASE_MODE=shared`, `canonicaFunctions` resolves to the MenuList Firebase Functions app, so removing the legacy exports would break those recovery deployments. The active local, preview, and production paths call the same function names from `functions-canonica/`.
 
 ### Deployment Commands
 
 ```bash
-# MenuList functions
+# MenuList functions (local/preview target)
 firebase deploy --only functions --project ecomsai
 
+# MenuList production functions
+firebase deploy --only functions --project menulist
+
 # Canonica QA functions
-firebase deploy --only functions --project canonica-qa --config firebase-canonica.json
+firebase deploy --only functions:canonica --project canonica-qa --config firebase-canonica.json
+
+# Canonica production functions
+firebase deploy --only functions:canonica --project canonica --config firebase-canonica.json
 
 # Canonica QA Firestore/Storage rules and indexes
 firebase deploy --only firestore:rules,firestore:indexes,storage --project canonica-qa --config firebase-canonica.json --non-interactive
+
+# Canonica production Firestore/Storage rules and indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage --project canonica --config firebase-canonica.json --non-interactive
 ```
 
 ---

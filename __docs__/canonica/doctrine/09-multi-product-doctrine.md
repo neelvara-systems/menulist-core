@@ -59,8 +59,8 @@ Product DAL files import from their own client, never from another product's cli
 Each separated product gets its own functions directory:
 
 ```
-functions/               → MenuList (ecomsai)
-functions-canonica/      → Canonica (canonica project)
+functions/               → MenuList (local/preview ecomsai, production menulist)
+functions-canonica/      → Canonica (local/preview canonica-qa, production canonica)
 functions-{product}/     → Future product
 ```
 
@@ -70,20 +70,13 @@ Deploy independently: `firebase deploy --only functions --project {project} --co
 
 Each separated product gets prefixed env vars:
 
-```
-# MenuList (default, no prefix)
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai
+| Environment | MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` / `FIREBASE_PROJECT_ID` | Canonica `NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID` / `CANONICA_FIREBASE_PROJECT_ID` |
+| --- | --- | --- |
+| Local development | `ecomsai` | `canonica-qa` |
+| Vercel Preview / QA | `ecomsai` | `canonica-qa` |
+| Vercel Production | `menulist` | `canonica` |
 
-# Canonica
-NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=...
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa
-CANONICA_FIREBASE_PROJECT_ID=canonica-qa
-CANONICA_FIREBASE_PRIVATE_KEY=...
-CANONICA_FIREBASE_CLIENT_EMAIL=...
-```
-
-Staging uses `canonica-qa`; production must use the production Canonica Firebase project values. Prefer env-based Admin credentials over a local service-account JSON file.
+Canonica env vars stay prefixed with `CANONICA_` / `NEXT_PUBLIC_CANONICA_`, and `CANONICA_FIREBASE_MODE=separate` is the active local, preview, and production path. Prefer env-based Admin credentials over a local service-account JSON file.
 
 ## 8. When to Separate a New Product
 

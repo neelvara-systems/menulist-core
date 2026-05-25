@@ -31,6 +31,60 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+function verifyEnvironmentTargets() {
+  const {
+    DEPLOYMENT_TARGETS,
+    getExpectedFirebaseProjectId,
+    getProductDeploymentTarget,
+  } = require('../../src/constants/deploymentTargets');
+  const {
+    CANONICA_LOCAL_DEV_PATH_PREFIX,
+    CANONICA_PRODUCTION_DOMAINS,
+    CANONICA_STAGING_DOMAINS,
+  } = require('../../src/constants/canonica/domains');
+  const productDomains = read('src/constants/productDomains.ts');
+  const urls = read('src/constants/urls.ts');
+  const envValidation = read('src/lib/env/validateEnv.ts');
+  const middleware = read('src/middleware.ts');
+  const deploymentTargets = read('src/constants/deploymentTargets.ts');
+  const firebaserc = JSON.parse(read('.firebaserc'));
+  const canonicaFunctionsPackage = JSON.parse(read('functions-canonica/package.json'));
+
+  assert(DEPLOYMENT_TARGETS.local.menulist.url === 'http://localhost:3000/', 'Local MenuList URL must be localhost root');
+  assert(DEPLOYMENT_TARGETS.local.canonica.url === 'http://localhost:3000/__canonica/', 'Local Canonica URL must be /__canonica');
+  assert(getProductDeploymentTarget('canonica', 'local').devPathPrefix === '/__canonica', 'Local Canonica dev prefix must be /__canonica');
+  assert(getExpectedFirebaseProjectId('menulist', 'local') === 'ecomsai', 'Local MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('canonica', 'local') === 'canonica-qa', 'Local Canonica Firebase project must be canonica-qa');
+
+  assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.online'), 'Preview MenuList domain must include menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.canonica.domains.includes('ecomsai.com'), 'Preview Canonica domain must include ecomsai.com');
+  assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'ecomsai', 'Preview MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('canonica', 'preview') === 'canonica-qa', 'Preview Canonica Firebase project must be canonica-qa');
+
+  assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('menulist.ai'), 'Production MenuList domain must include menulist.ai');
+  assert(DEPLOYMENT_TARGETS.production.canonica.domains.includes('canonica.app'), 'Production Canonica domain must include canonica.app');
+  assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
+  assert(getExpectedFirebaseProjectId('canonica', 'production') === 'canonica', 'Production Canonica Firebase project must be canonica');
+
+  assert(CANONICA_LOCAL_DEV_PATH_PREFIX === '/__canonica', 'Canonica local dev prefix constant');
+  assert(CANONICA_STAGING_DOMAINS.includes('ecomsai.com'), 'Canonica staging domain constant');
+  assert(CANONICA_PRODUCTION_DOMAINS.includes('canonica.app'), 'Canonica production domain constant');
+  assertIncludes(productDomains, "getActiveProductDomains('canonica')", 'Product domain registry');
+  assertIncludes(productDomains, "getActiveProductDomains('menulist')", 'Product domain registry');
+  assertIncludes(urls, 'QA: menulist.online', 'Platform URL domain contract');
+  assertIncludes(urls, 'QA: ecomsai.com', 'Platform URL domain contract');
+  assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
+  assertIncludes(deploymentTargets, 'resolveKnownProductIdByHostname', 'Deployment target helper');
+  assertIncludes(middleware, 'resolveKnownProductIdByHostname', 'Inactive product-domain redirect guard');
+  assertIncludes(middleware, 'NextResponse.redirect(url, 308)', 'Inactive product-domain redirect guard');
+  assert(firebaserc.projects['menulist-qa'] === 'ecomsai', '.firebaserc MenuList QA alias');
+  assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
+  assert(firebaserc.projects['canonica-qa'] === 'canonica-qa', '.firebaserc Canonica QA alias');
+  assert(firebaserc.projects['canonica-prod'] === 'canonica', '.firebaserc Canonica production alias');
+  assertIncludes(canonicaFunctionsPackage.scripts['deploy:qa'], '--project canonica-qa', 'Canonica Functions QA deploy script');
+  assertIncludes(canonicaFunctionsPackage.scripts['deploy:prod'], '--project canonica', 'Canonica Functions production deploy script');
+}
+
 function platformPagePathToFile(pagePath) {
   if (pagePath === '/') return 'src/app/(website)/page.tsx';
   return `src/app/(website)${pagePath}/page.tsx`;
@@ -142,6 +196,11 @@ function verifyCanonicaDiscovery() {
 }
 
 function main() {
+  verifyEnvironmentTargets();
+  if (process.argv.includes('--env-targets-only')) {
+    console.log('Environment target matrix verified');
+    return;
+  }
   verifyMenuListDiscovery();
   verifyCanonicaDiscovery();
   console.log('Agent-readiness discovery surfaces verified');

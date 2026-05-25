@@ -1,8 +1,9 @@
 # Canonica QA Deployment Runbook
 
-> Last updated: 2026-05-24
+> Last updated: 2026-05-25
 > Environment: QA / staging
 > Firebase project: `canonica-qa`
+> Local dev URL: `http://localhost:3000/__canonica/`
 > Product staging domain: `ecomsai.com`
 > Product production domain: `canonica.app`
 
@@ -28,6 +29,16 @@ Canonica is running as a separate product inside the shared Next.js/Vercel codeb
 | Firebase CLI config | `firebase-canonica.json` |
 
 QA Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, Artifact Registry, Secret Manager, Pub/Sub, Cloud Run, and App Engine are enabled.
+
+## Environment Target Matrix
+
+| Environment | MenuList URL | MenuList Firebase | Canonica URL | Canonica Firebase |
+| --- | --- | --- | --- | --- |
+| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__canonica/` | `canonica-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `canonica-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist` | `https://canonica.app` | `canonica` |
+
+The code-level contract lives in `src/constants/deploymentTargets.ts`; `npm run verify:env-targets` checks the matrix, Firebase aliases, and Canonica deploy scripts.
 
 ## 2026-05-24 Optional Expansion Hardening
 
@@ -341,7 +352,7 @@ If `CANONICA_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app ignores
 
 Before production launch on `canonica.app`:
 
-1. Create the production Canonica Firebase/GCP project.
+1. Create the production Canonica Firebase/GCP project `canonica`.
 2. Enable Firebase Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, Cloud Run, Pub/Sub, Artifact Registry, Secret Manager, and App Engine.
 3. Choose App Engine region before creating the app. This is effectively irreversible.
 4. Add production web app config to Vercel production env:
@@ -360,7 +371,7 @@ Before production launch on `canonica.app`:
    - `CANONICA_FIREBASE_PRIVATE_KEY`
    - `CANONICA_FIRESTORE_DATABASE_ID` only if using a non-default database.
 6. Create production `CANONICA_CRON_SECRET` in Secret Manager.
-7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-canonica.json` against the production Canonica project.
+7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-canonica.json` against project `canonica`.
 8. Run the manual scheduler smoke test and verify the `canonica_schedulerRunLogs/{runLogId}` document.
 9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap; optional friction, ticket-resolution, public API, translation, white-label, and escalation flows remain controlled by rollout flags.
 10. Verify manual scheduler logs, tenant summary discovery, and cost expectations before sending production customer traffic.

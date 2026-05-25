@@ -17,6 +17,7 @@ import {
     getPredictiveTriggers,
     updatePredictiveTrigger,
 } from '@database/canonica/predictiveTriggers';
+import { getCanonicaUiErrorMessage } from '@lib/canonica/uiErrors';
 import { CanonicaPredictiveTrigger } from '@type/canonica';
 import { message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -48,7 +49,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             const result = await getPredictiveTriggers(tId, sId);
             setTriggers(result || []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load triggers');
+            setError(getCanonicaUiErrorMessage(err, 'Could not load triggers'));
         } finally {
             setLoading(false);
         }
@@ -77,7 +78,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             }
             return result;
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to create trigger');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not create trigger'));
             return null;
         }
     }, [tId, sId, refresh]);
@@ -98,7 +99,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             message.success('Trigger updated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to update trigger');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not update trigger'));
         }
     }, [tId, sId, refresh]);
 
@@ -118,7 +119,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             message.success('Trigger activated');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to activate trigger');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not activate trigger'));
         }
     }, [tId, sId, refresh]);
 
@@ -138,7 +139,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             message.success('Trigger disabled');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to disable trigger');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not disable trigger'));
         }
     }, [tId, sId, refresh]);
 
@@ -158,7 +159,7 @@ export function usePredictiveTriggers(tId: number, sId: number): UsePredictiveTr
             message.success('Trigger deleted');
             await refresh();
         } catch (err) {
-            message.error(err instanceof Error ? err.message : 'Failed to delete trigger');
+            message.error(getCanonicaUiErrorMessage(err, 'Could not delete trigger'));
         }
     }, [tId, sId, refresh]);
 

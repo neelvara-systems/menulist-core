@@ -31,15 +31,15 @@ export const metadata: Metadata = {
 
 /**
  * Determine basePath for internal links.
- * Production (canonica.app): basePath = '' (natural links)
- * Dev mode (localhost/__canonica): basePath = '/__canonica'
+ * Product hosts (QA ecomsai.com, production canonica.app): basePath = ''
+ * Local dev (localhost/__canonica): basePath = '/__canonica'
  */
 function getBasePath(): string {
     try {
         const headersList = headers();
         const productId = headersList.get('x-product-id');
         // If x-product-id is set, we're being served via middleware rewrite
-        // In production, hostname is canonica.app so links work naturally (basePath = '')
+        // On product hosts, links work naturally (basePath = '')
         // In dev, hostname is localhost so we need the /__canonica prefix
         const host = headersList.get('host') || '';
         const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');

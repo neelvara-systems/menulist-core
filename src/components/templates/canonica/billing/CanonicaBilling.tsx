@@ -12,7 +12,7 @@ import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import type { Plan } from '@data/common';
 import type { BillingHistoryItem, Currency, FirestoreSubscriptionDoc } from '@type/razorpay';
-import { Alert, Button, Card, Empty, Flex, List, Space, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Grid, List, Space, Spin, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -29,7 +29,10 @@ const getCurrentHostname = () => (typeof window === 'undefined' ? undefined : wi
 
 export default function CanonicaBilling() {
     const { data: session, status } = useSession();
+    const { token } = theme.useToken();
     const scope = useMemo(() => resolveCanonicaSessionScope(session), [session]);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
     const formatter = useFormatter();
     const router = useRouter();
@@ -134,13 +137,13 @@ export default function CanonicaBilling() {
     const canUpgradePlan = Boolean(activeSubscription && activeSubscription.status === 'active' && currentPlanTier < CANONICA_PLAN_TIER_ORDER.canonica_studio);
 
     return (
-        <Flex vertical gap={16} style={{ width: '100%' }}>
-            <Flex align="flex-start" justify="space-between" gap={16} wrap>
+        <Flex vertical gap={16} style={{ width: '100%', paddingBottom: isMobile ? 'calc(24px + env(safe-area-inset-bottom))' : 0 }}>
+            <Flex align={isMobile ? 'stretch' : 'flex-start'} justify="space-between" gap={16} vertical={isMobile} wrap={!isMobile}>
                 <Flex vertical gap={4}>
-                    <Title level={2} style={{ margin: 0 }}>Billing</Title>
+                    <Title level={isMobile ? 4 : 2} style={{ margin: 0 }}>Billing</Title>
                     <Text type="secondary">Manage Canonica subscription, support credits, invoices, and payment recovery.</Text>
                 </Flex>
-                <Space wrap>
+                <Space wrap style={{ width: isMobile ? '100%' : undefined }}>
                     <Button icon={<LuReceipt />} onClick={() => router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.TRANSACTIONS, currentHostname))}>
                         Transactions
                     </Button>
@@ -151,7 +154,7 @@ export default function CanonicaBilling() {
             </Flex>
 
             <Card>
-                <Flex align="center" justify="space-between" gap={16} wrap>
+                <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={16} vertical={isMobile} wrap={!isMobile}>
                     <Flex align="center" gap={10}>
                         <LuLifeBuoy size={20} />
                         <Flex vertical>
@@ -227,23 +230,23 @@ export default function CanonicaBilling() {
                 renderFeatureItems={(plan) => (
                     <>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{plan.priceINR.monthlyCredits} support credits / month</Text>
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{plan.featuresList.canonicalAnswers} canonical answers</Text>
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{plan.featuresList.kbArticles} knowledge articles</Text>
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{plan.featuresList.signalEvents} monthly support signals</Text>
                         </List.Item>
                         <List.Item style={{ borderBlockEnd: 'none', padding: '6px 0' }}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{plan.featuresList.workspaces} workspace{Number(plan.featuresList.workspaces) > 1 ? 's' : ''}</Text>
                         </List.Item>
                     </>

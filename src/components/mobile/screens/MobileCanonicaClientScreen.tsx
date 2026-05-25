@@ -2,6 +2,7 @@
 
 import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
 import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
+import { theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { LuBookOpen, LuHelpCircle, LuReceipt, LuTicket } from 'react-icons/lu';
@@ -50,6 +51,7 @@ const viewMeta: Record<MobileCanonicaClientView, { description: string; surface:
 };
 
 export default function MobileCanonicaClientScreen({ initialView = 'help', onBack }: MobileCanonicaClientScreenProps) {
+    const { token } = theme.useToken();
     const [view, setView] = useState<MobileCanonicaClientView>(initialView);
     const [history, setHistory] = useState<MobileCanonicaClientView[]>([]);
     const meta = viewMeta[view];
@@ -85,21 +87,21 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                                 arrow
                                 description={<Text type="secondary">Browse help articles and guides.</Text>}
                                 onClick={() => openView('docs')}
-                                prefix={<LuBookOpen color="#8b5cf6" size={20} />}
+                                prefix={<LuBookOpen color={token.colorPrimary} size={20} />}
                                 title={<Text strong>Documentation</Text>}
                             />
                             <List.Item
                                 arrow
                                 description={<Text type="secondary">Create or track a support request.</Text>}
                                 onClick={() => openView('support')}
-                                prefix={<LuTicket color="#f59e0b" size={20} />}
+                                prefix={<LuTicket color={token.colorWarning} size={20} />}
                                 title={<Text strong>Support Tickets</Text>}
                             />
                             <List.Item
                                 arrow
                                 description={<Text type="secondary">See recent product changes and fixes.</Text>}
                                 onClick={() => openView('releaseNotes')}
-                                prefix={<LuReceipt color="#0ea5e9" size={20} />}
+                                prefix={<LuReceipt color={token.colorInfo} size={20} />}
                                 title={<Text strong>Release Notes</Text>}
                             />
                         </List>
@@ -115,7 +117,8 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                     maxWidth: '100%',
                     minWidth: 0,
                     overflowX: 'auto',
-                    padding: 12,
+                    padding: '12px 12px calc(12px + env(safe-area-inset-bottom))',
+                    scrollPaddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
                     WebkitOverflowScrolling: 'touch',
                 }}
             >
@@ -176,7 +179,11 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                     }
 
                     [data-mobile-canonica-route] .ant-btn {
-                        min-height: 40px;
+                        min-height: 44px;
+                    }
+
+                    [data-mobile-canonica-route] .ant-btn-sm {
+                        min-height: 44px;
                     }
 
                     [data-mobile-canonica-route] h1,
@@ -212,7 +219,7 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                 )}
             </div>
         );
-    }, [meta.surface, view, history]);
+    }, [meta.surface, token.colorInfo, token.colorPrimary, token.colorWarning, view, history]);
 
     return (
         <Flex style={{ minHeight: '100%', minWidth: 0 }} vertical>
@@ -226,7 +233,7 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                     </Flex>
                 )}
                 onBack={handleBack}
-                right={view === 'help' ? <LuHelpCircle color="#3b82f6" size={18} /> : null}
+                right={view === 'help' ? <LuHelpCircle color={token.colorInfo} size={18} /> : null}
                 title={meta.title}
             />
             {content}

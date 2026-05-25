@@ -20,7 +20,7 @@ import { Avatar, Button, Dropdown, Flex, Layout, theme, Typography } from 'antd'
 import { signOut } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
-import { LuArrowLeft, LuLogOut, LuMenu, LuUser } from 'react-icons/lu';
+import { LuArrowLeft, LuLogOut, LuMenu, LuPalette, LuUser } from 'react-icons/lu';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -28,9 +28,10 @@ const { Text } = Typography;
 interface CanonicaHeaderProps {
     showMenuButton?: boolean;
     onMenuClick?: () => void;
+    onOpenAppSettings?: () => void;
 }
 
-export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: CanonicaHeaderProps) {
+export default function CanonicaHeader({ showMenuButton = false, onMenuClick, onOpenAppSettings }: CanonicaHeaderProps) {
     const session = useClientAuthSession();
     const pathname = usePathname();
     const router = useRouter();
@@ -53,6 +54,13 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
         },
         { type: 'divider' },
         {
+            key: 'appearance',
+            label: 'App Appearance',
+            icon: <LuPalette />,
+            onClick: onOpenAppSettings,
+        },
+        { type: 'divider' },
+        {
             key: 'signout',
             label: 'Sign Out',
             icon: <LuLogOut />,
@@ -67,6 +75,7 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
     }, [session]);
 
     const returnLabel = showMenuButton ? 'Home' : 'Canonica Home';
+    const headerHeight = showMenuButton ? 'calc(56px + env(safe-area-inset-top))' : 56;
 
     const handleReturn = () => {
         clearForceDesktopMode();
@@ -78,9 +87,10 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
             style={{
                 background: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                padding: showMenuButton ? '0 12px' : '0 24px',
-                height: 56,
-                lineHeight: '56px',
+                boxSizing: 'border-box',
+                padding: showMenuButton ? 'env(safe-area-inset-top) 12px 0' : '0 24px',
+                height: headerHeight,
+                lineHeight: 'normal',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -115,24 +125,43 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
 
             <Flex align="center" gap={8}>
                 <Button
+                    aria-label={returnLabel}
                     type="text"
                     icon={<LuArrowLeft size={16} />}
                     onClick={handleReturn}
-                    style={{ minHeight: 40, paddingInline: showMenuButton ? 8 : 12 }}
+                    style={{
+                        flex: '0 0 auto',
+                        minHeight: 44,
+                        minWidth: showMenuButton ? 44 : undefined,
+                        paddingInline: showMenuButton ? 0 : 12,
+                    }}
                 >
-                    {returnLabel}
+                    {showMenuButton ? null : returnLabel}
                 </Button>
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-                    <Avatar
-                        size={32}
+                    <Button
+                        aria-label="Open user menu"
+                        type="text"
                         style={{
-                            backgroundColor: token.colorPrimary,
-                            cursor: 'pointer',
-                            fontSize: 14,
+                            alignItems: 'center',
+                            display: 'inline-flex',
+                            height: 44,
+                            justifyContent: 'center',
+                            minWidth: 44,
+                            padding: 0,
                         }}
                     >
-                        {initials}
-                    </Avatar>
+                        <Avatar
+                            size={32}
+                            style={{
+                                backgroundColor: token.colorPrimary,
+                                cursor: 'pointer',
+                                fontSize: 14,
+                            }}
+                        >
+                            {initials}
+                        </Avatar>
+                    </Button>
                 </Dropdown>
             </Flex>
         </Header>
