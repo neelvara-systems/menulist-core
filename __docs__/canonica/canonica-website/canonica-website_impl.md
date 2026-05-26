@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.31
-> **Last Updated:** 2026-05-25
+> **Version:** 1.2.32
+> **Last Updated:** 2026-05-26
 > **Audience:** Developers
 
 ---
@@ -43,6 +43,7 @@ src/app/sites/canonica/
 ├── product/support-control/page.tsx # Landing page for Support Control
 ├── product/knowledge-governance/page.tsx # Landing page for Knowledge Governance
 ├── product/ProductFeatureRoutePage.tsx # Shared server wrapper for feature pages
+├── product/team-access/page.tsx # Team Access feature page
 ├── product/knowledge-base/page.tsx # Knowledge Base feature page
 ├── product/faq-management/page.tsx # FAQ Management feature page
 ├── product/changelog/page.tsx     # Changelog feature page
@@ -167,6 +168,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 22 final polish pass made those product areas first-class in the header Product dropdown, homepage product-area section, resources hub, and SEO/use-case cross-link blocks so visitors can evaluate Canonica like a product suite instead of a single long page.
 - May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
 - May 24 workflow notification/proactive help pass added standalone `/product/workflow-notifications` and `/product/proactive-help` pages, converted `/integrations` from an install redirect to a real Slack/email notification page, and updated sitemap/LLM context/resources/FAQ so public claims match the hardened runtime.
+- May 26 Team Access pass added standalone `/product/team-access`, then updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and MenuList separation.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
 - May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.

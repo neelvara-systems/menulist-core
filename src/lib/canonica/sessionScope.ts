@@ -55,6 +55,7 @@ export function getCanonicaProductAccount(sessionOrUser: any): CanonicaProductAc
     const productAccounts = getProductAccounts(sessionOrUser);
     const account = productAccounts?.[CANONICA_PRODUCT_ACCOUNT_KEY];
     if (!account || typeof account !== 'object') return null;
+    if (account.active === false || account.deleted === true || account.authDisabled === true) return null;
 
     const tenantId = normalizeNumber(account.tenantId ?? account.tId);
     const storeId = normalizeNumber(account.storeId ?? account.sId);

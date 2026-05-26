@@ -59,7 +59,7 @@ End users interact with the **AI chatbot** through the search modal or help chat
 
 ### 3.1 AI QnA Chat Bot
 
-**Purpose:** Answer user questions using knowledge base articles via RAG pipeline.
+**Purpose:** Answer user questions through the shared Canonica search pipeline: canonical answers first, owner-published FAQ/custom answers second, and knowledge-base RAG only when no governed answer matches.
 **Modes:**
 
 - **QnA Mode** — Stateless, single question/answer pairs
@@ -69,6 +69,7 @@ End users interact with the **AI chatbot** through the search modal or help chat
 
 - Text queries with Gemini 2.5 Flash answer generation
 - Image queries (upload screenshot → Gemini 2.5 Pro generates search query → vector search)
+- Owner-published FAQ/custom answer matches before embedding + RAG fallback
 - Source article citations with similarity scores
 - Suggested follow-up questions (3 per answer)
 - Feedback per message (thumbs up/down, reasons, comments)
@@ -207,7 +208,7 @@ End users interact with the **AI chatbot** through the search modal or help chat
 
 ### 3.11 FAQ
 
-**Purpose:** Public short-answer page for repeated customer questions.
+**Purpose:** Public short-answer page and owner-approved custom answer layer for repeated customer questions.
 **Implementation:** `FaqView.tsx` reads published Canonica FAQs through `getPublishedFaqsForSession()` with a hard cap and falls back to static legacy copy if Canonica FAQ data is unavailable.
 
 **Owner management:** `/canonica/faqs`
@@ -215,6 +216,8 @@ End users interact with the **AI chatbot** through the search modal or help chat
 **Data model:** `canonica_faqs` with optional `articleId`, `contextKeys`, `entityIds`, and `tags`.
 
 **Relationship:** FAQ owns the article link; `kb_articles.faqIds` is only a bounded mirror for cheap article-side lookup.
+
+**Search behavior:** Published, active FAQs are also used as deterministic owner answers. Retrieval order is canonical answer → FAQ/custom answer → RAG fallback. FAQ matching prefers current product-surface related FAQs, then a bounded published FAQ lookup. Linked articles are returned as references when present.
 
 ### 3.12 Search Experience
 

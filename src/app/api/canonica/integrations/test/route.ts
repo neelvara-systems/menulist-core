@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -65,6 +67,8 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS) {
         return NextResponse.json({ error: 'Canonica integrations are not enabled.' }, { status: 403 });
     }
+    const permission = await requireCanonicaPermission(_request, session, CANONICA_PERMISSION_KEYS.MANAGE_INTEGRATIONS);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });

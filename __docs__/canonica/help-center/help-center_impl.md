@@ -62,6 +62,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
 | `ContactUsView.tsx`          | —     | Escalation chooser: ticket, assistant, feedback, support email, partnership email      |
 | `FaqView.tsx`                | —     | Published Canonica FAQ display with article links and feedback; static fallback       |
+| `src/lib/canonica/faqRetrieval.ts` | — | Deterministic owner FAQ/custom-answer retrieval after canonical miss and before RAG fallback |
 | `ShareFeedbackView.tsx`      | 164   | 3-step feedback wizard (general → usage → requests)                                   |
 | `GeneralFeedback.tsx`        | 30    | Step 1: Star rating + comment                                                         |
 | `FeatureUsage.tsx`           | —     | Step 2: Feature issues checklist                                                      |
@@ -89,6 +90,8 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 ### 2.5 AI Chat Components
 
 **Root:** `src/components/templates/main-app/helpChat/`
+
+**Search pipeline order:** `coreSearch()` runs safe mode, optional image query generation, context-aware related content, cache lookup, canonical-first retrieval, owner FAQ/custom-answer retrieval, then embedding/vector/RAG fallback. FAQ retrieval only reads `published + active` FAQs scoped to the tenant/store and does not make AI output authoritative.
 
 | File                         | Lines | Purpose                                                               |
 | ---------------------------- | ----- | --------------------------------------------------------------------- |

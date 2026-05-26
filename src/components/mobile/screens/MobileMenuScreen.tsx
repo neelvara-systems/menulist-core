@@ -12,6 +12,7 @@ import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getDismissedMenuProcessingJobIds, clearExpiredMenuProcessingJobDismissals } from '@lib/extraction/menuProcessingDismissal';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
@@ -472,15 +473,59 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const [isMenuQualityExpanded, setIsMenuQualityExpanded] = useState(true);
     const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(() => {
         if (typeof window === 'undefined') return null;
+        clearExpiredMenuProcessingJobDismissals();
+        const dismissedSet = new Set(getDismissedMenuProcessingJobIds());
         const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
         if (!raw) return null;
         try {
-            return JSON.parse(raw);
+            const parsed = JSON.parse(raw);
+            if (!parsed?.jobId || !parsed?.projectId || dismissedSet.has(parsed.jobId)) {
+                window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                return null;
+            }
+
+            return parsed;
         } catch {
             window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
             return null;
         }
     });
+
+    const refreshActiveProcessingState = useCallback(() => {
+        clearExpiredMenuProcessingJobDismissals();
+        const dismissedJobs = getDismissedMenuProcessingJobIds();
+        const dismissedSet = new Set(dismissedJobs);
+        setActiveProcessingStateState((current) => {
+            if (typeof window === 'undefined') return current;
+            const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
+            if (!raw) return null;
+
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed?.jobId || !parsed?.projectId) {
+                    window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                    return null;
+                }
+
+                if (dismissedSet.has(parsed.jobId)) {
+                    window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                    return null;
+                }
+
+                return {
+                    jobId: parsed.jobId,
+                    projectId: parsed.projectId,
+                };
+            } catch {
+                window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                return null;
+            }
+        });
+    }, [clearExpiredMenuProcessingJobDismissals]);
+
+    useEffect(() => {
+        refreshActiveProcessingState();
+    }, [refreshActiveProcessingState]);
     const [showReviewSheet, setShowReviewSheet] = useState(false);
     const [comparisonResult, setComparisonResult] = useState<ComparisonEngineOutput | null>(null);
     const [showSuccessState, setShowSuccessState] = useState(false);
@@ -1274,7 +1319,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
         const checkExistingJob = async () => {
             try {
-                const activeJobId = await checkExistingActiveJob(menuData.projectId);
+                const ignoredJobIds = getDismissedMenuProcessingJobIds();
+                const activeJobId = await checkExistingActiveJob(menuData.projectId, ignoredJobIds);
                 if (activeJobId) {
                     setActiveProcessingState({
                         jobId: activeJobId,

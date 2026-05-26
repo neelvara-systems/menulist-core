@@ -5,7 +5,11 @@ export const CANONICA_SYSTEM_COVERAGE = [
         items: [
             {
                 title: 'Workspace activation',
-                detail: 'Onboarding creates the Canonica workspace, subscription summary, product profile, and first launch checklist.',
+                detail: 'Onboarding creates the Canonica workspace, subscription summary, product profile, team access layer, and first launch checklist.',
+            },
+            {
+                title: 'Team access',
+                detail: 'Owners can add workspace members, assign Canonica-specific roles, reset temporary passcodes, and force sign-out without exposing MenuList staff controls.',
             },
             {
                 title: 'Knowledge import',

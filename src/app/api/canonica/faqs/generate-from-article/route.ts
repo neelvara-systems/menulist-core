@@ -2,16 +2,18 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import {
     CANONICA_FAQ_ARTICLE_LINK_LIMIT,
     CANONICA_FAQ_GENERATED_PER_ARTICLE_LIMIT,
     normalizeGeneratedFaqs,
 } from '@lib/canonica/faqContent';
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -109,9 +111,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'FAQ management is not enabled.' }, { status: 404 });
         }
 
-        if (!canUseCanonicaManagement(session)) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
 
         const requestBody = await request.json().catch(() => null);
         const validation = GenerateFaqRequestSchema.safeParse(requestBody);

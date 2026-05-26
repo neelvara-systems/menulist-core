@@ -16,6 +16,7 @@ import type {
     PreviewCategoryRow,
     PreviewItemRow
 } from '@lib/extraction/comparisonEngine.types';
+import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
 import {
     countApprovedChanges,
     hasAnyPreviewChanges,
@@ -326,6 +327,7 @@ export function ExtractionJobReviewScreen({
 
     // Discard handler
     const handleDiscard = useCallback(async () => {
+        markMenuProcessingJobAsDismissed(jobId);
         setIsDiscarding(true);
         setActionError(null);
         try {
@@ -333,6 +335,7 @@ export function ExtractionJobReviewScreen({
             message.info('Changes discarded');
             onDiscard();
         } catch (error: any) {
+            clearMenuProcessingJobDismissal(jobId);
             console.error('[ExtractionJobReviewScreen] Discard error:', error);
             const errorMessage = error.message || 'Failed to discard changes';
             setActionError(errorMessage);

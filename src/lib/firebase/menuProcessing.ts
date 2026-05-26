@@ -298,9 +298,11 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
  * @param projectId - The project ID to check
  * @returns The active job ID if found, null otherwise
  */
-export async function checkExistingActiveJob(projectId: string): Promise<string | null> {
+export async function checkExistingActiveJob(projectId: string, ignoreJobIds: string[] = []): Promise<string | null> {
     const session = await getActiveSession();
     if (!session) return null;
+
+    const ignoreSet = new Set(ignoreJobIds.filter(Boolean));
 
     const q = query(
         collection(firebaseClient, COLLECTION),
@@ -321,6 +323,7 @@ export async function checkExistingActiveJob(projectId: string): Promise<string 
             createdAt: docSnap.data()?.createdAt,
             status: docSnap.data()?.status,
         }))
+        .filter((docData) => !ignoreSet.has(docData.id))
         .sort((left, right) => {
             const leftTime = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0;
             const rightTime = typeof right.createdAt?.toMillis === 'function' ? right.createdAt.toMillis() : 0;

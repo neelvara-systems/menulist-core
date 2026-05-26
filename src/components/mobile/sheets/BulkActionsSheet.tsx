@@ -5,6 +5,7 @@ import { updateProjectMetadata } from '@database/projects';
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { applyMissingCategoryIconsToProject, countMissingCategoryIcons } from '@lib/menu/categoryIconRepair';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -384,7 +385,9 @@ export default function BulkActionsSheet({
 
     const aiRepairSummary = useMemo(() => {
         const reviewableItems = items.filter((item) => item.active);
+        const categoryIconsToRepair = countMissingCategoryIcons(workingProject);
         return {
+            categoryIconsToRepair,
             descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
             languageIssueCount: languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0),
             languagesToRepair: languagesNeedingRepair.length,
@@ -392,7 +395,7 @@ export default function BulkActionsSheet({
             missingPrices: reviewableItems.filter(hasMissingPrice).length,
             projectContentIssueCount: projectPublicContentGaps.length,
         };
-    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair, projectPublicContentGaps.length, projectPublicContentLanguagesNeedingRepair.length]);
+    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair, projectPublicContentGaps.length, projectPublicContentLanguagesNeedingRepair.length, workingProject]);
     const hasLatinScriptRepairLanguages = useMemo(() => (
         languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
     ), [languagesNeedingRepair]);
@@ -413,7 +416,8 @@ export default function BulkActionsSheet({
 
         const totalFixes = aiRepairSummary.languageIssueCount
             + aiRepairSummary.descriptionsToGenerate
-            + aiRepairSummary.projectContentIssueCount;
+            + aiRepairSummary.projectContentIssueCount
+            + aiRepairSummary.categoryIconsToRepair;
         if (totalFixes === 0) {
             Toast.show({ content: t('menuRepairNotNeeded'), duration: 1600 });
             return;
@@ -427,6 +431,14 @@ export default function BulkActionsSheet({
                 let updated = removeObjRef(workingProject);
                 const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
                 const sourceLanguageCode = getProjectDefaultLanguage(updated);
+                let repairedCategoryIconCount = 0;
+
+                if (aiRepairSummary.categoryIconsToRepair > 0) {
+                    setApplyDetail('Adding category icons');
+                    const categoryIconRepair = applyMissingCategoryIconsToProject(updated, businessType || storeDetails?.businessType);
+                    updated = categoryIconRepair.project;
+                    repairedCategoryIconCount = categoryIconRepair.updatedCount;
+                }
 
                 for (const issue of languagesNeedingRepair) {
                     setApplyDetail(t('repairMenuAiLanguageStep', { code: issue.code.toUpperCase() }));
@@ -494,6 +506,9 @@ export default function BulkActionsSheet({
                     aiRepairSummary.projectContentIssueCount > 0
                         ? `${aiRepairSummary.projectContentIssueCount} project detail${aiRepairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
                         : null,
+                    repairedCategoryIconCount > 0
+                        ? `${repairedCategoryIconCount} category icon${repairedCategoryIconCount !== 1 ? 's' : ''}`
+                        : null,
                     aiRepairSummary.missingPrices > 0
                         ? t('repairMenuAiPricesReviewCount', { count: aiRepairSummary.missingPrices })
                         : null,
@@ -518,17 +533,28 @@ export default function BulkActionsSheet({
             }
         };
 
+        const repairConfirmParts = [
+            aiRepairSummary.languagesToRepair > 0
+                ? `rebuild ${aiRepairSummary.languagesToRepair} language area${aiRepairSummary.languagesToRepair !== 1 ? 's' : ''}`
+                : null,
+            aiRepairSummary.descriptionsToGenerate > 0
+                ? `add ${aiRepairSummary.descriptionsToGenerate} missing description${aiRepairSummary.descriptionsToGenerate !== 1 ? 's' : ''}`
+                : null,
+            aiRepairSummary.projectContentIssueCount > 0
+                ? `fill ${aiRepairSummary.projectContentIssueCount} project detail translation${aiRepairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
+                : null,
+            aiRepairSummary.categoryIconsToRepair > 0
+                ? `add ${aiRepairSummary.categoryIconsToRepair} category icon${aiRepairSummary.categoryIconsToRepair !== 1 ? 's' : ''}`
+                : null,
+        ].filter(Boolean);
+        const repairConfirmContent = `This will ${repairConfirmParts.join(', ')}. Prices and photos will stay unchanged.`;
+
         Modal.confirm({
             cancelButtonProps: {
                 style: { display: 'none' },
             },
             closable: true,
-            content: aiRepairSummary.projectContentIssueCount > 0
-                ? `This will rebuild ${aiRepairSummary.languagesToRepair} language areas, add ${aiRepairSummary.descriptionsToGenerate} missing descriptions, and fill ${aiRepairSummary.projectContentIssueCount} project detail translations. Prices and photos will stay unchanged.`
-                : t('repairMenuAiConfirm', {
-                    descriptions: aiRepairSummary.descriptionsToGenerate,
-                    languages: aiRepairSummary.languagesToRepair,
-                }),
+            content: repairConfirmContent,
             icon: null,
             okText: t('repairMenuAiAction'),
             onOk: () => {
@@ -737,7 +763,8 @@ export default function BulkActionsSheet({
     if (action === 'aiRepair') {
         const fixableNowCount = aiRepairSummary.languageIssueCount
             + aiRepairSummary.descriptionsToGenerate
-            + aiRepairSummary.projectContentIssueCount;
+            + aiRepairSummary.projectContentIssueCount
+            + aiRepairSummary.categoryIconsToRepair;
 
         return (
             <Popup
@@ -789,6 +816,11 @@ export default function BulkActionsSheet({
                                         {aiRepairSummary.projectContentIssueCount > 0 ? (
                                             <Tag color="processing">
                                                 {aiRepairSummary.projectContentIssueCount} project detail{aiRepairSummary.projectContentIssueCount !== 1 ? 's' : ''}
+                                            </Tag>
+                                        ) : null}
+                                        {aiRepairSummary.categoryIconsToRepair > 0 ? (
+                                            <Tag color="processing">
+                                                {aiRepairSummary.categoryIconsToRepair} category icon{aiRepairSummary.categoryIconsToRepair !== 1 ? 's' : ''}
                                             </Tag>
                                         ) : null}
                                     </Flex>

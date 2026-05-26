@@ -64,6 +64,11 @@ export default function RepairMenuAction({
                                     {summary.projectContentIssueCount} project detail{summary.projectContentIssueCount !== 1 ? 's' : ''}
                                 </Tag>
                             ) : null}
+                            {summary.categoryIconsToRepair > 0 ? (
+                                <Tag color="processing">
+                                    {summary.categoryIconsToRepair} category icon{summary.categoryIconsToRepair !== 1 ? 's' : ''}
+                                </Tag>
+                            ) : null}
                         </Flex>
                     ) : (
                         <Text type="secondary">Menu state is stable.</Text>
@@ -77,6 +82,18 @@ export default function RepairMenuAction({
                             </Flex>
                             <Text type="secondary">
                                 {summary.projectContentLanguagesToRepair} language{summary.projectContentLanguagesToRepair !== 1 ? 's' : ''}
+                            </Text>
+                        </Flex>
+                    ) : null}
+
+                    {summary.categoryIconsToRepair > 0 ? (
+                        <Flex align="center" gap={8} justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuSparkles size={14} style={{ color: token.colorPrimary }} />
+                                <Text>Category icons</Text>
+                            </Flex>
+                            <Text type="secondary">
+                                {summary.categoryIconsToRepair} categor{summary.categoryIconsToRepair !== 1 ? 'ies' : 'y'}
                             </Text>
                         </Flex>
                     ) : null}

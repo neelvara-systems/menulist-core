@@ -8,7 +8,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Canonica workspace, add your app, pick pages where users get stuck, and get a widget key for page-aware support.',
+    description: 'Create your Canonica workspace, add your app, invite the first team members, pick pages where users get stuck, and get a widget key for page-aware support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -31,6 +31,7 @@ const CRITERIA = [
 const FIRST_SESSION = [
     'Add company and product name',
     'Create your Canonica workspace',
+    'Invite the first team members or confirm owner-only access',
     'Get your widget key',
     'Seed starter surfaces for key app pages',
     'Import first docs, FAQs, changelog, or support macros',
@@ -53,7 +54,7 @@ export default function CanonicaGetStartedPage() {
                             Create your Canonica workspace.
                         </h1>
                         <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Sign in with Google, add your app, pick the pages where users get stuck, and get a widget key for your first support layer.
+                            Sign in with Google, add your app, invite the people who need access, pick the pages where users get stuck, and get a widget key for your first support layer.
                         </p>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">

@@ -13,80 +13,81 @@ service cloud.firestore {
                       || (
                         isCanonicaPlatformSummaryClientReadableDoc(document)
                         && isCanonicaTenantMember(resource.data)
+                        && hasCanonicaPlatformSummaryReadPermission(document)
                       ));
       allow create: if isAuthenticated()
                     && isCanonicaPlatformSummaryDoc(document)
-                    && (isPlatformAdmin() || canCreateCanonicaPlatformSummaryDoc(document));
+                    && (isPlatformAdmin() || (hasCanonicaPlatformSummaryWritePermission(document) && canCreateCanonicaPlatformSummaryDoc(document)));
       allow update: if isAuthenticated()
                     && isCanonicaPlatformSummaryDoc(document)
-                    && (isPlatformAdmin() || canUpdateCanonicaPlatformSummaryDoc(document));
+                    && (isPlatformAdmin() || (hasCanonicaPlatformSummaryWritePermission(document) && canUpdateCanonicaPlatformSummaryDoc(document)));
       allow delete: if false;
     }
 
     match /canonica_entities/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
       allow delete: if false;
     }
 
     match /canonica_entityRelations/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
+      allow delete: if isCanonicaScopedDeleteWithKnowledgeControl();
     }
 
     match /canonica_canonicalAnswers/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
       allow delete: if false;
     }
 
     match /canonica_releases/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
       allow delete: if false;
     }
 
     match /canonica_mutationProposals/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageGovernance');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageGovernance');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageGovernance');
       allow delete: if false;
     }
 
     match /canonica_signalEvents/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
+      allow delete: if isCanonicaScopedDeleteWithSupportControl();
     }
 
     match /canonica_auditLogs/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageGovernance');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageGovernance');
       allow update, delete: if false;
     }
 
     match /canonica_entitySearchIndex/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
       allow delete: if false;
     }
 
     match /canonica_entityCandidates/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageGovernance');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageGovernance');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageGovernance');
       allow delete: if false;
     }
 
     match /canonica_frictionDailyStats/{docId} {
-      allow read: if isCanonicaScopedRead();
+      allow read: if isCanonicaScopedReadWithReadiness();
       allow write: if false;
     }
 
@@ -102,40 +103,43 @@ service cloud.firestore {
     }
 
     match /canonica_integrationEvents/{docId} {
-      allow read: if isCanonicaScopedRead();
+      allow read: if isCanonicaScopedReadWithPermission('canManageIntegrations');
       allow write: if false;
     }
 
     match /canonica_integrationDeliveryLogs/{docId} {
-      allow read: if isCanonicaScopedRead();
+      allow read: if isCanonicaScopedReadWithPermission('canManageIntegrations');
       allow write: if false;
     }
 
     match /canonica_predictiveTriggers/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageGovernance');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageGovernance');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageGovernance');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageGovernance');
     }
 
     match /canonica_productSurfaces/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
       allow delete: if false;
     }
 
     match /canonica_faqs/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
       allow delete: if false;
     }
 
     match /canonica_cacheVersions/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithKnowledgeControl()
+        || isCanonicaScopedReadWithPermission('canManageWidget');
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl()
+        || isCanonicaScopedCreateWithPermission('canManageWidget');
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl()
+        || isCanonicaScopedUpdateWithPermission('canManageWidget');
       allow delete: if false;
     }
 
@@ -145,24 +149,24 @@ service cloud.firestore {
     }
 
     match /chatSessions/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
+      allow delete: if isCanonicaScopedDeleteWithSupportControl();
     }
 
     match /feedback/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
       allow delete: if false;
     }
 
     match /supportTickets/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
+      allow delete: if isCanonicaScopedDeleteWithSupportControl();
     }
 
     match /stores/{storeId} {
@@ -172,6 +176,7 @@ service cloud.firestore {
           || (
             string(storeId) == string(request.auth.token.storeId)
             && isCanonicaTenantStoreMember(resource.data)
+            && hasAnyCanonicaPermission()
           )
         );
       allow write: if false;
@@ -179,13 +184,13 @@ service cloud.firestore {
 
     match /subscriptions/{subscriptionId} {
       allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantStoreMember(resource.data));
+        && (isPlatformAdmin() || (isCanonicaTenantStoreMember(resource.data) && hasCanonicaPermission('canManageBilling')));
       allow write: if false;
     }
 
     match /payment_transactions/{transactionId} {
       allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantStoreMember(resource.data));
+        && (isPlatformAdmin() || (isCanonicaTenantStoreMember(resource.data) && hasCanonicaPermission('canManageBilling')));
       allow write: if false;
     }
 
@@ -197,51 +202,51 @@ service cloud.firestore {
     // founder-onboarding bootstrap. They remain tenant/store-scoped.
     match /kb_categories/{docId} {
       allow read: if isAuthenticated()
-        && (isPlatformAdmin() || kbCategoriesDocMatchesCurrentStore(docId));
+        && (isPlatformAdmin() || (kbCategoriesDocMatchesCurrentStore(docId) && hasCanonicaPermission('canManageKnowledge')));
       allow create, update: if isAuthenticated()
-        && (isPlatformAdmin() || (hasTenantWriteRole() && kbCategoriesDocMatchesCurrentStore(docId)));
+        && (isPlatformAdmin() || (hasCanonicaPermission('canManageKnowledge') && kbCategoriesDocMatchesCurrentStore(docId)));
       allow delete: if isAuthenticated() && isPlatformAdmin();
     }
 
     match /kb_articles/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageKnowledge');
     }
 
     match /kb_sections/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageKnowledge');
     }
 
     match /kb_generation_jobs/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageKnowledge');
     }
 
     match /kb_staging_sections/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageKnowledge');
     }
 
     match /kb_staging_chunks/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+      allow read: if isCanonicaScopedReadWithPermission('canManageKnowledge');
+      allow create: if isCanonicaScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isCanonicaScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isCanonicaScopedDeleteWithPermission('canManageKnowledge');
     }
 
     match /aiSearchHistory/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
       allow delete: if false;
     }
 
@@ -251,7 +256,7 @@ service cloud.firestore {
       allow write: if isAuthenticated()
         && (
           isPlatformAdmin()
-          || (hasTenantWriteRole() && isCanonicaTenantPath(tId, sId))
+          || (hasCanonicaPermission('canManageKnowledge') && isCanonicaTenantPath(tId, sId))
         );
     }
 
@@ -264,12 +269,77 @@ service cloud.firestore {
         && request.auth.token.platformRole == 'PLATFORM';
     }
 
-    function hasTenantWriteRole() {
-      return request.auth.token.admin == true
-        || request.auth.token.platformRole == 'PLATFORM'
-        || request.auth.token.role == 'PLATFORM'
-        || request.auth.token.role == 'OWNER'
+    function isCanonicaOwnerRole() {
+      return request.auth.token.role == 'OWNER'
         || request.auth.token.role == 'owner';
+    }
+
+    function isCanonicaManagerRole() {
+      return request.auth.token.role == 'MANAGER'
+        || request.auth.token.role == 'manager';
+    }
+
+    function isCanonicaStaffRole() {
+      return request.auth.token.role == 'STAFF'
+        || request.auth.token.role == 'staff';
+    }
+
+    function defaultManagerHasCanonicaPermission(permission) {
+      return isCanonicaManagerRole()
+        && (
+          permission == 'canViewReadiness'
+          || permission == 'canManageWorkspace'
+          || permission == 'canManageTeam'
+          || permission == 'canManageKnowledge'
+          || permission == 'canManageGovernance'
+          || permission == 'canManageWidget'
+          || permission == 'canManageSupport'
+        );
+    }
+
+    function defaultStaffHasCanonicaPermission(permission) {
+      return isCanonicaStaffRole() && permission == 'canManageSupport';
+    }
+
+    function hasCanonicaPermission(permission) {
+      return isPlatformAdmin()
+        || request.auth.token.get(permission, false) == true
+        || isCanonicaOwnerRole()
+        || defaultManagerHasCanonicaPermission(permission)
+        || defaultStaffHasCanonicaPermission(permission);
+    }
+
+    function hasAnyCanonicaPermission() {
+      return hasCanonicaPermission('canViewReadiness')
+        || hasCanonicaPermission('canManageWorkspace')
+        || hasCanonicaPermission('canManageTeam')
+        || hasCanonicaPermission('canAssignRoles')
+        || hasCanonicaPermission('canManageBilling')
+        || hasCanonicaPermission('canManageKnowledge')
+        || hasCanonicaPermission('canManageGovernance')
+        || hasCanonicaPermission('canManageWidget')
+        || hasCanonicaPermission('canManageSupport')
+        || hasCanonicaPermission('canManageIntegrations')
+        || hasCanonicaPermission('canExportData')
+        || hasCanonicaPermission('canRebuildContext');
+    }
+
+    function hasCanonicaReadinessPermission() {
+      return hasCanonicaPermission('canViewReadiness')
+        || hasCanonicaPermission('canManageKnowledge')
+        || hasCanonicaPermission('canManageGovernance')
+        || hasCanonicaPermission('canManageWidget')
+        || hasCanonicaPermission('canManageIntegrations');
+    }
+
+    function hasCanonicaKnowledgeControlPermission() {
+      return hasCanonicaPermission('canManageKnowledge')
+        || hasCanonicaPermission('canManageGovernance');
+    }
+
+    function hasCanonicaSupportControlPermission() {
+      return hasCanonicaPermission('canManageSupport')
+        || hasCanonicaPermission('canManageWidget');
     }
 
     function kbCategoriesDocMatchesCurrentStore(docId) {
@@ -294,6 +364,55 @@ service cloud.firestore {
 
     function isCanonicaBundleManifestDoc(document) {
       return document.matches('^bundleManifest_.*$');
+    }
+
+    function hasCanonicaPlatformSummaryReadPermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasCanonicaReadinessPermission()
+        )
+        || (
+          document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$')
+          && hasCanonicaKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasCanonicaPermission('canManageWidget')
+            || hasCanonicaPermission('canManageWorkspace')
+            || hasCanonicaKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^(integrationConfig|integrationHealth)_.*$')
+          && hasCanonicaPermission('canManageIntegrations')
+        );
+    }
+
+    function hasCanonicaPlatformSummaryWritePermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasCanonicaReadinessPermission()
+        )
+        || (
+          document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest)_.*$')
+          && (
+            hasCanonicaKnowledgeControlPermission()
+            || hasCanonicaPermission('canRebuildContext')
+          )
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasCanonicaPermission('canManageWidget')
+            || hasCanonicaPermission('canManageWorkspace')
+            || hasCanonicaKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^(integrationConfig|integrationHealth)_.*$')
+          && hasCanonicaPermission('canManageIntegrations')
+        );
     }
 
     function canonicaSourceVersionClientKeys() {
@@ -416,17 +535,42 @@ service cloud.firestore {
         && string(sId) == string(request.auth.token.storeId);
     }
 
-    function isCanonicaScopedRead() {
+    function isCanonicaScopedReadWithPermission(permission) {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaPermission(permission)));
     }
 
-    function isCanonicaScopedCreate() {
+    function isCanonicaScopedReadWithReadiness() {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaReadinessPermission()));
     }
 
-    function isCanonicaScopedUpdate() {
+    function isCanonicaScopedReadWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaKnowledgeControlPermission()));
+    }
+
+    function isCanonicaScopedReadWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaSupportControlPermission()));
+    }
+
+    function isCanonicaScopedCreateWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(request.resource.data) && hasCanonicaPermission(permission)));
+    }
+
+    function isCanonicaScopedCreateWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(request.resource.data) && hasCanonicaKnowledgeControlPermission()));
+    }
+
+    function isCanonicaScopedCreateWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(request.resource.data) && hasCanonicaSupportControlPermission()));
+    }
+
+    function isCanonicaScopedUpdateWithPermission(permission) {
       return isAuthenticated()
         && (
           isPlatformAdmin()
@@ -435,13 +579,52 @@ service cloud.firestore {
             && isCanonicaTenantMember(request.resource.data)
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
+            && hasCanonicaPermission(permission)
           )
         );
     }
 
-    function isCanonicaScopedDelete() {
+    function isCanonicaScopedUpdateWithKnowledgeControl() {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
+        && (
+          isPlatformAdmin()
+          || (
+            isCanonicaTenantMember(resource.data)
+            && isCanonicaTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasCanonicaKnowledgeControlPermission()
+          )
+        );
+    }
+
+    function isCanonicaScopedUpdateWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isCanonicaTenantMember(resource.data)
+            && isCanonicaTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasCanonicaSupportControlPermission()
+          )
+        );
+    }
+
+    function isCanonicaScopedDeleteWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaPermission(permission)));
+    }
+
+    function isCanonicaScopedDeleteWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaKnowledgeControlPermission()));
+    }
+
+    function isCanonicaScopedDeleteWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isCanonicaTenantMember(resource.data) && hasCanonicaSupportControlPermission()));
     }
   }
 }

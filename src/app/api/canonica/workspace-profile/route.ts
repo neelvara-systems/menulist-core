@@ -2,13 +2,15 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { PRODUCT_IDS } from '@constant/product';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { markCanonicaCompiledContextSourceChangedAdmin } from '@lib/canonica/compiledSourceVersionsAdmin';
 import {
     normalizeCanonicaBusinessDayEndTime,
     normalizeCanonicaTimeZone,
 } from '@lib/canonica/schedulerSettings';
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -74,9 +76,8 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica is not enabled.' }, { status: 403 });
     }
-    if (!canUseCanonicaManagement(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const permission = await requireCanonicaPermission(_request, session, CANONICA_PERMISSION_KEYS.MANAGE_WORKSPACE);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
@@ -109,9 +110,8 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica is not enabled.' }, { status: 403 });
     }
-    if (!canUseCanonicaManagement(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_WORKSPACE);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });

@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps AI-built SaaS apps launch support without chaos: page-aware widget, hosted help, starter rollout pack, approved answers, and reviewable fixes for missed questions.';
+    'Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, starter rollout pack, approved answers, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -22,14 +22,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Support layer for AI-built SaaS apps: setup, widget, starter surfaces, import pack, hosted help, approved answers, and support-gap review.',
+        description: 'Support layer for AI-built SaaS apps: setup, team access, widget, starter surfaces, hosted help, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
     {
         path: '/product/launch-setup',
         title: 'Set Up Support | Canonica',
-        description: 'Create a Canonica workspace, add product details, import starter knowledge, map important app pages, and verify the widget before launch.',
+        description: 'Create a Canonica workspace, add team access, import starter knowledge, map important app pages, and verify the widget before launch.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },
@@ -162,7 +162,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/updates',
         title: 'Updates | Canonica',
-        description: 'Recent Canonica product updates across launch setup, widget runtime, compiled context, governance, and public website work.',
+        description: 'Recent Canonica product updates across launch setup, team access, widget runtime, compiled context, governance, and public website work.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -190,28 +190,28 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/get-started',
         title: 'Get Started | Canonica',
-        description: 'Create your Canonica workspace, add your app, pick pages where users get stuck, and get a widget key for page-aware support.',
+        description: 'Create your Canonica workspace, add your app, invite the first team members, pick pages where users get stuck, and get a widget key for page-aware support.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/security',
         title: 'Security | Canonica',
-        description: 'Security for Canonica page-aware support: safe page hints, explicit screenshots, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
+        description: 'Security for Canonica page-aware support: safe page hints, explicit screenshots, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/security-one-pager',
         title: 'Security and Ops One-Pager | Canonica',
-        description: 'Shareable Canonica security and operations summary for allowed origins, blocked routes, safe context, manual screenshots, hashed keys, owner approval, and rate limits.',
+        description: 'Shareable Canonica security and operations summary for allowed origins, blocked routes, safe context, team roles, manual screenshots, hashed keys, owner approval, and rate limits.',
         priority: 0.68,
         changeFrequency: 'monthly',
     },
     {
         path: '/faq',
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
@@ -232,7 +232,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/privacy-policy',
         title: 'Privacy Policy | Canonica',
-        description: 'How Canonica handles product support knowledge, account information, and widget data.',
+        description: 'How Canonica handles product support knowledge, account information, team access data, and widget data.',
         priority: 0.4,
         changeFrequency: 'yearly',
     },

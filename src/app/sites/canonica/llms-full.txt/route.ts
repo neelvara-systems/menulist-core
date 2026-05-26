@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_FULL_TXT = `# Canonica — Extended LLM Context
 
-> Canonica is the support layer for AI-built SaaS apps. It governs approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, widget context, and explicit user-attached screenshot context.
+> Canonica is the support layer for AI-built SaaS apps. It governs team access, approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, widget context, and explicit user-attached screenshot context.
 
 ## Product Definition
 
@@ -14,6 +14,7 @@ Canonica is:
 
 - product knowledge infrastructure
 - page-aware support context
+- workspace team access with Canonica-specific roles
 - owner-reviewed approved answers
 - stale-answer and support-gap review
 - hosted help, FAQ, changelog, and widget support surfaces
@@ -37,8 +38,9 @@ Canonica is not:
 ## Public Website Routes
 
 - ${CANONICA_SITE_URL}/ — overview, demo path, product proof, fit/not-fit, setup, day-one launch pack, trust, pricing preview, and CTA.
-- ${CANONICA_SITE_URL}/product — product overview, major product-area links, and day-one launch-pack resources.
-- ${CANONICA_SITE_URL}/product/launch-setup — setup, product details, starter knowledge, app pages, widget key, and readiness.
+- ${CANONICA_SITE_URL}/product — product overview, major product-area links, team access, and day-one launch-pack resources.
+- ${CANONICA_SITE_URL}/product/launch-setup — setup, product details, team access, starter knowledge, app pages, widget key, and readiness.
+- ${CANONICA_SITE_URL}/product/team-access — workspace members, Canonica roles, custom permissions, email or owner-passcode login, owner reset, and force sign-out.
 - ${CANONICA_SITE_URL}/product/page-aware-widget — widget runtime, safe page context, optional user-attached screenshots, allowed origins, blocked routes, and approved-answer behavior.
 - ${CANONICA_SITE_URL}/product/support-control — hosted help, docs, FAQ, changelog, tickets, conversations, and weekly support review.
 - ${CANONICA_SITE_URL}/product/knowledge-governance — product structure, approved answers, stale-answer review, repeated-question queue, coverage, and trust metrics.
@@ -55,20 +57,21 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/integrations — Slack and email workflow notifications, test delivery, compact health, and controlled adapter boundaries.
 - ${CANONICA_SITE_URL}/roi-calculator — static repeated-question and support-time planning calculator.
 - ${CANONICA_SITE_URL}/proof — example launch, release, and studio workloads for evaluating Canonica operationally.
-- ${CANONICA_SITE_URL}/resources — learning hub for launch, widget, support control, and governance.
+- ${CANONICA_SITE_URL}/resources — learning hub for launch, team access, widget, support control, and governance.
 - ${CANONICA_SITE_URL}/updates — public product movement, not the customer workspace changelog.
-- ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, screenshot boundaries, runtime limits, tenant isolation, and disclosure.
-- ${CANONICA_SITE_URL}/security-one-pager — shareable security and operations summary for install reviews.
+- ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, screenshot boundaries, runtime limits, tenant isolation, team permissions, and disclosure.
+- ${CANONICA_SITE_URL}/security-one-pager — shareable security and operations summary for install and team-access reviews.
 - Runtime scaling is explained inside /product, /security, /resources, and /updates rather than as a standalone public MCP page.
 - ${CANONICA_SITE_URL}/faq — common buyer questions with FAQ structured data.
 - ${CANONICA_SITE_URL}/pricing — INR pricing and support-credit guidance.
-- ${CANONICA_SITE_URL}/get-started — self-service workspace creation.
+- ${CANONICA_SITE_URL}/get-started — self-service workspace creation, first team access, and widget setup.
 
 ## Runtime Boundaries
 
 - Public website pages are static/server-rendered product pages.
 - The account-free demo uses static data only.
 - Widget runtime, dashboard, onboarding, and governance flows are authenticated or key-protected where required.
+- Team management is authenticated and Canonica-role scoped; MenuList staff screens remain separate from Canonica workspace access.
 - Canonical answers are owner-approved before becoming authoritative.
 - Fallback answers and missed questions become review signals; they do not overwrite canonical answers by themselves.
 - Hosted public help pages expose docs/FAQ/changelog content without authenticated ticket or workspace internals.

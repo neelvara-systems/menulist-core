@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, AI-built apps, widget context, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -61,6 +61,10 @@ const FAQS = [
     {
         question: 'How quickly can a small SaaS team start?',
         answer: 'The launch path is built around a short setup: add product details, import starter knowledge, choose important product pages, install the widget, and verify the first answers from the activation dashboard.',
+    },
+    {
+        question: 'Can I invite my team into Canonica?',
+        answer: 'Yes. Canonica supports workspace members, Canonica-specific roles, custom permissions, owner-managed passcode reset, and force sign-out. These controls are separate from MenuList staff screens.',
     },
     {
         question: 'What makes Canonica page-aware?',
@@ -166,7 +170,7 @@ export default function CanonicaFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, AI-built apps, page-aware support, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, team access, AI-built apps, page-aware support, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>

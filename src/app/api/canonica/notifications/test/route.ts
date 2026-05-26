@@ -8,8 +8,10 @@ export const dynamic = 'force-dynamic';
  * fake ticket or scanning notification logs.
  */
 
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { getNotificationReadiness, sendNotification } from '@lib/notifications';
@@ -33,7 +35,10 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
     return { tenantId, storeId };
 };
 
-export const POST = withAuth(async (_request: NextRequest, session) => {
+export const POST = withAuth(async (request: NextRequest, session) => {
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.VIEW_READINESS);
+    if (permission.response) return permission.response;
+
     const scope = resolveSessionScope(session);
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });

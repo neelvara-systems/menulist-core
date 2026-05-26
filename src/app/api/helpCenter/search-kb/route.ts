@@ -137,6 +137,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             suggestedQuestions: result.suggestedQuestions || [],
             id: result.searchHistoryId,
             imageProcessed: result.imageProcessed,
+            answerSource: result.answerSource || (result.canonical ? 'canonical' : 'rag'),
         };
 
         if (result.relatedContent) {
@@ -184,6 +185,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 clientResponse: {
                     aiProviderOperations: result.aiProviderOperations || [],
                     answerType: result.answerType || null,
+                    answerSource: result.answerSource || null,
                     canonical: Boolean(result.canonical),
                     imageProcessed: Boolean(result.imageProcessed),
                     referencesCount: result.references?.length || 0,

@@ -14,6 +14,7 @@ export type SearchAPIResponseType = {
     relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem; // Product-surface contextual help links
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
     imageProcessed?: boolean; // Flag indicating if image was successfully processed
+    answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string;
 
     // AI Failure Escalation (Item #8) — only present when ENABLE_CANONICA_AI_ESCALATION is ON
     escalation?: {

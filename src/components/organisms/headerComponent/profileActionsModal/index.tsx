@@ -13,7 +13,7 @@ import { LuKeyboard, LuLogOut, LuSettings2, LuUser } from 'react-icons/lu';
 import styles from './profileActionsModal.module.scss';
 import UserProfileModal from './userProfileModal';
 
-function ProfileActionsModal({ children, userData = { name: "", email: "", image: "" } }) {
+function ProfileActionsModal({ children, userData = { name: "", email: "", image: "" }, onOpenAppearance = undefined }) {
     const [isLoading, setIsLoading] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [showShortcutsModal, setShowShortcutsModal] = useState(false)
@@ -34,7 +34,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
         {
             title: "Preferences",
             items: [
-                { title: "Appearance", icon: <LuSettings2 />, onClick: () => dispatch(toggleAppSettingsPanel(true)), description: "Theme, colors & layout" },
+                { title: "Appearance", icon: <LuSettings2 />, onClick: () => onOpenAppearance ? onOpenAppearance() : dispatch(toggleAppSettingsPanel(true)), description: "Theme, colors & layout" },
                 { title: "Keyboard Shortcuts", icon: <LuKeyboard />, onClick: () => setShowShortcutsModal(true), description: "View all shortcuts" },
             ]
         },

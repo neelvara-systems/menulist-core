@@ -278,6 +278,7 @@ Try asking about another documented topic, or contact support if you need a conf
     references: [],
     suggestedQuestions: [],
     canonical: false,
+    answerSource: 'empty',
     imageProcessed: false,
 };
 
@@ -313,9 +314,10 @@ const buildProductContextCacheToken = (productContext: CoreSearchInput['productC
  * 3. Cache lookup (Firestore aiSearchHistory)
  * 4. Canonical-first retrieval (deterministic, zero LLM cost)
  *    → On canonical HIT: write to instant cache
- * 5. RAG fallback (embedding → vector search → Gemini answer generation)
- * 6. Entity-enriched RAG context (if canonical miss had entity matches)
- * 7. Search history logging + performance metrics
+ * 5. Owner FAQ/custom answer retrieval (deterministic, zero LLM cost)
+ * 6. RAG fallback (embedding → vector search → Gemini answer generation)
+ * 7. Entity-enriched RAG context (if canonical miss had entity matches)
+ * 8. Search history logging + performance metrics
  */
 export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResult> {
     const perfStart = Date.now();
@@ -588,6 +590,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
                             canonical: true,
+                            answerSource: 'canonical',
                             canonicalAnswerId: cached.canonicalAnswerId,
                             matchedEntityIds: cached.matchedEntityIds,
                             confidence: cached.confidence,
@@ -613,6 +616,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             suggestedQuestions: [],
                             searchHistoryId: savedHistory?.id,
                             canonical: true,
+                            answerSource: 'canonical',
                             canonicalAnswerId: cached.canonicalAnswerId,
                             confidence: cached.confidence,
                             answerType: cached.answerType,
@@ -662,7 +666,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             craftedAnswer: result.craftedAnswer,
             references: result.references || [],
             canonical: Boolean(result.canonical),
+            answerSource: result.answerSource || (result.canonical ? 'canonical' : result.references?.length ? 'rag' : 'empty'),
             canonicalAnswerId: result.canonicalAnswerId,
+            faqAnswerId: result.faqAnswerId,
             confidence: result.confidence,
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
@@ -734,6 +740,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             suggestedQuestions: cachedResult.suggestedQuestions || [],
             searchHistoryId: cachedResult.id,
             canonical: !!cachedResult.canonical,
+            answerSource: cachedResult.answerSource || (cachedResult.canonical ? 'canonical' : cachedResult.references?.length ? 'rag' : 'cache'),
+            canonicalAnswerId: cachedResult.canonicalAnswerId,
+            faqAnswerId: cachedResult.faqAnswerId,
+            confidence: cachedResult.confidence,
+            answerType: cachedResult.answerType,
             imageProcessed: imageProcessed || !!cachedResult.imageUrl,
         });
     }
@@ -781,6 +792,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             craftedAnswer: answer.content.structuredSummary,
             references: [],
             canonical: true,
+            answerSource: 'canonical',
             canonicalAnswerId: answer.id,
             matchedEntityIds: canonicalResult.matchedEntityIds,
             confidence: canonicalResult.confidence,
@@ -810,6 +822,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             references: [],
             suggestedQuestions: [],
             canonical: true,
+            answerSource: 'canonical',
             canonicalAnswerId: answer.id,
             confidence: canonicalResult.confidence,
             answerType: answer.answerType || 'explanation',
@@ -877,6 +890,70 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 mountContext,
             }
         });
+    }
+
+    // ===== STAGE 5: OWNER FAQ / CUSTOM ANSWER RETRIEVAL =====
+    // Published FAQs are owner-approved short answers. They run after canonical
+    // miss and before embeddings/RAG, so custom Q&A can resolve common questions
+    // without model latency or provider cost.
+    try {
+        const { attemptFaqAnswerRetrieval } = await import('@lib/canonica/faqRetrieval');
+        const faqStart = Date.now();
+        const faqResult = await attemptFaqAnswerRetrieval(queryForEmbedding, {
+            tId,
+            sId,
+            context: validatedContext,
+            relatedContent,
+            sourceVersion: kbCacheState.sourceVersion,
+            includeFullArticleReference: true,
+        });
+        perfMetrics.faqRetrieval = Date.now() - faqStart;
+
+        if (faqResult.found && faqResult.faq) {
+            perfMetrics.total = Date.now() - perfStart;
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'FAQ_ANSWER_HIT',
+                data: {
+                    query: searchQuery,
+                    effectiveQuery: queryForEmbedding,
+                    faqId: faqResult.faq.id,
+                    score: faqResult.score || 0,
+                    confidence: faqResult.confidence,
+                    matchReason: faqResult.matchReason || null,
+                    referenceCount: faqResult.references.length,
+                    canonicalRetrievalMs: perfMetrics.canonicalRetrieval,
+                    faqRetrievalMs: perfMetrics.faqRetrieval,
+                    totalMs: perfMetrics.total,
+                    mountContext,
+                },
+            });
+
+            return withSavedSearchHistory({
+                craftedAnswer: faqResult.faq.answer,
+                references: faqResult.references,
+                suggestedQuestions: [],
+                canonical: false,
+                answerSource: 'faq',
+                faqAnswerId: faqResult.faq.id,
+                confidence: faqResult.confidence,
+                answerType: 'faq',
+                imageProcessed,
+            });
+        }
+    } catch (error: any) {
+        await writeLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'FAQ_RETRIEVAL_ERROR',
+            data: {
+                query: searchQuery,
+                effectiveQuery: queryForEmbedding,
+                error: error?.message || String(error),
+                mountContext,
+            },
+        }).catch(() => undefined);
     }
 
     // Helper: evaluate escalation for empty/no-result paths (avoids code duplication)
@@ -1136,6 +1213,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             imageUrl: imageUrl || undefined,
             craftedAnswer,
             references: resolvedReferences,
+            answerSource: 'rag',
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
@@ -1194,6 +1272,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             suggestedQuestions,
             searchHistoryId: savedHistory?.id,
             canonical: false,
+            answerSource: 'rag',
             imageProcessed,
             escalation,
         });

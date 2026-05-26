@@ -42,6 +42,7 @@
 | Rate limit check | 0 | 0 | 1 Upstash call (4 Redis commands) |
 | Session check | 0 | 0 | — |
 | Response cache lookup | 1 | 0 | — |
+| FAQ/custom-answer lookup | 0 hot / up to 80 cold | 0 | — |
 | Embedding cache check | 1 | 0-1 (hitCount) | — |
 | Embedding generation (miss) | 0 | 1 | 1 Gemini embedding call |
 | Vector search | 12 | 0 | — |
@@ -50,6 +51,8 @@
 | Performance logging | 0 | 1 | — |
 | **Cache HIT total** | **1** | **1** | **1 Upstash** |
 | **Cache MISS total** | **14** | **3-4** | **1 Upstash + 1-2 Gemini** |
+
+**Owner FAQ/custom-answer hit:** after canonical miss, the search pipeline checks published active FAQs before embeddings and Gemini fallback. If the current product surface already supplied related FAQs, this is in-memory after the surface summary read. Otherwise the server reads a bounded list of up to 80 published FAQs, cached per tenant/store/source-version for 60 seconds. A linked article adds one article read only on FAQ hits so Help Center and widget answers can return the source article link. This avoids embedding generation, vector search, and answer-generation calls for repeated owner-authored questions.
 
 **With image (additional):**
 - 1 external fetch (Firebase Storage image)

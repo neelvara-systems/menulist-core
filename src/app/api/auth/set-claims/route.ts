@@ -1,5 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
+import {
+    CANONICA_ALL_PERMISSIONS,
+    type CanonicaPermissionKey,
+    DEFAULT_CANONICA_ROLE_IDS,
+    DEFAULT_CANONICA_ROLE_METADATA,
+    normalizeCanonicaRolePermissions,
+} from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
@@ -138,6 +145,45 @@ const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
         || normalizedRole === 'owner';
 };
 
+const buildCanonicaPermissionClaims = (permissions: Partial<Record<CanonicaPermissionKey, boolean>>) => (
+    CANONICA_ALL_PERMISSIONS.reduce((acc, permission) => {
+        acc[permission] = permissions[permission] === true;
+        return acc;
+    }, {} as Record<CanonicaPermissionKey, boolean>)
+);
+
+const resolveCanonicaPermissionClaims = async (params: {
+    productId: ProductId;
+    roleId: unknown;
+    storeId: number;
+    platformRole: unknown;
+}) => {
+    if (params.productId !== PRODUCT_IDS.CANONICA) return {};
+
+    const normalizedRoleId = String(params.roleId || DEFAULT_CANONICA_ROLE_IDS.STAFF).trim().toLowerCase();
+    if (isPlatformSupportRole(params.platformRole) || normalizedRoleId === DEFAULT_CANONICA_ROLE_IDS.OWNER) {
+        return buildCanonicaPermissionClaims(DEFAULT_CANONICA_ROLE_METADATA[DEFAULT_CANONICA_ROLE_IDS.OWNER].permissions);
+    }
+
+    const defaultRole = Object.entries(DEFAULT_CANONICA_ROLE_METADATA)
+        .find(([roleId]) => roleId === normalizedRoleId)?.[1];
+    let rolePermissions = defaultRole?.permissions || {};
+
+    const db = canonicaFirestoreAdmin as any;
+    if (db && typeof db.collection === 'function' && params.storeId) {
+        const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(params.storeId)).get();
+        const roles = Array.isArray(storeSnap.data()?.canonicaRoles) ? storeSnap.data()?.canonicaRoles : [];
+        const storeRole = roles.find((role: any) => String(role?.id || '').trim().toLowerCase() === normalizedRoleId);
+        if (storeRole?.active === false) {
+            rolePermissions = {};
+        } else if (storeRole?.permissions) {
+            rolePermissions = storeRole.permissions;
+        }
+    }
+
+    return buildCanonicaPermissionClaims(normalizeCanonicaRolePermissions(rolePermissions));
+};
+
 const normalizeProductId = (value: unknown): ProductId => {
     if (typeof value !== 'string') return DEFAULT_PRODUCT_ID;
     const normalized = value.trim().toUpperCase();
@@ -198,6 +244,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const canonicaDbUser = shouldUseCanonicaUserContext
             ? await getCanonicaAuthUserByEmail(session.user.email)
             : null;
+        if (shouldUseCanonicaUserContext && canonicaDbUser && (
+            canonicaDbUser.active === false
+            || canonicaDbUser.deleted === true
+            || canonicaDbUser.authDisabled === true
+        )) {
+            secureLog('[Auth] Rejected inactive Canonica auth profile', {
+                email: session.user.email,
+                userId: canonicaDbUser.id,
+            });
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const canonicaUserMatchesRequestedStore = canonicaDbUser && (
             !targetStoreId || canAccessStore(canonicaDbUser, targetStoreId)
         );
@@ -261,6 +318,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             : undefined;
         const userRole = storeRole || dbUser.role;
         const productId = normalizeProductId(dbUser.pId || dbUser.productId);
+        const canonicaPermissionClaims = await resolveCanonicaPermissionClaims({
+            productId,
+            roleId: userRole,
+            storeId: claimStoreId,
+            platformRole: dbUser.platformRole,
+        });
 
         const customClaims = {
             pId: productId,
@@ -271,6 +334,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uId: dbUser.id,
             admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
             storeIds: getStoreIdsClaim(dbUser),
+            ...canonicaPermissionClaims,
         };
         const canonicaCustomToken = await createCanonicaCustomTokenIfNeeded(
             session.user.email,

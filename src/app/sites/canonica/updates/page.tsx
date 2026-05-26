@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Canonica product updates that affect setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'Canonica product updates that affect setup, team access, page-aware support, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 26, 2026',
+        title: 'Team access and workspace roles added to the product story',
+        items: [
+            'Canonica now has a dedicated Team Access product page for workspace members, Canonica roles, custom permissions, owner reset, and force sign-out.',
+            'Launch Setup, Product, Get Started, FAQ, Pricing, Resources, Security, and Privacy copy now include team access where it affects buyer evaluation and production readiness.',
+            'The public story keeps MenuList mobile and dashboard screens separate from Canonica while reusing the proven staff login and reset model.',
+        ],
+    },
     {
         date: 'May 25, 2026',
         title: 'Widget screenshot support clarified across the website',

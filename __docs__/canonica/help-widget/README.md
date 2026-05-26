@@ -109,7 +109,7 @@ Set `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` in each Canonica runtime environment
 
 | Capability             | v1 (Current)                              | v2 (Documented, Ready)                                                                                                                                        |
 | ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Search pipeline        | Unified `coreSearch()`                    | Same                                                                                                                                                          |
+| Search pipeline        | Unified `coreSearch()`                    | Canonical answers first, owner FAQ/custom answers second, RAG fallback last                                                                                   |
 | Context-aware support  | Feature-flagged, schema exists            | Full SDK integration, context boosts entity matching                                                                                                          |
 | Launcher customization | Position + color + text                   | Shape, display mode, size, offset                                                                                                                             |
 | Session memory         | None (stateless)                          | In-memory page session (last 5 messages), explicit clear, optional `data-history="forget"` clear-on-close mode. No persistence.                              |

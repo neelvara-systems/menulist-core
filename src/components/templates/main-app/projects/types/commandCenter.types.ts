@@ -12,6 +12,7 @@
 export type CommandCenterAction = 'repairMenu' | 'pricing' | 'availability' | 'moveCategory' | 'textCase' | 'activeInactive';
 
 export interface RepairMenuSummary {
+    categoryIconsToRepair: number;
     descriptionsToGenerate: number;
     fixableNowCount: number;
     languageIssueCount: number;

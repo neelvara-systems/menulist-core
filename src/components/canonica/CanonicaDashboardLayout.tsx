@@ -4,24 +4,31 @@
  * Canonica — Dashboard Layout Wrapper
  * 
  * Renders the Canonica sidebar + header + content area.
- * Separate from MenuList's AntdLayoutWrapper — different product, different layout.
  * 
  * Shares: AntdThemeProvider, NetworkStatusProvider
- * Does NOT share: MenuList sidebar, MenuList header, mobile shell
+ * Shares dashboard shell chrome with MenuList while keeping Canonica routes and guards separate.
  * 
  * @see src/components/canonica/CanonicaSidebar.tsx
  */
 
+import {
+    DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
+    DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
+} from '@/components/shared/dashboardShell/DashboardSidebarShell';
 import {
     CANONICA_MANAGEMENT_ROUTES,
     CANONICA_ROUTES,
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import { getCanonicaRouteRequiredPermission } from '@constant/canonica/permissions';
+import { useAppSelector } from '@hook/useAppSelector';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import AntdThemeProvider from '@providers/antdThemeProvider';
+import { CanonicaAccessProvider, useCanonicaAccess } from '@providers/canonicaAccessProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
+import { getSidebarState } from '@reduxSlices/clientThemeConfig';
 import { Alert, Drawer, Grid, Layout, Spin, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
@@ -31,14 +38,16 @@ import CanonicaSidebar from './CanonicaSidebar';
 import CanonicaHeader from './CanonicaHeader';
 
 const { Content } = Layout;
-const SIDEBAR_WIDTH = 240;
 const CANONICA_MOBILE_BOTTOM_CLEARANCE = 'calc(24px + env(safe-area-inset-bottom))';
+const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
 const AppSettingsSheet = dynamic(() => import('@/components/mobile/sheets/AppSettingsSheet'), { ssr: false });
 
 export default function CanonicaDashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <AntdThemeProvider>
-            <CanonicaDashboardLayoutContent>{children}</CanonicaDashboardLayoutContent>
+            <CanonicaAccessProvider>
+                <CanonicaDashboardLayoutContent>{children}</CanonicaDashboardLayoutContent>
+            </CanonicaAccessProvider>
         </AntdThemeProvider>
     );
 }
@@ -49,26 +58,31 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     const router = useRouter();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
+    const isCollapsed = useAppSelector(getSidebarState);
     const isDesktop = screens.lg === true;
     const isMobile = !isDesktop;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [appSettingsOpen, setAppSettingsOpen] = useState(false);
     const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
     const [firebaseAuthError, setFirebaseAuthError] = useState(false);
+    const { access, error: accessError, loading: accessLoading } = useCanonicaAccess();
     const layoutBackground = token.colorBgLayout;
-    const canUseManagementSurfaces = canUseCanonicaManagement(session);
+    const canUseManagementSurfaces = access?.canUseManagement ?? canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
     const isAdminRoute = useMemo(() => (
         CANONICA_MANAGEMENT_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
     ), [normalizedPathname]);
+    const requiredPermission = useMemo(() => getCanonicaRouteRequiredPermission(normalizedPathname), [normalizedPathname]);
+    const hasRoutePermission = !requiredPermission || access?.isPlatformAdmin || access?.permissions?.[requiredPermission] === true;
 
     useEffect(() => {
         if (status === 'loading') return;
-        if (isAdminRoute && !canUseManagementSurfaces) {
+        if (accessLoading) return;
+        if ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission) {
             router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
         }
-    }, [canUseManagementSurfaces, currentHostname, isAdminRoute, router, status]);
+    }, [accessLoading, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, router, status]);
 
     useEffect(() => {
         if (status === 'loading') {
@@ -104,9 +118,10 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         };
     }, [pathname, session, status]);
 
-    const shouldRedirectAway = isAdminRoute && !canUseManagementSurfaces;
-    const shouldShowAuthError = !shouldRedirectAway && firebaseAuthError;
-    const shouldShowContentLoader = status === 'loading' || (!shouldRedirectAway && !firebaseAuthReady);
+    const shouldRedirectAway = (isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission;
+    const shouldShowAuthError = !shouldRedirectAway && (firebaseAuthError || Boolean(accessError));
+    const shouldShowContentLoader = status === 'loading' || accessLoading || (!shouldRedirectAway && !firebaseAuthReady);
+    const sidebarOffset = isCollapsed ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 
     return (
         <>
@@ -209,7 +224,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                     </Drawer>
                     <Layout
                         style={{
-                            marginLeft: isDesktop ? SIDEBAR_WIDTH : 0,
+                            marginLeft: isDesktop ? sidebarOffset : 0,
                             minWidth: 0,
                             background: layoutBackground,
                         }}
@@ -222,7 +237,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                         <Content
                             style={{
                                 background: layoutBackground,
-                                minHeight: isDesktop ? 'calc(100dvh - 56px)' : 'calc(100dvh - 56px - env(safe-area-inset-top))',
+                                minHeight: isDesktop ? 'calc(100dvh - var(--header-Height))' : 'calc(100dvh - var(--header-Height) - env(safe-area-inset-top))',
                                 overflowX: 'hidden',
                                 padding: isDesktop ? 24 : `12px 12px ${CANONICA_MOBILE_BOTTOM_CLEARANCE}`,
                                 scrollPaddingBottom: isMobile ? CANONICA_MOBILE_BOTTOM_CLEARANCE : undefined,
@@ -231,7 +246,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                         >
                             {shouldRedirectAway ? null : shouldShowAuthError ? (
                                 <Alert
-                                    message="Canonica access could not be prepared."
+                                    message={accessError || "Canonica access could not be prepared."}
                                     showIcon
                                     type="error"
                                 />
@@ -243,6 +258,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                         </Content>
                     </Layout>
                 </Layout>
+                {isDesktop ? <AppSettingsPanel /> : null}
                 <AppSettingsSheet
                     onClose={() => setAppSettingsOpen(false)}
                     visible={appSettingsOpen}

@@ -24,6 +24,8 @@ export interface AiSearchHistory {
     // @see __docs__/canonica/doctrine/05-architecture-evolution.md
     canonical?: boolean;              // true if resolved via canonical answer (not RAG)
     canonicalAnswerId?: string;       // ID of the canonical answer used
+    answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string; // Final answer source for audit/analytics
+    faqAnswerId?: string;             // Published owner FAQ/custom answer used, when applicable
     matchedEntityIds?: string[];      // Entity IDs matched during retrieval
     confidence?: string;              // 'high' | 'medium' | 'low' | 'none'
     sourceVersions?: CanonicaCacheSourceVersions; // Source freshness manifest captured when cached

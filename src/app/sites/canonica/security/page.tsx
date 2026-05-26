@@ -10,7 +10,7 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for Canonica page-aware support: safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
+    description: 'Security for Canonica page-aware support: safe page hints, explicit screenshots, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
@@ -31,6 +31,14 @@ const CONTROLS = [
     {
         title: 'Account-scoped data',
         body: 'Canonica documents use product, account, and workspace scope so support knowledge, tickets, widget settings, and summaries stay tied to the correct workspace.',
+    },
+    {
+        title: 'Role-scoped workspace access',
+        body: 'Canonica workspace members receive Canonica-specific permission claims so team, billing, widget, knowledge, support, and governance controls can be separated by role.',
+    },
+    {
+        title: 'Owner reset and sign-out',
+        body: 'Workspace owners can create a new temporary passcode and force sign-out for managed team members when access needs to be refreshed.',
     },
     {
         title: 'Safe widget context',
@@ -72,6 +80,8 @@ const CONTROLS = [
 
 const SECURITY_FACTS = [
     { label: 'Product data boundary', value: 'Canonica workspace scope' },
+    { label: 'Team permissions', value: 'Canonica role claims' },
+    { label: 'Owner reset path', value: 'Passcode reset + sign-out' },
     { label: 'Runtime database', value: 'Canonica Firebase project' },
     { label: 'Widget key storage', value: 'Hashed; encrypted recovery when configured' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
@@ -93,6 +103,15 @@ const TRUST_AREAS = [
             'Canonica documents use product, account, and workspace scope.',
             'Dashboard APIs check Canonica scope before mutations.',
             'Canonica Firebase rules default to deny and allow tenant-scoped access explicitly.',
+        ],
+    },
+    {
+        title: 'Team permissions',
+        body: 'Canonica team access uses product-specific roles instead of borrowing MenuList restaurant staff permissions.',
+        points: [
+            'Owner, Manager, Support Staff, and custom roles map to Canonica permission keys.',
+            'Dashboard routes and protected Canonica APIs check the active role before exposing controls.',
+            'Password/passcode reset and force sign-out revoke active sessions for sensitive access changes.',
         ],
     },
     {
@@ -204,7 +223,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica uses safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled approved context, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
+                            Canonica uses safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                     </div>
                 </section>
@@ -213,7 +232,7 @@ export default function CanonicaSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, serve approved runtime context from controlled bundles, and approve support answers before they become official.
+                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, assign workspace roles carefully, serve approved runtime context from controlled bundles, and approve support answers before they become official.
                         </p>
                         <CanonicaLink
                             basePath={basePath}

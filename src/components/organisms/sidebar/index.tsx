@@ -3,6 +3,7 @@ import EcomsHorizontalLogo from '@atoms/ecomsLogo/ecomsHorizontalLogo';
 import { FEATURE_FLAGS } from '@config/features';
 import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import DashboardSidebarShell, { DashboardSidebarShellItem } from '@/components/shared/dashboardShell/DashboardSidebarShell';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
@@ -10,17 +11,15 @@ import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboard
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode, toggleSidbar } from '@reduxSlices/clientThemeConfig';
+import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, Popover, theme } from 'antd';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Popover, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
-import { MdDarkMode, MdLightMode, MdOutlineNavigateNext, MdOutlineSettingsSuggest } from 'react-icons/md';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
-import styles from './sidebarComponent.module.scss';
 
 const SidebarComponent = () => {
     const tNav = useTranslations('Navigation');
@@ -33,10 +32,7 @@ const SidebarComponent = () => {
     const { activeSubscription, tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const [hoverId, setHoverId] = useState(null);
-    const [activeParentNav, setActiveParentNav] = useState<NavItemType>({ label: '', route: '', icon: '', isChild: false })
     const [activeNav, setActiveNav] = useState<NavItemType>({ label: 'Builder', route: 'builder', icon: 'builder', isChild: false });
-    const [isHover, setIsHover] = useState(false);
     const [sidebarMenusList, setSidebarMenusList] = useState(SIDEBAR_DASHBOARD_LAYOUT);
     const [supportPopoverOpen, setSupportPopoverOpen] = useState(false);
     const pathname = usePathname()
@@ -102,7 +98,6 @@ const SidebarComponent = () => {
                         subnav.active = true;
                         nav.subNavActive = true;
                         currentNav = subnav;
-                        setActiveParentNav(nav);
                     }
                 });
             }
@@ -117,8 +112,6 @@ const SidebarComponent = () => {
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
     }, [pathname, canManageLocations, hasStarterAccess, platformRole, userPermissions])
-
-    const showExpandedSidebar = useMemo(() => Boolean(!isCollapsed || isHover), [isCollapsed, isHover])
 
     const onClickNav = (navItem: NavItemType, menuLevel: number, navIndex: number, subNavIndex: number = -1) => {
         if (menuLevel === 1) {
@@ -144,9 +137,6 @@ const SidebarComponent = () => {
         switch (navItem.route) {
             case 'darkMode':
                 dispatch(toggleDarkMode(!isDarkMode))
-                break;
-            case 'collapsed':
-                dispatch(toggleSidbar(!isCollapsed))
                 break;
             case 'dashboard-settings':
                 dispatch(toggleAppSettingsPanel(true))
@@ -226,236 +216,64 @@ const SidebarComponent = () => {
         </div>
     );
 
+    const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
+        sidebarMenusList.map((nav: NavItemType, navIndex: number) => ({
+            key: nav.route,
+            label: tNav(nav.label as any),
+            icon: nav.icon,
+            active: nav.active,
+            subNavActive: nav.subNavActive,
+            expanded: nav.showSubNav,
+            onClick: () => onClickNav(nav, 1, navIndex),
+            subNav: nav.subNav?.map((subNav: NavItemType, subnavIndex: number) => ({
+                key: subNav.route,
+                label: tNav(subNav.label as any),
+                icon: subNav.icon,
+                active: subNav.active,
+                onClick: () => onClickNav(subNav, 2, navIndex, subnavIndex),
+            })),
+        }))
+    ), [sidebarMenusList, tNav]);
+
+    const actionItems = useMemo<DashboardSidebarShellItem[]>(() => (
+        ACTION_MENUS.map((nav: NavItemType) => {
+            const isSupportMenu = nav.route === 'dashboard-help';
+            const item: DashboardSidebarShellItem = {
+                key: nav.route,
+                label: tNav(nav.label as any),
+                icon: nav.route === 'darkMode' ? (isDarkMode ? <MdLightMode /> : <MdDarkMode />) : nav.icon,
+                active: nav.route === activeNav.route,
+                iconActive: nav.route === 'darkMode' && isDarkMode,
+                onClick: () => onClickActionsMenu(nav),
+            };
+
+            if (isSupportMenu) {
+                item.renderWrapper = (button) => (
+                    <Popover
+                        content={<SupportPopoverContent />}
+                        onOpenChange={setSupportPopoverOpen}
+                        open={supportPopoverOpen}
+                        placement="rightTop"
+                        trigger="click"
+                    >
+                        {button}
+                    </Popover>
+                );
+            }
+
+            return item;
+        })
+    ), [activeNav.route, isDarkMode, supportPopoverOpen, tNav]);
+
     return (
         <ClientOnlyProvider>
-            <>
-                <motion.nav
-                    role="navigation"
-                    aria-label="Main navigation"
-                    className={styles.sidebarContainer}
-                    onMouseEnter={() => setIsHover(true)}
-                    onMouseLeave={() => setIsHover(false)}
-                    animate={{ width: showExpandedSidebar ? '200px' : "62px" }}
-                    style={{ backgroundColor: token.colorBgBase, color: token.colorTextBase, borderRight: `1px solid ${token.colorBorder}` }}>
-
-                    <div className={styles.itemWrap} style={{ borderBottom: `1px solid ${token.colorBorder}`, padding: showExpandedSidebar ? "20px" : "2px" }}>
-                        <div className={styles.logo}>
-                            {isHover || !isCollapsed ? <EcomsHorizontalLogo color={token.colorText} /> : <EcomsIconLogo />}
-                        </div>
-                    </div>
-
-                    <div className={styles.menuItemsWrap}>
-                        {sidebarMenusList.map((nav: NavItemType, navIndex: number) => {
-                            const isActive = nav.active;
-                            const NAV_ICON = nav.icon;
-                            return <Fragment key={navIndex}>
-                                <Button
-                                    type="text"
-                                    className={`${styles.menuItemWrap} ${isActive ? styles.active : ""} ${styles[nav.route]}`}
-                                    onMouseEnter={() => setHoverId(nav.route)}
-                                    onMouseLeave={() => setHoverId('')}
-                                    onClick={() => onClickNav(nav, 1, navIndex)}
-                                    aria-label={nav.label}
-                                    aria-expanded={nav.subNav ? nav.showSubNav : undefined}
-                                    aria-current={isActive ? 'page' : undefined}
-                                    style={{
-                                        backgroundColor: (isActive) ? token.colorPrimaryBorder : (nav.route === hoverId || nav.subNavActive ? token.colorBgTextHover : token.colorBgBase),
-                                        color: (isActive) ? token.colorTextLightSolid : (nav.route === hoverId || nav.subNavActive ? token.colorPrimaryTextActive : token.colorText),
-                                        width: '100%',
-                                        height: 'auto',
-                                        padding: 0,
-                                        display: 'flex',
-                                        justifyContent: 'flex-start',
-                                        position: 'relative',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <div className={styles.navWrap}>
-                                        <div className={styles.labelIconWrap}>
-                                            <div className={styles.iconWrap} style={{
-                                                color: (isActive) ? token.colorTextLightSolid : (nav.route === hoverId || nav.subNavActive ? token.colorPrimaryTextActive : token.colorText),
-                                            }}>
-                                                <NAV_ICON />
-                                            </div>
-                                            {showExpandedSidebar && <motion.div
-                                                initial={{ width: "0", opacity: 0 }}
-                                                animate={{ width: 'max-content', opacity: 1 }}
-                                                exit={{ width: "0", opacity: 0 }}
-                                                className={styles.label}
-                                                style={{ color: (isActive) ? token.colorPrimary : (nav.route === hoverId || nav.subNavActive ? token.colorPrimaryTextActive : token.colorText), }}
-                                            >
-                                                {tNav(nav.label as any)}
-                                            </motion.div>}
-                                        </div>
-                                        {nav.subNav &&
-                                            <motion.div
-                                                className={`${styles.subNavIcon} ${styles.iconWrap}`}
-                                                style={{
-                                                    color: (isActive) ? token.colorTextLightSolid : (nav.route === hoverId ? token.colorPrimaryTextActive : token.colorText),
-                                                }}
-                                                transition={{ duration: 0.1 }}
-                                                animate={{
-                                                    rotate: Boolean(nav.showSubNav) ? 90 : 0,
-                                                }}>
-                                                <MdOutlineNavigateNext />
-                                            </motion.div>}
-                                    </div>
-
-                                    {/* sidebar collapsed active mark strip */}
-                                    <AnimatePresence>
-                                        {((isActive || nav.subNavActive) && isCollapsed && !isHover) && <motion.div
-                                            initial={{ height: "100%", opacity: 0 }}
-                                            animate={{ height: '100%', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className={styles.activeMark} style={{ background: token.colorPrimary }}></motion.div>}
-                                    </AnimatePresence>
-                                </Button>
-                                <AnimatePresence>
-                                    {Boolean(nav.showSubNav && (showExpandedSidebar)) && <>
-                                        <motion.div
-                                            style={{
-                                                width: "100%",
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '5px',
-                                                paddingLeft: '10px'
-                                            }}
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'max-content', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                        >
-                                            {nav.subNav?.map((subNav: NavItemType, subnavIndex: number) => {
-                                                const SUB_NAV_ICON = subNav.icon;
-                                                return <motion.div
-                                                    key={subnavIndex}
-                                                    initial={{ opacity: 0, x: -10 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    exit={{ opacity: 0, x: -10 }}
-                                                    transition={{
-                                                        duration: 0.2,
-                                                        delay: subnavIndex * 0.05,
-                                                        ease: "easeOut"
-                                                    }}
-                                                >
-                                                    <Button
-                                                        type="text"
-                                                        className={`${styles.menuItemWrap} ${styles.subMenuItemWrap} ${subNav.active ? styles.active : ""}`}
-                                                        onMouseEnter={() => setHoverId(subNav.route)}
-                                                        onMouseLeave={() => setHoverId('')}
-                                                        onClick={() => onClickNav(subNav, 2, navIndex, subnavIndex)}
-                                                        aria-label={subNav.label}
-                                                        aria-current={subNav.active ? 'page' : undefined}
-                                                        style={{
-                                                            background: `${(subNav.active) ? token.colorPrimaryBorder : ((hoverId && (subNav.route === hoverId)) ? token.colorBgTextHover : token.colorBgBase)}`,
-                                                            color: (subNav.active) ? token.colorTextLightSolid : ((hoverId && (subNav.route === hoverId)) ? token.colorPrimaryTextActive : token.colorText),
-                                                            width: '100%',
-                                                            height: 'auto',
-                                                            padding: 0,
-                                                            display: 'flex',
-                                                            justifyContent: 'flex-start',
-                                                            textAlign: 'left'
-                                                        }}
-                                                    >
-                                                        <div className={styles.navWrap}>
-                                                            <div className={styles.labelIconWrap}>
-                                                                <div className={styles.iconWrap} style={{
-                                                                    color: (subNav.active) ? token.colorTextLightSolid : ((hoverId && (subNav.route === hoverId)) ? token.colorPrimaryTextActive : token.colorText),
-                                                                }}>
-                                                                    <SUB_NAV_ICON />
-                                                                </div>
-                                                                <div className={styles.label}>
-                                                                    {tNav(subNav.label as any)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </Button>
-                                                </motion.div>
-                                            })}
-                                        </motion.div>
-                                    </>}
-                                </AnimatePresence>
-                            </Fragment>
-                        })}
-                    </div>
-                    <div className={`${styles.menuItemsWrap} ${styles.actionNavItem} `} style={{ background: token.colorBgBase, borderTop: `1px solid ${token.colorBorder}` }}>
-                        {ACTION_MENUS.map((nav: NavItemType, i: number) => {
-                            const isActive = nav.route === activeNav.route;
-                            const isSupportMenu = nav.route === 'dashboard-help';
-
-                            const buttonElement = (
-                                <Button
-                                    type="text"
-                                    className={`${styles.menuItemWrap}`}
-                                    onMouseEnter={() => setHoverId(nav.route)}
-                                    onMouseLeave={() => setHoverId('')}
-                                    onClick={() => onClickActionsMenu(nav)}
-                                    aria-label={nav.label}
-                                    style={{
-                                        backgroundColor: `${(isActive) ? token.colorPrimaryBgHover : ((hoverId && (nav.route === hoverId || nav.route === activeParentNav.route)) ? token.colorBgTextHover : token.colorBgBase)}`,
-                                        color: (isActive) ? token.colorTextLightSolid : ((hoverId && (nav.route === hoverId || nav.route === activeParentNav.route)) ? token.colorPrimaryTextActive : token.colorText),
-                                        width: '100%',
-                                        height: 'auto',
-                                        padding: 0,
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <div className={styles.navWrap}>
-                                        <div className={styles.labelIconWrap}>
-                                            <>
-                                                {nav.route === "collapsed" ? <motion.div
-                                                    className={`${styles.iconWrap}`}
-                                                    style={{ color: (nav.route === hoverId || isCollapsed) ? token.colorPrimaryTextActive : token.colorText }}
-                                                    transition={{ duration: 0.07 }}
-                                                    animate={{ rotate: !Boolean(isCollapsed) ? 180 : 0, }}>
-                                                    {nav.icon}
-                                                </motion.div> : <>
-                                                    {nav.route === "darkMode" ? <motion.div
-                                                        className={`${styles.iconWrap}`}
-                                                        style={{ color: (nav.route === hoverId || isDarkMode) ? token.colorPrimaryTextActive : token.colorText }}
-                                                        transition={{ duration: 0.07 }}
-                                                        animate={{ rotate: !Boolean(isDarkMode) ? 360 : 0, }}>
-                                                        {isDarkMode ? <MdLightMode /> : <MdDarkMode />}
-                                                    </motion.div> :
-                                                        <div className={styles.iconWrap} style={{ color: (isActive) ? token.colorTextLightSolid : (nav.route === hoverId ? token.colorPrimaryTextActive : token.colorText), }}>{nav.icon}</div>}
-                                                </>}
-
-                                            </>
-
-                                            {showExpandedSidebar && <motion.div
-                                                initial={{ width: "max-content", opacity: 0 }}
-                                                animate={{ width: 'max-content', opacity: 1 }}
-                                                exit={{ width: "0", opacity: 0 }}
-                                                className={styles.label}
-                                            >
-                                                {tNav(nav.label as any)}
-                                            </motion.div>}
-                                        </div>
-                                    </div>
-                                </Button>
-                            );
-
-                            return <Fragment key={i}>
-                                {isSupportMenu ? (
-                                    <Popover
-                                        content={<SupportPopoverContent />}
-                                        trigger="click"
-                                        open={supportPopoverOpen}
-                                        onOpenChange={setSupportPopoverOpen}
-                                        placement="rightTop"
-                                    // arrow={false}
-                                    >
-                                        {buttonElement}
-                                    </Popover>
-                                ) : (
-                                    buttonElement
-                                )}
-                            </Fragment>
-                        })}
-                    </div>
-                </motion.nav>
-            </>
+            <DashboardSidebarShell
+                actionItems={actionItems}
+                isCollapsed={isCollapsed}
+                logoCollapsed={<EcomsIconLogo />}
+                logoExpanded={<EcomsHorizontalLogo color={token.colorText} />}
+                navItems={navItems}
+            />
         </ClientOnlyProvider>
     )
 }

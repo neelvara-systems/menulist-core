@@ -23,6 +23,11 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
+import {
+    clearExpiredMenuProcessingJobDismissals,
+    getDismissedMenuProcessingJobIds,
+    markMenuProcessingJobAsDismissed,
+} from '@lib/extraction/menuProcessingDismissal';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
@@ -223,7 +228,16 @@ function ProjectsPage() {
     // Persist in sessionStorage so it survives page reloads mid-processing
     const [activeProcessingJobId, setActiveProcessingJobIdState] = useState<string | null>(() => {
         if (typeof window !== 'undefined') {
-            return sessionStorage.getItem('activeProcessingJobId') || null;
+            clearExpiredMenuProcessingJobDismissals();
+            const dismissedJobIds = new Set(getDismissedMenuProcessingJobIds());
+            const storedJobId = sessionStorage.getItem('activeProcessingJobId');
+
+            if (storedJobId && dismissedJobIds.has(storedJobId)) {
+                sessionStorage.removeItem('activeProcessingJobId');
+                return null;
+            }
+
+            return storedJobId || null;
         }
         return null;
     });
@@ -235,6 +249,8 @@ function ProjectsPage() {
             } else {
                 sessionStorage.removeItem('activeProcessingJobId');
             }
+
+            clearExpiredMenuProcessingJobDismissals();
         }
     }, []);
 
@@ -413,7 +429,8 @@ function ProjectsPage() {
             try {
                 const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
 
-                const activeJobId = await checkExistingActiveJob(activeProject.projectId);
+                const ignoredJobIds = getDismissedMenuProcessingJobIds();
+                const activeJobId = await checkExistingActiveJob(activeProject.projectId, ignoredJobIds);
                 if (activeJobId) {
                     setActiveProcessingJobId(activeJobId);
                     return;
@@ -444,6 +461,7 @@ function ProjectsPage() {
         cancel: cancelJob,
     } = useMenuProcessingJob(activeProcessingJobId);
     const activeJobProjectId = activeJob?.projectId ? String(activeJob.projectId) : null;
+    const isActiveProcessingJob = Boolean(activeProcessingJobId && activeJob?.id === activeProcessingJobId);
     const activeJobMatchesActiveProject = Boolean(
         activeJobProjectId &&
         selectedProject?.projectId === activeJobProjectId &&
@@ -451,6 +469,10 @@ function ProjectsPage() {
     );
 
     useEffect(() => {
+        if (!activeProcessingJobId) {
+            return;
+        }
+
         if (!activeJobProjectId || selectedProject?.projectId === activeJobProjectId) return;
 
         const matchingProject = projectsList.find((project) => project.projectId === activeJobProjectId);
@@ -459,7 +481,7 @@ function ProjectsPage() {
         setSelectedProject(matchingProject);
         setShowReviewScreen(false);
         setComparisonResult(null);
-    }, [activeJobProjectId, projectsList, selectedProject?.projectId]);
+    }, [activeJobProjectId, projectsList, selectedProject?.projectId, activeProcessingJobId]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // MASTER JOB MONITORING: For outlet projects, listen to master's active job
@@ -470,6 +492,8 @@ function ProjectsPage() {
         isMasterJobActive,
         blockingMessage: masterBlockingMessage,
     } = useMasterJobStatus(masterProjectId, activeProject?.projectId || null);
+    const isTrackedJobProcessing = isActiveProcessingJob && jobIsProcessing;
+    const isTrackedJobPending = isActiveProcessingJob && activeJob?.status === 'pending';
 
     // State for extraction review screen
     const [showReviewScreen, setShowReviewScreen] = useState(false);
@@ -609,6 +633,9 @@ function ProjectsPage() {
         if (!activeProcessingJobId) {
             return;
         }
+        if (!isActiveProcessingJob) {
+            return;
+        }
         if (activeJobProjectId && !activeJobMatchesActiveProject) {
             return;
         }
@@ -710,7 +737,7 @@ function ProjectsPage() {
             setComparisonResult(null);
             message.info('Processing was cancelled');
         }
-    }, [activeProcessingJobId, activeJobMatchesActiveProject, activeJobProjectId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
+    }, [activeProcessingJobId, isActiveProcessingJob, activeJobMatchesActiveProject, activeJobProjectId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // EXTRACTION REVIEW SCREEN HANDLERS
@@ -741,13 +768,16 @@ function ProjectsPage() {
 
     const handleReviewDiscard = useCallback(() => {
         console.log('[ExtractionReview] Changes discarded');
+        if (activeProcessingJobId) {
+            markMenuProcessingJobAsDismissed(activeProcessingJobId);
+        }
         setShowReviewScreen(false);
         setComparisonResult(null);
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
         setExtractionStats(null);
         message.info('Changes discarded');
-    }, []);
+    }, [activeProcessingJobId, setActiveProcessingJobId]);
 
     // Success modal handler - navigate to editor
     const handleSuccessModalClose = useCallback(() => {
@@ -2151,7 +2181,7 @@ function ProjectsPage() {
                 <ProjectsDataProvider
                     contextData={{ activeProject, setActiveProject: (data: Project) => mutateProject(data, { revalidate: false }), currentView, setCurrentView, activeBatchImageJob, setActiveBatchImageJob }}>
                     <LoadingMessage
-                        open={Boolean(fileProcessingId) || jobIsProcessing || activeJob?.status === 'pending'}
+                        open={Boolean(fileProcessingId) || isTrackedJobProcessing || isTrackedJobPending}
                         progress={activeProcessingJobId ? jobProgress : undefined}
                         message={activeProcessingJobId ? jobCurrentStep : undefined}
                         onCancel={activeProcessingJobId ? cancelJob : undefined}
@@ -2779,13 +2809,13 @@ function ProjectsPage() {
 
                 {/* Blocking Overlay - hard-blocks UI when job is running */}
                 <ExtractionJobBlockingOverlay
-                    visible={(jobIsProcessing && !showReviewScreen) || isMasterJobActive}
-                    isLocalJob={jobIsProcessing && !isMasterJobActive}
+                    visible={(isTrackedJobProcessing && !showReviewScreen) || isMasterJobActive}
+                    isLocalJob={isTrackedJobProcessing && !isMasterJobActive}
                     progress={jobProgress}
                     currentStep={jobCurrentStep}
                     blockingMessage={masterBlockingMessage}
                     onCancel={cancelJob}
-                    canCancel={jobIsProcessing}
+                    canCancel={isTrackedJobProcessing}
                 />
             </> : <NoSubscriptionView />}
 

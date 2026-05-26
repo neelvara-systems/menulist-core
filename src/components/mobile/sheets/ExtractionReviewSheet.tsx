@@ -13,6 +13,7 @@ import {
     setAllPreviewApprovals,
     setSafePreviewApprovals,
 } from '@lib/extraction/reviewPreview';
+import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
 import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -223,11 +224,28 @@ export default function ExtractionReviewSheet({
 
         setIsDiscarding(true);
         try {
+            markMenuProcessingJobAsDismissed(jobId);
             await discardExtractionChanges(jobId);
             Toast.show({ content: t('changesDiscarded'), duration: 1600 });
             onDiscard();
         } catch (error) {
+            clearMenuProcessingJobDismissal(jobId);
             console.error('[MobileExtractionReview] Failed to discard changes:', error);
+            Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
+        } finally {
+            setIsDiscarding(false);
+        }
+    }, [jobId, onDiscard, t]);
+
+    const handleCloseNoChanges = useCallback(async () => {
+        setIsDiscarding(true);
+        try {
+            markMenuProcessingJobAsDismissed(jobId);
+            await discardExtractionChanges(jobId);
+            onDiscard();
+        } catch (error) {
+            clearMenuProcessingJobDismissal(jobId);
+            console.error('[MobileExtractionReview] Failed to close empty review:', error);
             Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
         } finally {
             setIsDiscarding(false);
@@ -258,7 +276,7 @@ export default function ExtractionReviewSheet({
                     {!hasAnyChanges ? (
                         <Card>
                             <Empty description={t('noChangesDetected')}>
-                                <Button onClick={onDiscard}>{t('close')}</Button>
+                                <Button loading={isDiscarding} onClick={handleCloseNoChanges}>{t('close')}</Button>
                             </Empty>
                         </Card>
                     ) : (

@@ -86,8 +86,14 @@ export interface CoreSearchResult {
     /** Whether the answer came from canonical retrieval (not RAG) */
     canonical: boolean;
 
+    /** Deterministic source used for the final answer */
+    answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty';
+
     /** Canonical answer ID (if canonical hit) */
     canonicalAnswerId?: string;
+
+    /** Owner FAQ/custom Q&A ID (if a published FAQ answered the question) */
+    faqAnswerId?: string;
 
     /** Confidence level (canonical hits only) */
     confidence?: 'high' | 'medium' | 'low' | 'none';
@@ -118,6 +124,7 @@ export interface SearchPerfMetrics {
     imageProcessing?: number;
     cacheLookup?: number;
     canonicalRetrieval?: number;
+    faqRetrieval?: number;
     embeddingGeneration?: number;
     vectorSearch?: number;
     answerGeneration?: number;

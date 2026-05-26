@@ -22,6 +22,7 @@ export const CANONICA_ROUTES = {
     BILLING: `${CANONICA_BASE_PATH}/billing`,
     TRANSACTIONS: `${CANONICA_BASE_PATH}/transactions`,
     SETTINGS: `${CANONICA_BASE_PATH}/settings`,
+    TEAM: `${CANONICA_BASE_PATH}/team`,
 } as const;
 
 export function toCanonicaDashboardRoute(route: string, hostname?: string | null) {

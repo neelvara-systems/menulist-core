@@ -26,7 +26,10 @@ import {
     LuSettings,
     LuShield,
     LuTicket,
+    LuUsers,
 } from 'react-icons/lu';
+import type { CanonicaPermissionKey } from './permissions';
+import { CANONICA_PERMISSION_KEYS } from './permissions';
 import { CANONICA_BASE_PATH, CANONICA_ROUTES } from './routes';
 export { CANONICA_BASE_PATH, CANONICA_ROUTES, normalizeCanonicaRoutePathname, toCanonicaDashboardRoute } from './routes';
 
@@ -59,35 +62,37 @@ export interface CanonicaNavItem {
     group?: string;
     platformOnly?: boolean;
     managementOnly?: boolean;
+    requiredPermission?: CanonicaPermissionKey;
     /** Optional feature flag key — if set, nav item is hidden when flag is OFF */
     featureFlag?: string;
 }
 
 export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
     // Launch Setup
-    { key: 'activation', label: 'Activation', route: CANONICA_ROUTES.ACTIVATION, icon: LuRocket, group: 'launch', managementOnly: true, featureFlag: 'ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER' },
-    { key: 'settings', label: 'Product Details', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, group: 'launch', managementOnly: true },
-    { key: 'kb-generation', label: 'Import Knowledge', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, group: 'launch', managementOnly: true },
-    { key: 'product-surfaces', label: 'Product Surfaces', route: CANONICA_ROUTES.PRODUCT_SURFACES, icon: LuLayers, group: 'launch', managementOnly: true, featureFlag: 'ENABLE_CANONICA_PRODUCT_SURFACES' },
-    { key: 'widget', label: 'Widget Install', route: CANONICA_ROUTES.WIDGET, icon: LuCode, group: 'launch', managementOnly: true },
-    { key: 'billing', label: 'Billing', route: CANONICA_ROUTES.BILLING, icon: LuCreditCard, group: 'launch', managementOnly: true },
+    { key: 'activation', label: 'Activation', route: CANONICA_ROUTES.ACTIVATION, icon: LuRocket, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER' },
+    { key: 'settings', label: 'Product Details', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_WORKSPACE },
+    { key: 'team', label: 'Team Access', route: CANONICA_ROUTES.TEAM, icon: LuUsers, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_TEAM, featureFlag: 'ENABLE_CANONICA_STAFF_ACCESS' },
+    { key: 'kb-generation', label: 'Import Knowledge', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'product-surfaces', label: 'Product Surfaces', route: CANONICA_ROUTES.PRODUCT_SURFACES, icon: LuLayers, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_CANONICA_PRODUCT_SURFACES' },
+    { key: 'widget', label: 'Widget Install', route: CANONICA_ROUTES.WIDGET, icon: LuCode, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_WIDGET },
+    { key: 'billing', label: 'Billing', route: CANONICA_ROUTES.BILLING, icon: LuCreditCard, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_BILLING },
 
     // Support Control
     { key: 'help', label: 'Help Center', route: CANONICA_ROUTES.HELP, icon: LuLayoutDashboard, group: 'support' },
     { key: 'docs', label: 'Documentation', route: CANONICA_ROUTES.DOCS, icon: LuBook, group: 'support' },
     { key: 'release-notes', label: 'Release Notes', route: CANONICA_ROUTES.RELEASE_NOTES, icon: LuReceipt, group: 'support' },
-    { key: 'knowledge-base', label: 'Knowledge Base', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuBook, group: 'support', managementOnly: true },
-    { key: 'faqs', label: 'FAQs', route: CANONICA_ROUTES.FAQS, icon: LuHelpCircle, group: 'support', managementOnly: true, featureFlag: 'ENABLE_CANONICA_FAQ_MANAGEMENT' },
-    { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'support', managementOnly: true },
-    { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'support', managementOnly: true },
-    { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'support', managementOnly: true },
-    { key: 'weekly-digest', label: 'Weekly Digest', route: CANONICA_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, group: 'support', managementOnly: true, featureFlag: 'ENABLE_CANONICA_WEEKLY_DIGEST' },
-    { key: 'transactions', label: 'Transactions', route: CANONICA_ROUTES.TRANSACTIONS, icon: LuReceipt, group: 'support', managementOnly: true },
+    { key: 'knowledge-base', label: 'Knowledge Base', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuBook, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'faqs', label: 'FAQs', route: CANONICA_ROUTES.FAQS, icon: LuHelpCircle, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_CANONICA_FAQ_MANAGEMENT' },
+    { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
+    { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT },
+    { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT },
+    { key: 'weekly-digest', label: 'Weekly Digest', route: CANONICA_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_CANONICA_WEEKLY_DIGEST' },
+    { key: 'transactions', label: 'Transactions', route: CANONICA_ROUTES.TRANSACTIONS, icon: LuReceipt, group: 'support', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_BILLING },
 
     // Knowledge Governance
-    { key: 'dashboard', label: 'Readiness Metrics', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'governance', managementOnly: true },
-    { key: 'governance', label: 'Knowledge Governance', route: CANONICA_ROUTES.GOVERNANCE, icon: LuShield, group: 'governance', managementOnly: true, featureFlag: 'ENABLE_CANONICA_GOVERNANCE_UI' },
-    { key: 'signal-queue', label: 'Signal Queue', route: getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE), icon: LuGitPullRequest, group: 'governance', managementOnly: true, featureFlag: 'ENABLE_CANONICA_SIGNAL_MUTATION' },
+    { key: 'dashboard', label: 'Readiness Metrics', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'governance', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS },
+    { key: 'governance', label: 'Knowledge Governance', route: CANONICA_ROUTES.GOVERNANCE, icon: LuShield, group: 'governance', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_CANONICA_GOVERNANCE_UI' },
+    { key: 'signal-queue', label: 'Signal Queue', route: getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE), icon: LuGitPullRequest, group: 'governance', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_CANONICA_SIGNAL_MUTATION' },
 ];
 
 // Group labels for sidebar section dividers

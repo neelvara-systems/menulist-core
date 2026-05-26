@@ -208,6 +208,7 @@ Firestore rules and indexes:
 - `firestore-canonica.rules` deployed to `canonica-qa`.
 - `firestore-canonica.indexes.json` deployed to `canonica-qa`.
 - Current index file has composite indexes plus TTL field overrides for Canonica integration events, delivery logs, and delivery rate counters.
+- 2026-05-26: Deployed `firestore-canonica.rules` to `canonica-qa` after adding Canonica role permission claims for staff access control. Command: `firebase deploy --only firestore:rules --project canonica-qa --config firebase-canonica.json --non-interactive`.
 
 Storage rules:
 

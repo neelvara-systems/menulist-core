@@ -7,9 +7,10 @@ import { useAppSelector } from '@hook/useAppSelector';
 import StoreSwitcher from '@molecules/StoreSwitcher';
 import NotificationsModal from '@organisms/headerComponent/notificationsModal';
 import { getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState } from '@reduxSlices/clientThemeConfig';
+import DashboardHeaderShell from '@/components/shared/dashboardShell/DashboardHeaderShell';
 import { getFormatedDate, getFormatedTime, getUTCDate } from '@util/dateTime';
 import { objectNullCheck } from '@util/utils';
-import { Avatar, Badge, Button, Divider, Flex, theme } from 'antd';
+import { Avatar, Badge, Button, Divider, Flex } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import Image from 'next/image';
@@ -26,7 +27,6 @@ const BadgeRenderer = ({ dotted, count, overflowCount, children }) => {
 
 const HeaderComponent = () => {
 
-    const { token } = theme.useToken();
     const { data: session } = useSession()
     const [userData, setUserData] = useState<any>(session?.user)
     const showDateInHeader = useAppSelector(getShowDateInHeaderState);
@@ -49,23 +49,15 @@ const HeaderComponent = () => {
     ])
 
     return (
-        <div className={`${styles.headerComponentWrap} ${styles.fixedHeader}`}
-            style={{
-                background: token.colorBgBlur,
-                color: token.colorTextBase,
-                borderBottom: `1px solid ${token.colorBorder}`,
-                backdropFilter: "blur(20px)"
-            }}
-        >
-
-            {!isVerticalSidebar ? <Flex>
+        <DashboardHeaderShell
+            left={!isVerticalSidebar ? <Flex>
                 <div className={styles.logo}>
                     <EcomsIconLogo />
                 </div>
                 <AppBreadcrumb />
             </Flex> : <AppBreadcrumb />}
-
-            <div className={styles.rightActionsWrap}>
+            right={
+                <>
                 <StoreSwitcher />
                 <div className={styles.actionsWrap}>
 
@@ -107,8 +99,9 @@ const HeaderComponent = () => {
                         // <Button type="text" icon={<LuUser />} onClick={() => signIn('google', { callbackUrl: 'http://localhost:3000/websites/dashboard' })} />
                     }
                 </div>
-            </div>
-        </div>
+                </>
+            }
+        />
     )
 }
 

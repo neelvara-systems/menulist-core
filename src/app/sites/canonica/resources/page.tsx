@@ -48,6 +48,7 @@ const RESOURCE_GROUPS = [
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
             ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
+            ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
             ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
             ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the typed SDK helper.'],
@@ -116,10 +117,10 @@ export default function CanonicaResourcesPage() {
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Feature pages</p>
-                                <h2 className="text-2xl font-bold text-white">Evaluate the individual support surfaces.</h2>
+                                <h2 className="text-2xl font-bold text-white">Evaluate the individual product features.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Knowledge Base, FAQ, Changelog, Tickets, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
+                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
                             </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

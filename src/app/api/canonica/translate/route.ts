@@ -17,8 +17,10 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { bumpCanonicaCacheVersionAdmin } from '@lib/canonica/cacheVersionAdmin';
 import { CANONICA_CACHE_SOURCES } from '@lib/canonica/cacheVersionManifest';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
@@ -43,6 +45,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!FEATURE_FLAGS.ENABLE_CANONICA_MULTI_LANGUAGE) {
             return NextResponse.json({ error: 'Multi-language is not enabled.' }, { status: 403 });
         }
+
+        const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
 
         const validation = TranslateRequestSchema.safeParse(await request.json());
         if (!validation.success) {

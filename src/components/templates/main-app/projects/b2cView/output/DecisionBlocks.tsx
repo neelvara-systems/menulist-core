@@ -34,7 +34,7 @@ import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DecisionBlockEntry, PrecomputedDecisionBlocks } from '../../types';
 import { ExtractedDataCategory, ExtractedDataItem } from '../../types/extractedData.types';
 import { MenuSettings } from '../../types/project.types';
@@ -513,6 +513,7 @@ export default function DecisionBlocks({
     const { deviceType } = useDeviceType();
     const isDesktopLayout = deviceType === 'desktop';
     const containerRef = useRef<HTMLDivElement>(null);
+    const [failedFeaturedImageKeys, setFailedFeaturedImageKeys] = useState<Set<string>>(() => new Set());
     const categoryMetaById = useMemo(() => {
         return new Map(categories.map((category) => [
             category.id,
@@ -668,7 +669,16 @@ export default function DecisionBlocks({
         return null;
     }
 
-    const allBlocksHaveFeaturedImages = blocks.every((rec) => Boolean(getPrimaryPublicMenuImage(rec.item)));
+    const featuredBlockEntries = blocks.map((rec) => {
+        const imageUrl = getPrimaryPublicMenuImage(rec.item)?.trim();
+        const imageKey = `${rec.blockType}:${rec.item.id}`;
+        return {
+            rec,
+            imageKey,
+            imageUrl: imageUrl && !failedFeaturedImageKeys.has(imageKey) ? imageUrl : undefined,
+        };
+    });
+    const allBlocksHaveFeaturedImages = featuredBlockEntries.every(({ imageUrl }) => Boolean(imageUrl));
     const canUseFeaturedVisualLayout = allBlocksHaveFeaturedImages
         && (menuLayout === MenuLayout.CARD || menuLayout === MenuLayout.GRID);
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
@@ -759,7 +769,7 @@ export default function DecisionBlocks({
                         flexDirection: undefined,
                         gap: featuredItemGap,
                         gridTemplateColumns: (canUseFeaturedVisualLayout || featuredListMode) && useDesktopFeaturedRow
-                            ? `repeat(${blocks.length}, minmax(0, 1fr))`
+                            ? `repeat(${featuredBlockEntries.length}, minmax(0, 1fr))`
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
@@ -771,14 +781,13 @@ export default function DecisionBlocks({
                                 : '100%',
                     }}
                 >
-                    {blocks.map((rec) => {
+                    {featuredBlockEntries.map(({ rec, imageKey, imageUrl: itemImage }) => {
                         const labels = getBlockLabels(rec.blockType, businessType);
                         // Guard: labels should never be null here since blocks are pre-filtered by enabledBlocks
                         // But we check for type safety
                         if (!labels) return null;
 
                         const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
-                        const itemImage = getPrimaryPublicMenuImage(rec.item);
                         const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
                         const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);
@@ -872,6 +881,14 @@ export default function DecisionBlocks({
                                             fill
                                             className="object-cover"
                                             sizes={`${featuredImageSize}px`}
+                                            onError={() => {
+                                                setFailedFeaturedImageKeys((current) => {
+                                                    if (current.has(imageKey)) return current;
+                                                    const next = new Set(current);
+                                                    next.add(imageKey);
+                                                    return next;
+                                                });
+                                            }}
                                         />
                                     </div>
                                 )}

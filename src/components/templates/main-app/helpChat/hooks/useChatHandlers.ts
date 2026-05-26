@@ -252,6 +252,7 @@ export function useChatHandlers({
                         craftedAnswer: result.craftedAnswer,
                         searchHistoryId: result.id,
                         references: result.references, // Includes similarityScore for quality calculation
+                        answerSource: result.answerSource,
                         relatedContent: result.relatedContent,
                         suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                         // AI Failure Escalation (Item #8) — attach escalation data to message
@@ -367,6 +368,7 @@ export function useChatHandlers({
                 craftedAnswer: result.craftedAnswer,
                 searchHistoryId: result.id,
                 references: result.references, // Includes similarityScore for quality calculation
+                answerSource: result.answerSource,
                 relatedContent: result.relatedContent,
                 suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                 generationMetadata: {

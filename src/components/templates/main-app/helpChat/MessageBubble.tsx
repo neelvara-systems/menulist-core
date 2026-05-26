@@ -5,7 +5,7 @@ import ArticleViewModal from '@organisms/ArticleViewModal';
 import { Button, Card, Flex, Image, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
-import { LuAlertCircle, LuBookOpen, LuHelpCircle, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
+import { LuAlertCircle, LuBookOpen, LuCheckCircle, LuHelpCircle, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
@@ -150,6 +150,27 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                     <Text ellipsis style={{ fontSize: 12, fontWeight: 500, color: token.colorPrimary, minWidth: 0 }}>
                                         Source: {bestReference.title || 'Knowledge Base Article'}
                                     </Text>
+                                </Flex>
+                            )}
+
+                            {!isUser && message.answerSource === 'faq' && (
+                                <Flex
+                                    gap={6}
+                                    align="center"
+                                    style={{
+                                        display: 'inline-flex',
+                                        padding: '5px 9px',
+                                        background: token.colorPrimaryBg,
+                                        color: token.colorPrimary,
+                                        border: `1px solid ${token.colorPrimaryBorder}`,
+                                        borderRadius: 999,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        marginBottom: 12,
+                                    }}
+                                >
+                                    <LuCheckCircle size={13} />
+                                    Owner answer
                                 </Flex>
                             )}
 

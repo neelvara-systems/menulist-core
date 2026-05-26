@@ -52,7 +52,8 @@ interface WidgetMessage {
     content: string;
     canonical?: boolean;
     confidence?: string;
-    references?: { id: string; title: string }[];
+    answerSource?: string;
+    references?: { id: string; title: string; url?: string }[];
     relatedContent?: {
         key?: string;
         label?: string;
@@ -352,6 +353,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 content: data.answer || 'No answer found.',
                 canonical: data.canonical,
                 confidence: data.confidence,
+                answerSource: data.answerSource,
                 references: data.references,
                 suggestedQuestions: normalizeSuggestions([
                     ...(Array.isArray(data.suggestedQuestions) ? data.suggestedQuestions : []),
@@ -534,6 +536,12 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                     Verified answer
                                 </div>
                             )}
+                            {msg.answerSource === 'faq' && !msg.canonical && (
+                                <div style={styles.ownerAnswerBadge}>
+                                    <LuCheckCircle size={12} aria-hidden />
+                                    Owner answer
+                                </div>
+                            )}
 
                             {msg.role === 'assistant' && msg.procedure && (
                                 <div style={styles.procedureContainer}>
@@ -588,10 +596,20 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                             {msg.references && msg.references.length > 0 && (
                                 <div style={styles.refsContainer}>
                                     {msg.references.map((ref, i) => (
-                                        <span key={i} style={styles.refTag}>
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            style={{
+                                                ...styles.refTag,
+                                                ...(ref.url ? styles.refTagButton : {}),
+                                            }}
+                                            onClick={() => ref.url && window.open(ref.url, '_blank', 'noopener,noreferrer')}
+                                            disabled={!ref.url}
+                                            title={ref.title}
+                                        >
                                             <LuBookOpen size={12} aria-hidden />
                                             {ref.title}
-                                        </span>
+                                        </button>
                                     ))}
                                 </div>
                             )}
@@ -792,6 +810,7 @@ const styles: Record<string, CSSProperties> = {
     aiBubble: { maxWidth: '85%', padding: '10px 14px', borderRadius: '16px 16px 16px 4px', background: '#f3f4f6', color: '#1a1a2e' },
     msgText: { margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontSize: 13 },
     canonicalBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
+    ownerAnswerBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#eef2ff', color: '#4338ca', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
     procedureContainer: { marginTop: 10, padding: 10, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
     procedureHeader: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#374151', fontSize: 12, fontWeight: 700 },
     procedureMetaBox: { display: 'flex', gap: 8, padding: 8, borderRadius: 8, background: '#eff6ff', color: '#1d4ed8', marginBottom: 8 },
@@ -806,7 +825,8 @@ const styles: Record<string, CSSProperties> = {
     procedureStepHint: { margin: '3px 0 0 0', color: '#4b5563', fontSize: 11, lineHeight: 1.4, overflowWrap: 'break-word' },
     procedureTroubleshoot: { margin: '3px 0 0 0', color: '#6b7280', fontSize: 11, lineHeight: 1.4, fontStyle: 'italic', overflowWrap: 'break-word' },
     refsContainer: { marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 },
-    refTag: { padding: '3px 8px', borderRadius: 4, background: '#e5e7eb', fontSize: 11, color: '#4b5563', display: 'inline-flex', alignItems: 'center', gap: 4 },
+    refTag: { padding: '3px 8px', borderRadius: 4, border: 0, background: '#e5e7eb', fontSize: 11, color: '#4b5563', display: 'inline-flex', alignItems: 'center', gap: 4 },
+    refTagButton: { cursor: 'pointer', textAlign: 'left' as const },
     relatedContainer: { marginTop: 10, padding: 8, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
     relatedHeader: { marginBottom: 6, color: '#374151', fontSize: 11, fontWeight: 700 },
     relatedList: { display: 'flex', flexDirection: 'column', gap: 5 },

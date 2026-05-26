@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import {
     buildCanonicaActivationSummary,
     getCanonicaActivationSummaryDocId,
@@ -17,7 +19,7 @@ import {
 } from '@lib/canonica/activationSummary';
 import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
 import { getContextContentSummaryDocId } from '@lib/canonica/productSurfaceContent';
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { secureError } from '@lib/security/secureLogger';
 import * as admin from 'firebase-admin';
@@ -94,9 +96,8 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER) {
         return NextResponse.json({ error: 'Activation summary is not enabled.' }, { status: 403 });
     }
-    if (!canUseCanonicaManagement(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const permission = await requireCanonicaPermission(_request, session, CANONICA_PERMISSION_KEYS.VIEW_READINESS);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) {

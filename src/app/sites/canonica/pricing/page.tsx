@@ -24,11 +24,13 @@ function getBasePath(): string {
 const PLAN_BULLETS: Record<string, string[]> = {
     canonica_starter: [
         'One SaaS product workspace',
+        'Team access and role permissions',
         'Widget and help center',
         'Basic canonical coverage tracking',
         'Product surfaces for page-aware support',
     ],
     canonica_growth: [
+        'Expanded team and custom role controls',
         'Signal-to-knowledge queue',
         'Release-aware answer review',
         'Weekly governance digest',
@@ -58,6 +60,7 @@ const SHARED_INCLUDED = [
     'Canonical answers before fallback',
     'Page-aware widget context',
     'Hosted help center',
+    'Owner reset and force sign-out',
     'Product surface mapping',
     'Human-approved governance queue',
 ];

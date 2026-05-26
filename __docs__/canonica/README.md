@@ -31,7 +31,7 @@ Canonica dashboard navigation is structured into three client modes:
 
 | Mode | Purpose | Primary routes |
 | --- | --- | --- |
-| Launch Setup | Activate a new client workspace, import knowledge, map product surfaces, verify widget install, and review generated ontology/canonical answer drafts. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
+| Launch Setup | Activate a new client workspace, manage team access, import knowledge, map product surfaces, verify widget install, and review generated ontology/canonical answer drafts. | `/canonica/activation`, `/canonica/settings`, `/canonica/team`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
 | Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, changelog, tickets, conversations, and widget operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations` |
 | Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/canonica/dashboard`, `/canonica/governance`, `/canonica/governance?tab=signal-queue` |
 
@@ -59,6 +59,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Canonica self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
 | 16  | `developer-install-pack/`                        | Product/Sales/Dev | Typed SDK, quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
+| 17  | `staff-access-control/`                          | Product/Ops/Dev | Canonica team members, workspace roles, permission claims, and rule-level access control |
 
 ---
 
@@ -111,6 +112,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/dashboard` → `src/app/(canonica)/canonica/dashboard/page.tsx`
 - `/canonica/governance` → `src/app/(canonica)/canonica/governance/page.tsx`
 - `/canonica/settings` → `src/app/(canonica)/canonica/settings/page.tsx`
+- `/canonica/team` → `src/app/(canonica)/canonica/team/page.tsx`
 - `/canonica/tickets` → `src/app/(canonica)/canonica/tickets/page.tsx`
 - `/canonica/conversations` → `src/app/(canonica)/canonica/conversations/page.tsx`
 - `/canonica/knowledge-base` → `src/app/(canonica)/canonica/knowledge-base/page.tsx`
@@ -121,7 +123,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/widget` → `src/app/(canonica)/canonica/widget/page.tsx`
 - `/canonica/weekly-digest` → `src/app/(canonica)/canonica/weekly-digest/page.tsx`
 
-The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+The Canonica shell is responsive: desktop uses the shared MenuList dashboard chrome for the header/sidebar and Canonica-owned navigation, while mobile uses a sticky header and drawer navigation with the same safe-area handling. The Canonica header includes direct Help, theme toggle, and profile modal actions, and keeps an optional workspace-switcher slot for the future workspace control. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
 ### MenuList Help Center Boundary
 
@@ -143,7 +145,7 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica` and `__canonica` host rewrites → Canonica marketing site
 - `/sites/canonica/demo` and `__canonica/demo` → static page-aware product demo
 - `/sites/canonica/get-started` → self-service onboarding
-- `/sites/canonica/product`, `/pricing`, `/security`, `/faq`, `/about`, `/contact` → public site pages
+- `/sites/canonica/product`, `/product/team-access`, `/pricing`, `/security`, `/faq`, `/about`, `/contact` → public site pages
 - `/sites/canonica/quickstarts` → framework examples and typed web helper usage
 - `/sites/canonica/roi-calculator` → static repeated-question support planning calculator
 - `/sites/canonica/proof` → example Canonica workloads for buyer evaluation
@@ -298,13 +300,14 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
 | `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
 
-**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-canonica.rules` for the active Canonica Firebase targets (`canonica-qa` locally/in Preview, `canonica` in Production). `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`. The client signs into the Canonica Firebase app with Canonica-scoped `platformRole`, `tenantId`, and `storeId` claims resolved from the default user document's `productAccounts.CN` bridge or from the Canonica `users` document. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
+**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-canonica.rules` for the active Canonica Firebase targets (`canonica-qa` locally/in Preview, `canonica` in Production). `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`. The client signs into the Canonica Firebase app with Canonica-scoped `platformRole`, `tenantId`, `storeId`, and Canonica permission claims resolved from the default user document's `productAccounts.CN` bridge, the Canonica `users` document, and `stores/{sId}.canonicaRoles`. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
 ---
 
 ## Auth & Permission Model
 
 - **Canonica owner-side** (dashboard, widget, KB, tickets, changelog): Requires authenticated NextAuth session plus a Canonica product account (`productAccounts.CN`) or Canonica `users` document. Tenant-isolated (`tId`), store-isolated (`sId`), user-isolated (`uId`) against the Canonica Firebase project in separate mode.
+- **Canonica staff access** (`/canonica/team`): Uses Canonica-only roles in `stores/{sId}.canonicaRoles`. Dashboard navigation, protected Canonica APIs, and `firestore-canonica.rules` enforce role permissions; same-tenant access alone is not enough for managed collections. Staff login follows the MenuList email/password or owner-passcode model with owner reset and force sign-out controls.
 - **MenuList Help Center** (`/help-center`): Remains a MenuList owner support surface. It can use Canonica-backed components where explicitly wired, but it does not make MenuList a Canonica management dashboard.
 - **Platform-admin** (Support Tickets, KB Management, Chat Management): Requires `platformRole` check (PLATFORM or PLATFORM_SUPPORT).
 - **End-user chat**: The AI search modal (`AISearchModal/`) can be used by any authenticated user within their tenant.

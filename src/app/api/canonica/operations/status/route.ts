@@ -3,13 +3,15 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { CANONICA_DB_COLLECTIONS } from '@constant/canonica/database';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import {
     CANONICA_SETTLEMENT_BUFFER_MINUTES,
     getCanonicaSettlementLocalTime,
     normalizeCanonicaBusinessDayEndTime,
     normalizeCanonicaTimeZone,
 } from '@lib/canonica/schedulerSettings';
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError } from '@lib/security/secureLogger';
@@ -85,13 +87,13 @@ const resolveSchedule = (storeData: Record<string, any>, stateData: Record<strin
     };
 };
 
-export const GET = withAuth(async (_request: NextRequest, session) => {
+export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER) {
         return NextResponse.json({ error: 'Canonica operations status is not enabled.' }, { status: 403 });
     }
-    if (!canUseCanonicaManagement(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.VIEW_READINESS);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });

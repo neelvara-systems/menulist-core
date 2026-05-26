@@ -13,7 +13,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: starter surfaces, import pack, page-aware widget with explicit screenshot input, hosted help, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -30,9 +30,10 @@ const FEATURES = [
         id: 'launch-setup',
         badge: 'Launch Setup',
         title: 'Set up support before users start asking',
-        description: 'Create a workspace, add your app details, import starter knowledge, map important pages, and verify the widget before support goes live.',
+        description: 'Create a workspace, add your app details, invite the right team members, import starter knowledge, map important pages, and verify the widget before support goes live.',
         capabilities: [
-            'Product profile, support email, billing model, workspace subscription, and main product pages',
+            'Product profile, support email, billing model, workspace subscription, team access, and main product pages',
+            'Canonica roles for workspace owners, managers, support staff, and custom permission sets',
             'Knowledge import for docs, FAQs, starter answers, and existing files',
             'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
@@ -145,7 +146,7 @@ export default function CanonicaProductPage() {
                                 Each part of Canonica has its own job.
                             </h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Canonica is easier to evaluate when each capability can stand on its own: setup, widget, hosted help with tickets, and answer review.
+                                Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, and answer review.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
@@ -179,11 +180,11 @@ export default function CanonicaProductPage() {
                             <div>
                                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Support features</p>
                                 <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                                    Core support surfaces get their own product pages.
+                                    Core product features get their own pages.
                                 </h2>
                             </div>
                             <p className="text-base leading-relaxed text-[#a0a0c0]">
-                                Each Canonica support surface now explains its outcome, workflow, and how it connects back to approved answers.
+                                Each Canonica feature page explains its outcome, workflow, and how it connects back to controlled support knowledge.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

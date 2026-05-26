@@ -205,6 +205,7 @@ export async function POST(request: NextRequest) {
         const compactReferences = (result.references || []).map((ref: any) => ({
             id: ref.id,
             title: ref.title,
+            url: ref.url,
         }));
 
         const response: Record<string, any> = {
@@ -214,6 +215,7 @@ export async function POST(request: NextRequest) {
             suggestedQuestions: result.suggestedQuestions || [],
             searchHistoryId: result.searchHistoryId,
             imageProcessed: result.imageProcessed,
+            answerSource: result.answerSource || (result.canonical ? 'canonical' : 'rag'),
         };
 
         if (result.relatedContent) {
@@ -253,6 +255,7 @@ export async function POST(request: NextRequest) {
                 clientResponse: {
                     aiProviderOperations: result.aiProviderOperations || [],
                     answerType: result.answerType || null,
+                    answerSource: result.answerSource || null,
                     canonical: Boolean(result.canonical),
                     imageProcessed: Boolean(result.imageProcessed),
                     referencesCount: compactReferences.length,

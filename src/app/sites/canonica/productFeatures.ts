@@ -25,6 +25,91 @@ export type CanonicaProductFeature = {
 
 export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
     {
+        slug: 'team-access',
+        label: 'Team Access',
+        href: '/product/team-access',
+        eyebrow: 'Team Access',
+        title: 'Give the right people the right Canonica access.',
+        description:
+            'Invite workspace members, assign Canonica-specific roles, reset login details, and force sign-out without exposing MenuList permissions or restaurant staff controls.',
+        heroBullets: [
+            'Workspace members and roles',
+            'Email or owner-passcode login',
+            'Owner reset and force sign-out',
+        ],
+        proofTitle: 'Production support needs controlled workspace access.',
+        proofDescription:
+            'Canonica now treats team management as part of the workspace control layer. Owners can add staff, assign role permissions, reset access, and keep support work separated from MenuList.',
+        cards: [
+            {
+                title: 'Invite team members',
+                description:
+                    'Add support leads, managers, or staff to the Canonica workspace without creating a MenuList management account for them.',
+            },
+            {
+                title: 'Assign Canonica roles',
+                description:
+                    'Use Owner, Manager, Support Staff, or custom Canonica roles so billing, team, knowledge, widget, governance, and support controls stay scoped.',
+            },
+            {
+                title: 'Use email or passcode login',
+                description:
+                    'Members can be added with an email setup path or an owner-managed staff ID and temporary passcode, matching the proven MenuList staff model.',
+            },
+            {
+                title: 'Reset access from the workspace',
+                description:
+                    'Owners can create a new temporary passcode, share it once, revoke active sessions, and keep the member record intact.',
+            },
+            {
+                title: 'Force sign-out when needed',
+                description:
+                    'Sensitive access changes can revoke sessions instead of waiting for a member to sign out on their own device.',
+            },
+            {
+                title: 'Keep products separated',
+                description:
+                    'Canonica roles use Canonica permission claims and routes. MenuList owner screens and mobile dashboards remain separate.',
+            },
+        ],
+        workflowTitle: 'From workspace owner to controlled team access.',
+        workflowDescription:
+            'Team Access follows the same owner-managed staff lifecycle that already works in MenuList, adapted to Canonica workspaces and permissions.',
+        workflowSteps: [
+            { title: 'Open Team Access', description: 'The owner uses the Canonica workspace team page, not the MenuList staff screen.' },
+            { title: 'Add member details', description: 'Enter name, optional email, phone metadata, and the starting role.' },
+            { title: 'Share login details', description: 'Email users set their password; passcode users receive a one-time staff ID and temporary passcode.' },
+            { title: 'Adjust permissions', description: 'Change roles or custom permission sets as the workspace team grows.' },
+            { title: 'Reset or sign out', description: 'Create a new temporary passcode or force sign-out when access needs to be refreshed.' },
+        ],
+        connectedTitle: 'Team access protects the support control plane.',
+        connectedDescription:
+            'Roles and reset controls matter because the same workspace contains billing, widget setup, support content, governance review, tickets, and release-aware knowledge.',
+        connectedItems: [
+            { title: 'Launch Setup', description: 'Owners can add the people who will help configure product details, pages, and starter knowledge.' },
+            { title: 'Knowledge Base', description: 'Staff can be limited to support content work without receiving billing or role-management controls.' },
+            { title: 'Widget', description: 'Widget configuration can stay with trusted managers instead of every support user.' },
+            { title: 'Governance', description: 'Answer review and role assignment remain controlled so drafts do not become official without the right access.' },
+        ],
+        faq: [
+            {
+                title: 'Is this the same as MenuList staff management?',
+                description:
+                    'It follows the same login and reset model, but the roles and permissions are Canonica-specific and apply only to the Canonica workspace.',
+            },
+            {
+                title: 'Can owners reset passwords and passcodes?',
+                description:
+                    'Yes. Owners can create a new temporary passcode and revoke active sessions. Email-backed members receive setup email when first created.',
+            },
+            {
+                title: 'Does this expose Canonica inside MenuList mobile screens?',
+                description:
+                    'No. MenuList mobile and dashboard screens remain separate. Canonica has its own responsive dashboard and team page.',
+            },
+        ],
+    },
+    {
         slug: 'knowledge-base',
         label: 'Knowledge Base',
         href: '/product/knowledge-base',

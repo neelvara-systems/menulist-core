@@ -4,6 +4,7 @@ export type StaffLoginDetailsShareInput = {
     countryCode?: string;
     dialCode?: string;
     phoneNumber?: string;
+    productName?: string;
     staffLoginId: string;
     temporaryPasscode: string;
     signInUrl?: string;
@@ -16,11 +17,12 @@ export const getStaffSignInUrl = () => (
 );
 
 export const buildStaffLoginDetailsText = ({
+    productName = 'MenuList',
     signInUrl = getStaffSignInUrl(),
     staffLoginId,
     temporaryPasscode,
 }: StaffLoginDetailsShareInput) => [
-    'MenuList staff login details',
+    `${productName} staff login details`,
     `Staff ID: ${staffLoginId}`,
     `Passcode: ${temporaryPasscode}`,
     `Sign in: ${signInUrl}`,
@@ -46,7 +48,7 @@ export async function shareStaffLoginDetails(details: StaffLoginDetailsShareInpu
     try {
         await (navigator as Navigator & { share: (data: { title?: string; text?: string }) => Promise<void> }).share({
             text: buildStaffLoginDetailsText(details),
-            title: 'MenuList staff login details',
+            title: `${details.productName || 'MenuList'} staff login details`,
         });
         return 'shared';
     } catch (error) {

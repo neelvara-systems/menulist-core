@@ -79,14 +79,15 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 
 1. **Embedding cache** — Repeated queries skip Gemini embedding API call
 2. **Canonical-first retrieval** — Zero LLM cost for canonical hits
-3. **Widget-prefixed cache keys** — `widget:` prefix prevents cache collision with dashboard queries
-4. **Shared pipeline** — Same coreSearch() function, no duplicated logic or reads
-5. **Context-aware entity boosting** — Narrows entity match scope, reduces RAG fallback rate
-6. **No session persistence** — Widget session memory is in-memory only, zero Firestore writes for conversation state
-7. **Inline widget images** — Screenshot questions are validated and passed to the shared search pipeline without temporary Storage writes
-8. **Bounded context payloads** — Widget context is normalized before postMessage/API use, keeping prompt payloads small
-9. **Origin allowlist reuses store document** — No additional read (checked during API key validation which already reads store)
-10. **No temp image storage for widget** — Image queries avoid Firebase Storage writes and cleanup work by passing validated inline payloads into the shared pipeline
+3. **Owner FAQ/custom-answer retrieval** — Published FAQ hits skip embedding/vector/answer generation; the bounded FAQ list is short-cached per tenant/store/source-version
+4. **Widget-prefixed cache keys** — `widget:` prefix prevents cache collision with dashboard queries
+5. **Shared pipeline** — Same coreSearch() function, no duplicated logic or reads
+6. **Context-aware entity boosting** — Narrows entity match scope, reduces RAG fallback rate
+7. **No session persistence** — Widget session memory is in-memory only, zero Firestore writes for conversation state
+8. **Inline widget images** — Screenshot questions are validated and passed to the shared search pipeline without temporary Storage writes
+9. **Bounded context payloads** — Widget context is normalized before postMessage/API use, keeping prompt payloads small
+10. **Origin allowlist reuses store document** — No additional read (checked during API key validation which already reads store)
+11. **No temp image storage for widget** — Image queries avoid Firebase Storage writes and cleanup work by passing validated inline payloads into the shared pipeline
 
 11. **Store-doc widget key lookup** — Widget routes validate active `cn_*` keys with `array-contains` on `canonicaWidgetApi.keyHashes`, falling back to the legacy single `apiKeyHash` field for old workspaces.
 12. **Short positive auth cache** — Widget search and feedback reuse a positive API-key validation result for up to 15 seconds per warm server instance. Revocation can take up to that short TTL to reflect on that instance.

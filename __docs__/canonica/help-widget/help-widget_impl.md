@@ -223,7 +223,7 @@ NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
 
 Zero-dependency React client. Inline styles only.
 
-v1 features: welcome screen, chat bubbles, canonical badge, references, suggested questions, loading dots, error/retry, auto-scroll.
+v1 features: welcome screen, chat bubbles, canonical badge, owner-answer badge, references, suggested questions, loading dots, error/retry, auto-scroll.
 
 v2 additions:
 
@@ -231,6 +231,7 @@ v2 additions:
 - **History controls**: Header shows an icon-only start-new-chat action only when messages exist; host SDK can also call `clearHistory()`.
 - **Feedback UI**: Thumbs up/down on AI answers. Calls `POST /api/widget/feedback`.
 - **Conversation context**: After first Q&A, subsequent questions include history for contextual follow-ups.
+- **Owner FAQ/custom-answer hits**: Widget search uses shared `coreSearch()`, so published owner FAQs can answer matching questions after canonical miss and before AI/RAG fallback.
 - **postMessage listener**: Receives context updates from host page embed script.
 - **Context clearing**: A `canonica-context-update` message with `context: null` clears in-memory product context to prevent stale page/feature boosts after navigation.
 - **Guided workflow rendering**: Displays `procedure.steps`, prerequisites, warnings, expected results, and troubleshooting hints returned by canonical procedure answers.

@@ -228,7 +228,7 @@ export default function CanonicaFaqManagement() {
                 message.warning('FAQ saved, but contextual help refresh failed. Try Refresh after checking product surfaces.');
                 return;
             }
-            message.success(willBePublished ? 'FAQ published' : 'FAQ saved');
+            message.success(willBePublished ? 'Answer published' : 'Answer saved');
         } catch (error) {
             message.error(getCanonicaUiErrorMessage(error, 'Could not save FAQ'));
         } finally {
@@ -271,13 +271,13 @@ export default function CanonicaFaqManagement() {
         <div style={{ padding: isMobile ? '16px 16px calc(16px + env(safe-area-inset-bottom))' : 24 }}>
             <Flex justify="space-between" align={isMobile ? 'flex-start' : 'center'} gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>FAQs</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>FAQs & custom answers</Title>
                     <Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 780 }}>
-                        Publish short answers for repeated customer questions and connect them to articles, product surfaces, and entities.
+                        Publish owner-approved answers for repeated customer questions. Canonica can return these answers before AI fallback when the question matches, with linked articles, product surfaces, and entities attached.
                     </Paragraph>
                 </div>
                 <Space wrap>
-                    <Button icon={<LuPlus />} onClick={handleNew}>New FAQ</Button>
+                    <Button icon={<LuPlus />} onClick={handleNew}>New answer</Button>
                     <Button icon={<LuRefreshCw />} onClick={loadData}>Refresh</Button>
                 </Space>
             </Flex>
@@ -286,8 +286,8 @@ export default function CanonicaFaqManagement() {
                 showIcon
                 type="info"
                 style={{ marginTop: 16, marginBottom: 16 }}
-                message="FAQs are the fast answer layer"
-                description="Use FAQs for short repeated questions. Keep the detailed explanation in the linked article so answers stay easy to review and update."
+                message="Custom answers are the fast owner-answer layer"
+                description="Use this for short repeated questions, billing explanations, setup notes, and support shortcuts. Keep the detailed explanation in the linked article so users can open the source when they need more context."
             />
 
             {loading ? (
@@ -295,7 +295,7 @@ export default function CanonicaFaqManagement() {
             ) : (
                 <Row gutter={[16, 16]}>
                     <Col xs={24} lg={8}>
-                        <Card title="FAQ Directory" extra={<Tag>{faqs.length}</Tag>} styles={{ body: { padding: 0 } }}>
+                        <Card title="Answer directory" extra={<Tag>{faqs.length}</Tag>} styles={{ body: { padding: 0 } }}>
                             {faqs.length === 0 ? (
                                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No FAQs yet" style={{ padding: 24 }} />
                             ) : (
@@ -444,7 +444,7 @@ export default function CanonicaFaqManagement() {
                             <Popconfirm title="Archive this FAQ?" okText="Archive" onConfirm={handleArchive} disabled={!selectedFaq}>
                                 <Button danger disabled={!selectedFaq} icon={<LuArchive />}>Archive</Button>
                             </Popconfirm>
-                            <Button type="primary" loading={saving} icon={<LuSave />} onClick={handleSave}>Save FAQ</Button>
+                            <Button type="primary" loading={saving} icon={<LuSave />} onClick={handleSave}>Save answer</Button>
                         </Flex>
                     </Col>
                 </Row>

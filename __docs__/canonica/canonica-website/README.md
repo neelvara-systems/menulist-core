@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for Canonica product
 > **Status:** ✅ IMPLEMENTED — refreshed for AI-built SaaS founders, self-service Canonica, and agent-readable public discovery
-> **Date:** 2026-05-25
+> **Date:** 2026-05-26
 > **Domain:** canonica.app (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
@@ -30,11 +30,12 @@
 | Route | Page | Purpose |
 |-------|------|---------|
 | `/` | Homepage | AI-built SaaS hero + first-screen page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
-| `/product` | Product | Self-serve product overview with visual workflow proof for setup, in-app widget, hosted help, safe ticket context, approved answers, releases, and support gaps |
-| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, starter knowledge, app pages, widget key, and readiness |
+| `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, safe ticket context, approved answers, releases, and support gaps |
+| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, app pages, widget key, and readiness |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, and approved answers |
 | `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, changelog, ticket fallback, conversations, and weekly support review |
 | `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, and trust metrics |
+| `/product/team-access` | Product Feature | Standalone feature page for workspace members, Canonica roles, owner-passcode sharing, owner reset, force sign-out, and MenuList separation |
 | `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
 | `/product/faq-management` | Product Feature | Standalone feature page for article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
 | `/product/changelog` | Product Feature | Standalone feature page for release notes connected to product surfaces, affected support answers, and drift review |
@@ -57,12 +58,12 @@
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
 | `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
-| `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
-| `/faq` | FAQ | Founder questions about setup, widget context, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
+| `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, Canonica role permissions, owner-approved answers, runtime limits, and responsible disclosure |
+| `/faq` | FAQ | Founder questions about setup, team access, widget context, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + team origin |
 | `/contact` | Contact | Email contacts for questions, setup help, and partnerships |
-| `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace |
-| `/privacy-policy` | Privacy Policy | Public privacy summary for account, workspace, support, and widget data |
+| `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace, first team members, app pages, and widget key |
+| `/privacy-policy` | Privacy Policy | Public privacy summary for account, team access, workspace, support, and widget data |
 | `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
 | `/llms.txt` | Agent Context | Short agent-readable Canonica product, route, and non-goal context |
 | `/llms-full.txt` | Extended Agent Context | Detailed agent-readable product boundaries, public routes, runtime limits, and structured-data guidance |
@@ -81,6 +82,7 @@
 | `src/app/sites/canonica/product/support-control/page.tsx` | Product-area landing page for Support Control |
 | `src/app/sites/canonica/product/knowledge-governance/page.tsx` | Product-area landing page for Knowledge Governance |
 | `src/app/sites/canonica/product/ProductFeatureRoutePage.tsx` | Shared server wrapper for product feature pages |
+| `src/app/sites/canonica/product/team-access/page.tsx` | Product feature page for Team Access |
 | `src/app/sites/canonica/product/knowledge-base/page.tsx` | Product feature page for Knowledge Base |
 | `src/app/sites/canonica/product/faq-management/page.tsx` | Product feature page for FAQ Management |
 | `src/app/sites/canonica/product/changelog/page.tsx` | Product feature page for Changelog |
@@ -224,6 +226,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Added a support knowledge map to the homepage and Product page so buyers can understand docs, releases, tickets, feedback, and page context flowing into Canonica, then out to widget, hosted help, approved answers, and review queues |
 | 2026-05-25 | Added a day-one launch-pack section to homepage and Product so the completed quickstarts, starter surfaces, import starter pack, install verifier, ROI/proof, and security one-pager are visible from the main buyer path without creating another public page |
 | 2026-05-25 | Updated existing widget, install, quickstart, security, FAQ, SEO, updates, metadata, and LLM-context pages so user-initiated screenshot upload/paste is presented accurately without adding a separate screenshot page or claiming automatic screen capture |
+| 2026-05-26 | Added Team Access as a buyer-facing product feature page and updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and MenuList separation |
 | 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs no longer inherit MenuList splash screens or loader identity |
 | 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |
 | 2026-05-23 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, route-registry Website graph references, explicit AI/search crawler robots rules, and `verify:agent-readiness` checks |

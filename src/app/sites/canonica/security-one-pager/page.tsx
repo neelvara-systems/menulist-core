@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Security and Ops One-Pager',
-    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
+    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, team roles, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
     alternates: { canonical: '/security-one-pager' },
 };
 
@@ -28,6 +28,7 @@ const ONE_PAGER = [
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
     ['Runtime rate limits', 'Public widget config, search, feedback, predictive, and API paths are bounded and validated before expensive work.'],
     ['Tenant scope', 'Dashboard and runtime reads resolve Canonica workspace scope server-side; client context is never trusted as tenant identity.'],
+    ['Team access', 'Workspace members use Canonica-specific roles and owner-managed reset controls; MenuList restaurant staff screens remain separate.'],
     ['Incident contact', 'Report security or data-handling concerns without sending secrets or full customer datasets in the first message.'],
 ];
 
@@ -80,7 +81,7 @@ export default function CanonicaSecurityOnePagerPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold text-white">Need the full security detail?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        The full security page covers hosted help, compiled context, scoped workspaces, ticket debugging context, and scheduler boundaries.
+                        The full security page covers hosted help, compiled context, scoped workspaces, role-scoped team access, ticket debugging context, and scheduler boundaries.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
                         <CanonicaLink basePath={basePath} href="/security" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">

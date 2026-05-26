@@ -2,35 +2,34 @@
 
 /**
  * Canonica — Dashboard Sidebar
- * 
- * Clean sidebar for Canonica dashboard using antd Menu component.
- * Separate from MenuList sidebar — different product, different navigation.
- * 
+ *
+ * Product-specific Canonica navigation wired into the shared dashboard sidebar shell.
+ *
  * @see src/constants/canonicaNavigations.ts
  */
 
+import CanonicaLogoMark from '@atoms/canonicaLogoMark';
 import { FEATURE_FLAGS } from '@config/features';
 import {
     CANONICA_GOVERNANCE_TABS,
     CANONICA_ROUTES,
-    CANONICA_NAV_GROUPS,
     CANONICA_SIDEBAR_NAV,
     CanonicaNavItem,
     getCanonicaGovernanceRoute,
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import DashboardSidebarShell, { DashboardSidebarShellItem } from '@/components/shared/dashboardShell/DashboardSidebarShell';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { useAppSelector } from '@hook/useAppSelector';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
-import CanonicaLogoMark from '@atoms/canonicaLogoMark';
-import type { MenuProps } from 'antd';
-import { Layout, Menu, theme, Typography } from 'antd';
+import { useCanonicaAccess } from '@providers/canonicaAccessProvider';
+import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
+import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
-import { LuPalette } from 'react-icons/lu';
-
-const { Sider } = Layout;
-const { Text } = Typography;
+import { LuLifeBuoy, LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
 
 interface CanonicaSidebarProps {
     mobile?: boolean;
@@ -39,69 +38,19 @@ interface CanonicaSidebarProps {
 }
 
 export default function CanonicaSidebar({ mobile = false, onNavigate, onOpenAppSettings }: CanonicaSidebarProps) {
+    const dispatch = useAppDispatch();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
+    const isCollapsed = useAppSelector(getSidebarState);
+    const isDarkMode = useAppSelector(getDarkModeState);
     const session = useClientAuthSession();
-    const canUseManagementSurfaces = canUseCanonicaManagement(session);
+    const { access } = useCanonicaAccess();
+    const canUseManagementSurfaces = access?.canUseManagement ?? canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
 
-    // Filter nav items based on feature flags, then build menu items with group dividers
-    const menuItems: MenuProps['items'] = useMemo(() => {
-        const items: MenuProps['items'] = [];
-        let lastGroup = '';
-
-        const visibleNav = CANONICA_SIDEBAR_NAV.filter((nav: CanonicaNavItem) => {
-            if ((nav.managementOnly || nav.platformOnly) && !canUseManagementSurfaces) return false;
-            if (!nav.featureFlag) return true;
-            return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
-        });
-
-        visibleNav.forEach((nav: CanonicaNavItem) => {
-            // Add group divider if group changed
-            if (nav.group && nav.group !== lastGroup) {
-                if (lastGroup !== '') {
-                    items.push({ type: 'divider' });
-                }
-                items.push({
-                    key: `group-${nav.group}`,
-                    label: CANONICA_NAV_GROUPS[nav.group] || nav.group,
-                    type: 'group',
-                });
-                lastGroup = nav.group;
-            }
-
-            const NavIcon = nav.icon;
-            items.push({
-                key: nav.route,
-                icon: <NavIcon />,
-                label: nav.label,
-                onClick: () => {
-                    router.push(toCanonicaDashboardRoute(nav.route, currentHostname));
-                    onNavigate?.();
-                },
-            });
-        });
-
-        if (mobile && onOpenAppSettings) {
-            items.push({ type: 'divider' });
-            items.push({
-                key: 'app-appearance',
-                icon: <LuPalette />,
-                label: 'App Appearance',
-                onClick: () => {
-                    onOpenAppSettings();
-                    onNavigate?.();
-                },
-            });
-        }
-
-        return items;
-    }, [canUseManagementSurfaces, currentHostname, mobile, onNavigate, onOpenAppSettings, router]);
-
-    // Determine selected key from pathname
     const selectedKey = useMemo(() => {
         if (
             normalizedPathname === CANONICA_ROUTES.GOVERNANCE &&
@@ -110,83 +59,110 @@ export default function CanonicaSidebar({ mobile = false, onNavigate, onOpenAppS
             return getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE);
         }
 
-        // Exact match first
         const exact = CANONICA_SIDEBAR_NAV.find(n => n.route === normalizedPathname);
         if (exact) return exact.route;
-        // Prefix match (for nested pages)
-        const prefix = CANONICA_SIDEBAR_NAV.find(n => normalizedPathname.startsWith(n.route + '/'));
+
+        const prefix = CANONICA_SIDEBAR_NAV.find(n => normalizedPathname.startsWith(`${n.route}/`));
         if (prefix) return prefix.route;
+
         return CANONICA_SIDEBAR_NAV[0]?.route || '';
     }, [normalizedPathname, searchParams]);
 
-    const sidebarContent = (
-        <>
-            <div
-                style={{
-                    padding: '20px 24px 12px',
-                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                    marginBottom: 8,
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <CanonicaLogoMark idPrefix="canonica-sidebar" height={31} />
-                    <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
-                        Canonica
-                    </Text>
-                </div>
-                <br />
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                    Knowledge Control Plane
-                </Text>
-            </div>
+    const visibleNav = useMemo(() => (
+        CANONICA_SIDEBAR_NAV.filter((nav: CanonicaNavItem) => {
+            if ((nav.managementOnly || nav.platformOnly) && !canUseManagementSurfaces) return false;
+            if (nav.requiredPermission && !access?.isPlatformAdmin && access?.permissions?.[nav.requiredPermission] !== true) return false;
+            if (!nav.featureFlag) return true;
+            return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
+        })
+    ), [access?.isPlatformAdmin, access?.permissions, canUseManagementSurfaces]);
 
-            <Menu
-                mode="inline"
-                selectedKeys={[selectedKey]}
-                items={menuItems}
-                style={{
-                    border: 'none',
-                    background: 'transparent',
-                }}
-            />
-        </>
-    );
+    const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
+        visibleNav.map((nav: CanonicaNavItem) => ({
+            key: nav.route,
+            label: nav.label,
+            icon: nav.icon,
+            active: selectedKey === nav.route,
+            onClick: () => {
+                router.push(toCanonicaDashboardRoute(nav.route, currentHostname));
+                onNavigate?.();
+            },
+        }))
+    ), [currentHostname, onNavigate, router, selectedKey, visibleNav]);
 
-    if (mobile) {
-        return (
-            <div
-                style={{
-                    background: token.colorBgContainer,
-                    boxSizing: 'border-box',
-                    height: '100dvh',
-                    minHeight: '100dvh',
-                    overflowY: 'auto',
-                    paddingBottom: 'env(safe-area-inset-bottom)',
-                    paddingTop: 'env(safe-area-inset-top)',
-                    WebkitOverflowScrolling: 'touch',
-                }}
-            >
-                {sidebarContent}
-            </div>
-        );
-    }
+    const openAppAppearance = () => {
+        if (mobile && onOpenAppSettings) {
+            onOpenAppSettings();
+            onNavigate?.();
+            return;
+        }
+
+        dispatch(toggleAppSettingsPanel(true));
+    };
+
+    const actionItems: DashboardSidebarShellItem[] = [
+        {
+            key: 'app-appearance',
+            label: 'App Appearance',
+            icon: LuSettings2,
+            onClick: openAppAppearance,
+        },
+        {
+            key: 'dark-mode',
+            label: 'Dark Mode',
+            icon: isDarkMode ? <LuSun /> : <LuMoon />,
+            iconActive: isDarkMode,
+            onClick: () => dispatch(toggleDarkMode(!isDarkMode)),
+        },
+        {
+            key: 'help',
+            label: 'Help',
+            icon: LuLifeBuoy,
+            active: selectedKey === CANONICA_ROUTES.HELP,
+            onClick: () => {
+                router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
+                onNavigate?.();
+            },
+        },
+    ];
+
+    const markStyle = { height: 28, width: 46 };
 
     return (
-        <Sider
-            width={240}
-            style={{
-                background: token.colorBgContainer,
-                borderRight: `1px solid ${token.colorBorderSecondary}`,
-                height: '100dvh',
-                position: 'fixed',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                overflow: 'auto',
-                zIndex: 100,
-            }}
-        >
-            {sidebarContent}
-        </Sider>
+        <DashboardSidebarShell
+            actionItems={actionItems}
+            ariaLabel="Canonica navigation"
+            isCollapsed={isCollapsed}
+            logoCollapsed={(
+                <CanonicaLogoMark
+                    height={28}
+                    idPrefix="canonica-sidebar-collapsed"
+                    style={markStyle}
+                    width={46}
+                />
+            )}
+            logoExpanded={(
+                <span style={{ alignItems: 'center', display: 'flex', gap: 10, minWidth: 0 }}>
+                    <CanonicaLogoMark
+                        height={28}
+                        idPrefix="canonica-sidebar-expanded"
+                        style={markStyle}
+                        width={46}
+                    />
+                    <span
+                        style={{
+                            color: token.colorText,
+                            fontSize: 18,
+                            fontWeight: 700,
+                            lineHeight: 1,
+                        }}
+                    >
+                        Canonica
+                    </span>
+                </span>
+            )}
+            mobile={mobile}
+            navItems={navItems}
+        />
     );
 }

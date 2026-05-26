@@ -1978,6 +1978,19 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER: true,
 
     /**
+     * Canonica Staff Access Control
+     *
+     * true: Canonica owners can manage workspace members, roles, and
+     *       Canonica-specific permissions from /canonica/team.
+     * false: Team Access route/nav and staff APIs return unavailable.
+     *
+     * Uses Canonica Firestore workspace/user documents plus the existing
+     * productAccounts.CN login bridge. It does not reuse MenuList owner
+     * dashboard staff screens or MenuList store permission fields.
+     */
+    ENABLE_CANONICA_STAFF_ACCESS: true,
+
+    /**
      * Canonica Weekly Digest Surface
      *
      * true: Canonica clients can review a weekly readiness/action digest built

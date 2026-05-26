@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
  * platform summary document and must stay server-written.
  */
 
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -50,6 +52,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         && (scope.tenantId !== parsed.data.tId || scope.storeId !== parsed.data.sId)
     ) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (!scope.isPlatform) {
+        const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+        if (permission.response) return permission.response;
     }
 
     const rateLimit = await checkRateLimit({

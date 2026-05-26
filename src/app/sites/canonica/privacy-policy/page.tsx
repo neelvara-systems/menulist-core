@@ -6,7 +6,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy',
-    description: 'How Canonica handles product support knowledge, account information, widget data, hosted help domains, and ticket context.',
+    description: 'How Canonica handles account and team information, product support knowledge, widget data, hosted help domains, and ticket context.',
     alternates: { canonical: '/privacy-policy' },
 };
 
@@ -22,7 +22,7 @@ const SECTIONS = [
     {
         title: 'Information Canonica Handles',
         body: [
-            'Canonica handles account details, workspace details, product support content, knowledge-base imports, FAQs, changelog entries, tickets, widget configuration, hosted-help domain settings, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
+            'Canonica handles account details, team member details, workspace details, product support content, knowledge-base imports, FAQs, changelog entries, tickets, widget configuration, hosted-help domain settings, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
             'Knowledge-base source files can include documents, screenshots, images, URLs, and starter answers. Images and files may contain hidden metadata, so customers should avoid importing unnecessary personal data.',
             'Page context should describe the product surface, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
         ],
@@ -44,7 +44,7 @@ const SECTIONS = [
     {
         title: 'Customer Controls',
         body: [
-            'Workspace owners can manage widget settings, allowed origins, blocked routes, product details, support content, tickets, changelogs, and approved answers from the Canonica dashboard.',
+            'Workspace owners can manage team access, widget settings, allowed origins, blocked routes, product details, support content, tickets, changelogs, and approved answers from the Canonica dashboard.',
             'Customers are responsible for choosing what content they import and what page context their product sends to Canonica.',
         ],
     },

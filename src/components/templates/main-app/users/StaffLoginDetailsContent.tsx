@@ -11,13 +11,14 @@ type StaffLoginDetailsContentProps = {
     countryCode?: string;
     dialCode?: string;
     phoneNumber?: string;
+    productName?: string;
     staffLoginId: string;
     temporaryPasscode: string;
 };
 
-export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode }: StaffLoginDetailsContentProps) {
+export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode }: StaffLoginDetailsContentProps) {
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
-    const details = { countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode };
+    const details = { countryCode, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
 
     useEffect(() => {

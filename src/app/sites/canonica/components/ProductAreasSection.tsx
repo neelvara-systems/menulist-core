@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
 
 const AREA_PROOF: Record<string, string> = {
-    'Set up support': 'Workspace, product profile, starter knowledge, key app pages, widget key, and activation readiness.',
+    'Set up support': 'Workspace, team access, product profile, starter knowledge, key app pages, widget key, and activation readiness.',
     'In-app help widget': 'Safe page context, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
     'Help center + tickets': 'Docs, FAQ, changelog, ticket fallback, conversations, and weekly review output from one support layer.',
     'Review approved answers': 'Product structure, approved answers, stale-answer review, repeated questions, coverage, and readiness metrics.',
@@ -58,9 +58,9 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                     <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-400">
-                                Support surfaces
-                            </p>
-                            <h3 className="text-2xl font-bold text-white">Feature pages for the daily support layer.</h3>
+                            Product features
+                        </p>
+                            <h3 className="text-2xl font-bold text-white">Feature pages for setup and support operations.</h3>
                         </div>
                         <CanonicaLink
                             basePath={basePath}

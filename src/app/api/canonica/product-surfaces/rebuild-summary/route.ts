@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/canonica/productSurfaceContentServer';
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,9 +20,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Canonica product surfaces are not enabled.' }, { status: 404 });
     }
 
-    if (!canUseCanonicaManagement(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
+    if (permission.response) return permission.response;
 
     const scope = resolveCanonicaSessionScope(session);
     const tenantId = Number(scope?.tenantId);

@@ -11,6 +11,33 @@
 
 import { enforceContrast } from '@lib/colorEnforcement';
 
+export function normalizeHexColor(color?: string): string | null {
+    if (typeof color !== 'string') {
+        return null;
+    }
+
+    const trimmed = color.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const value = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+    const lower = value.toLowerCase();
+
+    if (!/^#[0-9a-f]{3}$/.test(lower) && !/^#[0-9a-f]{6}$/.test(lower)) {
+        return null;
+    }
+
+    if (lower.length === 4) {
+        const r = lower[1];
+        const g = lower[2];
+        const b = lower[3];
+        return `#${r}${r}${g}${g}${b}${b}`;
+    }
+
+    return lower;
+}
+
 // ============================================
 // MENU PAGE STYLES
 // ============================================
@@ -524,38 +551,45 @@ export const DEFAULTS = {
  */
 export function getMoodWithBrandColor(mood: MenuMood, brandAccentColor?: string): MenuMoodConfig {
     const moodConfig = MENU_MOODS[mood];
+    const sanitizedBrandAccentColor = normalizeHexColor(brandAccentColor);
 
-    if (!brandAccentColor) {
+    if (!sanitizedBrandAccentColor) {
         return moodConfig;
     }
 
     // Constitutional enforcement - auto-correct colors that fail contrast
     const safeAccent = enforceContrast(
-        brandAccentColor,
+        sanitizedBrandAccentColor,
         moodConfig.background,
         moodConfig.accentColor // Fallback to mood's original accent
     );
 
+    const normalizedSafeAccent = normalizeHexColor(safeAccent) || moodConfig.accentColor;
+
     const safePriceColor = enforceContrast(
-        brandAccentColor,
+        sanitizedBrandAccentColor,
         moodConfig.background,
         moodConfig.priceColor // Fallback to mood's original price color
     );
 
+    const normalizedSafePriceColor = normalizeHexColor(safePriceColor) || moodConfig.priceColor;
+
     // Create a new config with the ENFORCED brand colors
     return {
         ...moodConfig,
-        accentColor: safeAccent,
-        priceColor: safePriceColor,
+        accentColor: normalizedSafeAccent,
+        priceColor: normalizedSafePriceColor,
         categoryStyle: {
             ...moodConfig.categoryStyle,
-            borderColor: `${safeAccent}20`, // 20% opacity
-            dividerColor: `${safeAccent}30`, // 30% opacity
+            borderColor: `${normalizedSafeAccent}20`, // 20% opacity
+            dividerColor: `${normalizedSafeAccent}30`, // 30% opacity
         },
         itemStyle: {
             ...moodConfig.itemStyle,
-            borderColor: `${safeAccent}15`, // 15% opacity
-            priceBadgeColor: moodConfig.itemStyle.priceStyle === 'badge' ? `${safeAccent}15` : undefined,
+            borderColor: `${normalizedSafeAccent}15`, // 15% opacity
+            priceBadgeColor: moodConfig.itemStyle.priceStyle === 'badge'
+                ? `${normalizedSafeAccent}15`
+                : undefined,
         },
     };
 }

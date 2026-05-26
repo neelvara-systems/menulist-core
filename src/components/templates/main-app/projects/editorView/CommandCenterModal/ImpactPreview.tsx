@@ -146,6 +146,9 @@ export default function ImpactPreview({
                             {repairSummary.projectContentIssueCount > 0 ? (
                                 <Tag color="processing">{repairSummary.projectContentIssueCount} project details</Tag>
                             ) : null}
+                            {repairSummary.categoryIconsToRepair > 0 ? (
+                                <Tag color="processing">{repairSummary.categoryIconsToRepair} category icons</Tag>
+                            ) : null}
                         </Flex>
                     ) : (
                         <Text type="secondary" style={{ fontSize: 12 }}>No action needed.</Text>

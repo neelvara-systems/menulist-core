@@ -36,7 +36,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 3. **Support Knowledge Map** — Docs, FAQs, changelogs, setup notes, tickets, feedback, and safe page context flow through a logo-only Canonica center with dotted paths, smooth ripple rings, homepage-style pulse strokes, and border-only output highlights, then out to widget, hosted help, approved answers, and review queues
 4. **Closed Loop Visual** — Animated loop diagram for user question → approved answer check → fallback only when needed → repeated miss → owner-reviewed fix → future approved answer
 5. **Product Scene** — Screenshot-led responsive Canonica workflow view showing setup, app pages, widget support, and answer review without exposing private workspace data
-6. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage
+6. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage. Set Up Support includes workspace team access now that Canonica roles and owner reset are implemented.
 7. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small SaaS teams while rejecting helpdesk replacement and auto-publish expectations
 8. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers
 9. **Day-One Launch Pack** — Buyer-facing pack for framework quickstarts, typed browser helper, starter surface templates, import starter pack, install verifier, ROI calculator, proof pack, and security one-pager. This section links to existing pages instead of creating another route.
@@ -56,6 +56,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 **Sections:**
 - Hero with AI-built SaaS support-layer promise
 - Product area cards that route to landing-style subpages for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers
+- Team access should be presented as production readiness inside setup, security, pricing, and a dedicated feature page because it affects workspace trust and buyer evaluation.
 - Day-One Launch Pack section that packages quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
 - Product scene reused from the homepage so buyers see the owner workflow before the architecture deep dive
 - Canonica Engine section:
@@ -80,6 +81,7 @@ Product-area subpages:
 Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, large browser-style product canvas, bento benefit grid, animated workflow sequence, and CTA. These pages stay static and may only claim implemented Canonica behavior.
 
 Product-feature subpages:
+- `/product/team-access`
 - `/product/knowledge-base`
 - `/product/faq-management`
 - `/product/changelog`
@@ -87,7 +89,7 @@ Product-feature subpages:
 - `/product/workflow-notifications`
 - `/product/proactive-help`
 
-Feature pages must use buyer-facing wording and avoid overclaiming. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured page-aware prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior.
+Feature pages must use buyer-facing wording and avoid overclaiming. Team Access can claim Canonica workspace members, Canonica role permissions, email or owner-passcode login, owner reset, and force sign-out, while making clear that MenuList mobile/dashboard staff screens remain separate. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured page-aware prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior.
 
 ### 3. Use Cases (`/use-cases`)
 **Goal:** Help small SaaS operators recognize when Canonica is useful.
@@ -361,9 +363,10 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | Canonica — Support for AI-Built SaaS Apps | Canonica helps AI-built SaaS apps launch support without chaos: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable fixes for missed questions. |
-| `/product` | Product \| Canonica | Canonica is the support layer for AI-built SaaS apps: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable support gaps. |
-| `/product/launch-setup` | Set Up Support \| Canonica | Create a Canonica workspace, add product details, import starter knowledge, map app pages, and verify the widget before launch. |
+| `/` | Canonica — Support for AI-Built SaaS Apps | Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, approved answers, and reviewable fixes for missed questions. |
+| `/product` | Product \| Canonica | Canonica is the support layer for AI-built SaaS apps: team access, page-aware widget, hosted help, approved answers, and reviewable support gaps. |
+| `/product/launch-setup` | Set Up Support \| Canonica | Create a Canonica workspace, add team access, import starter knowledge, map app pages, and verify the widget before launch. |
+| `/product/team-access` | Team Access \| Canonica | Manage Canonica workspace members, roles, custom permissions, owner reset, and force sign-out without exposing MenuList staff controls. |
 | `/product/page-aware-widget` | In-App Help Widget \| Canonica | Install Canonica as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, and approved answers before fallback. |
 | `/product/support-control` | Help Center and Tickets \| Canonica | Operate Canonica hosted help, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support layer. |
 | `/product/knowledge-governance` | Review Approved Answers \| Canonica | Review approved answers, stale support, repeated-question signals, coverage KPI, and trust/readiness metrics. |
@@ -380,14 +383,15 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 | `/demo` | Demo \| Canonica | Try a static page-aware support demo with approved answers, fallback, and support gap states. |
 | `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, safe page context, and explicit screenshot attachments. |
 | `/pricing` | Pricing \| Canonica | Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for AI-built SaaS teams. |
-| `/resources` | Resources \| Canonica | Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, screenshot boundaries, pricing, safety, and setup. |
-| `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, widget management, and knowledge governance. |
-| `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, screenshot boundaries, ticket debugging context, hosted help domains, and customer workspaces. |
-| `/faq` | FAQ \| Canonica | Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling. |
+| `/resources` | Resources \| Canonica | Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, team access, install, screenshot boundaries, pricing, safety, and setup. |
+| `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, team access, widget management, and knowledge governance. |
+| `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, screenshot boundaries, ticket debugging context, role-scoped team access, hosted help domains, and customer workspaces. |
+| `/security-one-pager` | Security and Ops One-Pager \| Canonica | Shareable Canonica security and operations summary for allowed origins, blocked routes, safe context, team roles, manual screenshots, hashed keys, owner approval, and rate limits. |
+| `/faq` | FAQ \| Canonica | Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling. |
 | `/about` | About \| Canonica | Canonica helps AI-built SaaS teams keep support answers correct as products change. |
 | `/contact` | Contact \| Canonica | Contact Canonica for setup help, partnership questions, or to check if Canonica fits your AI-built SaaS app. |
-| `/get-started` | Get Started \| Canonica | Create your Canonica workspace and launch page-aware support for your AI-built SaaS app. |
-| `/privacy-policy` | Privacy Policy \| Canonica | How Canonica handles product support knowledge, account information, and widget data. |
+| `/get-started` | Get Started \| Canonica | Create your Canonica workspace, add your app, invite the first team members, pick pages where users get stuck, and get a widget key for page-aware support. |
+| `/privacy-policy` | Privacy Policy \| Canonica | How Canonica handles product support knowledge, account information, team access data, and widget data. |
 | `/terms-of-service` | Terms of Service \| Canonica | Terms for using Canonica website, dashboard, widget, and support knowledge features. |
 
 OpenGraph and Twitter cards configured in layout.tsx with `public/canonica-og-image.png`.
@@ -442,3 +446,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-24 | 1.2.12 | Converted reusable workflow sequence diagrams into the same input column, logo center, and output column layout used by Canonica source-map diagrams |
 | 2026-05-25 | 1.2.15 | Added the day-one launch pack to homepage and Product so quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff are visible in the main buyer path without adding another public route |
 | 2026-05-25 | 1.2.16 | Updated existing widget/install/security/FAQ/SEO pages to present user-initiated screenshot attachments as part of the page-aware widget while explicitly rejecting automatic screenshot capture or DOM scraping |
+| 2026-05-26 | 1.2.17 | Added Team Access to the public website story with a dedicated `/product/team-access` page and updates to setup, security, pricing, resources, FAQ, privacy, metadata, and LLM context |

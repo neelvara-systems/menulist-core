@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { normalizeHostedHelpDomain } from '@constant/canonica/hostedHelp';
 import { ALL_PRODUCT_DOMAINS } from '@constant/productDomains';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import {
     buildHostedHelpRegistryDoc,
     type CanonicaHostedHelpRegistryStatus,
@@ -153,6 +155,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Hosted Help Center is not enabled.' }, { status: 403 });
     }
 
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_WIDGET);
+    if (permission.response) return permission.response;
+
     const scope = resolveSessionScope(session);
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
@@ -201,6 +206,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_HOSTED_HELP_CENTER) {
         return NextResponse.json({ error: 'Hosted Help Center is not enabled.' }, { status: 403 });
     }
+
+    const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_WIDGET);
+    if (permission.response) return permission.response;
 
     const scope = resolveSessionScope(session);
     if (!scope) {

@@ -6,6 +6,61 @@
 
 ---
 
+## May 26, 2026 — Canonica FAQ Custom Answers
+
+### Changed
+
+- **Owner FAQs now act as custom answers in search** — Published active FAQs can answer matching end-user questions after canonical-answer retrieval misses and before embedding/RAG fallback.
+- **FAQ/custom answers keep source links** — Owners can continue linking answers to articles, product surfaces, entities, and tags; matched FAQ answers return the linked article as a helpful reference when available.
+- **Widget and Help Center responses show answer source** — FAQ/custom-answer hits are marked as owner answers while canonical answers remain the highest-priority verified path.
+- **FAQ management wording is clearer** — `/canonica/faqs` now presents the screen as FAQs and custom answers, not only a static FAQ page.
+
+### Cost
+
+- **Lower AI/provider cost for repeated owner-authored questions** — FAQ/custom-answer hits skip embedding generation, vector search, and answer generation. Cold FAQ retrieval reads a bounded published FAQ list and caches it per tenant/store/source-version for 60 seconds; linked article references add one article read only when a matched FAQ has a linked article.
+
+## May 26, 2026 — Menu Repair Category Icons
+
+### Changed
+
+- **Repair Menu now fills missing category icons** — Mobile Menu tab repair and desktop Menu Command Center repair add suggested icons for active categories that have no saved icon. Existing owner-selected icons and emojis stay unchanged.
+- **Repair summaries include category icons** — The repair preview, confirmation, and completion summary now count category icons alongside missing descriptions, language text, and project details.
+
+### Cost
+
+- **No extra Firebase read path** — Category icon repair uses menu data already loaded in the Menu tab or Command Center. It is saved with the existing project update when the owner applies Repair Menu.
+
+---
+
+## May 26, 2026 — Canonica Staff Roles and Permissions
+
+### Added
+
+- **Canonica now has workspace team access** — `/canonica/team` lets workspace owners add members, assign roles, reset login details, deactivate/remove members, and manage custom roles.
+- **Canonica staff login follows the MenuList staff model** — Team members can use email/password setup or owner-managed staff ID/passcode, with phone metadata, shared one-time passcode sharing, password/passcode reset, and owner force sign-out.
+- **Canonica public website now exposes Team Access** — Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context now include Canonica roles, owner reset, force sign-out, and MenuList separation.
+- **Canonica roles are product-specific** — Owner, Manager, and Support Staff roles use Canonica permission keys instead of MenuList restaurant staff permissions.
+- **Canonica route and API access is permission-aware** — Dashboard navigation, route guards, and protected Canonica APIs now check the active Canonica role before exposing workspace, knowledge, widget, support, integrations, billing, and rebuild controls.
+- **Canonica Firestore rules now enforce permission claims** — Direct Canonica client reads/writes require Canonica permission claims; same-tenant membership alone is no longer enough for managed collections.
+
+### Cost
+
+- **Team Access adds bounded reads and writes** — Opening Team Access reads the active store roles plus tenant users. Staff and role mutations write the Canonica user/store role docs and the default auth `productAccounts.CN` bridge. Reset and sign-out operations also call Firebase Auth token revocation. No scheduled functions were added.
+
+## May 26, 2026 — Shared Dashboard Shell for Canonica
+
+### Changed
+
+- **Canonica now uses the shared dashboard header and sidebar chrome** — The Canonica dashboard keeps its own routes, access guards, logo, and product actions while sharing the same desktop shell structure as the MenuList owner app.
+- **Canonica desktop navigation now supports the same sidebar collapse behavior** — The shared sidebar width, hover expansion, active state, and App Appearance/Dark Mode action treatment are consistent across MenuList and Canonica.
+- **Canonica header now carries direct Help, theme, and profile actions** — Help opens the Canonica Help route, the theme button toggles light/dark mode, and the avatar opens the same profile modal pattern used by MenuList.
+- **Canonica header has a workspace-switcher slot ready for future workspaces** — No workspace UI is shown until the real workspace model is wired, but the header can accept that control without another shell refactor.
+- **Canonica mobile navigation keeps safe-area drawer handling** — Mobile continues to use Canonica route guards and drawer navigation while inheriting the shared sidebar rendering.
+
+### Cost
+
+- **No Firebase cost change** — This is a UI shell refactor only. It adds no reads, writes, listeners, functions, rules, indexes, or scheduled work.
+
 ## May 25, 2026 — MenuList Canonica Widget Client Embed
 
 ### Changed

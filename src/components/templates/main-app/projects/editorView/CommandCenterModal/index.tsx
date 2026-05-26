@@ -17,6 +17,7 @@ import { updateProjectMetadata } from '@database/projects';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { applyMissingCategoryIconsToProject, countMissingCategoryIcons } from '@lib/menu/categoryIconRepair';
 import { removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Splitter, Typography, message as antdMessage, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -237,12 +238,15 @@ export default function CommandCenterModal({
 
     const repairSummary = useMemo<RepairMenuSummary>(() => {
         const languageIssueCount = languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0);
+        const categoryIconsToRepair = countMissingCategoryIcons(internalProject);
         const fixableNowCount = languageIssueCount
             + descriptionStats.itemsWithoutDescriptions
-            + projectPublicContentGaps.length;
+            + projectPublicContentGaps.length
+            + categoryIconsToRepair;
         const manualReviewCount = manualReviewSummary.missingImages + manualReviewSummary.missingPrices;
 
         return {
+            categoryIconsToRepair,
             descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
             fixableNowCount,
             languageIssueCount,
@@ -255,6 +259,7 @@ export default function CommandCenterModal({
         };
     }, [
         descriptionStats.itemsWithoutDescriptions,
+        internalProject,
         languagesNeedingRepair,
         manualReviewSummary.missingImages,
         manualReviewSummary.missingPrices,
@@ -333,6 +338,14 @@ export default function CommandCenterModal({
             let updated = removeObjRef(internalProject);
             const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
             const sourceLanguageCode = getProjectDefaultLanguage(updated);
+            let repairedCategoryIconCount = 0;
+
+            if (repairSummary.categoryIconsToRepair > 0) {
+                setRepairStep('Adding category icons');
+                const categoryIconRepair = applyMissingCategoryIconsToProject(updated, businessType || storeDetails?.businessType);
+                updated = categoryIconRepair.project;
+                repairedCategoryIconCount = categoryIconRepair.updatedCount;
+            }
 
             for (const issue of languagesNeedingRepair) {
                 setRepairStep(`Repairing ${issue.code.toUpperCase()} text`);
@@ -400,6 +413,9 @@ export default function CommandCenterModal({
                 repairSummary.projectContentIssueCount > 0
                     ? `${repairSummary.projectContentIssueCount} project detail${repairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
                     : null,
+                repairedCategoryIconCount > 0
+                    ? `${repairedCategoryIconCount} category icon${repairedCategoryIconCount !== 1 ? 's' : ''}`
+                    : null,
                 repairSummary.missingPrices > 0
                     ? `${repairSummary.missingPrices} prices need review`
                     : null,
@@ -434,6 +450,7 @@ export default function CommandCenterModal({
         projectPublicContentLanguagesNeedingRepair,
         repairSummary.descriptionsToGenerate,
         repairSummary.fixableNowCount,
+        repairSummary.categoryIconsToRepair,
         repairSummary.languageIssueCount,
         repairSummary.missingPrices,
         repairSummary.projectContentIssueCount,
@@ -619,10 +636,24 @@ export default function CommandCenterModal({
                                 disabled={!canApply}
                                 loading={activeAction === 'repairMenu' && isRepairing}
                                 onClick={() => {
+                                    const repairConfirmParts = [
+                                        repairSummary.languagesToRepair > 0
+                                            ? `rebuild ${repairSummary.languagesToRepair} language area${repairSummary.languagesToRepair !== 1 ? 's' : ''}`
+                                            : null,
+                                        repairSummary.descriptionsToGenerate > 0
+                                            ? `add ${repairSummary.descriptionsToGenerate} missing description${repairSummary.descriptionsToGenerate !== 1 ? 's' : ''}`
+                                            : null,
+                                        repairSummary.projectContentIssueCount > 0
+                                            ? `fill ${repairSummary.projectContentIssueCount} project detail translation${repairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
+                                            : null,
+                                        repairSummary.categoryIconsToRepair > 0
+                                            ? `add ${repairSummary.categoryIconsToRepair} category icon${repairSummary.categoryIconsToRepair !== 1 ? 's' : ''}`
+                                            : null,
+                                    ].filter(Boolean);
                                     Modal.confirm({
                                         title: activeAction === 'repairMenu' ? 'Repair menu?' : 'Apply changes?',
                                         content: activeAction === 'repairMenu'
-                                            ? `This will rebuild ${repairSummary.languagesToRepair} language areas, add ${repairSummary.descriptionsToGenerate} missing descriptions, and fill ${repairSummary.projectContentIssueCount} project detail translations. Prices and photos will stay unchanged.`
+                                            ? `This will ${repairConfirmParts.join(', ')}. Prices and photos will stay unchanged.`
                                             : activeAction === 'textCase'
                                                 ? `Apply text case cleanup to ${textCasePreview?.totalFields || 0} text values?`
                                                 : activeAction === 'pricing'

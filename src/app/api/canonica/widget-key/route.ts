@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_PERMISSION_KEYS } from '@constant/canonica/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { requireCanonicaPermission } from '@lib/canonica/accessControl';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import {
     CANONICA_WIDGET_KEY_LIMIT,
@@ -76,6 +78,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
             return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
         }
+        const permission = await requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_WIDGET);
+        if (permission.response) return permission.response;
 
         const scope = resolveCanonicaSessionScope(session);
         if (!scope) {
