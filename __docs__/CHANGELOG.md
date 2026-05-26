@@ -6,6 +6,31 @@
 
 ---
 
+## May 26, 2026 — Canonica Support Board
+
+### Added
+
+- **Canonica now has a private Support Board** — `/canonica/support-board` gives owners, managers, and support staff a board for missed questions, unresolved tickets, support signals, answer follow-up, and internal notes.
+- **Support Board is connected to the support loop** — Owners can create manual support cards, sync recent unresolved tickets, sync actionable support signals, and create a governed answer proposal when a card has a related entity.
+- **Support work remains governed** — Board actions do not publish answers. Answer proposals still move through Knowledge Governance before becoming canonical support truth.
+- **Support Board docs now track the roadmap** — `__docs__/canonica/support-board/` records the delivered MVP, Firebase cost model, and future plan for weekly review, release impact, saved replies, surface health, reminders, integrations, and customer timelines.
+
+### Cost
+
+- **Support Board adds bounded Firestore usage** — Board load reads up to 120 private board cards. Ticket and signal sync are explicit actions that read up to 50 source docs and create up to 20 cards. Notes are embedded and capped at 25 per card to avoid subcollection listeners.
+
+## May 26, 2026 — Canonica Website Theme Contract
+
+### Changed
+
+- **Canonica public website now has a named theme contract** — `Dark Control Plane` centralizes the deep navy background, Indigo 500 primary, surface/border tokens, text colors, and success/warning/danger colors.
+- **Canonica PWA colors now match the public site** — The manifest background and browser theme color use the same deep navy as the website instead of older off-palette navy values.
+- **Inline website color usage is narrower** — The Canonica 404 page and get-started form now read primary, text, success, and danger colors from the shared website theme tokens.
+
+### Cost
+
+- **No Firebase cost change** — This is static website theme and metadata work only. It adds no Firestore reads, writes, listeners, Cloud Functions, or scheduled work.
+
 ## May 26, 2026 — Canonica FAQ Custom Answers
 
 ### Changed

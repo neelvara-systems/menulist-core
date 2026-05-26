@@ -73,6 +73,7 @@
 | File | Purpose |
 |------|---------|
 | `src/app/sites/canonica/layout.tsx` | Layout with metadata, OG tags, SEO |
+| `src/app/sites/canonica/theme.ts` | Canonica public-site theme contract: Dark Control Plane colors, primary accent, status colors, and browser theme color |
 | `src/app/sites/canonica/styles.css` | Tailwind directives + CSS variables |
 | `src/app/sites/canonica/scroll-reveal.css` | Canonica-specific viewport reveal motion for public website sections, cards, CTAs, and footer groups |
 | `src/app/sites/canonica/page.tsx` | Homepage (server component) |
@@ -226,6 +227,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Added a support knowledge map to the homepage and Product page so buyers can understand docs, releases, tickets, feedback, and page context flowing into Canonica, then out to widget, hosted help, approved answers, and review queues |
 | 2026-05-25 | Added a day-one launch-pack section to homepage and Product so the completed quickstarts, starter surfaces, import starter pack, install verifier, ROI/proof, and security one-pager are visible from the main buyer path without creating another public page |
 | 2026-05-25 | Updated existing widget, install, quickstart, security, FAQ, SEO, updates, metadata, and LLM-context pages so user-initiated screenshot upload/paste is presented accurately without adding a separate screenshot page or claiming automatic screen capture |
+| 2026-05-26 | Formalized the Dark Control Plane theme contract, aligned PWA manifest background/theme color to deep navy, and moved website inline-style primary/status colors onto Canonica theme tokens |
 | 2026-05-26 | Added Team Access as a buyer-facing product feature page and updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and MenuList separation |
 | 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs no longer inherit MenuList splash screens or loader identity |
 | 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |

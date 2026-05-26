@@ -40,6 +40,7 @@ export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'release-notes',
     'settings',
     'support',
+    'support-board',
     'team',
     'tickets',
     'transactions',

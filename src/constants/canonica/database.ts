@@ -27,5 +27,6 @@ export const CANONICA_DB_COLLECTIONS = {
     CANONICA_PREDICTIVE_TRIGGERS: 'canonica_predictiveTriggers',
     CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
     CANONICA_FAQS: 'canonica_faqs',
+    CANONICA_SUPPORT_BOARD_CARDS: 'canonica_supportBoardCards',
     CANONICA_PUBLIC_HELP_SITES: 'canonica_publicHelpSites',
 } as const;

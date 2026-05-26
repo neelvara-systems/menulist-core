@@ -347,15 +347,24 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 
 | Element | Value |
 |---------|-------|
+| Visual direction | Dark Control Plane |
 | Primary color | Indigo 500 (#6366f1) |
 | Background | Dark navy (#0a0a1a) |
+| Surface | White 3% opacity (`rgba(255,255,255,0.03)`) |
+| Border | White 6% opacity (`rgba(255,255,255,0.06)`) |
 | Text primary | White (#ffffff) |
+| Text body | Soft lavender (#d6d6ef) |
 | Text secondary | Muted lavender (#a0a0c0) |
 | Text muted | Deep gray (#6b6b8a) |
+| Success | Emerald 500 (#10b981) |
+| Warning | Amber 500 (#f59e0b) |
+| Danger | Red 500 (#ef4444) |
 | Cards | White 3% opacity + 6% border |
 | Font | Inter (system fallback) |
 | Border radius | 0.75rem (cards), 0.5rem (buttons) |
 | Max content width | 6xl (1152px) |
+
+The website should stay dark, canonical, and infrastructure-grade. Indigo is the action/accent color; deep navy remains the page and PWA theme background so browser chrome does not become a bright band.
 
 ---
 
@@ -447,3 +456,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-25 | 1.2.15 | Added the day-one launch pack to homepage and Product so quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff are visible in the main buyer path without adding another public route |
 | 2026-05-25 | 1.2.16 | Updated existing widget/install/security/FAQ/SEO pages to present user-initiated screenshot attachments as part of the page-aware widget while explicitly rejecting automatic screenshot capture or DOM scraping |
 | 2026-05-26 | 1.2.17 | Added Team Access to the public website story with a dedicated `/product/team-access` page and updates to setup, security, pricing, resources, FAQ, privacy, metadata, and LLM context |
+| 2026-05-26 | 1.2.18 | Formalized the Dark Control Plane visual direction with shared theme tokens, deep-navy PWA/browser theme color, and documented success/warning/danger colors |

@@ -209,6 +209,8 @@ Firestore rules and indexes:
 - `firestore-canonica.indexes.json` deployed to `canonica-qa`.
 - Current index file has composite indexes plus TTL field overrides for Canonica integration events, delivery logs, and delivery rate counters.
 - 2026-05-26: Deployed `firestore-canonica.rules` to `canonica-qa` after adding Canonica role permission claims for staff access control. Command: `firebase deploy --only firestore:rules --project canonica-qa --config firebase-canonica.json --non-interactive`.
+- 2026-05-26: Deployed `firestore-canonica.rules` after adding private Support Board rules. The combined Firebase indexes deploy hit a pre-existing remote `kb_articles` index conflict, so the two new `canonica_supportBoardCards` composite indexes were created directly with `gcloud firestore indexes composite create`; both are `READY` in `canonica-qa`.
+- 2026-05-26: Production Firestore rules deploy for the Support Board was attempted with `firebase deploy --only firestore:rules --project canonica-prod --config firebase-canonica.json --non-interactive` and was blocked by Firebase permission `403` on project `canonica`. Production still needs the same rules deploy and the two `canonica_supportBoardCards` composite indexes created after credentials are available.
 
 Storage rules:
 

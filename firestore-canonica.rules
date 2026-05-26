@@ -133,6 +133,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /canonica_supportBoardCards/{docId} {
+      allow read: if isCanonicaScopedReadWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow update: if isCanonicaScopedUpdateWithSupportControl();
+      allow delete: if false;
+    }
+
     match /canonica_cacheVersions/{docId} {
       allow read: if isCanonicaScopedReadWithKnowledgeControl()
         || isCanonicaScopedReadWithPermission('canManageWidget');

@@ -18,8 +18,10 @@
     --cn-border: rgba(255, 255, 255, 0.06);
     --cn-border-hover: rgba(255, 255, 255, 0.12);
     --cn-text: #ffffff;
+    --cn-text-body: #d6d6ef;
     --cn-text-secondary: #a0a0c0;
     --cn-text-muted: #6b6b8a;
+    --cn-field-bg: #111124;
     --cn-primary: #6366f1;
     --cn-primary-hover: #5558e6;
     --cn-primary-light: #8b8bff;
@@ -130,7 +132,7 @@ body:has(.canonica-site) {
 }
 
 .canonica-hero-gradient {
-    background: linear-gradient(90deg, #dbe4ff 0%, #a5b4fc 30%, #6366f1 72%, #4f46e5 100%);
+    background: linear-gradient(90deg, #dbe4ff 0%, #a5b4fc 30%, var(--cn-primary) 72%, #4f46e5 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -252,7 +254,7 @@ body:has(.canonica-site) {
 
 .cn-diagram-card h3 {
     margin: 0;
-    color: #ffffff;
+    color: var(--cn-text);
     font-size: 0.98rem;
     font-weight: 700;
     line-height: 1.25;
@@ -302,7 +304,7 @@ body:has(.canonica-site) {
     width: 138px;
     height: 138px;
     border: 1px solid rgba(129, 140, 248, 0.26);
-    background: #0a0a1a;
+    background: var(--cn-bg);
 }
 
 .cn-diagram-mark {
@@ -646,7 +648,7 @@ body:has(.canonica-site) {
 
 .cn-support-map__card h3 {
     margin: 0;
-    color: #ffffff;
+    color: var(--cn-text);
     font-size: 0.98rem;
     font-weight: 700;
     line-height: 1.25;
@@ -719,7 +721,7 @@ body:has(.canonica-site) {
     width: 138px;
     height: 138px;
     border: 1px solid rgba(129, 140, 248, 0.26);
-    background: #0a0a1a;
+    background: var(--cn-bg);
 }
 
 .cn-support-map__mark {

@@ -32,7 +32,7 @@ Canonica dashboard navigation is grouped by the product-owner workflow. The grou
 | Sidebar group | Purpose | Primary routes |
 | --- | --- | --- |
 | Launch Setup | Activate a new client workspace, manage product details, import starter knowledge, map product surfaces, and review readiness. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
-| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, release notes, support requests, ticket inbox, conversations, and weekly digest. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
+| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, release notes, support requests, Support Board, ticket inbox, conversations, and weekly digest. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/support-board`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
 | Widget & Hosted Help | Configure widget appearance, install/embed snippets, hosted help domains, allowed origins, blocked routes, and key security. | `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
 | Team & Access | Manage workspace members and Canonica roles without mixing them into setup or support content. | `/canonica/team/members`, `/canonica/team/roles` |
 | Billing | Manage subscription and payment history. | `/canonica/billing`, `/canonica/transactions` |
@@ -63,6 +63,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
 | 16  | `developer-install-pack/`                        | Product/Sales/Dev | Typed SDK, quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Canonica team members, workspace roles, permission claims, and rule-level access control |
+| 18  | `support-board/`                                 | Product/Ops/Dev | Private owner/staff Support Board, Needs Answer queue, internal notes, and future support-work roadmap |
 
 ---
 
@@ -124,6 +125,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/faqs` → `src/app/(canonica)/canonica/faqs/page.tsx`
 - `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
+- `/canonica/support-board` → `src/app/(canonica)/canonica/support-board/page.tsx`
 - `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
 - `/canonica/widget` → `src/app/(canonica)/canonica/widget/page.tsx`
 - `/canonica/widget/[tab]` → `src/app/(canonica)/canonica/widget/[tab]/page.tsx`

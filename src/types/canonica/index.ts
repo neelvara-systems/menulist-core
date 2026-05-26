@@ -1431,6 +1431,112 @@ export const CANONICA_PREDICTIVE_CONSTRAINTS = {
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
+// SUPPORT BOARD
+// Private owner/staff workboard for support gaps and knowledge follow-up.
+// Feature-flagged: ENABLE_CANONICA_SUPPORT_BOARD
+// @see __docs__/canonica/support-board/
+// ═══════════════════════════════════════════════════════════════
+
+export const CANONICA_SUPPORT_BOARD_STATUS = {
+    NEW_SIGNALS: 'new_signals',
+    NEEDS_TRIAGE: 'needs_triage',
+    NEEDS_ANSWER: 'needs_answer',
+    DRAFT_READY: 'draft_ready',
+    APPROVED_PUBLISHED: 'approved_published',
+    RESOLVED: 'resolved',
+} as const;
+
+export type CanonicaSupportBoardStatus = typeof CANONICA_SUPPORT_BOARD_STATUS[keyof typeof CANONICA_SUPPORT_BOARD_STATUS];
+
+export const CANONICA_SUPPORT_BOARD_SOURCE_TYPE = {
+    MANUAL: 'manual',
+    TICKET: 'ticket',
+    CONVERSATION: 'conversation',
+    SIGNAL: 'signal',
+    MUTATION_PROPOSAL: 'mutation_proposal',
+    CANONICAL_ANSWER: 'canonical_answer',
+    RELEASE: 'release',
+    SURFACE: 'surface',
+} as const;
+
+export type CanonicaSupportBoardSourceType = typeof CANONICA_SUPPORT_BOARD_SOURCE_TYPE[keyof typeof CANONICA_SUPPORT_BOARD_SOURCE_TYPE];
+
+export const CANONICA_SUPPORT_BOARD_PRIORITY = {
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+} as const;
+
+export type CanonicaSupportBoardPriority = typeof CANONICA_SUPPORT_BOARD_PRIORITY[keyof typeof CANONICA_SUPPORT_BOARD_PRIORITY];
+
+export const CANONICA_SUPPORT_BOARD_NOTE_STATUS = {
+    OPEN: 'open',
+    PINNED: 'pinned',
+    RESOLVED: 'resolved',
+} as const;
+
+export type CanonicaSupportBoardNoteStatus = typeof CANONICA_SUPPORT_BOARD_NOTE_STATUS[keyof typeof CANONICA_SUPPORT_BOARD_NOTE_STATUS];
+
+export interface CanonicaSupportBoardNote {
+    id: string;
+    text: string;
+    status: CanonicaSupportBoardNoteStatus;
+    authorId: string;
+    authorName: string;
+    createdAt: Timestamp;
+}
+
+export interface CanonicaSupportBoardCard extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+
+    title: string;
+    description: string;
+    status: CanonicaSupportBoardStatus;
+    priority: CanonicaSupportBoardPriority;
+    sourceType: CanonicaSupportBoardSourceType;
+    sourceId?: string | null;
+
+    assigneeId?: string | null;
+    assigneeName?: string | null;
+    dueDate?: string | null;
+    tags?: string[];
+
+    relatedTicketId?: string | null;
+    relatedConversationId?: string | null;
+    relatedAnswerId?: string | null;
+    relatedProposalId?: string | null;
+    relatedReleaseId?: string | null;
+    relatedSurfaceId?: string | null;
+    relatedEntityId?: string | null;
+    relatedContextKeys?: string[];
+
+    notes?: CanonicaSupportBoardNote[];
+    notesCount?: number;
+    lastNoteAt?: Timestamp | null;
+
+    resolvedOn?: Timestamp | null;
+    resolvedBy?: string | null;
+
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: string | number;
+}
+
+export const CANONICA_SUPPORT_BOARD_CONSTRAINTS = {
+    MAX_CARDS_PER_LOAD: 120,
+    MAX_SOURCE_SYNC_ITEMS: 50,
+    MAX_NOTES_PER_CARD: 25,
+    MAX_TAGS_PER_CARD: 8,
+    MAX_TITLE_LENGTH: 140,
+    MAX_DESCRIPTION_LENGTH: 1200,
+    MAX_NOTE_LENGTH: 1000,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════
 // VERSION NORMALIZATION HELPERS
 // ═══════════════════════════════════════════════════════════════
 

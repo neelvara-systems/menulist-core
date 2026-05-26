@@ -13,6 +13,7 @@ export const CANONICA_ROUTES = {
     KB_GENERATION: `${CANONICA_BASE_PATH}/kb-generation`,
     TICKETS: `${CANONICA_BASE_PATH}/tickets`,
     CONVERSATIONS: `${CANONICA_BASE_PATH}/conversations`,
+    SUPPORT_BOARD: `${CANONICA_BASE_PATH}/support-board`,
     GOVERNANCE: `${CANONICA_BASE_PATH}/governance`,
     CHANGELOG: `${CANONICA_BASE_PATH}/changelog`,
     FAQS: `${CANONICA_BASE_PATH}/faqs`,

@@ -2006,6 +2006,25 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_WEEKLY_DIGEST: true,
 
     /**
+     * Canonica Support Board
+     *
+     * true: Canonica owners and support staff get a private support workboard
+     *       for missed questions, ticket follow-up, notes, and answer-review work.
+     * false: Support Board route/nav and board DAL are hidden.
+     *
+     * Scope: support-control work only. This is not a generic project-management
+     * board; cards stay linked to tickets, conversations, support signals,
+     * canonical-answer proposals, releases, product surfaces, or manual support notes.
+     *
+     * Cost model: one bounded board query on load plus explicit, bounded source
+     * sync actions for recent tickets/signals. Internal notes are embedded with
+     * a cap to avoid extra listeners or subcollection scans.
+     *
+     * @see __docs__/canonica/support-board/
+     */
+    ENABLE_CANONICA_SUPPORT_BOARD: true,
+
+    /**
      * Canonica Email Notifications
      *
      * true: Email notifications sent for ticket replies, status changes, etc.

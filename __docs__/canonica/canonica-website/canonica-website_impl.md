@@ -32,6 +32,7 @@ The root MenuList layout keeps MenuList startup images in `metadata.appleWebApp.
 ```
 src/app/sites/canonica/
 ├── layout.tsx                     # Root layout (metadata, OG, viewport)
+├── theme.ts                       # Dark Control Plane theme contract and browser theme color
 ├── styles.css                     # Tailwind directives, CSS variables, and homepage section-band rhythm
 ├── scroll-reveal.css              # Canonica-specific viewport reveal motion with reduced-motion support
 ├── page.tsx                       # Homepage (server component)
@@ -139,7 +140,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - footer links only target public website routes; public legal links now resolve to real pages
 - Canonica product domains serve Canonica-owned `/sitemap.xml` and `/robots.txt`
 - homepage emits Organization, WebSite, and SoftwareApplication structured data
-- Canonica website layout sets Canonica metadata, manifest, icons, and dark theme color so public pages do not inherit MenuList web-app title metadata
+- Canonica website layout sets Canonica metadata, manifest, icons, and the Dark Control Plane theme color so public pages do not inherit MenuList web-app title metadata
+- `theme.ts` is the public website theme contract. It keeps primary Indigo 500, deep navy background, surface/border tokens, text colors, and success/warning/danger colors in one source for metadata-adjacent and inline-style usage.
 - copy differentiates Canonica from helpdesks, chatbots, and documentation CMS products without claiming to replace them
 - May 22 refresh changed the hero from page-aware support copy to the implemented support knowledge control plane category.
 - Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped Canonica billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
@@ -399,3 +401,4 @@ Conversion analytics is client-side only:
 | 2026-05-25 | 1.2.30 | Added website runtime-scaling copy across existing high-intent pages: compiled approved context, owner-visible bundle readiness, workspace-local daily governance, cache-first runtime delivery, and rollout-gated MCP boundaries without adding a dedicated public MCP page |
 | 2026-05-25 | 1.2.31 | Added `DayOneLaunchPackSection` to homepage and Product, updated Resources/Pricing/Get Started/Security/LLM context, and kept the completed quickstarts, starter surfaces, import pack, install verifier, ROI/proof, and security one-pager as linked existing pages rather than new routes |
 | 2026-05-25 | 1.2.32 | Refreshed existing public pages for production-ready widget image support: user-initiated screenshot upload/paste is now described on widget, install, quickstart, security, FAQ, SEO, updates, route metadata, and LLM surfaces, while automatic screenshot capture remains explicitly out of scope |
+| 2026-05-26 | 1.2.33 | Formalized the Dark Control Plane theme contract in `theme.ts`, aligned CSS variables and PWA manifest colors to the deep-navy/indigo palette, and moved inline-style primary/status colors onto shared Canonica theme tokens |
