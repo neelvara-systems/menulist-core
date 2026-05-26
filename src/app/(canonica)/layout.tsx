@@ -1,6 +1,7 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import CanonicaDashboardLayout from '@/components/canonica/CanonicaDashboardLayout'
 import { authOptions } from '@lib/auth'
+import { CANONICA_LOCAL_DEV_PATH_PREFIX, isCanonicaProductHostname } from '@constant/canonica/domains'
 import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope'
 import { getStaticCanonicaAppleStartupImages } from '@lib/canonica/pwaAssets'
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
@@ -11,6 +12,7 @@ import SessionProvider from '@providers/sessionProvider'
 import "@styles/app.scss"
 import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth'
+import { headers } from 'next/headers'
 import { getLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
@@ -41,6 +43,11 @@ export const metadata: Metadata = {
 
 export default async function CanonicaLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions);
+    const host = headers().get('host');
+    const canonicaPricingPath = isCanonicaProductHostname(host)
+        ? '/pricing'
+        : `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`;
+
     if (!session) {
         redirect("/signin");
     }
@@ -48,7 +55,7 @@ export default async function CanonicaLayout({ children }: { children: React.Rea
         redirect("/unauthorized");
     }
     if (!resolveCanonicaSessionScope(session) && !canUseCanonicaManagement(session)) {
-        redirect("/unauthorized");
+        redirect(canonicaPricingPath);
     }
 
     const locale = await getLocale();

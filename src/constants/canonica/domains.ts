@@ -26,10 +26,12 @@ export const ACTIVE_CANONICA_PRODUCT_DOMAINS = getActiveProductDomains('canonica
 
 export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'activation',
+    'billing',
     'changelog',
     'conversations',
     'dashboard',
     'docs',
+    'faqs',
     'governance',
     'help',
     'kb-generation',
@@ -38,8 +40,11 @@ export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'release-notes',
     'settings',
     'support',
+    'team',
     'tickets',
+    'transactions',
     'widget',
+    'weekly-digest',
 ] as const;
 
 export const CANONICA_PRODUCT_PASSTHROUGH_PATHS = [

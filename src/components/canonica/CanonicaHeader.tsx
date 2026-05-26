@@ -102,44 +102,64 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
                 />
             )}
 
-            <Divider
-                plain
-                style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
-                type="vertical"
-            />
+            {!showMenuButton ? (
+                <>
+                    <Divider
+                        plain
+                        style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
+                        type="vertical"
+                    />
 
-            <Tooltip title="Canonica home">
-                <Button
-                    aria-label="Canonica home"
-                    icon={<LuHome />}
-                    onClick={handleReturn}
-                    style={{ fontSize: 20, padding: 0 }}
-                    type="text"
-                />
-            </Tooltip>
+                    <Tooltip title="Canonica home">
+                        <Button
+                            aria-label="Canonica home"
+                            icon={<LuHome />}
+                            onClick={handleReturn}
+                            style={{ fontSize: 20, padding: 0 }}
+                            type="text"
+                        />
+                    </Tooltip>
 
-            <Divider
-                plain
-                style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
-                type="vertical"
-            />
+                    <Divider
+                        plain
+                        style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
+                        type="vertical"
+                    />
+                </>
+            ) : null}
 
-            <Text
-                strong
-                style={{
-                    background: token.colorFillContent,
-                    borderRadius: 4,
-                    color: token.colorTextBase,
-                    fontSize: 12,
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    padding: '7px 10px',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                }}
-            >
-                {pageTitle}
-            </Text>
+            {showMenuButton ? (
+                <Text
+                    strong
+                    style={{
+                        color: token.colorTextBase,
+                        fontSize: 14,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {pageTitle}
+                </Text>
+            ) : (
+                <Text
+                    strong
+                    style={{
+                        background: token.colorFillContent,
+                        borderRadius: 4,
+                        color: token.colorTextBase,
+                        fontSize: 12,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        padding: '7px 10px',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {pageTitle}
+                </Text>
+            )}
         </Flex>
     );
 
@@ -150,24 +170,28 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
                     {workspaceSwitcher}
                 </div>
             ) : null}
-            <Tooltip title="Help">
-                <Button
-                    aria-label="Open help"
-                    icon={<LuHelpCircle />}
-                    onClick={handleOpenHelp}
-                    style={{ height: 44, minWidth: 44, padding: 0 }}
-                    type="text"
-                />
-            </Tooltip>
-            <Tooltip title={isDarkMode ? 'Use light mode' : 'Use dark mode'}>
-                <Button
-                    aria-label={isDarkMode ? 'Use light mode' : 'Use dark mode'}
-                    icon={isDarkMode ? <LuSun /> : <LuMoon />}
-                    onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
-                    style={{ height: 44, minWidth: 44, padding: 0 }}
-                    type="text"
-                />
-            </Tooltip>
+            {!showMenuButton ? (
+                <>
+                    <Tooltip title="Help">
+                        <Button
+                            aria-label="Open help"
+                            icon={<LuHelpCircle />}
+                            onClick={handleOpenHelp}
+                            style={{ height: 44, minWidth: 44, padding: 0 }}
+                            type="text"
+                        />
+                    </Tooltip>
+                    <Tooltip title={isDarkMode ? 'Use light mode' : 'Use dark mode'}>
+                        <Button
+                            aria-label={isDarkMode ? 'Use light mode' : 'Use dark mode'}
+                            icon={isDarkMode ? <LuSun /> : <LuMoon />}
+                            onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
+                            style={{ height: 44, minWidth: 44, padding: 0 }}
+                            type="text"
+                        />
+                    </Tooltip>
+                </>
+            ) : null}
             <ProfileActionsModal
                 onOpenAppearance={handleOpenAppSettings}
                 userData={userData}

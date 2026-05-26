@@ -3,8 +3,10 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
 import { EMPTY_ERROR } from "@constant/common";
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
+import { CANONICA_LOCAL_DEV_PATH_PREFIX, isCanonicaProductHostname } from '@constant/canonica/domains';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import { useAppSelector } from "@hook/useAppSelector";
+import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
 import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig";
@@ -75,6 +77,32 @@ function LoginPage() {
     }
 
     return CLIENT_DASHBOARD_ROUTING;
+  };
+
+  const getCanonicaSubscriptionRedirect = () => {
+    if (typeof window === 'undefined') return `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`;
+    return isCanonicaProductHostname(window.location.hostname)
+      ? '/pricing'
+      : `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`;
+  };
+
+  const getSafePostLoginRedirect = () => {
+    const target = getPostLoginRedirect();
+    if (typeof window === 'undefined') return target;
+
+    const isCanonicaHost = isCanonicaProductHostname(window.location.hostname);
+    const isCanonicaTarget = target === '/canonica'
+      || target.startsWith('/canonica/')
+      || target === CANONICA_LOCAL_DEV_PATH_PREFIX
+      || target.startsWith(`${CANONICA_LOCAL_DEV_PATH_PREFIX}/`)
+      || (isCanonicaHost && (target === CLIENT_DASHBOARD_ROUTING || target.startsWith('/dashboard')));
+    const hasCanonicaAccess = Boolean(resolveCanonicaSessionScope(sessionData)) || canUseCanonicaManagement(sessionData);
+
+    if (isCanonicaTarget && !hasCanonicaAccess) {
+      return getCanonicaSubscriptionRedirect();
+    }
+
+    return target;
   };
 
   // Claim account flow (messaging onboarding → Google account linking OR email/password setup)
@@ -221,7 +249,7 @@ function LoginPage() {
               await syncFirebaseAuthForCurrentSession();
               dispatch(showSuccessToast("Your business has been linked to your Google account!"));
               // Use a hard navigation so the dashboard starts from the refreshed auth context.
-              window.location.href = CLIENT_DASHBOARD_ROUTING;
+              window.location.href = getSafePostLoginRedirect();
               return;
             } else {
               // Claim failed — clear token, continue to dashboard normally
@@ -238,8 +266,7 @@ function LoginPage() {
 
         await syncFirebaseAuthForCurrentSession();
 
-        // Redirect to dashboard
-        router.push(CLIENT_DASHBOARD_ROUTING);
+        router.push(getSafePostLoginRedirect());
       }
     };
 
