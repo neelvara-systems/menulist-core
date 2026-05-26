@@ -3,6 +3,7 @@ import { getStaticCanonicaAppleStartupImages } from '@lib/canonica/pwaAssets';
 import CanonicaAnalytics from './components/CanonicaAnalytics';
 import CanonicaScrollReveal from './components/CanonicaScrollReveal';
 import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
+import { CANONICA_THEME_COLOR } from './theme';
 import './styles.css';
 import './scroll-reveal.css';
 
@@ -101,7 +102,7 @@ export const viewport = {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
-    themeColor: '#0a0a1a',
+    themeColor: CANONICA_THEME_COLOR,
 };
 
 interface CanonicaLayoutProps {

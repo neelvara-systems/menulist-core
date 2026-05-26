@@ -549,9 +549,9 @@ Every integration point is designed to fail silently:
 
 1. **Run the manual scheduler smoke test** — Verify the deployed function writes `canonica_schedulerRunLogs/{runLogId}` and discovers tenants from `platformSummary/canonicaTenantsSummary`.
 2. **Complete Launch Setup for the first client** — Import KB content, map product surfaces, configure widget allowed origins, and verify widget runtime context.
-3. **Review generated entity candidates and draft canonical answers** — Use `/canonica/governance?tab=candidates` and `/canonica/governance?tab=signal-queue`.
+3. **Review generated entity candidates and draft canonical answers** — Use `/canonica/governance/candidates` and `/canonica/governance/signal-queue`.
 4. **Publish 5-10 canonical answers** for highest-traffic entities — Confirm canonical retrieval and cache-version behavior.
-5. **Monitor coverage, drift, and trust metrics** — Use `/canonica/dashboard` and `/canonica/governance?tab=trust`.
+5. **Monitor coverage, drift, and trust metrics** — Use `/canonica/dashboard` and `/canonica/governance/trust`.
 6. **Keep enabled expansion paths bounded** — predictive support, graph traversal, and workflow integrations are active because they strengthen page-aware guidance, deterministic retrieval, and governance awareness. Keep Redis cooldowns, summary-backed graph reads, event caps, and sanitized workflow delivery in place before wider client rollout.
 
 ---

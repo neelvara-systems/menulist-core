@@ -13,9 +13,9 @@
 
 import {
     DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
-    DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
 } from '@/components/shared/dashboardShell/DashboardSidebarShell';
 import {
+    CANONICA_DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
     CANONICA_MANAGEMENT_ROUTES,
     CANONICA_ROUTES,
     normalizeCanonicaRoutePathname,
@@ -63,6 +63,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     const isMobile = !isDesktop;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
     const [firebaseAuthError, setFirebaseAuthError] = useState(false);
     const { access, error: accessError, loading: accessLoading } = useCanonicaAccess();
@@ -127,7 +128,9 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         (!accessLoading && Boolean(requiredPermission) && !access)
     );
     const shouldShowContentLoader = status === 'loading' || accessLoading || (!shouldRedirectAway && !firebaseAuthReady);
-    const sidebarOffset = isCollapsed ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
+    const sidebarOffset = isCollapsed && !sidebarShellExpanded
+        ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
+        : CANONICA_DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 
     return (
         <>
@@ -205,11 +208,15 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                     data-canonica-dashboard-mobile={isMobile ? 'true' : undefined}
                     style={{
                         background: layoutBackground,
+                        height: '100dvh',
                         minHeight: '100dvh',
                         minWidth: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    {isDesktop && <CanonicaSidebar />}
+                    {isDesktop && (
+                        <CanonicaSidebar onExpandedChange={setSidebarShellExpanded} />
+                    )}
                     <Drawer
                         title={null}
                         placement="left"
@@ -233,6 +240,9 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                             marginLeft: isDesktop ? sidebarOffset : 0,
                             minWidth: 0,
                             background: layoutBackground,
+                            height: '100dvh',
+                            overflow: 'hidden',
+                            transition: 'margin-left 0.2s ease',
                         }}
                     >
                         <CanonicaHeader
@@ -243,8 +253,11 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                         <Content
                             style={{
                                 background: layoutBackground,
+                                boxSizing: 'border-box',
+                                height: isDesktop ? 'calc(100dvh - var(--header-Height))' : 'calc(100dvh - var(--header-Height) - env(safe-area-inset-top))',
                                 minHeight: isDesktop ? 'calc(100dvh - var(--header-Height))' : 'calc(100dvh - var(--header-Height) - env(safe-area-inset-top))',
                                 overflowX: 'hidden',
+                                overflowY: 'auto',
                                 padding: isDesktop ? 24 : `12px 12px ${CANONICA_MOBILE_BOTTOM_CLEARANCE}`,
                                 scrollPaddingBottom: isMobile ? CANONICA_MOBILE_BOTTOM_CLEARANCE : undefined,
                                 WebkitOverflowScrolling: isMobile ? 'touch' : undefined,

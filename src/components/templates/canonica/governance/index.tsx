@@ -14,13 +14,23 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import {
+    CANONICA_DEFAULT_GOVERNANCE_TAB,
+    CANONICA_GOVERNANCE_TABS,
+    CANONICA_ROUTES,
+    getCanonicaGovernanceRoute,
+    getCanonicaGovernanceTabFromPathname,
+    isCanonicaGovernanceTab,
+    normalizeCanonicaRoutePathname,
+    toCanonicaDashboardRoute,
+} from '@constant/canonica/navigations';
 import { getBrandingConfig, saveBrandingConfig } from '@database/canonica/branding';
 import EntityCandidateReview from '@/components/templates/canonica/EntityCandidateReview';
 import MutationProposalReview from '@/components/templates/canonica/MutationProposalReview';
 import { CanonicaBrandingConfig } from '@type/canonica';
 import { Empty, Grid, Tabs } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuBarChart3,
@@ -52,17 +62,25 @@ import WhiteLabelBranding from './WhiteLabelBranding';
 interface GovernanceHubProps {
     tId?: number;
     sId?: number;
+    initialTab?: string;
 }
 
-export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) {
+export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: GovernanceHubProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const requestedTab = searchParams.get('tab');
-    const [activeTab, setActiveTab] = useState(requestedTab || 'answers');
+    const legacyRequestedTab = searchParams.get('tab');
+    const requestedTab = (
+        isCanonicaGovernanceTab(initialTab)
+            ? initialTab
+            : (isCanonicaGovernanceTab(legacyRequestedTab) ? legacyRequestedTab : CANONICA_DEFAULT_GOVERNANCE_TAB)
+    );
+    const [activeTab, setActiveTab] = useState<string>(requestedTab);
     const [brandingConfig, setBrandingConfig] = useState<Partial<CanonicaBrandingConfig> | undefined>(undefined);
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
 
     // Load branding config if white-label is enabled
     useEffect(() => {
@@ -97,30 +115,30 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
             </span>
         );
 
-        const items = [
+        const items: Array<{ key: string; label: ReactNode; children: ReactNode }> = [
             {
-                key: 'answers',
+                key: CANONICA_GOVERNANCE_TABS.ANSWERS,
                 label: tabLabel(LuBookOpen, 'Canonical Answers', 'Answers'),
                 children: <CanonicalAnswerEditor />,
             },
             {
-                key: 'entities',
+                key: CANONICA_GOVERNANCE_TABS.ENTITIES,
                 label: tabLabel(LuBoxes, 'Product Ontology', 'Ontology'),
                 children: <EntityManagementDashboard />,
             },
             {
-                key: 'analytics',
+                key: CANONICA_GOVERNANCE_TABS.ANALYTICS,
                 label: tabLabel(LuBarChart3, 'Answer Analytics', 'Analytics'),
                 children: <AnswerUsageAnalytics />,
             },
             {
-                key: 'health',
+                key: CANONICA_GOVERNANCE_TABS.HEALTH,
                 label: tabLabel(LuHeart, 'Entity Health', 'Health'),
                 children: <EntityHealthScore />,
             },
             // Phase 4 tabs
             {
-                key: 'history',
+                key: CANONICA_GOVERNANCE_TABS.HISTORY,
                 label: tabLabel(LuHistory, 'Version History', 'History'),
                 children: <AnswerVersionHistory tId={tId} sId={sId} />,
             },
@@ -128,7 +146,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_ONTOLOGY) {
             items.push({
-                key: 'candidates',
+                key: CANONICA_GOVERNANCE_TABS.CANDIDATES,
                 label: tabLabel(LuGitPullRequest, 'Entity Candidates', 'Candidates'),
                 children: <EntityCandidateReview />,
             });
@@ -136,7 +154,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_DRIFT_DETECTION) {
             items.push({
-                key: 'drift',
+                key: CANONICA_GOVERNANCE_TABS.DRIFT,
                 label: tabLabel(LuShieldAlert, 'Drift Governance', 'Drift'),
                 children: <DriftDashboard />,
             });
@@ -144,7 +162,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) {
             items.push({
-                key: 'signal-queue',
+                key: CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE,
                 label: tabLabel(LuGitPullRequest, 'Signal Queue', 'Signals'),
                 children: <MutationProposalReview />,
             });
@@ -153,7 +171,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         // Conditionally add feature-flagged tabs
         if (FEATURE_FLAGS.ENABLE_CANONICA_TRUST_METRICS) {
             items.push({
-                key: 'trust',
+                key: CANONICA_GOVERNANCE_TABS.TRUST,
                 label: tabLabel(LuShieldCheck, 'System Trust', 'Trust'),
                 children: <FounderTrustDashboard tId={tId} sId={sId} />,
             });
@@ -161,7 +179,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_WHITE_LABEL) {
             items.push({
-                key: 'branding',
+                key: CANONICA_GOVERNANCE_TABS.BRANDING,
                 label: tabLabel(LuPaintbrush, 'Branding'),
                 children: <WhiteLabelBranding tId={tId} sId={sId} initialConfig={brandingConfig} onSave={handleSaveBranding} />,
             });
@@ -169,7 +187,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE) {
             items.push({
-                key: 'friction',
+                key: CANONICA_GOVERNANCE_TABS.FRICTION,
                 label: tabLabel(LuFlame, 'Friction'),
                 children: <FrictionTab tId={tId} sId={sId} />,
             });
@@ -177,7 +195,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_MULTI_LANGUAGE) {
             items.push({
-                key: 'languages',
+                key: CANONICA_GOVERNANCE_TABS.LANGUAGES,
                 label: tabLabel(LuLanguages, 'Languages'),
                 children: <MultiLanguageArticles tId={tId} sId={sId} onTranslate={handleTranslateArticle} />,
             });
@@ -185,7 +203,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) {
             items.push({
-                key: 'triggers',
+                key: CANONICA_GOVERNANCE_TABS.TRIGGERS,
                 label: tabLabel(LuZap, 'Triggers'),
                 children: <PredictiveTriggerManager tId={tId} sId={sId} />,
             });
@@ -197,15 +215,31 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
     useEffect(() => {
         if (!tabItems.length) return;
         const tabExists = tabItems.some(item => item.key === requestedTab);
-        setActiveTab(tabExists && requestedTab ? requestedTab : String(tabItems[0]?.key || 'answers'));
-    }, [requestedTab, tabItems]);
+        const nextTab = tabExists ? requestedTab : String(tabItems[0]?.key || CANONICA_DEFAULT_GOVERNANCE_TAB);
+        setActiveTab(nextTab);
+
+        const activePathTab = getCanonicaGovernanceTabFromPathname(normalizedPathname);
+        const shouldNormalizeRoute = (
+            normalizedPathname === CANONICA_ROUTES.GOVERNANCE ||
+            Boolean(legacyRequestedTab) ||
+            activePathTab !== nextTab
+        );
+
+        if (shouldNormalizeRoute) {
+            router.replace(
+                toCanonicaDashboardRoute(getCanonicaGovernanceRoute(nextTab), currentHostname),
+                { scroll: false },
+            );
+        }
+    }, [currentHostname, legacyRequestedTab, normalizedPathname, requestedTab, router, tabItems]);
 
     const handleTabChange = useCallback((key: string) => {
         setActiveTab(key);
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', key);
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }, [pathname, router, searchParams]);
+        router.replace(
+            toCanonicaDashboardRoute(getCanonicaGovernanceRoute(key), currentHostname),
+            { scroll: false },
+        );
+    }, [currentHostname, router]);
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_GOVERNANCE_UI) {
         return <Empty description="Canonica Governance UI is not enabled" />;

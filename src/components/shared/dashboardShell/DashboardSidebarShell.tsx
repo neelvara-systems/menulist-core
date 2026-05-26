@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ComponentType, ReactNode } from 'react';
 import { Button, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -30,11 +30,14 @@ interface DashboardSidebarShellProps {
     actionItems?: DashboardSidebarShellItem[];
     logoExpanded: ReactNode;
     logoCollapsed?: ReactNode;
+    expandedWidth?: number;
+    collapsedWidth?: number;
     isCollapsed?: boolean;
     mobile?: boolean;
     ariaLabel?: string;
     className?: string;
     style?: CSSProperties;
+    onExpandedChange?: (expanded: boolean) => void;
 }
 
 function renderIcon(icon: DashboardShellIcon) {
@@ -46,21 +49,69 @@ function renderIcon(icon: DashboardShellIcon) {
     return icon;
 }
 
+function getAccessibleLabel(item: DashboardSidebarShellItem) {
+    return typeof item.label === 'string' ? item.label : item.key;
+}
+
 export default function DashboardSidebarShell({
     navItems,
     actionItems = [],
     logoExpanded,
     logoCollapsed,
+    expandedWidth = DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
+    collapsedWidth = DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
     isCollapsed = false,
     mobile = false,
     ariaLabel = 'Main navigation',
     className = '',
     style,
+    onExpandedChange,
 }: DashboardSidebarShellProps) {
     const { token } = theme.useToken();
     const [hoverId, setHoverId] = useState<string | null>(null);
     const [isHover, setIsHover] = useState(false);
+    const menuItemsRef = useRef<HTMLDivElement | null>(null);
     const showExpandedSidebar = mobile || !isCollapsed || isHover;
+    const activeParentKey = useMemo(() => (
+        navItems.find((item) => item.active || item.subNavActive)?.key || null
+    ), [navItems]);
+
+    useEffect(() => {
+        onExpandedChange?.(showExpandedSidebar);
+    }, [onExpandedChange, showExpandedSidebar]);
+
+    useEffect(() => {
+        if (!showExpandedSidebar || !activeParentKey) return;
+
+        const menuItemsEl = menuItemsRef.current;
+        if (!menuItemsEl) return;
+
+        const activeParentEl = Array.from(menuItemsEl.querySelectorAll<HTMLElement>('[data-sidebar-item-key]'))
+            .find((element) => element.getAttribute('data-sidebar-item-key') === activeParentKey);
+
+        if (!activeParentEl) return;
+
+        const keepActiveParentVisible = () => {
+            const listRect = menuItemsEl.getBoundingClientRect();
+            const parentRect = activeParentEl.getBoundingClientRect();
+            const topDelta = parentRect.top - listRect.top;
+            const bottomDelta = parentRect.bottom - listRect.bottom;
+
+            if (topDelta < 8) {
+                menuItemsEl.scrollTo({ top: Math.max(menuItemsEl.scrollTop + topDelta - 8, 0) });
+                return;
+            }
+
+            if (bottomDelta > -8) {
+                menuItemsEl.scrollTo({ top: menuItemsEl.scrollTop + bottomDelta + 8 });
+            }
+        };
+
+        window.requestAnimationFrame(() => {
+            keepActiveParentVisible();
+            window.requestAnimationFrame(keepActiveParentVisible);
+        });
+    }, [activeParentKey, showExpandedSidebar]);
 
     const renderMenuButton = (
         item: DashboardSidebarShellItem,
@@ -69,38 +120,106 @@ export default function DashboardSidebarShell({
             showChevron?: boolean;
         } = {},
     ) => {
-        const itemHover = hoverId === item.key || item.subNavActive;
-        const isActive = Boolean(item.active);
+        const isExactActive = Boolean(item.active);
+        const hasActiveChild = Boolean(item.subNavActive);
+        const isActive = isExactActive || hasActiveChild;
+        const isParentItem = Boolean(options.showChevron);
+        const isCollapsedDesktop = isCollapsed && !isHover && !mobile;
+        const collapsedActiveParent = hasActiveChild && isCollapsed && !isHover && !mobile;
+        const useStrongActiveStyle = isExactActive || collapsedActiveParent;
+        const itemHover = hoverId === item.key || hasActiveChild || isExactActive;
         const iconActive = Boolean(item.iconActive || isActive || itemHover);
-        const foreground = isActive ? token.colorTextLightSolid : (itemHover ? token.colorPrimaryTextActive : token.colorText);
+        const foreground = useStrongActiveStyle ? token.colorTextLightSolid : (itemHover ? token.colorPrimaryTextActive : token.colorText);
+        const parentBackground = `color-mix(in srgb, ${token.colorBgBase} 90%, ${token.colorTextBase} 10%)`;
+        const parentActiveBackground = `color-mix(in srgb, ${token.colorBgBase} 84%, ${token.colorPrimary} 16%)`;
+        const itemBackground = useStrongActiveStyle
+            ? token.colorPrimary
+            : (hasActiveChild ? parentActiveBackground : (isParentItem ? parentBackground : (itemHover ? token.colorBgTextHover : token.colorBgBase)));
         const button = (
             <Button
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={isExactActive ? 'page' : undefined}
                 aria-expanded={item.subNav ? item.expanded : undefined}
                 aria-label={typeof item.label === 'string' ? item.label : item.key}
-                className={`${styles.menuItemWrap} ${options.subItem ? styles.subMenuItemWrap : ''} ${isActive ? styles.active : ''}`}
-                onClick={item.onClick}
+                className={`${styles.menuItemWrap} ${options.subItem ? styles.subMenuItemWrap : ''} ${options.showChevron ? styles.parentMenuItemWrap : ''} ${isActive ? styles.active : ''}`}
+                data-sidebar-item-key={item.key}
+                onClick={(event) => {
+                    item.onClick?.();
+
+                    if (options.showChevron) {
+                        const target = event.currentTarget;
+                        const getScrollParent = () => {
+                            let parent = target.parentElement;
+
+                            while (parent) {
+                                const style = window.getComputedStyle(parent);
+                                const canScroll = /(auto|scroll|overlay)/.test(style.overflowY);
+
+                                if (canScroll && parent.scrollHeight > parent.clientHeight) {
+                                    return parent;
+                                }
+
+                                parent = parent.parentElement;
+                            }
+
+                            return null;
+                        };
+                        const keepParentVisible = () => {
+                            const scrollParent = getScrollParent();
+                            if (!scrollParent) return;
+
+                            const parentRect = scrollParent.getBoundingClientRect();
+                            const targetRect = target.getBoundingClientRect();
+                            const delta = targetRect.top - parentRect.top;
+
+                            scrollParent.scrollTo({
+                                top: Math.max(scrollParent.scrollTop + delta - 8, 0),
+                            });
+                        };
+
+                        window.requestAnimationFrame(() => {
+                            keepParentVisible();
+                            window.requestAnimationFrame(keepParentVisible);
+                        });
+                        window.setTimeout(keepParentVisible, 80);
+                        window.setTimeout(keepParentVisible, 220);
+                    }
+                }}
                 onMouseEnter={() => setHoverId(item.key)}
                 onMouseLeave={() => setHoverId(null)}
                 type="text"
                 style={{
-                    backgroundColor: isActive ? token.colorPrimaryBorder : (itemHover ? token.colorBgTextHover : token.colorBgBase),
+                    backgroundColor: itemBackground,
                     color: foreground,
                     display: 'flex',
                     height: 'auto',
-                    justifyContent: 'flex-start',
+                    justifyContent: isCollapsedDesktop ? 'center' : 'flex-start',
+                    maxWidth: '100%',
+                    overflow: 'visible',
                     padding: 0,
-                    position: 'relative',
+                    position: options.showChevron ? 'sticky' : 'relative',
                     textAlign: 'left',
+                    top: options.showChevron ? 0 : undefined,
                     width: '100%',
+                    zIndex: options.showChevron ? 3 : undefined,
                 }}
             >
-                <div className={styles.navWrap}>
-                    <div className={styles.labelIconWrap}>
+                <div
+                    className={styles.navWrap}
+                    style={{
+                        justifyContent: isCollapsedDesktop ? 'center' : undefined,
+                    }}
+                >
+                    <div
+                        className={styles.labelIconWrap}
+                        style={{
+                            flex: isCollapsedDesktop ? '0 0 auto' : undefined,
+                            justifyContent: isCollapsedDesktop ? 'center' : undefined,
+                        }}
+                    >
                         <div
                             className={styles.iconWrap}
                             style={{
-                                color: iconActive ? (isActive ? token.colorTextLightSolid : token.colorPrimaryTextActive) : token.colorText,
+                                color: iconActive ? (useStrongActiveStyle ? token.colorTextLightSolid : token.colorPrimaryTextActive) : token.colorText,
                             }}
                         >
                             {renderIcon(item.icon)}
@@ -111,13 +230,13 @@ export default function DashboardSidebarShell({
                                 className={styles.label}
                                 exit={{ width: 0, opacity: 0 }}
                                 initial={{ width: 0, opacity: 0 }}
-                                style={{ color: foreground }}
+                                style={{ color: foreground, maxWidth: '100%' }}
                             >
                                 {item.label}
                             </motion.div>
                         )}
                     </div>
-                    {options.showChevron && (
+                    {options.showChevron && showExpandedSidebar && (
                         <motion.div
                             animate={{ rotate: item.expanded ? 90 : 0 }}
                             className={`${styles.subNavIcon} ${styles.iconWrap}`}
@@ -148,7 +267,7 @@ export default function DashboardSidebarShell({
 
     return (
         <motion.nav
-            animate={{ width: mobile ? '100%' : (showExpandedSidebar ? `${DASHBOARD_SIDEBAR_EXPANDED_WIDTH}px` : `${DASHBOARD_SIDEBAR_COLLAPSED_WIDTH}px`) }}
+            animate={{ width: mobile ? '100%' : (showExpandedSidebar ? `${expandedWidth}px` : `${collapsedWidth}px`) }}
             aria-label={ariaLabel}
             className={`${styles.sidebarContainer} ${className}`}
             onMouseEnter={() => setIsHover(true)}
@@ -158,9 +277,11 @@ export default function DashboardSidebarShell({
                 backgroundColor: token.colorBgBase,
                 borderRight: mobile ? undefined : `1px solid ${token.colorBorder}`,
                 color: token.colorTextBase,
-                height: mobile ? '100dvh' : undefined,
-                minHeight: mobile ? '100dvh' : undefined,
-                overflowY: 'auto',
+                minHeight: '100dvh',
+                maxHeight: '100dvh',
+                height: '100dvh',
+                overflowX: 'hidden',
+                overflowY: 'hidden',
                 paddingBottom: mobile ? 'env(safe-area-inset-bottom)' : undefined,
                 paddingTop: mobile ? 'env(safe-area-inset-top)' : undefined,
                 position: mobile ? 'relative' : undefined,
@@ -181,23 +302,23 @@ export default function DashboardSidebarShell({
                 </div>
             </div>
 
-            <div className={styles.menuItemsWrap}>
+            <div
+                className={styles.menuItemsWrap}
+                ref={menuItemsRef}
+            >
                 {navItems.map((item) => (
-                    <Fragment key={item.key}>
+                    <div
+                        className={`${styles.menuSectionWrap} ${item.subNav?.length ? styles.parentMenuSectionWrap : ''}`}
+                        key={item.key}
+                    >
                         {renderMenuButton(item, { showChevron: Boolean(item.subNav?.length) })}
                         <AnimatePresence>
                             {Boolean(item.expanded && showExpandedSidebar && item.subNav?.length) && (
                                 <motion.div
                                     animate={{ height: 'max-content', opacity: 1 }}
+                                    className={styles.subNavPanel}
                                     exit={{ height: 0, opacity: 0 }}
                                     initial={{ height: 0, opacity: 0 }}
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: 5,
-                                        paddingLeft: 10,
-                                        width: '100%',
-                                    }}
                                 >
                                     {item.subNav?.map((subItem, index) => (
                                         <motion.div
@@ -217,7 +338,7 @@ export default function DashboardSidebarShell({
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                    </Fragment>
+                    </div>
                 ))}
             </div>
 
@@ -227,13 +348,49 @@ export default function DashboardSidebarShell({
                     style={{
                         background: token.colorBgBase,
                         borderTop: `1px solid ${token.colorBorder}`,
+                        ...(mobile ? {
+                            alignItems: 'center',
+                            display: 'grid',
+                            gap: 8,
+                            gridTemplateColumns: `repeat(${actionItems.length}, minmax(44px, 1fr))`,
+                            padding: '10px 12px calc(env(safe-area-inset-bottom) + 10px)',
+                        } : {}),
                     }}
                 >
-                    {actionItems.map((item) => (
-                        <Fragment key={item.key}>
-                            {renderMenuButton(item)}
-                        </Fragment>
-                    ))}
+                    {actionItems.map((item) => {
+                        if (!mobile) {
+                            return (
+                                <Fragment key={item.key}>
+                                    {renderMenuButton(item)}
+                                </Fragment>
+                            );
+                        }
+
+                        const isActive = Boolean(item.active || item.iconActive);
+                        return (
+                            <Button
+                                aria-current={item.active ? 'page' : undefined}
+                                aria-label={getAccessibleLabel(item)}
+                                icon={renderIcon(item.icon)}
+                                key={item.key}
+                                onClick={item.onClick}
+                                style={{
+                                    alignItems: 'center',
+                                    background: item.active ? token.colorPrimaryBg : token.colorBgContainer,
+                                    border: `1px solid ${item.active ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+                                    borderRadius: 10,
+                                    color: isActive ? token.colorPrimaryTextActive : token.colorText,
+                                    display: 'inline-flex',
+                                    height: 44,
+                                    justifyContent: 'center',
+                                    padding: 0,
+                                    width: '100%',
+                                }}
+                                title={getAccessibleLabel(item)}
+                                type="text"
+                            />
+                        );
+                    })}
                 </div>
             ) : null}
         </motion.nav>

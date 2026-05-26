@@ -5,6 +5,7 @@ import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
+import { CANONICA_THEME } from '../theme';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 type BillingModel = 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
@@ -28,6 +29,8 @@ const SURFACE_OPTIONS = [
     { key: 'integrations', label: 'Connected apps' },
     { key: 'release_notes', label: 'Release notes' },
 ];
+
+const { colors } = CANONICA_THEME;
 
 export default function OnboardingForm() {
     return (

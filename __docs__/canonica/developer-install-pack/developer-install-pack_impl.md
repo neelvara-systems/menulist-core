@@ -13,6 +13,26 @@ The SDK loads `public/widget/canonica-widget.js`, queues page context until runt
 
 Package-local build metadata is present in `packages/canonica-web/package.json` and `packages/canonica-web/tsconfig.json`. Publishing remains a release operation; website copy describes the helper and install screen, not an already-published public registry artifact.
 
+## Environment Handoff
+
+The dashboard and public quickstarts now recommend env-backed installs for client products:
+
+```bash
+# Next.js / Vercel
+NEXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key
+NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js
+
+# Vite / React SPA
+VITE_CANONICA_WIDGET_KEY=cn_your_widget_key
+VITE_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js
+
+# Nuxt
+NUXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key
+NUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js
+```
+
+This is guidance, not a new Canonica runtime feature. The only browser-safe credential is the public `cn_*` widget key. Client products must not put Firebase service accounts, Canonica admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records in frontend env files.
+
 ## Quickstarts
 
 `src/app/sites/canonica/quickstarts/page.tsx` provides copyable examples for:
@@ -21,6 +41,8 @@ Package-local build metadata is present in `packages/canonica-web/package.json` 
 - React SPA
 - Vue/Nuxt
 - vanilla script
+
+Framework examples read from client-safe env variables where the framework supports that pattern. Plain HTML can either use the direct dashboard snippet or inject the values through the product's build template.
 
 ## Install Verifier
 

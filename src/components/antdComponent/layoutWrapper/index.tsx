@@ -25,6 +25,10 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Fragment, useContext, useEffect, useState } from 'react';
 import styles from './layoutWrapper.module.scss';
+import {
+    DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
+    DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
+} from '@/components/shared/dashboardShell/DashboardSidebarShell';
 
 const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
 const HeaderComponent = dynamic(() => import('@organisms/headerComponent'), { ssr: false });
@@ -70,6 +74,10 @@ export default function AntdLayoutWrapper(props: any) {
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
     const isStarterStore = isStarterActivationStore(storeDetails);
+    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
+    const verticalSidebarOffset = isCollapsed && !sidebarShellExpanded
+        ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
+        : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 
     useEffect(() => {
         if (!hasMounted || hasPaidAccess || shouldRenderMobileShell) return;
@@ -139,9 +147,16 @@ export default function AntdLayoutWrapper(props: any) {
                     );
                   }
                 `}</style>
-                <Layout style={isVerticalSidebar && !isHandheldDesktopRoute ? { paddingLeft: isCollapsed ? "62px" : "200px" } : {}}>
+                <Layout
+                    style={isVerticalSidebar && !isHandheldDesktopRoute ? {
+                        paddingLeft: `${verticalSidebarOffset}px`,
+                        transition: 'padding-left 0.2s ease',
+                    } : {}}
+                >
                     {!isHandheldDesktopRoute ? <HeaderComponent /> : null}
-                    {!isHandheldDesktopRoute ? (isVerticalSidebar ? <SidebarComponent /> : <HorizontalSidebar />) : null}
+                    {!isHandheldDesktopRoute ? (isVerticalSidebar ? (
+                        <SidebarComponent onExpandedChange={setSidebarShellExpanded} />
+                    ) : <HorizontalSidebar />) : null}
                     {!isHandheldDesktopRoute ? <AppSettingsPanel /> : null}
                     <Content className={styles.mainContentWraper}
                         style={{

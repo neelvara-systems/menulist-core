@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Developer Quickstarts',
-    description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context, and user-initiated screenshot support.',
+    description: 'Canonica widget quickstarts for env-backed Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context, and user-initiated screenshot support.',
     alternates: { canonical: '/quickstarts' },
 };
 
@@ -29,11 +29,15 @@ const QUICKSTARTS = [
             "import { usePathname } from 'next/navigation';",
             "import { createCanonicaWebClient } from '@canonica/web';",
             '',
-            "const canonica = createCanonicaWebClient({ apiKey: 'cn_your_widget_key' });",
-            '',
             'export function CanonicaRouteContext() {',
             '  const pathname = usePathname();',
             '  useEffect(() => {',
+            '    const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;',
+            '    if (!widgetKey) return;',
+            '    const canonica = createCanonicaWebClient({',
+            '      apiKey: widgetKey,',
+            '      scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
+            '    });',
             '    const contextKey = pathname.replace(/^\\//, "").replace(/\\//g, "_") || "home";',
             '    canonica.init({ context: { contextKey, feature: pathname.split("/")[1] || "app", page: contextKey } });',
             '  }, [pathname]);',
@@ -48,10 +52,14 @@ const QUICKSTARTS = [
             "import { useEffect } from 'react';",
             "import { createCanonicaWebClient } from '@canonica/web';",
             '',
-            "const canonica = createCanonicaWebClient({ apiKey: 'cn_your_widget_key' });",
-            '',
             'export function BillingHelpContext() {',
             '  useEffect(() => {',
+            '    const widgetKey = import.meta.env.VITE_CANONICA_WIDGET_KEY;',
+            '    if (!widgetKey) return;',
+            '    const canonica = createCanonicaWebClient({',
+            '      apiKey: widgetKey,',
+            '      scriptSrc: import.meta.env.VITE_CANONICA_WIDGET_SCRIPT_SRC,',
+            '    });',
             '    canonica.init();',
             '    canonica.page({ contextKey: "billing_invoices", feature: "billing", page: "invoices" });',
             '  }, []);',
@@ -67,9 +75,14 @@ const QUICKSTARTS = [
             "import { onMounted } from 'vue';",
             "import { createCanonicaWebClient } from '@canonica/web';",
             '',
-            "const canonica = createCanonicaWebClient({ apiKey: 'cn_your_widget_key' });",
-            '',
             'onMounted(async () => {',
+            '  const config = useRuntimeConfig();',
+            '  const widgetKey = config.public.canonicaWidgetKey;',
+            '  if (!widgetKey) return;',
+            '  const canonica = createCanonicaWebClient({',
+            '    apiKey: widgetKey,',
+            '    scriptSrc: config.public.canonicaWidgetScriptSrc,',
+            '  });',
             '  await canonica.init();',
             '  canonica.page({ contextKey: "onboarding_import", feature: "onboarding", page: "import" });',
             '});',
@@ -94,9 +107,16 @@ const QUICKSTARTS = [
     },
 ];
 
+const ENV_EXAMPLES = [
+    ['Next.js / Vercel', 'NEXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
+    ['Vite / React SPA', 'VITE_CANONICA_WIDGET_KEY=cn_your_widget_key\nVITE_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
+    ['Nuxt', 'NUXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
+];
+
 const SAFE_CONTEXT = [
     ['Send', 'page, route, feature, workflow, role, plan, state, entity hints'],
     ['Do not send', 'passwords, tokens, payment data, emails, phone numbers, raw customer records'],
+    ['Env values', 'public widget key and optional script URL only; never service accounts or private API keys'],
     ['Screenshots', 'user upload or paste only; no automatic page capture or DOM scraping'],
     ['Verify', 'widget loaded, origin allowed, route allowed, context received'],
 ];
@@ -120,7 +140,7 @@ export default function CanonicaQuickstartsPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-5">
                         {SAFE_CONTEXT.map(([label, body]) => (
                             <article key={label} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
                                 <div className="text-xs font-semibold uppercase tracking-widest text-indigo-300">{label}</div>
@@ -131,6 +151,28 @@ export default function CanonicaQuickstartsPage() {
                     <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6b6b8a]">
                         Private beta workspaces can use the exact dashboard snippet immediately. The typed helper source is maintained for package release and can be handed to developers during setup.
                     </p>
+                </section>
+
+                <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-16">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="mb-8 max-w-3xl">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Environment setup</p>
+                            <h2 className="text-3xl font-bold text-white">Keep install values out of committed code.</h2>
+                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
+                                Put only the public Canonica widget key and optional script URL in client-safe env variables. Canonica does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 lg:grid-cols-3">
+                            {ENV_EXAMPLES.map(([title, code]) => (
+                                <article key={title} className="rounded-2xl border border-white/[0.06] bg-[#101028] p-5">
+                                    <h3 className="text-base font-semibold text-white">{title}</h3>
+                                    <pre className="mt-4 overflow-auto rounded-xl border border-white/[0.06] bg-[#070714] p-4 text-xs leading-relaxed text-[#d6d6ef]">
+                                        <code>{code}</code>
+                                    </pre>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

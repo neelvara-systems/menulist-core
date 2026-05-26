@@ -2,27 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Canonica Website — Global Styles */
+/* Canonica Website — Global Styles
+   Theme: Dark Control Plane */
 
-html,
-body {
-    background: #0a0a1a !important;
-    color-scheme: dark;
-}
-
-html:has(.canonica-site),
-body:has(.canonica-site) {
-    background: #0a0a1a !important;
-    color-scheme: dark;
-}
-
+:root,
 .canonica-site {
     --cn-bg: #0a0a1a;
     --cn-bg-subtle: #0f0f23;
     --cn-bg-band: #11111f;
     --cn-bg-band-muted: #0d0d1e;
     --cn-bg-band-deep: #080817;
-    --cn-bg-card: rgba(255, 255, 255, 0.03);
+    --cn-surface: rgba(255, 255, 255, 0.03);
+    --cn-surface-raised: rgba(255, 255, 255, 0.04);
+    --cn-bg-card: var(--cn-surface);
     --cn-border: rgba(255, 255, 255, 0.06);
     --cn-border-hover: rgba(255, 255, 255, 0.12);
     --cn-text: #ffffff;
@@ -32,7 +24,24 @@ body:has(.canonica-site) {
     --cn-primary-hover: #5558e6;
     --cn-primary-light: #8b8bff;
     --cn-accent: #818cf8;
+    --cn-success: #10b981;
+    --cn-warning: #f59e0b;
+    --cn-danger: #ef4444;
+}
 
+html,
+body {
+    background: var(--cn-bg) !important;
+    color-scheme: dark;
+}
+
+html:has(.canonica-site),
+body:has(.canonica-site) {
+    background: var(--cn-bg) !important;
+    color-scheme: dark;
+}
+
+.canonica-site {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     color: var(--cn-text);
     background: var(--cn-bg);

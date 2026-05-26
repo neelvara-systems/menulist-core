@@ -10,6 +10,16 @@ import {
     DEFAULT_CANONICA_ROLE_IDS,
     normalizeCanonicaRolePermissions,
 } from '@constant/canonica/permissions';
+import {
+    CANONICA_DEFAULT_TEAM_TAB,
+    CANONICA_ROUTES,
+    CANONICA_TEAM_TABS,
+    getCanonicaTeamRoute,
+    getCanonicaTeamTabFromPathname,
+    isCanonicaTeamTab,
+    normalizeCanonicaRoutePathname,
+    toCanonicaDashboardRoute,
+} from '@constant/canonica/navigations';
 import { useCanonicaAccess } from '@providers/canonicaAccessProvider';
 import {
     CanonicaStaffUserSummary,
@@ -49,6 +59,7 @@ import {
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuKeyRound,
@@ -64,6 +75,10 @@ import {
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
+
+type CanonicaTeamAccessProps = {
+    initialTab?: string;
+};
 
 type StaffFormValues = {
     countryCode?: string;
@@ -90,11 +105,22 @@ const getRoleOptions = (roles: CanonicaRoleDefinition[], canAssignRoles: boolean
         }))
 );
 
-export default function CanonicaTeamAccess() {
+export default function CanonicaTeamAccess({ initialTab }: CanonicaTeamAccessProps) {
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const isMobile = screens.md !== true;
     const { access, refresh: refreshAccess } = useCanonicaAccess();
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
+    const legacyRequestedTab = searchParams.get('tab');
+    const requestedTab = (
+        isCanonicaTeamTab(initialTab)
+            ? initialTab
+            : (isCanonicaTeamTab(legacyRequestedTab) ? legacyRequestedTab : CANONICA_DEFAULT_TEAM_TAB)
+    );
     const [staffForm] = Form.useForm<StaffFormValues>();
     const [roleForm] = Form.useForm<RoleFormValues>();
     const [loading, setLoading] = useState(true);
@@ -115,6 +141,7 @@ export default function CanonicaTeamAccess() {
         temporaryPasscode?: string;
         message?: string;
     } | null>(null);
+    const [activeTab, setActiveTab] = useState<string>(requestedTab);
 
     const canManageTeam = access?.isPlatformAdmin || access?.permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_TEAM] === true;
     const canAssignRoles = access?.isPlatformAdmin || access?.permissions?.[CANONICA_PERMISSION_KEYS.ASSIGN_ROLES] === true;
@@ -140,6 +167,33 @@ export default function CanonicaTeamAccess() {
     useEffect(() => {
         loadTeam();
     }, [loadTeam]);
+
+    useEffect(() => {
+        const nextTab = isCanonicaTeamTab(requestedTab) ? requestedTab : CANONICA_DEFAULT_TEAM_TAB;
+        setActiveTab(nextTab);
+
+        const activePathTab = getCanonicaTeamTabFromPathname(normalizedPathname);
+        const shouldNormalizeRoute = (
+            normalizedPathname === CANONICA_ROUTES.TEAM ||
+            Boolean(legacyRequestedTab) ||
+            activePathTab !== nextTab
+        );
+
+        if (shouldNormalizeRoute) {
+            router.replace(
+                toCanonicaDashboardRoute(getCanonicaTeamRoute(nextTab), currentHostname),
+                { scroll: false },
+            );
+        }
+    }, [currentHostname, legacyRequestedTab, normalizedPathname, requestedTab, router]);
+
+    const handleTabChange = useCallback((key: string) => {
+        setActiveTab(key);
+        router.replace(
+            toCanonicaDashboardRoute(getCanonicaTeamRoute(key), currentHostname),
+            { scroll: false },
+        );
+    }, [currentHostname, router]);
 
     const openCreateStaff = () => {
         setEditingStaff(null);
@@ -544,9 +598,11 @@ export default function CanonicaTeamAccess() {
             />
 
             <Tabs
+                activeKey={activeTab}
+                onChange={handleTabChange}
                 items={[
                     {
-                        key: 'members',
+                        key: CANONICA_TEAM_TABS.MEMBERS,
                         label: 'Members',
                         children: (
                             <Card title={<Flex align="center" gap={8}><LuUsers size={16} /> Members</Flex>}>
@@ -555,7 +611,7 @@ export default function CanonicaTeamAccess() {
                         ),
                     },
                     {
-                        key: 'roles',
+                        key: CANONICA_TEAM_TABS.ROLES,
                         label: 'Roles',
                         children: (
                             <Card title={<Flex align="center" gap={8}><LuShield size={16} /> Roles and Permissions</Flex>}>

@@ -7,23 +7,39 @@
  */
 
 import {
+    CANONICA_DEFAULT_GOVERNANCE_TAB,
+    CANONICA_DEFAULT_TEAM_TAB,
+    CANONICA_DEFAULT_WIDGET_TAB,
     CANONICA_ROUTES,
     CANONICA_SIDEBAR_NAV,
+    CanonicaNavItem,
+    getCanonicaGovernanceRoute,
+    getCanonicaGovernanceTabFromPathname,
+    getCanonicaTeamRoute,
+    getCanonicaTeamTabFromPathname,
+    getCanonicaWidgetRoute,
+    getCanonicaWidgetTabFromPathname,
+    isCanonicaGovernanceTab,
+    isCanonicaTeamTab,
+    isCanonicaWidgetTab,
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import { FEATURE_FLAGS } from '@config/features';
 import DashboardHeaderShell from '@/components/shared/dashboardShell/DashboardHeaderShell';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
 import ProfileActionsModal from '@organisms/headerComponent/profileActionsModal';
+import { useCanonicaAccess } from '@providers/canonicaAccessProvider';
 import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode, toggleSidbar } from '@reduxSlices/clientThemeConfig';
-import { Avatar, Badge, Button, Divider, Flex, theme, Tooltip, Typography } from 'antd';
-import { usePathname, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { Avatar, Badge, Button, Divider, Dropdown, Flex, Space, theme, Tooltip, Typography } from 'antd';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { LuHelpCircle, LuHome, LuMenu, LuMoon, LuPanelLeftClose, LuPanelLeftOpen, LuSun } from 'react-icons/lu';
+import { LuChevronDown, LuChevronRight, LuHelpCircle, LuHome, LuMenu, LuMoon, LuPanelLeftClose, LuPanelLeftOpen, LuSun } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -34,21 +50,99 @@ interface CanonicaHeaderProps {
     workspaceSwitcher?: ReactNode;
 }
 
+function renderHeaderNavIcon(Icon: CanonicaNavItem['icon']) {
+    return (
+        <Icon
+            size={18}
+            style={{
+                alignSelf: 'center',
+                flex: '0 0 auto',
+                marginRight: 2,
+                verticalAlign: 'middle',
+            }}
+        />
+    );
+}
+
 export default function CanonicaHeader({ showMenuButton = false, onMenuClick, onOpenAppSettings, workspaceSwitcher }: CanonicaHeaderProps) {
     const dispatch = useAppDispatch();
     const session = useClientAuthSession();
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { token } = theme.useToken();
+    const { access } = useCanonicaAccess();
     const isCollapsed = useAppSelector(getSidebarState);
     const isDarkMode = useAppSelector(getDarkModeState);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
+    const canUseManagementSurfaces = access?.canUseManagement ?? canUseCanonicaManagement(session);
 
-    const pageTitle = useMemo(() => {
-        const nav = CANONICA_SIDEBAR_NAV.find(n => normalizedPathname === n.route || normalizedPathname.startsWith(`${n.route}/`));
-        return nav?.label || 'Dashboard';
-    }, [normalizedPathname]);
+    const canShowNavItem = useCallback((nav: CanonicaNavItem) => {
+        if ((nav.managementOnly || nav.platformOnly) && !canUseManagementSurfaces) return false;
+        if (nav.requiredPermission && !access?.isPlatformAdmin && access?.permissions?.[nav.requiredPermission] !== true) return false;
+        if (!nav.featureFlag) return true;
+        return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
+    }, [access?.isPlatformAdmin, access?.permissions, canUseManagementSurfaces]);
+
+    const visibleNav = useMemo(() => (
+        CANONICA_SIDEBAR_NAV
+            .map((nav: CanonicaNavItem) => ({
+                ...nav,
+                subNav: nav.subNav?.filter(canShowNavItem),
+            }))
+            .filter((nav: CanonicaNavItem) => canShowNavItem(nav) || Boolean(nav.subNav?.length))
+    ), [canShowNavItem]);
+
+    const selectedRoute = useMemo(() => {
+        const governancePathTab = getCanonicaGovernanceTabFromPathname(normalizedPathname);
+        const legacyGovernanceTab = normalizedPathname === CANONICA_ROUTES.GOVERNANCE ? searchParams.get('tab') : null;
+        const activeGovernanceTab = governancePathTab || (isCanonicaGovernanceTab(legacyGovernanceTab) ? legacyGovernanceTab : null);
+        const widgetPathTab = getCanonicaWidgetTabFromPathname(normalizedPathname);
+        const legacyWidgetTab = normalizedPathname === CANONICA_ROUTES.WIDGET ? searchParams.get('tab') : null;
+        const activeWidgetTab = widgetPathTab || (isCanonicaWidgetTab(legacyWidgetTab) ? legacyWidgetTab : null);
+        const teamPathTab = getCanonicaTeamTabFromPathname(normalizedPathname);
+        const legacyTeamTab = normalizedPathname === CANONICA_ROUTES.TEAM ? searchParams.get('tab') : null;
+        const activeTeamTab = teamPathTab || (isCanonicaTeamTab(legacyTeamTab) ? legacyTeamTab : null);
+
+        if (activeGovernanceTab) return getCanonicaGovernanceRoute(activeGovernanceTab);
+        if (normalizedPathname === CANONICA_ROUTES.GOVERNANCE) return getCanonicaGovernanceRoute(CANONICA_DEFAULT_GOVERNANCE_TAB);
+        if (activeWidgetTab) return getCanonicaWidgetRoute(activeWidgetTab);
+        if (normalizedPathname === CANONICA_ROUTES.WIDGET) return getCanonicaWidgetRoute(CANONICA_DEFAULT_WIDGET_TAB);
+        if (activeTeamTab) return getCanonicaTeamRoute(activeTeamTab);
+        if (normalizedPathname === CANONICA_ROUTES.TEAM) return getCanonicaTeamRoute(CANONICA_DEFAULT_TEAM_TAB);
+
+        const flatNav = visibleNav.flatMap((nav) => [nav, ...(nav.subNav || [])]);
+        const exact = flatNav.find(n => normalizedPathname === n.route);
+        if (exact) return exact.route;
+
+        const prefix = flatNav
+            .slice()
+            .sort((a, b) => b.route.length - a.route.length)
+            .find(n => normalizedPathname.startsWith(`${n.route}/`));
+
+        return prefix?.route || visibleNav[0]?.route || '';
+    }, [normalizedPathname, searchParams, visibleNav]);
+
+    const activeBreadcrumb = useMemo(() => {
+        const activeParent = visibleNav.find((nav) => (
+            nav.route === selectedRoute ||
+            nav.subNav?.some((subItem) => subItem.route === selectedRoute) ||
+            normalizedPathname === nav.route ||
+            normalizedPathname.startsWith(`${nav.route}/`)
+        ));
+
+        if (!activeParent) return null;
+
+        const activeSubNav = activeParent.subNav?.find((subItem) => subItem.route === selectedRoute) || null;
+        return {
+            parent: activeParent,
+            subNav: activeParent.subNav || [],
+            activeSubNav,
+        };
+    }, [normalizedPathname, selectedRoute, visibleNav]);
+
+    const pageTitle = activeBreadcrumb?.activeSubNav?.label || activeBreadcrumb?.parent.label || 'Dashboard';
 
     const handleOpenAppSettings = () => {
         if (showMenuButton && onOpenAppSettings) {
@@ -128,7 +222,7 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
                 </>
             ) : null}
 
-            {showMenuButton ? (
+            {showMenuButton || !activeBreadcrumb ? (
                 <Text
                     strong
                     style={{
@@ -143,22 +237,105 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
                     {pageTitle}
                 </Text>
             ) : (
-                <Text
-                    strong
-                    style={{
-                        background: token.colorFillContent,
-                        borderRadius: 4,
-                        color: token.colorTextBase,
-                        fontSize: 12,
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        padding: '7px 10px',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                    }}
-                >
-                    {pageTitle}
-                </Text>
+                <Space align="center" size={8} style={{ minWidth: 0 }}>
+                    <Tooltip title={activeBreadcrumb.parent.label}>
+                        <Text
+                            strong
+                            style={{
+                                alignItems: 'center',
+                                background: token.colorFillContent,
+                                borderRadius: 6,
+                                color: token.colorTextBase,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                fontSize: 12,
+                                gap: 6,
+                                lineHeight: 1,
+                                maxWidth: 180,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                padding: '7px 10px',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                            onClick={() => router.push(toCanonicaDashboardRoute(activeBreadcrumb.parent.route, currentHostname))}
+                        >
+                            {renderHeaderNavIcon(activeBreadcrumb.parent.icon)}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {activeBreadcrumb.parent.label}
+                            </span>
+                        </Text>
+                    </Tooltip>
+                    {activeBreadcrumb.activeSubNav ? (
+                        <>
+                            <LuChevronRight
+                                size={16}
+                                style={{
+                                    alignSelf: 'center',
+                                    color: token.colorTextTertiary,
+                                    flex: '0 0 auto',
+                                    verticalAlign: 'middle',
+                                }}
+                            />
+                            <Dropdown
+                                menu={{
+                                    items: activeBreadcrumb.subNav.map((subItem) => ({
+                                        key: subItem.route,
+                                        label: subItem.label,
+                                        icon: (
+                                            <subItem.icon
+                                                size={18}
+                                                style={{ flex: '0 0 auto' }}
+                                            />
+                                        ),
+                                    })),
+                                    onClick: ({ key }) => {
+                                        router.push(toCanonicaDashboardRoute(String(key), currentHostname));
+                                    },
+                                    selectable: true,
+                                    selectedKeys: [activeBreadcrumb.activeSubNav.route],
+                                }}
+                                trigger={['click']}
+                            >
+                                <Text
+                                    strong
+                                    style={{
+                                        alignItems: 'center',
+                                        background: token.colorFillContent,
+                                        borderRadius: 6,
+                                        color: token.colorTextBase,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        fontSize: 12,
+                                        gap: 6,
+                                        lineHeight: 1,
+                                        maxWidth: 240,
+                                        minWidth: 0,
+                                        overflow: 'hidden',
+                                        padding: '7px 10px',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {renderHeaderNavIcon(activeBreadcrumb.activeSubNav.icon)}
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {activeBreadcrumb.activeSubNav.label}
+                                    </span>
+                                    {activeBreadcrumb.subNav.length > 1 ? (
+                                        <LuChevronDown
+                                            size={16}
+                                            style={{
+                                                alignSelf: 'center',
+                                                flex: '0 0 auto',
+                                                verticalAlign: 'middle',
+                                            }}
+                                        />
+                                    ) : null}
+                                </Text>
+                            </Dropdown>
+                        </>
+                    ) : null}
+                </Space>
             )}
         </Flex>
     );

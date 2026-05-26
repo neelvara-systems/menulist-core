@@ -27,13 +27,16 @@ Canonica is now maintained as a separate Support Knowledge Control Plane product
 
 ## Canonica Product Operating Model
 
-Canonica dashboard navigation is structured into three client modes:
+Canonica dashboard navigation is grouped by the product-owner workflow. The groups keep setup, support operations, widget installation, team access, billing, and governance separate while still rolling up to the core Launch Setup, Support Control, and Knowledge Governance operating model.
 
-| Mode | Purpose | Primary routes |
+| Sidebar group | Purpose | Primary routes |
 | --- | --- | --- |
-| Launch Setup | Activate a new client workspace, manage team access, import knowledge, map product surfaces, verify widget install, and review generated ontology/canonical answer drafts. | `/canonica/activation`, `/canonica/settings`, `/canonica/team`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
-| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, changelog, tickets, conversations, and widget operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations` |
-| Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/canonica/dashboard`, `/canonica/governance`, `/canonica/governance?tab=signal-queue` |
+| Launch Setup | Activate a new client workspace, manage product details, import starter knowledge, map product surfaces, and review readiness. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
+| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, release notes, support requests, ticket inbox, conversations, and weekly digest. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
+| Widget & Hosted Help | Configure widget appearance, install/embed snippets, hosted help domains, allowed origins, blocked routes, and key security. | `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
+| Team & Access | Manage workspace members and Canonica roles without mixing them into setup or support content. | `/canonica/team/members`, `/canonica/team/roles` |
+| Billing | Manage subscription and payment history. | `/canonica/billing`, `/canonica/transactions` |
+| Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/canonica/governance/answers`, `/canonica/governance/entities`, `/canonica/governance/drift`, `/canonica/governance/signal-queue`, `/canonica/governance/trust` |
 
 The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
 
@@ -111,8 +114,10 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/activation` → `src/app/(canonica)/canonica/activation/page.tsx`
 - `/canonica/dashboard` → `src/app/(canonica)/canonica/dashboard/page.tsx`
 - `/canonica/governance` → `src/app/(canonica)/canonica/governance/page.tsx`
+- `/canonica/governance/[tab]` → `src/app/(canonica)/canonica/governance/[tab]/page.tsx`
 - `/canonica/settings` → `src/app/(canonica)/canonica/settings/page.tsx`
 - `/canonica/team` → `src/app/(canonica)/canonica/team/page.tsx`
+- `/canonica/team/[tab]` → `src/app/(canonica)/canonica/team/[tab]/page.tsx`
 - `/canonica/tickets` → `src/app/(canonica)/canonica/tickets/page.tsx`
 - `/canonica/conversations` → `src/app/(canonica)/canonica/conversations/page.tsx`
 - `/canonica/knowledge-base` → `src/app/(canonica)/canonica/knowledge-base/page.tsx`
@@ -121,9 +126,12 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
 - `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
 - `/canonica/widget` → `src/app/(canonica)/canonica/widget/page.tsx`
+- `/canonica/widget/[tab]` → `src/app/(canonica)/canonica/widget/[tab]/page.tsx`
+- `/canonica/billing` → `src/app/(canonica)/canonica/billing/page.tsx`
+- `/canonica/transactions` → `src/app/(canonica)/canonica/transactions/page.tsx`
 - `/canonica/weekly-digest` → `src/app/(canonica)/canonica/weekly-digest/page.tsx`
 
-The Canonica shell is responsive: desktop uses the shared MenuList dashboard chrome for the header/sidebar and Canonica-owned navigation, while mobile uses a sticky header and drawer navigation with the same safe-area handling. The Canonica header includes direct Help, theme toggle, and profile modal actions, and keeps an optional workspace-switcher slot for the future workspace control. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+The Canonica shell is responsive: desktop uses the shared MenuList dashboard chrome for the header/sidebar and Canonica-owned navigation, while mobile uses a sticky header and drawer navigation with the same safe-area handling. The sidebar exposes workflow groups and clean tab subroutes for Governance, Widget, and Team. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
 ### MenuList Help Center Boundary
 

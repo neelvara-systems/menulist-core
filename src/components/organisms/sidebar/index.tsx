@@ -21,7 +21,11 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
 
-const SidebarComponent = () => {
+interface SidebarComponentProps {
+    onExpandedChange?: (expanded: boolean) => void;
+}
+
+const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const tNav = useTranslations('Navigation');
     const tSupport = useTranslations('SupportMenu');
     const dispatch = useAppDispatch();
@@ -273,6 +277,7 @@ const SidebarComponent = () => {
                 logoCollapsed={<EcomsIconLogo />}
                 logoExpanded={<EcomsHorizontalLogo color={token.colorText} />}
                 navItems={navItems}
+                onExpandedChange={onExpandedChange}
             />
         </ClientOnlyProvider>
     )

@@ -8,7 +8,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
-    description: 'Install Canonica support with one script, allowed origins, blocked routes, hosted help domains, runtime verification, safe page context, and explicit screenshot attachments.',
+    description: 'Install Canonica support with env-backed widget keys, one script, allowed origins, blocked routes, hosted help domains, runtime verification, safe page context, and explicit screenshot attachments.',
     alternates: { canonical: '/install' },
 };
 
@@ -24,6 +24,10 @@ const INSTALL_STEPS = [
     {
         title: 'Create the widget key',
         detail: 'Canonica shows the raw key once, stores only the hash, and keeps future runtime config in the dashboard.',
+    },
+    {
+        title: 'Store public values in env',
+        detail: 'Use your app environment for the public cn_* widget key and optional script URL instead of committing them directly in source code.',
     },
     {
         title: 'Paste one script',
@@ -58,6 +62,18 @@ const WIDGET_SNIPPET = `<script
   async>
 </script>`;
 
+const ENV_SNIPPET = `# Next.js / Vercel
+NEXT_PUBLIC_CANONICA_WIDGET_KEY=cn_widget_key
+NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js
+
+# Vite / React SPA
+VITE_CANONICA_WIDGET_KEY=cn_widget_key
+VITE_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js
+
+# Nuxt
+NUXT_PUBLIC_CANONICA_WIDGET_KEY=cn_widget_key
+NUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js`;
+
 const CONTEXT_SNIPPET = `window.CanonicaWidget?.page({
   contextVersion: 1,
   contextKey: 'billing_invoices',
@@ -68,8 +84,12 @@ const CONTEXT_SNIPPET = `window.CanonicaWidget?.page({
 
 const SDK_SNIPPET = `import { createCanonicaWebClient } from '@canonica/web';
 
+const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;
+if (!widgetKey) throw new Error('Missing NEXT_PUBLIC_CANONICA_WIDGET_KEY');
+
 const canonica = createCanonicaWebClient({
-  apiKey: 'cn_widget_key',
+  apiKey: widgetKey,
+  scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,
 });
 
 await canonica.init();
@@ -82,9 +102,10 @@ canonica.page({
 
 const FRAMEWORK_EXAMPLES = [
     ['Typed SDK', 'Use the @canonica/web helper to validate safe context and wrap init, page, setContext, open, and close calls.'],
-    ['Plain HTML', 'Paste the script before </body> and add optional page context after route changes.'],
-    ['Next.js / React', 'Load the script once in the app shell, then call page context from route-aware components.'],
-    ['Vue / Nuxt / SPA routers', 'Update CanonicaWidget.page() when route, workflow, plan, or role changes.'],
+    ['Env first', 'Store only the public widget key and script URL in client-safe env variables. Keep private credentials out of the browser app.'],
+    ['Plain HTML', 'Paste the dashboard script before </body> or inject the key through your build template.'],
+    ['Next.js / React', 'Load the script once in the app shell, then call page context from route-aware components using env-backed values.'],
+    ['Vue / Nuxt / SPA routers', 'Read public runtime config, then update CanonicaWidget.page() when route, workflow, plan, or role changes.'],
 ];
 
 const VERIFICATION_ITEMS = [
@@ -151,6 +172,16 @@ export default function CanonicaInstallPage() {
                         </article>
 
                         <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
+                            <h2 className="text-xl font-semibold text-white">Environment values</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-[#808099]">
+                                Recommended for app repos: put only the public widget key and optional script source in client-safe env variables.
+                            </p>
+                            <pre className="mt-5 overflow-x-auto rounded-xl border border-white/[0.06] bg-[#070714] p-4 text-xs leading-relaxed text-[#d6d6ef]">
+                                <code>{ENV_SNIPPET}</code>
+                            </pre>
+                        </article>
+
+                        <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
                             <h2 className="text-xl font-semibold text-white">Page context snippet</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
                                 Context helps Canonica prefer the right articles, owner FAQ answers, changelog items, and approved answers for the current screen.
@@ -192,8 +223,11 @@ export default function CanonicaInstallPage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Developer handoff</p>
                             <h2 className="text-3xl font-bold">What to hand your developer.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                                Give your developer the widget key, allowed domains, blocked routes, and the list of important pages where users need help first.
+                                Give your developer the widget key, env variable names, allowed domains, blocked routes, and the list of important pages where users need help first.
                             </p>
+                            <div className="mt-5 rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-sm leading-relaxed text-[#d6d6ef]">
+                                Canonica widget installs use a public publishable key. Do not add Firebase service accounts, Canonica admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records to client-side env files.
+                            </div>
                             <div className="mt-6 grid gap-3">
                                 {FRAMEWORK_EXAMPLES.map(([title, detail]) => (
                                     <article key={title} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">

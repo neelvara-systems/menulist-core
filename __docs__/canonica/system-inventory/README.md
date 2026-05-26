@@ -46,13 +46,16 @@ Docs under `__docs__/canonica/` were cross-checked after code discovery. When do
 
 ## Canonica Operating Model
 
-Canonica is organized around three client modes:
+Canonica is organized around workflow groups that match how a product owner launches and operates support:
 
-| Mode | What it owns | Implemented routes |
+| Group | What it owns | Implemented routes |
 | --- | --- | --- |
-| Launch Setup | Subscription/workspace activation, product details, starter knowledge import, product surface mapping, widget install, install verification. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
-| Support Control | Customer-facing support surfaces and day-to-day support operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
-| Knowledge Governance | Product ontology, canonical answers, drift review, signal-to-knowledge queue, coverage, trust/readiness metrics. | `/canonica/dashboard`, `/canonica/governance`, `/canonica/governance?tab=signal-queue` |
+| Launch Setup | Subscription/workspace activation, product details, starter knowledge import, product surface mapping, and readiness review. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
+| Support Control | Customer-facing support surfaces and day-to-day support operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
+| Widget & Hosted Help | Widget UI, install/embed snippets, hosted help domain setup, allowed origins, blocked routes, and key security. | `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
+| Team & Access | Workspace members and role permissions. | `/canonica/team/members`, `/canonica/team/roles` |
+| Billing | Subscription and transaction history. | `/canonica/billing`, `/canonica/transactions` |
+| Knowledge Governance | Product ontology, canonical answers, drift review, signal-to-knowledge queue, coverage, trust/readiness metrics. | `/canonica/governance/answers`, `/canonica/governance/entities`, `/canonica/governance/drift`, `/canonica/governance/signal-queue`, `/canonica/governance/trust` |
 
 Management routes are gated by Canonica product scope or platform access. Client support routes can be exposed without giving users management access.
 
@@ -118,10 +121,13 @@ Management routes are gated by Canonica product scope or platform access. Client
 ### Canonica Dashboard
 
 - `/canonica` redirects by scope: management users to activation/dashboard, support-only users to client home/help.
-- `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget`.
+- `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard`.
 - `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`.
-- `/canonica/knowledge-base`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest`.
-- `/canonica/dashboard`, `/canonica/governance` and governance tabs.
+- `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest`.
+- `/canonica/widget`, `/canonica/widget/[tab]` for UI, install, hosted help, and access/security subroutes.
+- `/canonica/team`, `/canonica/team/[tab]` for members and roles subroutes.
+- `/canonica/billing`, `/canonica/transactions`.
+- `/canonica/governance`, and `/canonica/governance/[tab]` sidebar subroutes.
 
 ### Widget Runtime
 
@@ -364,7 +370,7 @@ These should not be enabled merely because code exists. They add integration sur
 Launch-hardening changes enabled in the 2026-05-22 pass:
 
 - Ticket/email notification verification is enabled and visible in Activation.
-- Widget install/runtime verification remains in Activation and `/canonica/widget`; branding controls now include header title and powered-by visibility.
+- Widget install/runtime verification remains in Activation and `/canonica/widget/install`; branding controls now include header title and powered-by visibility.
 - Signal-to-Knowledge Queue manual draft generation/regeneration remains reachable from governance.
 - Ticket browser-log capture stays on ticket creation and is visible in ticket details.
 - Ticket-to-knowledge extraction and product friction intelligence are enabled with nightly caps.

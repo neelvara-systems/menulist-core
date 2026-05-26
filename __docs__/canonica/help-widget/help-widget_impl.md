@@ -156,11 +156,12 @@ Context-aware support remains generic:
 
 ### 3.3.2 Widget Management Console
 
-`/canonica/widget` is the single source of truth for widget management:
+`/canonica/widget` is the single source of truth for widget management. Clean sidebar subroutes normalize to `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, and `/canonica/widget/access`:
 
 - Key create, rename, copy, and delete through `POST /api/canonica/widget-key`.
 - Config load/save through `GET`/`PUT /api/canonica/widget-config`.
 - Install snippets generated from `src/lib/canonica/widgetConfig.ts`.
+- Env-backed install handoff for Next.js, Vite/React, and Nuxt client apps.
 - Origin allowlist management.
 - Context-aware route snippet examples.
 - Desktop/mobile preview.
@@ -208,7 +209,25 @@ CANONICA_WIDGET_KEY_ENCRYPTION_SECRET=<strong random secret, separate per enviro
 
 If the secret is missing, create still returns the raw key once for install, but later copy requests return a rotate/create-new-key message instead of weakening storage.
 
-MenuList external-client embed environment:
+Generic client-product embed environment:
+
+```bash
+# Next.js / Vercel
+NEXT_PUBLIC_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica>
+NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
+
+# Vite / React SPA
+VITE_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica>
+VITE_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
+
+# Nuxt
+NUXT_PUBLIC_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica>
+NUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
+```
+
+Only the public `cn_*` widget key and optional script URL belong in browser/client env. Client products must not put Firebase service accounts, Canonica admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records in frontend env files. The key is still protected by hash-only server validation, allowed origins, blocked routes, and rate limits.
+
+MenuList, when acting as a Canonica client/test host, follows the same pattern with product-specific environment names:
 
 ```bash
 NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica>

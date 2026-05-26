@@ -4,10 +4,13 @@
 
 Give Canonica clients one operational home for launch readiness: license, widget key, allowed origins, knowledge, product surfaces, route context, release notes, and ticket signal loop.
 
-The screen is organized around Canonica's three client modes:
+The screen is organized around Canonica's product-owner workflow groups:
 
 - Launch Setup: workspace, product details, knowledge import, product surfaces, widget install, generated entity candidates, and generated canonical answer drafts.
 - Support Control: help center, docs, knowledge base, changelog, tickets, conversations, and widget operations.
+- Widget & Hosted Help: UI configuration, install/env handoff, hosted help domains, allowed origins, blocked routes, and key security.
+- Team & Access: workspace members and Canonica roles.
+- Billing: subscription and transactions.
 - Knowledge Governance: coverage, drift, entities, canonical answers, signal-to-knowledge queue, and trust metrics.
 
 ## User

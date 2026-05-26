@@ -5,16 +5,21 @@
   justify-content: flex-start;
   align-items: flex-start;
   flex-direction: column;
+  max-height: 100dvh;
   width: 62px;
   // gap: 10px;
-  overflow-y: auto;
-  height: 100vh;
+  overflow: hidden;
+  overflow-x: hidden;
+  height: 100dvh;
   position: fixed;
   left: 0;
   top: 0;
   z-index: 12;
+  min-height: 0;
   .itemWrap {
-    width: auto;
+    width: 100%;
+    box-sizing: border-box;
+    flex: 0 0 var(--header-Height);
     height: var(--header-Height);
     min-height: var(--header-Height);
     max-height: var(--header-Height);
@@ -46,8 +51,44 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 10px;
     width: 100%;
-    padding: 10px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0;
+
+    .menuSectionWrap {
+      box-sizing: border-box;
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      gap: 5px;
+      overflow: visible;
+      padding: 0 10px;
+      position: relative;
+      width: 100%;
+
+      &:last-child {
+        margin-bottom: 10px;
+      }
+
+      &.parentMenuSectionWrap {
+        gap: 6px;
+      }
+    }
+
+    .subNavPanel {
+      border-left: 1px solid var(--ant-color-border-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-left: 17px;
+      padding: 2px 0 2px 9px;
+      width: calc(100% - 17px);
+    }
 
     .menuItemWrap {
       display: flex;
@@ -56,6 +97,9 @@
       gap: 10px;
       padding-right: 0;
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: visible;
       border-radius: 4px;
       z-index: 1;
       cursor: pointer;
@@ -98,12 +142,17 @@
       .navWrap {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
+        gap: 6px;
         width: 100%;
+        min-width: 0;
+        overflow: hidden;
       }
       .iconWrap {
         @include flexCenter;
         width: 34px;
+        min-width: 34px;
+        flex: 0 0 34px;
         height: 34px;
         cursor: pointer;
         border-radius: 4px;
@@ -122,11 +171,21 @@
         justify-content: flex-start;
         align-items: center;
         gap: 8px;
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
       }
       .label {
         font-size: 13px;
         letter-spacing: 0.2px;
         font-weight: 400;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .subNavIcon {
+        flex: 0 0 34px;
       }
 
       &:hover {
@@ -137,6 +196,17 @@
       }
       &.active {
         font-weight: 600;
+      }
+      &.parentMenuItemWrap {
+        border: 1px solid var(--ant-color-border-secondary);
+        border-radius: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 4;
+
+        .label {
+          font-weight: 600;
+        }
       }
       .activeMark {
         content: "";
@@ -151,10 +221,25 @@
         border-radius: 10px;
       }
       &.subMenuItemWrap {
-        padding-left: 20px;
-        font-size: 10px;
+        border-radius: 7px;
+        padding-left: 6px;
+        font-size: 12px;
         letter-spacing: 0.2px;
         font-weight: 400;
+
+        .iconWrap {
+          flex: 0 0 30px;
+          height: 30px;
+          min-width: 30px;
+          padding: 7px;
+          width: 30px;
+        }
+
+        .label {
+          font-size: 12px;
+          opacity: 0.92;
+        }
+
         .labelIconWrap {
           position: relative;
           // &::before {
@@ -171,12 +256,15 @@
       }
     }
     &.actionNavItem {
-    position: sticky;
-      bottom: 0;
+      position: static;
+      margin-top: auto;
       z-index: 2;
       border-top: 1px solid var(--ant-color-border-secondary);
       width: 100%;
-      margin-top: auto;
+      flex: 0 0 auto;
+      overflow: visible;
+      overflow-y: visible;
+      padding: 10px;
       .menuItemWrap {
         justify-content: center;
         padding: 2px;

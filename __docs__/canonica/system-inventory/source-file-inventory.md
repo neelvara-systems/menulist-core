@@ -103,10 +103,13 @@ Top-level Canonica docs included:
 - `src/app/(canonica)/layout.tsx`
 - `src/app/(canonica)/canonica/page.tsx`
 - `src/app/(canonica)/canonica/activation/page.tsx`
+- `src/app/(canonica)/canonica/billing/page.tsx`
 - `src/app/(canonica)/canonica/changelog/page.tsx`
 - `src/app/(canonica)/canonica/conversations/page.tsx`
 - `src/app/(canonica)/canonica/dashboard/page.tsx`
 - `src/app/(canonica)/canonica/docs/page.tsx`
+- `src/app/(canonica)/canonica/faqs/page.tsx`
+- `src/app/(canonica)/canonica/governance/[tab]/page.tsx`
 - `src/app/(canonica)/canonica/governance/page.tsx`
 - `src/app/(canonica)/canonica/help/page.tsx`
 - `src/app/(canonica)/canonica/kb-generation/page.tsx`
@@ -115,8 +118,12 @@ Top-level Canonica docs included:
 - `src/app/(canonica)/canonica/release-notes/page.tsx`
 - `src/app/(canonica)/canonica/settings/page.tsx`
 - `src/app/(canonica)/canonica/support/page.tsx`
+- `src/app/(canonica)/canonica/team/[tab]/page.tsx`
+- `src/app/(canonica)/canonica/team/page.tsx`
 - `src/app/(canonica)/canonica/tickets/page.tsx`
+- `src/app/(canonica)/canonica/transactions/page.tsx`
 - `src/app/(canonica)/canonica/weekly-digest/page.tsx`
+- `src/app/(canonica)/canonica/widget/[tab]/page.tsx`
 - `src/app/(canonica)/canonica/widget/page.tsx`
 
 ---

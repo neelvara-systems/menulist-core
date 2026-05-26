@@ -5,8 +5,8 @@
   "start_url": "https://canonica.app/",
   "scope": "https://canonica.app/",
   "display": "standalone",
-  "background_color": "#070714",
-  "theme_color": "#111138",
+  "background_color": "#0A0A1A",
+  "theme_color": "#0A0A1A",
   "icons": [
     {
       "src": "/canonica-favicon-16.png",

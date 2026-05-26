@@ -24,7 +24,7 @@ This is separate from:
 
 ## Runtime Flow
 
-1. Client configures hosted help in `/canonica/widget` → Hosted Help tab.
+1. Client configures hosted help in `/canonica/widget/hosted-help`.
 2. Dashboard save adds new help domains to the shared Vercel project through the same domain-provisioning service used by MenuList custom domains.
 3. Dashboard save writes `stores/{sId}.hostedHelpConfig`.
 4. Dashboard save also writes one Canonica registry doc per domain:

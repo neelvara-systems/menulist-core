@@ -4,7 +4,7 @@
 
 `/canonica/activation` renders `CanonicaActivationCommandCenter`.
 
-Canonica management navigation is grouped into Launch Setup, Support Control, and Knowledge Governance. Activation sits under Launch Setup, and the Canonica base dashboard route redirects management users to Activation so onboarding does not drop owners into a raw operations dashboard.
+Canonica management navigation is grouped into Launch Setup, Support Control, Widget & Hosted Help, Team & Access, Billing, and Knowledge Governance. Activation sits under Launch Setup, and the Canonica base dashboard route redirects management users to Activation so onboarding does not drop owners into a raw operations dashboard.
 
 Activation links directly into:
 
@@ -12,9 +12,9 @@ Activation links directly into:
 - `/canonica/kb-generation` for knowledge import
 - `/canonica/docs` for public documentation preview
 - `/canonica/product-surfaces` for route/workflow context mapping
-- `/canonica/widget` for install, allowed origins, and keys
-- `/canonica/governance?tab=entities` and `/canonica/governance?tab=answers` for product ontology and canonical answer review
-- `/canonica/governance?tab=signal-queue` for support signals that should become knowledge
+- `/canonica/widget/install` and `/canonica/widget/access` for install snippets, env handoff, allowed origins, blocked routes, and keys
+- `/canonica/governance/entities` and `/canonica/governance/answers` for product ontology and canonical answer review
+- `/canonica/governance/signal-queue` for support signals that should become knowledge
 - `/canonica/knowledge-base`, `/canonica/changelog`, and `/canonica/tickets` through the shared Content Control workbench
 
 The Content Control workbench (`src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`) is shared by Activation and Readiness Metrics. It reuses the loaded activation summary to give product owners one practical map for profile, import, articles, surfaces, changelog, signal queue, widget, and tickets without adding collection reads.

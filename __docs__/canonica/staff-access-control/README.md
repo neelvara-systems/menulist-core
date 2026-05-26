@@ -8,7 +8,7 @@ Canonica staff access control gives each Canonica workspace its own team member 
 
 ## Scope
 
-- Route: `/canonica/team`
+- Routes: `/canonica/team`, `/canonica/team/members`, `/canonica/team/roles`
 - Feature flag: `ENABLE_CANONICA_STAFF_ACCESS`
 - Role storage: `stores/{sId}.canonicaRoles` in Canonica Firestore
 - Staff profile storage: `users/{uId}` in Canonica Firestore
