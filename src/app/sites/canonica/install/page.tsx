@@ -153,7 +153,7 @@ export default function CanonicaInstallPage() {
                         <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
                             <h2 className="text-xl font-semibold text-white">Page context snippet</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
-                                Context helps Canonica prefer the right articles, changelog items, and approved answers for the current screen.
+                                Context helps Canonica prefer the right articles, owner FAQ answers, changelog items, and approved answers for the current screen.
                             </p>
                             <pre className="mt-5 overflow-x-auto rounded-xl border border-white/[0.06] bg-[#070714] p-4 text-xs leading-relaxed text-[#d6d6ef]">
                                 <code>{CONTEXT_SNIPPET}</code>

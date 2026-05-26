@@ -74,15 +74,17 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         CANONICA_MANAGEMENT_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
     ), [normalizedPathname]);
     const requiredPermission = useMemo(() => getCanonicaRouteRequiredPermission(normalizedPathname), [normalizedPathname]);
+    const canEvaluateRoutePermission = !requiredPermission || Boolean(access);
     const hasRoutePermission = !requiredPermission || access?.isPlatformAdmin || access?.permissions?.[requiredPermission] === true;
 
     useEffect(() => {
         if (status === 'loading') return;
         if (accessLoading) return;
-        if ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission) {
+        if (accessError) return;
+        if (canEvaluateRoutePermission && ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission)) {
             router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
         }
-    }, [accessLoading, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, router, status]);
+    }, [accessError, accessLoading, canEvaluateRoutePermission, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, router, status]);
 
     useEffect(() => {
         if (status === 'loading') {
@@ -118,8 +120,12 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         };
     }, [pathname, session, status]);
 
-    const shouldRedirectAway = (isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission;
-    const shouldShowAuthError = !shouldRedirectAway && (firebaseAuthError || Boolean(accessError));
+    const shouldRedirectAway = !accessError && canEvaluateRoutePermission && ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission);
+    const shouldShowAuthError = !shouldRedirectAway && (
+        firebaseAuthError ||
+        Boolean(accessError) ||
+        (!accessLoading && Boolean(requiredPermission) && !access)
+    );
     const shouldShowContentLoader = status === 'loading' || accessLoading || (!shouldRedirectAway && !firebaseAuthReady);
     const sidebarOffset = isCollapsed ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 

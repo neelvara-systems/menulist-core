@@ -26,6 +26,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const pathSegments = useMemo(() => pathname.split('/').filter(Boolean), [pathname]);
+    const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';
     const requestedPathTab = pathSegments[0] === 'help-center' ? pathSegments[1] : null;
     const requestedArticleId = requestedPathTab === 'kb' && pathSegments[2] === 'articles' ? pathSegments[3] : undefined;
     const requestedChangelogId = requestedPathTab === 'changelog' ? pathSegments[2] : undefined;
@@ -35,6 +36,8 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     );
 
     useEffect(() => {
+        if (!isDirectHelpCenterRoute) return;
+
         const nextPath = helpCenterTabRouting(activeTab);
         const currentPath = `${window.location.pathname}${window.location.search}`;
         const isNestedHelpPath = window.location.pathname.startsWith(`${nextPath}/`);
@@ -42,7 +45,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
         if (currentPath !== nextPath && !isNestedHelpPath) {
             router.replace(`${nextPath}${window.location.hash}`, { scroll: false });
         }
-    }, [activeTab, router]);
+    }, [activeTab, isDirectHelpCenterRoute, router]);
 
     const handleBack = () => {
         window.history.replaceState(null, '', '/dashboard#mobile/more');
@@ -331,6 +334,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                     initialArticleId={requestedArticleId}
                     initialChangelogId={requestedChangelogId}
                     initialTab={activeTab}
+                    syncRoute={isDirectHelpCenterRoute}
                 />
             </div>
         </Flex>

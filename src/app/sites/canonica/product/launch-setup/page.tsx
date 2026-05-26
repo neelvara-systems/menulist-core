@@ -62,7 +62,7 @@ export default function LaunchSetupProductPage() {
                 workflowSteps={[
                     { title: 'Create workspace', description: 'Sign in, enter company and product details, and create the Canonica workspace.' },
                     { title: 'Set team access', description: 'Add workspace members with the right Canonica role before support work spreads.' },
-                    { title: 'Import knowledge', description: 'Bring starter docs, FAQs, release notes, or common support answers.' },
+                    { title: 'Import knowledge', description: 'Bring starter docs, FAQs, custom answers, release notes, or common support answers.' },
                     { title: 'Map product surfaces', description: 'Choose the billing, onboarding, settings, release, and error pages that need contextual help.' },
                     { title: 'Verify widget install', description: 'Install one script, allow your domains, block sensitive routes, and verify page context.' },
                     { title: 'Approve first answers', description: 'Review drafts and early approved answers before relying on fallback.' },

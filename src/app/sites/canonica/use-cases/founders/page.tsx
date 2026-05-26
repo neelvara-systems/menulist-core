@@ -32,7 +32,7 @@ export default function FoundersUseCasePage() {
             setupSteps={[
                 'Sign in and create the Canonica beta workspace.',
                 'Add company, product, support email, and support-heavy pages.',
-                'Import docs, FAQs, release notes, and recurring support answers.',
+                'Import docs, FAQs, owner answers, release notes, and recurring support answers.',
                 'Install the widget and verify page context.',
                 'Approve the first answers from the review queue.',
             ]}

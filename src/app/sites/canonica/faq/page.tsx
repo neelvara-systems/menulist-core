@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, owner Q&A, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, owner Q&A, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -104,7 +104,11 @@ const FAQS = [
     },
     {
         question: 'How are FAQs created?',
-        answer: 'Product owners can manage FAQs directly. Canonica can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
+        answer: 'Product owners can manage FAQs and custom Q&A directly. Canonica can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
+    },
+    {
+        question: 'Can I add my own question and answer?',
+        answer: 'Yes. Owners can write exact repeated questions and answers, attach article, tag, entity, and page context, publish them, and let Canonica use them after canonical answers and before fallback when the user question matches.',
     },
     {
         question: 'Can Canonica work with an existing helpdesk?',
@@ -170,7 +174,7 @@ export default function CanonicaFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, team access, AI-built apps, page-aware support, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, team access, AI-built apps, page-aware support, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>

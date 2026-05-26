@@ -6,7 +6,7 @@ import SeoLandingPage from '../components/SeoLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support Widget for Solo Founders',
-    description: 'A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, ticket fallback, and approved answers.',
+    description: 'A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, owner Q&A, ticket fallback, and approved answers.',
     alternates: { canonical: '/support-widget-for-solo-founders' },
 };
 
@@ -29,7 +29,7 @@ export default function SupportWidgetForSoloFoundersPage() {
                 canonicalPath="/support-widget-for-solo-founders"
                 eyebrow="Support widget for solo founders"
                 title="Support widget for solo founders shipping with AI."
-                description="Launch a support layer from existing docs, FAQs, release notes, recurring questions, and user-attached screenshots before support becomes your full-time job."
+                description="Launch a support layer from existing docs, FAQs, owner answers, release notes, recurring questions, and user-attached screenshots before support becomes your full-time job."
                 problem="A solo founder cannot answer every repeated setup, billing, permission, or visual-error question manually. But unreviewed generated support and automatic screen capture can create more risk than they remove."
                 question="What should I upload first?"
                 genericAnswer="Upload your documentation and check the setup guide."

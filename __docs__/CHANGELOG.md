@@ -14,10 +14,12 @@
 - **FAQ/custom answers keep source links** — Owners can continue linking answers to articles, product surfaces, entities, and tags; matched FAQ answers return the linked article as a helpful reference when available.
 - **Widget and Help Center responses show answer source** — FAQ/custom-answer hits are marked as owner answers while canonical answers remain the highest-priority verified path.
 - **FAQ management wording is clearer** — `/canonica/faqs` now presents the screen as FAQs and custom answers, not only a static FAQ page.
+- **Canonica public website now reflects custom answers** — Homepage, Product, FAQ Management, Support Control, Widget, FAQ, SEO pages, updates, and agent-readable LLM context now describe owner-written Q&A as the implemented shortcut after canonical answers and before fallback.
 
 ### Cost
 
 - **Lower AI/provider cost for repeated owner-authored questions** — FAQ/custom-answer hits skip embedding generation, vector search, and answer generation. Cold FAQ retrieval reads a bounded published FAQ list and caches it per tenant/store/source-version for 60 seconds; linked article references add one article read only when a matched FAQ has a linked article.
+- **No website runtime Firebase cost change** — The public-site refresh is static copy/metadata only and adds no website Firestore reads, writes, listeners, or Cloud Functions.
 
 ## May 26, 2026 — Menu Repair Category Icons
 

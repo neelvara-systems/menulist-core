@@ -32,7 +32,7 @@ export default function VibeCodedSaasUseCasePage() {
             setupSteps={[
                 'Create your Canonica workspace.',
                 'Pick the first pages where users get stuck.',
-                'Import docs, FAQs, release notes, setup notes, or recurring questions.',
+                'Import docs, FAQs, owner answers, release notes, setup notes, or recurring questions.',
                 'Install the in-app widget and pass safe page context.',
                 'Review repeated misses before publishing official answers.',
             ]}

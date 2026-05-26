@@ -13,7 +13,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Knowledge import',
-                detail: 'Existing docs, FAQs, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
+                detail: 'Existing docs, FAQs, owner Q&A, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
             },
             {
                 title: 'Product surfaces',
@@ -39,7 +39,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Page-aware widget',
-                detail: 'Embedded support receives safe page context and returns related articles, releases, or ticket fallback.',
+                detail: 'Embedded support receives safe page context and returns canonical answers, owner FAQ answers, related articles, releases, or ticket fallback.',
             },
             {
                 title: 'Tickets as fallback',
@@ -65,7 +65,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Canonical answers',
-                detail: 'Approved, scoped answers are retrieved before fallback so repeated questions get stable answers.',
+                detail: 'Approved, scoped answers are retrieved first; published owner FAQ answers can handle matching repeated questions before fallback.',
             },
             {
                 title: 'Drift checks',

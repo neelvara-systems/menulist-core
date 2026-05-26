@@ -7,7 +7,7 @@ import { CANONICA_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'In-App Help Widget',
-    description: 'Install Canonica as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, and approved answers before fallback.',
+    description: 'Install Canonica as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, canonical answers, and owner FAQ answers before fallback.',
     alternates: { canonical: '/product/page-aware-widget' },
 };
 
@@ -30,11 +30,11 @@ export default function PageAwareWidgetProductPage() {
                 canonicalPath="/product/page-aware-widget"
                 eyebrow="In-app help widget"
                 title="A help widget that knows which page the user is on."
-                description="Install one widget, pass safe page hints, let users attach screenshots explicitly when visual context helps, and serve approved answers, related docs, configured proactive prompts, or fallback tickets based on where the user is stuck."
+                description="Install one widget, pass safe page hints, let users attach screenshots explicitly when visual context helps, and serve canonical answers, owner FAQ answers, related docs, configured proactive prompts, or fallback tickets based on where the user is stuck."
                 activeTab="In-app help widget"
                 tabs={CANONICA_PRODUCT_AREAS}
                 canvasTitle="One widget. Different answers by page."
-                canvasSubtitle="One script gives the product a support layer that can prefer the current page, related FAQ, release note, approved answer, explicit screenshot context, and configured proactive trigger before fallback."
+                canvasSubtitle="One script gives the product a support layer that can prefer the current page, canonical answer, owner FAQ answer, related article, release note, explicit screenshot context, and configured proactive trigger before fallback."
                 canvasBadge="Widget allowed"
                 canvasItems={[
                     { title: 'Allowed origins', description: 'Restrict where the widget can run so copied snippets do not become open support endpoints.' },
@@ -45,7 +45,7 @@ export default function PageAwareWidgetProductPage() {
                 ]}
                 metrics={[
                     { label: 'Context key', value: 'billing_invoices' },
-                    { label: 'Answer path', value: 'Canonical first' },
+                    { label: 'Answer path', value: 'Canonical, then FAQ' },
                     { label: 'Image input', value: 'Manual only' },
                     { label: 'Proactive', value: 'Configured only' },
                 ]}
@@ -54,7 +54,7 @@ export default function PageAwareWidgetProductPage() {
                 bentoCards={[
                     { title: 'One embed script', description: 'Install the widget once and let dashboard settings control runtime behavior.' },
                     { title: 'Route-aware answers', description: 'The same question can resolve differently on invoices, onboarding import, team permissions, or release pages.' },
-                    { title: 'Hosted help handoff', description: 'Users can move from the widget to hosted docs, FAQs, and changelog content on your support domain.' },
+                    { title: 'Hosted help handoff', description: 'Users can move from the widget to hosted docs, owner FAQs, and changelog content on your support domain.' },
                     { title: 'Feedback as signal', description: 'Negative feedback and fallback answers become review work, not invisible chat noise.' },
                     { title: 'Screenshot-aware support', description: 'Users can add a screenshot to explain visual errors, while Canonica keeps automatic page capture out of the runtime.' },
                     { title: 'Quiet proactive help', description: 'Rule-based prompts can appear only when active triggers and approved support summaries exist for the page.' },
@@ -67,7 +67,7 @@ export default function PageAwareWidgetProductPage() {
                     { title: 'Configure access', description: 'Add allowed origins and blocked routes so the widget appears only where it should.' },
                     { title: 'Send safe context', description: 'Pass page, feature, workflow, role, or plan hints; screenshot input stays user-initiated, optional, and bounded.' },
                     { title: 'Enable prompts where useful', description: 'Use active triggers for pages that benefit from proactive help; inactive workspaces skip those calls.' },
-                    { title: 'Review gaps', description: 'Use fallback and feedback signals to improve approved answers over time.' },
+                    { title: 'Review gaps', description: 'Use fallback and feedback signals to improve canonical answers, owner FAQs, and source articles over time.' },
                 ]}
             />
             <CanonicaFooter basePath={basePath} />

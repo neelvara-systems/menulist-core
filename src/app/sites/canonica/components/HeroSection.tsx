@@ -19,7 +19,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
 
             {/* Subheadline */}
             <p className="relative mt-6 w-full max-w-[17rem] text-center text-base leading-relaxed text-[#a0a0c0] sm:max-w-3xl sm:text-lg">
-                Canonica adds page-aware support to your SaaS: an in-app help widget, hosted help center, ticket fallback, and owner-approved answers that improve when users get stuck.
+                Canonica adds page-aware support to your SaaS: an in-app help widget, hosted help center, ticket fallback, and owner-approved answers or FAQs that improve when users get stuck.
             </p>
 
             {/* CTAs */}

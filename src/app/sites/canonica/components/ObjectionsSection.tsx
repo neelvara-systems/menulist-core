@@ -12,6 +12,10 @@ const OBJECTIONS = [
         answer: 'No. Start with FAQs, release notes, app pages, setup guides, and common support answers. Canonica turns those into review work.',
     },
     {
+        question: 'Can I add my own repeated Q&A?',
+        answer: 'Yes. Owners can publish exact FAQ or custom answers, link them to articles and product pages, and let Canonica use them after canonical answers and before fallback.',
+    },
+    {
         question: 'I built my app with AI. Is Canonica still useful?',
         answer: 'Yes, if real users are asking repeated questions. Canonica helps support keep up when the product ships faster than docs and support processes.',
     },

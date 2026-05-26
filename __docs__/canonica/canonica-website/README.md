@@ -30,14 +30,14 @@
 | Route | Page | Purpose |
 |-------|------|---------|
 | `/` | Homepage | AI-built SaaS hero + first-screen page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
-| `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, safe ticket context, approved answers, releases, and support gaps |
+| `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, app pages, widget key, and readiness |
-| `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, and approved answers |
-| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, changelog, ticket fallback, conversations, and weekly support review |
+| `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, and owner FAQ answers |
+| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, conversations, and weekly support review |
 | `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, and trust metrics |
 | `/product/team-access` | Product Feature | Standalone feature page for workspace members, Canonica roles, owner-passcode sharing, owner reset, force sign-out, and MenuList separation |
 | `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
-| `/product/faq-management` | Product Feature | Standalone feature page for article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
+| `/product/faq-management` | Product Feature | Standalone feature page for owner-written Q&A, article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
 | `/product/changelog` | Product Feature | Standalone feature page for release notes connected to product surfaces, affected support answers, and drift review |
 | `/product/tickets` | Product Feature | Standalone feature page for fallback tickets, safe debugging context, and ticket-to-knowledge signal loops |
 | `/product/workflow-notifications` | Product Feature | Standalone feature page for Slack/email workflow notifications, digest-first governance alerts, test delivery, health summaries, and bounded delivery |

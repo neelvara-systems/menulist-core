@@ -12,7 +12,7 @@ export const CANONICA_PRODUCT_AREAS = [
     {
         label: 'Help center + tickets',
         href: '/product/support-control',
-        description: 'Publish docs, FAQs, release notes, and fallback tickets from one connected support layer.',
+        description: 'Publish docs, FAQs, custom Q&A, release notes, and fallback tickets from one connected support layer.',
     },
     {
         label: 'Review approved answers',

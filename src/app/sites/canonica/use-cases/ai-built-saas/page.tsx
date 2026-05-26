@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support for AI-Built SaaS Apps',
-    description: 'Canonica helps AI-built SaaS products launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps.',
+    description: 'Canonica helps AI-built SaaS products launch page-aware support, hosted help, custom owner Q&A, approved answers, ticket fallback, and reviewable support gaps.',
     alternates: { canonical: '/use-cases/ai-built-saas' },
 };
 
@@ -32,7 +32,7 @@ export default function AiBuiltSaasUseCasePage() {
             setupSteps={[
                 'Create your Canonica workspace.',
                 'Pick the first app pages where users get stuck.',
-                'Import docs, FAQs, release notes, setup notes, or recurring questions.',
+                'Import docs, FAQs, owner answers, release notes, setup notes, or recurring questions.',
                 'Install the in-app widget and pass safe page context.',
                 'Review missing-answer signals before publishing official answers.',
             ]}

@@ -13,7 +13,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -34,7 +34,7 @@ const FEATURES = [
         capabilities: [
             'Product profile, support email, billing model, workspace subscription, team access, and main product pages',
             'Canonica roles for workspace owners, managers, support staff, and custom permission sets',
-            'Knowledge import for docs, FAQs, starter answers, and existing files',
+            'Knowledge import for docs, FAQs, custom owner answers, starter answers, and existing files',
             'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
             'Compiled context readiness so the widget can use cache-first product context after approval',
@@ -51,7 +51,7 @@ const FEATURES = [
             'Hosted help center for docs, FAQ, and changelog on help/docs/support domains like help.yourapp.com',
             'Safe context payloads for page, feature, workflow, plan, and role hints',
             'User-initiated screenshot upload or paste for visual errors, without automatic screen capture',
-            'Related articles, FAQs, and changelog entries filtered by product surface',
+            'Related articles, owner FAQs, and changelog entries filtered by product surface',
             'Rule-based proactive help that skips backend calls when the feature is disabled or no active trigger exists',
             'Tickets as fallback when approved content is missing, with safe debugging context to reduce back-and-forth',
             'Mobile-first widget UI for end users inside client products',
@@ -65,7 +65,7 @@ const FEATURES = [
         capabilities: [
             'Approved-answer retrieval before fallback',
             'Owner-approved answer drafts and mutation proposals',
-            'Article-backed FAQ generation and review for short support answers',
+            'Owner-written Q&A plus article-backed FAQ generation and review for short support answers',
             'Coverage metrics by surface, entity, and answer readiness',
             'Compiled approved context for widget/runtime reads, with cache freshness checks so updates do not serve stale answers',
             'Audit trail for answer review and governance actions',
@@ -121,7 +121,7 @@ export default function CanonicaProductPage() {
                         The support layer for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica connects your app pages, help content, widget, tickets, releases, and approved answers so users get correct support while your product keeps changing.
+                        Canonica connects your app pages, help content, custom owner answers, widget, tickets, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
                 </section>
 

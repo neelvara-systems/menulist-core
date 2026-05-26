@@ -70,20 +70,29 @@ const serializeRole = (
     fallback: CanonicaRoleDefinition,
     tId: number,
     sId: number,
-): CanonicaRoleDefinition => ({
-    id: String(role?.id || fallback.id),
-    name: String(role?.name || fallback.name),
-    description: String(role?.description || fallback.description || ''),
-    active: role?.active !== false,
-    permissions: normalizeCanonicaRolePermissions(role?.permissions, fallback.permissions),
-    pId: PRODUCT_IDS.CANONICA,
-    tId,
-    sId,
-    createdOn: String(role?.createdOn || fallback.createdOn || new Date().toISOString()),
-    createdBy: String(role?.createdBy || fallback.createdBy || 'system'),
-    modifiedOn: role?.modifiedOn ? String(role.modifiedOn) : undefined,
-    modifiedBy: role?.modifiedBy ? String(role.modifiedBy) : undefined,
-});
+): CanonicaRoleDefinition => {
+    const normalizedRole: CanonicaRoleDefinition = {
+        id: String(role?.id || fallback.id),
+        name: String(role?.name || fallback.name),
+        description: String(role?.description || fallback.description || ''),
+        active: role?.active !== false,
+        permissions: normalizeCanonicaRolePermissions(role?.permissions, fallback.permissions),
+        pId: PRODUCT_IDS.CANONICA,
+        tId,
+        sId,
+        createdOn: String(role?.createdOn || fallback.createdOn || new Date().toISOString()),
+        createdBy: String(role?.createdBy || fallback.createdBy || 'system'),
+    };
+
+    if (role?.modifiedOn) {
+        normalizedRole.modifiedOn = String(role.modifiedOn);
+    }
+    if (role?.modifiedBy) {
+        normalizedRole.modifiedBy = String(role.modifiedBy);
+    }
+
+    return normalizedRole;
+};
 
 const getFallbackRole = (roleId: string, tId: number, sId: number): CanonicaRoleDefinition => {
     const createdBy = 'system';
@@ -285,4 +294,3 @@ export async function requireCanonicaPermission(
 export async function requireCanonicaTeamPermission(request: NextRequest, session: any) {
     return requireCanonicaPermission(request, session, CANONICA_PERMISSION_KEYS.MANAGE_TEAM);
 }
-

@@ -51,7 +51,7 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
                             Support layer for AI-built SaaS apps.
-                            Page-aware help, hosted docs, and approved answers before fallback.
+                            Page-aware help, hosted docs, owner Q&A, and approved answers before fallback.
                         </p>
                     </div>
 

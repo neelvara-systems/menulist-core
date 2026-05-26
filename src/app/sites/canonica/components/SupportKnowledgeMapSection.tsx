@@ -7,7 +7,7 @@ type SupportKnowledgeMapSectionProps = {
 const SOURCE_INPUTS = [
     {
         label: 'What you add',
-        detail: 'Docs, FAQs, changelogs, tickets, setup notes, and common answers.',
+        detail: 'Docs, FAQs, custom Q&A, changelogs, tickets, setup notes, and common answers.',
     },
     {
         label: 'Where users ask',
@@ -15,7 +15,7 @@ const SOURCE_INPUTS = [
     },
     {
         label: 'What users get',
-        detail: 'Approved page-aware answers, related help, or a ticket path.',
+        detail: 'Approved page-aware answers, owner Q&A, related help, or a ticket path.',
     },
 ];
 
@@ -25,8 +25,8 @@ const OUTPUT_SURFACES = [
         detail: 'Missed questions, stale answers, and draft improvements.',
     },
     {
-        label: 'Hosted help and approved answers',
-        detail: 'Public docs, FAQs, release notes, and approved answers stay connected.',
+        label: 'Hosted help and owner answers',
+        detail: 'Public docs, FAQs, release notes, custom Q&A, and approved answers stay connected.',
     },
     {
         label: 'Review and approval queue',
@@ -55,7 +55,7 @@ export default function SupportKnowledgeMapSection({
                             : 'Turn your existing notes into support users can trust.'}
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Add docs, FAQs, release notes, setup guides, and common answers. Canonica connects them to the pages where users ask for help, then serves approved answers before fallback.
+                        Add docs, FAQs, custom Q&A, release notes, setup guides, and common answers. Canonica connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback.
                     </p>
                 </div>
 

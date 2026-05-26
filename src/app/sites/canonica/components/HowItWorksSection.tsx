@@ -10,7 +10,7 @@ const STEPS = [
     {
         step: '2',
         title: 'Import starter knowledge',
-        description: 'Upload docs, starter articles, and FAQs. Canonica keeps support working through fallback while it prepares governed answer and FAQ drafts.',
+        description: 'Upload docs, starter articles, FAQs, and repeated owner Q&A. Canonica keeps support working through fallback while it prepares governed answer and FAQ drafts.',
         visual: '✓',
     },
     {

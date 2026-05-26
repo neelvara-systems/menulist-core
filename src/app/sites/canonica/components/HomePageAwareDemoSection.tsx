@@ -13,7 +13,7 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
                         Generic AI guesses. Canonica answers from the page the user is on.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        A billing question from Billing should not get the same answer as a setup question from Onboarding. Canonica uses safe page hints to serve the right approved answer.
+                        A billing question from Billing should not get the same answer as a setup question from Onboarding. Canonica uses safe page hints to serve the right approved canonical answer or owner FAQ answer.
                     </p>
                     <CanonicaLink
                         basePath={basePath}
@@ -27,7 +27,7 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
                 </div>
                 <CanonicaPublicDemo />
                 <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-[#8f8faa]">
-                    When Canonica does not have an approved answer, it does not invent one. It records the gap for review.
+                    When Canonica does not have a matching canonical or published owner answer, it does not invent one. It records the gap for review.
                 </p>
             </div>
         </section>

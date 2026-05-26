@@ -116,7 +116,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         eyebrow: 'Knowledge Base',
         title: 'Docs that power page-aware support.',
         description:
-            'Import or write help articles, connect them to app pages, and use them as source material for approved answers, FAQs, hosted help, and widget suggestions.',
+            'Import or write help articles, connect them to app pages, and use them as source material for approved answers, custom owner Q&A, FAQs, hosted help, and widget suggestions.',
         heroBullets: [
             'Import starter knowledge and files',
             'Attach articles to app pages',
@@ -134,7 +134,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Import existing knowledge',
                 description:
-                    'Start from current docs, files, FAQs, release notes, or starter support answers instead of building a blank help center.',
+                    'Start from current docs, files, FAQs, release notes, owner Q&A, or starter support answers instead of building a blank help center.',
             },
             {
                 title: 'Organise by surface',
@@ -144,7 +144,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Generate related FAQs',
                 description:
-                    'Create short article-backed FAQ answers while keeping the long-form source article close for review and updates.',
+                    'Create short article-backed FAQ answers or write exact owner answers while keeping the long-form source article close for review and updates.',
             },
             {
                 title: 'Publish to hosted help',
@@ -195,16 +195,21 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         eyebrow: 'FAQ Management',
         title: 'Short answers backed by real source content.',
         description:
-            'Canonica treats FAQs as customer-facing shortcuts, not loose snippets. FAQs can be generated with article context, linked back to source articles, and shown in the Help Center or widget.',
+            'Canonica treats FAQs and custom owner answers as customer-facing shortcuts, not loose snippets. Owners can write exact Q&A, generate article-backed suggestions, link source articles, and serve matching answers in the Help Center or widget.',
         heroBullets: [
-            'Article-backed FAQ generation',
-            'Owner review before publishing',
-            'Surface-aware FAQ display',
+            'Manual Q&A and article-backed generation',
+            'Linked articles, tags, entities, and surfaces',
+            'Served before fallback after canonical answers',
         ],
         proofTitle: 'Answer repeated questions quickly.',
         proofDescription:
-            'FAQs help users get direct answers without making owners maintain a second disconnected knowledge system.',
+            'FAQs and owner-written answers help users get direct responses without making owners maintain a second disconnected knowledge system.',
         cards: [
+            {
+                title: 'Add exact owner Q&A',
+                description:
+                    'Write the repeated question and the answer you want users to receive when their query matches closely enough.',
+            },
             {
                 title: 'Generate from article context',
                 description:
@@ -218,7 +223,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Attach to product surfaces',
                 description:
-                    'Show billing FAQs on billing pages, onboarding FAQs on onboarding pages, and release FAQs where they are relevant.',
+                    'Use context keys, tags, entities, and article links so billing answers show on billing pages and onboarding answers show on onboarding pages.',
             },
             {
                 title: 'Review before authority',
@@ -233,10 +238,11 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         ],
         workflowTitle: 'Generate FAQs from source content, then keep them attached.',
         workflowDescription:
-            'The lowest-cost long-term path is to create FAQs with article generation, then refresh them only when the source article changes materially.',
+            'The lowest-cost long-term path is to write exact repeated answers or create FAQs with article generation, then refresh them only when source content changes materially.',
         workflowSteps: [
             { title: 'Write or generate an article', description: 'Use the article as the source of truth for a support topic.' },
-            { title: 'Create FAQ drafts', description: 'Generate short question-answer pairs from that same article context.' },
+            { title: 'Create owner answers', description: 'Write exact Q&A directly or generate short question-answer drafts from that same article context.' },
+            { title: 'Attach source and context', description: 'Link articles, context keys, tags, and entities so matching stays page-aware.' },
             { title: 'Review and publish', description: 'Approve only the FAQ answers that are correct and useful.' },
             { title: 'Refresh when content changes', description: 'Regenerate or edit FAQs from the article modal when the source answer changes.' },
         ],
@@ -244,12 +250,17 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         connectedDescription:
             'A good FAQ system reduces repeated questions only when it follows the same product context and source freshness rules as the rest of support.',
         connectedItems: [
-            { title: 'Knowledge Base', description: 'FAQ answers point back to article source material.' },
-            { title: 'Widget', description: 'Page-aware support can surface relevant FAQs before fallback.' },
+            { title: 'Knowledge Base', description: 'FAQ answers can point back to article source material.' },
+            { title: 'Widget', description: 'Page-aware support can surface matching owner answers after canonical answers and before fallback.' },
             { title: 'Hosted Help', description: 'FAQ sections can sit beside docs and changelog on the support domain.' },
             { title: 'Cache freshness', description: 'Public reads can reuse cached content while invalidating when source versions change.' },
         ],
         faq: [
+            {
+                title: 'Can owners add their own custom questions and answers?',
+                description:
+                    'Yes. Owners can write exact Q&A, attach article and surface context, publish it, and let Canonica use it as an owner answer when it matches the user question.',
+            },
             {
                 title: 'Should FAQs be generated separately after all articles?',
                 description:

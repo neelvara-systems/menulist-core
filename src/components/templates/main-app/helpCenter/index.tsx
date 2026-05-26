@@ -17,9 +17,10 @@ interface HelpCenterProps {
     initialArticleId?: string;
     initialChangelogId?: string;
     initialTab?: string;
+    syncRoute?: boolean;
 }
 
-function HelpCenter({ initialArticleId, initialChangelogId, initialTab }: HelpCenterProps) {
+function HelpCenter({ initialArticleId, initialChangelogId, initialTab, syncRoute = true }: HelpCenterProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab') || initialTab;
@@ -59,14 +60,18 @@ function HelpCenter({ initialArticleId, initialChangelogId, initialTab }: HelpCe
 
         if (requestedTab && !requestedTabIsValid) {
             setActiveKey(HOME_TAB_KEY);
-            router.replace(helpCenterTabRouting(HOME_TAB_KEY), { scroll: false });
+            if (syncRoute) {
+                router.replace(helpCenterTabRouting(HOME_TAB_KEY), { scroll: false });
+            }
         }
-    }, [requestedTab, requestedTabIsValid, router]);
+    }, [requestedTab, requestedTabIsValid, router, syncRoute]);
 
     const handleTabChange = useCallback((nextKey: string) => {
         setActiveKey(nextKey);
-        router.replace(helpCenterTabRouting(nextKey), { scroll: false });
-    }, [router]);
+        if (syncRoute) {
+            router.replace(helpCenterTabRouting(nextKey), { scroll: false });
+        }
+    }, [router, syncRoute]);
 
     useEffect(() => {
         const handleSelectTab = (event: Event) => {

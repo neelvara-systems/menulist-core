@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, starter rollout pack, approved answers, and reviewable fixes for missed questions.';
+    'Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, custom owner Q&A, starter rollout pack, approved answers, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -22,7 +22,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Support layer for AI-built SaaS apps: setup, team access, widget, starter surfaces, hosted help, approved answers, and support-gap review.',
+        description: 'Support layer for AI-built SaaS apps: setup, team access, widget, starter surfaces, hosted help, custom owner Q&A, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -36,14 +36,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product/page-aware-widget',
         title: 'In-App Help Widget | Canonica',
-        description: 'Install Canonica as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
+        description: 'Install Canonica as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, canonical answers, and owner FAQ answers before fallback.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | Canonica',
-        description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support control layer.',
+        description: 'Operate Canonica help center, docs, FAQ, custom owner Q&A, changelog, tickets, conversations, and weekly support review from one support control layer.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -113,14 +113,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/page-aware-support-widget',
         title: 'Page-Aware Support Widget | Canonica',
-        description: 'A page-aware support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, and owner-approved answers before fallback.',
+        description: 'A page-aware support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, canonical answers, and owner FAQ answers before fallback.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/hosted-help-center-for-saas',
         title: 'Hosted Help Center for SaaS | Canonica',
-        description: 'Hosted help center for AI-built SaaS with docs, FAQ, changelog content, and the same knowledge powering the app widget.',
+        description: 'Hosted help center for AI-built SaaS with docs, owner FAQ, changelog content, and the same knowledge powering the app widget.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },

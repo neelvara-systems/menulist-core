@@ -8,5 +8,5 @@ const HelpCenter = dynamic(
 );
 
 export default function CanonicaHelpPage() {
-    return <HelpCenter />;
+    return <HelpCenter syncRoute={false} />;
 }

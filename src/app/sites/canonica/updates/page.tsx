@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Canonica product updates that affect setup, team access, page-aware support, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'Canonica product updates that affect setup, team access, page-aware support, owner Q&A, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 26, 2026',
+        title: 'Owner Q&A now appears in the public support story',
+        items: [
+            'FAQ Management now explains both manual custom Q&A and article-backed FAQ suggestions.',
+            'Homepage, Product, Widget, Support Control, FAQ, and agent-readable pages now describe the implemented answer path: canonical answers first, published owner FAQ answers next, then fallback when coverage is missing.',
+            'The website keeps this inside the existing FAQ Management page instead of adding a duplicate feature page, because the runtime and owner UI already manage these answers as one FAQ/custom-answer workflow.',
+        ],
+    },
     {
         date: 'May 26, 2026',
         title: 'Team access and workspace roles added to the product story',

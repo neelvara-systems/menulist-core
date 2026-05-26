@@ -204,8 +204,11 @@ function parseMobileRoutePathname(pathname: string, search = ''): MobileRouteSta
 }
 
 function parseInitialMobileRoute(pathname: string, hash: string, search = '') {
-    return parseMobileRoutePathname(pathname, search)
-        || (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX) ? parseMobileRouteHash(hash) : parseMobileRouteHash(''));
+    if (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
+        return parseMobileRouteHash(hash);
+    }
+
+    return parseMobileRoutePathname(pathname, search) || parseMobileRouteHash('');
 }
 
 function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen) {
@@ -327,7 +330,9 @@ export default function MobileShell() {
 
     useEffect(() => {
         const handleHashChange = () => {
-            const nextRoute = parseMobileRoutePathname(window.location.pathname, window.location.search) || parseMobileRouteHash(window.location.hash);
+            const nextRoute = window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)
+                ? parseMobileRouteHash(window.location.hash)
+                : parseMobileRoutePathname(window.location.pathname, window.location.search) || parseMobileRouteHash('');
             setActiveTab(nextRoute.tab);
             setTodayScreen(nextRoute.todayScreen);
             setMoreScreen(nextRoute.moreScreen);
@@ -341,9 +346,17 @@ export default function MobileShell() {
     }, []);
 
     useEffect(() => {
+        if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
+            const nextRoute = parseMobileRouteHash(window.location.hash);
+            setActiveTab(nextRoute.tab);
+            setTodayScreen(nextRoute.todayScreen);
+            setMoreScreen(nextRoute.moreScreen);
+            setIsMoreRootScreen(nextRoute.moreScreen === 'main');
+            return;
+        }
+
         const nextRoute = parseMobileRoutePathname(pathname, searchParamKey);
         if (!nextRoute) {
-            if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) return;
             return;
         }
 
