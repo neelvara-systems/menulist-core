@@ -61,7 +61,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Canonica feature map, route map, Firebase map, file inventory, and website truth |
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Canonica self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
-| 16  | `developer-install-pack/`                        | Product/Sales/Dev | Typed SDK, quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
+| 16  | `developer-install-pack/`                        | Product/Sales/Dev | Agent install packet, v1 script quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Canonica team members, workspace roles, permission claims, and rule-level access control |
 | 18  | `support-board/`                                 | Product/Ops/Dev | Private owner/staff Support Board, Needs Answer queue, internal notes, and future support-work roadmap |
 
@@ -156,7 +156,7 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica/demo` and `__canonica/demo` → static page-aware product demo
 - `/sites/canonica/get-started` → self-service onboarding
 - `/sites/canonica/product`, `/product/team-access`, `/pricing`, `/security`, `/faq`, `/about`, `/contact` → public site pages
-- `/sites/canonica/quickstarts` → framework examples and typed web helper usage
+- `/sites/canonica/quickstarts` → framework examples for the v1 widget script contract
 - `/sites/canonica/roi-calculator` → static repeated-question support planning calculator
 - `/sites/canonica/proof` → example Canonica workloads for buyer evaluation
 - `/sites/canonica/security-one-pager` → shareable security and operations summary

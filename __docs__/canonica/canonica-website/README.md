@@ -58,10 +58,7 @@
 | `/install/ai-agent` | AI Agent Install | Copyable agent packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents |
 | `/install/manual` | Manual Install | Human-readable v1 widget script install steps |
 | `/install/frameworks/*` | Framework Install Guides | Next.js, React, Vue, Plain HTML, Shopify-style, and Webflow install pages with agent-ready snippets |
-| `/install/verify` | Install Verification | Browser and dashboard checks for script load, allowed origins, blocked routes, context, and runtime status |
-| `/install/security` | Install Security | Safe context, forbidden fields, allowed origins, and server-side tenant-resolution rules |
-| `/install/contracts` | Widget Contract v1 | 36-month stability policy for script URL, browser global, context methods, Markdown URLs, and verification semantics |
-| `/install.md` and `/install/**/*.md` | Machine-Readable Install Docs | Markdown mirrors generated from the Canonica install contract for coding agents |
+| `/install.md`, `/install/**/*.md` | Machine-Readable Install Docs | Markdown mirrors generated from the Canonica install contract for coding agents, including `/install/contracts.md` for the v1 widget contract |
 | `/agents/canonica/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
@@ -148,7 +145,7 @@
 | `public/canonica-splash/apple-splash-*.png` | Canonica iOS startup image family used by Canonica website and dashboard PWA metadata |
 | `public/canonica.webmanifest` | Canonica web app manifest |
 | `src/lib/canonica/pwaAssets.ts` | Canonica PWA startup image helper that keeps splash metadata out of root app defaults |
-| `src/app/sites/canonica/components/Header.tsx` | Shared header with nav + mobile menu |
+| `src/app/sites/canonica/components/Header.tsx` | Shared header with desktop nav and right-side mobile drawer |
 | `src/app/sites/canonica/components/Footer.tsx` | Shared footer with link columns |
 | `src/app/sites/canonica/components/CanonicaLink.tsx` | Dev/production-aware Link component |
 | `src/app/sites/canonica/components/CanonicaAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
@@ -201,7 +198,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 1. **Dark theme** — Deep navy with verdigris/teal controls. Infrastructure-grade support knowledge visual direction without generic AI-product indigo.
 2. **Tailwind CSS** — Same build pipeline as rest of app. `@tailwind` directives in `styles.css`.
-3. **Server components by default** — Pages and shared chrome stay server-rendered. The mobile header menu uses native HTML instead of client state.
+3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the mobile hamburger can open a right-side drawer with backdrop, Escape close, body scroll lock, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **CanonicaLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
@@ -264,3 +261,5 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-24 | Slowed the closed-loop ring and card-highlight animation to an 8.4-second loop-specific cycle while keeping the card highlights synchronized with the ring pulse |
 | 2026-05-24 | Added reusable proof blocks and applied them to fit qualification, widget states, homepage trust controls, use-case before/after examples, and security controls so text-heavy sections read as visual product proof |
 | 2026-05-24 | Added public Workflow Notifications and Proactive Help product-feature pages plus a real `/integrations` page now that Slack/email delivery, test notifications, compact health, proactive trigger gating, and bounded delivery are production-ready enough for buyer-facing claims |
+| 2026-05-27 | Converted the Canonica public hamburger menu into a right-side mobile drawer while preserving Product Areas, Product Features, Other, and setup CTA grouping |
+| 2026-05-27 | Completed an end-to-end Canonica website audit across public routes, internal links, desktop/mobile rendered layout, and docs; synced the install-route documentation to the live generated install and Markdown contract surfaces |

@@ -135,12 +135,12 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/install',
         title: 'Install Canonica with your AI coding agent | Canonica',
-        description: 'Copy the Canonica agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration.',
+        description: 'Copy the Canonica agent packet, install the v1 widget once, pass safe page context, and verify from the dashboard.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     ...CANONICA_INSTALL_DOCS
-        .filter((doc) => doc.key !== 'overview')
+        .filter((doc) => doc.key !== 'overview' && doc.key !== 'contracts')
         .map((doc) => ({
             path: doc.path,
             title: `${doc.navTitle} | Canonica Install`,
@@ -151,7 +151,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/quickstarts',
         title: 'Developer Quickstarts | Canonica',
-        description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, optional typed helper usage, safe context validation, and manual screenshot input.',
+        description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context validation, and manual screenshot input.',
         priority: 0.78,
         changeFrequency: 'monthly',
     },

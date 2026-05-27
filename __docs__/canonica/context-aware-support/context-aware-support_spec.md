@@ -70,7 +70,7 @@ The payload is:
 **Then** Canonica resolves "this" to webhook configuration based on page context.
 
 ### US-5: Graceful Degradation Without Context
-**As** an end-user without SDK context integration,
+**As** an end-user without widget context integration,
 **When** I ask a question through the widget,
 **Then** Canonica behaves exactly as today (no regression).
 
@@ -108,24 +108,20 @@ None. All context fields are optional. The system degrades gracefully when any o
 
 ---
 
-## §5 — SDK Integration Model
+## §5 — Widget Context Integration Model
 
-### Primary: SDK Instrumentation (Recommended)
-SaaS developers explicitly send context via the Canonica widget SDK.
+### Primary: Browser Contract Instrumentation (Recommended)
+SaaS developers explicitly send context via the Canonica v1 widget browser contract.
 
 ```javascript
-Canonica.init({
-  apiKey: 'ck_...',
-  context: {
-    feature: 'integrations',
-    page: 'stripe_integration_page',
-    plan: 'pro',
-    userRole: 'admin'
-  }
+window.CanonicaWidget?.page({
+  path: '/settings/integrations/stripe',
+  title: 'Stripe integration',
+  feature: 'integrations',
+  workflow: 'connect_stripe',
+  role: 'admin',
+  locale: 'en'
 });
-
-// Context auto-attached to every query
-Canonica.search('Why is Stripe not connecting?');
 ```
 
 ### Fallback: No Context
@@ -135,8 +131,9 @@ If no context is provided, the system operates exactly as today. Zero regression
 Context can be updated as the user navigates:
 
 ```javascript
-Canonica.updateContext({
-  page: 'webhook_settings_page',
+window.CanonicaWidget?.setContext({
+  path: '/settings/webhooks',
+  title: 'Webhook settings',
   workflow: 'configure_webhook'
 });
 ```
@@ -173,15 +170,15 @@ Context: { page: "stripe_integration_page", entityHints: ["stripe"] }
 
 ## §7 — Context Collection Architecture
 
-### Decision: SDK-First (Industry Standard)
+### Decision: Explicit Browser Context
 
 | Approach | Accuracy | Adoption Friction | Scalability | Firebase Cost |
 |----------|----------|-------------------|-------------|---------------|
-| **SDK instrumentation** | Very high | Medium (15-30 min) | Very high | Zero additional |
+| **Browser-contract instrumentation** | Very high | Medium (15-30 min) | Very high | Zero additional |
 | URL inference | Low | Zero | Medium | Higher (more fallbacks) |
 | DOM scanning | Low-Medium | Zero | Low | Higher |
 
-Canonica targets **SaaS developers** (ICP). SDK instrumentation aligns with developer infrastructure expectations (Stripe, Segment, Sentry pattern).
+Canonica targets **SaaS developers** (ICP). Explicit browser-contract instrumentation aligns with widget integration expectations without creating a separate public SDK.
 
 ### Why Not URL Inference
 - URLs are unstable (change with redesigns)

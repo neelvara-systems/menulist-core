@@ -6,11 +6,6 @@ export const CANONICA_AGENT_PACKET_CONTRACT_VERSION = 'canonica-agent-packet-v1'
 export const CANONICA_MARKDOWN_DOCS_CONTRACT_VERSION = 'canonica-markdown-docs-v1';
 export const CANONICA_WIDGET_SCRIPT_URL = 'https://canonica.app/widget/v1/canonica-widget.js';
 export const CANONICA_WIDGET_LATEST_SCRIPT_URL = 'https://canonica.app/widget/latest/canonica-widget.js';
-export const CANONICA_WIDGET_LEGACY_SCRIPT_URL = 'https://canonica.app/widget/canonica-widget.js';
-export const CANONICA_WIDGET_COMPATIBILITY_URLS = [
-    CANONICA_WIDGET_LEGACY_SCRIPT_URL,
-    CANONICA_WIDGET_LATEST_SCRIPT_URL,
-] as const;
 export const CANONICA_WIDGET_GLOBAL_NAME = 'window.CanonicaWidget';
 export const CANONICA_CONTEXT_METHODS = ['setContext', 'page'] as const;
 export const CANONICA_SITE_URL = 'https://canonica.app';

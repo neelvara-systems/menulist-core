@@ -1,6 +1,6 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.22
+> **Version:** 1.2.24
 > **Last Updated:** 2026-05-27
 > **Audience:** CEO / PM / Marketing
 
@@ -39,7 +39,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 6. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage. Set Up Support includes workspace team access now that Canonica roles and owner reset are implemented.
 7. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small SaaS teams while rejecting helpdesk replacement and auto-publish expectations
 8. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers
-9. **Day-One Launch Pack** — Buyer-facing pack for framework quickstarts, typed browser helper, starter surface templates, import starter pack, install verifier, ROI calculator, proof pack, and security one-pager. This section links to existing pages instead of creating another route.
+9. **Day-One Launch Pack** — Buyer-facing pack for framework quickstarts, agent install packet, starter surface templates, import starter pack, install verifier, ROI calculator, proof pack, and security one-pager. This section links to existing pages instead of creating another route.
 10. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, user-initiated screenshot attachments, canonical answers first, published owner FAQ answers before fallback, configured proactive prompts, and support-gap review
 11. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, compiled approved context, owner-approval, and workspace-scope controls
 12. **Canonica Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue
@@ -166,11 +166,11 @@ Routes:
 - `/install/frameworks/plain-html`
 - `/install/frameworks/shopify`
 - `/install/frameworks/webflow`
-- `/install/verify`
-- `/install/security`
-- `/install/contracts`
-- `/install/changelog`
-- `/install.md` and install `.md` mirrors
+- `/install.md`
+- `/install/ai-agent.md`
+- `/install/manual.md`
+- `/install/contracts.md`
+- `/install/frameworks/*.md`
 - `/agents/canonica/AGENTS.md`
 - `/agents/canonica/CLAUDE.md`
 - `/agents/canonica/cursor.mdc`
@@ -181,7 +181,7 @@ Routes:
 Stability:
 - New installs must use `https://canonica.app/widget/v1/canonica-widget.js`.
 - The v1 browser API is `window.CanonicaWidget.setContext(context)` and `window.CanonicaWidget.page(context)`.
-- Safe context fields are `path`, `title`, `feature`, `workflow`, `role`, and `locale`; compatibility aliases can remain supported.
+- Safe context fields are `path`, `title`, `feature`, `workflow`, `role`, and `locale`.
 - Browser context must never carry tenant IDs, store IDs, user IDs, emails, tokens, secrets, billing data, or private account metadata.
 - The Public API remains secondary/account-gated unless enabled for the account.
 
@@ -382,7 +382,7 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case pages cross-link back into those families. Canonica applies that pattern without adding runtime reads, unimplemented integrations, or unsupported public docs routes.
 
-The mobile hamburger mirrors the same information hierarchy: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Updates, and Contact. The mobile menu must leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers.
+The mobile hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Updates, and Contact. The mobile drawer must open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers.
 
 Route naming must avoid conflicts with Canonica dashboard roots. Public website learning content uses `/resources` and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
 
@@ -509,3 +509,5 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-27 | 1.2.20 | Added Canonica-owned contact form requirements and mobile hamburger grouping/safe-area requirements |
 | 2026-05-27 | 1.2.21 | Added Support Board public-site requirements: dedicated product-feature page, Support Control/FAQ/Resources/Updates copy, route metadata, and LLM context with manual-first private workboard boundaries |
 | 2026-05-27 | 1.2.22 | Added Canonica Agent Install Layer requirements: generated install pages, Markdown mirrors, public agent files, dashboard AI packet actions, and the stable v1 widget contract URL |
+| 2026-05-27 | 1.2.23 | Updated the mobile hamburger requirement to use a right-side drawer with backdrop, close handling, and scroll lock |
+| 2026-05-27 | 1.2.24 | Synced the install-route requirements to the live generated public install pages and Markdown contract mirrors after the end-to-end website audit |

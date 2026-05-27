@@ -63,7 +63,7 @@ Canonica does not mount management UI inside MenuList core. Client products embe
 
 MenuList is wired as a normal external client through `src/components/canonica/MenuListCanonicaWidgetEmbed.tsx`. The owner app layout loads the widget only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is configured. No widget key is hardcoded in source, and the embed does not read MenuList Firebase to resolve Canonica scope. Local development uses `http://localhost:3000/widget/canonica-widget.js`; QA/Preview MenuList uses `https://ecomsai.com/widget/canonica-widget.js`; production MenuList uses `https://canonica.app/widget/canonica-widget.js`. `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC` can override the script host for a temporary preview.
 
-Any client-specific context must be passed through the generic widget SDK or script attributes. Canonica accepts only sanitized page, feature, workflow, plan, role, and entity-hint context. Client tenant IDs, store IDs, user IDs, and raw business records are not required and must not be hardcoded into the Canonica runtime.
+Any client-specific context must be passed through the v1 widget browser contract or script attributes. Canonica accepts only sanitized path, title, feature, workflow, role, and locale context. Legacy plan and entity-hint fields are compatibility-only public labels. Client tenant IDs, store IDs, user IDs, and raw business records are not required and must not be hardcoded into the Canonica runtime.
 
 ## Widget Management Console
 
@@ -95,7 +95,7 @@ Set `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` in each Canonica runtime environment
 | 2   | **Two-layer model** (loader script + iframe app) | Loader is ~4KB vanilla JS. App loads lazily on click. Prevents React/CSS conflicts with host.                                                |
 | 3   | **API key auth, not session auth**               | Widget serves end-users of SaaS products (anonymous). API key resolves tenant identity only.                                                 |
 | 4   | **Unified coreSearch() pipeline**                | Both Help Center and Widget call the same function. No logic duplication. Widget gains all improvements for free.                            |
-| 5   | **SDK-first context collection**                 | SaaS developer passes structured context using `CanonicaWidget.setContext()` or `CanonicaWidget.page()`. More reliable than DOM scraping.     |
+| 5   | **Explicit browser context collection**          | SaaS developer passes structured context using `CanonicaWidget.setContext()` or `CanonicaWidget.page()`. More reliable than DOM scraping.     |
 | 6   | **Widget UI stays zero-dependency**              | No antd, no framer-motion, no SCSS. 248 lines of inline-styled React. Critical for iframe bundle size.                                       |
 | 7   | **Canonical-first always**                       | Widget never bypasses canonical retrieval. Context assists retrieval, never replaces it. Knowledge must always come from canonical articles. |
 | 8   | **Bounded named keys on store doc**              | Up to 10 active widget keys per workspace live on the existing store document. Validation remains one indexed store lookup; no key collection is added. |
@@ -110,7 +110,7 @@ Set `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` in each Canonica runtime environment
 | Capability             | v1 (Current)                              | v2 (Documented, Ready)                                                                                                                                        |
 | ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Search pipeline        | Unified `coreSearch()`                    | Canonical answers first, owner FAQ/custom answers second, RAG fallback last                                                                                   |
-| Context-aware support  | Feature-flagged, schema exists            | Full SDK integration, context boosts entity matching                                                                                                          |
+| Context-aware support  | Feature-flagged, schema exists            | Browser contract integration, context boosts entity matching                                                                                                  |
 | Launcher customization | Position + color + text                   | Shape, display mode, size, offset                                                                                                                             |
 | Session memory         | None (stateless)                          | In-memory page session (last 5 messages), explicit clear, optional `data-history="forget"` clear-on-close mode. No persistence.                              |
 | Query telemetry        | Via `aiSearchHistory` (from `coreSearch`) | Same, enriched with `mountContext`; `/canonica/widget` shows recent widget questions for dashboard verification.                                              |
@@ -129,7 +129,7 @@ These align with Canonica's Non-Goals Charter (doctrine/02):
 - No live chat / agent handoff — Canonica is not a helpdesk
 - No ticket creation from widget — operational layer, not distribution surface
 - No generic marketing popups, tooltips, or onboarding tours — predictive help is allowed only when it is deterministic, feature-flagged, page-context gated, cooldown-protected, and backed by approved Canonica support knowledge
-- No DOM scraping / automatic context extraction — SDK-first, SaaS developer provides context
+- No DOM scraping / automatic context extraction — SaaS developer provides context through the v1 browser contract
 - No automatic screenshot capture — user-initiated image upload only (no DOM/vision scraping)
 - No full CSS customization — controlled customization only (accent color, shape, position)
 - No widget analytics dashboard — Canonica is not a BI platform
@@ -144,7 +144,7 @@ Reviewed on 2026-05-18 while hardening the runtime contract:
 - [Zendesk Messaging Web Widget API](https://developer.zendesk.com/api-reference/widget-messaging/web/core/) separates launcher visibility from open/close state, supports runtime conversation metadata, exposes open/close events, and provides a reset API that clears local widget state.
 - [Help Scout Beacon API](https://developer.helpscout.com/beacon-2/web/javascript-api/) supports programmatic article suggestions, screen navigation, open/close events, SPA page-view events, and session-specific data that is not synced to the customer profile.
 
-Canonica follows the durable parts of those patterns while preserving doctrine boundaries: SDK-first context, explicit open/close events, explicit clear-history/reset, transient in-memory conversation context, no DOM scraping, and no persistent anonymous widget chat history.
+Canonica follows the durable parts of those patterns while preserving doctrine boundaries: explicit browser context, explicit open/close events, explicit clear-history/reset, transient in-memory conversation context, no DOM scraping, and no persistent anonymous widget chat history.
 
 ---
 

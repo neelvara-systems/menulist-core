@@ -52,7 +52,7 @@ The system intervenes **before** the question is asked, using:
 
 ### 3.1 — Contextual Page Detection (Cap 63)
 
-The widget/SDK reports the user's current location in the product.
+The widget browser contract reports the user's current location in the product.
 
 **Already exists:** `CanonicaContextPayload` with `page`, `feature`, `workflow`, `entityHints`, `userRole`, `plan` fields. Sent with every search query today.
 
@@ -127,7 +127,7 @@ Daily nightly job computes effectiveness score per trigger. Low-performing trigg
 
 ```
 1. User navigates to "Webhook Setup" page in the SaaS product
-2. SaaS product's Canonica widget SDK fires: canon.page("webhook_setup")
+2. SaaS product calls `window.CanonicaWidget.page({ path, feature, workflow })`
 3. Widget calls POST /api/canonica/predictive-help with context payload
 4. Server loads trigger rules for this workspace (cached)
 5. Server evaluates rules against context (page + plan + role)
@@ -200,7 +200,7 @@ Daily nightly job computes effectiveness score per trigger. Low-performing trigg
 2. **Latency** — Trigger evaluation <50ms server-side
 3. **3-year freeze** — Additive fields only. No breaking changes to existing types.
 4. **Feature-flagged** — Must work with flag OFF (zero impact on existing behavior)
-5. **Widget SDK** — Changes must be backwards-compatible (old SDKs ignore predictive features)
+5. **Widget browser contract** — Changes must be backwards-compatible (older installs ignore predictive features)
 6. **Multi-tenant isolation** — Trigger rules scoped to tId+sId. Never cross-tenant.
 
 ---

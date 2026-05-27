@@ -6,6 +6,36 @@
 
 ---
 
+## May 27, 2026 — Canonica Website End-to-End Audit
+
+### Fixed
+
+- **Canonica website docs now match the live install route set** — The website documentation no longer lists removed standalone `/install/verify`, `/install/security`, `/install/contracts`, or `/install/changelog` HTML pages. It now points to the live generated install pages and Markdown contract mirrors.
+
+### Verified
+
+- **Public website route coverage passed** — Canonica homepage, product pages, feature pages, use-case pages, install pages, resources, pricing, legal pages, sitemap, robots, LLM context, and Markdown install docs all returned `200` locally.
+- **Rendered layout passed desktop and mobile checks** — 48 sitemap pages were checked at desktop and mobile widths with no horizontal overflow, visible runtime error state, missing header/footer, or missing H1.
+
+### Cost
+
+- **No Firebase cost change** — This is static public website documentation and verification only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 27, 2026 — Canonica Website Mobile Drawer
+
+### Changed
+
+- **Canonica public hamburger now opens as a right-side drawer** — Mobile navigation slides in from the right with a backdrop, close action, Escape handling, body scroll lock, and link-close behavior.
+- **Mobile drawer keeps the grouped navigation structure** — Product Overview, Product Areas, Product Features, Other, and Start free setup remain grouped inside the drawer.
+
+### Cost
+
+- **No Firebase cost change** — This is public website header UI only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
 ## May 27, 2026 — Canonica Agent Install Layer
 
 ### New
@@ -15,6 +45,9 @@
 - **Widget installs now have a frozen v1 URL** — New installs use `https://canonica.app/widget/v1/canonica-widget.js`; the existing `/widget/canonica-widget.js` path remains compatible.
 - **Widget v1 script uses bounded caching** — `/widget/v1/canonica-widget.js` stays stable without long immutable caching, so compatible runtime fixes can reach clients without changing their install snippet.
 - **Widget settings now hand off to Install Center** — The Widget Install & Embed tab points owners to Install Center for agent handoff and verification, while the widget settings tabs keep appearance, keys, origins, hosted help, and low-level snippets.
+- **SDK handoff copy was removed from Canonica install surfaces** — Dashboard snippets, public quickstarts, generated install docs, and active Canonica docs now present only the supported v1 script and `window.CanonicaWidget` browser contract.
+- **Public install navigation is now launch-safe** — Standalone Verify, Security, Changelog, and human Contract install pages were removed from the public install route set. Verification and safety guidance stay inside the dashboard packet, agent kit, and machine-readable contract.
+- **Dashboard settings own origins and blocked routes** — Generated prompts no longer ask owners to maintain separate allowed-origin or blocked-route variables in the client product.
 
 ### Cost
 

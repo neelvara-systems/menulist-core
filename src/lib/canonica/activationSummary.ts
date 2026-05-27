@@ -323,7 +323,7 @@ export function buildCanonicaActivationSummary(params: {
             title: 'Page context received',
             description: hasRuntimeContext
                 ? `Latest context: ${runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage}.`
-                : 'Send contextKey, feature, or page after route changes so answers match the user screen.',
+                : 'Send path, title, feature, workflow, role, or locale after route changes so answers match the user screen.',
             status: hasRuntimeContext ? 'complete' : 'pending',
             route: CANONICA_ROUTES.PRODUCT_SURFACES,
             actionLabel: 'Set Context',

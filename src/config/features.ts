@@ -2427,7 +2427,7 @@ export const FEATURE_FLAGS = {
     /**
      * Canonica Predictive Support (Proactive Help Triggers)
      *
-     * true: Widget SDK can call predictive-help API on page entry.
+     * true: Widget runtime can call predictive-help API on page entry.
      *       Rule-based triggers evaluate context and return proactive suggestions.
      *       Nightly batch auto-generates suggested triggers from friction patterns.
      * false: No proactive help. Widget only shows reactive search results.

@@ -7,13 +7,12 @@ The Developer Install Pack turns Canonica's existing widget/runtime, product sur
 ## Implemented Pieces
 
 - Canonica v1 install contract source of truth: `src/lib/canonica/installContract/contract.ts`
-- Public agent install pages: `/install/ai-agent`, `/install/manual`, `/install/frameworks/*`, `/install/verify`, `/install/security`, `/install/contracts`, `/install/changelog`
-- Machine-readable install docs: `/install.md`, `/install/ai-agent.md`, framework `.md` mirrors, `/llms.txt`, and `/llms-full.txt`
+- Public agent install pages: `/install/ai-agent`, `/install/manual`, and `/install/frameworks/*`
+- Machine-readable install docs: `/install.md`, `/install/ai-agent.md`, framework `.md` mirrors, `/install/contracts.md`, `/llms.txt`, and `/llms-full.txt`
 - Public agent files: `/agents/canonica/AGENTS.md`, `/agents/canonica/CLAUDE.md`, `/agents/canonica/cursor/RULE.md`, `/agents/canonica/cursor.mdc`, `/agents/canonica/windsurf.md`, `/agents/canonica/skill/SKILL.md`, and `/agents/canonica/canonica-agent-kit.zip`
 - Dashboard Install Center: `/canonica/install-center` shows the workspace setup snapshot, AI install packet, AGENTS/CLAUDE/Cursor/Windsurf copies, framework snippets, verification checklist, machine-readable docs, and links back to widget settings.
 - Workspace packet APIs: `/api/canonica/widget-agent-packet` and `/api/canonica/widget-agent-kit`
 - Frozen widget script URL: `https://canonica.app/widget/v1/canonica-widget.js`
-- Optional typed web helper source package: `packages/canonica-web/src/index.ts`
 - Framework quickstarts: `src/app/sites/canonica/quickstarts/page.tsx`
 - Install/context verifier route: `src/components/templates/canonica/install/CanonicaInstallCenter.tsx`
 - Product surface starter templates: `src/data/canonica/surfaceTemplates.ts`
@@ -21,17 +20,19 @@ The Developer Install Pack turns Canonica's existing widget/runtime, product sur
 - Public ROI calculator: `src/app/sites/canonica/roi-calculator/page.tsx`
 - Proof pack: `src/app/sites/canonica/proof/page.tsx`
 - Security/ops one-pager: `src/app/sites/canonica/security-one-pager/page.tsx`
-- Env-backed install guidance: dashboard Install tab, public Install page, Quickstarts page, and `packages/canonica-web/README.md`
+- Env-backed install guidance: dashboard Install tab, public Install page, and Quickstarts page
 
 ## Product Boundary
 
-This pack does not create a second widget, a second ingestion pipeline, a public API promise, MCP access, or a separate support product. It packages the existing Canonica runtime so buyers can hand one agent packet to their coding agent, install the widget, verify runtime status, seed starter surfaces, and evaluate support knowledge faster.
+This pack does not create a second widget, a second ingestion pipeline, a public SDK, a public API promise, MCP access, or a separate support product. It packages the existing Canonica runtime so buyers can hand one agent packet to their coding agent, install the widget, verify runtime status, seed starter surfaces, and evaluate support knowledge faster.
 
-The frozen public contract is the v1 browser contract: `https://canonica.app/widget/v1/canonica-widget.js`, `cn_*` widget key, `window.CanonicaWidget`, `setContext()`, and `page()`. The typed helper is optional and not required for installation.
+The frozen public contract is the v1 browser contract: `https://canonica.app/widget/v1/canonica-widget.js`, `cn_*` widget key, `window.CanonicaWidget`, `setContext()`, and `page()`. Canonica does not support a public SDK or npm install path.
 
 ## Key Handling
 
-Workspace-specific packets and ZIPs include widget key prefix, allowed origins, blocked routes, public script URL, framework hints, install checklist, and env placeholders by default. They must not include the raw widget key unless the user explicitly reveals or copies the key through the existing key flow.
+Workspace-specific packets and ZIPs include widget key prefix, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework hints, install checklist, and env placeholders by default. They must not include the raw widget key unless the user explicitly reveals or copies the key through the existing key flow.
+
+Allowed origins and blocked routes are configured in Canonica dashboard UI. Generated prompts must not ask owners to maintain separate `ALLOWED_ORIGINS` or `BLOCKED_ROUTES` variables in the client product.
 
 ## Client Env Guidance
 

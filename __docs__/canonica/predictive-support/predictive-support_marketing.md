@@ -55,6 +55,6 @@ Most support systems wait for users to get confused and ask a question. Canonica
 Predictive Support should be positioned as a **premium capability** — available on Pro/Enterprise plans only. It requires:
 - Context-Aware Support (existing)
 - Friction Intelligence (existing)
-- Widget SDK integration (existing)
+- Widget browser contract integration (existing)
 
 The value proposition justifies premium positioning: "Prevent 20-30% of support tickets before they happen."

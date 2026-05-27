@@ -21,7 +21,7 @@ Predictive Support is the **proactive help layer** for Canonica. Instead of wait
 ## Architecture Summary
 
 ```
-Widget SDK (page/feature/workflow context)
+Widget browser contract (path/feature/workflow context)
         │
         ▼
 Predictive Help API (/api/canonica/predictive-help)

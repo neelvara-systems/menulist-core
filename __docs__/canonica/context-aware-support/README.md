@@ -14,7 +14,7 @@
 
 Transforms Canonica's retrieval from **query-only** matching to **product-state-aware** reasoning by accepting structured context from the client product alongside the user's query.
 
-Runtime note: Help Center surfaces pass context directly through Canonica-owned React state. External product widgets pass it SDK-first through `CanonicaWidget.setContext()` / `page()` or mount-time script attributes such as `data-page` and `data-workflow`. Context remains transient, sanitized, and capped at 2KB; it is not stored as chat history or customer profile data.
+Runtime note: Help Center surfaces pass context directly through Canonica-owned React state. External product widgets pass it through the v1 browser contract, `CanonicaWidget.setContext()` / `page()`, or mount-time script attributes such as `data-page` and `data-workflow`. Context remains transient, sanitized, and capped at 2KB; it is not stored as chat history or customer profile data.
 
 **Before:**
 ```
@@ -61,7 +61,7 @@ We extend these existing systems. We do NOT build 8 new components.
 | [context-aware-support_firebase.md](./context-aware-support_firebase.md) | Developers | Firebase cost analysis |
 | [context-aware-support_marketing.md](./context-aware-support_marketing.md) | Sales/Marketing | Positioning, pitch points |
 | [context-aware-support_website.md](./context-aware-support_website.md) | Website | Landing page content |
-| [context-aware-support_helpdoc.md](./context-aware-support_helpdoc.md) | Customers | SDK integration guide |
+| [context-aware-support_helpdoc.md](./context-aware-support_helpdoc.md) | Customers | Widget context integration guide |
 | [context-aware-support_mobile-support.md](./context-aware-support_mobile-support.md) | Engineering | Mobile assessment |
 | [_archive/chatgpt-review.md](./_archive/chatgpt-review.md) | Internal | ChatGPT conversation analysis |
 
@@ -97,5 +97,5 @@ We extend these existing systems. We do NOT build 8 new components.
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-05-18 | 1.1.0 | Marked implemented and documented current SDK/mount-time widget context flow, transient storage boundary, and 2KB payload cap |
+| 2026-05-18 | 1.1.0 | Marked implemented and documented current browser/mount-time widget context flow, transient storage boundary, and 2KB payload cap |
 | 2026-03-08 | 1.0.0 | Initial documentation from ChatGPT conversation + Cascade codebase audit + external research |

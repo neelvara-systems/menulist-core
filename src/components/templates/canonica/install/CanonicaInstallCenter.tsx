@@ -7,7 +7,6 @@ import {
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
 import {
-    CANONICA_DEFAULT_BLOCKED_ROUTES,
     CANONICA_FRAMEWORK_SNIPPETS,
     CANONICA_WIDGET_SCRIPT_URL,
     buildCanonicaAgentPacketJson,
@@ -104,8 +103,6 @@ const PUBLIC_DOC_LINKS = [
     { label: 'React guide', href: 'https://canonica.app/install/frameworks/react.md' },
     { label: 'Vue guide', href: 'https://canonica.app/install/frameworks/vue.md' },
     { label: 'Plain HTML guide', href: 'https://canonica.app/install/frameworks/plain-html.md' },
-    { label: 'Security rules', href: 'https://canonica.app/install/security.md' },
-    { label: 'Verify install', href: 'https://canonica.app/install/verify.md' },
 ];
 
 const FRAMEWORK_ITEMS = [
@@ -201,9 +198,6 @@ export default function CanonicaInstallCenter() {
 
     const allowedOrigins = widgetConfig?.allowedOrigins || [];
     const savedBlockedRoutes = widgetConfig?.config?.blockedRoutes || [];
-    const packetBlockedRoutes = savedBlockedRoutes.length
-        ? savedBlockedRoutes
-        : [...CANONICA_DEFAULT_BLOCKED_ROUTES];
     const runtimeStatus = widgetConfig?.runtimeStatus || null;
     const workspaceName = activationSummary?.workspace?.productName
         || activationSummary?.workspace?.companyName
@@ -213,11 +207,11 @@ export default function CanonicaInstallCenter() {
     const agentInput = useMemo(() => ({
         widgetKeyPrefix: widgetConfig?.keyPrefix || null,
         allowedOrigins,
-        blockedRoutes: packetBlockedRoutes,
+        blockedRoutes: savedBlockedRoutes,
         framework: 'Next.js / React / Vue / Plain HTML / Shopify / Webflow',
         router: 'App Router / Pages Router / React Router / Vue Router / other',
         supportEntryPoints: ['global widget', 'help button', 'sidebar', 'settings page'],
-    }), [allowedOrigins, packetBlockedRoutes, widgetConfig?.keyPrefix]);
+    }), [allowedOrigins, savedBlockedRoutes, widgetConfig?.keyPrefix]);
 
     const aiPacket = useMemo(() => renderCanonicaAgentPrompt(agentInput), [agentInput]);
     const setupSnapshot = useMemo(() => JSON.stringify(buildCanonicaAgentPacketJson(agentInput), null, 2), [agentInput]);
@@ -335,7 +329,7 @@ export default function CanonicaInstallCenter() {
                     <Card title={<Flex align="center" gap={8}><LuCode /> AI install packet</Flex>}>
                         <Flex vertical gap={12}>
                             <Paragraph type="secondary" style={{ margin: 0 }}>
-                                Give this to Codex, Claude Code, Cursor, Windsurf, or another coding agent. It uses the saved key prefix, origins, blocked routes, v1 script URL, safe context rules, and acceptance checks.
+                                Give this to Codex, Claude Code, Cursor, Windsurf, or another coding agent. It uses the saved key prefix, dashboard origins, dashboard blocked routes, v1 script URL, safe context rules, and acceptance checks.
                             </Paragraph>
                             {!widgetConfig.hasWidgetKey ? (
                                 <Alert
@@ -413,13 +407,13 @@ export default function CanonicaInstallCenter() {
                 <Col xs={24} lg={12}>
                     <Card title="Install script">
                         <Input.TextArea
-                            value={buildCanonicaWidgetEmbedSnippet(widgetConfig.keyPrefix ? `${widgetConfig.keyPrefix}...` : 'cn_your_widget_key')}
+                            value={buildCanonicaWidgetEmbedSnippet(widgetConfig.keyPrefix ? `${widgetConfig.keyPrefix}...` : 'cn_your_widget_key', { blockedRoutes: savedBlockedRoutes })}
                             readOnly
                             rows={5}
                             style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                         />
-                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(buildCanonicaWidgetEmbedSnippet(), 'Script snippet copied')}>
-                            Copy Generic Snippet
+                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(buildCanonicaWidgetEmbedSnippet(widgetConfig.keyPrefix ? `${widgetConfig.keyPrefix}...` : 'cn_your_widget_key', { blockedRoutes: savedBlockedRoutes }), 'Script snippet copied')}>
+                            Copy Snippet
                         </Button>
                     </Card>
                 </Col>
@@ -462,8 +456,8 @@ export default function CanonicaInstallCenter() {
                             dataSource={[
                                 `Confirm ${CANONICA_WIDGET_SCRIPT_URL} loads once.`,
                                 'Confirm the widget key is not committed as a raw secret when env vars are available.',
-                                'Confirm allowed production and staging origins are saved.',
-                                'Confirm blocked routes include auth, billing, checkout, and security screens.',
+                                'Confirm allowed production and staging origins are saved in Canonica.',
+                                'Confirm blocked routes are saved in Canonica.',
                                 'Navigate between routes and confirm safe context changes.',
                                 'Open the dashboard after testing and confirm runtime status updates.',
                             ]}

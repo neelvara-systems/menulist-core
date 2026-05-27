@@ -80,4 +80,4 @@ A: The trigger evaluation is purely rule-based — no AI. However, the auto-sugg
 A: You can create manual triggers right away. Auto-suggestions will appear once enough support data has accumulated (typically after a few weeks of Canonica usage).
 
 **Q: How do I integrate this with my product?**
-A: Add `canon.page("page_id")` calls to your product's page navigation. This is a one-line addition per page. See the Widget SDK documentation for details.
+A: Call `window.CanonicaWidget.page({ path, feature, workflow })` from product navigation after the v1 widget script is installed. See the Widget Contract v1 install documentation for details.

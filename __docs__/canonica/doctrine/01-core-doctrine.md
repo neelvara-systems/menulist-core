@@ -81,7 +81,7 @@ Answers as persistent, versioned, entity-bound, scope-aware governed assets. Not
 Signals propose mutations. Humans approve. System enforces consistency. 4 mutation types: content_refinement, scope_adjustment, version_update, new_answer_required. No autonomous rewriting.
 
 ### Pillar 5 — API & Integration Layer
-Public API for canonical answers. Version-aware retrieval. Drift webhooks. Signal ingestion endpoints. Embeddable grounding SDK.
+Public API for canonical answers. Version-aware retrieval. Drift webhooks. Signal ingestion endpoints. Embeddable widget browser contract.
 
 ---
 

@@ -4,6 +4,7 @@ import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
+import { CANONICA_FRAMEWORK_SNIPPETS } from '@lib/canonica/installContract/contract';
 
 export const metadata: Metadata = {
     title: 'Developer Quickstarts',
@@ -23,70 +24,17 @@ const QUICKSTARTS = [
     {
         title: 'Next.js App Router',
         description: 'Load the widget once in your app shell and send route context from a small client component.',
-        code: [
-            "'use client';",
-            "import { useEffect } from 'react';",
-            "import { usePathname } from 'next/navigation';",
-            "import { createCanonicaWebClient } from '@canonica/web';",
-            '',
-            'export function CanonicaRouteContext() {',
-            '  const pathname = usePathname();',
-            '  useEffect(() => {',
-            '    const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;',
-            '    if (!widgetKey) return;',
-            '    const canonica = createCanonicaWebClient({',
-            '      apiKey: widgetKey,',
-            '      scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
-            '    });',
-            '    canonica.init({ context: { path: pathname, title: document.title, feature: pathname.split("/")[1] || "app", role: "member", locale: navigator.language || "en" } });',
-            '  }, [pathname]);',
-            '  return null;',
-            '}',
-        ].join('\n'),
+        code: CANONICA_FRAMEWORK_SNIPPETS.nextjs,
     },
     {
         title: 'React SPA',
         description: 'Initialize once, then call page() from your router or product screen component.',
-        code: [
-            "import { useEffect } from 'react';",
-            "import { createCanonicaWebClient } from '@canonica/web';",
-            '',
-            'export function BillingHelpContext() {',
-            '  useEffect(() => {',
-            '    const widgetKey = import.meta.env.VITE_CANONICA_WIDGET_KEY;',
-            '    if (!widgetKey) return;',
-            '    const canonica = createCanonicaWebClient({',
-            '      apiKey: widgetKey,',
-            '      scriptSrc: import.meta.env.VITE_CANONICA_WIDGET_SCRIPT_SRC,',
-            '    });',
-            '    canonica.init();',
-            '    canonica.page({ path: window.location.pathname, title: document.title, feature: "billing", workflow: "manage_subscription", role: "member", locale: navigator.language || "en" });',
-            '  }, []);',
-            '  return null;',
-            '}',
-        ].join('\n'),
+        code: CANONICA_FRAMEWORK_SNIPPETS.react,
     },
     {
         title: 'Vue / Nuxt',
         description: 'Use the same safe page context from mounted route components.',
-        code: [
-            '<script setup lang="ts">',
-            "import { onMounted } from 'vue';",
-            "import { createCanonicaWebClient } from '@canonica/web';",
-            '',
-            'onMounted(async () => {',
-            '  const config = useRuntimeConfig();',
-            '  const widgetKey = config.public.canonicaWidgetKey;',
-            '  if (!widgetKey) return;',
-            '  const canonica = createCanonicaWebClient({',
-            '    apiKey: widgetKey,',
-            '    scriptSrc: config.public.canonicaWidgetScriptSrc,',
-            '  });',
-            '  await canonica.init();',
-            '  canonica.page({ path: window.location.pathname, title: document.title, feature: "onboarding", workflow: "import_knowledge", role: "member", locale: navigator.language || "en" });',
-            '});',
-            '</script>',
-        ].join('\n'),
+        code: CANONICA_FRAMEWORK_SNIPPETS.vue,
     },
     {
         title: 'Vanilla script',
@@ -116,7 +64,7 @@ const ENV_EXAMPLES = [
 ];
 
 const SAFE_CONTEXT = [
-    ['Send', 'page, route, feature, workflow, role, plan, state, entity hints'],
+    ['Send', 'path, title, feature, workflow, role, and locale'],
     ['Do not send', 'passwords, tokens, payment data, emails, phone numbers, raw customer records'],
     ['Env values', 'public widget key and optional script URL only; never service accounts or private API keys'],
     ['Screenshots', 'user upload or paste only; no automatic page capture or DOM scraping'],
@@ -137,7 +85,7 @@ export default function CanonicaQuickstartsPage() {
                         Add page-aware support without building a support stack.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use one script or the optional typed helper, then send safe page context from the app screens where users get stuck.
+                        Use the v1 script once, then send safe page context from the app screens where users get stuck.
                     </p>
                 </section>
 
@@ -151,7 +99,7 @@ export default function CanonicaQuickstartsPage() {
                         ))}
                     </div>
                     <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Private beta workspaces can use the exact dashboard snippet immediately. The optional typed helper source is maintained for package release and can be handed to developers during setup.
+                        Private beta workspaces can use the exact dashboard snippet immediately. Canonica supports the stable v1 script URL and browser global for client installs.
                     </p>
                 </section>
 

@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.38
+> **Version:** 1.2.40
 > **Last Updated:** 2026-05-27
 > **Audience:** Developers
 
@@ -71,10 +71,8 @@ src/app/sites/canonica/
 ├── install/ai-agent/page.tsx      # Copyable AI agent install packet page
 ├── install/manual/page.tsx        # Manual v1 widget install page
 ├── install/frameworks/*/page.tsx  # Framework-specific install pages
-├── install/verify/page.tsx        # Browser and dashboard verification guide
-├── install/security/page.tsx      # Safe context and forbidden field rules
-├── install/contracts/page.tsx     # 36-month v1 widget contract policy
-├── install/**/*.md/route.ts       # Machine-readable Markdown install docs
+├── install.md/route.ts            # Machine-readable install overview
+├── install/**/*.md/route.ts       # Machine-readable framework and contract docs
 ├── agents/canonica/*              # Public generated AGENTS/CLAUDE/Cursor/Windsurf/skill/ZIP files
 ├── integrations/page.tsx          # Slack/email workflow notifications page
 ├── pricing/page.tsx               # Pricing page
@@ -96,7 +94,7 @@ src/app/sites/canonica/
 ├── enginePillars.ts               # Implemented Canonica engine pillar copy
 ├── systemCoverage.ts              # Code-backed system coverage groups for homepage
 └── components/
-    ├── Header.tsx                 # Shared header with native mobile navigation
+    ├── Header.tsx                 # Shared header with desktop nav and right-side mobile drawer
     ├── Footer.tsx                 # Shared footer
     ├── CanonicaLogoMark.tsx       # Inline vector infinity mark for crisp website header/footer branding
     ├── CanonicaFlowDiagram.tsx    # Reusable animated hub, column-sequence, and loop diagrams
@@ -190,6 +188,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 26 FAQ/custom-answer pass kept the existing `/product/faq-management` page as the canonical buyer surface, then updated homepage support map, page-aware demo, widget section, Product, Support Control, FAQ, SEO pages, sitemap metadata, LLM context, and Updates to explain the implemented retrieval path: canonical answer first, published owner FAQ/custom answer next, fallback only when coverage is missing.
 - May 27 Support Board pass added standalone `/product/support-board`, then updated Support Control, FAQ, Resources, Updates, sitemap metadata, LLM context, and route docs to explain private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff while keeping ticket/signal sync and nightly board preparation marked as controlled rollout instead of default website claims.
 - May 27 contact/mobile pass added a full `/contact` inquiry form backed by a Canonica-only public API route and regrouped the mobile hamburger into Product Areas, Product Features, and Other cards with safe-area bottom padding.
+- May 27 drawer pass converted the public hamburger from an inline mobile panel to a right-side drawer with backdrop, Escape close, body scroll lock, and link-close behavior.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
 - May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.
@@ -317,7 +316,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 - `components/CanonicaScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product dropdown and mobile navigation use native `<details>/<summary>` so they still work if hydration is delayed and do not add a client bundle. Mobile navigation groups Product Areas, Product Features, and Other into separate cards and includes safe-area bottom padding.
+- `Header.tsx` — Desktop Product dropdown stays CSS-driven. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, and includes safe-area bottom padding.
 
 ---
 
@@ -429,3 +428,5 @@ Conversion analytics is client-side only:
 | 2026-05-27 | 1.2.36 | Added a Canonica-only contact inquiry API and client form, plus a mobile hamburger Other group card with safe-area bottom padding |
 | 2026-05-27 | 1.2.37 | Added Support Board as a standalone public product-feature page and synchronized Support Control, FAQ, Resources, Updates, route metadata, LLM context, and docs with manual-first private workboard boundaries |
 | 2026-05-27 | 1.2.38 | Added the Canonica Agent Install Layer: generated install pages, Markdown mirrors, public agent files, dashboard AI packet actions, and the stable `/widget/v1/canonica-widget.js` contract URL |
+| 2026-05-27 | 1.2.39 | Converted Canonica public mobile navigation to a right-side drawer with backdrop, close handling, body scroll lock, and preserved grouped links |
+| 2026-05-27 | 1.2.40 | Completed an end-to-end public-site audit and aligned install-route implementation docs with the live generated HTML install pages plus Markdown-only contract docs |

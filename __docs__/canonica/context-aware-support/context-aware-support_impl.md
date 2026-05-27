@@ -32,7 +32,7 @@ We add context fields to these existing systems. Zero new services. Zero new col
 ### Data Flow
 
 ```
-Client SDK
+Widget browser contract
     ↓
 POST /api/widget/search (or /api/helpCenter/search-kb)
     ↓
@@ -552,7 +552,7 @@ Threshold: `STRONG_QUERY_THRESHOLD = 5.0` (configurable constant).
 
 ### Guardrail 3 — Maximum Boost Cap
 
-Total context boost per entity is capped at `MAX_CONTEXT_BOOST = 80`. Prevents runaway scores even if all context fields match the same entity. This is cheap insurance against bad SDK integrations.
+Total context boost per entity is capped at `MAX_CONTEXT_BOOST = 80`. Prevents runaway scores even if all context fields match the same entity. This is cheap insurance against bad widget context integrations.
 
 ---
 
@@ -562,7 +562,7 @@ Total context boost per entity is capped at `MAX_CONTEXT_BOOST = 80`. Prevents r
 | ----------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `entityHints`     | +50 each           | Explicit developer signal. Highest confidence. Developer tells Canonica exactly which entity is relevant.        |
 | `page`            | +30                | Strong location signal. 80%+ of support questions are page-specific.                                             |
-| `workflow`        | +25                | Narrows to procedural domain. Slightly less than page because workflow detection requires more SDK effort.       |
+| `workflow`        | +25                | Narrows to procedural domain. Slightly less than page because workflow detection requires more explicit integration effort. |
 | `feature`         | +15                | Broad domain hint. Useful for narrowing to correct ontology subtree but not entity-specific.                     |
 | Query token match | 1.0-2.0 (existing) | Baseline text matching. Context boosts are intentionally much higher to allow context to override vague queries. |
 
@@ -598,15 +598,15 @@ Total context boost per entity is capped at `MAX_CONTEXT_BOOST = 80`. Prevents r
 - Performance: zero write overhead per query
 - Observability: context fields logged to performance logs (existing write, no new collection)
 
-### ADR-3: SDK-First, No Inference Fallback in v1
+### ADR-3: Explicit Browser Context, No Inference Fallback in v1
 
-**Decision:** Rely entirely on SDK-provided context. No URL parsing or DOM scanning.
+**Decision:** Rely entirely on context provided through the v1 browser contract. No URL parsing or DOM scanning.
 
-**Rejected:** ChatGPT's hybrid model (SDK + URL inference fallback).
+**Rejected:** ChatGPT's hybrid model (browser context + URL inference fallback).
 
 **Rationale:**
 
-- Canonica's ICP is SaaS developers — they can integrate SDK (15-30 min effort)
+- Canonica's ICP is SaaS developers — they can integrate the widget context contract (15-30 min effort)
 - URL inference is unreliable in SPAs
 - DOM scanning introduces security concerns
 - Inference adds complexity with marginal benefit

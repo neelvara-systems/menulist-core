@@ -33,7 +33,7 @@ Most AI help systems treat every question the same — a text query sent to a se
 | **Higher accuracy** | 15-25% more queries resolved by canonical answers (fewer RAG fallbacks) |
 | **Lower support cost** | Each canonical hit vs RAG fallback saves ~8 database reads + 1 AI call |
 | **Better user experience** | Users get page-specific answers, not generic docs |
-| **Zero maintenance** | Context is sent by your SDK — no configuration needed in Canonica |
+| **Zero maintenance** | Context is sent by your widget install — no configuration needed in Canonica |
 | **Backwards compatible** | Existing queries work identically without context |
 
 ### For End-Users
@@ -51,7 +51,7 @@ Most AI help systems treat every question the same — a text query sent to a se
 
 | Feature | Canonica | Intercom Fin | Zendesk AI | Generic RAG |
 |---------|----------|-------------|------------|-------------|
-| Product context injection | ✅ SDK-native | Partial (conversation context) | Partial (user attributes) | ❌ |
+| Product context injection | ✅ Widget-native | Partial (conversation context) | Partial (user attributes) | ❌ |
 | Entity-bound retrieval | ✅ Ontology-first | ❌ Embedding-only | ❌ Embedding-only | ❌ |
 | Deterministic + context | ✅ Rule-based + context boosts | ❌ ML-only | ❌ ML-only | ❌ |
 | Plan/role-aware answers | ✅ Scope-filtered | ❌ | Partial | ❌ |
@@ -70,8 +70,8 @@ Most AI help systems treat every question the same — a text query sent to a se
 ### Objection: "We already have Intercom/Zendesk"
 **Response:** Those systems send conversations to an LLM and hope for the best. Canonica maintains canonical, versioned answers bound to your product ontology. Context makes those answers even more precise — it's the difference between "here's an article about Stripe" and "here's the exact troubleshooting step for Stripe webhook configuration when connecting as admin on Pro plan."
 
-### Objection: "How hard is the SDK integration?"
-**Response:** 15-30 minutes. Add 5 lines to your widget initialization. The context follows the same pattern as Stripe, Segment, and Sentry SDKs — your developers already know this pattern.
+### Objection: "How hard is the widget context integration?"
+**Response:** 15-30 minutes. Add the v1 script once and call `window.CanonicaWidget.page()` when routes change. The pattern is familiar to developers who have installed browser widgets before.
 
 ---
 

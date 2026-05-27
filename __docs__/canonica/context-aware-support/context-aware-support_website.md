@@ -20,12 +20,12 @@ Canonica injects product context into every support query — delivering answers
 ### Body Copy
 Most AI support tools treat every question like a Google search. Your user asks "why is this failing?" and the system returns five vaguely relevant articles.
 
-Canonica is different. When your widget SDK passes product context — which page the user is on, what feature they're using, what plan they're on — our canonical retrieval engine uses that context to deliver the exact right answer.
+Canonica is different. When your widget install passes safe product context — which page the user is on, what feature they're using, and what public role label applies — our canonical retrieval engine uses that context to deliver the exact right answer.
 
 The result:
 - **15-25% more queries** resolved by canonical answers
 - **Zero additional database cost** — context processing is entirely in-memory
-- **15-30 minute SDK integration** — familiar pattern for any developer
+- **15-30 minute widget integration** — familiar pattern for any developer
 
 ### CTA
 Start with context-aware support →
@@ -82,7 +82,7 @@ Canonica.updateContext({
 - **15-25%** increase in canonical answer resolution
 - **<2ms** context processing overhead
 - **0** additional database reads
-- **15-30 min** SDK integration time
+- **15-30 min** widget integration time
 
 ---
 
@@ -90,8 +90,8 @@ Canonica.updateContext({
 
 ```
 Title: Context-Aware Support | Canonica
-Description: Canonica's context-aware support delivers answers based on where your users are in your product — not just what they type. SDK-native, zero additional cost.
-Keywords: context-aware support, product-aware help, AI support SDK, canonical answers, SaaS support infrastructure
+Description: Canonica's context-aware support delivers answers based on where your users are in your product — not just what they type. Widget-native, zero additional cost.
+Keywords: context-aware support, product-aware help, AI support widget, canonical answers, SaaS support infrastructure
 ```
 
 ---

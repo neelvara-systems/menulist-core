@@ -19,7 +19,7 @@ Predictive Support sits **above** the retrieval layer and **beside** the widget:
 ├────────────────────────────────────────────────────┤
 │                                                     │
 │  ┌─────────────┐    ┌──────────────────────┐       │
-│  │  Widget SDK  │───▶│ Predictive Help API  │       │
+│  │ Widget API   │───▶│ Predictive Help API  │       │
 │  │  (page ctx)  │    │ /api/canonica/       │       │
 │  └──────┬───────┘    │ predictive-help      │       │
 │         │            └──────────┬───────────┘       │
@@ -52,8 +52,8 @@ Predictive Support sits **above** the retrieval layer and **beside** the widget:
    Response includes capabilities.predictiveSupport.
    The public widget does not call predictive help unless active triggers exist.
 
-1. Widget SDK → POST /api/canonica/predictive-help
-   Payload: { page, feature, workflow, plan, userRole, entityHints }
+1. Widget browser contract → POST /api/canonica/predictive-help
+   Payload: { path, title, feature, workflow, role, locale }
 
 2. API Route → predictiveEngine.evaluateTriggers()
    Loads trigger rules from platformSummary (cached; empty/no-active summaries use a longer 5-minute negative cache)
@@ -67,7 +67,7 @@ Predictive Support sits **above** the retrieval layer and **beside** the widget:
 4. API Route → Returns suggestion payload
    { type, title, summary, articles[], actionType, triggerId }
 
-5. Widget SDK → Renders context card / tooltip / workflow helper
+5. Widget runtime → Renders context card / tooltip / workflow helper
    Logs suggestion_shown signal (fire-and-forget)
 
 6. User interaction → Logs suggestion_clicked or suggestion_dismissed
@@ -571,15 +571,16 @@ for (const entity of frictionSnapshot.topFrictionEntities) {
 
 ---
 
-## §8 — Widget SDK Integration
+## §8 — Widget Browser Contract Integration
 
 ### 8.1 — Page Entry Hook
 
-The widget SDK needs a new method that fires on page navigation:
+The widget runtime uses the v1 browser contract on page navigation:
 
 ```typescript
-// Client SDK (runs in SaaS product)
-canon.page("webhook_setup", {
+window.CanonicaWidget?.page({
+  path: "/settings/webhooks",
+  title: "Webhook setup",
   feature: "webhooks",
   workflow: "connect_webhook",
 });
@@ -593,7 +594,7 @@ This triggers:
 
 ### 8.2 — Backwards Compatibility
 
-Old widget SDKs without `canon.page()` simply don't call the predictive API. No breaking change. Predictive support is an enhancement, not a requirement.
+Older installs that do not call `window.CanonicaWidget.page()` simply do not provide predictive context. No breaking change. Predictive support is an enhancement, not a requirement.
 
 ---
 
@@ -659,7 +660,7 @@ ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 
 | Concern                  | Resolution                                                     |
 | ------------------------ | -------------------------------------------------------------- |
-| Existing widget SDKs     | No change needed. Predictive help is opt-in via `canon.page()` |
+| Existing widget installs | No change needed. Predictive help is opt-in via `window.CanonicaWidget.page()` |
 | Existing search pipeline | Untouched. Predictive help is a separate API route             |
 | Existing signal events   | New signal types are additive. Existing queries unaffected     |
 | Existing nightly batch   | New step 16 appended. All prior steps unchanged                |

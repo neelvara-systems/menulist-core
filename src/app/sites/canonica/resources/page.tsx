@@ -52,7 +52,7 @@ const RESOURCE_GROUPS = [
             ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
             ['Support Board', '/product/support-board', 'Plan private support cards, internal notes, status history, and answer proposal handoff.'],
             ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
-            ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the optional typed helper.'],
+            ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, or vanilla script examples.'],
             ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
             ['Security and runtime safety', '/security', 'Review tenant isolation, widget origin controls, screenshot input, compiled context boundaries, and owner-approved authority.'],

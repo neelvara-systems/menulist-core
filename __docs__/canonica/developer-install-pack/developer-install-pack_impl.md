@@ -1,24 +1,13 @@
 # Canonica Developer Install Pack v1 Implementation
 
-## Optional Typed Browser Helper
-
-`packages/canonica-web/src/index.ts` exports:
-
-- `createCanonicaWebClient`
-- `validateCanonicaPageContext`
-- `validateCanonicaContext`
-- typed context/event/runtime interfaces
-
-The SDK is not the Canonica runtime authority and is not required for installation. The stable public contract remains:
+## Supported Browser Contract
 
 - Script URL: `https://canonica.app/widget/v1/canonica-widget.js`
 - Public widget key: `cn_*`
 - Browser global: `window.CanonicaWidget`
 - Context methods: `setContext()` and `page()`
 
-The helper may load the script, queue page context until runtime is available, and validate/sanitize context before calling the runtime. Legacy `/widget/canonica-widget.js` installs remain accepted, but generated docs and packets point agents to `/widget/v1/canonica-widget.js`.
-
-Package-local build metadata is present in `packages/canonica-web/package.json` and `packages/canonica-web/tsconfig.json`. Publishing remains a release operation; website copy describes the helper and install screen, not an already-published public registry artifact.
+Canonica does not support a public SDK or npm install path. Existing internal helper source may stay in the repo for experiments, but public pages, dashboard snippets, Markdown mirrors, agent files, and ZIP packets must not offer it to end users. Generated docs and packets point agents to `/widget/v1/canonica-widget.js`.
 
 ## Environment Handoff
 
@@ -44,9 +33,9 @@ This is guidance, not a new Canonica runtime authority model. The only browser-s
 
 `src/lib/canonica/installContract/contract.ts` is the single source for:
 
-- v1 widget script URL, compatibility URLs, widget global, context methods, env var names, public docs routes, and agent file targets.
-- canonical v1 safe context fields, compatibility-only legacy context mapping, and forbidden context fields.
-- blocked route defaults.
+- v1 widget script URL, widget global, context methods, env var names, public docs routes, and agent file targets.
+- canonical v1 safe context fields and forbidden context fields.
+- dashboard-owned blocked route defaults for packet context.
 - copyable AI install prompt.
 - AGENTS.md, CLAUDE.md, Cursor `RULE.md`, Cursor `.mdc`, Windsurf, and skill output.
 - public Markdown install docs.
@@ -85,13 +74,15 @@ Framework examples read from client-safe env variables where the framework suppo
 - Machine-readable docs links
 - Widget key ready
 - Script loaded recently
-- Origin valid
-- Route allowed
+- Origins saved in Canonica
+- Blocked routes saved in Canonica
 - Context arriving
 
 The route uses `runtimeStatus`, `allowedOrigins`, `blockedRoutes`, and widget key metadata already returned by `/api/canonica/widget-config`. It optionally reads `/api/canonica/activation/summary` for workspace name/readiness. The widget management Install tab now links to `/canonica/install-center` instead of duplicating the full agent packet. Existing `/canonica/widget` remains the widget configuration route and must keep working. The protected packet/kit endpoints perform one authenticated store read and never return the raw key by default.
 
-The workspace-specific agent kit ZIP may include widget key prefix, allowed origins, blocked routes, public script URL, framework choice, install checklist, and env placeholders. It must not include the raw widget key unless the user explicitly chooses a one-time include/reveal action through the existing key flow.
+The workspace-specific agent kit ZIP may include widget key prefix, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework choice, install checklist, and env placeholders. It must not include the raw widget key unless the user explicitly chooses a one-time include/reveal action through the existing key flow.
+
+Allowed origins and blocked routes are edited in Canonica dashboard UI. The generated agent packet may include the saved values for verification and local route-guard decisions, but must not tell the client product to create duplicate owner settings.
 
 ## Widget Script Caching
 
@@ -127,9 +118,9 @@ New public pages:
 - `/install/frameworks/plain-html`
 - `/install/frameworks/shopify`
 - `/install/frameworks/webflow`
-- `/install/verify`
-- `/install/security`
-- `/install/contracts`
-- `/install/changelog`
+
+Machine-readable only:
+
+- `/install/contracts.md`
 
 Site registry, footer, resources, pricing, install page, and LLM context files now link them.

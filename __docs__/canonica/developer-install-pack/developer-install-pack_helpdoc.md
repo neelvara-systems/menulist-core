@@ -20,16 +20,8 @@
 
 Send canonical v1 fields: path, title, feature, workflow, role, and locale.
 
-Existing Canonica integrations may still send compatibility fields after sanitization:
-
-- contextKey: public routing hint only.
-- page: public page label or path hint only.
-- userRole: public role label only.
-- plan: public plan label only, never subscription or billing metadata.
-- entityHints: public slugs/tags/hints only, never internal IDs or customer records.
-
 Do not send passwords, tokens, card data, raw customer records, emails, phone numbers, billing data, tenant IDs, store IDs, user IDs, or raw database IDs.
 
 ## Agent Install Rule
 
-Use `https://canonica.app/widget/v1/canonica-widget.js` for new installs. Older `/widget/canonica-widget.js` installs remain compatible, but new coding-agent packets should use the v1 URL.
+Use `https://canonica.app/widget/v1/canonica-widget.js` for new installs. Allowed origins and blocked routes are configured in Canonica dashboard, not as separate product settings or manual variables.

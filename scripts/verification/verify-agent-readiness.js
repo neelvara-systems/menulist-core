@@ -238,6 +238,10 @@ function verifyCanonicaInstallContract() {
   const canonicaRoutes = read('src/constants/canonica/routes.ts');
   const canonicaDomains = read('src/constants/canonica/domains.ts');
   const canonicaNavigations = read('src/constants/canonica/navigations.ts');
+  const canonicaQuickstarts = read('src/app/sites/canonica/quickstarts/page.tsx');
+  const canonicaResources = read('src/app/sites/canonica/resources/page.tsx');
+  const canonicaDayOneLaunchPack = read('src/app/sites/canonica/components/DayOneLaunchPackSection.tsx');
+  const canonicaSiteConfig = read('src/app/sites/canonica/siteConfig.ts');
 
   assert(constants.CANONICA_WIDGET_SCRIPT_URL === 'https://canonica.app/widget/v1/canonica-widget.js', 'Canonica v1 widget URL must stay stable');
   assert(constants.CANONICA_WIDGET_SCRIPT_CACHE_CONTROL === 'public, max-age=300, stale-while-revalidate=86400', 'Canonica v1 widget cache policy must stay bounded and non-immutable');
@@ -263,19 +267,27 @@ function verifyCanonicaInstallContract() {
     'install/frameworks/plain-html.md',
     'install/frameworks/shopify.md',
     'install/frameworks/webflow.md',
-    'install/verify.md',
-    'install/security.md',
     'install/contracts.md',
-    'install/changelog.md',
   ].forEach((routePath) => {
     assert(exists(`src/app/sites/canonica/${routePath}/route.ts`), `Canonica Markdown route missing: ${routePath}`);
+  });
+  [
+    'install/verify/page.tsx',
+    'install/verify.md/route.ts',
+    'install/security/page.tsx',
+    'install/security.md/route.ts',
+    'install/changelog/page.tsx',
+    'install/changelog.md/route.ts',
+    'install/contracts/page.tsx',
+  ].forEach((routePath) => {
+    assert(!exists(`src/app/sites/canonica/${routePath}`), `Canonica public install route should not exist: ${routePath}`);
   });
 
   const llms = contract.renderCanonicaLlmsTxt();
   assertIncludes(llms, '/install/ai-agent.md', 'Canonica llms.txt');
-  assertIncludes(llms, '/install/verify.md', 'Canonica llms.txt');
-  assertIncludes(llms, '/install/security.md', 'Canonica llms.txt');
   assertIncludes(llms, '/install/contracts.md', 'Canonica llms.txt');
+  assertNotIncludes(llms, '/install/verify.md', 'Canonica llms.txt');
+  assertNotIncludes(llms, '/install/security.md', 'Canonica llms.txt');
 
   const secretKey = 'cn_test_raw_secret_value_123456789';
   const kitFiles = contract.buildCanonicaAgentKitFiles({
@@ -289,13 +301,15 @@ function verifyCanonicaInstallContract() {
   assert(kitFiles['.cursor/rules/canonica/RULE.md'], 'Canonica agent kit must include Cursor RULE.md');
   assert(kitFiles['.cursor/rules/canonica.mdc'], 'Canonica agent kit must include Cursor .mdc fallback');
   assertIncludes(kitFiles['packet.json'], '"rawWidgetKeyIncluded": false', 'Canonica agent kit packet');
-  assertIncludes(kitFiles['canonica-context-contract-v1.md'], 'Legacy compatibility fields', 'Canonica context contract docs');
+  assertIncludes(kitFiles['canonica-context-contract-v1.md'], 'Allowed context fields', 'Canonica context contract docs');
+  assertNotIncludes(kitFiles['canonica-context-contract-v1.md'], 'Legacy compatibility', 'Canonica context contract docs');
 
   const packet = contract.buildCanonicaAgentPacketJson({ widgetKey: secretKey, widgetKeyPrefix: 'cn_test' });
   assert(packet.rawWidgetKeyIncluded === false, 'Canonica dashboard packet must not include raw widget key by default');
   assert(JSON.stringify(packet).indexOf(secretKey) === -1, 'Canonica dashboard packet must mask raw widget key by default');
-  assert(packet.legacyContextFieldMap.plan.includes('public plan label'), 'Canonica legacy plan guidance must stay public-label only');
-  assert(packet.legacyContextFieldMap.entityHints.includes('public slugs'), 'Canonica legacy entityHints guidance must stay public-label only');
+  assert(packet.dashboardOwnsAllowedOrigins === true, 'Canonica dashboard packet must mark allowed origins as dashboard-owned');
+  assert(packet.dashboardOwnsBlockedRoutes === true, 'Canonica dashboard packet must mark blocked routes as dashboard-owned');
+  assert(!('legacyContextFieldMap' in packet), 'Canonica dashboard packet must not expose legacy context guidance before launch');
 
   const parsedContext = CanonicaContextSchema.parse({
     path: '/settings/team',
@@ -304,14 +318,9 @@ function verifyCanonicaInstallContract() {
     workflow: 'invite_teammate',
     role: 'owner',
     locale: 'en',
-    contextKey: 'team_settings',
-    plan: 'starter',
-    entityHints: ['team', 'invites'],
     tenantId: '123',
   });
   assert(parsedContext.path === '/settings/team', 'Canonica context schema must accept canonical path');
-  assert(parsedContext.page === 'settings_team', 'Canonica context schema must normalize path to compatibility page');
-  assert(parsedContext.userRole === 'owner', 'Canonica context schema must normalize role to compatibility userRole');
   assert(parsedContext.tenantId === undefined, 'Canonica context schema must strip forbidden tenantId');
   assert(!CanonicaContextSchema.safeParse({ title: 'owner@example.com' }).success, 'Canonica context schema must reject PII-like titles');
 
@@ -324,6 +333,26 @@ function verifyCanonicaInstallContract() {
   assertIncludes(widgetManagement, 'CANONICA_ROUTES.INSTALL_CENTER', 'Canonica widget route must link to install center');
   assert((canonicaNavigations.match(/CANONICA_ROUTES\.INSTALL_CENTER/g) || []).length === 1, 'Canonica sidebar must not duplicate the Install Center route');
   assertNotIncludes(canonicaNavigations, 'widget-install-center', 'Canonica widget sidebar must not duplicate Install Center');
+
+  const publicInstallCopy = [
+    widgetManagement,
+    installCenter,
+    canonicaQuickstarts,
+    canonicaResources,
+    canonicaDayOneLaunchPack,
+    canonicaSiteConfig,
+    JSON.stringify(kitFiles),
+    contract.renderCanonicaMarkdownDoc('overview'),
+    contract.renderCanonicaMarkdownDoc('ai-agent'),
+  ].join('\n');
+  assertNotIncludes(publicInstallCopy, '@canonica/web', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'createCanonicaWebClient', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'Typed SDK', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'optional typed helper', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'Legacy compatibility', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'BLOCKED_ROUTES=', 'Canonica public install copy');
+  assertNotIncludes(publicInstallCopy, 'ALLOWED_ORIGINS=', 'Canonica public install copy');
+  assertNotIncludes(widgetManagement, "value: 'sdk'", 'Canonica widget install snippet picker');
 }
 
 function main() {

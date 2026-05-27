@@ -57,6 +57,7 @@ import {
 import {
     CANONICA_WIDGET_SCRIPT_URL,
 } from '@lib/canonica/installContract/constants';
+import { CANONICA_FRAMEWORK_SNIPPETS } from '@lib/canonica/installContract/contract';
 import {
     CanonicaHostedHelpConfig,
     DEFAULT_CANONICA_HOSTED_HELP_CONFIG,
@@ -80,7 +81,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const { Title, Text, Paragraph } = Typography;
 
-type SnippetType = 'html' | 'env' | 'sdk' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
+type SnippetType = 'html' | 'env' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
 
 type CanonicaWidgetManagementProps = {
     embeddedMobile?: boolean;
@@ -612,106 +613,9 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '# Keep these out of browser env:',
         '# Firebase service accounts, admin credentials, private API keys, tenant IDs, store IDs, user IDs, and customer records.',
     ].join('\n'), [apiKey, scriptSrc]);
-    const sdkSnippet = useMemo(() => [
-        "import { createCanonicaWebClient } from '@canonica/web';",
-        '',
-        'const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;',
-        'if (!widgetKey) throw new Error("Missing NEXT_PUBLIC_CANONICA_WIDGET_KEY");',
-        '',
-        'const canonica = createCanonicaWebClient({',
-        '  apiKey: widgetKey,',
-        '  scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
-        '});',
-        '',
-        'await canonica.init();',
-        'canonica.page({',
-        "  path: window.location.pathname,",
-        "  title: document.title,",
-        "  feature: 'billing',",
-        "  workflow: 'manage_subscription',",
-        "  role: 'owner',",
-        "  locale: navigator.language || 'en',",
-        '});',
-    ].join('\n'), []);
-    const nextSnippet = useMemo(() => [
-        "'use client';",
-        '',
-        "import { useEffect } from 'react';",
-        "import { usePathname } from 'next/navigation';",
-        "import { createCanonicaWebClient } from '@canonica/web';",
-        '',
-        'export function CanonicaRouteContext() {',
-        '  const pathname = usePathname();',
-        '  useEffect(() => {',
-        '    const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;',
-        '    if (!widgetKey) return;',
-        '    const canonica = createCanonicaWebClient({',
-        '      apiKey: widgetKey,',
-        '      scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
-        '    });',
-        '    canonica.init({',
-        '      context: {',
-        '        path: pathname,',
-        '        title: document.title,',
-        "        feature: pathname.split('/')[1] || 'app',",
-        "        role: 'member',",
-        "        locale: navigator.language || 'en',",
-        '      },',
-        '    });',
-        '  }, [pathname]);',
-        '  return null;',
-        '}',
-    ].join('\n'), []);
-    const reactSnippet = useMemo(() => [
-        "import { useEffect } from 'react';",
-        "import { createCanonicaWebClient } from '@canonica/web';",
-        '',
-        'export function BillingPageHelp() {',
-        '  useEffect(() => {',
-        '    const widgetKey = import.meta.env.VITE_CANONICA_WIDGET_KEY;',
-        '    if (!widgetKey) return;',
-        '    const canonica = createCanonicaWebClient({',
-        '      apiKey: widgetKey,',
-        '      scriptSrc: import.meta.env.VITE_CANONICA_WIDGET_SCRIPT_SRC,',
-        '    });',
-        '    canonica.init();',
-        '    canonica.page({',
-        "      path: window.location.pathname,",
-        "      title: document.title,",
-        "      feature: 'billing',",
-        "      workflow: 'manage_subscription',",
-        "      role: 'member',",
-        "      locale: navigator.language || 'en',",
-        '    });',
-        '  }, []);',
-        '  return null;',
-        '}',
-    ].join('\n'), []);
-    const vueSnippet = useMemo(() => [
-        '<script setup lang="ts">',
-        "import { onMounted } from 'vue';",
-        "import { createCanonicaWebClient } from '@canonica/web';",
-        '',
-        'onMounted(async () => {',
-        '  const config = useRuntimeConfig();',
-        '  const widgetKey = config.public.canonicaWidgetKey;',
-        '  if (!widgetKey) return;',
-        '  const canonica = createCanonicaWebClient({',
-        '    apiKey: widgetKey,',
-        '    scriptSrc: config.public.canonicaWidgetScriptSrc,',
-        '  });',
-        '  await canonica.init();',
-        '  canonica.page({',
-        "    path: window.location.pathname,",
-        "    title: document.title,",
-        "    feature: 'billing',",
-        "    workflow: 'manage_subscription',",
-        "    role: 'member',",
-        "    locale: navigator.language || 'en',",
-        '  });',
-        '});',
-        '</script>',
-    ].join('\n'), []);
+    const nextSnippet = useMemo(() => CANONICA_FRAMEWORK_SNIPPETS.nextjs, []);
+    const reactSnippet = useMemo(() => CANONICA_FRAMEWORK_SNIPPETS.react, []);
+    const vueSnippet = useMemo(() => CANONICA_FRAMEWORK_SNIPPETS.vue, []);
     const vanillaSnippet = useMemo(() => [
         embedCode,
         '',
@@ -732,7 +636,6 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
     const snippetByType: Record<SnippetType, string> = {
         html: embedCode,
         env: envSnippet,
-        sdk: sdkSnippet,
         spa: spaSnippet,
         next: nextSnippet,
         react: reactSnippet,
@@ -1114,7 +1017,6 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
                                                 options={[
                                                     { value: 'html', label: 'HTML' },
                                                     { value: 'env', label: 'Env' },
-                                                    { value: 'sdk', label: 'Typed SDK' },
                                                     { value: 'spa', label: 'Route Context' },
                                                     { value: 'next', label: 'Next.js' },
                                                     { value: 'react', label: 'React' },
@@ -1135,7 +1037,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
                                                 description="Use client-safe env names for the public cn_* widget key and optional script source. Do not put Firebase service accounts, admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records in browser env."
                                             />
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                The script reads saved dashboard settings automatically. The optional typed helper validates safe page context before calling the widget runtime.
+                                                The script reads saved dashboard settings automatically. New installs should use the v1 script URL and the window.CanonicaWidget browser contract directly.
                                             </Text>
                                         </Flex>
                                     </Card>

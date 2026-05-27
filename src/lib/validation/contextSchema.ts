@@ -1,7 +1,8 @@
 /**
  * Canonica — Context Payload Validation Schema
  * 
- * Validates and sanitizes the product context payload sent by client SDKs
+ * Validates and sanitizes the product context payload sent through the v1
+ * widget browser contract
  * alongside support queries. Context is TRANSIENT — never stored in Firestore.
  * 
  * Security:
@@ -99,7 +100,8 @@ export const CanonicaContextSchema = z.object({
     ).max(MAX_ENTITY_HINTS).optional(),
     role: ContextStringSchema.optional(),
     locale: ContextStringSchema.optional(),
-    // Legacy compatibility fields. New installs should prefer role/path/title.
+    // Internal normalized fields used by the existing retrieval engine.
+    // Public v1 install docs expose path/title/role instead.
     userRole: ContextStringSchema.optional(),
     plan: ContextStringSchema.optional(),
 }).strip().transform((value) => {

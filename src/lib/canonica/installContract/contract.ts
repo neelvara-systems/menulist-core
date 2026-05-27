@@ -6,12 +6,10 @@ export {
     CANONICA_MARKDOWN_DOCS_CONTRACT_VERSION,
     CANONICA_SITE_URL,
     CANONICA_VERIFICATION_CONTRACT_VERSION,
-    CANONICA_WIDGET_COMPATIBILITY_URLS,
     CANONICA_WIDGET_CONTRACT_VERSION,
     CANONICA_WIDGET_GLOBAL_NAME,
     CANONICA_WIDGET_SCRIPT_CACHE_CONTROL,
     CANONICA_WIDGET_LATEST_SCRIPT_URL,
-    CANONICA_WIDGET_LEGACY_SCRIPT_URL,
     CANONICA_WIDGET_SCRIPT_URL,
     CANONICA_WIDGET_SCRIPT_VERSION,
 } from './constants';
@@ -22,10 +20,8 @@ import {
     CANONICA_INSTALL_CONTRACT_VERSION,
     CANONICA_SITE_URL,
     CANONICA_VERIFICATION_CONTRACT_VERSION,
-    CANONICA_WIDGET_COMPATIBILITY_URLS,
     CANONICA_WIDGET_GLOBAL_NAME,
     CANONICA_WIDGET_SCRIPT_CACHE_CONTROL,
-    CANONICA_WIDGET_LEGACY_SCRIPT_URL,
     CANONICA_WIDGET_SCRIPT_URL,
 } from './constants';
 
@@ -39,10 +35,7 @@ export type CanonicaInstallDocKey =
     | 'plain-html'
     | 'shopify'
     | 'webflow'
-    | 'verify'
-    | 'security'
-    | 'contracts'
-    | 'changelog';
+    | 'contracts';
 
 export type CanonicaAgentPacketInput = {
     widgetKey?: string | null;
@@ -84,22 +77,6 @@ export const CANONICA_ALLOWED_CONTEXT_FIELDS = [
 ] as const;
 
 export const CANONICA_SAFE_CONTEXT_FIELDS = CANONICA_ALLOWED_CONTEXT_FIELDS;
-
-export const CANONICA_COMPAT_CONTEXT_FIELDS = [
-    'contextKey',
-    'page',
-    'userRole',
-    'plan',
-    'entityHints',
-] as const;
-
-export const CANONICA_LEGACY_CONTEXT_FIELD_MAP = {
-    contextKey: 'workflow or internal routing hint',
-    page: 'title or path',
-    userRole: 'role',
-    plan: 'public plan label only',
-    entityHints: 'public slugs, tags, or hints only',
-} as const;
 
 export const CANONICA_FORBIDDEN_CONTEXT_FIELDS = [
     'tenantId',
@@ -175,39 +152,35 @@ export function getCanonicaWidgetKeyForPacket(input: CanonicaAgentPacketInput = 
     return '{{CANONICA_WIDGET_KEY}}';
 }
 
-export function renderCanonicaLegacyContextCompatibilityNotes() {
-    return normalizeLines(`
-Legacy compatibility fields are accepted by the runtime for existing integrations but are not the canonical v1 contract:
-- contextKey -> normalized to workflow or an internal routing hint.
-- page -> normalized to title or path.
-- userRole -> normalized to role.
-- plan -> accepted only as a public plan label, never a subscription ID, billing ID, entitlement object, or pricing metadata.
-- entityHints -> accepted only as public slugs, tags, or hints, never tenant IDs, store IDs, internal entity IDs, user IDs, emails, or customer records.
-`);
-}
-
 export function getCanonicaAllowedOriginsForPacket(input: CanonicaAgentPacketInput = {}) {
     const configured = Array.isArray(input.allowedOrigins) ? input.allowedOrigins.filter(Boolean) : [];
-    const fallback = [
-        input.productionOrigin || '{{PRODUCTION_ORIGIN}}',
-        input.stagingOrigin || '{{STAGING_ORIGIN}}',
+    const explicit = [
+        input.productionOrigin,
+        input.stagingOrigin,
     ].filter(Boolean) as string[];
-    return configured.length > 0 ? configured : fallback;
+    return configured.length > 0 ? configured : explicit;
 }
 
 export function getCanonicaBlockedRoutesForPacket(input: CanonicaAgentPacketInput = {}) {
     const configured = Array.isArray(input.blockedRoutes) ? input.blockedRoutes.filter(Boolean) : [];
-    return configured.length > 0 ? configured : [...CANONICA_DEFAULT_BLOCKED_ROUTES];
+    return configured;
 }
 
-export function buildCanonicaWidgetEmbedSnippet(widgetKey = '{{CANONICA_WIDGET_KEY}}') {
-    return [
+export function buildCanonicaWidgetEmbedSnippet(
+    widgetKey = '{{CANONICA_WIDGET_KEY}}',
+    options: { blockedRoutes?: readonly string[] } = {},
+) {
+    const lines = [
         '<script',
         `  src="${CANONICA_WIDGET_SCRIPT_URL}"`,
         `  data-canonica-key="${widgetKey}"`,
-        '  async',
-        '></script>',
-    ].join('\n');
+    ];
+    const blockedRoutes = options.blockedRoutes?.filter(Boolean) || [];
+    if (blockedRoutes.length > 0) {
+        lines.push(`  data-blocked-routes="${blockedRoutes.join(',')}"`);
+    }
+    lines.push('  async', '></script>');
+    return lines.join('\n');
 }
 
 export function buildCanonicaSafeContextSnippet() {
@@ -235,12 +208,14 @@ export function renderCanonicaAgentPrompt(input: CanonicaAgentPacketInput = {}) 
 You are integrating Canonica into this product.
 
 Goal:
-Install the Canonica v1 support widget, pass safe page context, block sensitive routes, and prove the installation works.
+Install the Canonica v1 support widget, pass safe page context, respect Canonica dashboard route rules, and prove the installation works.
 
 Use these Canonica values:
 - Widget key: ${widgetKey}
-- Allowed origins:
-${formatList(allowedOrigins)}
+- Dashboard-saved allowed origins, for verification only:
+${formatList(allowedOrigins, ['(none saved yet)'])}
+- Dashboard-saved blocked routes:
+${formatList(blockedRoutes, ['(none saved yet)'])}
 - Framework: ${framework}
 - Router: ${router}
 - Support entry points:
@@ -260,26 +235,20 @@ Implementation rules:
 4. Do not install the widget separately on each page.
 5. Do not expose tenantId, storeId, internal user IDs, emails, billing data, tokens, cookies, secrets, or private account metadata.
 6. Pass only safe page context: path, title, feature, workflow, role, and locale.
-7. Treat legacy context fields as compatibility-only. Prefer canonical v1 fields for new code.
-8. If legacy fields already exist, only pass sanitized public labels:
-   - contextKey: routing hint only
-   - page: public page label or path hint only
-   - userRole: public role label only
-   - plan: public plan label only, never subscription or billing metadata
-   - entityHints: public slugs/tags/hints only, never internal IDs or customer records
-9. Update Canonica context after client-side route changes.
-10. Do not show or initialize Canonica on blocked routes:
-${formatList(blockedRoutes)}
-11. Also block routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
-12. Add a short code comment explaining that this is the Canonica v1 widget contract.
-13. Run lint, typecheck, and build commands available in the repository.
-14. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
+7. Update Canonica context after client-side route changes.
+8. Do not create app settings for allowed origins or blocked routes. Canonica dashboard owns those values.
+9. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting Canonica on sensitive screens.
+10. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
+11. Add a short code comment explaining that this is the Canonica v1 widget contract.
+12. Run lint, typecheck, and build commands available in the repository.
+13. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
 
 Acceptance criteria:
 - The app builds.
 - The Canonica script is loaded once.
 - The widget key is not hardcoded when env vars are available.
-- The widget is absent on blocked routes.
+- Dashboard-owned allowed origins and blocked routes are not duplicated as product settings.
+- The widget is absent on blocked routes when a local route guard is present; otherwise Canonica dashboard route rules control runtime visibility.
 - Safe page context updates on route changes.
 - No forbidden identifiers or secrets are sent to Canonica.
 - The browser console has no Canonica integration errors.
@@ -309,10 +278,6 @@ ${CANONICA_CONTEXT_METHODS.map((method) => `  - ${CANONICA_WIDGET_GLOBAL_NAME}.$
 Allowed context fields:
 ${formatList(CANONICA_ALLOWED_CONTEXT_FIELDS)}
 
-## Legacy compatibility only
-
-${renderCanonicaLegacyContextCompatibilityNotes()}
-
 Never send:
 ${formatList(CANONICA_FORBIDDEN_CONTEXT_FIELDS)}
 
@@ -322,11 +287,11 @@ ${formatList(CANONICA_FORBIDDEN_CONTEXT_FIELDS)}
 2. Do not install per page.
 3. Use env vars where supported.
 4. Update context after client-side route changes.
-5. Block Canonica on sensitive routes.
+5. Respect dashboard-owned blocked routes and avoid sensitive routes when the host app has a central script guard.
 6. Run lint, typecheck, and build.
 7. Report files changed and verification result.
 
-## Blocked route defaults
+## Sensitive route examples
 
 ${formatList(CANONICA_DEFAULT_BLOCKED_ROUTES)}
 
@@ -336,7 +301,7 @@ Also block any route containing token, invite, reset-password, payment, secret, 
 
 - Build passes.
 - Script loads once.
-- Widget is absent on blocked routes.
+- Dashboard-owned allowed origins and blocked routes are not duplicated as product settings.
 - Context updates after navigation.
 - No forbidden context fields are sent.
 `);
@@ -416,9 +381,9 @@ ${CANONICA_WIDGET_SCRIPT_URL}
 Install once at the app shell/root layout level.
 Use env vars for the widget key.
 Pass only canonical v1 safe context for new installs: path, title, feature, workflow, role, locale.
-Treat contextKey, page, userRole, plan, and entityHints as compatibility-only. Do not add them to new installs unless the app already uses them as public labels.
 Never send tenantId, storeId, userId, email, phone, token, secret, cookie, billing or payment data.
-Block login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes.
+Do not create product settings for allowed origins or blocked routes; Canonica dashboard owns those values.
+Avoid login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes when the host app has a central script guard.
 Run lint/typecheck/build after changes.
 `);
 }
@@ -440,9 +405,9 @@ Use this persistent project rule when the task mentions Canonica, support widget
 - Install once at the app shell/root layout level.
 - Use env vars for the cn_* widget key.
 - Pass canonical v1 context for new installs: path, title, feature, workflow, role, locale.
-- Treat contextKey, page, userRole, plan, and entityHints as compatibility-only public labels.
 - Never send tenantId, storeId, userId, email, phone, token, secret, cookie, billing data, payment data, customer records, or private metadata.
-- Block login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes.
+- Do not create product settings for allowed origins or blocked routes; Canonica dashboard owns those values.
+- Avoid login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes when the host app has a central script guard.
 - Run lint/typecheck/build after changes.
 `);
 }
@@ -466,14 +431,11 @@ window.CanonicaWidget?.page(context)
 Allowed context:
 path, title, feature, workflow, role, locale
 
-Legacy compatibility only:
-contextKey, page, userRole, plan, entityHints may be accepted after sanitization, but new installs should use canonical fields.
-
 Forbidden:
 tenantId, storeId, userId, email, phone, token, secret, cookie, JWT, billing data, payment data, private metadata
 
 Acceptance:
-script loads once, blocked routes excluded, route context updates, build passes.
+script loads once, dashboard route rules are not duplicated as product settings, route context updates, build passes.
 `);
 }
 
@@ -492,7 +454,7 @@ Follow the Canonica Widget Contract v1.
 2. Install ${CANONICA_WIDGET_SCRIPT_URL} once.
 3. Use an env var for the cn_* widget key.
 4. Pass only safe page context.
-5. Block sensitive routes.
+5. Respect dashboard-owned blocked routes and avoid sensitive routes when the host app has a central script guard.
 6. Verify that only one script loads and context updates after navigation.
 7. Report changed files and commands run.
 
@@ -508,18 +470,12 @@ import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
-const blockedRoutes = ['/login', '/signup', '/checkout', '/billing', '/admin/security'];
-
-function isBlocked(pathname: string) {
-  return blockedRoutes.some((route) => pathname === route || pathname.startsWith(route + '/'));
-}
-
 export function CanonicaInstall() {
   const pathname = usePathname() || '/';
   const widgetKey = process.env.NEXT_PUBLIC_CANONICA_WIDGET_KEY;
 
   useEffect(() => {
-    if (!widgetKey || isBlocked(pathname)) return;
+    if (!widgetKey) return;
     window.CanonicaWidget?.page({
       path: pathname,
       title: document.title,
@@ -529,7 +485,7 @@ export function CanonicaInstall() {
     });
   }, [pathname, widgetKey]);
 
-  if (!widgetKey || isBlocked(pathname)) return null;
+  if (!widgetKey) return null;
 
   return (
     <Script
@@ -545,8 +501,6 @@ export function CanonicaInstall() {
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const blockedRoutes = ['/login', '/signup', '/checkout', '/billing', '/admin/security'];
-
 function loadCanonica(widgetKey) {
   if (document.querySelector('script[data-canonica-widget="v1"]')) return;
   const script = document.createElement('script');
@@ -560,10 +514,9 @@ function loadCanonica(widgetKey) {
 export function CanonicaInstall() {
   const location = useLocation();
   const widgetKey = import.meta.env.VITE_CANONICA_WIDGET_KEY;
-  const blocked = blockedRoutes.some((route) => location.pathname === route || location.pathname.startsWith(route + '/'));
 
   useEffect(() => {
-    if (!widgetKey || blocked) return;
+    if (!widgetKey) return;
     loadCanonica(widgetKey);
     window.CanonicaWidget?.page({
       path: location.pathname,
@@ -572,7 +525,7 @@ export function CanonicaInstall() {
       role: 'member',
       locale: navigator.language || 'en',
     });
-  }, [blocked, location.pathname, widgetKey]);
+  }, [location.pathname, widgetKey]);
 
   return null;
 }
@@ -581,14 +534,11 @@ export function CanonicaInstall() {
 import { onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
-const blockedRoutes = ['/login', '/signup', '/checkout', '/billing', '/admin/security'];
-
 export function useCanonicaInstall(widgetKey: string) {
   const route = useRoute();
-  const isBlocked = () => blockedRoutes.some((item) => route.path === item || route.path.startsWith(item + '/'));
 
   const updateContext = () => {
-    if (!widgetKey || isBlocked()) return;
+    if (!widgetKey) return;
     window.CanonicaWidget?.page({
       path: route.path,
       title: document.title,
@@ -666,21 +616,21 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
         markdownPath: '/install.md',
         title: 'Install Canonica with your AI coding agent',
         navTitle: 'Install overview',
-        description: 'Copy the Canonica agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration.',
+        description: 'Copy the Canonica agent packet, install the v1 widget once, pass safe page context, and verify from the dashboard.',
         sections: [
             {
                 heading: 'Start with the agent packet',
-                body: 'The product owner does not need to hand-write an integration. Copy the packet into Codex, Claude Code, Cursor, Windsurf, or another coding agent and let it make the repository-specific changes.',
+                body: 'The product owner does not need to hand-write an integration. Save the widget key, allowed origins, and blocked routes in the Canonica dashboard, then copy the dashboard packet into Codex, Claude Code, Cursor, Windsurf, or another coding agent.',
                 bullets: [
-                    'Copy the AI install packet.',
-                    'Give the agent the cn_* widget key and allowed origins.',
+                    'Save allowed origins and blocked routes in Canonica first.',
+                    'Copy the AI install packet from the dashboard Install Center.',
                     'Review the files changed and verification output.',
                     'Use the Canonica dashboard to confirm runtime status.',
                 ],
             },
             {
                 heading: 'Stable contract',
-                body: 'Canonica freezes the public v1 script URL, browser global, context methods, safe context fields, blocked-route behavior, Markdown docs URLs, and install verification semantics for at least 36 months from general availability.',
+                body: 'Canonica freezes the public v1 script URL, browser global, context methods, and safe context fields for the supported install path.',
                 code: buildCanonicaWidgetEmbedSnippet(),
             },
             {
@@ -706,16 +656,13 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
         description: 'Copyable prompt and acceptance criteria for coding agents installing Canonica.',
         sections: [
             {
-                heading: 'Fill these values first',
-                code: [
-                    'CANONICA_WIDGET_KEY=cn_xxxxxxxxx',
-                    'PRODUCTION_ORIGIN=https://app.customer.com',
-                    'STAGING_ORIGIN=https://staging.customer.com',
-                    'FRAMEWORK=Next.js / React / Vue / Plain HTML / Shopify / Webflow',
-                    'ROUTER=App Router / Pages Router / React Router / Vue Router / other',
-                    'SUPPORT_ENTRY_POINTS=global widget, help button, sidebar, settings page',
-                    `BLOCKED_ROUTES=${CANONICA_DEFAULT_BLOCKED_ROUTES.join(', ')}`,
-                ].join('\n'),
+                heading: 'Configure Canonica first',
+                bullets: [
+                    'Create or copy the cn_* widget key in the dashboard.',
+                    'Save allowed production and staging origins in the dashboard.',
+                    'Save blocked routes in the dashboard.',
+                    'Then copy the dashboard-generated packet so the agent receives the current setup.',
+                ],
             },
             {
                 heading: 'Copy this prompt',
@@ -767,7 +714,7 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
                     'Use app/layout.tsx plus a small client component for App Router.',
                     'Use _app.tsx or the shared shell for Pages Router.',
                     'Use NEXT_PUBLIC_CANONICA_WIDGET_KEY for the public cn_* key.',
-                    'Block auth, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes.',
+                    'Do not create separate allowed-origin or blocked-route settings in the product; Canonica dashboard owns them.',
                 ],
                 code: CANONICA_FRAMEWORK_SNIPPETS.nextjs,
             },
@@ -819,71 +766,8 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
         sections: [{ heading: 'Agent-ready snippet', code: CANONICA_FRAMEWORK_SNIPPETS.webflow }],
     },
     {
-        key: 'verify',
-        path: '/install/verify',
-        markdownPath: '/install/verify.md',
-        title: 'Verify installation',
-        navTitle: 'Verify',
-        description: 'Runtime checks for script load, one-script-only, allowed origins, blocked routes, context updates, and dashboard status.',
-        sections: [
-            {
-                heading: 'Browser checks',
-                bullets: [
-                    `Confirm ${CANONICA_WIDGET_SCRIPT_URL} returns 200 and loads once.`,
-                    'Confirm no raw widget key is printed in logs or committed source.',
-                    'Navigate between app routes and confirm page context updates.',
-                    'Visit blocked routes and confirm Canonica is absent.',
-                    'Open the browser console and confirm no Canonica integration errors.',
-                ],
-            },
-            {
-                heading: 'Dashboard checks',
-                bullets: [
-                    'Widget key ready.',
-                    'Script loaded recently.',
-                    'Origin matched allowlist.',
-                    'Last route is allowed.',
-                    'Context marker was received.',
-                    'Recent widget questions are visible after users ask for help.',
-                ],
-            },
-        ],
-    },
-    {
-        key: 'security',
-        path: '/install/security',
-        markdownPath: '/install/security.md',
-        title: 'Security rules',
-        navTitle: 'Security',
-        description: 'Forbidden context fields, allowed origins, blocked routes, and server-side tenant resolution rules for Canonica installs.',
-        sections: [
-            {
-                heading: 'Canonical v1 context',
-                bullets: [...CANONICA_ALLOWED_CONTEXT_FIELDS],
-            },
-            {
-                heading: 'Legacy compatibility fields',
-                body: renderCanonicaLegacyContextCompatibilityNotes(),
-            },
-            {
-                heading: 'Forbidden context',
-                bullets: [...CANONICA_FORBIDDEN_CONTEXT_FIELDS],
-            },
-            {
-                heading: 'Server authority',
-                bullets: [
-                    'Widget key authentication resolves Canonica tenant and workspace server-side.',
-                    'Browser context is advisory. It is never used for authorization.',
-                    'Allowed origins are enforced by Canonica runtime APIs.',
-                    'The full widget key is shown only when created or copied from the authenticated dashboard.',
-                    'Public API v1 remains account-gated and secondary to the widget install path.',
-                ],
-            },
-        ],
-    },
-    {
         key: 'contracts',
-        path: '/install/contracts',
+        path: '/install/contracts.md',
         markdownPath: '/install/contracts.md',
         title: 'Canonica Widget Contract v1',
         navTitle: 'Contracts',
@@ -894,7 +778,6 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
                 body: 'Canonica will keep the Widget Contract v1 backward-compatible for at least 36 months from general availability.',
                 bullets: [
                     `${CANONICA_WIDGET_SCRIPT_URL}`,
-                    ...CANONICA_WIDGET_COMPATIBILITY_URLS,
                     'cn_* widget key format',
                     `${CANONICA_WIDGET_GLOBAL_NAME} global`,
                     ...CANONICA_CONTEXT_METHODS.map((method) => `${method}(context)`),
@@ -927,34 +810,24 @@ export const CANONICA_INSTALL_DOCS: CanonicaInstallDoc[] = [
                 ],
             },
             {
+                heading: 'Dashboard-owned settings',
+                bullets: [
+                    'Allowed origins are saved in the Canonica dashboard and enforced by Canonica runtime APIs.',
+                    'Blocked routes are saved in the Canonica dashboard and returned through widget runtime config.',
+                    'Client products should not create duplicate owner settings for origins or blocked routes.',
+                ],
+            },
+            {
                 heading: 'Will not be accepted from browser context',
                 bullets: [...CANONICA_FORBIDDEN_CONTEXT_FIELDS],
             },
         ],
     },
-    {
-        key: 'changelog',
-        path: '/install/changelog',
-        markdownPath: '/install/changelog.md',
-        title: 'Install changelog',
-        navTitle: 'Changelog',
-        description: 'Public changelog for the Canonica agent install layer and widget contract.',
-        sections: [
-            {
-                heading: 'v1.0.0',
-                bullets: [
-                    'Frozen v1 widget script URL introduced.',
-                    'AI agent install packet added.',
-                    'Markdown install docs and llms context added.',
-                    'Tool-specific AGENTS.md, CLAUDE.md, Cursor, Windsurf, and skill files generated from the same contract.',
-                    'Dashboard packet and agent kit downloads added.',
-                ],
-            },
-        ],
-    },
 ];
 
-export const CANONICA_PUBLIC_DOC_ROUTES = CANONICA_INSTALL_DOCS.flatMap((doc) => [doc.path, doc.markdownPath]) as string[];
+export const CANONICA_PUBLIC_DOC_ROUTES = CANONICA_INSTALL_DOCS.flatMap((doc) => (
+    doc.key === 'contracts' ? [doc.markdownPath] : [doc.path, doc.markdownPath]
+)) as string[];
 
 const DOC_BY_KEY = new Map(CANONICA_INSTALL_DOCS.map((doc) => [doc.key, doc]));
 
@@ -963,7 +836,7 @@ export function getCanonicaInstallDoc(key: CanonicaInstallDocKey) {
 }
 
 export function getCanonicaInstallDocsForNavigation() {
-    return CANONICA_INSTALL_DOCS.filter((doc) => doc.key !== 'overview');
+    return CANONICA_INSTALL_DOCS.filter((doc) => doc.key !== 'overview' && doc.key !== 'contracts');
 }
 
 export function renderCanonicaMarkdownDoc(key: CanonicaInstallDocKey, input?: CanonicaAgentPacketInput) {
@@ -975,15 +848,12 @@ export function renderCanonicaMarkdownDoc(key: CanonicaInstallDocKey, input?: Ca
 
 > ${doc.description}
 
-## Fill these values first
+## Configure Canonica first
 
-\`\`\`txt
-CANONICA_WIDGET_KEY=${getCanonicaWidgetKeyForPacket(input)}
-ALLOWED_ORIGINS=${getCanonicaAllowedOriginsForPacket(input).join(', ')}
-FRAMEWORK=${input.framework || '{{FRAMEWORK}}'}
-ROUTER=${input.router || '{{ROUTER}}'}
-BLOCKED_ROUTES=${getCanonicaBlockedRoutesForPacket(input).join(', ')}
-\`\`\`
+- Create or copy the cn_* widget key in the dashboard.
+- Save allowed origins in the dashboard.
+- Save blocked routes in the dashboard.
+- Copy the dashboard-generated packet when you want current workspace values included.
 
 ## Copy this prompt
 
@@ -1029,19 +899,17 @@ export function renderCanonicaLlmsTxt() {
     return normalizeLines(`
 # Canonica
 
-> Canonica is a support knowledge control plane for SaaS products. These docs help coding agents install the Canonica widget, pass safe page context, block sensitive routes, and verify the integration.
+> Canonica is a support knowledge control plane for SaaS products. These docs help coding agents install the Canonica widget, pass safe page context, respect dashboard route rules, and verify the integration.
 
 ## Start here
 
 - [Install Canonica with an AI coding agent](${CANONICA_SITE_URL}/install/ai-agent.md): Copyable install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.
-- [Canonica Widget Contract v1](${CANONICA_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and compatibility policy.
+- [Canonica Widget Contract v1](${CANONICA_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
 - [Manual install](${CANONICA_SITE_URL}/install/manual.md): Human-readable script install.
 - [Next.js install](${CANONICA_SITE_URL}/install/frameworks/nextjs.md): App Router and Pages Router instructions.
 - [React install](${CANONICA_SITE_URL}/install/frameworks/react.md): React SPA install and route-change context updates.
 - [Vue install](${CANONICA_SITE_URL}/install/frameworks/vue.md): Vue Router install and context updates.
 - [Plain HTML install](${CANONICA_SITE_URL}/install/frameworks/plain-html.md): Script-tag install.
-- [Verify installation](${CANONICA_SITE_URL}/install/verify.md): Runtime checks and dashboard verification.
-- [Security rules](${CANONICA_SITE_URL}/install/security.md): Forbidden context fields and blocked route guidance.
 - [Agent kit](${CANONICA_SITE_URL}/agents/canonica/canonica-agent-kit.zip): Downloadable generated instructions for coding agents.
 
 ## Stable contract
@@ -1082,7 +950,7 @@ export function renderCanonicaLlmsFullTxt() {
 - ${CANONICA_SITE_URL}/demo
 - ${CANONICA_SITE_URL}/install
 - ${CANONICA_SITE_URL}/install/ai-agent
-- ${CANONICA_SITE_URL}/install/contracts
+- ${CANONICA_SITE_URL}/install/contracts.md
 - ${CANONICA_SITE_URL}/pricing
 - ${CANONICA_SITE_URL}/resources
 - ${CANONICA_SITE_URL}/security
@@ -1116,8 +984,8 @@ export function buildCanonicaAgentPacketJson(input: CanonicaAgentPacketInput = {
         widgetKeyEnvPlaceholder: 'CANONICA_WIDGET_KEY',
         widgetKeyPrefix: input.widgetKeyPrefix || null,
         scriptUrl: CANONICA_WIDGET_SCRIPT_URL,
-        legacyScriptUrl: CANONICA_WIDGET_LEGACY_SCRIPT_URL,
-        compatibilityScriptUrls: [...CANONICA_WIDGET_COMPATIBILITY_URLS],
+        dashboardOwnsAllowedOrigins: true,
+        dashboardOwnsBlockedRoutes: true,
         allowedOrigins: getCanonicaAllowedOriginsForPacket(input),
         blockedRoutes: getCanonicaBlockedRoutesForPacket(input),
         contextSchema: {
@@ -1128,7 +996,6 @@ export function buildCanonicaAgentPacketJson(input: CanonicaAgentPacketInput = {
             role: 'string optional',
             locale: 'string optional',
         },
-        legacyContextFieldMap: CANONICA_LEGACY_CONTEXT_FIELD_MAP,
         forbiddenContextFields: [...CANONICA_FORBIDDEN_CONTEXT_FIELDS],
     };
 }
@@ -1138,8 +1005,26 @@ export function buildCanonicaAgentKitFiles(input: CanonicaAgentPacketInput = {})
         'README.md': renderCanonicaMarkdownDoc('overview'),
         'canonica-install-packet.md': renderCanonicaMarkdownDoc('ai-agent', input),
         'canonica-widget-contract-v1.md': renderCanonicaMarkdownDoc('contracts'),
-        'canonica-context-contract-v1.md': renderCanonicaMarkdownDoc('security'),
-        'canonica-verification-contract-v1.md': renderCanonicaMarkdownDoc('verify'),
+        'canonica-context-contract-v1.md': normalizeLines(`
+# Canonica Context Contract v1
+
+Allowed context fields:
+${formatList(CANONICA_ALLOWED_CONTEXT_FIELDS)}
+
+Never send:
+${formatList(CANONICA_FORBIDDEN_CONTEXT_FIELDS)}
+
+Allowed origins and blocked routes are dashboard-owned Canonica settings. Do not create duplicate product settings for them.
+`),
+        'canonica-verification-contract-v1.md': normalizeLines(`
+# Canonica Verification Contract v1
+
+- Confirm ${CANONICA_WIDGET_SCRIPT_URL} loads once.
+- Confirm the widget key is not hardcoded when env vars are available.
+- Confirm route context updates after client-side navigation.
+- Confirm no forbidden context fields are sent.
+- Confirm the Canonica dashboard shows the latest runtime status after testing from an allowed origin.
+`),
         'AGENTS.md': renderCanonicaAgentsMd(),
         'CLAUDE.md': renderCanonicaClaudeMd(),
         '.cursor/rules/canonica/RULE.md': renderCanonicaCursorRuleMd(),
@@ -1150,11 +1035,10 @@ export function buildCanonicaAgentKitFiles(input: CanonicaAgentPacketInput = {})
         'tests/canonica-widget-smoke.spec.ts': normalizeLines(`
 import { test, expect } from '@playwright/test';
 
-test('Canonica widget loads once and stays off blocked routes', async ({ page }) => {
+test('Canonica widget loads once and exposes the browser contract', async ({ page }) => {
   await page.goto(process.env.CANONICA_TEST_URL || 'http://localhost:3000/');
   await expect(page.locator('script[src*="/widget/v1/canonica-widget.js"]')).toHaveCount(1);
-  await page.goto((process.env.CANONICA_TEST_URL || 'http://localhost:3000') + '/billing');
-  await expect(page.locator('script[src*="/widget/v1/canonica-widget.js"]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => typeof window.CanonicaWidget?.page)).toBe('function');
 });
 `),
         'examples/nextjs-app-router.md': CANONICA_FRAMEWORK_SNIPPETS.nextjs,

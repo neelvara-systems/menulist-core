@@ -88,21 +88,23 @@ Step 8: User can ask follow-up → conversation context maintained in session
 | `data-user-role`    | No       | —              | Optional sanitized role label, not a permission check  |
 | `data-plan`         | No       | —              | Optional sanitized plan label                          |
 
-### SDK Context (Optional, via JavaScript API)
+### Browser Context (Optional, via JavaScript API)
 
 ```javascript
 // Set initial context
 window.CanonicaWidget.setContext({
+  path: "/settings/integrations/stripe",
+  title: "Stripe integration",
   feature: "integrations",
-  page: "stripe_integration_page",
-  entityHints: ["stripe"],
-  userRole: "admin",
-  plan: "pro",
+  workflow: "connect_stripe",
+  role: "admin",
+  locale: "en",
 });
 
 // Update context on navigation
 window.CanonicaWidget.setContext({
-  page: "webhook_settings",
+  path: "/settings/webhooks",
+  title: "Webhook settings",
   workflow: "configure_webhook",
 });
 
@@ -200,7 +202,7 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 - No live chat / agent handoff — Canonica is not a helpdesk
 - No ticket creation from widget — distribution surface, not operational layer
 - No generic marketing popups, tooltips, or onboarding tours — predictive help is allowed only when deterministic, feature-flagged, page-context gated, cooldown-protected, and backed by approved Canonica support knowledge
-- No DOM scraping / automatic context extraction — SDK-first approach
+- No DOM scraping / automatic context extraction — host products pass context through the v1 browser contract
 - No automatic screenshot capture / DOM scraping — user-initiated image upload only
 - No full CSS customization / themes — controlled customization only
 - No widget analytics dashboard — Canonica is not a BI platform
@@ -220,7 +222,7 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 | Conversation context / session memory  | ACCEPTED                   | v2 adds in-memory session (last 5 messages), assistant mode.                                                                                                                                                                                                                                                                                         |
 | Reference deep linking                 | ACCEPTED                   | v2 returns article ID. Deep linking to section is future scope.                                                                                                                                                                                                                                                                                      |
 | Feedback signals (thumbs up/down)      | ACCEPTED                   | v2 adds feedback → feeds Canonica signal mutation pipeline.                                                                                                                                                                                                                                                                                          |
-| Automatic DOM context extraction       | REJECTED                   | Too fragile, privacy risk, breaks across SPA frameworks. SDK-first approach is more reliable and matches ICP (developers).                                                                                                                                                                                                                           |
+| Automatic DOM context extraction       | REJECTED                   | Too fragile, privacy risk, breaks across SPA frameworks. Explicit browser-contract context is more reliable and matches ICP (developers).                                                                                                                                                                                                             |
 | Screenshot processing via vision model | PARTIALLY ACCEPTED         | ChatGPT proposed automatic DOM capture + vision interpretation (REJECTED — too complex, privacy risk). BUT user-initiated image upload ACCEPTED — `coreSearch()` supports bounded visual context extraction and text-only answer context. Zero new backend work. Widget sends base64 inline (no Firebase Storage needed). |
 | Product Entity Registry                | ALREADY EXISTS             | Canonica ontology layer (entities.ts, entityCandidates.ts, entity search index). ChatGPT unaware of existing implementation.                                                                                                                                                                                                                         |
 | Product Knowledge Graph                | ALREADY EXISTS (partially) | Entity relations, canonical answer binding, entity-enriched RAG. ChatGPT described generic version of what Canonica already has.                                                                                                                                                                                                                     |
@@ -238,5 +240,5 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-20 | 2.4.2   | Added route blocklist support for pages where client products must hide the widget. |
 | 2026-05-18 | 2.3.0   | Added current runtime contract for mount-time context attributes, explicit transient history behavior, clear-history API, and widget empty-state behavior. |
-| 2026-03-08 | 2.0.0   | Complete rewrite: context-aware support, launcher customization, session memory, feedback signals, origin allowlist, SDK context API, ChatGPT review table |
+| 2026-03-08 | 2.0.0   | Complete rewrite: context-aware support, launcher customization, session memory, feedback signals, origin allowlist, browser context API, ChatGPT review table |
 | 2026-03-07 | 1.0.0   | Initial spec                                                                                                                                               |

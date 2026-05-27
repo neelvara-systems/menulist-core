@@ -58,7 +58,7 @@
 
 - Page/feature/workflow context injection from client product
 - `entityHints` parameter for contextual pre-filtering
-- Widget SDK needs to accept context payload from host product
+- Widget browser contract needs to accept context payload from host product
 
 **ChatGPT accuracy: ~60%** — Overstated as "Critical Missing Layer" when partial context (plan/role/version) already works. But page/feature context is a genuine gap.
 

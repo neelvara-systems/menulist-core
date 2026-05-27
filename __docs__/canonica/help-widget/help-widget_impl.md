@@ -47,7 +47,7 @@ public/widget/canonica-widget.js           # Embed script (vanilla JS, ~4KB)
 ### v2 (New/Modified Files)
 
 ```
-public/widget/canonica-widget.js           # Shape/display/size/offset config + context SDK API
+public/widget/canonica-widget.js           # Shape/display/size/offset config + browser context API
 src/app/widget/[apiKey]/WidgetClient.tsx   # Session memory, feedback, image upload, context receiver, procedure rendering
 src/app/api/widget/search/route.ts        # Origin allowlist, conversation history, server-side image validation
 src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
@@ -114,7 +114,7 @@ v2 additions:
 - `data-mobile-visibility`: `show` or `hide`
 - `data-blocked-routes`: comma-separated route patterns where the widget must stay hidden, for example `/help-center,/help-center/*`
 - `data-use-remote-config`: set to `false` to opt out of dashboard config lookup
-- `data-feature`, `data-page`, `data-workflow`, `data-entity-hints`, `data-user-role`, `data-plan`: optional mount-time context attributes for products that cannot call the SDK before the widget script initializes
+- `data-feature`, `data-page`, `data-workflow`, `data-entity-hints`, `data-user-role`, `data-plan`: optional mount-time context attributes for products that cannot call the browser API before the widget script initializes
 
 v2 JavaScript API (exposed on `window.CanonicaWidget`):
 
@@ -247,7 +247,7 @@ v1 features: welcome screen, chat bubbles, canonical badge, owner-answer badge, 
 v2 additions:
 
 - **Session memory**: In-memory array of last 5 messages. Sent as `conversationHistory` in assistant-mode queries. Default `session` mode preserves the page session across close/open until reload or explicit clear; `forget` mode clears on close. No persistence.
-- **History controls**: Header shows an icon-only start-new-chat action only when messages exist; host SDK can also call `clearHistory()`.
+- **History controls**: Header shows an icon-only start-new-chat action only when messages exist; the host browser contract can also call `clearHistory()`.
 - **Feedback UI**: Thumbs up/down on AI answers. Calls `POST /api/widget/feedback`.
 - **Conversation context**: After first Q&A, subsequent questions include history for contextual follow-ups.
 - **Owner FAQ/custom-answer hits**: Widget search uses shared `coreSearch()`, so published owner FAQs can answer matching questions after canonical miss and before AI/RAG fallback.
@@ -491,7 +491,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 - Mobile: auto-override to bottom-right, larger touch targets
 - Zero backend changes. Zero React changes.
 
-### Phase 2 — Context SDK + Origin Allowlist
+### Phase 2 — Browser Context API + Origin Allowlist
 
 - Add `window.CanonicaWidget.setContext()` to embed script
 - Pass context from host page → iframe via `postMessage`
@@ -540,7 +540,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 | ------------------------ | ----------------------------------------- |
 | Embed script load        | < 500ms (~4-5KB, CDN)                     |
 | Iframe lazy load         | Only on launcher click                    |
-| Context extraction       | < 10ms (SDK provides structured data)     |
+| Context extraction       | < 10ms (host product provides structured data) |
 | Canonical answer latency | < 1s                                      |
 | RAG answer latency       | < 3s                                      |
 | Widget UI render         | Zero external dependencies, inline styles |
@@ -572,9 +572,9 @@ Per image query: 1 additional bounded visual-context model call before normal re
 | 2026-05-20 | 2.4.2   | Added saved and script-level blocked route support so client products can hide the widget on selected routes without extra Firebase reads. |
 | 2026-05-21 | 2.4.3   | Removed the temporary client-product-specific widget host and test-key route; widget embedding is now only through the generic public script plus Canonica-issued widget keys. |
 | 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, and context-scoped search cache keys. |
-| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, iframe ready handshake, page-change history reset, and stale async response guard in the iframe client. |
+| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event API, iframe ready handshake, page-change history reset, and stale async response guard in the iframe client. |
 | 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |
 | 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |
-| 2026-03-08 | 2.0.0   | Complete rewrite: phased build plan, launcher customization, SDK context API, session memory, feedback signals, origin allowlist, conversation context. ChatGPT conversation reviewed + validated.                                                                |
+| 2026-03-08 | 2.0.0   | Complete rewrite: phased build plan, launcher customization, browser context API, session memory, feedback signals, origin allowlist, conversation context. ChatGPT conversation reviewed + validated.                                                            |
 | 2026-03-07 | 1.0.0   | Initial implementation                                                                                                                                                                                                                                            |

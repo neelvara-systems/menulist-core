@@ -130,7 +130,7 @@ Cache keys include `answerVersion`, and new cache payloads include `sourceVersio
 | Global Intent Library across tenants         | ❌ DISAGREE | Violates tenant isolation. Security risk.                                |
 | Semantic caching for similar queries         | ❌ DISAGREE | Correctness risk. Authoritative systems need exact matching.             |
 | 8M queries/day scale assumptions             | ⚠️ PARTIAL  | Valid architecture, but premature for v1. Design for it, don't build it. |
-| Widget prefetch top 5 answers               | ⚠️ PARTIAL  | Good idea, but adds widget SDK complexity. Defer to post-v1.             |
+| Widget prefetch top 5 answers               | ⚠️ PARTIAL  | Good idea, but adds widget runtime complexity. Defer to post-v1.         |
 
 ---
 
@@ -149,7 +149,7 @@ Cache keys include `answerVersion`, and new cache payloads include `sourceVersio
 - ❌ Semantic caching (correctness risk)
 - ❌ Pre-cache workers (premature complexity)
 - ❌ Global intent library (tenant isolation violation)
-- ❌ Widget prefetch (widget SDK complexity)
+- ❌ Widget prefetch (widget runtime complexity)
 - ❌ Multi-region Redis (premature scale)
 - ❌ RAG response caching in Redis (non-deterministic)
 - ❌ Edge compute / CDN (premature)

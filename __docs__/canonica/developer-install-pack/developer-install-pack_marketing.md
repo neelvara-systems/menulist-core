@@ -10,7 +10,7 @@ Canonica now gives founders a day-one install path:
 - machine-readable Markdown install docs
 - frozen v1 widget contract
 - one widget
-- typed helper or plain script
+- plain v1 script install
 - framework quickstarts
 - starter app surfaces
 - starter import templates
@@ -24,7 +24,7 @@ Copy the install packet into a coding agent, install the support layer, prove pa
 
 ## Avoid
 
-- Do not claim a public npm package is published unless release operations confirm it.
+- Do not claim Canonica supports a public SDK or npm package.
 - Do not claim guaranteed ticket reduction.
 - Do not call proof examples customer case studies unless they are real and approved.
 - Do not lead with MCP or Public API v1; those remain secondary or gated unless intentionally rolled out.
