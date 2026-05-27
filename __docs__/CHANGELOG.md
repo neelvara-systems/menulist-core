@@ -6,6 +6,32 @@
 
 ---
 
+## May 27, 2026 — Multi-Outlet Policy Hardening
+
+### Changed
+
+- **Outlet policy copy now matches the real rules** — Desktop and mobile share the same owner-facing policy categories for inherited menu changes, local menu additions, menu tools, menu design, and languages.
+- **Mobile outlet rules sheet is now safer to use** — The sheet shows allowed/blocked state tags, warns about unsaved changes, asks before discarding edits, and saves only changed flags.
+- **Disabled outlet extraction is blocked before processing starts** — `processMenuImagesJob` now checks the linked outlet project and master `outletPolicy` before calling extraction providers.
+
+### Cost
+
+- **Linked outlet extraction adds one master-store policy read only when needed** — The job reuses its project read, adds one master store read for linked outlet projects, and avoids provider cost when `canUseMenuExtraction=false`.
+
+---
+
+## May 27, 2026 — Canonica Mobile Sidebar Theme Fix
+
+### Fixed
+
+- **Mobile sidebar parent rows now keep readable colors after theme changes** — The shared dashboard sidebar no longer uses mixed color expressions for parent-row backgrounds, so Canonica PWA drawer rows update cleanly when switching between dark and light mode.
+
+### Cost
+
+- **No Firebase cost change** — This is a shared dashboard UI style fix only. It adds no Firestore reads, writes, listeners, Cloud Functions, or scheduled work.
+
+---
+
 ## May 27, 2026 — Canonica Owner Navigation Cleanup
 
 ### Changed

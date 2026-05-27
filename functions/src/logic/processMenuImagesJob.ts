@@ -37,9 +37,42 @@ import { revalidatePublicClientCacheForStore } from "./publicCacheRevalidation";
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low: 0.2 };
+const DEFAULT_OUTLET_EXTRACTION_POLICY = {
+    canUseMenuExtraction: false,
+};
 
 function resolveJobBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
     return resolveBusinessCategory(businessType, businessCategory) || normalizeBusinessCategory(businessType);
+}
+
+function parseStoreIdFromProjectId(projectId?: string): string | null {
+    if (!projectId) return null;
+    const parts = projectId.split("-");
+    const storeId = parts[parts.length - 1];
+    return storeId && Number.isSafeInteger(Number(storeId)) ? storeId : null;
+}
+
+async function getOutletExtractionPolicyBlockReason(job: MenuImageProcessingJob, existingProject: any | null): Promise<string | null> {
+    const masterProjectId = existingProject?.masterProjectId;
+    if (!masterProjectId) return null;
+
+    const masterStoreId = parseStoreIdFromProjectId(masterProjectId);
+    if (!masterStoreId || String(masterStoreId) === String(job.sId)) return null;
+
+    const masterStoreSnap = await firestoreAdmin
+        .collection(DB_COLLECTIONS.STORES)
+        .doc(String(masterStoreId))
+        .get();
+    const policy = {
+        ...DEFAULT_OUTLET_EXTRACTION_POLICY,
+        ...(masterStoreSnap.data()?.outletPolicy || {}),
+    };
+
+    if (policy.canUseMenuExtraction === false) {
+        return "Menu extraction is disabled for this outlet";
+    }
+
+    return null;
 }
 
 function computeConfidenceSummary(items: MenuItem[]): ConfidenceSummary | undefined {
@@ -102,6 +135,14 @@ export async function processMenuImagesJobLogic(
         .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
         .doc(jobId);
     const skipProjectSave = job.skipProjectSave === true || job.projectId?.startsWith("msg-onboarding-");
+    let existingProjectCache: any | null | undefined;
+    const loadExistingProject = async () => {
+        if (skipProjectSave) return null;
+        if (existingProjectCache === undefined) {
+            existingProjectCache = await getProject(job.projectId);
+        }
+        return existingProjectCache;
+    };
 
     logger.info(`[processMenuProcessingJob] === JOB PROCESSING START ===`, {
         jobId,
@@ -205,6 +246,33 @@ export async function processMenuImagesJobLogic(
             status: MENU_PROCESSING_STATUS.PROCESSING,
             timestamp: Date.now()
         });
+
+        const outletPolicyBlockReason = await getOutletExtractionPolicyBlockReason(
+            job,
+            await loadExistingProject(),
+        );
+        if (outletPolicyBlockReason) {
+            logger.warn(`[processMenuImagesJob] Outlet policy blocked extraction`, {
+                jobId,
+                projectId: job.projectId,
+                storeId: job.sId,
+                tenantId: job.tId,
+                reason: outletPolicyBlockReason,
+            });
+            await jobRef.update({
+                status: MENU_PROCESSING_STATUS.FAILED,
+                completedAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                progress: 0,
+                currentStep: "Blocked by outlet rules",
+                error: {
+                    code: "OUTLET_POLICY_BLOCKED",
+                    message: outletPolicyBlockReason,
+                    retryable: false,
+                },
+            });
+            return;
+        }
 
         // ─────────────────────────────────────────────────────────────
         // Step 2: Process images using existing AI logic
@@ -336,7 +404,7 @@ export async function processMenuImagesJobLogic(
         // Fetch existing project to get existing categories (Section 8.12).
         // Messaging onboarding only needs extraction output for its session,
         // so it skips the temp project read/write/delete cycle.
-        const existingProject = skipProjectSave ? null : await getProject(job.projectId);
+        const existingProject = await loadExistingProject();
 
         logger.info(`[processMenuImagesJob] === STEP 5 PROJECT CONTEXT RESOLVED ===`, {
             jobId,

@@ -1,11 +1,12 @@
 /**
- * Outlet Policy Categories — Shared config for desktop + mobile
+ * Outlet Policy Categories - shared config for desktop + mobile.
  *
  * Used by:
  * - Desktop: OutletPolicyEditor (src/components/organisms/OutletPolicyEditor/index.tsx)
  * - Mobile: MobileLocationsScreen (src/components/mobile/screens/MobileLocationsScreen.tsx)
  *
- * Single source of truth for the 15 policy toggle groupings.
+ * Single source of truth for the 15 policy toggle groupings and owner-facing
+ * explanations. Keep this copy non-technical because it appears in settings.
  */
 
 import { OutletPolicy } from '@type/multiOutlet.types';
@@ -24,48 +25,48 @@ export interface PolicyCategory {
 
 export const OUTLET_POLICY_CATEGORIES: PolicyCategory[] = [
     {
-        label: 'Override Control',
-        description: 'What outlets can change on inherited menu items',
+        label: 'Inherited Menu Changes',
+        description: 'Controls what an outlet can change on menus inherited from HQ.',
         items: [
-            { key: 'priceOverride', label: 'Price Override', description: 'Outlets can set their own prices for inherited items' },
-            { key: 'availabilityOverride', label: 'Availability Override', description: 'Outlets can toggle item availability (in/out of stock)' },
-            { key: 'descriptionOverride', label: 'Description Override', description: 'Outlets can edit item descriptions' },
-            { key: 'imageOverride', label: 'Image Override', description: 'Outlets can replace item images' },
+            { key: 'priceOverride', label: 'Change item prices', description: 'Outlet teams can set local prices for inherited items and variants.' },
+            { key: 'availabilityOverride', label: 'Mark items unavailable', description: 'Outlet teams can turn inherited items on or off for local stock and service availability.' },
+            { key: 'descriptionOverride', label: 'Edit item descriptions', description: 'Outlet teams can keep local wording for inherited item descriptions.' },
+            { key: 'imageOverride', label: 'Replace item photos', description: 'Outlet teams can use local photos for inherited items.' },
         ],
     },
     {
-        label: 'Local Content',
-        description: 'What outlets can add on their own',
+        label: 'Local Menu Additions',
+        description: 'Controls what an outlet can add without changing the HQ menu.',
         items: [
-            { key: 'allowLocalItems', label: 'Local Items', description: 'Outlets can add their own menu items (not from master)' },
-            { key: 'allowLocalCategories', label: 'Local Categories', description: 'Outlets can create their own categories' },
-            { key: 'allowLocalProjects', label: 'Local Projects', description: 'Outlets can create entirely separate menu projects' },
-            { key: 'allowProjectDeactivate', label: 'Deactivate Projects', description: 'Outlets can deactivate inherited projects' },
+            { key: 'allowLocalItems', label: 'Add local items', description: 'Outlet teams can add items that only belong to their outlet.' },
+            { key: 'allowLocalCategories', label: 'Add local categories', description: 'Outlet teams can create local categories for their own items.' },
+            { key: 'allowLocalProjects', label: 'Create local menus', description: 'Outlet teams can create separate outlet-only menus.' },
+            { key: 'allowProjectDeactivate', label: 'Turn off inherited menus', description: 'Outlet teams can hide an inherited menu at their outlet.' },
         ],
     },
     {
-        label: 'AI Features',
-        description: 'Credit-consuming AI tools (affects your billing)',
+        label: 'Menu Tools',
+        description: 'Controls tools that can use account credits or generated content.',
         items: [
-            { key: 'canUseMenuExtraction', label: 'Menu Extraction', description: 'Outlets can run AI menu extraction from images' },
-            { key: 'canGenerateDescriptions', label: 'Descriptions', description: 'Outlets can generate item descriptions' },
-            { key: 'canGenerateImages', label: 'AI Images', description: 'Outlets can generate AI item images' },
+            { key: 'canUseMenuExtraction', label: 'Upload menus for extraction', description: 'Outlet teams can upload photos or PDFs to read menu items into the editor.' },
+            { key: 'canGenerateDescriptions', label: 'Generate descriptions', description: 'Outlet teams can generate item descriptions where local description changes are allowed.' },
+            { key: 'canGenerateImages', label: 'Generate item images', description: 'Outlet teams can generate item images where local photo changes are allowed.' },
         ],
     },
     {
-        label: 'Branding',
-        description: 'Visual identity controls',
+        label: 'Menu Design',
+        description: 'Controls whether outlets can adjust the customer-facing menu design.',
         items: [
-            { key: 'canOverrideTheme', label: 'Theme/Colors', description: 'Outlets can customize colors and fonts' },
-            { key: 'canOverrideBrandIdentity', label: 'Brand Identity', description: 'Outlets can change logo and brand images' },
-            { key: 'canOverrideLayout', label: 'Layout', description: 'Outlets can modify the menu layout' },
+            { key: 'canOverrideTheme', label: 'Change colors and fonts', description: 'Outlet teams can adjust menu colors and typography.' },
+            { key: 'canOverrideBrandIdentity', label: 'Change outlet branding', description: 'Outlet teams can change the logo and brand images shown for their outlet.' },
+            { key: 'canOverrideLayout', label: 'Change menu layout', description: 'Outlet teams can adjust layout choices for their outlet menu.' },
         ],
     },
     {
-        label: 'Language',
-        description: 'Multi-language controls',
+        label: 'Languages',
+        description: 'Controls language changes at outlet level.',
         items: [
-            { key: 'canAddLanguages', label: 'Add Languages', description: 'Outlets can enable additional languages from your language list' },
+            { key: 'canAddLanguages', label: 'Enable menu languages', description: 'Outlet teams can enable additional languages from the account language list.' },
         ],
     },
 ];

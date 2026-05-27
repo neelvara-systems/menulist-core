@@ -30,6 +30,8 @@
 > **Note (May 27, 2026 — mobile outlet subscription inheritance repair):** Live QA on tenant `14` showed a paid outlet account with active master subscription `quantity: 2` could still hit the mobile "Subscribe to Get Started" gate when `tenants/{tId}.storesList` omitted `isMaster: true` on the master row. Subscription lookup now treats hydrated `storeDetails.isMaster` and the single active unflagged store among explicit outlets as master fallback signals, and outlet create/policy writes repair the tenant master marker when the store document already has `isMaster: true`.
 >
 > **Note (May 27, 2026 — access-based store switching):** Desktop header switching, the mobile More Branch dropdown, and desktop/mobile billing store pickers now use active stores already mapped to the signed-in user. `canSwitchStores` still gates the control, but HQ/master context is no longer required just to move between mapped stores. `/api/auth/switch-store` now validates existing mapped access instead of writing user access during switch.
+>
+> **Note (May 27, 2026 — outlet policy hardening):** Mobile and desktop policy controls now share owner-facing rule categories. The mobile outlet rules sheet shows allowed/blocked state, protects unsaved edits, and saves only changed flags. `processMenuImagesJob` now checks linked outlet `canUseMenuExtraction` before provider processing, matching the existing linked outlet save and description/image API guards.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -39,9 +41,9 @@
 | End-to-end flow | ✅ Disposable Firebase tenant/store/subscription test covered policy save, legacy master repair, outlet creation, subscription quantity update, store switch, refresh/navigation proof, and cleanup. |
 | Failure simulation | ✅ Outlet creation now only releases locks it acquired and reverts internal subscription quantity if later creation steps fail. |
 | Data integrity | ✅ Outlet deactivation is a Firestore transaction across store, tenant list, and summary. Outlet rename also updates tenant `storesList`. |
-| Security | ✅ Outlet policy/create/deactivate/rename require role permission and master context on the server; switching requires `SWITCH_STORES` and rejects inactive stores; linked outlet menu saves and AI description/image APIs enforce OutletPolicy server-side. |
+| Security | ✅ Outlet policy/create/deactivate/rename require role permission and master context on the server; switching requires `SWITCH_STORES` and rejects inactive stores; linked outlet menu saves, description/image APIs, and extraction jobs enforce OutletPolicy server-side. |
 | Mobile parity | ✅ Mobile More and Mobile Locations expose Locations for safe legacy premium single-store tenants and show policy before the first outlet. |
-| Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated; linked outlet AI requests add 1 project read + 1 master-store read before provider calls so disabled actions fail before AI spend. |
+| Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated; linked outlet AI requests and extraction jobs read policy before provider calls so disabled actions fail before AI spend. |
 | Verification commands | ✅ `npx tsc --noEmit --incremental false`; ✅ `npm run lint -- --max-warnings=0`; ✅ `git diff --check` on touched files. |
 
 ## May 20, 2026 Completion Hardening

@@ -2,7 +2,7 @@
 
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 20, 2026
+**Last Updated:** May 27, 2026
 
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
@@ -14,7 +14,7 @@
 
 - **Collections Used:** `projects/{tId}/{sId}`, `masterOperationalState/{projectId}`, `menuImageProcessingJobs`, `stores`, `tenants`, `users`, `subscriptions`, `platformSummary`, `multiOutletEvents/{tId}/{sId}`
 - **Storage Buckets:** None (shared via project data)
-- **Cloud Functions:** None (client-side resolution + real-time listeners)
+- **Cloud Functions:** `processMenuImagesJob` enforces linked-outlet extraction policy before AI processing
 - **External APIs:** Razorpay Subscriptions API (quantity updates)
 - **Estimated Monthly Cost:** **Medium** — Real-time listeners + outlet creation transactions
 
@@ -31,6 +31,7 @@
 | Listen to signal doc       | `masterOperationalState/{masterProjectId}` | Outlet editor open         | Real-time (onSnapshot)     | 1 per change | Direct doc | `onSnapshot` listener for `operationalVersion` changes. Fires when master saves operational changes. |
 | Read master job status     | `menuImageProcessingJobs` + linked outlet project guard | Desktop outlet project editor | Every 15s while outlet editor is open | 0-2 | Query capped at 1 | `/api/projects/master-job-status` validates session, tenant, store permission, and linked outlet project before querying active master extraction jobs. No Upstash rate-limit call because this is a read-only polling endpoint; avoids an external network dependency per poll. |
 | Enforce linked-outlet AI policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | Description/image API request from linked outlet | Per linked outlet AI request | 0-2 | Direct docs | `getLinkedOutletPolicyBlockReason()` checks the project linkage and master `outletPolicy` before AI capacity/provider calls. Single-store and master-store requests add no extra read. |
+| Enforce linked-outlet extraction policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | `processMenuImagesJob` starts for a linked outlet project | Per linked outlet extraction job | 1-2 | Direct docs | The function loads the project before provider processing, detects `masterProjectId`, reads the master store policy, and fails the job with `OUTLET_POLICY_BLOCKED` when `canUseMenuExtraction=false`. The project read is reused later in the same job. |
 | Load store config          | `stores/{storeId}`                         | Multi-outlet setup         | Per setup                  | 1            | Direct doc | Check `isMaster` flag, linked outlets.                                                               |
 
 ### Writes
@@ -64,6 +65,7 @@
 - **Stable extraction ID aliases**: `extractionIdAliases` are stored on the existing item/category during approved extraction saves. This avoids copying or remapping outlet overrides and keeps future matching client-side.
 - **Server-side OutletPolicy enforcement**: `/api/projects/outlet-save` rejects disabled price, availability, description, image, language-addition, local item/category, project-deactivation, theme, brand, and layout changes before the project write. Existing disabled overrides can remain unchanged or be removed back toward master values.
 - **AI spend guard before provider calls**: Linked outlet description/image APIs read the linked project and master store policy first. Disabled actions return `403` before Gemini/Imagen calls or AI-capacity consumption.
+- **Extraction spend guard before provider calls**: `processMenuImagesJob` reuses the existing project read before extraction, reads the master policy for linked outlet projects, and fails disabled outlet extraction jobs before calling the extractor.
 - **Extraction job tenant/store guard**: Firestore rules require `menuImageProcessingJobs.sId` to match the authenticated Firebase token `storeId`, so an outlet cannot queue extraction jobs under another store's ID.
 
 ### Warnings: Expensive Patterns

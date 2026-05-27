@@ -13,7 +13,7 @@ import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuStar, LuX } from 'react-icons/lu';
+import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuShieldCheck, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -21,6 +21,22 @@ interface MobileLocationsScreenProps {
     onBack: () => void;
     onOpenBilling?: () => void;
 }
+
+const OUTLET_POLICY_KEYS = Object.keys(DEFAULT_OUTLET_POLICY) as (keyof OutletPolicy)[];
+
+const normalizeOutletPolicy = (policy?: Partial<OutletPolicy> | null): OutletPolicy => ({
+    ...DEFAULT_OUTLET_POLICY,
+    ...(policy || {}),
+});
+
+const getChangedPolicy = (basePolicy: OutletPolicy, nextPolicy: OutletPolicy): Partial<OutletPolicy> => {
+    return OUTLET_POLICY_KEYS.reduce<Partial<OutletPolicy>>((changes, key) => {
+        if (basePolicy[key] !== nextPolicy[key]) {
+            changes[key] = nextPolicy[key];
+        }
+        return changes;
+    }, {});
+};
 
 export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
@@ -44,8 +60,8 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     const [outletName, setOutletName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
-    const [policy, setPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
-    const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
+    const [policy, setPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(policySourceStore?.outletPolicy));
+    const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(policySourceStore?.outletPolicy));
     const [isSavingPolicy, setIsSavingPolicy] = useState(false);
     const [renameTarget, setRenameTarget] = useState<any | null>(null);
     const [renameName, setRenameName] = useState('');
@@ -68,15 +84,14 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     });
 
     useEffect(() => {
-        const nextPolicy = policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY;
+        const nextPolicy = normalizeOutletPolicy(policySourceStore?.outletPolicy);
         setPolicy(nextPolicy);
         setDraftPolicy(nextPolicy);
     }, [policySourceStore?.outletPolicy]);
 
-    const hasPolicyChanges = useMemo(
-        () => Object.keys(DEFAULT_OUTLET_POLICY).some((key) => policy[key as keyof OutletPolicy] !== draftPolicy[key as keyof OutletPolicy]),
-        [draftPolicy, policy],
-    );
+    const changedPolicy = useMemo(() => getChangedPolicy(policy, draftPolicy), [draftPolicy, policy]);
+    const policyChangeCount = Object.keys(changedPolicy).length;
+    const hasPolicyChanges = policyChangeCount > 0;
     const proposedRenameSlug = useMemo(() => {
         const raw = renameSlug.trim() || renameName.trim();
         return raw ? slugify(raw) : '';
@@ -330,6 +345,21 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
         setDraftPolicy(policy);
     };
 
+    const handleClosePolicy = async () => {
+        if (isSavingPolicy) return;
+        if (hasPolicyChanges) {
+            const confirmed = await Dialog.confirm({
+                cancelText: t('cancel'),
+                confirmText: 'Discard',
+                content: 'Your outlet policy changes have not been saved.',
+                title: 'Discard changes?',
+            });
+            if (!confirmed) return;
+            setDraftPolicy(policy);
+        }
+        setShowPolicy(false);
+    };
+
     const handleSavePolicy = async () => {
         if (!policyStoreId) return;
         if (!hasPolicyChanges) {
@@ -339,8 +369,8 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
 
         setIsSavingPolicy(true);
         try {
-            const result = await updateOutletPolicy(policyStoreId, draftPolicy);
-            const nextPolicy = result?.outletPolicy || draftPolicy;
+            const result = await updateOutletPolicy(policyStoreId, changedPolicy);
+            const nextPolicy = result?.outletPolicy || { ...policy, ...changedPolicy };
             setPolicy(nextPolicy);
             setStoreDetails((previous: any) => previous
                 ? {
@@ -368,8 +398,8 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 : previous);
             Toast.show({ content: t('policyUpdated'), duration: 1000 });
             setShowPolicy(false);
-        } catch {
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
         } finally {
             setIsSavingPolicy(false);
         }
@@ -653,36 +683,39 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             </Popup>
 
             <Popup
-                bodyStyle={{ maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
-                onMaskClick={isSavingPolicy ? undefined : () => setShowPolicy(false)}
+                bodyStyle={{ height: '90vh', maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
+                onMaskClick={isSavingPolicy ? undefined : () => void handleClosePolicy()}
                 position="bottom"
                 visible={showPolicy}
             >
                 <Flex style={{ height: '100%' }} vertical>
-                    <Flex
-                        align="center"
-                        justify="center"
-                        style={{
-                            borderBottom: '1px solid #f3f4f6',
-                            minHeight: 56,
-                            padding: '0 16px',
-                            position: 'relative',
-                        }}
+                    <NavBar
+                        backIcon={<LuX size={20} />}
+                        onBack={() => void handleClosePolicy()}
                     >
-                        <Text strong>{t('outletPolicy')}</Text>
-                        <Button
-                            disabled={isSavingPolicy}
-                            fill="none"
-                            icon={<LuX size={20} />}
-                            onClick={() => setShowPolicy(false)}
-                            size="mini"
-                            style={{ position: 'absolute', right: 8, top: 8 }}
-                        />
-                    </Flex>
+                        {t('outletPolicy')}
+                    </NavBar>
 
                     <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: 12 }} vertical>
-                        <Text type="secondary">{t('chainWideRules')}</Text>
-                        <Text type="secondary">{t('policyHelp')}</Text>
+                        <Card size="small" style={{ backgroundColor: '#f8fafc' }}>
+                            <Flex gap={10}>
+                                <LuShieldCheck color="#2563eb" size={20} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                <Flex gap={4} vertical>
+                                    <Text strong>Rules for every outlet</Text>
+                                    <Text type="secondary">
+                                        {t('policyHelp')} Staff roles still apply, and blocked rules are also checked when data is saved.
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                        </Card>
+
+                        {hasPolicyChanges ? (
+                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                                <Text>
+                                    {policyChangeCount} unsaved change{policyChangeCount === 1 ? '' : 's'}
+                                </Text>
+                            </Card>
+                        ) : null}
 
                         <Flex gap={16} vertical>
                             {OUTLET_POLICY_CATEGORIES.map((category, index) => (
@@ -691,20 +724,36 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                     size="small"
                                     title={<Text strong>{category.label}</Text>}
                                 >
-                                    <List>
-                                        {category.items.map((item) => (
-                                            <List.Item
-                                                key={item.key}
-                                                extra={
-                                                    <Switch
-                                                        checked={draftPolicy[item.key]}
-                                                        onChange={(checked) => handleTogglePolicy(item.key, checked)}
-                                                    />
-                                                }
-                                                title={<Text>{item.label}</Text>}
-                                            />
-                                        ))}
-                                    </List>
+                                    <Flex gap={10} vertical>
+                                        <Text type="secondary">{category.description}</Text>
+                                        <List>
+                                            {category.items.map((item) => (
+                                                <List.Item
+                                                    key={item.key}
+                                                    extra={
+                                                        <Flex align="center" gap={8}>
+                                                            <Tag color={draftPolicy[item.key] ? 'success' : 'default'}>
+                                                                {draftPolicy[item.key] ? 'Allowed' : 'Blocked'}
+                                                            </Tag>
+                                                            <Switch
+                                                                checked={draftPolicy[item.key]}
+                                                                disabled={isSavingPolicy}
+                                                                onChange={(checked) => handleTogglePolicy(item.key, checked)}
+                                                            />
+                                                        </Flex>
+                                                    }
+                                                    title={
+                                                        <Flex gap={3} vertical>
+                                                            <Text strong>{item.label}</Text>
+                                                            <Text style={{ fontSize: 12, lineHeight: 1.35 }} type="secondary">
+                                                                {item.description}
+                                                            </Text>
+                                                        </Flex>
+                                                    }
+                                                />
+                                            ))}
+                                        </List>
+                                    </Flex>
                                 </Card>
                             ))}
                         </Flex>
@@ -730,7 +779,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                 onClick={handleResetPolicy}
                                 size="large"
                             >
-                                {t('reset')}
+                                Undo changes
                             </Button>
                             <Button
                                 block
@@ -740,7 +789,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                 onClick={() => void handleSavePolicy()}
                                 size="large"
                             >
-                                {t('saveChanges')}
+                                Save rules
                             </Button>
                         </Flex>
                     </Flex>

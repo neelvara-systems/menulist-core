@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** May 20, 2026 (v8 — prepaid manual location capacity)
+**Last Updated:** May 27, 2026 (v9 - outlet policy hardening)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -26,7 +26,7 @@
 | Switch between stores            | `MobileMoreScreen` Branch dropdown + `MobileLocationsScreen` → `/api/auth/switch-store` | ✅     |
 | Add new outlet                   | `MobileLocationsScreen` → `/api/outlets/create`    | ✅     |
 | Proration display                | `MobileLocationsScreen` → `calculateProration`     | ✅     |
-| Outlet Policy (15 toggles)       | `MobileLocationsScreen` → `updateOutletPolicy` → `/api/outlets/policy` | ✅     |
+| Outlet Rules (15 toggles)        | `MobileLocationsScreen` → `updateOutletPolicy` → `/api/outlets/policy` | ✅     |
 | Master update review/history     | `MobileMasterUpdateNotice` → `useMasterUpdateAwareness` | ✅     |
 
 ## DAL Parity
@@ -35,17 +35,18 @@
 - Mobile and desktop expose store switching only when the user has `canSwitchStores` and more than one active mapped store. Mobile keeps the primary branch dropdown in More, below the signed-in profile card.
 - Uses `/api/projects/outlet-save` for linked outlet menu saves, matching desktop persistence: mobile resolves master + outlet local data for display but saves only local `L_I_` / `L_C_` records and overrides.
 - `/api/projects/outlet-save` enforces OutletPolicy server-side for price, availability, description, image, language additions, local items/categories, project deactivation, theme, brand, and layout changes, so mobile controls are not the only protection.
-- Linked outlet AI description/image APIs also enforce OutletPolicy server-side before provider calls, so hidden mobile actions cannot be bypassed by direct API requests.
+- Linked outlet description/image APIs and menu extraction jobs also enforce OutletPolicy server-side before provider calls, so hidden mobile actions cannot be bypassed by direct API or job requests.
 - Mobile menu now shows the same master-update awareness contract as desktop: current diff, outlet impact notes, "Got it" acknowledgment, and "Last changes" history.
 - Linked outlet local saves, direct overrides, and extraction apply stamp `outletLocalState` only on the outlet project, so mobile local work is observable without writing master data.
-- Same `updateOutletPolicy` DAL function, now server-owned for policy writes
+- Same `updateOutletPolicy` DAL function, now server-owned for policy writes. Mobile sends only changed policy flags; the server merges them into the master policy.
 - Same `OutletPolicy` type and `DEFAULT_OUTLET_POLICY`
 - Same `calculateProration` utility
 - Mobile and desktop hide the add-outlet proration card for `billingMode: "manual"` subscriptions because those accounts are prepaid/offline, not auto-debited through Razorpay.
 - Mobile and desktop disable add-outlet submission for manual/offline accounts when prepaid location capacity is exhausted. The owner sees a reseller-capacity message instead of hitting a generic "outlet creation failed" error.
 - Mobile and desktop also disable direct add-outlet submission for active UPI-backed Razorpay subscriptions when paid location capacity is exhausted. Razorpay does not allow quantity updates for that payment mode, so Locations shows "Paid location needed" and routes to Billing; Billing creates a replacement same-plan checkout with the next `quantity`.
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
-- MobileShell `HQ` switch refreshes Firebase auth claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors after switching back.
+- Mobile More `Branch` dropdown refreshes Firebase auth claims for the selected mapped store. Switching back to HQ refreshes claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors.
+- Mobile outlet rules sheet uses the shared `OUTLET_POLICY_CATEGORIES` taxonomy with owner-facing labels, allowed/blocked state tags, an unsaved-change warning, and a discard confirmation before closing.
 - Mobile menu command bubble is offset from the Canonica help launcher so the add item/category command sheet remains reachable on phone-sized screens.
 
 ## Legacy Single-Store Repair
@@ -67,4 +68,4 @@ Older demo/production accounts may have a premium subscription but no `isMaster:
 - Mobile added local item and local category via UI; Firestore confirmed outlet-only IDs `L_I_1779208870629_nhfqsp` and `L_C_1779209396986_b0rb6j`.
 - Mobile `HQ` switch then refresh showed only the master menu and no outlet local data.
 - Desktop Locations and desktop Projects were retested after the same data writes; outlet context showed inherited + local data, HQ context showed master data only.
-- Final audit also verified the backend save and AI API contracts so disabled outlet-policy flags cannot be bypassed by posting crafted linked-outlet menu or generation requests.
+- Final audit also verified the backend save, AI API, and extraction job contracts so disabled outlet-policy flags cannot be bypassed by posting crafted linked-outlet menu, generation, or extraction job requests.

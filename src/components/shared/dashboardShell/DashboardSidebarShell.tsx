@@ -130,8 +130,8 @@ export default function DashboardSidebarShell({
         const itemHover = hoverId === item.key || hasActiveChild || isExactActive;
         const iconActive = Boolean(item.iconActive || isActive || itemHover);
         const foreground = useStrongActiveStyle ? token.colorTextLightSolid : (itemHover ? token.colorPrimaryTextActive : token.colorText);
-        const parentBackground = `color-mix(in srgb, ${token.colorBgBase} 90%, ${token.colorTextBase} 10%)`;
-        const parentActiveBackground = `color-mix(in srgb, ${token.colorBgBase} 84%, ${token.colorPrimary} 16%)`;
+        const parentBackground = token.colorFillSecondary;
+        const parentActiveBackground = token.colorPrimaryBg;
         const itemBackground = useStrongActiveStyle
             ? token.colorPrimary
             : (hasActiveChild ? parentActiveBackground : (isParentItem ? parentBackground : (itemHover ? token.colorBgTextHover : token.colorBgBase)));
@@ -188,7 +188,7 @@ export default function DashboardSidebarShell({
                 onMouseLeave={() => setHoverId(null)}
                 type="text"
                 style={{
-                    backgroundColor: itemBackground,
+                    background: itemBackground,
                     color: foreground,
                     display: 'flex',
                     height: 'auto',

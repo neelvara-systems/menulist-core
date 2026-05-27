@@ -2,7 +2,7 @@
 
 **Feature:** Two-Layer Access Control (23 RolePermissions + 15 OutletPolicy)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 19, 2026
+**Last Updated:** May 27, 2026
 
 **Priority:** LOW — Permission resolution is zero-cost (uses cached session data). Only OutletPolicy edits cost writes.
 
@@ -14,7 +14,7 @@
 
 - **Collections Used:** `stores` (roles array + outletPolicy field)
 - **Storage Buckets:** None
-- **Cloud Functions:** None
+- **Cloud Functions:** `processMenuImagesJob` re-checks `canUseMenuExtraction` for linked outlet jobs before provider processing
 - **Estimated Monthly Cost:** **₹0 – ₹1** at normal usage — Permission resolution is zero-cost; only OutletPolicy edits trigger writes
 
 ---
@@ -31,6 +31,7 @@
 | Validate master before policy update | `stores/{masterStoreId}` + `tenants/{tId}` | Owner toggles OutletPolicy flag | Per save (rare) | 2         | `/api/outlets/policy` reads store + tenant once to enforce role permission and support legacy single-store master repair. |
 | Enforce policy on outlet menu save   | `stores/{callerStoreId}` + `stores/{outletStoreId}` + `stores/{masterStoreId}` + `tenants/{tId}` + `projects/{tId}/{outletStoreId}/{projectId}` | Outlet saves linked menu changes | Per linked outlet save | 5 | `/api/projects/outlet-save` validates tenant/store access, active outlet/master state, local ID prefixes, and disabled policy flags before the one project write. |
 | Enforce policy on outlet AI actions  | `projects/{tId}/{outletStoreId}/{projectId}` + `stores/{masterStoreId}` | Linked outlet calls description/image APIs | Per linked outlet AI request | 0-2 | `getLinkedOutletPolicyBlockReason()` runs before AI capacity/provider calls. Master and standalone projects skip the extra reads. |
+| Enforce policy on outlet extraction jobs | `projects/{tId}/{outletStoreId}/{projectId}` + `stores/{masterStoreId}` | Linked outlet queues menu extraction | Per linked outlet extraction job | 1-2 | `processMenuImagesJob` reuses the project read it already needs and reads the master policy only for linked outlet projects before extractor/provider calls. |
 | Refresh active store Firebase claims | `users/{uId}` | Switch between HQ/outlet or restore active outlet context | Per switch/refresh | 1 | `/api/auth/set-claims` validates that the requested `targetStoreId` exists in `users.storeIds` / `users.stores[]`, then returns a custom Firebase token with the active store claim. |
 
 ### Writes
@@ -67,6 +68,7 @@ None — permissions and policies are toggled, never deleted.
 | Permission resolution (per session)                                | 0        | 0         | ₹0                |
 | Master policy hydration for outlet sessions                        | 0-1      | 0         | < ₹1              |
 | OutletPolicy edits (per chain, saved as grouped changes)           | ~1-15    | ~1-15     | < ₹1              |
+| Linked outlet extraction policy checks                             | per extraction | 0 | Avoids provider spend when disabled |
 | One-time legacy master repair                                      | 2        | 3         | < ₹1              |
 | **Total**                                                          |          |           | **< ₹1/month**    |
 

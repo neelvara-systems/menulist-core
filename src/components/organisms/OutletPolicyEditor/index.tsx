@@ -15,7 +15,7 @@
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
-import { Card, Divider, message, Space, Switch, Tooltip, Typography } from 'antd';
+import { Card, Divider, message, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuInfo } from 'react-icons/lu';
 
@@ -27,17 +27,22 @@ interface OutletPolicyEditorProps {
     onPolicyUpdate?: (policy: OutletPolicy) => void;
 }
 
+const normalizeOutletPolicy = (policy?: Partial<OutletPolicy> | null): OutletPolicy => ({
+    ...DEFAULT_OUTLET_POLICY,
+    ...(policy || {}),
+});
+
 export default function OutletPolicyEditor({
     storeId,
     currentPolicy,
     onPolicyUpdate,
 }: OutletPolicyEditorProps) {
-    const [policy, setPolicy] = useState<OutletPolicy>(currentPolicy || DEFAULT_OUTLET_POLICY);
+    const [policy, setPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(currentPolicy));
     const [saving, setSaving] = useState<string | null>(null);
 
     useEffect(() => {
         if (currentPolicy) {
-            setPolicy(currentPolicy);
+            setPolicy(normalizeOutletPolicy(currentPolicy));
         }
     }, [currentPolicy]);
 
@@ -49,7 +54,7 @@ export default function OutletPolicyEditor({
             await updateOutletPolicy(storeId, { [key]: checked });
             setPolicy(updatedPolicy);
             onPolicyUpdate?.(updatedPolicy);
-            message.success('Policy updated');
+            message.success('Outlet rules updated');
         } catch (err: any) {
             message.error(err?.message || 'Failed to update policy');
         } finally {
@@ -63,14 +68,14 @@ export default function OutletPolicyEditor({
             title={
                 <Space>
                     <span>Outlet Policy</span>
-                    <Tooltip title="Controls what all outlet stores can do. Changes apply immediately on next outlet login.">
+                    <Tooltip title="Controls what all outlet stores can change. Staff roles still apply.">
                         <LuInfo style={{ color: '#8c8c8c', cursor: 'help' }} />
                     </Tooltip>
                 </Space>
             }
         >
             <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                Set chain-wide rules for all outlets. When a toggle is off, no outlet user can perform that action — regardless of their role.
+                Set rules for every outlet. When a toggle is off, outlet staff cannot perform that action even if their role normally allows it.
             </Text>
 
             {OUTLET_POLICY_CATEGORIES.map((category, catIdx) => (
@@ -97,7 +102,12 @@ export default function OutletPolicyEditor({
                                 }}
                             >
                                 <div>
-                                    <Text style={{ fontSize: 13 }}>{item.label}</Text>
+                                    <Space size={6}>
+                                        <Text style={{ fontSize: 13 }}>{item.label}</Text>
+                                        <Tag color={policy[item.key] ? 'success' : 'default'}>
+                                            {policy[item.key] ? 'Allowed' : 'Blocked'}
+                                        </Tag>
+                                    </Space>
                                     <br />
                                     <Text type="secondary" style={{ fontSize: 11 }}>
                                         {item.description}

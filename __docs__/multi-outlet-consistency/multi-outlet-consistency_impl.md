@@ -7,7 +7,7 @@
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Default:** OFF (`ENABLE_MULTI_OUTLET: false`)  
 **Original Date:** January 19, 2026  
-**Last Reviewed:** May 20, 2026
+**Last Reviewed:** May 27, 2026
 **Author:** Lead Architect
 
 > **Post-Implementation Notes (Feb 13, 2026):** This blueprint was the original technical plan. The core architecture below remains accurate. The following were added during implementation and have their own dedicated docs:
@@ -21,6 +21,7 @@
 > - **Firebase cost tracking:** see [multi-outlet-consistency_firebase.md](./multi-outlet-consistency_firebase.md)
 > - **May 19, 2026 hardening:** linked outlet editor saves now use `/api/projects/outlet-save` for server-side tenant/store validation, local-only menu persistence, OutletPolicy enforcement, and public cache invalidation. Desktop master extraction status uses `/api/projects/master-job-status` instead of a direct outlet-client listener on master job documents.
 > - **May 20, 2026 completion pass:** master/local extraction records now persist `extractionIdAliases` for ID stability, outlet-only local changes stamp `outletLocalState` in the same write, public item links fall back cleanly when a deleted local item is requested, and mobile has master-update review/history parity with desktop.
+> - **May 27, 2026 outlet policy hardening:** mobile/desktop policy controls share `OUTLET_POLICY_CATEGORIES`, and `processMenuImagesJob` now checks linked outlet `canUseMenuExtraction` before extraction provider processing.
 
 ---
 
@@ -1761,7 +1762,7 @@ These passed the Feature Rejection Gate but are deferred:
 | File                                             | Change                                                  | Status  |
 | ------------------------------------------------ | ------------------------------------------------------- | ------- |
 | `functions/src/types/menuProcessingJob.types.ts` | Added `PREVIEW_READY`, `isFirstExtraction`, `expiresAt` | ✅ Done |
-| `functions/src/logic/processMenuImagesJob.ts`    | First extraction detection + branching                  | ✅ Done |
+| `functions/src/logic/processMenuImagesJob.ts`    | First extraction detection, branching, and linked outlet extraction policy guard | ✅ Done |
 
 ### 19.4 Hooks Added
 

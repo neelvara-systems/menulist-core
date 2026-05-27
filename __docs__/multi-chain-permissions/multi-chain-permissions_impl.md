@@ -2,12 +2,12 @@
 
 > **Feature:** #4B — Multi-Chain Permissions  
 > **Status:** ✅ Implemented  
-> **Last Updated:** May 19, 2026
+> **Last Updated:** May 27, 2026
 > **Source of Truth:** Codebase
 
 > **Scope:** This document covers the full two-layer permission model. Layer 1 (RolePermissions) type details are included here for completeness but the canonical reference for staff-level RBAC (default roles, `hasPermission()`, adding permissions guide) is [Roles & Permissions Impl](../roles-permissions/roles-permissions_impl.md). This document focuses on Layer 2 (OutletPolicy) and the intersection enforcement.
 
-> **May 19, 2026 audit note:** OutletPolicy writes are now server-owned through `POST /api/outlets/policy`. Desktop and mobile access gates use `canManageLocationSettings()` from `src/lib/multiOutlet/locationAccess.ts`. Outlet sessions load the master store policy once when it is not already hydrated in `tenantDetails.storesList`, and `applyOutletPolicy()` falls back to `DEFAULT_OUTLET_POLICY` for non-master stores so missing policy hydration cannot grant chain/billing permissions. Linked outlet menu saves and AI description/image APIs also enforce the policy server-side.
+> **May 27, 2026 audit note:** OutletPolicy writes are server-owned through `POST /api/outlets/policy`. Desktop and mobile access gates use `canManageLocationSettings()` from `src/lib/multiOutlet/locationAccess.ts`. Outlet sessions load the master store policy once when it is not already hydrated in `tenantDetails.storesList`, and `applyOutletPolicy()` falls back to `DEFAULT_OUTLET_POLICY` for non-master stores so missing policy hydration cannot grant chain/billing permissions. Linked outlet menu saves, description/image APIs, and extraction jobs enforce the policy server-side.
 
 ---
 
@@ -229,9 +229,9 @@ const POLICY_TO_PERMISSION_MAP: Partial<
   canUseMenuExtraction: ["canUseMenuExtraction"],
   canGenerateDescriptions: ["canGenerateDescriptions"],
   canGenerateImages: ["canGenerateImages"],
-  canOverrideTheme: ["canOverrideTheme"],
-  canOverrideBrandIdentity: ["canOverrideBrandIdentity"],
-  canOverrideLayout: ["canOverrideLayout"],
+  canOverrideTheme: ["canOverrideTheme", "canManageMenuDesign"],
+  canOverrideBrandIdentity: ["canOverrideBrandIdentity", "canManageMenuDesign"],
+  canOverrideLayout: ["canOverrideLayout", "canManageMenuDesign"],
   allowLocalCategories: ["canAddLocalCategories"],
   allowLocalItems: ["canAddLocalItems"],
   priceOverride: ["canOverridePrices"],
@@ -261,8 +261,10 @@ export function applyOutletPolicy(
   outletPolicy: OutletPolicy | undefined,
   isMasterStore: boolean,
 ): RolePermissions {
-  // Master store users → no restrictions
-  if (isMasterStore || !outletPolicy) return rolePermissions;
+  // Master store users keep full role permissions.
+  if (isMasterStore) return rolePermissions;
+
+  const effectiveOutletPolicy = outletPolicy || DEFAULT_OUTLET_POLICY;
 
   const effective = { ...rolePermissions };
 
@@ -270,7 +272,7 @@ export function applyOutletPolicy(
   for (const [policyKey, permissionKeys] of Object.entries(
     POLICY_TO_PERMISSION_MAP,
   )) {
-    if (outletPolicy[policyKey] === false) {
+    if (effectiveOutletPolicy[policyKey] === false) {
       for (const permKey of permissionKeys) {
         effective[permKey] = false;
       }
@@ -282,6 +284,8 @@ export function applyOutletPolicy(
   effective.canAddStores = false;
   effective.canAccessBilling = false;
   effective.canManageSubscription = false;
+
+  effective.outletPolicy = effectiveOutletPolicy;
 
   return effective;
 }
