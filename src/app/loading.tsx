@@ -1,9 +1,7 @@
-import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
-import CanonicaAnimatedLogo from '@atoms/canonicaAnimatedLogo';
+import BrandedPageLoader, { type BrandedPageLoaderBrand } from '@atoms/brandedPageLoader';
 import { headers } from 'next/headers';
-import styles from './page.module.css';
 
-export type ServerSidePageLoaderBrand = 'menulist' | 'canonica';
+export type ServerSidePageLoaderBrand = BrandedPageLoaderBrand;
 
 function getRequestLoaderBrand(): ServerSidePageLoaderBrand {
     try {
@@ -22,28 +20,7 @@ function ServerSidePageLoader({
     brand?: ServerSidePageLoaderBrand;
 }) {
     const resolvedBrand = brand || getRequestLoaderBrand();
-    const isCanonica = resolvedBrand === 'canonica';
-    const brandLabel = isCanonica ? 'Canonica' : 'MenuList';
-
-    return (
-        <main
-            className={`${styles.loadingWrap} ${isCanonica ? styles.loadingWrapCanonica : ''}`.trim()}
-            data-loader-source={`server-loader-${page || 'app'}`}
-            data-loader-brand={resolvedBrand}
-            aria-label={`${brandLabel} is loading`}
-        >
-            <div className={`${styles.loadingWatermark} ${isCanonica ? styles.loadingWatermarkCanonica : ''}`.trim()} aria-hidden="true">
-                {isCanonica
-                    ? <CanonicaAnimatedLogo idPrefix="canonica-loader-watermark" />
-                    : <AnimatedVerticalLogo showLabel={false} />}
-            </div>
-            <div className={`${styles.loadingLogo} ${isCanonica ? styles.loadingLogoCanonica : ''}`.trim()} aria-hidden="true">
-                {isCanonica
-                    ? <CanonicaAnimatedLogo idPrefix="canonica-loader-logo" />
-                    : <AnimatedVerticalLogo showLabel={false} />}
-            </div>
-        </main>
-    )
+    return <BrandedPageLoader page={page} brand={resolvedBrand} />
 }
 
 export default ServerSidePageLoader

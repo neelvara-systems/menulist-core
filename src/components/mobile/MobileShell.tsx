@@ -13,7 +13,7 @@ import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import ServerSidePageLoader from '../../app/loading';
+import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
@@ -451,7 +451,7 @@ export default function MobileShell() {
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;
 
     if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
-        return <ServerSidePageLoader page="Mobile App" />;
+        return <BrandedPageLoader page="Mobile App" />;
     }
 
     if (!hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {

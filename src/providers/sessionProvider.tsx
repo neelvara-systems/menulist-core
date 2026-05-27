@@ -37,7 +37,7 @@ import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import ServerSidePageLoader from '../app/loading';
+import BrandedPageLoader from '@atoms/brandedPageLoader';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
 
 type Props = {
@@ -681,12 +681,12 @@ export default function SessionProvider({ children, session }: Props) {
                 setPlatformStoreSummaryLoading
             }}>
                 {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (
-                    <ServerSidePageLoader
+                    <BrandedPageLoader
                         page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"}
                         brand={isCanonicaRoute ? 'canonica' : 'menulist'}
                     />
                 ) : (session && !isStoreContextReadyForRender) ? (
-                    <ServerSidePageLoader page="Loading Store Data" brand={isCanonicaRoute ? 'canonica' : 'menulist'} />
+                    <BrandedPageLoader page="Loading Store Data" brand={isCanonicaRoute ? 'canonica' : 'menulist'} />
                 ) : children}
             </PlatformGlobalDataProvider>
         </Provider>
