@@ -1,7 +1,21 @@
-# Developer Install Pack Website Notes
+# Canonica Developer Install Pack v1 Website Notes
 
 ## Public Pages Added
 
+- `/install/ai-agent`: copyable AI coding agent install packet and acceptance criteria.
+- `/install/manual`: manual v1 script install.
+- `/install/frameworks/nextjs`: Next.js App Router and Pages Router install guide.
+- `/install/frameworks/react`: React SPA install guide.
+- `/install/frameworks/vue`: Vue/Nuxt install guide.
+- `/install/frameworks/plain-html`: static/server-rendered script install.
+- `/install/frameworks/shopify`: Shopify-style script injection.
+- `/install/frameworks/webflow`: Webflow/custom-code install.
+- `/install/verify`: browser and dashboard verification checklist.
+- `/install/security`: safe context, forbidden fields, origin, and blocked-route rules.
+- `/install/contracts`: Widget Contract v1 36-month stability policy.
+- `/install/changelog`: public install-layer changelog.
+- `/install.md` and `/install/*.md`: machine-readable Markdown mirrors.
+- `/agents/canonica/*`: generated agent files and agent-kit ZIP.
 - `/quickstarts`: developer install examples and safe context rules.
 - `/roi-calculator`: static repeated-question ROI planning calculator.
 - `/proof`: example workload proof pack for launch, release, and studio support patterns.
@@ -11,16 +25,21 @@
 
 - `/`: now includes the day-one launch pack linking quickstarts, starter surfaces, import templates, install verification, ROI/proof, and the security handoff from the main buying path.
 - `/product`: now includes the same day-one launch pack so product evaluators see practical rollout resources before deeper feature sections.
-- `/install`: now includes typed SDK example and links to framework quickstarts.
+- `/install`: now centers the AI coding agent install packet, frozen v1 widget contract, generated agent files, and framework-specific docs.
 - `/pricing`: links to the ROI calculator from support-credit explanation.
 - `/resources`: includes quickstarts, ROI calculator, proof pack, and security one-pager.
 - `/get-started`: first-session checklist now reflects starter surfaces, import starters, install verification, and approved-answer review.
 - `/security`: links to the one-page security/ops handoff from the main trust page.
-- `llms.txt` and `llms-full.txt`: include the new pages and clarify SDK boundaries.
+- `llms.txt` and `llms-full.txt`: now prioritize the agent install packet, contract docs, framework Markdown, security rules, and agent kit while keeping Public API secondary/gated.
 
 ## Copy Boundaries
 
-- The SDK is described as a thin browser helper, not a server authority layer.
+- The optional typed helper is described as a browser helper, not a server authority layer or required install path.
+- Agent files are described as coding-agent context and acceptance checks, not a guarantee that every external tool will obey them.
+- The frozen contract is Canonica's v1 widget/context/verification contract, not a freeze around third-party AI IDE behavior.
+- New installs use `https://canonica.app/widget/v1/canonica-widget.js`; legacy `/widget/canonica-widget.js` remains compatible.
 - The ROI calculator is illustrative and avoids guaranteed savings claims.
 - Proof pack examples are labeled as example workloads, not customer case studies.
 - Security one-pager does not replace the full security page.
+- Public ROI, proof, and security pages are claim-governed: static assumptions must be labeled, example workloads must not be described as customer proof unless backed by approved evidence, and security copy must describe implemented runtime behavior only.
+- Do not claim Public API self-serve, MCP, autonomous publishing, crawling, workflow integrations, email notifications, white-label, or multi-language unless the corresponding feature is enabled for public use.

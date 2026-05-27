@@ -1,9 +1,9 @@
 /**
- * Canonica Help Widget — Embed Script (v2)
+ * Canonica Help Widget — Public Contract v1
  *
  * Usage:
- *   <script src="https://canonica.app/widget/canonica-widget.js"
- *           data-api-key="YOUR_API_KEY"
+ *   <script src="https://canonica.app/widget/v1/canonica-widget.js"
+ *           data-canonica-key="YOUR_API_KEY"
  *           data-position="bottom-right"
  *           data-accent-color="#6366f1"
  *           data-shape="rounded"
@@ -14,15 +14,16 @@
  *   </script>
  *
  * JavaScript API (optional):
- *   window.CanonicaWidget.setContext({ contextKey: 'billing_invoices', feature: 'billing', page: 'invoices' })
- *   window.CanonicaWidget.page({ contextKey: 'billing_invoices', feature: 'billing', page: 'invoices' })
+ *   window.CanonicaWidget.setContext({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
+ *   window.CanonicaWidget.page({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
  *   window.CanonicaWidget.open()
  *   window.CanonicaWidget.close()
  *   window.CanonicaWidget.clearHistory()
  *   window.CanonicaWidget.on('open', function () {})
  *
  * Options:
- *   data-api-key       (required) Your Canonica API key
+ *   data-canonica-key  (required) Your Canonica widget key
+ *   data-api-key       (legacy alias) Your Canonica widget key
  *   data-position      (optional) "bottom-right" | "bottom-left" | "top-right" | "top-left"
  *   data-accent-color  (optional) Hex color (default: #6366f1)
  *   data-shape         (optional) "rounded" (circle) | "pill" (rectangle)
@@ -60,8 +61,8 @@
 
     if (!script) { console.warn('[Canonica] Widget script tag not found.'); return; }
 
-    var apiKey = script.getAttribute('data-api-key');
-    if (!apiKey) { console.warn('[Canonica] Missing data-api-key attribute.'); return; }
+    var apiKey = script.getAttribute('data-canonica-key') || script.getAttribute('data-api-key');
+    if (!apiKey) { console.warn('[Canonica] Missing data-canonica-key attribute.'); return; }
 
     // ===== CONFIG =====
     var defaultConfig = {
@@ -105,6 +106,7 @@
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
     var remoteConfigCacheTtlMs = 60000;
+    var sensitiveContextPattern = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
     // Size presets
     var sizes = {
@@ -338,8 +340,36 @@
 
     function sanitizeContextString(value, maxLength) {
         if (typeof value !== 'string') return null;
+        if (sensitiveContextPattern.test(value)) return null;
         var normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, maxLength || 100);
         return normalized || null;
+    }
+
+    function sanitizeContextTitle(value, maxLength) {
+        if (typeof value !== 'string') return null;
+        if (sensitiveContextPattern.test(value)) return null;
+        var normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength || 120);
+        return normalized || null;
+    }
+
+    function normalizeContextPath(value) {
+        if (typeof value !== 'string') return null;
+        if (sensitiveContextPattern.test(value)) return null;
+        var route = value.trim();
+        if (!route) return null;
+        try {
+            if (/^https?:\/\//i.test(route)) {
+                route = new URL(route).pathname || '/';
+            }
+        } catch (_) {
+            return null;
+        }
+        route = (route.split(/[?#]/)[0] || '').trim();
+        if (!route) return null;
+        if (route.charAt(0) !== '/') route = '/' + route;
+        route = route.replace(/\/{2,}/g, '/');
+        if (route.length > 1 && route.slice(-1) === '/') route = route.slice(0, -1);
+        return route.slice(0, 180);
     }
 
     function getPayloadByteLength(value) {
@@ -357,6 +387,20 @@
             var value = sanitizeContextString(ctx[key], 100);
             if (value) output[key] = value;
         });
+        var path = normalizeContextPath(ctx.path);
+        if (path) {
+            output.path = path;
+            if (!output.page) output.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home', 100);
+        }
+        var title = sanitizeContextTitle(ctx.title, 120);
+        if (title) output.title = title;
+        var role = sanitizeContextString(ctx.role, 80);
+        if (role) {
+            output.role = role;
+            if (!output.userRole) output.userRole = role;
+        }
+        var locale = sanitizeContextString(ctx.locale, 24);
+        if (locale) output.locale = locale;
         if (typeof ctx.contextVersion === 'number' && ctx.contextVersion >= 1 && ctx.contextVersion <= 10) {
             output.contextVersion = Math.floor(ctx.contextVersion);
         }
@@ -366,7 +410,7 @@
                 .map(function (hint) { return sanitizeContextString(hint, 64); })
                 .filter(Boolean);
         }
-        var hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].some(function (key) {
+        var hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'path', 'title', 'role', 'locale'].some(function (key) {
             return Boolean(output[key]);
         }) || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
         if (!hasMeaningfulContext) return null;
@@ -381,6 +425,10 @@
             page: script.getAttribute('data-page'),
             workflow: script.getAttribute('data-workflow'),
             userRole: script.getAttribute('data-user-role'),
+            path: script.getAttribute('data-path'),
+            title: script.getAttribute('data-title'),
+            role: script.getAttribute('data-role'),
+            locale: script.getAttribute('data-locale'),
             plan: script.getAttribute('data-plan'),
         };
         var hints = script.getAttribute('data-entity-hints');

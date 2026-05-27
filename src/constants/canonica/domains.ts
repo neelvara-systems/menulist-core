@@ -34,6 +34,7 @@ export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'faqs',
     'governance',
     'help',
+    'install-center',
     'kb-generation',
     'knowledge-base',
     'product-surfaces',

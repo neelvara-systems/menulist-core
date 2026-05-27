@@ -1,12 +1,19 @@
-export type CanonicaContextKey = 'contextKey' | 'feature' | 'page' | 'workflow' | 'userRole' | 'plan';
+export type CanonicaContextKey = 'contextKey' | 'path' | 'title' | 'feature' | 'page' | 'workflow' | 'role' | 'locale' | 'userRole' | 'plan';
 export type CanonicaPageContext = {
     contextVersion?: number;
     contextKey?: string;
+    path?: string;
+    title?: string;
     feature?: string;
     page?: string;
     workflow?: string;
+    role?: string;
+    locale?: string;
+    /** Legacy compatibility field. Prefer role for new installs. */
     userRole?: string;
+    /** Legacy compatibility field. Public plan label only; never billing metadata. */
     plan?: string;
+    /** Legacy compatibility field. Public slugs/tags/hints only. */
     entityHints?: string[];
 };
 export type CanonicaWidgetEventName = 'open' | 'close' | 'context' | 'ready';

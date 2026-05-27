@@ -171,6 +171,7 @@ export interface CanonicaNavItem {
 
 export const CANONICA_LAUNCH_SETUP_SUB_NAV: CanonicaNavItem[] = [
     { key: 'launch-activation', label: 'Activation', route: CANONICA_ROUTES.ACTIVATION, icon: LuRocket, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER' },
+    { key: 'launch-install-center', label: 'Install Center', route: CANONICA_ROUTES.INSTALL_CENTER, icon: LuCode, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_WIDGET, featureFlag: 'ENABLE_CANONICA_AGENT_INSTALL' },
     { key: 'launch-settings', label: 'Product Details', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_WORKSPACE },
     { key: 'launch-kb-generation', label: 'Import Knowledge', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
     { key: 'launch-product-surfaces', label: 'Product Surfaces', route: CANONICA_ROUTES.PRODUCT_SURFACES, icon: LuLayers, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_CANONICA_PRODUCT_SURFACES' },

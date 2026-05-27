@@ -54,7 +54,15 @@
 | `/hosted-help-center-for-saas` | SEO Landing | Hosted SaaS help center page for docs, FAQ, and changelog on support domains |
 | `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team, including optional user-attached visual context |
 | `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
-| `/install` | Widget Install | Widget script, allowed origins, blocked routes, hosted help domains such as help.yourapp.com, safe page context, manual screenshot input, and runtime verification |
+| `/install` | Agent Install Layer | Primary install surface for copying the Canonica AI install packet, downloading the agent kit, reading the frozen v1 widget contract, and verifying runtime status |
+| `/install/ai-agent` | AI Agent Install | Copyable agent packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents |
+| `/install/manual` | Manual Install | Human-readable v1 widget script install steps |
+| `/install/frameworks/*` | Framework Install Guides | Next.js, React, Vue, Plain HTML, Shopify-style, and Webflow install pages with agent-ready snippets |
+| `/install/verify` | Install Verification | Browser and dashboard checks for script load, allowed origins, blocked routes, context, and runtime status |
+| `/install/security` | Install Security | Safe context, forbidden fields, allowed origins, and server-side tenant-resolution rules |
+| `/install/contracts` | Widget Contract v1 | 36-month stability policy for script URL, browser global, context methods, Markdown URLs, and verification semantics |
+| `/install.md` and `/install/**/*.md` | Machine-Readable Install Docs | Markdown mirrors generated from the Canonica install contract for coding agents |
+| `/agents/canonica/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
 | `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, widget install, governance, and safety |
@@ -103,7 +111,12 @@
 | `src/app/sites/canonica/page-aware-support-widget/page.tsx` | SEO landing page for page-aware widget search intent |
 | `src/app/sites/canonica/hosted-help-center-for-saas/page.tsx` | SEO landing page for hosted help-center search intent |
 | `src/app/sites/canonica/support-widget-for-solo-founders/page.tsx` | SEO landing page for solo-founder support search intent |
-| `src/app/sites/canonica/install/page.tsx` | Public widget install page |
+| `src/app/sites/canonica/install/page.tsx` | Agent install overview generated from Canonica Widget Contract v1 |
+| `src/app/sites/canonica/install/InstallContractPage.tsx` | Shared public install page renderer for overview, AI-agent, framework, verification, security, contract, and changelog pages |
+| `src/app/sites/canonica/install/markdownRoute.ts` | Shared Markdown response helper for install `.md` mirrors |
+| `src/app/sites/canonica/agents/canonica/agentRoute.ts` | Public generated AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP responses |
+| `src/lib/canonica/installContract/` | Single source of truth for the v1 widget contract, Markdown docs, llms text, agent prompts, and agent kit files |
+| `src/app/widget/v1/canonica-widget.js/route.ts` | Stable public v1 script URL backed by the existing widget runtime |
 | `src/app/sites/canonica/integrations/page.tsx` | Integrations landing page for Slack/email workflow notifications, test delivery, compact health, and controlled adapter boundaries |
 | `src/app/sites/canonica/resources/page.tsx` | Public resources hub |
 | `src/app/sites/canonica/updates/page.tsx` | Public website update log |
@@ -235,6 +248,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-25 | Updated existing widget, install, quickstart, security, FAQ, SEO, updates, metadata, and LLM-context pages so user-initiated screenshot upload/paste is presented accurately without adding a separate screenshot page or claiming automatic screen capture |
 | 2026-05-26 | Formalized the Dark Control Plane theme contract, aligned PWA manifest background/theme color to deep navy, and moved website inline-style primary/status colors onto Canonica theme tokens |
 | 2026-05-27 | Added a Canonica-owned contact inquiry flow with public API validation/rate limiting and regrouped the mobile hamburger menu into Product Areas, Product Features, and Other cards with safe-area bottom padding |
+| 2026-05-27 | Added the Canonica Agent Install Layer: public install pages, Markdown mirrors, llms install context, generated AGENTS/CLAUDE/Cursor/Windsurf/skill files, ZIP download, dashboard AI packet actions, and the frozen `/widget/v1/canonica-widget.js` URL |
 | 2026-05-26 | Added Team Access as a buyer-facing product feature page and updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and workspace-scoped access |
 | 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs use Canonica splash screens and loader identity |
 | 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as generic platform context, a helpdesk replacement, or an AI autopilot |

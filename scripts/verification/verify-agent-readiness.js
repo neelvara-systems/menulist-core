@@ -226,6 +226,106 @@ function verifyCanonicaDiscovery() {
   }
 }
 
+function verifyCanonicaInstallContract() {
+  const contract = require('../../src/lib/canonica/installContract/contract');
+  const constants = require('../../src/lib/canonica/installContract/constants');
+  const { CanonicaContextSchema } = require('../../src/lib/validation/contextSchema');
+  const publicWidget = read('public/widget/canonica-widget.js');
+  const widgetV1Route = read('src/app/widget/v1/canonica-widget.js/route.ts');
+  const widgetManagement = read('src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx');
+  const installCenter = read('src/components/templates/canonica/install/CanonicaInstallCenter.tsx');
+  const routePermissions = read('src/constants/canonica/permissions.ts');
+  const canonicaRoutes = read('src/constants/canonica/routes.ts');
+  const canonicaDomains = read('src/constants/canonica/domains.ts');
+  const canonicaNavigations = read('src/constants/canonica/navigations.ts');
+
+  assert(constants.CANONICA_WIDGET_SCRIPT_URL === 'https://canonica.app/widget/v1/canonica-widget.js', 'Canonica v1 widget URL must stay stable');
+  assert(constants.CANONICA_WIDGET_SCRIPT_CACHE_CONTROL === 'public, max-age=300, stale-while-revalidate=86400', 'Canonica v1 widget cache policy must stay bounded and non-immutable');
+  assert(contract.CANONICA_AGENT_FILE_TARGETS.includes('.cursor/rules/canonica/RULE.md'), 'Canonica agent file targets must include Cursor RULE.md');
+  assert(contract.CANONICA_AGENT_FILE_TARGETS.includes('.cursor/rules/canonica.mdc'), 'Canonica agent file targets must include Cursor .mdc fallback');
+  assert(contract.CANONICA_PUBLIC_DOC_ROUTES.includes('/install/contracts.md'), 'Canonica public docs routes must include contracts Markdown');
+  assertIncludes(widgetV1Route, 'CANONICA_WIDGET_SCRIPT_CACHE_CONTROL', 'Canonica v1 widget route cache policy');
+  assertIncludes(widgetV1Route, 'X-Canonica-Widget-Contract', 'Canonica v1 widget route contract header');
+  assertIncludes(publicWidget, 'Canonica Help Widget — Public Contract v1', 'Canonica public widget script');
+  assertIncludes(publicWidget, 'data-canonica-key', 'Canonica public widget key attribute');
+  assertIncludes(publicWidget, 'setContext', 'Canonica public widget global API');
+  assertIncludes(publicWidget, 'page:', 'Canonica public widget page API');
+  assertIncludes(publicWidget, 'sensitiveContextPattern', 'Canonica public widget context PII guard');
+
+  assert(exists('src/app/sites/canonica/install/page.tsx'), 'Canonica public install page must exist');
+  [
+    'install.md',
+    'install/ai-agent.md',
+    'install/manual.md',
+    'install/frameworks/nextjs.md',
+    'install/frameworks/react.md',
+    'install/frameworks/vue.md',
+    'install/frameworks/plain-html.md',
+    'install/frameworks/shopify.md',
+    'install/frameworks/webflow.md',
+    'install/verify.md',
+    'install/security.md',
+    'install/contracts.md',
+    'install/changelog.md',
+  ].forEach((routePath) => {
+    assert(exists(`src/app/sites/canonica/${routePath}/route.ts`), `Canonica Markdown route missing: ${routePath}`);
+  });
+
+  const llms = contract.renderCanonicaLlmsTxt();
+  assertIncludes(llms, '/install/ai-agent.md', 'Canonica llms.txt');
+  assertIncludes(llms, '/install/verify.md', 'Canonica llms.txt');
+  assertIncludes(llms, '/install/security.md', 'Canonica llms.txt');
+  assertIncludes(llms, '/install/contracts.md', 'Canonica llms.txt');
+
+  const secretKey = 'cn_test_raw_secret_value_123456789';
+  const kitFiles = contract.buildCanonicaAgentKitFiles({
+    widgetKey: secretKey,
+    widgetKeyPrefix: 'cn_test',
+    allowedOrigins: ['https://app.example.com'],
+    blockedRoutes: ['/login', '/billing'],
+  });
+  const kitText = JSON.stringify(kitFiles);
+  assertNotIncludes(kitText, secretKey, 'Canonica agent kit default contents');
+  assert(kitFiles['.cursor/rules/canonica/RULE.md'], 'Canonica agent kit must include Cursor RULE.md');
+  assert(kitFiles['.cursor/rules/canonica.mdc'], 'Canonica agent kit must include Cursor .mdc fallback');
+  assertIncludes(kitFiles['packet.json'], '"rawWidgetKeyIncluded": false', 'Canonica agent kit packet');
+  assertIncludes(kitFiles['canonica-context-contract-v1.md'], 'Legacy compatibility fields', 'Canonica context contract docs');
+
+  const packet = contract.buildCanonicaAgentPacketJson({ widgetKey: secretKey, widgetKeyPrefix: 'cn_test' });
+  assert(packet.rawWidgetKeyIncluded === false, 'Canonica dashboard packet must not include raw widget key by default');
+  assert(JSON.stringify(packet).indexOf(secretKey) === -1, 'Canonica dashboard packet must mask raw widget key by default');
+  assert(packet.legacyContextFieldMap.plan.includes('public plan label'), 'Canonica legacy plan guidance must stay public-label only');
+  assert(packet.legacyContextFieldMap.entityHints.includes('public slugs'), 'Canonica legacy entityHints guidance must stay public-label only');
+
+  const parsedContext = CanonicaContextSchema.parse({
+    path: '/settings/team',
+    title: 'Team settings',
+    feature: 'settings',
+    workflow: 'invite_teammate',
+    role: 'owner',
+    locale: 'en',
+    contextKey: 'team_settings',
+    plan: 'starter',
+    entityHints: ['team', 'invites'],
+    tenantId: '123',
+  });
+  assert(parsedContext.path === '/settings/team', 'Canonica context schema must accept canonical path');
+  assert(parsedContext.page === 'settings_team', 'Canonica context schema must normalize path to compatibility page');
+  assert(parsedContext.userRole === 'owner', 'Canonica context schema must normalize role to compatibility userRole');
+  assert(parsedContext.tenantId === undefined, 'Canonica context schema must strip forbidden tenantId');
+  assert(!CanonicaContextSchema.safeParse({ title: 'owner@example.com' }).success, 'Canonica context schema must reject PII-like titles');
+
+  assert(exists('src/app/sites/canonica/agents/canonica/cursor/RULE.md/route.ts'), 'Canonica public Cursor RULE.md route must exist');
+  assertIncludes(installCenter, 'renderCanonicaCursorRuleMd', 'Canonica Install Center Cursor current rule copy');
+  assertIncludes(installCenter, 'renderCanonicaCursorRule', 'Canonica Install Center Cursor legacy fallback copy');
+  assertIncludes(canonicaRoutes, 'INSTALL_CENTER', 'Canonica install center route constant');
+  assertIncludes(canonicaDomains, "'install-center'", 'Canonica product-host dashboard route roots');
+  assertIncludes(routePermissions, 'CANONICA_ROUTES.INSTALL_CENTER', 'Canonica install center route permission');
+  assertIncludes(widgetManagement, 'CANONICA_ROUTES.INSTALL_CENTER', 'Canonica widget route must link to install center');
+  assert((canonicaNavigations.match(/CANONICA_ROUTES\.INSTALL_CENTER/g) || []).length === 1, 'Canonica sidebar must not duplicate the Install Center route');
+  assertNotIncludes(canonicaNavigations, 'widget-install-center', 'Canonica widget sidebar must not duplicate Install Center');
+}
+
 function main() {
   verifyEnvironmentTargets();
   if (process.argv.includes('--env-targets-only')) {
@@ -234,6 +334,7 @@ function main() {
   }
   verifyMenuListDiscovery();
   verifyCanonicaDiscovery();
+  verifyCanonicaInstallContract();
   console.log('Agent-readiness discovery surfaces verified');
 }
 

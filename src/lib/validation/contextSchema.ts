@@ -32,6 +32,27 @@ const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\
 const sanitizeContextString = (val: string) =>
     val.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, MAX_STRING_LENGTH);
 
+const sanitizeContextTitle = (val: string) =>
+    val.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, 120);
+
+const normalizeContextPath = (val: string) => {
+    let route = val.trim();
+    if (!route) return '';
+    try {
+        if (/^https?:\/\//i.test(route)) {
+            route = new URL(route).pathname || '/';
+        }
+    } catch {
+        return '';
+    }
+    route = route.split(/[?#]/)[0]?.trim() || '';
+    if (!route) return '';
+    if (!route.startsWith('/')) route = `/${route}`;
+    route = route.replace(/\/{2,}/g, '/');
+    if (route.length > 1 && route.endsWith('/')) route = route.slice(0, -1);
+    return route.slice(0, 180);
+};
+
 const ContextStringSchema = z.string()
     .max(MAX_STRING_LENGTH)
     .refine((value) => !SENSITIVE_CONTEXT_PATTERN.test(value), {
@@ -39,12 +60,31 @@ const ContextStringSchema = z.string()
     })
     .transform(sanitizeContextString);
 
+const ContextTitleSchema = z.string()
+    .max(120)
+    .refine((value) => !SENSITIVE_CONTEXT_PATTERN.test(value), {
+        message: 'Context title must not contain personal contact details',
+    })
+    .transform(sanitizeContextTitle);
+
+const ContextPathSchema = z.string()
+    .max(256)
+    .refine((value) => !SENSITIVE_CONTEXT_PATTERN.test(value), {
+        message: 'Context path must not contain personal contact details',
+    })
+    .transform(normalizeContextPath)
+    .refine(Boolean, {
+        message: 'Context path must be a route path',
+    });
+
 /**
  * Zod schema for Canonica context payload.
  * All fields optional — system degrades gracefully without context.
  */
 export const CanonicaContextSchema = z.object({
     contextVersion: z.number().int().min(1).max(10).optional().default(1),
+    path: ContextPathSchema.optional(),
+    title: ContextTitleSchema.optional(),
     contextKey: ContextStringSchema.optional(),
     feature: ContextStringSchema.optional(),
     page: ContextStringSchema.optional(),
@@ -57,9 +97,19 @@ export const CanonicaContextSchema = z.object({
             })
             .transform(s => s.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, ''))
     ).max(MAX_ENTITY_HINTS).optional(),
+    role: ContextStringSchema.optional(),
+    locale: ContextStringSchema.optional(),
+    // Legacy compatibility fields. New installs should prefer role/path/title.
     userRole: ContextStringSchema.optional(),
     plan: ContextStringSchema.optional(),
-}).strip().superRefine((value, ctx) => {
+}).strip().transform((value) => {
+    const normalized = { ...value };
+    if (normalized.role && !normalized.userRole) normalized.userRole = normalized.role;
+    if (normalized.path && !normalized.page) {
+        normalized.page = sanitizeContextString(normalized.path.replace(/^\/+/, '').replace(/\//g, '_') || 'home');
+    }
+    return normalized;
+}).superRefine((value, ctx) => {
     const payloadBytes = new TextEncoder().encode(JSON.stringify(value)).length;
     if (payloadBytes > MAX_CONTEXT_PAYLOAD_BYTES) {
         ctx.addIssue({

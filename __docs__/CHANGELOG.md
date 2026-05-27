@@ -6,6 +6,22 @@
 
 ---
 
+## May 27, 2026 — Canonica Agent Install Layer
+
+### New
+
+- **Canonica now has a generated AI coding agent install packet** — Public install pages, Markdown mirrors, AGENTS.md, CLAUDE.md, Cursor RULE.md, Cursor .mdc, Windsurf, skill files, and agent-kit ZIP all render from one v1 widget contract source.
+- **Canonica dashboard now has a dedicated Install Center** — `/canonica/install-center` keeps the AI install packet, current widget setup, agent files, framework snippets, setup snapshot, verification checklist, and machine-readable docs in one owner route.
+- **Widget installs now have a frozen v1 URL** — New installs use `https://canonica.app/widget/v1/canonica-widget.js`; the existing `/widget/canonica-widget.js` path remains compatible.
+- **Widget v1 script uses bounded caching** — `/widget/v1/canonica-widget.js` stays stable without long immutable caching, so compatible runtime fixes can reach clients without changing their install snippet.
+- **Widget settings now hand off to Install Center** — The Widget Install & Embed tab points owners to Install Center for agent handoff and verification, while the widget settings tabs keep appearance, keys, origins, hosted help, and low-level snippets.
+
+### Cost
+
+- **Static public install docs add no Firebase cost** — The public pages and public agent files are generated/static. Opening `/canonica/install-center` reads the existing widget-config summary and optionally the activation summary; the protected ZIP endpoint reads the Canonica store document once only when the owner downloads the kit.
+
+---
+
 ## May 27, 2026 — Multi-Outlet Policy Hardening
 
 ### Changed

@@ -1,0 +1,18 @@
+export const CANONICA_WIDGET_CONTRACT_VERSION = 'canonica-widget-v1';
+export const CANONICA_INSTALL_CONTRACT_VERSION = CANONICA_WIDGET_CONTRACT_VERSION;
+export const CANONICA_CONTEXT_CONTRACT_VERSION = 'canonica-context-v1';
+export const CANONICA_VERIFICATION_CONTRACT_VERSION = 'canonica-verification-v1';
+export const CANONICA_AGENT_PACKET_CONTRACT_VERSION = 'canonica-agent-packet-v1';
+export const CANONICA_MARKDOWN_DOCS_CONTRACT_VERSION = 'canonica-markdown-docs-v1';
+export const CANONICA_WIDGET_SCRIPT_URL = 'https://canonica.app/widget/v1/canonica-widget.js';
+export const CANONICA_WIDGET_LATEST_SCRIPT_URL = 'https://canonica.app/widget/latest/canonica-widget.js';
+export const CANONICA_WIDGET_LEGACY_SCRIPT_URL = 'https://canonica.app/widget/canonica-widget.js';
+export const CANONICA_WIDGET_COMPATIBILITY_URLS = [
+    CANONICA_WIDGET_LEGACY_SCRIPT_URL,
+    CANONICA_WIDGET_LATEST_SCRIPT_URL,
+] as const;
+export const CANONICA_WIDGET_GLOBAL_NAME = 'window.CanonicaWidget';
+export const CANONICA_CONTEXT_METHODS = ['setContext', 'page'] as const;
+export const CANONICA_SITE_URL = 'https://canonica.app';
+export const CANONICA_WIDGET_SCRIPT_VERSION = '1.0.0';
+export const CANONICA_WIDGET_SCRIPT_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';

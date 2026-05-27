@@ -50,9 +50,9 @@ Canonica is organized around workflow groups that match how a product owner laun
 
 | Group | What it owns | Implemented routes |
 | --- | --- | --- |
-| Launch Setup | Subscription/workspace activation, product details, starter knowledge import, product surface mapping, and readiness review. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
+| Launch Setup | Subscription/workspace activation, product details, starter knowledge import, product surface mapping, install handoff, and readiness review. | `/canonica/activation`, `/canonica/install-center`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
 | Support Control | Owner/staff support operations. Customer-facing help, docs, release-note viewing, and ticket submission remain runtime/customer surfaces, not primary owner dashboard navigation. | `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/support-board`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
-| Widget & Hosted Help | Widget UI, install/embed snippets, hosted help domain setup, allowed origins, blocked routes, and key security. | `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
+| Widget & Hosted Help | Widget UI, low-level install/embed snippets, hosted help domain setup, allowed origins, blocked routes, and key security. Agent handoff and verification live in Install Center. | `/canonica/install-center`, `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
 | Team & Access | Workspace members and role permissions. | `/canonica/team/members`, `/canonica/team/roles` |
 | Billing | Subscription and transaction history. | `/canonica/billing`, `/canonica/transactions` |
 | Knowledge Governance | Product ontology, canonical answers, drift review, signal-to-knowledge queue, coverage, trust/readiness metrics. | `/canonica/governance/answers`, `/canonica/governance/entities`, `/canonica/governance/drift`, `/canonica/governance/signal-queue`, `/canonica/governance/trust` |
@@ -74,6 +74,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Content Control workbench | Implemented | `src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`, `/canonica/activation`, `/canonica/dashboard` | Activation summary read model | Gives product owners one low-cost path into product profile, import, articles, surfaces, changelog, signal queue, widget, and tickets. |
 | Surface Readiness matrix | Implemented | `src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`, `src/lib/canonica/activationSummary.ts`, `/canonica/dashboard` | `platformSummary/contextContent_{tId}_{sId}` via activation summary | Shows which product areas are ready, missing mapping, missing content, or carrying open ticket signals using 0 extra dashboard reads. |
 | Test-as-Customer checklist | Implemented | `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`, `/canonica/activation`, `/canonica/dashboard` | Activation summary read model | Gives product owners a launch-proof checklist for help center, widget, page context, ticket fallback, release notes, and Signal Queue. |
+| Install Center | Implemented | `src/app/(canonica)/canonica/install-center/page.tsx`, `src/components/templates/canonica/install/CanonicaInstallCenter.tsx`, `src/lib/canonica/installContract/contract.ts`, `/api/canonica/widget-config`, `/api/canonica/widget-agent-kit` | Widget config/runtime status + optional activation summary | Keeps the AI install packet, current setup snapshot, framework snippets, public docs links, and verification checklist in one dashboard route. |
 | Context-aware support mounting | Implemented | `src/components/templates/main-app/helpCenter/HeroSearchBar.tsx`, `src/lib/canonica/productSurfaceContent.ts`, `src/app/api/helpCenter/search-kb/route.ts`, widget APIs | Safe context payload + product surface summary | Passes page/feature/workflow context into Canonica without trusting raw client data as tenant scope. |
 | Widget management | Implemented | `src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx`, `src/app/api/canonica/widget-config/route.ts`, `src/app/api/canonica/widget-key/route.ts`, `src/app/api/canonica/widget-activity/route.ts`, `src/lib/canonica/widgetConfig.ts` | `stores/{sId}.canonicaWidgetConfig`, key hash fields, runtime status, `aiSearchHistory` widget rows | Configure appearance, install snippet, allowed origins, blocked routes, history, mobile visibility, runtime status, and recent widget questions. |
 | Embedded public widget runtime | Implemented | `public/widget/canonica-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts` | Store widget config, API key hash, AI search history with `mountContext`, KB/canonical retrieval | Gives client products page-aware support through one embeddable script. |
@@ -122,7 +123,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 ### Canonica Dashboard
 
 - `/canonica` redirects by scope: management users to activation/dashboard, support-only users to client home/help.
-- `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard`.
+- `/canonica/activation`, `/canonica/install-center`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard`.
 - Direct customer/compatibility routes retained outside owner navigation: `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`.
 - Owner Support Control routes: `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/support-board`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest`.
 - `/canonica/widget`, `/canonica/widget/[tab]` for UI, install, hosted help, and access/security subroutes.
@@ -371,7 +372,7 @@ These should not be enabled merely because code exists. They add integration sur
 Launch-hardening changes enabled in the 2026-05-22 pass:
 
 - Ticket/email notification verification is enabled and visible in Activation.
-- Widget install/runtime verification remains in Activation and `/canonica/widget/install`; branding controls now include header title and powered-by visibility.
+- Widget install/runtime verification remains in Activation and is centralized in `/canonica/install-center`; `/canonica/widget/install` keeps low-level snippets/settings handoff and links to Install Center. Branding controls include header title and powered-by visibility.
 - Signal-to-Knowledge Queue manual draft generation/regeneration remains reachable from governance.
 - Ticket browser-log capture stays on ticket creation and is visible in ticket details.
 - Ticket-to-knowledge extraction and product friction intelligence are enabled with nightly caps.

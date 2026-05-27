@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CANONICA_WIDGET_SCRIPT_URL } from './installContract/constants';
 
 export const CANONICA_WIDGET_CONFIG_SCHEMA_VERSION = 'canonica.widget.v1';
 export const CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS = 60;
@@ -143,8 +144,8 @@ export function buildCanonicaWidgetEmbedCode(params: {
 }): string {
     const config = normalizeWidgetConfig(params.config);
     const attrs: string[] = [
-        `  src="${escapeHtmlAttribute(params.scriptSrc || 'https://canonica.app/widget/canonica-widget.js')}"`,
-        `  data-api-key="${escapeHtmlAttribute(params.apiKey || 'YOUR_WIDGET_KEY')}"`,
+        `  src="${escapeHtmlAttribute(params.scriptSrc || CANONICA_WIDGET_SCRIPT_URL)}"`,
+        `  data-canonica-key="${escapeHtmlAttribute(params.apiKey || 'YOUR_WIDGET_KEY')}"`,
     ];
 
     if (config.position !== DEFAULT_CANONICA_WIDGET_CONFIG.position) attrs.push(`  data-position="${escapeHtmlAttribute(config.position)}"`);
@@ -171,11 +172,12 @@ export function buildCanonicaWidgetRouteSnippet(): string {
     return [
         'window.CanonicaWidget?.page({',
         "  contextVersion: 1,",
-        "  contextKey: 'billing_invoices',",
+        "  path: window.location.pathname,",
+        "  title: document.title,",
         "  feature: 'billing',",
-        "  page: 'invoices',",
         "  workflow: 'manage_subscription',",
-        "  entityHints: ['invoice', 'subscription'],",
+        "  role: 'owner',",
+        "  locale: navigator.language || 'en',",
         '});',
     ].join('\n');
 }

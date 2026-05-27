@@ -22,7 +22,7 @@ function getBasePath(): string {
 const ONE_PAGER = [
     ['Allowed origins', 'Restrict widget runtime config to the product and staging domains where Canonica should run.'],
     ['Blocked routes', 'Hide the widget from auth, payment, admin, internal help, or other sensitive paths.'],
-    ['Safe page context', 'Send page, route, feature, workflow, role, plan, state, and entity hints. Do not send secrets or raw customer records.'],
+    ['Safe page context', 'Send path, title, feature, workflow, role, and locale. Legacy fields are public-label compatibility only. Do not send secrets or raw customer records.'],
     ['Screenshot attachments', 'Screenshots are user-initiated upload or paste only. The widget does not automatically capture the host app screen or scrape the DOM.'],
     ['Widget key handling', 'Canonica validates widget keys by hash and can copy recoverable widget keys only from encrypted server-side key material.'],
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
@@ -66,7 +66,7 @@ export default function CanonicaSecurityOnePagerPage() {
                         <article className="rounded-[1.5rem] border border-teal-300/20 bg-teal-500/[0.07] p-6">
                             <h2 className="text-2xl font-bold text-white">What to send through context</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
-                                Send stable labels that describe where the user is stuck: <strong>billing_invoices</strong>, <strong>onboarding_import</strong>, <strong>team_settings</strong>, plan name, role name, workflow name, or entity hints.
+                                Send stable labels that describe where the user is stuck: path, page title, feature, workflow, public role label, and locale. Legacy plan and entity hints must stay public labels only.
                             </p>
                         </article>
                         <article className="rounded-[1.5rem] border border-amber-300/20 bg-amber-300/[0.04] p-6">

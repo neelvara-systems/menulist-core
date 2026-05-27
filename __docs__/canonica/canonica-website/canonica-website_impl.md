@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.37
+> **Version:** 1.2.38
 > **Last Updated:** 2026-05-27
 > **Audience:** Developers
 
@@ -65,7 +65,17 @@ src/app/sites/canonica/
 ├── support-widget-for-solo-founders/page.tsx # SEO page for solo-founder support intent
 ├── demo/page.tsx                  # Static interactive demo page
 ├── demo/CanonicaPublicDemo.tsx    # Account-free page-aware support demo
-├── install/page.tsx               # Widget install and page context page
+├── install/page.tsx               # Agent install overview generated from Canonica Widget Contract v1
+├── install/InstallContractPage.tsx # Shared install/contract/framework page renderer
+├── install/markdownRoute.ts       # Shared Markdown response helper for install .md mirrors
+├── install/ai-agent/page.tsx      # Copyable AI agent install packet page
+├── install/manual/page.tsx        # Manual v1 widget install page
+├── install/frameworks/*/page.tsx  # Framework-specific install pages
+├── install/verify/page.tsx        # Browser and dashboard verification guide
+├── install/security/page.tsx      # Safe context and forbidden field rules
+├── install/contracts/page.tsx     # 36-month v1 widget contract policy
+├── install/**/*.md/route.ts       # Machine-readable Markdown install docs
+├── agents/canonica/*              # Public generated AGENTS/CLAUDE/Cursor/Windsurf/skill/ZIP files
 ├── integrations/page.tsx          # Slack/email workflow notifications page
 ├── pricing/page.tsx               # Pricing page
 ├── resources/page.tsx             # Public learning hub
@@ -161,6 +171,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Homepage adds best-fit/not-fit qualification, 10-minute setup sequence, security-at-a-glance controls, pricing preview, and top buyer objections.
 - `/pricing` now defines support credits in plain language and gives plan-fit guidance for Starter, Growth, and Studio.
 - `/install` now includes developer handoff examples and a runtime verification mock so technical founders can see the implementation path.
+- `/install` is now the Canonica Agent Install Layer: the public site exposes copyable AI-agent instructions, framework pages, Markdown mirrors, public agent files, and the frozen v1 widget contract from one generator.
 - `/use-cases` now includes concrete sample questions, generic answers, and Canonica answers for each scenario.
 - Three static SEO landing pages were added: `/page-aware-support-widget`, `/hosted-help-center-for-saas`, and `/support-widget-for-solo-founders`.
 - Optional conversion tracking uses GA/measurement events only when a public measurement ID exists; it does not call Firestore or Canonica APIs.
@@ -360,6 +371,7 @@ Conversion analytics is client-side only:
 7. Avoid public website route names reserved by Canonica dashboard rewrites, including `/docs`, `/help`, `/changelog`, and `/release-notes`
 8. For SEO landing pages, reuse `SeoLandingPage.tsx` unless the page needs materially different layout or behavior
 9. Prefer optional client-side analytics markers (`data-canonica-event`) over Firestore-backed tracking on public website pages
+10. For install content, update `src/lib/canonica/installContract/` first so public pages, Markdown mirrors, llms context, dashboard packets, and downloadable agent files do not drift.
 
 ---
 
@@ -416,3 +428,4 @@ Conversion analytics is client-side only:
 | 2026-05-27 | 1.2.35 | Removed client-specific public relationship framing from Canonica website pages, route docs, and agent context so Canonica presents as an independent support knowledge control plane |
 | 2026-05-27 | 1.2.36 | Added a Canonica-only contact inquiry API and client form, plus a mobile hamburger Other group card with safe-area bottom padding |
 | 2026-05-27 | 1.2.37 | Added Support Board as a standalone public product-feature page and synchronized Support Control, FAQ, Resources, Updates, route metadata, LLM context, and docs with manual-first private workboard boundaries |
+| 2026-05-27 | 1.2.38 | Added the Canonica Agent Install Layer: generated install pages, Markdown mirrors, public agent files, dashboard AI packet actions, and the stable `/widget/v1/canonica-widget.js` contract URL |

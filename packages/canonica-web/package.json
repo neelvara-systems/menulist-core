@@ -1,7 +1,7 @@
 {
   "name": "@canonica/web",
   "version": "0.1.0",
-  "description": "Typed browser helper for the Canonica page-aware support widget.",
+  "description": "Optional typed browser helper for the Canonica page-aware support widget.",
   "license": "UNLICENSED",
   "sideEffects": false,
   "main": "./dist/index.js",

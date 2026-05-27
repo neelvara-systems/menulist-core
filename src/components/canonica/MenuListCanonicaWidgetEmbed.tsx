@@ -48,16 +48,16 @@ function isBlockedRoute(pathname: string): boolean {
 
 function resolveWidgetScriptSrc(): string {
     if (CONFIGURED_SCRIPT_SRC) return CONFIGURED_SCRIPT_SRC;
-    if (typeof window === 'undefined') return 'https://canonica.app/widget/canonica-widget.js';
+    if (typeof window === 'undefined') return 'https://canonica.app/widget/v1/canonica-widget.js';
 
     const { hostname, origin } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${origin}/widget/canonica-widget.js`;
+        return `${origin}/widget/v1/canonica-widget.js`;
     }
     if (hostname === 'menulist.online' || hostname.endsWith('.vercel.app')) {
-        return 'https://ecomsai.com/widget/canonica-widget.js';
+        return 'https://ecomsai.com/widget/v1/canonica-widget.js';
     }
-    return 'https://canonica.app/widget/canonica-widget.js';
+    return 'https://canonica.app/widget/v1/canonica-widget.js';
 }
 
 function buildPageContext(pathname: string): CanonicaPageContext {
@@ -101,7 +101,7 @@ export default function MenuListCanonicaWidgetEmbed() {
             id="menulist-canonica-widget"
             src={scriptSrc}
             strategy="afterInteractive"
-            data-api-key={MENULIST_CANONICA_WIDGET_KEY}
+            data-canonica-key={MENULIST_CANONICA_WIDGET_KEY}
             data-context-key={pageContext.contextKey}
             data-feature={pageContext.feature}
             data-page={pageContext.page}

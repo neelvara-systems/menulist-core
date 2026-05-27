@@ -38,8 +38,7 @@ const QUICKSTARTS = [
             '      apiKey: widgetKey,',
             '      scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
             '    });',
-            '    const contextKey = pathname.replace(/^\\//, "").replace(/\\//g, "_") || "home";',
-            '    canonica.init({ context: { contextKey, feature: pathname.split("/")[1] || "app", page: contextKey } });',
+            '    canonica.init({ context: { path: pathname, title: document.title, feature: pathname.split("/")[1] || "app", role: "member", locale: navigator.language || "en" } });',
             '  }, [pathname]);',
             '  return null;',
             '}',
@@ -61,7 +60,7 @@ const QUICKSTARTS = [
             '      scriptSrc: import.meta.env.VITE_CANONICA_WIDGET_SCRIPT_SRC,',
             '    });',
             '    canonica.init();',
-            '    canonica.page({ contextKey: "billing_invoices", feature: "billing", page: "invoices" });',
+            '    canonica.page({ path: window.location.pathname, title: document.title, feature: "billing", workflow: "manage_subscription", role: "member", locale: navigator.language || "en" });',
             '  }, []);',
             '  return null;',
             '}',
@@ -84,7 +83,7 @@ const QUICKSTARTS = [
             '    scriptSrc: config.public.canonicaWidgetScriptSrc,',
             '  });',
             '  await canonica.init();',
-            '  canonica.page({ contextKey: "onboarding_import", feature: "onboarding", page: "import" });',
+            '  canonica.page({ path: window.location.pathname, title: document.title, feature: "onboarding", workflow: "import_knowledge", role: "member", locale: navigator.language || "en" });',
             '});',
             '</script>',
         ].join('\n'),
@@ -93,13 +92,16 @@ const QUICKSTARTS = [
         title: 'Vanilla script',
         description: 'Paste the script and call the runtime directly when route context changes.',
         code: [
-            '<script src="https://canonica.app/widget/canonica-widget.js" data-api-key="cn_your_widget_key" async></script>',
+            '<script src="https://canonica.app/widget/v1/canonica-widget.js" data-canonica-key="cn_your_widget_key" async></script>',
             '<script>',
             '  window.addEventListener("load", function () {',
             '    window.CanonicaWidget?.page({',
-            '      contextKey: "billing_invoices",',
+            '      path: window.location.pathname,',
+            '      title: document.title,',
             '      feature: "billing",',
-            '      page: "invoices"',
+            '      workflow: "manage_subscription",',
+            '      role: "member",',
+            '      locale: navigator.language || "en"',
             '    });',
             '  });',
             '</script>',
@@ -108,9 +110,9 @@ const QUICKSTARTS = [
 ];
 
 const ENV_EXAMPLES = [
-    ['Next.js / Vercel', 'NEXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
-    ['Vite / React SPA', 'VITE_CANONICA_WIDGET_KEY=cn_your_widget_key\nVITE_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
-    ['Nuxt', 'NUXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/canonica-widget.js'],
+    ['Next.js / Vercel', 'NEXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/v1/canonica-widget.js'],
+    ['Vite / React SPA', 'VITE_CANONICA_WIDGET_KEY=cn_your_widget_key\nVITE_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/v1/canonica-widget.js'],
+    ['Nuxt', 'NUXT_PUBLIC_CANONICA_WIDGET_KEY=cn_your_widget_key\nNUXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC=https://canonica.app/widget/v1/canonica-widget.js'],
 ];
 
 const SAFE_CONTEXT = [
@@ -135,7 +137,7 @@ export default function CanonicaQuickstartsPage() {
                         Add page-aware support without building a support stack.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use one script or the typed web helper, then send safe page context from the app screens where users get stuck.
+                        Use one script or the optional typed helper, then send safe page context from the app screens where users get stuck.
                     </p>
                 </section>
 
@@ -149,7 +151,7 @@ export default function CanonicaQuickstartsPage() {
                         ))}
                     </div>
                     <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Private beta workspaces can use the exact dashboard snippet immediately. The typed helper source is maintained for package release and can be handed to developers during setup.
+                        Private beta workspaces can use the exact dashboard snippet immediately. The optional typed helper source is maintained for package release and can be handed to developers during setup.
                     </p>
                 </section>
 

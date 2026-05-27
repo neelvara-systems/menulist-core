@@ -73,10 +73,40 @@ interface WidgetClientProps {
     apiKey: string;
 }
 
+const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
+
 const sanitizeContextString = (value: unknown, maxLength = 100): string | null => {
     if (typeof value !== 'string') return null;
+    if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
     const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, maxLength);
     return normalized || null;
+};
+
+const sanitizeContextTitle = (value: unknown, maxLength = 120): string | null => {
+    if (typeof value !== 'string') return null;
+    if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
+    const normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength);
+    return normalized || null;
+};
+
+const normalizeContextPath = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
+    let route = value.trim();
+    if (!route) return null;
+    try {
+        if (/^https?:\/\//i.test(route)) {
+            route = new URL(route).pathname || '/';
+        }
+    } catch {
+        return null;
+    }
+    route = route.split(/[?#]/)[0]?.trim() || '';
+    if (!route) return null;
+    if (!route.startsWith('/')) route = `/${route}`;
+    route = route.replace(/\/{2,}/g, '/');
+    if (route.length > 1 && route.endsWith('/')) route = route.slice(0, -1);
+    return route.slice(0, 180);
 };
 
 const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
@@ -87,6 +117,20 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
         const current = sanitizeContextString(input[key]);
         if (current) output[key] = current;
     });
+    const path = normalizeContextPath(input.path);
+    if (path) {
+        output.path = path;
+        if (!output.page) output.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home');
+    }
+    const title = sanitizeContextTitle(input.title);
+    if (title) output.title = title;
+    const role = sanitizeContextString(input.role, 80);
+    if (role) {
+        output.role = role;
+        if (!output.userRole) output.userRole = role;
+    }
+    const locale = sanitizeContextString(input.locale, 24);
+    if (locale) output.locale = locale;
     if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
         output.contextVersion = Math.floor(input.contextVersion);
     }
@@ -96,7 +140,7 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].some((key) => Boolean(output[key]))
+    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'path', 'title', 'role', 'locale'].some((key) => Boolean(output[key]))
         || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
     if (!hasMeaningfulContext) return null;
 
@@ -150,6 +194,8 @@ const formatContextLabel = (context: Record<string, any> | null): string | null 
         ? context.contextKey
         : typeof context?.page === 'string'
         ? context.page
+        : typeof context?.title === 'string'
+        ? context.title
         : typeof context?.feature === 'string'
             ? context.feature
             : '';

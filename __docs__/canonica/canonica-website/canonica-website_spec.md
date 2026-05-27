@@ -1,6 +1,6 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.21
+> **Version:** 1.2.22
 > **Last Updated:** 2026-05-27
 > **Audience:** CEO / PM / Marketing
 
@@ -136,11 +136,13 @@ Rules:
 - No external API calls
 - Each page includes an animated problem-to-reviewed-answer hub, setup sequence, concrete user question, generic answer, Canonica answer, owner-review explanation, and CTAs to demo/get-started
 
-### 4. Widget Install (`/install`)
-**Goal:** Explain how Canonica connects to a client product through the implemented widget and hosted help center without overclaiming disabled API or adapter surfaces.
+### 4. Agent Install Layer (`/install`)
+**Goal:** Give product owners a copyable Canonica install packet for AI coding agents while preserving the implemented widget contract, hosted help scope, and rollout-gated API boundaries.
 
 **Sections:**
-- Widget key and script model
+- Primary CTA: copy AI install packet
+- Secondary actions: download agent kit, copy AGENTS.md, copy CLAUDE.md, copy Cursor rule, copy Windsurf rule, verify installation
+- Widget key and v1 script model
 - Allowed origins
 - Blocked routes
 - Hosted help domains for docs, articles, FAQ, changelog, robots, and sitemap
@@ -148,11 +150,40 @@ Rules:
 - Safe page context
 - User-initiated screenshot upload/paste boundary
 - Runtime verification
-- Framework handoff examples for plain HTML, Next.js/React, and SPA routers
+- Framework handoff examples for Next.js, React, Vue, Plain HTML, Shopify-style, and Webflow
 - Runtime verification mock: key, origin, blocked route, context marker, manual image input boundary, hosted help
 - Animated install flow and owner-control hub diagram
 - Owner dashboard controls
 - Configured proactive help should be referenced only as owner-controlled and capability-gated.
+
+Routes:
+- `/install`
+- `/install/ai-agent`
+- `/install/manual`
+- `/install/frameworks/nextjs`
+- `/install/frameworks/react`
+- `/install/frameworks/vue`
+- `/install/frameworks/plain-html`
+- `/install/frameworks/shopify`
+- `/install/frameworks/webflow`
+- `/install/verify`
+- `/install/security`
+- `/install/contracts`
+- `/install/changelog`
+- `/install.md` and install `.md` mirrors
+- `/agents/canonica/AGENTS.md`
+- `/agents/canonica/CLAUDE.md`
+- `/agents/canonica/cursor.mdc`
+- `/agents/canonica/windsurf.md`
+- `/agents/canonica/skill/SKILL.md`
+- `/agents/canonica/canonica-agent-kit.zip`
+
+Stability:
+- New installs must use `https://canonica.app/widget/v1/canonica-widget.js`.
+- The v1 browser API is `window.CanonicaWidget.setContext(context)` and `window.CanonicaWidget.page(context)`.
+- Safe context fields are `path`, `title`, `feature`, `workflow`, `role`, and `locale`; compatibility aliases can remain supported.
+- Browser context must never carry tenant IDs, store IDs, user IDs, emails, tokens, secrets, billing data, or private account metadata.
+- The Public API remains secondary/account-gated unless enabled for the account.
 
 ### 4A. Integrations (`/integrations`)
 **Goal:** Explain the production-ready workflow notification path without turning Canonica into a broad integration marketplace.
@@ -312,6 +343,7 @@ Rules:
 - Define Canonica as the Support Knowledge Control Plane for SaaS.
 - State that Canonica is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, or autonomous publisher.
 - Route agents to public pages, demo, install, pricing, security, FAQ, resources, updates, sitemap, and robots.
+- Route coding agents that need implementation details to `/install/ai-agent.md`, `/install/contracts.md`, and `/agents/canonica/canonica-agent-kit.zip`.
 - Do not imply public agents can mutate customer workspaces, canonical answers, tickets, widget settings, billing, or private knowledge.
 - Every public route in `CANONICA_PUBLIC_PAGES` must emit page-level WebPage and BreadcrumbList JSON-LD, either directly or through the shared page wrapper.
 - Homepage structured data must reference the active public route registry so the WebSite graph, sitemap, and agent context do not drift.
@@ -406,7 +438,7 @@ The website should stay dark, canonical, and infrastructure-grade. Verdigris/tea
 | `/hosted-help-center-for-saas` | Hosted Help Center for SaaS \| Canonica | Hosted SaaS help center for AI-built SaaS with docs, owner FAQ, changelog content, and the same knowledge powering the app widget. |
 | `/support-widget-for-solo-founders` | Support Widget for Solo Founders \| Canonica | A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, owner Q&A, ticket fallback, and approved answers. |
 | `/demo` | Demo \| Canonica | Try a static page-aware support demo with approved answers, fallback, and support gap states. |
-| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, safe page context, and explicit screenshot attachments. |
+| `/install` | Install Canonica with your AI coding agent \| Canonica | Copy the Canonica agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration. |
 | `/pricing` | Pricing \| Canonica | Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for AI-built SaaS teams. |
 | `/resources` | Resources \| Canonica | Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, team access, Support Board, install, screenshot boundaries, pricing, safety, and setup. |
 | `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, team access, Support Board, widget management, and knowledge governance. |
@@ -476,3 +508,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-27 | 1.2.19 | Removed client-specific public relationship framing from Canonica website pages, route docs, and agent context so Canonica presents as an independent product |
 | 2026-05-27 | 1.2.20 | Added Canonica-owned contact form requirements and mobile hamburger grouping/safe-area requirements |
 | 2026-05-27 | 1.2.21 | Added Support Board public-site requirements: dedicated product-feature page, Support Control/FAQ/Resources/Updates copy, route metadata, and LLM context with manual-first private workboard boundaries |
+| 2026-05-27 | 1.2.22 | Added Canonica Agent Install Layer requirements: generated install pages, Markdown mirrors, public agent files, dashboard AI packet actions, and the stable v1 widget contract URL |

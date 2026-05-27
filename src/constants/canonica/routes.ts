@@ -8,6 +8,7 @@ export const CANONICA_ROUTES = {
     SUPPORT: `${CANONICA_BASE_PATH}/support`,
     RELEASE_NOTES: `${CANONICA_BASE_PATH}/release-notes`,
     ACTIVATION: `${CANONICA_BASE_PATH}/activation`,
+    INSTALL_CENTER: `${CANONICA_BASE_PATH}/install-center`,
     DASHBOARD: `${CANONICA_BASE_PATH}/dashboard`,
     KNOWLEDGE_BASE: `${CANONICA_BASE_PATH}/knowledge-base`,
     KB_GENERATION: `${CANONICA_BASE_PATH}/kb-generation`,

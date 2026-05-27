@@ -1,4 +1,5 @@
 import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
+import { CANONICA_INSTALL_DOCS } from '@lib/canonica/installContract/contract';
 
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
@@ -133,15 +134,24 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     },
     {
         path: '/install',
-        title: 'Widget Install | Canonica',
-        description: 'Install Canonica support with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, safe page context, and explicit screenshot attachments.',
+        title: 'Install Canonica with your AI coding agent | Canonica',
+        description: 'Copy the Canonica agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
+    ...CANONICA_INSTALL_DOCS
+        .filter((doc) => doc.key !== 'overview')
+        .map((doc) => ({
+            path: doc.path,
+            title: `${doc.navTitle} | Canonica Install`,
+            description: doc.description,
+            priority: doc.key === 'ai-agent' ? 0.8 : 0.64,
+            changeFrequency: 'monthly' as const,
+        })),
     {
         path: '/quickstarts',
         title: 'Developer Quickstarts | Canonica',
-        description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, typed SDK usage, safe context validation, and manual screenshot input.',
+        description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, optional typed helper usage, safe context validation, and manual screenshot input.',
         priority: 0.78,
         changeFrequency: 'monthly',
     },

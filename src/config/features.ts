@@ -1948,6 +1948,19 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_WIDGET: true,
 
     /**
+     * Canonica Agent Install Layer
+     *
+     * true: Public install contract pages, Markdown mirrors, downloadable
+     *       agent files, and dashboard-generated AI install packets are active.
+     * false: Existing widget runtime remains active, but agent install surfaces
+     *        can be hidden during rollout.
+     *
+     * This is an API & Integration layer feature. It does not enable Public API
+     * v1 access and does not change widget tenant authority.
+     */
+    ENABLE_CANONICA_AGENT_INSTALL: true,
+
+    /**
      * Canonica Hosted Help Center
      *
      * true: Customer-owned help/docs domains such as help.example.com render

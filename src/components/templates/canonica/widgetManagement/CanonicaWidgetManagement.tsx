@@ -55,6 +55,9 @@ import {
     normalizeWidgetConfig,
 } from '@lib/canonica/widgetConfig';
 import {
+    CANONICA_WIDGET_SCRIPT_URL,
+} from '@lib/canonica/installContract/constants';
+import {
     CanonicaHostedHelpConfig,
     DEFAULT_CANONICA_HOSTED_HELP_CONFIG,
     normalizeHostedHelpConfig,
@@ -271,14 +274,14 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
     const [checkingHostedDomains, setCheckingHostedDomains] = useState(false);
     const [snippetType, setSnippetType] = useState<SnippetType>('html');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
-    const [scriptSrc, setScriptSrc] = useState('https://canonica.app/widget/canonica-widget.js');
+    const [scriptSrc, setScriptSrc] = useState(CANONICA_WIDGET_SCRIPT_URL);
     const [dirty, setDirty] = useState(false);
     const [hostedHelpDirty, setHostedHelpDirty] = useState(false);
     const [activeTab, setActiveTab] = useState<string>(requestedTab);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            setScriptSrc(`${window.location.origin}/widget/canonica-widget.js`);
+            setScriptSrc(`${window.location.origin}/widget/v1/canonica-widget.js`);
         }
     }, []);
 
@@ -622,11 +625,12 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '',
         'await canonica.init();',
         'canonica.page({',
-        "  contextKey: 'billing_invoices',",
+        "  path: window.location.pathname,",
+        "  title: document.title,",
         "  feature: 'billing',",
-        "  page: 'invoices',",
         "  workflow: 'manage_subscription',",
-        "  entityHints: ['invoice', 'subscription'],",
+        "  role: 'owner',",
+        "  locale: navigator.language || 'en',",
         '});',
     ].join('\n'), []);
     const nextSnippet = useMemo(() => [
@@ -645,12 +649,13 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '      apiKey: widgetKey,',
         '      scriptSrc: process.env.NEXT_PUBLIC_CANONICA_WIDGET_SCRIPT_SRC,',
         '    });',
-        "    const contextKey = pathname.replace(/^\\//, '').replace(/\\//g, '_') || 'home';",
         '    canonica.init({',
         '      context: {',
-        '        contextKey,',
+        '        path: pathname,',
+        '        title: document.title,',
         "        feature: pathname.split('/')[1] || 'app',",
-        '        page: contextKey,',
+        "        role: 'member',",
+        "        locale: navigator.language || 'en',",
         '      },',
         '    });',
         '  }, [pathname]);',
@@ -671,10 +676,12 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '    });',
         '    canonica.init();',
         '    canonica.page({',
-        "      contextKey: 'billing_invoices',",
+        "      path: window.location.pathname,",
+        "      title: document.title,",
         "      feature: 'billing',",
-        "      page: 'invoices',",
         "      workflow: 'manage_subscription',",
+        "      role: 'member',",
+        "      locale: navigator.language || 'en',",
         '    });',
         '  }, []);',
         '  return null;',
@@ -695,10 +702,12 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '  });',
         '  await canonica.init();',
         '  canonica.page({',
-        "    contextKey: 'billing_invoices',",
+        "    path: window.location.pathname,",
+        "    title: document.title,",
         "    feature: 'billing',",
-        "    page: 'invoices',",
         "    workflow: 'manage_subscription',",
+        "    role: 'member',",
+        "    locale: navigator.language || 'en',",
         '  });',
         '});',
         '</script>',
@@ -709,10 +718,12 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
         '<script>',
         '  window.addEventListener("load", function () {',
         '    window.CanonicaWidget?.page({',
-        "      contextKey: 'billing_invoices',",
+        "      path: window.location.pathname,",
+        "      title: document.title,",
         "      feature: 'billing',",
-        "      page: 'invoices',",
         "      workflow: 'manage_subscription',",
+        "      role: 'member',",
+        "      locale: navigator.language || 'en',",
         '    });',
         '  });',
         '</script>',
@@ -1074,6 +1085,24 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
                         children: (
                             <Row gutter={[16, 16]}>
                                 <Col xs={24}>
+                                    <Alert
+                                        type="info"
+                                        showIcon
+                                        message="Use Install Center for agent packets and verification"
+                                        description="The dedicated dashboard route keeps the AI install packet, agent files, framework guides, current setup, and runtime verification in one place."
+                                        action={(
+                                            <Button
+                                                type="primary"
+                                                icon={<LuCode size={14} />}
+                                                onClick={() => router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.INSTALL_CENTER, currentHostname))}
+                                            >
+                                                Open Install Center
+                                            </Button>
+                                        )}
+                                    />
+                                </Col>
+
+                                <Col xs={24}>
                                     <Card
                                         title={<Flex align="center" gap={8}><LuCode size={16} /> Install Code</Flex>}
                                         extra={<Button size="small" icon={<LuClipboard size={14} />} onClick={() => copyText(activeSnippet, 'Install code copied')}>Copy</Button>}
@@ -1106,7 +1135,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false, initi
                                                 description="Use client-safe env names for the public cn_* widget key and optional script source. Do not put Firebase service accounts, admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records in browser env."
                                             />
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                The script reads saved dashboard settings automatically. The typed SDK validates safe page context before calling the widget runtime.
+                                                The script reads saved dashboard settings automatically. The optional typed helper validates safe page context before calling the widget runtime.
                                             </Text>
                                         </Flex>
                                     </Card>

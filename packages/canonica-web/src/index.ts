@@ -1,19 +1,30 @@
 export type CanonicaContextKey =
   | 'contextKey'
+  | 'path'
+  | 'title'
   | 'feature'
   | 'page'
   | 'workflow'
+  | 'role'
+  | 'locale'
   | 'userRole'
   | 'plan';
 
 export type CanonicaPageContext = {
   contextVersion?: number;
   contextKey?: string;
+  path?: string;
+  title?: string;
   feature?: string;
   page?: string;
   workflow?: string;
+  role?: string;
+  locale?: string;
+  /** Legacy compatibility field. Prefer role for new installs. */
   userRole?: string;
+  /** Legacy compatibility field. Public plan label only; never billing metadata. */
   plan?: string;
+  /** Legacy compatibility field. Public slugs/tags/hints only. */
   entityHints?: string[];
 };
 
@@ -61,12 +72,13 @@ declare global {
   }
 }
 
-const DEFAULT_SCRIPT_SRC = 'https://canonica.app/widget/canonica-widget.js';
+const DEFAULT_SCRIPT_SRC = 'https://canonica.app/widget/v1/canonica-widget.js';
 const CONTEXT_STRING_KEYS: CanonicaContextKey[] = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'];
 const MAX_CONTEXT_STRING_LENGTH = 100;
 const MAX_ENTITY_HINTS = 5;
 const MAX_ENTITY_HINT_LENGTH = 64;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
+const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -74,12 +86,40 @@ function isBrowser(): boolean {
 
 function sanitizeContextString(value: unknown, maxLength: number): string | null {
   if (typeof value !== 'string') return null;
+  if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
   const normalized = value
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '')
     .slice(0, maxLength);
   return normalized || null;
+}
+
+function sanitizeContextTitle(value: unknown, maxLength = 120): string | null {
+  if (typeof value !== 'string') return null;
+  if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
+  const normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength);
+  return normalized || null;
+}
+
+function normalizeContextPath(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  if (SENSITIVE_CONTEXT_PATTERN.test(value)) return null;
+  let route = value.trim();
+  if (!route) return null;
+  try {
+    if (/^https?:\/\//i.test(route)) {
+      route = new URL(route).pathname || '/';
+    }
+  } catch {
+    return null;
+  }
+  route = route.split(/[?#]/)[0]?.trim() || '';
+  if (!route) return null;
+  if (!route.startsWith('/')) route = `/${route}`;
+  route = route.replace(/\/{2,}/g, '/');
+  if (route.length > 1 && route.endsWith('/')) route = route.slice(0, -1);
+  return route.slice(0, 180);
 }
 
 function getPayloadByteLength(value: unknown): number {
@@ -103,6 +143,21 @@ export function validateCanonicaPageContext(input: CanonicaPageContext): Canonic
     if (value) context[key] = value;
   });
 
+  const path = normalizeContextPath(input.path);
+  if (path) {
+    context.path = path;
+    if (!context.page) context.page = sanitizeContextString(path.replace(/^\/+/, '').replace(/\//g, '_') || 'home', MAX_CONTEXT_STRING_LENGTH) || undefined;
+  }
+  const title = sanitizeContextTitle(input.title);
+  if (title) context.title = title;
+  const role = sanitizeContextString(input.role, 80);
+  if (role) {
+    context.role = role;
+    if (!context.userRole) context.userRole = role;
+  }
+  const locale = sanitizeContextString(input.locale, 24);
+  if (locale) context.locale = locale;
+
   if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
     context.contextVersion = Math.floor(input.contextVersion);
   } else {
@@ -118,10 +173,11 @@ export function validateCanonicaPageContext(input: CanonicaPageContext): Canonic
   }
 
   const hasMeaningfulContext = CONTEXT_STRING_KEYS.some((key) => Boolean(context[key]))
+    || Boolean(context.path || context.title || context.role || context.locale)
     || Boolean(context.entityHints?.length);
 
   if (!hasMeaningfulContext) {
-    errors.push('Context must include at least one safe page, feature, workflow, plan, role, or entity hint.');
+    errors.push('Context must include at least one safe page, feature, workflow, public role/plan label, or entity hint.');
   }
 
   if (getPayloadByteLength(context) > MAX_CONTEXT_PAYLOAD_BYTES) {
@@ -146,8 +202,8 @@ function setAttribute(script: HTMLScriptElement, name: string, value: string | n
 
 function findExistingScript(scriptSrc: string, apiKey: string): HTMLScriptElement | null {
   if (!isBrowser()) return null;
-  const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>('script[data-canonica-sdk="true"], script[data-api-key]'));
-  return scripts.find((script) => script.src === scriptSrc || script.getAttribute('data-api-key') === apiKey) || null;
+  const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>('script[data-canonica-sdk="true"], script[data-canonica-key], script[data-api-key]'));
+  return scripts.find((script) => script.src === scriptSrc || script.getAttribute('data-canonica-key') === apiKey || script.getAttribute('data-api-key') === apiKey) || null;
 }
 
 function loadWidgetScript(options: CanonicaInitOptions): Promise<CanonicaWidgetRuntime | null> {
@@ -178,7 +234,7 @@ function loadWidgetScript(options: CanonicaInitOptions): Promise<CanonicaWidgetR
       script.async = true;
       script.src = scriptSrc;
       script.setAttribute('data-canonica-sdk', 'true');
-      setAttribute(script, 'data-api-key', options.apiKey);
+      setAttribute(script, 'data-canonica-key', options.apiKey);
       setAttribute(script, 'data-position', options.position);
       setAttribute(script, 'data-accent-color', options.accentColor);
       if (options.blockedRoutes?.length) setAttribute(script, 'data-blocked-routes', options.blockedRoutes.join(','));

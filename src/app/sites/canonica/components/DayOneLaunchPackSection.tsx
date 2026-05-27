@@ -19,9 +19,9 @@ type LaunchPackItem = {
 const PACK_ITEMS: LaunchPackItem[] = [
     {
         label: 'Developer handoff',
-        title: 'Typed helper and framework quickstarts',
+        title: 'Optional helper and framework quickstarts',
         description:
-            'Next.js, React, Vue/Nuxt, vanilla script, and a thin typed browser helper give developers a clean install path without changing Canonica authority rules.',
+            'Next.js, React, Vue/Nuxt, vanilla script, and a thin optional browser helper give developers a clean install path without changing Canonica authority rules.',
         href: '/quickstarts',
         cta: 'View quickstarts',
         featured: true,

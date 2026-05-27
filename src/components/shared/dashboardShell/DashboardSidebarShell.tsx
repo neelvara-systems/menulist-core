@@ -71,6 +71,8 @@ export default function DashboardSidebarShell({
     const [hoverId, setHoverId] = useState<string | null>(null);
     const [isHover, setIsHover] = useState(false);
     const menuItemsRef = useRef<HTMLDivElement | null>(null);
+    const pendingParentScrollRef = useRef<{ element: HTMLElement; top: number } | null>(null);
+    const suppressNextActiveParentScrollRef = useRef(false);
     const showExpandedSidebar = mobile || !isCollapsed || isHover;
     const activeParentKey = useMemo(() => (
         navItems.find((item) => item.active || item.subNavActive)?.key || null
@@ -82,6 +84,10 @@ export default function DashboardSidebarShell({
 
     useEffect(() => {
         if (!showExpandedSidebar || !activeParentKey) return;
+        if (suppressNextActiveParentScrollRef.current) {
+            suppressNextActiveParentScrollRef.current = false;
+            return;
+        }
 
         const menuItemsEl = menuItemsRef.current;
         if (!menuItemsEl) return;
@@ -113,6 +119,52 @@ export default function DashboardSidebarShell({
         });
     }, [activeParentKey, showExpandedSidebar]);
 
+    const getScrollableParent = (target: HTMLElement) => {
+        let parent = target.parentElement;
+
+        while (parent) {
+            const style = window.getComputedStyle(parent);
+            const canScroll = /(auto|scroll|overlay)/.test(style.overflowY);
+
+            if (canScroll && parent.scrollHeight > parent.clientHeight) {
+                return parent;
+            }
+
+            parent = parent.parentElement;
+        }
+
+        return null;
+    };
+
+    const rememberParentScroll = (target: HTMLElement) => {
+        const scrollParent = getScrollableParent(target);
+        pendingParentScrollRef.current = scrollParent
+            ? { element: scrollParent, top: scrollParent.scrollTop }
+            : null;
+    };
+
+    const restoreParentScroll = () => {
+        const snapshot = pendingParentScrollRef.current;
+        if (!snapshot) return;
+
+        const restore = () => {
+            snapshot.element.scrollTop = snapshot.top;
+        };
+
+        restore();
+        window.requestAnimationFrame(() => {
+            restore();
+            window.requestAnimationFrame(restore);
+        });
+        window.setTimeout(restore, 80);
+        window.setTimeout(restore, 220);
+        pendingParentScrollRef.current = null;
+        suppressNextActiveParentScrollRef.current = true;
+        window.setTimeout(() => {
+            suppressNextActiveParentScrollRef.current = false;
+        }, 500);
+    };
+
     const renderMenuButton = (
         item: DashboardSidebarShellItem,
         options: {
@@ -143,49 +195,28 @@ export default function DashboardSidebarShell({
                 className={`${styles.menuItemWrap} ${options.subItem ? styles.subMenuItemWrap : ''} ${options.showChevron ? styles.parentMenuItemWrap : ''} ${isActive ? styles.active : ''}`}
                 data-sidebar-item-key={item.key}
                 onClick={(event) => {
+                    if (options.showChevron && !pendingParentScrollRef.current) {
+                        rememberParentScroll(event.currentTarget);
+                    }
+
                     item.onClick?.();
 
                     if (options.showChevron) {
-                        const target = event.currentTarget;
-                        const getScrollParent = () => {
-                            let parent = target.parentElement;
-
-                            while (parent) {
-                                const style = window.getComputedStyle(parent);
-                                const canScroll = /(auto|scroll|overlay)/.test(style.overflowY);
-
-                                if (canScroll && parent.scrollHeight > parent.clientHeight) {
-                                    return parent;
-                                }
-
-                                parent = parent.parentElement;
-                            }
-
-                            return null;
-                        };
-                        const keepParentVisible = () => {
-                            const scrollParent = getScrollParent();
-                            if (!scrollParent) return;
-
-                            const parentRect = scrollParent.getBoundingClientRect();
-                            const targetRect = target.getBoundingClientRect();
-                            const delta = targetRect.top - parentRect.top;
-
-                            scrollParent.scrollTo({
-                                top: Math.max(scrollParent.scrollTop + delta - 8, 0),
-                            });
-                        };
-
-                        window.requestAnimationFrame(() => {
-                            keepParentVisible();
-                            window.requestAnimationFrame(keepParentVisible);
-                        });
-                        window.setTimeout(keepParentVisible, 80);
-                        window.setTimeout(keepParentVisible, 220);
+                        restoreParentScroll();
                     }
+                }}
+                onKeyDown={(event) => {
+                    if (!options.showChevron) return;
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    rememberParentScroll(event.currentTarget);
                 }}
                 onMouseEnter={() => setHoverId(item.key)}
                 onMouseLeave={() => setHoverId(null)}
+                onPointerDown={(event) => {
+                    if (options.showChevron) {
+                        rememberParentScroll(event.currentTarget);
+                    }
+                }}
                 type="text"
                 style={{
                     background: itemBackground,
