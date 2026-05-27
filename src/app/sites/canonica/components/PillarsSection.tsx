@@ -7,7 +7,7 @@ export default function PillarsSection() {
             <div className="mx-auto max-w-6xl">
                 {/* Section header */}
                 <div className="mb-16 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Behind the scenes
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">

@@ -92,7 +92,7 @@ export default function ProductCapabilityLandingPage({
             <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto max-w-3xl text-center">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">{eyebrow}</p>
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">{eyebrow}</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{title}</h1>
                         <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{description}</p>
                     </div>
@@ -107,7 +107,7 @@ export default function ProductCapabilityLandingPage({
                                     href={tab.href}
                                     className={`whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
                                         active
-                                            ? 'border-white/25 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
+                                            ? 'border-white/25 bg-white/[0.13] text-white shadow-lg shadow-teal-500/10'
                                             : 'border-transparent bg-white/[0.03] text-[#8f8faa] hover:border-white/[0.14] hover:text-white'
                                     }`}
                                 >
@@ -132,7 +132,7 @@ export default function ProductCapabilityLandingPage({
                             <div className="grid lg:grid-cols-[15rem_1fr]">
                                 <aside className="hidden border-r border-white/[0.08] bg-[#0d0d22] p-5 lg:block">
                                     <div className="mb-6 flex items-center gap-3">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white">C</div>
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-800 text-sm font-bold text-white">C</div>
                                         <div>
                                             <div className="text-sm font-bold text-white">Canonica</div>
                                             <div className="text-xs text-[#8f8faa]">Workspace</div>
@@ -142,7 +142,7 @@ export default function ProductCapabilityLandingPage({
                                         {tabs.map((tab) => (
                                             <div
                                                 key={tab.label}
-                                                className={`rounded-xl px-3 py-2 ${tab.label === activeTab ? 'border border-indigo-300/20 bg-indigo-400/10 font-semibold text-indigo-200' : 'text-[#8f8faa]'}`}
+                                                className={`rounded-xl px-3 py-2 ${tab.label === activeTab ? 'border border-teal-300/20 bg-teal-400/10 font-semibold text-teal-100' : 'text-[#8f8faa]'}`}
                                             >
                                                 {tab.label}
                                             </div>
@@ -153,7 +153,7 @@ export default function ProductCapabilityLandingPage({
                                 <div className="p-5 sm:p-7">
                                     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">{activeTab}</p>
+                                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">{activeTab}</p>
                                             <h2 className="mt-2 text-3xl font-bold text-white">{canvasTitle}</h2>
                                             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#a0a0c0]">{canvasSubtitle}</p>
                                         </div>
@@ -166,7 +166,7 @@ export default function ProductCapabilityLandingPage({
                                                     key={item.title}
                                                     className={`rounded-2xl border p-4 ${
                                                         index === 0
-                                                            ? 'border-indigo-300/20 bg-indigo-400/10'
+                                                            ? 'border-teal-300/20 bg-teal-400/10'
                                                             : 'border-white/[0.08] bg-white/[0.035]'
                                                     }`}
                                                 >
@@ -198,7 +198,7 @@ export default function ProductCapabilityLandingPage({
             <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto mb-10 max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">What this gives the owner</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">What this gives the owner</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{bentoTitle}</h2>
                         <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{bentoDescription}</p>
                     </div>
@@ -220,7 +220,7 @@ export default function ProductCapabilityLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{workflowTitle}</h2>
                         </div>
                         <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{workflowDescription}</p>
@@ -246,7 +246,7 @@ export default function ProductCapabilityLandingPage({
                         <CanonicaLink
                             basePath={basePath}
                             href="/get-started"
-                            className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                            className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
                             Start free setup
                         </CanonicaLink>

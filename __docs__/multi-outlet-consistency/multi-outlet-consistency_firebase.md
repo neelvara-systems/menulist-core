@@ -118,9 +118,8 @@ Assumption for INR estimate: ₹83/USD.
 | Get store count (in tx)      | `platformSummary/summary`      | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:105`    |
 | Check isMaster (deactivate)  | `stores/{sId}`                 | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:39` |
 | Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:45` |
-| Check isMaster (switch)      | `stores/{sId}`                 | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:29`  |
-| Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:34`  |
-| Repair user outlet access    | `users/{uId}`                  | POST /api/auth/switch-store  | 1         | Switch-store grants/repairs `users.stores[]` + `storeIds[]` so existing outlets remain accessible after refresh. |
+| Check caller store permission (switch) | `stores/{sId}`        | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts`     |
+| Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts`     |
 | Read outlet for rename       | `stores/{outletSId}`           | POST /api/outlets/rename     | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Read tenant list for rename  | `tenants/{tId}`                | POST /api/outlets/rename tx  | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
@@ -141,7 +140,6 @@ Assumption for INR estimate: ₹83/USD.
 | Create outlet projects (in tx) | `projects/{tId}/{newSId}/{id}`         | POST /api/outlets/create     | N per master project | `route.ts:164`                            |
 | Sync project summaries (in tx) | `platformSummary/projects_{newSId}`    | POST /api/outlets/create     | N per master project | `route.ts:179`                            |
 | Grant creator outlet access    | `users/{uId}`                          | POST /api/outlets/create     | 1                    | Creator user doc receives outlet `stores[]` mapping and `storeIds[]` entry inside the creation transaction. |
-| Repair switch outlet access    | `users/{uId}`                          | POST /api/auth/switch-store  | 0-1                  | Existing demo/legacy users are repaired when switching to an outlet they own. |
 | Revert sub quantity (error)    | `subscriptions/{subId}`                | Creation failure after quantity update | 1          | `src/app/api/outlets/create/route.ts`     |
 | Release acquired lock (error)  | `tenants/{tId}`                        | Creation failure after lock acquired | 1              | `src/app/api/outlets/create/route.ts`     |
 | Deactivate outlet (in tx)      | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |

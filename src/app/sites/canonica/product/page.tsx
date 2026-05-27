@@ -13,7 +13,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, custom owner Q&A, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -92,6 +92,7 @@ const FEATURES = [
         capabilities: [
             'Fire-and-forget signal writes with bounded payloads',
             'Signal-to-knowledge queue for recurring gaps',
+            'Private Support Board cards for selected owner follow-up and internal notes',
             'Draft approved answers for owner review',
             'Critical workflow notifications for coverage drops and repeated answer failures',
             'Ticket resolution extraction and safe ticket context when a support case teaches the product',
@@ -116,12 +117,12 @@ export default function CanonicaProductPage() {
             <main className="pt-16">
                 {/* Hero */}
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         The support layer for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica connects your app pages, help content, custom owner answers, widget, tickets, releases, and approved answers so users get correct support while your product keeps changing.
+                        Canonica connects your app pages, help content, custom owner answers, widget, tickets, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
                 </section>
 
@@ -141,12 +142,12 @@ export default function CanonicaProductPage() {
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <div className="mx-auto mb-10 max-w-3xl text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product areas</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Product areas</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
                                 Each part of Canonica has its own job.
                             </h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, and answer review.
+                                Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, Support Board follow-up, and answer review.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
@@ -178,7 +179,7 @@ export default function CanonicaProductPage() {
                     <div className="mx-auto max-w-6xl">
                         <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                             <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Support features</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Support features</p>
                                 <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
                                     Core product features get their own pages.
                                 </h2>
@@ -200,7 +201,7 @@ export default function CanonicaProductPage() {
                                     </span>
                                     <h3 className="text-lg font-semibold text-white">{feature.label}</h3>
                                     <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{feature.description}</p>
-                                    <span className="mt-5 inline-flex text-xs font-semibold text-indigo-300 transition group-hover:text-white">
+                                    <span className="mt-5 inline-flex text-xs font-semibold text-teal-200 transition group-hover:text-white">
                                         View feature page
                                     </span>
                                 </CanonicaLink>
@@ -212,7 +213,7 @@ export default function CanonicaProductPage() {
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                     <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Runtime readiness</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Runtime readiness</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
                                 Approved support context is prepared before runtime needs it.
                             </h2>
@@ -241,7 +242,7 @@ export default function CanonicaProductPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <div className="mb-12 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Behind the support layer</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Behind the support layer</p>
                             <h2 className="text-3xl font-bold sm:text-4xl">Not only a chatbot.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
                                 Canonica keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center.
@@ -254,7 +255,7 @@ export default function CanonicaProductPage() {
                                     className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6"
                                 >
                                     <div className="mb-4 flex items-center gap-3">
-                                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-xs font-bold text-indigo-400">
+                                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10 text-xs font-bold text-teal-300">
                                             {pillar.number}
                                         </span>
                                         <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
@@ -277,7 +278,7 @@ export default function CanonicaProductPage() {
                         className={`border-t border-white/[0.06] px-6 py-20 ${i % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
                     >
                         <div className="mx-auto max-w-4xl">
-                            <span className="mb-4 inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-400">
+                            <span className="mb-4 inline-block rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
                                 {feature.badge}
                             </span>
                             <h2 className="mb-4 text-3xl font-bold">{feature.title}</h2>
@@ -287,7 +288,7 @@ export default function CanonicaProductPage() {
                             <ul className="space-y-3">
                                 {feature.capabilities.map((cap, j) => (
                                     <li key={j} className="flex items-start gap-3 text-sm text-[#808099]">
-                                        <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-[10px] text-indigo-400">
+                                        <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[10px] text-teal-300">
                                             ✓
                                         </span>
                                         {cap}
@@ -320,7 +321,7 @@ export default function CanonicaProductPage() {
                         href="/get-started"
                         data-canonica-event="product_cta_clicked"
                         data-canonica-label="start_free_setup"
-                        className="inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
+                        className="inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
                         Start free setup
                     </CanonicaLink>

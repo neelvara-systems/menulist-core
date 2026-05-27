@@ -74,7 +74,7 @@ const CONTROLS = [
     },
     {
         title: 'Separate product infrastructure',
-        body: 'Canonica is maintained as a separate product from MenuList, with Canonica-owned dashboard routes, constants, schedulers, widget configuration, and Firebase data.',
+        body: 'Canonica uses Canonica-owned dashboard routes, constants, schedulers, widget configuration, and workspace data boundaries.',
     },
 ];
 
@@ -92,7 +92,7 @@ const SECURITY_FACTS = [
     { label: 'Runtime context', value: 'Versioned approved bundles' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Local EOD + compact summaries' },
-    { label: 'MenuList relationship', value: 'Separate product boundary' },
+    { label: 'Product boundary', value: 'Canonica workspace scope' },
 ];
 
 const TRUST_AREAS = [
@@ -107,7 +107,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Team permissions',
-        body: 'Canonica team access uses product-specific roles instead of borrowing MenuList restaurant staff permissions.',
+        body: 'Canonica team access uses product-specific roles for support, knowledge, widget, billing, governance, and workspace controls.',
         points: [
             'Owner, Manager, Support Staff, and custom roles map to Canonica permission keys.',
             'Dashboard routes and protected Canonica APIs check the active role before exposing controls.',
@@ -201,11 +201,11 @@ const TRUST_AREAS = [
     },
     {
         title: 'Operational separation',
-        body: 'Canonica shares a codebase with MenuList, but its product data and support runtime are maintained as a separate product.',
+        body: 'Canonica keeps its product data and support runtime bounded to Canonica workspace, widget, hosted help, and governance surfaces.',
         points: [
             'Canonica has product-owned routes, constants, schedulers, and dashboard sections.',
-            'Canonica Firebase config can run separately from MenuList Firebase.',
-            'MenuList is a client/use case, not a hardcoded Canonica dependency.',
+            'Canonica Firebase config can run as dedicated product infrastructure.',
+            'Client products are integrations, not hardcoded Canonica dependencies.',
         ],
     },
 ];
@@ -220,7 +220,7 @@ export default function CanonicaSecurityPage() {
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                             Canonica uses safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
@@ -229,7 +229,7 @@ export default function CanonicaSecurityPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-6 text-center">
+                    <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-teal-300/20 bg-teal-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
                             Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, assign workspace roles carefully, serve approved runtime context from controlled bundles, and approve support answers before they become official.
@@ -246,7 +246,7 @@ export default function CanonicaSecurityPage() {
                         <div className="mb-8 text-center">
                             <h2 className="text-2xl font-bold text-white">Security at a glance</h2>
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
-                                The same shared infrastructure discipline used by MenuList is applied here, but Canonica keeps its own product boundary, widget runtime, and support-knowledge controls.
+                                Canonica is built around product-owned workspace boundaries, widget runtime controls, and governed support-knowledge access.
                             </p>
                         </div>
                         <CanonicaHubDiagram
@@ -324,7 +324,7 @@ export default function CanonicaSecurityPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Page context boundary</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Page context boundary</p>
                         <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>
                         <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
                             Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data. If users attach a screenshot, keep it deliberate and avoid pages that show secrets.
@@ -335,7 +335,7 @@ export default function CanonicaSecurityPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto max-w-5xl">
                         <div className="mb-10 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Trust controls</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Trust controls</p>
                             <h2 className="text-3xl font-bold text-white">What Canonica protects by design</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
                                 These controls map to the implemented Canonica runtime: dashboard APIs, widget config, widget search, feedback, tenant-scoped rules, summaries, and owner review queues.
@@ -349,7 +349,7 @@ export default function CanonicaSecurityPage() {
                                     <ul className="mt-5 space-y-2 border-t border-white/[0.06] pt-4">
                                         {area.points.map((point) => (
                                             <li key={point} className="flex gap-3 text-sm leading-relaxed text-[#808099]">
-                                                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-indigo-400" />
+                                                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal-300" />
                                                 <span>{point}</span>
                                             </li>
                                         ))}
@@ -366,7 +366,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-4 text-sm leading-relaxed text-[#a0a0c0]">
                             Report security, privacy, or data-handling concerns to the Canonica team. Do not include secrets, production credentials, or full customer data in the first message.
                         </p>
-                        <a href="mailto:hello@canonica.app" className="text-sm font-semibold text-indigo-300 hover:text-indigo-200">
+                        <a href="mailto:hello@canonica.app" className="text-sm font-semibold text-teal-200 hover:text-teal-100">
                             hello@canonica.app
                         </a>
                     </div>

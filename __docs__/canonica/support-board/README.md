@@ -1,7 +1,7 @@
 # Canonica Support Board
 
 > Status: Implemented
-> Last updated: 2026-05-26
+> Last updated: 2026-05-27
 > Product area: Support Control
 > Route: `/canonica/support-board`
 
@@ -30,12 +30,18 @@ Every missed support question becomes visible work, every card can hold private 
 | Support Board route | Implemented | `src/app/(canonica)/canonica/support-board/page.tsx` |
 | Support Control sidebar item | Implemented | `src/constants/canonica/navigations.ts` |
 | Feature flag | Implemented | `ENABLE_CANONICA_SUPPORT_BOARD` in `src/config/features.ts` |
+| Source sync flag | Implemented, off by default | `ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC` hides ticket/signal sync CTAs |
+| Nightly sync flag | Implemented, off by default | `ENABLE_CANONICA_SUPPORT_BOARD_SYNC` controls scheduled board preparation |
+| Nightly summary read flag | Implemented, off by default | `ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY` skips summary reads unless scheduler prep is enabled |
 | Private board collection | Implemented | `canonica_supportBoardCards` |
 | Tenant/store isolation | Implemented | Firestore rules require Canonica support-control permission |
 | Manual cards | Implemented | `CanonicaSupportBoard.tsx` |
-| Bounded ticket sync | Implemented | `useSupportBoard.ts` reads recent unresolved tickets and creates cards |
-| Bounded signal sync | Implemented | `useSupportBoard.ts` reads recent actionable signals and creates cards |
+| Bounded ticket sync | Implemented, gated | `useSupportBoard.ts` reads recent unresolved tickets and creates cards only when source sync is enabled |
+| Bounded signal sync | Implemented, gated | `useSupportBoard.ts` reads recent actionable signals and creates cards only when source sync is enabled |
+| Nightly signal-quality sync | Implemented, gated | `functions-canonica/src/canonica/supportBoardSync.ts` creates deduped cards for repeated misses, negative feedback, drift, and release impact only when enabled |
+| Compact board summary | Implemented, gated | `platformSummary/supportBoardSummary_{tId}_{sId}` is written by nightly sync only when enabled |
 | Private internal notes | Implemented | Embedded capped notes on board cards |
+| Status history | Implemented | Top-level `status` plus capped `statuses[]` activity history |
 | Answer proposal action | Implemented | Creates pending mutation proposal when card has a related entity |
 | Auto-publish | Not allowed | Drafts/proposals still require human approval |
 
@@ -61,6 +67,7 @@ This feature list is the Canonica support-work roadmap. Items must stay inside s
 | P0 | Private owner/staff notes on support objects | Implemented inside Support Board cards; direct per-object notes can be added later only when needed |
 | P0 | Needs Answer queue | Implemented as board status |
 | P0 | Ticket-to-answer conversion | Implemented as board card to governed mutation proposal when entity-bound |
+| P0 | Status activity history | Implemented as capped `statuses[]` history |
 | P1 | Weekly Support Review screen | Future: extend Weekly Digest with board summary |
 | P1 | Release Impact Checklist | Future: connect releases to board cards and drift review |
 | P1 | Saved replies from canonical answers | Future: ticket reply helper, no auto-send |

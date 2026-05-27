@@ -130,6 +130,21 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Canonica Contact Form - anonymous public write endpoint
+     * Used by: POST /api/canonica/public/contact
+     *
+     * Why 5/10min:
+     * - Normal buyer/contact flow is one submission, rarely a retry.
+     * - Each accepted request creates a Canonica Firestore write.
+     * - Keeps public website spam bounded before it reaches Canonica Firebase.
+     */
+    CANONICA_CONTACT_FORM: {
+        limit: 5,
+        window: 600,
+        description: 'Canonica contact form - 5 submissions per 10 minutes per IP'
+    },
+
+    /**
      * Canonica Hosted Help Center - anonymous read-only pages.
      * Used by: help.example.com hosted KB/FAQ/changelog pages.
      *

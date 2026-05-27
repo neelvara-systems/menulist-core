@@ -4,6 +4,7 @@ import {
     addCanonicaSupportBoardNote,
     createCanonicaSupportBoardCard,
     createCanonicaSupportBoardCards,
+    getCanonicaSupportBoardSummary,
     listCanonicaSupportBoardCards,
     updateCanonicaSupportBoardCard,
     type CreateCanonicaSupportBoardCardInput,
@@ -21,6 +22,7 @@ import {
     CANONICA_SUPPORT_BOARD_STATUS,
     type CanonicaSignalEvent,
     type CanonicaSupportBoardCard,
+    type CanonicaSupportBoardSummary,
     type CanonicaSupportBoardPriority,
     type CanonicaSupportBoardStatus,
 } from '@type/canonica';
@@ -32,7 +34,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 type Actor = {
     id: string;
     name: string;
+    email?: string | null;
 };
+
+const getActorStatusMeta = (actor?: Actor | null, remark?: string) => ({
+    statusActorId: actor?.id || 'unknown',
+    statusActorName: actor?.name || 'Team member',
+    statusActorEmail: actor?.email || 'team@canonica.internal',
+    statusRemark: remark,
+});
 
 const ACTIONABLE_SIGNAL_TYPES = new Set<string>([
     CANONICA_SIGNAL_TYPE.TICKET,
@@ -120,12 +130,15 @@ const cardInputFromSignal = (signal: CanonicaSignalEvent, tId: number, sId: numb
 
 export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null) {
     const [cards, setCards] = useState<CanonicaSupportBoardCard[]>([]);
+    const [summary, setSummary] = useState<CanonicaSupportBoardSummary | null>(null);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const enabled = FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD === true;
+    const sourceSyncEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC);
+    const nightlySummaryEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY);
     const hasScope = Boolean(tId && sId);
 
     const existingSourceKeys = useMemo(() => {
@@ -140,14 +153,21 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
     const refresh = useCallback(async () => {
         if (!enabled || !tId || !sId) {
             setCards([]);
+            setSummary(null);
             return;
         }
 
         setLoading(true);
         setError(null);
         try {
-            const result = await listCanonicaSupportBoardCards(tId, sId);
+            const [result, nextSummary] = await Promise.all([
+                listCanonicaSupportBoardCards(tId, sId),
+                nightlySummaryEnabled
+                    ? getCanonicaSupportBoardSummary(tId, sId).catch(() => null)
+                    : Promise.resolve(null),
+            ]);
             setCards(result || []);
+            setSummary(nextSummary);
         } catch (err) {
             const uiError = getCanonicaUiErrorMessage(err, 'Could not load support board');
             setError(uiError);
@@ -155,7 +175,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setLoading(false);
         }
-    }, [enabled, sId, tId]);
+    }, [enabled, nightlySummaryEnabled, sId, tId]);
 
     useEffect(() => {
         refresh();
@@ -165,7 +185,12 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         if (!tId || !sId) return null;
         setSaving(true);
         try {
-            const created = await createCanonicaSupportBoardCard({ ...input, tId, sId });
+            const created = await createCanonicaSupportBoardCard({
+                ...input,
+                ...getActorStatusMeta(actor, 'Card created'),
+                tId,
+                sId,
+            });
             message.success('Support card created');
             await refresh();
             return created;
@@ -175,7 +200,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setSaving(false);
         }
-    }, [refresh, sId, tId]);
+    }, [actor, refresh, sId, tId]);
 
     const updateCard = useCallback(async (cardId: string, patch: UpdateCanonicaSupportBoardCardInput) => {
         setSaving(true);
@@ -183,9 +208,13 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             const isResolved = patch.status === CANONICA_SUPPORT_BOARD_STATUS.RESOLVED;
             await updateCanonicaSupportBoardCard(cardId, {
                 ...patch,
+                ...(patch.status ? getActorStatusMeta(actor, 'Status updated from Support Board') : {}),
                 ...(isResolved ? {
                     resolvedOn: Timestamp.now(),
                     resolvedBy: actor?.name || actor?.id || 'Team member',
+                } : patch.status ? {
+                    resolvedOn: null,
+                    resolvedBy: null,
                 } : {}),
             });
             await refresh();
@@ -194,7 +223,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setSaving(false);
         }
-    }, [actor?.id, actor?.name, refresh]);
+    }, [actor, refresh]);
 
     const moveCard = useCallback(async (cardId: string, status: CanonicaSupportBoardStatus) => {
         await updateCard(cardId, { status });
@@ -218,6 +247,10 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
     }, [actor?.id, actor?.name, refresh]);
 
     const syncTickets = useCallback(async () => {
+        if (!sourceSyncEnabled) {
+            message.info('Ticket sync is disabled for this workspace');
+            return 0;
+        }
         if (!tId || !sId) return 0;
         setSyncing(true);
         try {
@@ -226,7 +259,10 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 .filter(isOpenTicket)
                 .filter((ticket) => !existingSourceKeys.has(`${CANONICA_SUPPORT_BOARD_SOURCE_TYPE.TICKET}:${ticket.id}`))
                 .slice(0, 20)
-                .map((ticket) => cardInputFromTicket(ticket, tId, sId));
+                .map((ticket) => ({
+                    ...cardInputFromTicket(ticket, tId, sId),
+                    ...getActorStatusMeta(actor, 'Card created from ticket sync'),
+                }));
 
             const created = await createCanonicaSupportBoardCards(inputs);
             if (created.length > 0) {
@@ -242,9 +278,13 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setSyncing(false);
         }
-    }, [existingSourceKeys, refresh, sId, tId]);
+    }, [actor, existingSourceKeys, refresh, sId, sourceSyncEnabled, tId]);
 
     const syncSignals = useCallback(async () => {
+        if (!sourceSyncEnabled) {
+            message.info('Signal sync is disabled for this workspace');
+            return 0;
+        }
         if (!tId || !sId) return 0;
         setSyncing(true);
         try {
@@ -253,7 +293,10 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 .filter((signal) => ACTIONABLE_SIGNAL_TYPES.has(signal.type))
                 .filter((signal) => !existingSourceKeys.has(`${CANONICA_SUPPORT_BOARD_SOURCE_TYPE.SIGNAL}:${signal.id}`))
                 .slice(0, 20)
-                .map((signal) => cardInputFromSignal(signal, tId, sId));
+                .map((signal) => ({
+                    ...cardInputFromSignal(signal, tId, sId),
+                    ...getActorStatusMeta(actor, 'Card created from signal sync'),
+                }));
 
             const created = await createCanonicaSupportBoardCards(inputs);
             if (created.length > 0) {
@@ -269,7 +312,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setSyncing(false);
         }
-    }, [existingSourceKeys, refresh, sId, tId]);
+    }, [actor, existingSourceKeys, refresh, sId, sourceSyncEnabled, tId]);
 
     const createAnswerProposal = useCallback(async (card: CanonicaSupportBoardCard) => {
         if (!tId || !sId) return;
@@ -311,6 +354,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             await updateCanonicaSupportBoardCard(card.id, {
                 status: CANONICA_SUPPORT_BOARD_STATUS.NEEDS_ANSWER,
                 relatedProposalId: proposal.id,
+                ...getActorStatusMeta(actor, 'Answer proposal created'),
             });
 
             await addCanonicaSupportBoardNote(card.id, {
@@ -326,7 +370,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         } finally {
             setSaving(false);
         }
-    }, [actor?.id, actor?.name, refresh, sId, tId]);
+    }, [actor, refresh, sId, tId]);
 
     return {
         cards,
@@ -339,6 +383,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
         moveCard,
         refresh,
         saving,
+        sourceSyncEnabled,
+        nightlySummaryEnabled,
+        summary,
         addNote,
         syncing,
         syncSignals,

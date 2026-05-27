@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, custom owner Q&A, starter rollout pack, approved answers, and reviewable fixes for missed questions.';
+    'Canonica helps AI-built SaaS apps launch support without chaos: team access, page-aware widget, hosted help, custom owner Q&A, Support Board, approved answers, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -22,7 +22,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Support layer for AI-built SaaS apps: setup, team access, widget, starter surfaces, hosted help, custom owner Q&A, approved answers, and support-gap review.',
+        description: 'Support layer for AI-built SaaS apps: setup, team access, widget, hosted help, Support Board, custom owner Q&A, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -43,7 +43,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | Canonica',
-        description: 'Operate Canonica help center, docs, FAQ, custom owner Q&A, changelog, tickets, conversations, and weekly support review from one support control layer.',
+        description: 'Operate Canonica help center, docs, FAQ, custom owner Q&A, changelog, tickets, Support Board, conversations, and weekly support review from one support control layer.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -92,7 +92,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/use-cases/support-teams',
         title: 'Support Teams | Canonica',
-        description: 'Reduce repeated tickets with approved answers, ticket fallback, and a signal-to-knowledge queue.',
+        description: 'Reduce repeated tickets with approved answers, ticket fallback, private Support Board follow-up, and a signal-to-knowledge queue.',
         priority: 0.76,
         changeFrequency: 'monthly',
     },
@@ -155,14 +155,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/resources',
         title: 'Resources | Canonica',
-        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, runtime safety, pricing, and setup.',
+        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, Support Board, runtime safety, pricing, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
     {
         path: '/updates',
         title: 'Updates | Canonica',
-        description: 'Recent Canonica product updates across launch setup, team access, widget runtime, compiled context, governance, and public website work.',
+        description: 'Recent Canonica product updates across launch setup, team access, widget runtime, Support Board, compiled context, governance, and public website work.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -211,7 +211,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, Support Board, screenshots, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
@@ -225,7 +225,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/contact',
         title: 'Contact | Canonica',
-        description: 'Contact Canonica for setup help, partnership questions, or to check if Canonica fits your AI-built SaaS app.',
+        description: 'Contact Canonica for setup help, demos, pricing, security questions, or partnership requests for your AI-built SaaS app.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },

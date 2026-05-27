@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_FULL_TXT = `# Canonica — Extended LLM Context
 
-> Canonica is the support layer for AI-built SaaS apps. It governs team access, approved page-aware answers, owner FAQ/custom Q&A, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, widget context, and explicit user-attached screenshot context.
+> Canonica is the support layer for AI-built SaaS apps. It governs team access, approved page-aware answers, owner FAQ/custom Q&A, hosted help, ticket fallback, private Support Board follow-up, stale-answer review, repeated-question signals, compiled runtime context, widget context, and explicit user-attached screenshot context.
 
 ## Product Definition
 
@@ -19,6 +19,7 @@ Canonica is:
 - owner-written FAQ/custom answers linked to articles, tags, entities, and app pages
 - stale-answer and support-gap review
 - hosted help, FAQ, changelog, and widget support surfaces
+- private Support Board cards, internal notes, status history, and answer-proposal handoff for selected support gaps
 - user-initiated screenshot upload or paste for visual support context
 - Slack and email workflow notifications for owner attention
 - configured proactive widget prompts where active triggers exist
@@ -43,12 +44,13 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/product/launch-setup — setup, product details, team access, starter knowledge, app pages, widget key, and readiness.
 - ${CANONICA_SITE_URL}/product/team-access — workspace members, Canonica roles, custom permissions, email or owner-passcode login, owner reset, and force sign-out.
 - ${CANONICA_SITE_URL}/product/page-aware-widget — widget runtime, safe page context, optional user-attached screenshots, allowed origins, blocked routes, and approved-answer behavior.
-- ${CANONICA_SITE_URL}/product/support-control — hosted help, docs, FAQ, custom owner Q&A, changelog, tickets, conversations, and weekly support review.
+- ${CANONICA_SITE_URL}/product/support-control — hosted help, docs, FAQ, custom owner Q&A, changelog, tickets, Support Board, conversations, and weekly support review.
 - ${CANONICA_SITE_URL}/product/knowledge-governance — product structure, approved answers, stale-answer review, repeated-question queue, coverage, and trust metrics.
 - ${CANONICA_SITE_URL}/product/knowledge-base — reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing.
 - ${CANONICA_SITE_URL}/product/faq-management — owner-written Q&A, article-backed FAQs, owner review, source links, surface-aware display, and source-linked refresh.
 - ${CANONICA_SITE_URL}/product/changelog — release notes connected to product surfaces and stale-answer review.
 - ${CANONICA_SITE_URL}/product/tickets — fallback tickets, safe debugging context, and ticket-to-knowledge signals.
+- ${CANONICA_SITE_URL}/product/support-board — private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff.
 - ${CANONICA_SITE_URL}/product/workflow-notifications — Slack and email governance alerts, digest-first delivery, test notification, health summary, and bounded delivery.
 - ${CANONICA_SITE_URL}/product/proactive-help — configured page-aware prompts tied to active triggers and approved support summaries.
 - ${CANONICA_SITE_URL}/demo — static demo with no Firebase or AI calls.
@@ -72,7 +74,9 @@ Canonica is not:
 - Public website pages are static/server-rendered product pages.
 - The account-free demo uses static data only.
 - Widget runtime, dashboard, onboarding, and governance flows are authenticated or key-protected where required.
-- Team management is authenticated and Canonica-role scoped; MenuList staff screens remain separate from Canonica workspace access.
+- Team management is authenticated and Canonica-role scoped inside Canonica workspace access.
+- Support Board is authenticated owner/staff workflow only. Notes, statuses, assignee context, and board cards are not public help-center, widget, or API response content.
+- Ticket/signal sync and nightly Support Board preparation are controlled rollout paths, not the default public website claim.
 - Canonical answers are owner-approved before becoming authoritative.
 - Published owner FAQ/custom answers can answer matching repeated questions after canonical retrieval and before fallback.
 - Fallback answers and missed questions become review signals; they do not overwrite canonical answers by themselves.

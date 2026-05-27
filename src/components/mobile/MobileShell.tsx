@@ -4,8 +4,6 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
-import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
-import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
@@ -17,7 +15,7 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ServerSidePageLoader from '../../app/loading';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuArrowLeft, LuCreditCard } from 'react-icons/lu';
+import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
@@ -223,13 +221,9 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 
 export default function MobileShell() {
     const {
-        activeStoreContext,
         activeSubscription,
         activeSubscriptionLoading,
-        isMasterUser,
-        setActiveStoreContext,
         storeDetails,
-        tenantDetails,
         userPermissions,
     } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
@@ -244,7 +238,6 @@ export default function MobileShell() {
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [isOffline, setIsOffline] = useState(false);
-    const [isReturningToHq, setIsReturningToHq] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
@@ -257,31 +250,6 @@ export default function MobileShell() {
         || activeTab === 'menu'
         || (activeTab === 'more' && SELECTED_PROJECT_DATA_MORE_SCREENS.includes(moreScreen));
     const shouldBypassSubscriptionGate = (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen)) || (isResellerAccount && isResellerMobileScreen);
-    const activeOutletSummary = isMasterUser && activeStoreContext
-        ? tenantDetails?.storesList?.find((store: any) => store.storeId === activeStoreContext)
-        : null;
-    const masterStoreSummary = tenantDetails?.storesList?.find((store: any) => store?.isMaster === true) || null;
-    const masterStoreId = Number(
-        masterStoreSummary?.storeId
-        || (session?.user as any)?.storeId
-        || storeDetails?.storeId
-        || 0
-    );
-    const activeOutletName = activeOutletSummary
-        ? getStoreContextName(activeOutletSummary, `Store ${activeStoreContext}`)
-        : '';
-    const handleReturnToHq = useCallback(async () => {
-        if (isReturningToHq) return;
-        setIsReturningToHq(true);
-        try {
-            if (masterStoreId) {
-                await refreshFirebaseAuthClaims(masterStoreId);
-            }
-            setActiveStoreContext(null);
-        } finally {
-            setIsReturningToHq(false);
-        }
-    }, [isReturningToHq, masterStoreId, setActiveStoreContext]);
     const canUseTodayTab = hasAnyPermission(userPermissions, [
         PERMISSIONS.MANAGE_MENU_SHARING,
         PERMISSIONS.PUBLISH_MENU,
@@ -540,36 +508,6 @@ export default function MobileShell() {
                     </Card>
                 ) : null}
                 <StarterActivationBanner />
-                {activeOutletSummary ? (
-                    <Flex
-                        align="center"
-                        gap={8}
-                        justify="space-between"
-                        style={{
-                            background: '#fff7e6',
-                            borderBottom: '1px solid #ffd591',
-                            padding: '8px 12px',
-                            paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
-                        }}
-                    >
-                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                            <Text strong style={{ color: '#ad6800' }}>{activeOutletName}</Text>
-                            <Text style={{ color: '#ad6800', fontSize: 12 }}>Changes apply to this location.</Text>
-                        </Flex>
-                        <Button
-                            fill="outline"
-                            loading={isReturningToHq}
-                            onClick={() => void handleReturnToHq()}
-                            size="small"
-                            style={{ minHeight: 36 }}
-                        >
-                            <Flex align="center" gap={4}>
-                                <LuArrowLeft size={14} />
-                                <Text>HQ</Text>
-                            </Flex>
-                        </Button>
-                    </Flex>
-                ) : null}
                 <Flex
                     data-mobile-shell-scroll="true"
                     flex={1}
@@ -582,7 +520,7 @@ export default function MobileShell() {
                             activeTab === 'share' ||
                             (activeTab === 'today' && todayScreen === 'main') ||
                             (activeTab === 'more' && isMoreRootScreen)
-                                ? activeOutletSummary ? 8 : 'calc(env(safe-area-inset-top) + 8px)'
+                                ? 'calc(env(safe-area-inset-top) + 8px)'
                                 : 0,
                         scrollPaddingBottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                     }}

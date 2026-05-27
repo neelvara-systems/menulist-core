@@ -86,7 +86,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
         <section className="border-y border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Page-Aware Widget
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
@@ -158,7 +158,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                     </article>
 
                     <article className="rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-5 lg:col-span-4">
-                        <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-300">Install & context</div>
+                        <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-200">Install & context</div>
                         <h3 className="text-xl font-bold text-white">One script, then safe page hints.</h3>
                         <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
                             Developers install the widget once and pass route, feature, workflow, role, or plan hints only when they are safe.

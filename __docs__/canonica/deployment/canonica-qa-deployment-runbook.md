@@ -54,6 +54,7 @@ Current implementation:
 - Predictive support is widget-config gated. The widget only calls `/api/canonica/predictive-help` when `capabilities.predictiveSupport` is true.
 - Predictive trigger summaries store resolved suggestion snippets and `sourceHash`; unchanged summaries skip writes.
 - Graph summaries store `sourceHash`; unchanged graph rebuilds skip writes.
+- Support Board nightly sync is part of `canonicaNightly` but disabled by default. When enabled for a rollout tenant, it creates only deduped support-review cards for repeated misses, negative feedback/escalation clusters, drifted answers, and release impact. It writes `platformSummary/supportBoardSummary_{tId}_{sId}` only when the compact summary changes.
 
 Deployment checklist for this pass:
 
@@ -210,7 +211,10 @@ Firestore rules and indexes:
 - Current index file has composite indexes plus TTL field overrides for Canonica integration events, delivery logs, and delivery rate counters.
 - 2026-05-26: Deployed `firestore-canonica.rules` to `canonica-qa` after adding Canonica role permission claims for staff access control. Command: `firebase deploy --only firestore:rules --project canonica-qa --config firebase-canonica.json --non-interactive`.
 - 2026-05-26: Deployed `firestore-canonica.rules` after adding private Support Board rules. The combined Firebase indexes deploy hit a pre-existing remote `kb_articles` index conflict, so the two new `canonica_supportBoardCards` composite indexes were created directly with `gcloud firestore indexes composite create`; both are `READY` in `canonica-qa`.
-- 2026-05-26: Production Firestore rules deploy for the Support Board was attempted with `firebase deploy --only firestore:rules --project canonica-prod --config firebase-canonica.json --non-interactive` and was blocked by Firebase permission `403` on project `canonica`. Production still needs the same rules deploy and the two `canonica_supportBoardCards` composite indexes created after credentials are available.
+- 2026-05-26: Production Firestore rules deploy for the Support Board was attempted with `firebase deploy --only firestore:rules --project canonica-prod --config firebase-canonica.json --non-interactive` and was blocked by Firebase permission `403` on project `canonica`. Production still needs the same rules deploy, Support Board / `aiSearchHistory` composite indexes, and updated Canonica functions deploy after credentials are available.
+- 2026-05-27: Deployed `firestore-canonica.rules` to `canonica-qa` after adding `supportBoardSummary_*` read access for support-control users. The new `aiSearchHistory` composite index (`tId asc, sId asc, canonical asc, createdOn desc`) was created directly with `gcloud firestore indexes composite create` and verified `READY`. Deployed the existing Canonica functions codebase to `canonica-qa` after adding Support Board nightly sync to `canonicaNightly`.
+- 2026-05-27: Production Firestore rules deploy was retried with `firebase deploy --only firestore:rules --project canonica-prod --config firebase-canonica.json --non-interactive` and remains blocked by Firebase permission `403` on project `canonica`.
+- 2026-05-27: Deployed Canonica functions to `canonica-qa` after gating Support Board source/nightly sync and adding card status history. Production functions deploy was attempted with `firebase deploy --only functions --project canonica-prod --config firebase-canonica.json --non-interactive` and remains blocked by Firebase permission `403` on project `canonica`.
 
 Storage rules:
 
@@ -376,7 +380,7 @@ Before production launch on `canonica.app`:
 6. Create production `CANONICA_CRON_SECRET` in Secret Manager.
 7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-canonica.json` against project `canonica`.
 8. Run the manual scheduler smoke test and verify the `canonica_schedulerRunLogs/{runLogId}` document.
-9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap; optional friction, ticket-resolution, public API, translation, white-label, and escalation flows remain controlled by rollout flags.
+9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap. Support Board nightly sync, optional public API, translation, white-label, and escalation flows remain controlled by rollout flags.
 10. Verify manual scheduler logs, tenant summary discovery, and cost expectations before sending production customer traffic.
 
 ## Production Warnings

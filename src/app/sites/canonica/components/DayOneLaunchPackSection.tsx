@@ -78,11 +78,11 @@ export default function DayOneLaunchPackSection({
     const isProduct = context === 'product';
 
     return (
-        <section className={`${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] bg-[radial-gradient(circle_at_22%_0%,rgba(30,206,255,0.08),transparent_34%),radial-gradient(circle_at_80%_18%,rgba(99,102,241,0.12),transparent_32%),rgba(255,255,255,0.012)] px-4 py-20 sm:px-6`}>
+        <section className={`${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] bg-[radial-gradient(circle_at_22%_0%,rgba(30,206,255,0.08),transparent_34%),radial-gradient(circle_at_80%_18%,rgba(20,184,166,0.12),transparent_32%),rgba(255,255,255,0.012)] px-4 py-20 sm:px-6`}>
             <div className="mx-auto max-w-7xl">
                 <div className="mb-10 grid gap-6 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
                     <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                             Day-one launch pack
                         </p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
@@ -100,7 +100,7 @@ export default function DayOneLaunchPackSection({
                     {PACK_ITEMS.map((item) => (
                         <article
                             key={item.title}
-                            className={`group flex min-h-[15rem] flex-col justify-between rounded-[1.5rem] border border-white/[0.08] bg-[#101028]/80 p-5 transition hover:border-indigo-300/25 hover:bg-indigo-500/[0.055] ${
+                            className={`group flex min-h-[15rem] flex-col justify-between rounded-[1.5rem] border border-white/[0.08] bg-[#101028]/80 p-5 transition hover:border-teal-300/25 hover:bg-teal-500/[0.055] ${
                                 item.featured ? 'lg:col-span-3' : 'lg:col-span-2'
                             }`}
                         >
@@ -115,7 +115,7 @@ export default function DayOneLaunchPackSection({
                                 <CanonicaLink
                                     basePath={basePath}
                                     href={item.href}
-                                    className="inline-flex rounded-full border border-indigo-300/20 bg-indigo-500/10 px-4 py-2 text-xs font-semibold text-indigo-200 transition group-hover:border-indigo-200/35 group-hover:text-white"
+                                    className="inline-flex rounded-full border border-teal-300/20 bg-teal-500/10 px-4 py-2 text-xs font-semibold text-teal-100 transition group-hover:border-teal-200/35 group-hover:text-white"
                                 >
                                     {item.cta}
                                 </CanonicaLink>

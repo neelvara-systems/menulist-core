@@ -148,7 +148,7 @@ export default function CanonicaPublicDemo() {
                             data-canonica-label={item.key}
                             className={`min-w-[8.75rem] rounded-full border px-4 py-2.5 text-left text-sm font-semibold transition sm:min-w-0 sm:text-center ${
                                 active
-                                    ? 'border-white/25 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
+                                    ? 'border-white/25 bg-white/[0.13] text-white shadow-lg shadow-teal-500/10'
                                     : 'border-transparent bg-white/[0.03] text-[#8f8faa] hover:border-white/[0.14] hover:text-white'
                             }`}
                         >
@@ -177,11 +177,11 @@ export default function CanonicaPublicDemo() {
                     <div className="bg-[#0f0f23] p-5 sm:p-7">
                         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Product screen</p>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Product screen</p>
                                 <h3 className="mt-2 text-3xl font-bold text-white">{surface.label}</h3>
                                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#a0a0c0]">{surface.pageSummary}</p>
                             </div>
-                            <span className="rounded-full border border-indigo-300/20 bg-indigo-400/10 px-3 py-1 text-xs font-semibold text-indigo-200">{surface.contextKey}</span>
+                            <span className="rounded-full border border-teal-300/20 bg-teal-400/10 px-3 py-1 text-xs font-semibold text-teal-100">{surface.contextKey}</span>
                         </div>
 
                         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
@@ -204,8 +204,8 @@ export default function CanonicaPublicDemo() {
                                 <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Generic chatbot</div>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{answer.genericAnswer}</p>
                             </div>
-                            <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/10 p-4">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Why Canonica is different</div>
+                            <div className="rounded-2xl border border-teal-300/20 bg-teal-400/10 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-teal-100">Why Canonica is different</div>
                                 <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">{answer.status}</p>
                             </div>
                         </div>
@@ -213,7 +213,7 @@ export default function CanonicaPublicDemo() {
 
                     <aside className="border-t border-white/[0.08] bg-[#0b0b1e] p-5 text-white lg:border-l lg:border-t-0">
                         <div className="mb-5">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Canonica widget result</p>
+                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Canonica widget result</p>
                             <h3 className="mt-2 text-2xl font-bold">{answer.title}</h3>
                         </div>
 
@@ -226,7 +226,7 @@ export default function CanonicaPublicDemo() {
                         </div>
 
                         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] p-5 text-[#d6d6ef]">
-                            <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Approved answer path</div>
+                            <div className="text-xs font-semibold uppercase tracking-widest text-teal-100">Approved answer path</div>
                             <p className="mt-3 text-sm leading-relaxed">{answer.answer}</p>
                         </div>
 
@@ -236,9 +236,9 @@ export default function CanonicaPublicDemo() {
                         </div>
 
                         {answer.changelog && (
-                            <div className="mt-4 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Release link</div>
-                                <p className="mt-2 text-sm text-indigo-100">{answer.changelog}</p>
+                            <div className="mt-4 rounded-2xl border border-teal-300/20 bg-teal-500/10 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-teal-100">Release link</div>
+                                <p className="mt-2 text-sm text-teal-50">{answer.changelog}</p>
                             </div>
                         )}
                     </aside>

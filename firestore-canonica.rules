@@ -357,7 +357,7 @@ service cloud.firestore {
     }
 
     function isCanonicaPlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
     }
 
     function isCanonicaPlatformSummaryClientReadableDoc(document) {
@@ -377,6 +377,10 @@ service cloud.firestore {
       return (
           document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
           && hasCanonicaReadinessPermission()
+        )
+        || (
+          document.matches('^supportBoardSummary_.*$')
+          && hasCanonicaSupportControlPermission()
         )
         || (
           document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$')

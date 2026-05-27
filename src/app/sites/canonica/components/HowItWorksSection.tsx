@@ -28,7 +28,7 @@ const STEPS = [
     {
         step: '5',
         title: 'Improve from support gaps',
-        description: 'Repeated fallback, tickets, and negative feedback become signal-to-knowledge tasks you can review each week.',
+        description: 'Repeated fallback, tickets, negative feedback, and private board notes become signal-to-knowledge tasks you can review each week.',
         visual: '↻',
     },
 ];
@@ -39,7 +39,7 @@ export default function HowItWorksSection() {
             <div className="mx-auto max-w-4xl">
                 {/* Section header */}
                 <div className="mb-16 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         How it works
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">

@@ -32,7 +32,7 @@ Canonica dashboard navigation is grouped by the product-owner workflow. The grou
 | Sidebar group | Purpose | Primary routes |
 | --- | --- | --- |
 | Launch Setup | Activate a new client workspace, manage product details, import starter knowledge, map product surfaces, and review readiness. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/dashboard` |
-| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, release notes, support requests, Support Board, ticket inbox, conversations, and weekly digest. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/support`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/support-board`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
+| Support Control | Run owner/staff support operations: KB management, FAQs, changelog management, Support Board, ticket inbox, conversations, and weekly digest. End-user help, docs, release notes, and ticket submission are runtime/customer surfaces, not primary owner dashboard navigation. | `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/support-board`, `/canonica/tickets`, `/canonica/conversations`, `/canonica/weekly-digest` |
 | Widget & Hosted Help | Configure widget appearance, install/embed snippets, hosted help domains, allowed origins, blocked routes, and key security. | `/canonica/widget/ui`, `/canonica/widget/install`, `/canonica/widget/hosted-help`, `/canonica/widget/access` |
 | Team & Access | Manage workspace members and Canonica roles without mixing them into setup or support content. | `/canonica/team/members`, `/canonica/team/roles` |
 | Billing | Manage subscription and payment history. | `/canonica/billing`, `/canonica/transactions` |
@@ -101,14 +101,14 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 - `/platform/knowledge-base` → KB management (platform tab)
 - `/platform/kb-generation` → KB generation pipeline (platform tab)
 
-### Canonica Client Routes
+### Canonica Client / Compatibility Routes
 
 - `/canonica/help` → `src/app/(canonica)/canonica/help/page.tsx`
 - `/canonica/docs` → `src/app/(canonica)/canonica/docs/page.tsx`
 - `/canonica/support` → `src/app/(canonica)/canonica/support/page.tsx`
 - `/canonica/release-notes` → `src/app/(canonica)/canonica/release-notes/page.tsx`
 
-The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard and management surfaces remain separate product routes. The `/canonica/help` route is a compatibility/direct shell route that reuses the same Help Center home; `/canonica/docs`, `/canonica/support`, and `/canonica/release-notes` remain direct tab/surface routes for documentation, store-scoped support tickets, and release notes.
+The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard and management surfaces remain separate product routes. The `/canonica/help` route is a compatibility/direct shell route that reuses the same Help Center home; `/canonica/docs`, `/canonica/support`, and `/canonica/release-notes` remain direct customer/shell routes for documentation, ticket submission, and release-note viewing. These routes are intentionally not part of the owner dashboard sidebar. Management sessions that open them are redirected to the owner equivalent: Knowledge Base, Changelog, Ticket Inbox, or the first permitted owner route.
 
 ### Canonica Operator Routes
 

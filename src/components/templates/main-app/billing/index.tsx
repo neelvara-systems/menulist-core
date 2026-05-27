@@ -12,6 +12,7 @@ import usePaymentHandler from '@hook/usePaymentHandler';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { logger } from '@lib/monitoring/logger';
+import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BillingHistoryItem, Currency } from '@type/razorpay';
@@ -42,7 +43,6 @@ function BillingPage() {
         activeSubscription,
         activeSubscriptionLoading,
         activeStoreContext,
-        isMasterUser,
         setActiveStoreContext,
         setActiveSubscription,
         storeDetails,
@@ -60,10 +60,14 @@ function BillingPage() {
     const [isAddingPaidLocation, setIsAddingPaidLocation] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
     const tenantStoresList = tenantDetails?.storesList || [];
+    const accessibleBillingStores = useMemo(
+        () => getAccessibleStoreSummaries({ sessionUser: session?.user as any, tenantDetails }),
+        [session?.user, tenantDetails],
+    );
+    const loginStoreId = Number(session?.user?.storeId || 0);
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
     const effectiveHistoryStoreId = Number(activeSubscription?.storeId || billingStoreId || session?.user?.storeId || 0);
-    const masterStoreId = Number(tenantStoresList.find((store: any) => store?.isMaster === true)?.storeId || session?.user?.storeId || storeDetails?.storeId || 0);
-    const canSwitchBillingStore = Boolean(isMasterUser && userPermissions?.canSwitchStores && tenantStoresList.length > 1);
+    const canSwitchBillingStore = Boolean(userPermissions?.canSwitchStores && accessibleBillingStores.length > 1);
     const selectedStore = useMemo(
         () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
         [billingStoreId, tenantStoresList],
@@ -128,8 +132,8 @@ function BillingPage() {
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
-        if (targetStoreId === Number(storeDetails?.storeId || session?.user?.storeId)) {
-            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+        if (targetStoreId === loginStoreId) {
+            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
             setActiveStoreContext(null);
             return;
         }
@@ -255,7 +259,7 @@ function BillingPage() {
                         <Select
                             value={billingStoreId || undefined}
                             onChange={handleBillingStoreChange}
-                            options={tenantStoresList.map((store: any) => ({
+                            options={accessibleBillingStores.map((store: any) => ({
                                 value: Number(store.storeId),
                                 label: `${store.name || `Store ${store.storeId}`}${store.isMaster ? ' (HQ)' : ''}`,
                             }))}

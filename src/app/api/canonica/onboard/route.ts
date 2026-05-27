@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
  * Canonica Client Onboarding API
  *
  * Creates a new Canonica tenant (tenant + store + subscription) for a SaaS founder.
- * Reuses the same atomic transaction pattern as MenuList's create-subscription.
+ * Reuses the existing atomic transaction pattern from product subscription creation.
  *
  * Flow:
  * 1. User signs up via Google OAuth (existing NextAuth)
@@ -347,7 +347,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // 1. Verify user doesn't already have a Canonica tenant. A MenuList
+        // 1. Verify user doesn't already have a Canonica tenant. A separate
         // tenant/store on the same login must not block Canonica onboarding.
         const existingProductAccount = (session.user as any)?.productAccounts?.[CANONICA_PRODUCT_ACCOUNT_KEY];
         const existingCanonicaUser = await getCanonicaUserByEmail(db, session.user.email);

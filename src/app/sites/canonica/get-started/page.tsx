@@ -49,7 +49,7 @@ export default function CanonicaGetStartedPage() {
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto w-full max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Get Started</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
                         <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
                             Create your Canonica workspace.
                         </h1>
@@ -64,7 +64,7 @@ export default function CanonicaGetStartedPage() {
                                 <div className="space-y-4">
                                     {CRITERIA.map((item, i) => (
                                         <div key={i} className="flex items-start gap-3">
-                                            <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-[10px] text-indigo-400">
+                                            <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[10px] text-teal-300">
                                                 {i + 1}
                                             </span>
                                             <div>
@@ -89,11 +89,11 @@ export default function CanonicaGetStartedPage() {
                             You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, and release updates.
                         </p>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-                            <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">First session checklist</div>
+                            <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">First session checklist</div>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {FIRST_SESSION.map((item, index) => (
                                     <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-[#101028] p-3">
-                                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-[11px] font-bold text-indigo-300">
+                                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[11px] font-bold text-teal-200">
                                             {index + 1}
                                         </span>
                                         <span className="text-sm leading-relaxed text-[#d6d6ef]">{item}</span>
@@ -107,7 +107,7 @@ export default function CanonicaGetStartedPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <p className="text-sm text-[#6b6b8a]">
                         Not ready to apply?{' '}
-                        <CanonicaLink basePath={basePath} href="/product" className="text-indigo-400 hover:text-indigo-300">
+                        <CanonicaLink basePath={basePath} href="/product" className="text-teal-300 hover:text-teal-200">
                             Learn more about how Canonica works
                         </CanonicaLink>
                     </p>

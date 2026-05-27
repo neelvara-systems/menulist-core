@@ -38,7 +38,7 @@ export default function CanonicaRoiCalculator() {
         };
     }, [coverageRate, hourlyCost, minutes, monthlyPlan, questions]);
 
-    const inputClass = 'mt-2 w-full rounded-xl border border-white/[0.08] bg-[#070714] px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/60';
+    const inputClass = 'mt-2 w-full rounded-xl border border-white/[0.08] bg-[#070714] px-4 py-3 text-sm text-white outline-none transition focus:border-teal-300/60';
 
     return (
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
@@ -70,8 +70,8 @@ export default function CanonicaRoiCalculator() {
                 </p>
             </div>
 
-            <div className="rounded-[1.5rem] border border-indigo-400/20 bg-indigo-500/[0.07] p-6">
-                <div className="mb-5 text-xs font-semibold uppercase tracking-widest text-indigo-300">Estimated monthly impact</div>
+            <div className="rounded-[1.5rem] border border-teal-300/20 bg-teal-500/[0.07] p-6">
+                <div className="mb-5 text-xs font-semibold uppercase tracking-widest text-teal-200">Estimated monthly impact</div>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-white/[0.08] bg-[#070714]/60 p-4">
                         <div className="text-xs text-[#808099]">Questions handled from approved knowledge</div>

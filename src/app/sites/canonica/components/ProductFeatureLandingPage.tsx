@@ -48,7 +48,7 @@ function FeatureHeroMockup({ feature }: { feature: CanonicaProductFeature }) {
                 </div>
                 <div className="grid gap-4 p-5 sm:p-6">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Canonica product layer</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Canonica product layer</p>
                         <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{feature.label}</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{feature.description}</p>
                     </div>
@@ -95,7 +95,7 @@ function FeatureCardVisual({ index }: { index: number }) {
                     <span className="h-9 w-14 rounded-md border border-white/[0.08] bg-white/[0.08]" />
                 </div>
                 <LuArrowRight aria-hidden size={24} className="text-[#1eceff]" />
-                <div className="flex h-16 w-20 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1eceff,#4f46e5)] text-white shadow-lg shadow-indigo-500/20">
+                <div className="flex h-16 w-20 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#22d3ee,#0f766e)] text-white shadow-lg shadow-teal-500/20">
                     <LuDatabase aria-hidden size={26} />
                 </div>
             </div>
@@ -135,7 +135,7 @@ function FeatureCardVisual({ index }: { index: number }) {
                 <LuArrowRight aria-hidden size={20} className="text-[#1eceff]" />
                 <div className="flex -space-x-2">
                     <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#1eceff]" />
-                    <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#7c3aed]" />
+                    <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#0f766e]" />
                     <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#06b6d4]" />
                 </div>
             </div>
@@ -159,7 +159,7 @@ export default function ProductFeatureLandingPage({
             <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                     <div>
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">{feature.eyebrow}</p>
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">{feature.eyebrow}</p>
                         <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{feature.title}</h1>
                         <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.description}</p>
                         <div className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-3">
@@ -175,7 +175,7 @@ export default function ProductFeatureLandingPage({
                                 href="/get-started"
                                 data-canonica-event="feature_page_cta_clicked"
                                 data-canonica-label={`${feature.slug}_start_setup`}
-                                className="rounded-xl bg-indigo-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                                className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                             >
                                 Start free setup
                             </CanonicaLink>
@@ -195,10 +195,10 @@ export default function ProductFeatureLandingPage({
                 </div>
             </section>
 
-            <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.13),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 text-white sm:px-6">
+            <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.13),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 text-white sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto mb-10 max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">{feature.label}</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">{feature.label}</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.proofTitle}</h2>
                         <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{feature.proofDescription}</p>
                     </div>
@@ -228,7 +228,7 @@ export default function ProductFeatureLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-10 grid gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:items-end">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.workflowTitle}</h2>
                         </div>
                         <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.workflowDescription}</p>
@@ -247,7 +247,7 @@ export default function ProductFeatureLandingPage({
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-10 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Connected product truth</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Connected product truth</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.connectedTitle}</h2>
                         <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">{feature.connectedDescription}</p>
                     </div>
@@ -280,7 +280,7 @@ export default function ProductFeatureLandingPage({
             <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
                     <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Questions</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Questions</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">What owners usually ask about {featureName}.</h2>
                     </div>
                     <div className="space-y-3">
@@ -305,7 +305,7 @@ export default function ProductFeatureLandingPage({
                     <CanonicaLink
                         basePath={basePath}
                         href="/get-started"
-                        className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                        className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
                         Start free setup
                     </CanonicaLink>

@@ -2,7 +2,7 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** May 20, 2026
+**Last Reviewed:** May 27, 2026
 
 **Verified By:** Cascade AI Assistant  
 **Status:** ✅ Production Ready
@@ -26,6 +26,10 @@
 > **Note (May 20, 2026 — storesSummary map hardening):** Production-audit parity found several `set(..., { merge: true })` paths writing literal dotted `stores.{storeId}` keys. Outlet create, policy promotion, rename, deactivate, messaging onboarding publish, platform block sync, and scheduler enrichment now write nested `stores: { [storeId]: ... }` maps so Cloud Functions can read `storesSummary.data().stores[storeId]` consistently.
 >
 > **Note (May 23, 2026 — mobile project delete permission fix):** The client-side master-delete guard now enumerates candidate outlet stores from `tenants/{tId}.storesList` instead of reading the global `platformSummary/storesSummary` document. Tenant users can read their own tenant document, while `storesSummary` remains platform/server-oriented and is not exposed to mobile PWA delete flows.
+>
+> **Note (May 27, 2026 — mobile outlet subscription inheritance repair):** Live QA on tenant `14` showed a paid outlet account with active master subscription `quantity: 2` could still hit the mobile "Subscribe to Get Started" gate when `tenants/{tId}.storesList` omitted `isMaster: true` on the master row. Subscription lookup now treats hydrated `storeDetails.isMaster` and the single active unflagged store among explicit outlets as master fallback signals, and outlet create/policy writes repair the tenant master marker when the store document already has `isMaster: true`.
+>
+> **Note (May 27, 2026 — access-based store switching):** Desktop header switching, the mobile More Branch dropdown, and desktop/mobile billing store pickers now use active stores already mapped to the signed-in user. `canSwitchStores` still gates the control, but HQ/master context is no longer required just to move between mapped stores. `/api/auth/switch-store` now validates existing mapped access instead of writing user access during switch.
 
 ## May 19, 2026 Final Review + Production Audit
 

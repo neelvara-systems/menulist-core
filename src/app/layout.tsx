@@ -169,7 +169,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                                         ).then(() => {
                                             if (!navigator.serviceWorker.controller) return;
                                             try {
-                                                const reloadKey = '__menulist_dev_sw_cleared__';
+                                                const reloadKey = '__app_dev_sw_cleared__';
                                                 if (sessionStorage.getItem(reloadKey)) return;
                                                 sessionStorage.setItem(reloadKey, '1');
                                                 window.location.reload();

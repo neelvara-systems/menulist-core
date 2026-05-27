@@ -46,7 +46,7 @@ export default function SupportKnowledgeMapSection({
         <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto mb-12 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Support knowledge map
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">

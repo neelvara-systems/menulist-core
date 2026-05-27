@@ -21,6 +21,7 @@ export const CANONICA_DB_COLLECTIONS = {
     CANONICA_AI_OPERATIONS: 'canonica_aiOperations',
     CANONICA_CACHE_VERSIONS: 'canonica_cacheVersions',
     CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
+    CANONICA_CONTACT_ENQUIRIES: 'canonica_contactEnquiries',
     CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
     CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
     CANONICA_INTEGRATION_RATE_LIMITS: 'canonica_integrationRateLimits',

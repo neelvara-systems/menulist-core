@@ -29,7 +29,7 @@ export default function CanonicaRoiCalculatorPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">ROI calculator</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">ROI calculator</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Estimate the cost of repeated support questions.
                     </h1>
@@ -53,7 +53,7 @@ export default function CanonicaRoiCalculatorPage() {
                         <CanonicaLink basePath={basePath} href="/pricing" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             View pricing
                         </CanonicaLink>
-                        <CanonicaLink basePath={basePath} href="/get-started" className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-600">
+                        <CanonicaLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
                             Start free setup
                         </CanonicaLink>
                     </div>

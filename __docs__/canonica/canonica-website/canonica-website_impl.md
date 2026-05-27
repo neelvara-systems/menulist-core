@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.33
-> **Last Updated:** 2026-05-26
+> **Version:** 1.2.37
+> **Last Updated:** 2026-05-27
 > **Audience:** Developers
 
 ---
@@ -11,7 +11,7 @@
 | Layer | Technology |
 |-------|-----------|
 | Framework | Next.js 14 (App Router) |
-| Styling | Tailwind CSS (same pipeline as MenuList) |
+| Styling | Tailwind CSS (shared app pipeline) |
 | Routing | Middleware hostname-based rewrite (multi-product) |
 | Components | React Server Components by default; client islands only where interaction needs state |
 | Links | `CanonicaLink` wrapper for public-site links; `src/constants/canonica/routes.ts` for dashboard route constants without sidebar icon bundle cost |
@@ -21,9 +21,9 @@
 
 Canonica website and dashboard metadata use `src/lib/canonica/pwaAssets.ts` for iOS startup image declarations. The generated startup PNGs live in `public/canonica-splash/apple-splash-*.png` and are produced by `npm run generate:canonica-splash` from the approved `public/canonica-logo-mark-wide.png` source mark.
 
-The root MenuList layout keeps MenuList startup images in `metadata.appleWebApp.startupImage`; Canonica child layouts override that metadata with `getStaticCanonicaAppleStartupImages()` so Canonica install/splash contexts do not inherit MenuList startup images.
+The root app layout defines default startup images in `metadata.appleWebApp.startupImage`; Canonica child layouts override that metadata with `getStaticCanonicaAppleStartupImages()` so Canonica install/splash contexts use Canonica-specific startup images.
 
-`src/app/loading.tsx` keeps MenuList as the default loader brand and exposes `brand="canonica"` for Canonica fallback loaders. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Canonica runtime routes and swaps to the shared `CanonicaAnimatedLogo` atom.
+`src/app/loading.tsx` exposes `brand="canonica"` for explicit Canonica fallback loaders and auto-detects `x-product-id: canonica` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Canonica runtime routes and swaps to the shared `CanonicaAnimatedLogo` atom.
 
 ---
 
@@ -49,6 +49,7 @@ src/app/sites/canonica/
 ├── product/faq-management/page.tsx # FAQ Management feature page
 ├── product/changelog/page.tsx     # Changelog feature page
 ├── product/tickets/page.tsx       # Tickets feature page
+├── product/support-board/page.tsx # Support Board feature page
 ├── product/workflow-notifications/page.tsx # Workflow Notifications feature page
 ├── product/proactive-help/page.tsx # Proactive Help feature page
 ├── productFeatures.ts             # Shared product-feature route data and sitemap source
@@ -73,6 +74,7 @@ src/app/sites/canonica/
 ├── faq/page.tsx                   # FAQ page with FAQPage JSON-LD
 ├── about/page.tsx                 # About page
 ├── contact/page.tsx               # Contact page
+├── contact/ContactForm.tsx        # Canonica public inquiry form client island
 ├── get-started/page.tsx           # Self-service onboarding page
 ├── privacy-policy/page.tsx        # Public privacy policy
 ├── terms-of-service/page.tsx      # Public terms of service
@@ -120,6 +122,8 @@ src/app/sites/canonica/
 
 Related Canonica route constants live in `src/constants/canonica/routes.ts`. `src/constants/canonica/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
+Public contact submissions use `src/app/api/canonica/public/contact/route.ts`. The route is Node-only, rate-limited as `CANONICA_CONTACT_FORM`, validates with Zod, ignores honeypot submissions, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.CANONICA_CONTACT_ENQUIRIES` in Canonica Firebase.
+
 ## Self-Sellable Positioning Pass
 
 The public website now follows `../self-sellable-product-strategy.md`:
@@ -134,14 +138,15 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - header links include `/demo`
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
-- `/security` reuses the MenuList trust-page shape of facts, controls, and disclosure while keeping Canonica-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
+- `/security` uses a trust-page shape of facts, controls, and disclosure while keeping Canonica-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
 - `/faq` answers founder objections and includes FAQ structured data
 - `/product`, `/get-started`, `/about`, and `/contact` no longer use enterprise/design-partner-first copy
+- `/contact` now uses a Canonica-owned inquiry form plus direct email, partnership, and security paths. It does not reuse another product's public enquiry storage.
 - footer links only target public website routes; public legal links now resolve to real pages
 - Canonica product domains serve Canonica-owned `/sitemap.xml` and `/robots.txt`
 - homepage emits Organization, WebSite, and SoftwareApplication structured data
-- Canonica website layout sets Canonica metadata, manifest, icons, and the Dark Control Plane theme color so public pages do not inherit MenuList web-app title metadata
-- `theme.ts` is the public website theme contract. It keeps primary Indigo 500, deep navy background, surface/border tokens, text colors, and success/warning/danger colors in one source for metadata-adjacent and inline-style usage.
+- Canonica website layout sets Canonica metadata, manifest, icons, and the Dark Control Plane theme color so public pages do not inherit root app title metadata
+- `theme.ts` is the public website theme contract. It keeps the verdigris primary, deep navy background, surface/border tokens, text colors, and success/warning/danger colors in one source for metadata-adjacent and inline-style usage.
 - copy differentiates Canonica from helpdesks, chatbots, and documentation CMS products without claiming to replace them
 - May 22 refresh changed the hero from page-aware support copy to the implemented support knowledge control plane category.
 - Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped Canonica billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
@@ -162,7 +167,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - The homepage now borrows the modern product-scene pattern from high-performing SaaS sites: the first proof after the hero is a large desktop-style Canonica workflow view rather than another text grid.
 - The product scene is implemented as responsive HTML/CSS instead of a static raster screenshot so it does not expose private workspace data, does not become stale after dashboard UI changes, and keeps public browsing at zero Firebase cost.
 - The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
-- May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `canonica.app` get Canonica-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to MenuList's business-truth context.
+- May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `canonica.app` get Canonica-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to generic platform context.
 - May 22 positioning pass made the demo the hero primary CTA and reframed the homepage around page-aware support truth rather than generic AI support.
 - May 22 founder-relief pass changed the hero to "You build revenue. Canonica keeps support accurate." while keeping the product promise scoped to approved page-aware answers, fallback signals, and human-reviewed knowledge updates.
 - May 22 presentation pass replaced the dense demo layout with a tabbed product-surface row and large browser-style product canvas, moved product proof closer to modern SaaS screenshot sections, and rebuilt the widget section as a bento grid without adding runtime data calls.
@@ -170,22 +175,24 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 22 final polish pass made those product areas first-class in the header Product dropdown, homepage product-area section, resources hub, and SEO/use-case cross-link blocks so visitors can evaluate Canonica like a product suite instead of a single long page.
 - May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
 - May 24 workflow notification/proactive help pass added standalone `/product/workflow-notifications` and `/product/proactive-help` pages, converted `/integrations` from an install redirect to a real Slack/email notification page, and updated sitemap/LLM context/resources/FAQ so public claims match the hardened runtime.
-- May 26 Team Access pass added standalone `/product/team-access`, then updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and MenuList separation.
+- May 26 Team Access pass added standalone `/product/team-access`, then updated Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context to include Canonica roles, owner reset, force sign-out, and workspace-scoped access.
 - May 26 FAQ/custom-answer pass kept the existing `/product/faq-management` page as the canonical buyer surface, then updated homepage support map, page-aware demo, widget section, Product, Support Control, FAQ, SEO pages, sitemap metadata, LLM context, and Updates to explain the implemented retrieval path: canonical answer first, published owner FAQ/custom answer next, fallback only when coverage is missing.
+- May 27 Support Board pass added standalone `/product/support-board`, then updated Support Control, FAQ, Resources, Updates, sitemap metadata, LLM context, and route docs to explain private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff while keeping ticket/signal sync and nightly board preparation marked as controlled rollout instead of default website claims.
+- May 27 contact/mobile pass added a full `/contact` inquiry form backed by a Canonica-only public API route and regrouped the mobile hamburger into Product Areas, Product Features, and Other cards with safe-area bottom padding.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
 - May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.
-- May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, indigo, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
+- May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, verdigris, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
 - May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
 - May 23 dark-theme consistency pass removed remaining light-mode product mockups from the account-free demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with Canonica's dark infrastructure theme.
 - May 23 resources layout pass changed grouped resources from four tall category columns to stacked horizontal decision rows so each group title and its three linked subcards read together on desktop while remaining stacked on mobile.
 - May 23 resources polish removed the outer row cards from the decision-path rows so the resources hub reads as clean rows of links instead of nested boxes.
 - May 23 product capability bento pass changed five-card capability sections to a 2-card first row and 3-card second row, improving visual balance and moving the third card, such as Support Control's Changelog support, into the second row.
-- May 23 viewport motion pass added a Canonica-specific layout-level reveal observer that applies restrained appearance effects to sections, semantic article cards, rounded grid/link cards, CTA controls, and footer groups across public pages without adding a dependency or mixing MenuList website classes.
+- May 23 viewport motion pass added a Canonica-specific layout-level reveal observer that applies restrained appearance effects to sections, semantic article cards, rounded grid/link cards, CTA controls, and footer groups across public pages without adding a dependency or mixing unrelated website classes.
 - May 23 support knowledge map pass added `SupportKnowledgeMapSection.tsx` to the homepage and `/product` page. It is a static visual explanation of docs/FAQs, releases/product pages, tickets/feedback, and page context flowing into Canonica, then out to the page-aware widget, hosted help, approved answers, and governance queue. The map intentionally avoids helpdesk-replacement and autopilot claims.
-- May 24 support map visual polish kept the shared homepage and `/product` section, removed center explanatory copy from the diagram core, and matched the MenuList diagram treatment with a Canonica-colored logo-only center, smooth ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output arrival highlights with reduced-motion fallback.
+- May 24 support map visual polish kept the shared homepage and `/product` section, removed center explanatory copy from the diagram core, and refined the diagram with a Canonica-colored logo-only center, smooth ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output arrival highlights with reduced-motion fallback.
 - May 24 flow-diagram pass added `CanonicaFlowDiagram.tsx` as a reusable static-rendered visual system for Canonica hub, column-sequence, and loop diagrams. It preserves the same Canonica logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, mobile path variants, and border-only output highlights, then applies that system to closed-loop, setup, how-it-works, product-area workflow, product-feature workflow/connected surfaces, SEO/use-case, install, security, resources, engine pillar, and system coverage sections.
-- May 24 final diagram polish aligned the reusable sequence diagram path endpoints and output highlight timing with the MenuList homepage source-map reference, while leaving the existing Canonica logo, ripple, and color treatment intact.
+- May 24 final diagram polish aligned the reusable sequence diagram path endpoints and output highlight timing with the shared source-map reference, while leaving the existing Canonica logo, ripple, and color treatment intact.
 - May 24 loop-diagram timing polish made the closed-loop ring pulse start at step 01 and staggered all six card border highlights in the same cycle, so the loop reads as one synchronized motion instead of independent flashes.
 - May 24 loop pacing polish slowed the closed-loop ring/card animation from the shared 5.6-second pulse cycle to an 8.4-second loop-specific cycle, with card-highlight delays scaled to keep the sequence synchronized.
 - May 24 sequence layout polish converted reusable sequence diagrams from horizontal card strips into the shared input column, logo center, and output column pattern so setup, install, resources, product-area, product-feature, SEO/use-case, engine, and how-it-works diagrams use one visual grammar.
@@ -219,8 +226,8 @@ localhost/__canonica/*  →  middleware  →  /sites/canonica/*  (dev only)
 Priority order:
 1. Active product website domains (QA ecomsai.com / production canonica.app → /sites/canonica)
 2. Dev path prefixes (/__canonica → /sites/canonica) — local dev only
-3. Client tenant domains (*.menulist.ai → /_client)
-4. Platform domain (menulist.ai → (website) route group)
+3. Client tenant domains (*.client-domain.example → /_client)
+4. Platform domain (platform.example → (website) route group)
 
 ### Domain Resolver
 
@@ -240,7 +247,7 @@ Added `'product'` domain type. Detects product websites before platform/client d
 
 ### Problem
 In production (`canonica.app`), internal links like `/pricing` work naturally.
-In dev mode (`localhost:3000/__canonica`), `/pricing` navigates to MenuList's pricing page.
+In dev mode (`localhost:3000/__canonica`), unprefixed links such as `/pricing` navigate to the root app's pricing page.
 
 ### Solution
 Each page reads the `x-product-id` header (set by middleware) and `host` header to determine if dev mode:
@@ -293,12 +300,13 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 
 ### Client Components (`'use client'`)
 - `demo/CanonicaPublicDemo.tsx` — Account-free demo state
+- `contact/ContactForm.tsx` — Contact form state, submission handling, success/error states, and privacy/terms links
 - `get-started/OnboardingForm.tsx` — Self-service onboarding form state, signed-in account switching, and existing-workspace dashboard handoff
 - `components/CanonicaAnalytics.tsx` — Optional GA script plus delegated click tracking for `data-canonica-event` elements
 - `components/CanonicaScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product dropdown and mobile navigation use native `<details>/<summary>` so they still work if hydration is delayed and do not add a client bundle.
+- `Header.tsx` — Desktop Product dropdown and mobile navigation use native `<details>/<summary>` so they still work if hydration is delayed and do not add a client bundle. Mobile navigation groups Product Areas, Product Features, and Other into separate cards and includes safe-area bottom padding.
 
 ---
 
@@ -322,9 +330,11 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 
 ## Firebase Cost
 
-**$0.00/month for normal browsing** — The website pages are static. No database reads, no API calls, no Cloud Functions.
+**$0.00/month for normal browsing** — The website pages are static. No database reads, no Cloud Functions, and no API calls unless a visitor explicitly submits a form.
 
-The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The self-service onboarding form is the only public website surface that calls Canonica APIs, and it runs only after explicit user submission.
+The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The self-service onboarding form and contact form are the only public website surfaces that call Canonica APIs, and both run only after explicit user submission.
+
+The contact form adds one Canonica Firestore write per accepted submission to `canonica_contactEnquiries`. It performs IP-based public rate limiting and honeypot handling before the Firestore write path.
 
 Existing Canonica workspace detection on `/get-started` uses the already-loaded NextAuth session/product account. It does not add a Firestore read to normal page rendering; owners with a valid Canonica scope get Activation/Billing links plus a switch-account action.
 
@@ -363,7 +373,7 @@ Conversion analytics is client-side only:
 | 2026-05-21 | 1.1.2 | Added homepage system coverage section from codebase inventory: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer |
 | 2026-05-21 | 1.1.3 | Added static product preview and public use-cases, integrations, resources, and updates pages; updated nav, footer, sitemap registry, and docs |
 | 2026-05-21 | 1.1.4 | Added widget-first `/install`, made `/integrations` a redirect alias, and removed rollout-only API/adapters from buyer-facing website claims |
-| 2026-05-21 | 1.1.5 | Expanded `/security` with MenuList-inspired trust-page structure adapted to Canonica's implemented widget runtime, tenant isolation, governed answers, rate limits, summaries, and product separation |
+| 2026-05-21 | 1.1.5 | Expanded `/security` with a trust-page structure adapted to Canonica's implemented widget runtime, tenant isolation, governed answers, rate limits, summaries, and product separation |
 | 2026-05-22 | 1.1.6 | Refreshed website to match current Canonica implementation: support knowledge control plane hero, hosted help, FAQ generation/management, product-scoped billing/support credits, cache freshness, and separate Firebase/product boundaries |
 | 2026-05-22 | 1.1.7 | Added buyer-facing custom help domain positioning and safe ticket debugging context across homepage, product, install, security, FAQ, privacy, and updates copy |
 | 2026-05-22 | 1.1.8 | Applied self-sell website feedback: outcome-led hero, homepage demo, buyer qualification, setup funnel, trust strip, pricing credit clarity, objection handling, optional no-Firestore conversion events, and three SEO landing pages |
@@ -387,13 +397,13 @@ Conversion analytics is client-side only:
 | 2026-05-23 | 1.2.16 | Added homepage-only section-band styling in `styles.css` so sections alternate through subtle dark shades with more vertical breathing space while keeping normal website browsing static and zero-Firebase-cost |
 | 2026-05-23 | 1.2.17 | Added Canonica-specific viewport reveal motion through `CanonicaScrollReveal` and `scroll-reveal.css`, covering public page sections, semantic cards, rounded grid/link panels, CTA controls, and footer groups with reduced-motion support |
 | 2026-05-23 | 1.2.18 | Added `SupportKnowledgeMapSection` on the homepage and Product page to make Canonica's source-map model self-explanatory without positioning it as a chatbot, helpdesk replacement, docs CMS, or autopilot |
-| 2026-05-23 | 1.2.19 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |
+| 2026-05-23 | 1.2.19 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as generic platform context, a helpdesk replacement, or an AI autopilot |
 | 2026-05-23 | 1.2.20 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, switched JSON-LD injection to the shared server helper, added WebSite route references, and verified robots/sitemap/LLM coverage with `verify:agent-readiness` |
 | 2026-05-24 | 1.2.21 | Applied AI-built SaaS founder positioning: homepage hero now starts from the post-launch support problem, demo is the first proof, product/use-case/install/pricing/security/FAQ copy uses simpler buyer language before Canonica vocabulary, and `/use-cases/ai-built-saas` plus the `/use-cases/vibe-coded-saas` canonical alias were added without Firebase reads or new dependencies |
-| 2026-05-24 | 1.2.22 | Updated the shared support knowledge map diagram on homepage and Product with a Canonica-colored MenuList-style logo core, ripple rings, dotted SVG routes, homepage-style pulse strokes, and border-only output arrival highlights |
+| 2026-05-24 | 1.2.22 | Updated the shared support knowledge map diagram on homepage and Product with a Canonica-colored logo core, ripple rings, dotted SVG routes, homepage-style pulse strokes, and border-only output arrival highlights |
 | 2026-05-24 | 1.2.23 | Added the reusable Canonica flow-diagram system and applied it across homepage workflow sections, product-area pages, product-feature pages, SEO/use-case pages, install, security, resources, engine pillars, and system coverage while keeping normal browsing static and zero-Firebase-cost |
 | 2026-05-24 | 1.2.24 | Added reusable proof blocks for decision tiles, before/after examples, and status snapshots; applied them to homepage fit qualification, widget states, trust controls, `/use-cases`, and `/security` to reduce text-heavy reading while preserving static zero-Firebase-cost browsing |
-| 2026-05-24 | 1.2.25 | Aligned reusable Canonica sequence-diagram endpoints and output-highlight timing with the MenuList homepage source-map reference while keeping the Canonica logo, ripple, and color treatment unchanged |
+| 2026-05-24 | 1.2.25 | Aligned reusable Canonica sequence-diagram endpoints and output-highlight timing with the shared source-map reference while keeping the Canonica logo, ripple, and color treatment unchanged |
 | 2026-05-24 | 1.2.26 | Synchronized the closed-loop diagram ring pulse and six card border highlights so the ring starts at step 01 and the cards flash in order within the same cycle |
 | 2026-05-24 | 1.2.27 | Converted reusable sequence diagrams from horizontal strips into the shared input column, logo center, and output column layout used by the source-map diagrams |
 | 2026-05-24 | 1.2.28 | Slowed the closed-loop ring and card-highlight animation to an 8.4-second loop-specific cycle while keeping the highlights synchronized with the ring pulse |
@@ -401,4 +411,8 @@ Conversion analytics is client-side only:
 | 2026-05-25 | 1.2.30 | Added website runtime-scaling copy across existing high-intent pages: compiled approved context, owner-visible bundle readiness, workspace-local daily governance, cache-first runtime delivery, and rollout-gated MCP boundaries without adding a dedicated public MCP page |
 | 2026-05-25 | 1.2.31 | Added `DayOneLaunchPackSection` to homepage and Product, updated Resources/Pricing/Get Started/Security/LLM context, and kept the completed quickstarts, starter surfaces, import pack, install verifier, ROI/proof, and security one-pager as linked existing pages rather than new routes |
 | 2026-05-25 | 1.2.32 | Refreshed existing public pages for production-ready widget image support: user-initiated screenshot upload/paste is now described on widget, install, quickstart, security, FAQ, SEO, updates, route metadata, and LLM surfaces, while automatic screenshot capture remains explicitly out of scope |
-| 2026-05-26 | 1.2.33 | Formalized the Dark Control Plane theme contract in `theme.ts`, aligned CSS variables and PWA manifest colors to the deep-navy/indigo palette, and moved inline-style primary/status colors onto shared Canonica theme tokens |
+| 2026-05-26 | 1.2.33 | Formalized the initial dark website theme contract in `theme.ts`, aligned CSS variables and PWA manifest colors to the deep-navy palette, and moved inline-style primary/status colors onto shared Canonica theme tokens |
+| 2026-05-27 | 1.2.34 | Replaced the public website's indigo primary with the Verdigris Control Plane palette: deep teal controls, teal signal accents, refreshed Canonica logo/SVG social colors, and matching docs |
+| 2026-05-27 | 1.2.35 | Removed client-specific public relationship framing from Canonica website pages, route docs, and agent context so Canonica presents as an independent support knowledge control plane |
+| 2026-05-27 | 1.2.36 | Added a Canonica-only contact inquiry API and client form, plus a mobile hamburger Other group card with safe-area bottom padding |
+| 2026-05-27 | 1.2.37 | Added Support Board as a standalone public product-feature page and synchronized Support Control, FAQ, Resources, Updates, route metadata, LLM context, and docs with manual-first private workboard boundaries |

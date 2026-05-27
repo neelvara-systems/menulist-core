@@ -25,7 +25,7 @@
 | Open Locations from More | `MobileMoreScreen` | `canManageLocationSettings()` |
 | View stores/outlets | `MobileLocationsScreen` | `tenantDetails.storesList` |
 | Add outlet | `MobileLocationsScreen` | `POST /api/outlets/create` |
-| Switch outlet context | `MobileLocationsScreen` | `POST /api/auth/switch-store` |
+| Switch outlet context | `MobileMoreScreen` Branch dropdown, billing store picker, `MobileLocationsScreen` | `canSwitchStores` + mapped active stores + `POST /api/auth/switch-store` |
 | Manage OutletPolicy | `MobileLocationsScreen` policy sheet | `updateOutletPolicy()` → `POST /api/outlets/policy` |
 | Enforce outlet limits | Mobile menu/editor sheets | `userPermissions.outletPolicy` |
 
@@ -34,6 +34,7 @@
 ## Parity Notes
 
 - Desktop and mobile now use the same `canManageLocationSettings()` gate.
+- Desktop and mobile store switching now use the same mapped-store access rule: show the switcher only when the user has `canSwitchStores` and more than one active store mapping. On mobile, the Branch dropdown is below the signed-in profile card in More.
 - Policy settings appear before the first outlet so HQ can set rules before creating a location.
 - Legacy single-store tenants with no `isMaster` flag are treated as master candidates in UI and are repaired server-side during first outlet creation or policy save.
 - Outlet users still cannot manage chain policy. `applyOutletPolicy()` forces outlet users away from chain-management and billing permissions.

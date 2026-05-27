@@ -12,7 +12,6 @@
 
 import {
     LuBarChart3,
-    LuBook,
     LuBookOpen,
     LuBoxes,
     LuCode,
@@ -24,7 +23,6 @@ import {
     LuHeart,
     LuHelpCircle,
     LuHistory,
-    LuHome,
     LuLayoutDashboard,
     LuLayers,
     LuLanguages,
@@ -180,10 +178,6 @@ export const CANONICA_LAUNCH_SETUP_SUB_NAV: CanonicaNavItem[] = [
 ];
 
 export const CANONICA_SUPPORT_CONTROL_SUB_NAV: CanonicaNavItem[] = [
-    { key: 'support-help', label: 'Help Center', route: CANONICA_ROUTES.HELP, icon: LuHome },
-    { key: 'support-docs', label: 'Documentation', route: CANONICA_ROUTES.DOCS, icon: LuBook },
-    { key: 'support-release-notes', label: 'Release Notes', route: CANONICA_ROUTES.RELEASE_NOTES, icon: LuReceipt },
-    { key: 'support-request', label: 'Submit Ticket', route: CANONICA_ROUTES.SUPPORT, icon: LuTicket },
     { key: 'support-knowledge-base', label: 'Knowledge Base', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuBookOpen, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
     { key: 'support-faqs', label: 'FAQs', route: CANONICA_ROUTES.FAQS, icon: LuHelpCircle, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_CANONICA_FAQ_MANAGEMENT' },
     { key: 'support-changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE },
@@ -228,7 +222,7 @@ export const CANONICA_GOVERNANCE_SUB_NAV: CanonicaNavItem[] = [
 
 export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
     { key: 'launch', label: 'Launch Setup', route: CANONICA_ROUTES.ACTIVATION, icon: LuRocket, group: 'launch', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS, subNav: CANONICA_LAUNCH_SETUP_SUB_NAV },
-    { key: 'support', label: 'Support Control', route: CANONICA_ROUTES.HELP, icon: LuMessageSquare, group: 'support', subNav: CANONICA_SUPPORT_CONTROL_SUB_NAV },
+    { key: 'support', label: 'Support Control', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuMessageSquare, group: 'support', managementOnly: true, subNav: CANONICA_SUPPORT_CONTROL_SUB_NAV },
     { key: 'widget', label: 'Widget & Hosted Help', route: CANONICA_ROUTES.WIDGET, icon: LuCode, group: 'widget', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_WIDGET, subNav: CANONICA_WIDGET_SUB_NAV },
     { key: 'team', label: 'Team & Access', route: CANONICA_ROUTES.TEAM, icon: LuUsers, group: 'team', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_TEAM, featureFlag: 'ENABLE_CANONICA_STAFF_ACCESS', subNav: CANONICA_TEAM_SUB_NAV },
     { key: 'billing', label: 'Billing', route: CANONICA_ROUTES.BILLING, icon: LuCreditCard, group: 'billing', managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_BILLING, subNav: CANONICA_BILLING_SUB_NAV },

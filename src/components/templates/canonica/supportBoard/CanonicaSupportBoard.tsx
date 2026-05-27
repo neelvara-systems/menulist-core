@@ -19,8 +19,10 @@ import { useMemo, useState } from 'react';
 import {
     LuArrowRight,
     LuClipboardList,
+    LuClock3,
     LuFilePlus2,
     LuGitPullRequest,
+    LuHistory,
     LuKanbanSquare,
     LuMessageSquarePlus,
     LuRefreshCw,
@@ -80,6 +82,11 @@ const STATUS_OPTIONS = BOARD_COLUMNS.map((column) => ({
     value: column.status,
 }));
 
+const STATUS_LABELS = BOARD_COLUMNS.reduce((acc, column) => {
+    acc[column.status] = column.title;
+    return acc;
+}, {} as Record<string, string>);
+
 const PRIORITY_OPTIONS: Array<{ label: string; value: CanonicaSupportBoardPriority }> = [
     { label: 'High', value: CANONICA_SUPPORT_BOARD_PRIORITY.HIGH },
     { label: 'Medium', value: CANONICA_SUPPORT_BOARD_PRIORITY.MEDIUM },
@@ -108,6 +115,13 @@ const formatDate = (value: any) => {
     const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return date.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+};
+
+const formatDateTime = (value: any) => {
+    if (!value) return null;
+    const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
 const splitCsv = (value?: string) => (
@@ -211,6 +225,7 @@ export default function CanonicaSupportBoard() {
     const actor = useMemo(() => ({
         id: session?.uId || session?.user?.id || 'unknown',
         name: session?.user?.name || session?.user?.email || 'Team member',
+        email: session?.user?.email || null,
     }), [session?.uId, session?.user?.email, session?.user?.id, session?.user?.name]);
 
     const {
@@ -225,6 +240,8 @@ export default function CanonicaSupportBoard() {
         moveCard,
         refresh,
         saving,
+        sourceSyncEnabled,
+        summary,
         syncing,
         syncSignals,
         syncTickets,
@@ -339,12 +356,16 @@ export default function CanonicaSupportBoard() {
                     <Button icon={<LuRefreshCw />} onClick={() => refresh()} loading={loading}>
                         Refresh
                     </Button>
-                    <Button icon={<LuTicket />} onClick={syncTickets} loading={syncing}>
-                        Sync tickets
-                    </Button>
-                    <Button icon={<LuMessageSquarePlus />} onClick={syncSignals} loading={syncing}>
-                        Sync signals
-                    </Button>
+                    {sourceSyncEnabled ? (
+                        <>
+                            <Button icon={<LuTicket />} onClick={syncTickets} loading={syncing}>
+                                Sync tickets
+                            </Button>
+                            <Button icon={<LuMessageSquarePlus />} onClick={syncSignals} loading={syncing}>
+                                Sync signals
+                            </Button>
+                        </>
+                    ) : null}
                     <Button type="primary" icon={<LuFilePlus2 />} onClick={() => setCreateOpen(true)}>
                         New card
                     </Button>
@@ -357,6 +378,16 @@ export default function CanonicaSupportBoard() {
                 message="Support work only"
                 description="Use this board for tickets, conversations, support gaps, stale answers, draft proposals, releases, surfaces, and private owner notes. It is not a generic project-management board."
             />
+
+            {summary ? (
+                <Alert
+                    showIcon
+                    type="success"
+                    icon={<LuClock3 />}
+                    message="Nightly review queue prepared"
+                    description={`Last sync checked ${summary.lastSync?.candidatesAnalyzed || 0} support signals, created ${summary.lastSync?.cardsCreated || 0} card${summary.lastSync?.cardsCreated === 1 ? '' : 's'}, updated ${summary.lastSync?.cardsUpdated || 0}, and skipped ${summary.lastSync?.cardsSkippedResolved || 0} resolved card${summary.lastSync?.cardsSkippedResolved === 1 ? '' : 's'}. ${summary.lastUpdated ? `Updated ${formatDateTime(summary.lastUpdated)}.` : ''}`}
+                />
+            ) : null}
 
             {error ? <Alert showIcon type="warning" message={error} /> : null}
 
@@ -392,12 +423,16 @@ export default function CanonicaSupportBoard() {
                         description="No support cards yet"
                     >
                         <Space wrap>
-                            <Button icon={<LuTicket />} onClick={syncTickets} loading={syncing}>
-                                Sync unresolved tickets
-                            </Button>
-                            <Button icon={<LuMessageSquarePlus />} onClick={syncSignals} loading={syncing}>
-                                Sync support signals
-                            </Button>
+                            {sourceSyncEnabled ? (
+                                <>
+                                    <Button icon={<LuTicket />} onClick={syncTickets} loading={syncing}>
+                                        Sync unresolved tickets
+                                    </Button>
+                                    <Button icon={<LuMessageSquarePlus />} onClick={syncSignals} loading={syncing}>
+                                        Sync support signals
+                                    </Button>
+                                </>
+                            ) : null}
                             <Button type="primary" icon={<LuFilePlus2 />} onClick={() => setCreateOpen(true)}>
                                 Add manual card
                             </Button>
@@ -596,6 +631,43 @@ export default function CanonicaSupportBoard() {
                                 <Input placeholder="billing, onboarding, docs" />
                             </Form.Item>
                         </Form>
+
+                        <Card size="small" title={<Space size={8}><LuHistory />Status history</Space>}>
+                            {Array.isArray(selectedCard.statuses) && selectedCard.statuses.length > 0 ? (
+                                <Flex vertical gap={8}>
+                                    {selectedCard.statuses.map((entry, index) => (
+                                        <div
+                                            key={`${entry.status}-${index}-${formatDateTime(entry.timestamp) || index}`}
+                                            style={{
+                                                background: token.colorFillTertiary,
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 8,
+                                                padding: 10,
+                                            }}
+                                        >
+                                            <Flex justify="space-between" gap={10} align="flex-start" wrap="wrap">
+                                                <div>
+                                                    <Text strong>{STATUS_LABELS[entry.status] || entry.status}</Text>
+                                                    {entry.remark ? (
+                                                        <Paragraph style={{ marginBottom: 0, marginTop: 4 }}>
+                                                            {entry.remark}
+                                                        </Paragraph>
+                                                    ) : null}
+                                                </div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    {formatDateTime(entry.timestamp) || 'Just now'}
+                                                </Text>
+                                            </Flex>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {entry.createdBy?.name || 'Team member'}
+                                            </Text>
+                                        </div>
+                                    ))}
+                                </Flex>
+                            ) : (
+                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No status history yet" />
+                            )}
+                        </Card>
 
                         <Card size="small" title="Internal notes">
                             <Flex vertical gap={12}>

@@ -334,7 +334,7 @@ if (!userPermissions?.canManageOutlets) return null;
 | Permission         | UI Component                     | Gate Effect |
 | ------------------ | -------------------------------- | ----------- |
 | `canManageOutlets` | LocationsPage, Add Outlet button | Hidden      |
-| `canSwitchStores`  | StoreSwitcher in header          | Hidden      |
+| `canSwitchStores`  | Desktop header StoreSwitcher, mobile More Branch dropdown, billing store pickers | Hidden unless user has more than one active mapped store |
 | `canAccessBilling` | Billing pages, pricing links     | Hidden      |
 | `canManageMenu`    | Editor toolbar, menu management  | Hidden      |
 | `canPublishMenu`   | Publish button                   | Hidden      |
@@ -377,7 +377,10 @@ if (!userPermissions?.canManageOutlets) return null;
 | ------------------------------------------ | ------------------ |
 | `src/app/(main)/locations/page.tsx`        | `canManageOutlets` |
 | `src/components/organisms/AddOutletModal/` | `canManageOutlets` |
-| `src/components/molecules/StoreSwitcher/`  | `canSwitchStores`  |
+| `src/components/molecules/StoreSwitcher/`  | `canSwitchStores` + mapped active stores |
+| `src/components/mobile/screens/MobileMoreScreen.tsx` | `canSwitchStores` + mapped active stores |
+| `src/components/templates/main-app/billing/` | `canSwitchStores` + mapped active stores |
+| `src/components/mobile/screens/MobileBillingScreen.tsx` | `canSwitchStores` + mapped active stores |
 
 ### API Files With Permission Checks
 
@@ -385,7 +388,7 @@ if (!userPermissions?.canManageOutlets) return null;
 | ----------------------------------------- | ---------------------------- |
 | `src/app/api/outlets/create/route.ts`     | Master user, outlet creation |
 | `src/app/api/outlets/deactivate/route.ts` | Master user, deactivation    |
-| `src/app/api/auth/switch-store/route.ts`  | Store switching permission   |
+| `src/app/api/auth/switch-store/route.ts`  | Store switching permission and target store mapping |
 
 ---
 

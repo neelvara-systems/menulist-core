@@ -31,7 +31,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         eyebrow: 'Team Access',
         title: 'Give the right people the right Canonica access.',
         description:
-            'Invite workspace members, assign Canonica-specific roles, reset login details, and force sign-out without exposing MenuList permissions or restaurant staff controls.',
+            'Invite workspace members, assign Canonica-specific roles, reset login details, and force sign-out without exposing broad owner-level controls.',
         heroBullets: [
             'Workspace members and roles',
             'Email or owner-passcode login',
@@ -39,12 +39,12 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         ],
         proofTitle: 'Production support needs controlled workspace access.',
         proofDescription:
-            'Canonica now treats team management as part of the workspace control layer. Owners can add staff, assign role permissions, reset access, and keep support work separated from MenuList.',
+            'Canonica now treats team management as part of the workspace control layer. Owners can add staff, assign role permissions, reset access, and keep support work role-scoped.',
         cards: [
             {
                 title: 'Invite team members',
                 description:
-                    'Add support leads, managers, or staff to the Canonica workspace without creating a MenuList management account for them.',
+                    'Add support leads, managers, or staff to the Canonica workspace without giving every member owner-level access.',
             },
             {
                 title: 'Assign Canonica roles',
@@ -54,7 +54,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Use email or passcode login',
                 description:
-                    'Members can be added with an email setup path or an owner-managed staff ID and temporary passcode, matching the proven MenuList staff model.',
+                    'Members can be added with an email setup path or an owner-managed staff ID and temporary passcode.',
             },
             {
                 title: 'Reset access from the workspace',
@@ -67,16 +67,16 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'Sensitive access changes can revoke sessions instead of waiting for a member to sign out on their own device.',
             },
             {
-                title: 'Keep products separated',
+                title: 'Keep workspace controls scoped',
                 description:
-                    'Canonica roles use Canonica permission claims and routes. MenuList owner screens and mobile dashboards remain separate.',
+                    'Canonica roles use Canonica permission claims and routes, so billing, widget, knowledge, support, and governance access can be controlled separately.',
             },
         ],
         workflowTitle: 'From workspace owner to controlled team access.',
         workflowDescription:
-            'Team Access follows the same owner-managed staff lifecycle that already works in MenuList, adapted to Canonica workspaces and permissions.',
+            'Team Access gives Canonica workspaces an owner-managed member lifecycle for support, governance, billing, widget, and knowledge access.',
         workflowSteps: [
-            { title: 'Open Team Access', description: 'The owner uses the Canonica workspace team page, not the MenuList staff screen.' },
+            { title: 'Open Team Access', description: 'The owner uses the Canonica workspace team page.' },
             { title: 'Add member details', description: 'Enter name, optional email, phone metadata, and the starting role.' },
             { title: 'Share login details', description: 'Email users set their password; passcode users receive a one-time staff ID and temporary passcode.' },
             { title: 'Adjust permissions', description: 'Change roles or custom permission sets as the workspace team grows.' },
@@ -93,9 +93,9 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         ],
         faq: [
             {
-                title: 'Is this the same as MenuList staff management?',
+                title: 'Is this general account management?',
                 description:
-                    'It follows the same login and reset model, but the roles and permissions are Canonica-specific and apply only to the Canonica workspace.',
+                    'No. The roles and permissions are Canonica-specific and apply only to the Canonica workspace.',
             },
             {
                 title: 'Can owners reset passwords and passcodes?',
@@ -103,9 +103,9 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'Yes. Owners can create a new temporary passcode and revoke active sessions. Email-backed members receive setup email when first created.',
             },
             {
-                title: 'Does this expose Canonica inside MenuList mobile screens?',
+                title: 'Where do team members use Canonica?',
                 description:
-                    'No. MenuList mobile and dashboard screens remain separate. Canonica has its own responsive dashboard and team page.',
+                    'Team members use the Canonica dashboard and team page with the permissions assigned to their workspace role.',
             },
         ],
     },
@@ -433,6 +433,97 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                 title: 'Do tickets automatically become public answers?',
                 description:
                     'No. Ticket learnings can create draft proposals, but owners approve knowledge before it becomes authoritative.',
+            },
+        ],
+    },
+    {
+        slug: 'support-board',
+        label: 'Support Board',
+        href: '/product/support-board',
+        eyebrow: 'Support Board',
+        title: 'A private board for support work that should become knowledge.',
+        description:
+            'Track manual support cards, private owner notes, status history, assignee context, related surfaces, and governed answer-proposal handoff without turning Canonica into a project-management tool.',
+        heroBullets: [
+            'Manual support cards and private notes',
+            'Status history for owner review',
+            'Answer proposal handoff',
+        ],
+        proofTitle: 'Keep support follow-up visible without mirroring every ticket.',
+        proofDescription:
+            'Support Board is the owner/staff workboard for support gaps that need follow-up. Tickets, conversations, and signals keep their own screens; the board is for the items owners decide should become reviewed support work.',
+        cards: [
+            {
+                title: 'Create support cards',
+                description:
+                    'Add a manual card when a customer question, product gap, or support follow-up needs owner attention.',
+            },
+            {
+                title: 'Keep private notes',
+                description:
+                    'Store internal owner/staff context on the card. Notes stay private and never render in hosted help, widget answers, or public pages.',
+            },
+            {
+                title: 'Track status history',
+                description:
+                    'Use the current status for filtering while keeping a timestamped activity trail of status changes and remarks.',
+            },
+            {
+                title: 'Assign follow-up',
+                description:
+                    'Add assignee, due date, priority, tags, and related customer/support context without building a full helpdesk workflow.',
+            },
+            {
+                title: 'Link support context',
+                description:
+                    'Attach the card to related product surfaces, entities, tickets, conversations, or answers when that context makes review faster.',
+            },
+            {
+                title: 'Create answer proposals',
+                description:
+                    'Turn a handled support card into a governed answer proposal, then approve it through Knowledge Governance before it becomes official.',
+            },
+        ],
+        workflowTitle: 'From owner note to reviewed support knowledge.',
+        workflowDescription:
+            'Support Board stays manual-first by default: owners create the cards that matter, add private context, move the item through review, and hand off answer work to governance when needed.',
+        workflowSteps: [
+            { title: 'Create a card', description: 'Capture the support gap, unresolved question, or follow-up item the owner wants to track.' },
+            { title: 'Add private context', description: 'Record internal notes, assignee, priority, due date, and links to the relevant support objects.' },
+            { title: 'Move the status', description: 'Use current status for the board view while preserving timestamped status activity.' },
+            { title: 'Connect product context', description: 'Link the item to a surface, entity, answer, ticket, or conversation when that helps review.' },
+            { title: 'Create a proposal', description: 'Draft an answer proposal only when the support item should become reusable support knowledge.' },
+            { title: 'Approve in governance', description: 'Knowledge Governance remains the authority layer before an answer becomes official.' },
+        ],
+        connectedTitle: 'The board connects support work without duplicating every screen.',
+        connectedDescription:
+            'Support Board is useful because it sits above tickets, conversations, surfaces, and governance as an owner review lane. It should not replace those dedicated screens.',
+        connectedItems: [
+            { title: 'Tickets', description: 'Fallback tickets stay in the ticket inbox; selected issues can become board follow-up.' },
+            { title: 'Conversations', description: 'Low-confidence conversations and feedback can inform cards without exposing chat logs publicly.' },
+            { title: 'Product surfaces', description: 'Cards can point to billing, onboarding, settings, integrations, releases, or error pages.' },
+            { title: 'Governance', description: 'Answer proposals created from cards still require owner approval before becoming authoritative.' },
+        ],
+        faq: [
+            {
+                title: 'Is Support Board a ticket inbox?',
+                description:
+                    'No. Tickets stay in the ticket inbox. Support Board is the private owner workboard for selected support gaps, follow-up notes, and knowledge tasks.',
+            },
+            {
+                title: 'Does the board sync every ticket and signal?',
+                description:
+                    'No. The default public product story is manual-first. Ticket/signal sync and nightly board preparation are controlled rollout paths and are not on for every workspace by default.',
+            },
+            {
+                title: 'Are notes visible to end users?',
+                description:
+                    'No. Support Board notes are internal owner/staff context only. They do not appear in hosted help, widget responses, public APIs, or customer-facing docs.',
+            },
+            {
+                title: 'Does creating a card publish an answer?',
+                description:
+                    'No. Cards can create answer proposals, but Knowledge Governance and owner approval decide what becomes authoritative support knowledge.',
             },
         ],
     },

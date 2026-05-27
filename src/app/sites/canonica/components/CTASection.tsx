@@ -25,7 +25,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                         href="/get-started"
                         data-canonica-event="final_cta_clicked"
                         data-canonica-label="start_free_setup"
-                        className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600 hover:shadow-indigo-500/40"
+                        className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800 hover:shadow-teal-500/40"
                     >
                         Start free setup
                     </CanonicaLink>

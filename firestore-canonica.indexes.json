@@ -49,6 +49,28 @@
       ]
     },
     {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "canonical",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "kb_articles",
       "queryScope": "COLLECTION",
       "fields": [

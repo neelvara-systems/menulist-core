@@ -23,7 +23,7 @@
 | -------------------------------- | -------------------------------------------------- | ------ |
 | View all outlets                 | `MobileLocationsScreen`                            | ✅     |
 | Billing summary (stores × price) | `MobileLocationsScreen`                            | ✅     |
-| Switch between stores            | `MobileLocationsScreen` → `/api/auth/switch-store` | ✅     |
+| Switch between stores            | `MobileMoreScreen` Branch dropdown + `MobileLocationsScreen` → `/api/auth/switch-store` | ✅     |
 | Add new outlet                   | `MobileLocationsScreen` → `/api/outlets/create`    | ✅     |
 | Proration display                | `MobileLocationsScreen` → `calculateProration`     | ✅     |
 | Outlet Policy (15 toggles)       | `MobileLocationsScreen` → `updateOutletPolicy` → `/api/outlets/policy` | ✅     |
@@ -32,6 +32,7 @@
 ## DAL Parity
 
 - Uses same `/api/outlets/create`, `/api/auth/switch-store`, and `/api/outlets/policy` endpoints as desktop
+- Mobile and desktop expose store switching only when the user has `canSwitchStores` and more than one active mapped store. Mobile keeps the primary branch dropdown in More, below the signed-in profile card.
 - Uses `/api/projects/outlet-save` for linked outlet menu saves, matching desktop persistence: mobile resolves master + outlet local data for display but saves only local `L_I_` / `L_C_` records and overrides.
 - `/api/projects/outlet-save` enforces OutletPolicy server-side for price, availability, description, image, language additions, local items/categories, project deactivation, theme, brand, and layout changes, so mobile controls are not the only protection.
 - Linked outlet AI description/image APIs also enforce OutletPolicy server-side before provider calls, so hidden mobile actions cannot be bypassed by direct API requests.

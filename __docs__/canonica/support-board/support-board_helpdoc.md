@@ -22,10 +22,25 @@ Do not use it for unrelated product tasks or generic project management.
 You can:
 
 - create a manual card
-- sync unresolved tickets
-- sync recent support signals
+- sync unresolved tickets if source sync is enabled for your workspace
+- sync recent support signals if source sync is enabled for your workspace
+- review cards Canonica prepared overnight from repeated misses, negative feedback, stale answers, and release impact if nightly sync is enabled for your workspace
 
 Each synced item keeps a link back to its source where possible.
+
+## What does the nightly sync do?
+
+When enabled for your workspace, Canonica checks bounded recent support activity once per nightly run. It prepares review cards only when there is meaningful support work, such as repeated unanswered questions, repeated negative feedback, drifted approved answers, or release changes that affect stale support.
+
+It does not publish answers, reopen resolved cards, or copy every ticket into the board.
+
+## Why are tickets and signals not always synced?
+
+Tickets and signals already have their own screens. Support Board source sync is enabled only when you want a consolidated review board, so Canonica does not spend reads and writes duplicating work you already manage elsewhere.
+
+## Can I see who changed a card status?
+
+Yes. Each card keeps the current status at the top level and a private status history with the timestamp, team member, and short remark for each status change.
 
 ## Are notes visible to customers?
 

@@ -6,6 +6,137 @@
 
 ---
 
+## May 27, 2026 — Canonica Owner Navigation Cleanup
+
+### Changed
+
+- **Support Control now shows owner/staff operations only** — The dashboard sidebar keeps Knowledge Base, FAQs, Changelog, Support Board, Ticket Inbox, Conversations, and Weekly Digest under Support Control.
+- **Customer support preview routes are no longer dashboard entry points** — Help Center, Documentation, Release Notes, and Submit Ticket remain direct compatibility/customer shell routes, but they are not shown in the owner sidebar or header actions.
+- **Management sessions no longer render customer shell routes by accident** — Direct owner visits to Help, Docs, Release Notes, or Submit Ticket redirect to Knowledge Base, Changelog, Ticket Inbox, or the first permitted owner route.
+- **Permission fallback stays on owner surfaces for management users** — Staff who open a route they cannot use are redirected to the first permitted owner route instead of the customer help page. Non-management Canonica client sessions still fall back to the client help route.
+
+### Cost
+
+- **No Firebase cost change** — This is navigation, routing fallback, and documentation cleanup only. It adds no Firestore reads, writes, listeners, Cloud Functions, or scheduled work.
+
+---
+
+## May 27, 2026 — Access-Based Store Switching
+
+### Changed
+
+- **Store switching now follows staff store mapping** — Desktop and mobile show the switch option only when the user has `canSwitchStores` and more than one active mapped store.
+- **HQ is no longer the only switching source** — A mapped user can switch from their default store to another mapped store and back without needing to be in the HQ/master store.
+- **Mobile branch switching now lives in More** — The mobile More tab shows a searchable Branch dropdown below the signed-in profile card, so users with many mapped branches can switch directly.
+- **Billing store pickers use the same access filter** — Desktop and mobile billing views list only active stores already mapped to the user.
+
+### Cost
+
+- **Switching no longer writes user access** — `/api/auth/switch-store` reads the caller store and tenant list, then checks existing session store mappings. User access is granted during outlet creation or staff assignment, not during switching.
+
+---
+
+## May 27, 2026 — Canonica Website Support Board Page
+
+### Added
+
+- **Support Board now has a public product-feature page** — `/product/support-board` explains private support cards, internal notes, status history, selected follow-up, related support context, and answer-proposal handoff.
+- **Support Control and buyer resources now mention Support Board where it helps evaluation** — Support Control, FAQ, Resources, Updates, sitemap metadata, and agent-readable context now describe Support Board as a manual-first owner/staff workboard.
+
+### Changed
+
+- **Support Board automation claims stay conservative** — The website does not claim every ticket or signal syncs into the board by default. Ticket/signal sync and nightly board preparation remain controlled rollout wording.
+
+### Cost
+
+- **No Firebase cost for website browsing** — The new page and copy are static public website content. Normal browsing does not add Firestore reads, writes, Cloud Function calls, or scheduler work.
+
+---
+
+## May 27, 2026 — Mobile Outlet Billing Gate Repair
+
+### Fixed
+
+- **Paid outlets now inherit the master subscription even if older tenant summary data is missing the master marker** — Mobile subscription lookup falls back to hydrated store details and the single active unflagged master row, so an outlet does not show the subscribe gate when the master subscription is active.
+- **Outlet writes repair the tenant master marker** — Outlet create and policy saves now write `isMaster: true` into `tenants/{tId}.storesList` when the store document is already marked as the master.
+
+### Cost
+
+- **No recurring cost change** — The fallback uses data already loaded in the session. The repair write only happens during outlet create or policy save when the tenant list is missing the master marker.
+
+---
+
+## May 27, 2026 — Canonica Support Board Cost Gate and Status History
+
+### Changed
+
+- **Support Board source sync is now controlled rollout** — Ticket/signal sync UI is hidden unless `ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC` is enabled, because tickets and signals already have their own owner dashboards.
+- **Support Board nightly prep is disabled by default** — `ENABLE_CANONICA_SUPPORT_BOARD_SYNC` now gates the scheduler path so consolidated board cards are created only for tenants that need that review mode.
+- **Support Board summary reads are disabled by default** — `ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY` keeps the UI from reading `supportBoardSummary_*` while nightly preparation is off.
+- **Support Board cards now track status activity** — Cards keep top-level `status` for filtering and capped `statuses[]` history for timestamped owner/staff activity, matching the support-ticket status-history pattern.
+
+### Cost
+
+- **Default Support Board cost is lower** — Normal board use is a bounded card read plus owner-triggered writes only. Ticket/signal source reads, nightly source scans, and summary reads do not run unless rollout flags are enabled.
+- **Status history adds cost only on status changes** — A status change now reads the card once and writes the card once to append capped history. Field edits without status changes stay one write.
+
+---
+
+## May 27, 2026 — Canonica Website Contact and Mobile Navigation
+
+### Added
+
+- **Canonica contact page now has a full inquiry flow** — `/contact` now includes a buyer-ready form, direct email paths, partnership/security contact paths, privacy/terms consent, and a no-secrets warning.
+- **Canonica contact submissions stay inside Canonica infrastructure** — `POST /api/canonica/public/contact` rate-limits anonymous submissions, uses a honeypot, validates input, hashes the requester IP, and writes to Canonica Firestore instead of another product's public enquiry collection.
+- **Mobile navigation now groups lower-level links** — The Canonica hamburger menu keeps Product Overview, Product Areas, and Product Features grouped, then adds an **Other** card for Use Cases, Demo, Install, Pricing, Resources, Updates, and Contact with safe-area bottom padding.
+
+### Cost
+
+- **Normal browsing remains static** — Page views and mobile menu opening add no Firestore reads, listeners, Cloud Functions, or scheduled work.
+- **Valid contact form submissions add one bounded Canonica Firestore write** — Spam/bot requests are filtered by rate limiting and honeypot handling before the write path.
+
+---
+
+## May 27, 2026 — Canonica Support Board Nightly Sync
+
+### Added
+
+- **Support Board now prepares owner review work nightly** — The existing Canonica scheduler creates deduped cards for repeated fallback, low-confidence answers, negative feedback, escalations, drifted canonical answers, and release impact.
+- **Support Board summary is now compact** — `platformSummary/supportBoardSummary_{tId}_{sId}` stores open work, needs-answer count, high-priority count, source/status counts, and latest sync stats for owner UI.
+- **Manual sync remains available** — Ticket and signal sync buttons still exist for immediate review, but the scheduler does not mirror every ticket into Kanban.
+
+### Cost
+
+- **Adds bounded nightly Firestore usage** — Per tenant, nightly sync reads capped search history, signal, drift, release, and recent board-card windows; creates or updates at most 20 board cards; skips resolved/unchanged cards; and writes the compact summary only when changed.
+
+## May 27, 2026 — Canonica Website Product Boundary
+
+### Changed
+
+- **Canonica public pages no longer mention a specific client product** — About, Footer, FAQ, Security, Security One-Pager, Proof, Product, Launch Setup, Team Access, Updates, system coverage, and LLM context now describe Canonica as an independent support knowledge control plane.
+- **Canonica streamed loader payload now uses Canonica identity** — The root server loader auto-detects Canonica product requests so rendered HTML and agent-visible payloads do not expose another product brand.
+- **Website documentation now follows the same boundary** — Canonica website README, spec, and implementation notes now use generic client/product/platform wording instead of client-specific relationship framing.
+
+### Cost
+
+- **No Firebase cost change** — This is static website copy and documentation work only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 27, 2026 — Canonica Website Brand Color
+
+### Changed
+
+- **Canonica no longer uses indigo as its primary website color** — The public site now uses `Verdigris Control Plane`: deep navy background, deep teal primary controls, teal signal accents, and refreshed logo/social SVG colors.
+- **Website accents are consistent end to end** — CTAs, badges, tabs, hover states, diagrams, route pages, demo panels, and onboarding form accents now use the verdigris/teal system instead of the previous indigo treatment.
+- **Canonica website docs now match the implemented palette** — The website spec, implementation log, and README describe the new dark teal direction.
+
+### Cost
+
+- **No Firebase cost change** — This is static website styling, SVG asset, and documentation work only. It adds no Firestore reads, writes, listeners, Cloud Functions, or scheduled work.
+
+---
+
 ## May 26, 2026 — Canonica Support Board
 
 ### Added
@@ -64,9 +195,9 @@
 ### Added
 
 - **Canonica now has workspace team access** — `/canonica/team` lets workspace owners add members, assign roles, reset login details, deactivate/remove members, and manage custom roles.
-- **Canonica staff login follows the MenuList staff model** — Team members can use email/password setup or owner-managed staff ID/passcode, with phone metadata, shared one-time passcode sharing, password/passcode reset, and owner force sign-out.
-- **Canonica public website now exposes Team Access** — Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context now include Canonica roles, owner reset, force sign-out, and MenuList separation.
-- **Canonica roles are product-specific** — Owner, Manager, and Support Staff roles use Canonica permission keys instead of MenuList restaurant staff permissions.
+- **Canonica staff login follows the shared staff access model** — Team members can use email/password setup or owner-managed staff ID/passcode, with phone metadata, shared one-time passcode sharing, password/passcode reset, and owner force sign-out.
+- **Canonica public website now exposes Team Access** — Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context now include Canonica roles, owner reset, force sign-out, and workspace-scoped access.
+- **Canonica roles are product-specific** — Owner, Manager, and Support Staff roles use Canonica permission keys instead of restaurant staff permissions from another product domain.
 - **Canonica route and API access is permission-aware** — Dashboard navigation, route guards, and protected Canonica APIs now check the active Canonica role before exposing workspace, knowledge, widget, support, integrations, billing, and rebuild controls.
 - **Canonica Firestore rules now enforce permission claims** — Direct Canonica client reads/writes require Canonica permission claims; same-tenant membership alone is no longer enough for managed collections.
 
@@ -78,9 +209,9 @@
 
 ### Changed
 
-- **Canonica now uses the shared dashboard header and sidebar chrome** — The Canonica dashboard keeps its own routes, access guards, logo, and product actions while sharing the same desktop shell structure as the MenuList owner app.
-- **Canonica desktop navigation now supports the same sidebar collapse behavior** — The shared sidebar width, hover expansion, active state, and App Appearance/Dark Mode action treatment are consistent across MenuList and Canonica.
-- **Canonica header now carries direct Help, theme, and profile actions** — Help opens the Canonica Help route, the theme button toggles light/dark mode, and the avatar opens the same profile modal pattern used by MenuList.
+- **Canonica now uses the shared dashboard header and sidebar chrome** — The Canonica dashboard keeps its own routes, access guards, logo, and product actions while sharing the desktop shell structure used across owner apps.
+- **Canonica desktop navigation now supports the same sidebar collapse behavior** — The shared sidebar width, hover expansion, active state, and App Appearance/Dark Mode action treatment are consistent across owner dashboards.
+- **Canonica header now carries direct Help, theme, and profile actions** — Help opens the Canonica Help route, the theme button toggles light/dark mode, and the avatar opens the shared profile modal pattern.
 - **Canonica header has a workspace-switcher slot ready for future workspaces** — No workspace UI is shown until the real workspace model is wired, but the header can accept that control without another shell refactor.
 - **Canonica mobile navigation keeps safe-area drawer handling** — Mobile continues to use Canonica route guards and drawer navigation while inheriting the shared sidebar rendering.
 
@@ -311,7 +442,7 @@
 ### Added
 
 - **MenuList agent context hardened** — `llms.txt` and `llms-full.txt` now explain what public agents may read, which official handoff links they may open, when unknown should stay unknown, and which owner-controlled actions remain out of public scope.
-- **Canonica agent context added** — Canonica product domains now serve dedicated `llms.txt` and `llms-full.txt` routes so agents read Canonica as a support knowledge control plane, not as MenuList business truth or a helpdesk replacement.
+- **Canonica agent context added** — Canonica product domains now serve dedicated `llms.txt` and `llms-full.txt` routes so agents read Canonica as a support knowledge control plane, not as generic platform context or a helpdesk replacement.
 - **MenuList structured data expanded** — The homepage JSON-LD now renders in server HTML, and active platform marketing/legal pages emit WebPage and BreadcrumbList JSON-LD for clearer machine-readable page identity.
 - **Canonica structured data expanded** — Public Canonica pages now emit page-level WebPage and BreadcrumbList JSON-LD from the shared route registry, while homepage WebSite structured data references the active public route set.
 - **Agent-readiness verifier added** — `npm run verify:agent-readiness` checks MenuList and Canonica route registries, robots, sitemap, LLM files, redirected-route exclusions, and structured-data wrappers.
@@ -328,7 +459,7 @@
 
 - **External Menu Sync now starts with owner-facing context** — Desktop Business Settings and mobile More now explain what the connection does, who should use it, when owners can ignore it, and how MenuList remains the source of truth before showing provider URL and verification-secret fields.
 - **External sync labels are less technical** — Owner UI now uses External Sync, Provider connection URL, Verification secret, Test connection, Updates sent, and Provider setup while preserving the internal `posSync` contract.
-- **Canonica brand assets now use the dimensional infinity mark** — Canonica website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Canonica-colored version of the MenuList-style infinity logo instead of the temporary `C` mark.
+- **Canonica brand assets now use the dimensional infinity mark** — Canonica website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Canonica-colored dimensional infinity logo instead of the temporary `C` mark.
 - **Canonica website header/footer keep the approved mark shape** — Public header and footer branding now render the approved dimensional mark SVG wrapper instead of the simplified path-redrawn mark.
 
 ---
@@ -348,7 +479,7 @@
 
 - **Canonica public website corrected to widget-first positioning** — Homepage now includes the page-aware widget section, `/install` is the public widget setup page, and `/integrations` redirects to `/install` so buyer-facing copy does not imply enabled API or workflow-adapter packages.
 - **Public API/adapters removed from package copy** — Pricing, resources, sitemap metadata, and Canonica website docs now keep rollout-only API/adapters out of the public website promise while preserving the underlying feature-gated code paths.
-- **Canonica security page expanded from the MenuList trust pattern** — `/security` now uses facts, controls, and disclosure like the MenuList trust page, but the claims are Canonica-specific: widget context, tenant-scoped data, owner-reviewed answers, rate-limited runtime endpoints, summary-backed dashboards, product separation, and safe reporting guidance.
+- **Canonica security page expanded from the trust-page pattern** — `/security` now uses facts, controls, and disclosure, with Canonica-specific claims: widget context, tenant-scoped data, owner-reviewed answers, rate-limited runtime endpoints, summary-backed dashboards, product separation, and safe reporting guidance.
 
 ## May 21, 2026 — Canonica Activation Command Center
 
@@ -368,7 +499,7 @@
 - **Canonica website system map added** — Homepage now explains the implemented Launch Setup, Support Control, Knowledge Governance, and Runtime layers so public copy matches the code-backed product surface.
 - **Canonica website product preview added** — Homepage now includes a static product preview for activation, page-aware widget context, and governance queue states so visitors can understand the product shape without account access.
 - **Canonica website public pages expanded** — Added `/use-cases`, `/install`, `/resources`, and `/updates`, and wired them into navigation, footer, and sitemap coverage without using dashboard-reserved support routes. `/integrations` remains a redirect alias for older links.
-- **Canonica website metadata separation tightened** — Canonica pages now set their own dark theme color and no longer inherit a hardcoded MenuList web-app title from the root layout head.
+- **Canonica website metadata separation tightened** — Canonica pages now set their own dark theme color and no longer inherit a hardcoded root web-app title from the root layout head.
 
 ### Changed
 

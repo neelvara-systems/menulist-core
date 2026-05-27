@@ -52,7 +52,7 @@ function toneClasses(tone: Tone = 'neutral') {
     return {
         card: 'border-white/[0.075] bg-white/[0.025]',
         chip: 'border-white/[0.08] bg-white/[0.045] text-[#a0a0c0]',
-        icon: 'bg-indigo-500/10 text-indigo-300',
+        icon: 'bg-teal-500/10 text-teal-200',
     };
 }
 
@@ -112,17 +112,17 @@ export function CanonicaBeforeAfterStrip({ items }: { items: CanonicaBeforeAfter
                             <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">Generic reply</div>
                             <p className="text-sm leading-relaxed text-[#8f8faa]">{item.before}</p>
                         </div>
-                        <div className="hidden items-center justify-center text-indigo-300 md:flex">
+                        <div className="hidden items-center justify-center text-teal-200 md:flex">
                             <LuArrowRight aria-hidden size={18} />
                         </div>
-                        <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/[0.07] p-4">
-                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">Canonica reply</div>
+                        <div className="rounded-2xl border border-teal-300/20 bg-teal-400/[0.07] p-4">
+                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-teal-200">Canonica reply</div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">{item.after}</p>
                         </div>
                     </div>
                     {item.outcome ? (
-                        <div className="mt-3 rounded-2xl border border-indigo-300/15 bg-indigo-400/[0.045] p-4">
-                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">Outcome</div>
+                        <div className="mt-3 rounded-2xl border border-teal-300/15 bg-teal-400/[0.045] p-4">
+                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-teal-200">Outcome</div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">{item.outcome}</p>
                         </div>
                     ) : null}

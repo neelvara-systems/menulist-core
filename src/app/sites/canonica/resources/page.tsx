@@ -10,7 +10,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -50,6 +50,7 @@ const RESOURCE_GROUPS = [
             ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
             ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
             ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
+            ['Support Board', '/product/support-board', 'Plan private support cards, internal notes, status history, and answer proposal handoff.'],
             ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the typed SDK helper.'],
             ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
@@ -78,7 +79,7 @@ export default function CanonicaResourcesPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Resources</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Resources</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Start here if you are launching support for an AI-built app.
                     </h1>
@@ -88,10 +89,10 @@ export default function CanonicaResourcesPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-12 max-w-6xl rounded-[1.75rem] border border-indigo-500/20 bg-indigo-500/[0.055] p-6">
+                    <div className="mx-auto mb-12 max-w-6xl rounded-[1.75rem] border border-teal-500/20 bg-teal-500/[0.055] p-6">
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Product pages</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Product pages</p>
                                 <h2 className="text-2xl font-bold text-white">Understand Canonica in order.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">
@@ -116,11 +117,11 @@ export default function CanonicaResourcesPage() {
                     <div className="mx-auto mb-12 max-w-6xl">
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Feature pages</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Feature pages</p>
                                 <h2 className="text-2xl font-bold text-white">Evaluate the individual product features.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
+                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Support Board, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
                             </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -141,7 +142,7 @@ export default function CanonicaResourcesPage() {
                     <div className="mx-auto mb-12 max-w-7xl">
                         <div className="mb-8 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Resource path</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Resource path</p>
                                 <h2 className="text-2xl font-bold text-white">Move from evaluation to rollout in order.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
@@ -182,13 +183,13 @@ export default function CanonicaResourcesPage() {
                                             key={href}
                                             basePath={basePath}
                                             href={href}
-                                            className="flex min-h-[8.75rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-indigo-500/30 hover:bg-white/[0.04]"
+                                            className="flex min-h-[8.75rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-teal-500/30 hover:bg-white/[0.04]"
                                         >
                                             <div>
                                                 <div className="text-sm font-semibold text-[#d6d6ef]">{label}</div>
                                                 <p className="mt-2 text-sm leading-relaxed text-[#808099]">{description}</p>
                                             </div>
-                                            <span className="mt-4 text-xs font-semibold text-indigo-300">Open</span>
+                                            <span className="mt-4 text-xs font-semibold text-teal-200">Open</span>
                                         </CanonicaLink>
                                     ))}
                                 </div>

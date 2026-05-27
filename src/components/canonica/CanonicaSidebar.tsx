@@ -41,7 +41,7 @@ import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMo
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuLifeBuoy, LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
+import { LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
 
 interface CanonicaSidebarProps {
     mobile?: boolean;
@@ -210,16 +210,6 @@ export default function CanonicaSidebar({ mobile = false, onNavigate, onOpenAppS
             icon: isDarkMode ? <LuSun /> : <LuMoon />,
             iconActive: isDarkMode,
             onClick: () => dispatch(toggleDarkMode(!isDarkMode)),
-        },
-        {
-            key: 'help',
-            label: 'Help',
-            icon: LuLifeBuoy,
-            active: selectedKey === CANONICA_ROUTES.HELP,
-            onClick: () => {
-                router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
-                onNavigate?.();
-            },
         },
     ];
 

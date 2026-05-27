@@ -39,7 +39,7 @@ const EXAMPLES = [
         title: 'Multiple small apps need the same support pattern',
         situation: 'A studio launches several SaaS apps and needs repeatable install, surface templates, and safety controls.',
         canonica: 'Reuse quickstarts, starter templates, allowed origins, blocked routes, import packs, and the install verifier for each workspace.',
-        outcome: 'Each product gets its own scoped support layer without hardcoded MenuList assumptions or shared tenant leakage.',
+        outcome: 'Each product gets its own scoped support layer without hardcoded client assumptions or shared tenant leakage.',
     },
 ];
 
@@ -59,7 +59,7 @@ export default function CanonicaProofPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Proof pack</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Proof pack</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Example workloads for support that improves after launch.
                     </h1>
@@ -83,7 +83,7 @@ export default function CanonicaProofPage() {
                     <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
                         {EXAMPLES.map((example) => (
                             <article key={example.title} className="rounded-[1.5rem] border border-white/[0.06] bg-[#101028] p-6">
-                                <span className="rounded-full border border-indigo-300/20 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
+                                <span className="rounded-full border border-teal-300/20 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-100">
                                     {example.label}
                                 </span>
                                 <h2 className="mt-5 text-xl font-semibold leading-snug text-white">{example.title}</h2>
@@ -93,7 +93,7 @@ export default function CanonicaProofPage() {
                                         <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">{example.situation}</p>
                                     </div>
                                     <div>
-                                        <div className="text-[10px] font-semibold uppercase tracking-widest text-indigo-300">Canonica setup</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-widest text-teal-200">Canonica setup</div>
                                         <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">{example.canonica}</p>
                                     </div>
                                     <div>
@@ -115,7 +115,7 @@ export default function CanonicaProofPage() {
                         <CanonicaLink basePath={basePath} href="/demo" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             Try the demo
                         </CanonicaLink>
-                        <CanonicaLink basePath={basePath} href="/quickstarts" className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-600">
+                        <CanonicaLink basePath={basePath} href="/quickstarts" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
                             View quickstarts
                         </CanonicaLink>
                     </div>

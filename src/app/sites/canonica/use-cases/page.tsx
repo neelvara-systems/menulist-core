@@ -119,7 +119,7 @@ export default function CanonicaUseCasesPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Use Cases</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Use Cases</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Support use cases for AI-built SaaS apps.
                     </h1>
@@ -133,7 +133,7 @@ export default function CanonicaUseCasesPage() {
                         <CanonicaLink
                             basePath={basePath}
                             href="/use-cases/ai-built-saas"
-                            className="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-5 transition hover:border-indigo-300/40 hover:bg-indigo-500/[0.08]"
+                            className="rounded-2xl border border-teal-300/20 bg-teal-500/[0.055] p-5 transition hover:border-teal-300/40 hover:bg-teal-500/[0.08]"
                         >
                             <h2 className="text-base font-semibold text-white">For AI-built SaaS</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">Launch support after building quickly with AI.</p>
@@ -143,7 +143,7 @@ export default function CanonicaUseCasesPage() {
                                 key={item.href}
                                 basePath={basePath}
                                 href={item.href}
-                                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition hover:border-indigo-400/30 hover:bg-indigo-500/[0.04]"
+                                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition hover:border-teal-300/30 hover:bg-teal-500/[0.04]"
                             >
                                 <h2 className="text-base font-semibold text-white">{item.title}</h2>
                                 <p className="mt-2 text-sm leading-relaxed text-[#808099]">{item.detail}</p>
@@ -173,7 +173,7 @@ export default function CanonicaUseCasesPage() {
                     <CanonicaLink
                         basePath={basePath}
                         href="/demo"
-                        className="mt-8 inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
+                        className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
                         Open Demo
                     </CanonicaLink>

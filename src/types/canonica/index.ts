@@ -1486,6 +1486,17 @@ export interface CanonicaSupportBoardNote {
     createdAt: Timestamp;
 }
 
+export interface CanonicaSupportBoardStatusEntry {
+    status: CanonicaSupportBoardStatus;
+    timestamp: Timestamp;
+    createdBy: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    remark: string;
+}
+
 export interface CanonicaSupportBoardCard extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
@@ -1515,6 +1526,7 @@ export interface CanonicaSupportBoardCard extends CanonicaDocumentIdentity {
     notes?: CanonicaSupportBoardNote[];
     notesCount?: number;
     lastNoteAt?: Timestamp | null;
+    statuses?: CanonicaSupportBoardStatusEntry[];
 
     resolvedOn?: Timestamp | null;
     resolvedBy?: string | null;
@@ -1534,7 +1546,32 @@ export const CANONICA_SUPPORT_BOARD_CONSTRAINTS = {
     MAX_TITLE_LENGTH: 140,
     MAX_DESCRIPTION_LENGTH: 1200,
     MAX_NOTE_LENGTH: 1000,
+    MAX_STATUS_HISTORY_PER_CARD: 50,
 } as const;
+
+export interface CanonicaSupportBoardSummary extends CanonicaDocumentIdentity {
+    id?: string;
+    tId: number;
+    sId: number;
+    statusCounts?: Record<string, number>;
+    priorityCounts?: Record<string, number>;
+    sourceCounts?: Record<string, number>;
+    topSurfaces?: Array<{ surfaceId: string; count: number }>;
+    openCards: number;
+    needsAnswerCards: number;
+    highPriorityCards: number;
+    totalRecentCards: number;
+    lastSync?: {
+        candidatesAnalyzed: number;
+        cardsCreated: number;
+        cardsUpdated: number;
+        cardsSkippedResolved: number;
+        cardsSkippedUnchanged: number;
+        windowDays: number;
+        maxCardsCreatedOrUpdatedPerRun: number;
+    };
+    lastUpdated?: Timestamp;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // VERSION NORMALIZATION HELPERS

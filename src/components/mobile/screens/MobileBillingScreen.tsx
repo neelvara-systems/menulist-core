@@ -9,6 +9,7 @@ import usePaymentHandler from '@hook/usePaymentHandler';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { logger } from '@lib/monitoring/logger';
+import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { toDate } from '@util/dateTime';
 import { formatCurrency } from '@util/formatters';
@@ -31,7 +32,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         activeSubscription,
         activeSubscriptionLoading,
         activeStoreContext,
-        isMasterUser,
         setActiveStoreContext,
         setActiveSubscription,
         storeDetails,
@@ -52,9 +52,13 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);
 
     const tenantStoresList = tenantDetails?.storesList || [];
+    const accessibleBillingStores = useMemo(
+        () => getAccessibleStoreSummaries({ sessionUser: session?.user as any, tenantDetails }),
+        [session?.user, tenantDetails],
+    );
+    const loginStoreId = Number(session?.user?.storeId || 0);
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
-    const masterStoreId = Number(tenantStoresList.find((store: any) => store?.isMaster === true)?.storeId || session?.user?.storeId || storeDetails?.storeId || 0);
-    const canSwitchBillingStore = Boolean(isMasterUser && userPermissions?.canSwitchStores && tenantStoresList.length > 1);
+    const canSwitchBillingStore = Boolean(userPermissions?.canSwitchStores && accessibleBillingStores.length > 1);
     const selectedStore = useMemo(
         () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
         [billingStoreId, tenantStoresList],
@@ -281,8 +285,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
-        if (targetStoreId === Number(storeDetails?.storeId || session?.user?.storeId)) {
-            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+        if (targetStoreId === loginStoreId) {
+            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
             setActiveStoreContext(null);
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });
@@ -700,7 +704,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </NavBar>
                     <Flex style={{ overflowY: 'auto', padding: 12 }} vertical>
                         <List>
-                            {tenantStoresList.map((store: any) => (
+                            {accessibleBillingStores.map((store: any) => (
                                 <List.Item
                                     extra={
                                         <Flex align="center" gap={6}>

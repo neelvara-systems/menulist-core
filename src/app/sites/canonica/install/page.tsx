@@ -126,7 +126,7 @@ export default function CanonicaInstallPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Widget Install</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Widget Install</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Install support with one script.
                     </h1>
@@ -139,7 +139,7 @@ export default function CanonicaInstallPage() {
                     <div className="mx-auto max-w-7xl">
                         <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                             <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Install flow</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Install flow</p>
                                 <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
                                     From widget key to verified runtime.
                                 </h2>
@@ -220,12 +220,12 @@ export default function CanonicaInstallPage() {
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Developer handoff</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Developer handoff</p>
                             <h2 className="text-3xl font-bold">What to hand your developer.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
                                 Give your developer the widget key, env variable names, allowed domains, blocked routes, and the list of important pages where users need help first.
                             </p>
-                            <div className="mt-5 rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-sm leading-relaxed text-[#d6d6ef]">
+                            <div className="mt-5 rounded-xl border border-teal-300/20 bg-teal-500/10 p-4 text-sm leading-relaxed text-[#d6d6ef]">
                                 Canonica widget installs use a public publishable key. Do not add Firebase service accounts, Canonica admin credentials, private API keys, tenant IDs, store IDs, user IDs, or customer records to client-side env files.
                             </div>
                             <div className="mt-6 grid gap-3">
@@ -273,7 +273,7 @@ export default function CanonicaInstallPage() {
                     <div className="mx-auto max-w-7xl">
                         <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
                             <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Owner controls</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner controls</p>
                                 <h2 className="text-3xl font-bold">The product owner controls where support appears.</h2>
                             </div>
                             <p className="text-lg leading-relaxed text-[#a0a0c0]">
@@ -330,7 +330,7 @@ export default function CanonicaInstallPage() {
                         href="/get-started"
                         data-canonica-event="install_cta_clicked"
                         data-canonica-label="start_free_setup"
-                        className="mt-8 inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
+                        className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
                         Start free setup
                     </CanonicaLink>

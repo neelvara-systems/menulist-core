@@ -3,20 +3,20 @@
   <desc id="desc">Canonica page-aware support knowledge for SaaS.</desc>
   <defs>
     <radialGradient id="cn-orb-right" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#312e81" stop-opacity="0.56"/>
-      <stop offset="1" stop-color="#312e81" stop-opacity="0"/>
+      <stop offset="0" stop-color="#064e3b" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#064e3b" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="cn-orb-left" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#4f46e5" stop-opacity="0.24"/>
-      <stop offset="1" stop-color="#4f46e5" stop-opacity="0"/>
+      <stop offset="0" stop-color="#0f766e" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#0f766e" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="cn-title" x1="82" y1="0" x2="650" y2="0" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.52" stop-color="#e0e7ff"/>
-      <stop offset="1" stop-color="#a5b4fc"/>
+      <stop offset="0.52" stop-color="#ccfbf1"/>
+      <stop offset="1" stop-color="#5eead4"/>
     </linearGradient>
     <pattern id="cn-dot-grid" width="64" height="64" patternUnits="userSpaceOnUse">
-      <circle cx="6" cy="6" r="2" fill="#a5b4fc" opacity="0.14"/>
+      <circle cx="6" cy="6" r="2" fill="#5eead4" opacity="0.14"/>
     </pattern>
   </defs>
   <rect width="1200" height="630" fill="#070714"/>
@@ -29,5 +29,5 @@
   <text x="82" y="394" fill="#ffffff" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="56" font-weight="760" letter-spacing="0">knowledge for SaaS</text>
   <text x="82" y="472" fill="#a0a0c0" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="450">Correct, approved answers connected to the product screen.</text>
   <line x1="82" y1="555" x2="1118" y2="555" stroke="#ffffff" stroke-opacity="0.09"/>
-  <text x="82" y="590" fill="#a5b4fc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="800">canonica.app</text>
+  <text x="82" y="590" fill="#5eead4" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="800">canonica.app</text>
 </svg>

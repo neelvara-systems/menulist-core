@@ -84,10 +84,7 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                         &copy; {new Date().getFullYear()} Canonica. All rights reserved.
                     </p>
                     <p className="text-xs text-[#505070]">
-                        Built by the team behind{' '}
-                        <a href="https://menulist.ai" className="text-indigo-400 hover:text-indigo-300" target="_blank" rel="noopener noreferrer">
-                            MenuList
-                        </a>
+                        Support knowledge control plane for SaaS.
                     </p>
                 </div>
             </div>

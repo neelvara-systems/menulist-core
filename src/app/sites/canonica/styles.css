@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Canonica Website — Global Styles
-   Theme: Dark Control Plane */
+   Theme: Verdigris Control Plane */
 
 :root,
 .canonica-site {
@@ -22,11 +22,11 @@
     --cn-text-secondary: #a0a0c0;
     --cn-text-muted: #6b6b8a;
     --cn-field-bg: #111124;
-    --cn-primary: #6366f1;
-    --cn-primary-hover: #5558e6;
-    --cn-primary-light: #8b8bff;
-    --cn-accent: #818cf8;
-    --cn-success: #10b981;
+    --cn-primary: #0f766e;
+    --cn-primary-hover: #115e59;
+    --cn-primary-light: #5eead4;
+    --cn-accent: #22d3ee;
+    --cn-success: #22c55e;
     --cn-warning: #f59e0b;
     --cn-danger: #ef4444;
 }
@@ -67,7 +67,7 @@ body:has(.canonica-site) {
     padding-top: clamp(7rem, 11vh, 9rem);
     padding-bottom: clamp(4rem, 8vh, 6rem);
     background:
-        linear-gradient(180deg, rgba(99, 102, 241, 0.035) 0%, rgba(10, 10, 26, 0) 46%),
+        linear-gradient(180deg, rgba(20, 184, 166, 0.04) 0%, rgba(10, 10, 26, 0) 46%),
         var(--cn-bg);
 }
 
@@ -79,7 +79,7 @@ body:has(.canonica-site) {
 
 .cn-home-flow > section:nth-child(4n + 3) {
     background:
-        linear-gradient(180deg, rgba(129, 140, 248, 0.04) 0%, rgba(10, 10, 26, 0.18) 100%),
+        linear-gradient(180deg, rgba(45, 212, 191, 0.035) 0%, rgba(10, 10, 26, 0.18) 100%),
         var(--cn-bg-band-muted);
 }
 
@@ -91,7 +91,7 @@ body:has(.canonica-site) {
 
 .cn-home-flow > section:nth-child(4n + 5) {
     background:
-        linear-gradient(180deg, rgba(30, 206, 255, 0.035) 0%, rgba(99, 102, 241, 0.022) 100%),
+        linear-gradient(180deg, rgba(34, 211, 238, 0.035) 0%, rgba(20, 184, 166, 0.024) 100%),
         #0f1022;
 }
 
@@ -132,7 +132,7 @@ body:has(.canonica-site) {
 }
 
 .canonica-hero-gradient {
-    background: linear-gradient(90deg, #dbe4ff 0%, #a5b4fc 30%, var(--cn-primary) 72%, #4f46e5 100%);
+    background: linear-gradient(90deg, #ecfeff 0%, #99f6e4 30%, var(--cn-primary-light) 68%, var(--cn-primary) 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -141,10 +141,10 @@ body:has(.canonica-site) {
 }
 
 .cn-diagram {
-    --cn-map-path: #818cf8;
+    --cn-map-path: #2dd4bf;
     --cn-map-path-opacity: 0.34;
-    --cn-map-pulse-color: #8b8bff;
-    --cn-map-pulse-glow: rgba(129, 140, 248, 0.56);
+    --cn-map-pulse-color: #5eead4;
+    --cn-map-pulse-glow: rgba(45, 212, 191, 0.52);
     --cn-map-pulse-opacity: 0.96;
     --cn-map-card-border: rgba(255, 255, 255, 0.075);
 
@@ -153,7 +153,7 @@ body:has(.canonica-site) {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 2rem;
     background:
-        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.18), transparent 32%),
+        radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.18), transparent 32%),
         linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
         #09091a;
     padding: clamp(1rem, 2.6vw, 2rem);
@@ -245,11 +245,11 @@ body:has(.canonica-site) {
 }
 
 .cn-diagram-card__index {
-    color: #a5b4fc;
+    color: var(--cn-primary-light);
 }
 
 .cn-diagram-card--source .cn-diagram-card__index {
-    color: #a5b4fc;
+    color: var(--cn-primary-light);
 }
 
 .cn-diagram-card h3 {
@@ -283,7 +283,7 @@ body:has(.canonica-site) {
 
     position: absolute;
     border-radius: 50%;
-    background: rgba(129, 140, 248, 0.2);
+    background: rgba(20, 184, 166, 0.2);
     opacity: var(--cn-map-ring-rest-opacity);
     transform: scale(1);
     transform-origin: center;
@@ -303,7 +303,7 @@ body:has(.canonica-site) {
 
     width: 138px;
     height: 138px;
-    border: 1px solid rgba(129, 140, 248, 0.26);
+    border: 1px solid rgba(45, 212, 191, 0.24);
     background: var(--cn-bg);
 }
 
@@ -459,10 +459,10 @@ body:has(.canonica-site) {
 }
 
 .cn-support-map {
-    --cn-map-path: #818cf8;
+    --cn-map-path: #2dd4bf;
     --cn-map-path-opacity: 0.34;
-    --cn-map-pulse-color: #8b8bff;
-    --cn-map-pulse-glow: rgba(129, 140, 248, 0.56);
+    --cn-map-pulse-color: #5eead4;
+    --cn-map-pulse-glow: rgba(45, 212, 191, 0.52);
     --cn-map-pulse-opacity: 0.96;
     --cn-map-card-border: rgba(255, 255, 255, 0.075);
 
@@ -475,7 +475,7 @@ body:has(.canonica-site) {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 2rem;
     background:
-        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.22), transparent 31%),
+        radial-gradient(circle at 50% 50%, rgba(20, 184, 166, 0.2), transparent 31%),
         linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
         #09091a;
     padding: clamp(1.1rem, 3vw, 2rem);
@@ -667,13 +667,13 @@ body:has(.canonica-site) {
     width: 0.68rem;
     flex: 0 0 auto;
     border-radius: 999px;
-    background: #403ea4;
+    background: #0f766e;
     box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.12);
 }
 
 .cn-support-map__card--output .cn-support-map__card-dot {
-    background: #a5b4fc;
-    box-shadow: 0 0 0 5px rgba(165, 180, 252, 0.13);
+    background: var(--cn-primary-light);
+    box-shadow: 0 0 0 5px rgba(94, 234, 212, 0.13);
 }
 
 .cn-support-map__center {
@@ -700,7 +700,7 @@ body:has(.canonica-site) {
 
     position: absolute;
     border-radius: 50%;
-    background: rgba(129, 140, 248, 0.2);
+    background: rgba(20, 184, 166, 0.2);
     opacity: var(--cn-map-ring-rest-opacity);
     transform: scale(1);
     transform-origin: center;
@@ -720,7 +720,7 @@ body:has(.canonica-site) {
 
     width: 138px;
     height: 138px;
-    border: 1px solid rgba(129, 140, 248, 0.26);
+    border: 1px solid rgba(45, 212, 191, 0.24);
     background: var(--cn-bg);
 }
 

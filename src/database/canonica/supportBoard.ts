@@ -20,12 +20,16 @@ import {
     CANONICA_SUPPORT_BOARD_STATUS,
     type CanonicaSupportBoardCard,
     type CanonicaSupportBoardNote,
+    type CanonicaSupportBoardStatusEntry,
+    type CanonicaSupportBoardSummary,
 } from '@type/canonica';
 
 const COLLECTION = DB_COLLECTIONS.CANONICA_SUPPORT_BOARD_CARDS;
+const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(canonicaFirebaseClient, COLLECTION, docId);
+const getSummaryDocRef = (tId: number, sId: number) => doc(canonicaFirebaseClient, SUMMARY_COLLECTION, `supportBoardSummary_${tId}_${sId}`);
 
 export type CreateCanonicaSupportBoardCardInput = Pick<
     CanonicaSupportBoardCard,
@@ -50,6 +54,10 @@ export type CreateCanonicaSupportBoardCardInput = Pick<
 > & {
     tId: number;
     sId: number;
+    statusActorId?: string | null;
+    statusActorName?: string | null;
+    statusActorEmail?: string | null;
+    statusRemark?: string | null;
 };
 
 export type UpdateCanonicaSupportBoardCardInput = Partial<Pick<
@@ -72,7 +80,12 @@ export type UpdateCanonicaSupportBoardCardInput = Partial<Pick<
     | 'relatedContextKeys'
     | 'resolvedOn'
     | 'resolvedBy'
->>;
+>> & {
+    statusActorId?: string | null;
+    statusActorName?: string | null;
+    statusActorEmail?: string | null;
+    statusRemark?: string | null;
+};
 
 const makeLocalId = (prefix: string) => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -92,6 +105,11 @@ const cleanTags = (tags?: string[]) => (
         .filter(Boolean)))
         .slice(0, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_TAGS_PER_CARD)
 );
+
+const cleanNullableText = (value: unknown, maxLength: number) => {
+    const cleaned = cleanText(value, maxLength);
+    return cleaned || null;
+};
 
 const normalizePriority = (priority?: string): CanonicaSupportBoardCard['priority'] => {
     if (priority === CANONICA_SUPPORT_BOARD_PRIORITY.HIGH) return CANONICA_SUPPORT_BOARD_PRIORITY.HIGH;
@@ -113,32 +131,124 @@ const normalizeSourceType = (sourceType?: string): CanonicaSupportBoardCard['sou
         : CANONICA_SUPPORT_BOARD_SOURCE_TYPE.MANUAL;
 };
 
-const normalizeCardInput = (data: CreateCanonicaSupportBoardCardInput) => ({
-    ...data,
-    title: cleanText(data.title, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_TITLE_LENGTH),
-    description: cleanText(data.description, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH),
-    status: normalizeStatus(data.status),
-    priority: normalizePriority(data.priority),
-    sourceType: normalizeSourceType(data.sourceType),
-    sourceId: data.sourceId || null,
-    dueDate: data.dueDate || null,
-    assigneeId: data.assigneeId || null,
-    assigneeName: cleanText(data.assigneeName, 100) || null,
-    tags: cleanTags(data.tags),
-    relatedTicketId: data.relatedTicketId || null,
-    relatedConversationId: data.relatedConversationId || null,
-    relatedAnswerId: data.relatedAnswerId || null,
-    relatedProposalId: data.relatedProposalId || null,
-    relatedReleaseId: data.relatedReleaseId || null,
-    relatedSurfaceId: data.relatedSurfaceId || null,
-    relatedEntityId: data.relatedEntityId || null,
-    relatedContextKeys: cleanTags(data.relatedContextKeys),
-    notes: [],
-    notesCount: 0,
-    lastNoteAt: null,
-    resolvedOn: null,
-    resolvedBy: null,
+const buildStatusEntry = (
+    status: CanonicaSupportBoardCard['status'],
+    meta: {
+        statusActorId?: string | null;
+        statusActorName?: string | null;
+        statusActorEmail?: string | null;
+        statusRemark?: string | null;
+    } = {},
+): CanonicaSupportBoardStatusEntry => ({
+    status,
+    timestamp: Timestamp.now(),
+    createdBy: {
+        id: cleanText(meta.statusActorId, 100) || 'system',
+        name: cleanText(meta.statusActorName, 100) || 'Canonica',
+        email: cleanText(meta.statusActorEmail, 160) || 'system@canonica.internal',
+    },
+    remark: cleanText(meta.statusRemark, 240) || 'Status set',
 });
+
+const stripCreateMeta = (data: CreateCanonicaSupportBoardCardInput) => {
+    const {
+        statusActorId,
+        statusActorName,
+        statusActorEmail,
+        statusRemark,
+        ...cardData
+    } = data;
+    return {
+        cardData,
+        statusMeta: {
+            statusActorId,
+            statusActorName,
+            statusActorEmail,
+            statusRemark,
+        },
+    };
+};
+
+const stripUpdateMeta = (patch: UpdateCanonicaSupportBoardCardInput) => {
+    const {
+        statusActorId,
+        statusActorName,
+        statusActorEmail,
+        statusRemark,
+        ...cardPatch
+    } = patch;
+    return {
+        cardPatch,
+        statusMeta: {
+            statusActorId,
+            statusActorName,
+            statusActorEmail,
+            statusRemark,
+        },
+    };
+};
+
+const normalizeCardInput = (data: CreateCanonicaSupportBoardCardInput) => {
+    const { cardData, statusMeta } = stripCreateMeta(data);
+    const status = normalizeStatus(cardData.status);
+
+    return {
+        ...cardData,
+        title: cleanText(cardData.title, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_TITLE_LENGTH),
+        description: cleanText(cardData.description, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH),
+        status,
+        priority: normalizePriority(cardData.priority),
+        sourceType: normalizeSourceType(cardData.sourceType),
+        sourceId: cardData.sourceId || null,
+        dueDate: cardData.dueDate || null,
+        assigneeId: cleanNullableText(cardData.assigneeId, 100),
+        assigneeName: cleanNullableText(cardData.assigneeName, 100),
+        tags: cleanTags(cardData.tags),
+        relatedTicketId: cardData.relatedTicketId || null,
+        relatedConversationId: cardData.relatedConversationId || null,
+        relatedAnswerId: cardData.relatedAnswerId || null,
+        relatedProposalId: cardData.relatedProposalId || null,
+        relatedReleaseId: cardData.relatedReleaseId || null,
+        relatedSurfaceId: cardData.relatedSurfaceId || null,
+        relatedEntityId: cardData.relatedEntityId || null,
+        relatedContextKeys: cleanTags(cardData.relatedContextKeys),
+        notes: [],
+        notesCount: 0,
+        lastNoteAt: null,
+        statuses: [buildStatusEntry(status, {
+            ...statusMeta,
+            statusRemark: statusMeta.statusRemark || 'Card created',
+        })],
+        resolvedOn: null,
+        resolvedBy: null,
+    };
+};
+
+const normalizeUpdatePatch = (patch: UpdateCanonicaSupportBoardCardInput) => {
+    const { cardPatch, statusMeta } = stripUpdateMeta(patch);
+    return {
+        updatePatch: {
+            ...cardPatch,
+            ...(cardPatch.title !== undefined ? { title: cleanText(cardPatch.title, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_TITLE_LENGTH) } : {}),
+            ...(cardPatch.description !== undefined ? { description: cleanText(cardPatch.description, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) } : {}),
+            ...(cardPatch.status ? { status: normalizeStatus(cardPatch.status) } : {}),
+            ...(cardPatch.priority ? { priority: normalizePriority(cardPatch.priority) } : {}),
+            ...(cardPatch.assigneeId !== undefined ? { assigneeId: cleanNullableText(cardPatch.assigneeId, 100) } : {}),
+            ...(cardPatch.assigneeName !== undefined ? { assigneeName: cleanNullableText(cardPatch.assigneeName, 100) } : {}),
+            ...(cardPatch.dueDate !== undefined ? { dueDate: cardPatch.dueDate || null } : {}),
+            ...(cardPatch.tags ? { tags: cleanTags(cardPatch.tags) } : {}),
+            ...(cardPatch.relatedContextKeys ? { relatedContextKeys: cleanTags(cardPatch.relatedContextKeys) } : {}),
+            ...(cardPatch.relatedTicketId !== undefined ? { relatedTicketId: cardPatch.relatedTicketId || null } : {}),
+            ...(cardPatch.relatedConversationId !== undefined ? { relatedConversationId: cardPatch.relatedConversationId || null } : {}),
+            ...(cardPatch.relatedAnswerId !== undefined ? { relatedAnswerId: cardPatch.relatedAnswerId || null } : {}),
+            ...(cardPatch.relatedProposalId !== undefined ? { relatedProposalId: cardPatch.relatedProposalId || null } : {}),
+            ...(cardPatch.relatedReleaseId !== undefined ? { relatedReleaseId: cardPatch.relatedReleaseId || null } : {}),
+            ...(cardPatch.relatedSurfaceId !== undefined ? { relatedSurfaceId: cardPatch.relatedSurfaceId || null } : {}),
+            ...(cardPatch.relatedEntityId !== undefined ? { relatedEntityId: cardPatch.relatedEntityId || null } : {}),
+        },
+        statusMeta,
+    };
+};
 
 /**
  * Bounded board query. No realtime listener; callers refresh after writes.
@@ -166,6 +276,22 @@ export const listCanonicaSupportBoardCards = async (
         },
         { tId, sId, maxResults },
         'listCanonicaSupportBoardCards',
+    );
+};
+
+/**
+ * Compact nightly summary written by the Canonica scheduler.
+ * One Firestore read; safe for showing owner review workload without scanning logs.
+ */
+export const getCanonicaSupportBoardSummary = async (tId: number, sId: number) => {
+    return await apiCallComposer(
+        async () => {
+            const snapshot = await getDoc(getSummaryDocRef(tId, sId));
+            if (!snapshot.exists()) return null;
+            return { ...snapshot.data(), id: snapshot.id } as CanonicaSupportBoardSummary;
+        },
+        { tId, sId },
+        'getCanonicaSupportBoardSummary',
     );
 };
 
@@ -216,13 +342,37 @@ export const updateCanonicaSupportBoardCard = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const updateData = await canonicaRequestBodyComposer({
-                ...patch,
-                ...(patch.status ? { status: normalizeStatus(patch.status) } : {}),
-                ...(patch.priority ? { priority: normalizePriority(patch.priority) } : {}),
-                ...(patch.tags ? { tags: cleanTags(patch.tags) } : {}),
-                ...(patch.relatedContextKeys ? { relatedContextKeys: cleanTags(patch.relatedContextKeys) } : {}),
-            });
+            const { updatePatch, statusMeta } = normalizeUpdatePatch(patch);
+
+            if (updatePatch.status) {
+                const cardRef = getDocRef(cardId);
+                return await runTransaction(canonicaFirebaseClient, async (transaction) => {
+                    const snapshot = await transaction.get(cardRef);
+                    if (!snapshot.exists()) throw new Error('Support board card not found');
+
+                    const card = snapshot.data() as CanonicaSupportBoardCard;
+                    const currentStatuses = Array.isArray(card.statuses) ? card.statuses : [];
+                    const statusChanged = card.status !== updatePatch.status;
+                    const nextStatuses = statusChanged
+                        ? [
+                            buildStatusEntry(updatePatch.status as CanonicaSupportBoardCard['status'], {
+                                ...statusMeta,
+                                statusRemark: statusMeta.statusRemark || 'Status updated',
+                            }),
+                            ...currentStatuses,
+                        ].slice(0, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_HISTORY_PER_CARD)
+                        : currentStatuses;
+
+                    const updateData = await canonicaRequestBodyComposer({
+                        ...updatePatch,
+                        ...(statusChanged ? { statuses: nextStatuses } : {}),
+                    });
+                    transaction.set(cardRef, updateData, { merge: true });
+                    return updateData;
+                });
+            }
+
+            const updateData = await canonicaRequestBodyComposer(updatePatch);
             await setDoc(getDocRef(cardId), updateData, { merge: true });
             return updateData;
         },

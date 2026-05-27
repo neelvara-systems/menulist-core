@@ -40,7 +40,7 @@ export default function SeoLandingPage({
         <main className="pt-16">
             {canonicalPath ? <CanonicaPageStructuredData path={canonicalPath} /> : null}
             <section className="px-6 py-24 text-center">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">{eyebrow}</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">{eyebrow}</p>
                 <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">{title}</h1>
                 <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">{description}</p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
@@ -58,7 +58,7 @@ export default function SeoLandingPage({
                         href="/get-started"
                         data-canonica-event="seo_page_cta_clicked"
                         data-canonica-label={primaryCta}
-                        className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                        className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
                         {primaryCta}
                     </CanonicaLink>
@@ -69,7 +69,7 @@ export default function SeoLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Question flow</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Question flow</p>
                             <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">{question}</h2>
                         </div>
                         <p className="text-base leading-relaxed text-[#a0a0c0]">
@@ -107,7 +107,7 @@ export default function SeoLandingPage({
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
                     <div className="mb-10 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Setup path</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Setup path</p>
                         <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Approved knowledge stays the authority.</h2>
                         <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">{ownerReview}</p>
                     </div>
@@ -125,7 +125,7 @@ export default function SeoLandingPage({
             <section className="border-t border-white/[0.06] px-6 py-20">
                 <div className="mx-auto max-w-6xl">
                     <div className="mb-8 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Explore Canonica</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Explore Canonica</p>
                         <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
                             The same loop across setup, widget, support, and governance.
                         </h2>
@@ -139,7 +139,7 @@ export default function SeoLandingPage({
                                 key={area.href}
                                 basePath={basePath}
                                 href={area.href}
-                                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.04]"
+                                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition hover:border-teal-300/25 hover:bg-teal-500/[0.04]"
                             >
                                 <h3 className="text-base font-semibold text-white">{area.label}</h3>
                                 <p className="mt-2 text-sm leading-relaxed text-[#808099]">{area.description}</p>

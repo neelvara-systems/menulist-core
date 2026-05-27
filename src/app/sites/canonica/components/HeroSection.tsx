@@ -5,7 +5,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
         <section className="relative flex min-h-[calc(76svh-4rem)] flex-col items-center justify-center overflow-hidden px-6 pb-8 pt-24">
             {/* Badge */}
             <div className="relative mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
                 <span className="text-xs font-medium text-[#a0a0c0]">For AI-built SaaS apps shipping fast</span>
             </div>
 
@@ -29,7 +29,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     href="/demo"
                     data-canonica-event="hero_cta_clicked"
                     data-canonica-label="try_page_aware_demo"
-                    className="rounded-xl bg-indigo-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600 hover:shadow-indigo-500/40"
+                    className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800 hover:shadow-teal-500/40"
                 >
                     Try the page-aware demo
                 </CanonicaLink>

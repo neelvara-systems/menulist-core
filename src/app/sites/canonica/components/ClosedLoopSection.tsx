@@ -19,7 +19,7 @@ const LOOP_STEPS = [
     },
     {
         title: 'Repeated misses become review items',
-        detail: 'Fallback, tickets, low confidence, and negative feedback are grouped for review.',
+        detail: 'Fallback, tickets, low confidence, and negative feedback become signal review, board follow-up, or proposals.',
     },
     {
         title: 'You approve the fix',
@@ -39,7 +39,7 @@ export default function ClosedLoopSection() {
             <div className="mx-auto max-w-6xl">
                 <div className="mb-12 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
                     <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                             Learning loop
                         </p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
@@ -47,20 +47,20 @@ export default function ClosedLoopSection() {
                         </h2>
                     </div>
                     <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Canonica’s aha moment is not that a widget answers questions. It is that page-aware questions, fallback, tickets, and feedback become review work that improves future answers.
+                        Canonica’s aha moment is not that a widget answers questions. It is that page-aware questions, fallback, tickets, private board notes, and feedback become review work that improves future answers.
                     </p>
                 </div>
 
                 <CanonicaLoopDiagram idPrefix="cn-closed-loop" items={LOOP_STEPS} />
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-                    <article className="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.06] p-6">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-300">
+                    <article className="rounded-2xl border border-teal-500/20 bg-teal-500/[0.06] p-6">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-200">
                             Best demo flow
                         </p>
                         <h3 className="text-2xl font-semibold text-white">Billing page, missing answer, reviewed fix.</h3>
                         <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
-                            Open billing, ask why an invoice failed, receive an approved billing answer. Ask something uncovered, and that miss becomes a reviewable signal. Once approved, the future user gets the improved answer.
+                            Open billing, ask why an invoice failed, receive an approved billing answer. Ask something uncovered, and that miss can become a review signal or private Support Board card. Once approved, the future user gets the improved answer.
                         </p>
                     </article>
                     <div className="grid gap-3 md:grid-cols-3">

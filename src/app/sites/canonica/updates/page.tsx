@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Canonica product updates that affect setup, team access, page-aware support, owner Q&A, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'Canonica product updates that affect setup, team access, page-aware support, owner Q&A, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 27, 2026',
+        title: 'Support Board added to the public support-control story',
+        items: [
+            'Support Board now has a dedicated product page for private support cards, internal notes, status history, assignee context, and governed answer-proposal handoff.',
+            'Support Control, FAQ, Resources, route metadata, and agent-readable context now explain the board as a manual-first owner workboard, not as a duplicate ticket inbox.',
+            'Ticket/signal sync and nightly board preparation remain controlled rollout claims, so the public website does not imply every workspace pays for duplicated source reads by default.',
+        ],
+    },
     {
         date: 'May 26, 2026',
         title: 'Owner Q&A now appears in the public support story',
@@ -35,7 +44,7 @@ const UPDATES = [
         items: [
             'Canonica now has a dedicated Team Access product page for workspace members, Canonica roles, custom permissions, owner reset, and force sign-out.',
             'Launch Setup, Product, Get Started, FAQ, Pricing, Resources, Security, and Privacy copy now include team access where it affects buyer evaluation and production readiness.',
-            'The public story keeps MenuList mobile and dashboard screens separate from Canonica while reusing the proven staff login and reset model.',
+            'The public story keeps team access inside Canonica workspace controls, with email setup, owner-managed passcodes, reset, and force sign-out.',
         ],
     },
     {
@@ -215,7 +224,7 @@ export default function CanonicaUpdatesPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Updates</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Updates</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Canonica product updates.
                     </h1>
@@ -229,12 +238,12 @@ export default function CanonicaUpdatesPage() {
                         <div className="space-y-6">
                             {UPDATES.map((update) => (
                                 <article key={`${update.date}-${update.title}`} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                                    <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-300">{update.date}</div>
+                                    <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-200">{update.date}</div>
                                     <h2 className="text-2xl font-semibold text-white">{update.title}</h2>
                                     <ul className="mt-5 space-y-3">
                                         {update.items.map((item) => (
                                             <li key={item} className="flex gap-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-indigo-400" />
+                                                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-teal-300" />
                                                 <span>{item}</span>
                                             </li>
                                         ))}

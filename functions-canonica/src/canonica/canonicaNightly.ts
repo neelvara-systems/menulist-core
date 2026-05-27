@@ -17,6 +17,7 @@
  * 7. Post-Mutation Impact Tracking — 14-day before/after comparison
  * 8. Confidence Auto-Adjustment — boost answers with 30+ serves, 0 negatives
  * 9. Signal TTL Auto-Archive — delete signals older than 12 months
+ * 10. Support Board Sync — create bounded owner review cards and summary
  * 
  * RULES:
  * - Idempotent: running twice produces identical results
@@ -44,6 +45,7 @@ import { generateFrictionInsight } from './frictionInsight';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
+import { syncSupportBoardNightly } from './supportBoardSync';
 import {
     CANONICA_TENANT_SUMMARY_DOC_ID,
     CanonicaTenantStore,
@@ -1533,12 +1535,16 @@ export interface CanonicaNightlyResult {
     graphIndexRebuilt: number;
     graphIndexEntities: number;
     graphIndexRelations: number;
-    // Step 16: Predictive Trigger Sync (Expansion Item #12)
+    // Step 16: Support Board Sync
+    supportBoardCardsCreated: number;
+    supportBoardCardsUpdated: number;
+    supportBoardSummaryWritten: number;
+    // Step 17: Predictive Trigger Sync (Expansion Item #12)
     predictiveSuggestionsGenerated: number;
     predictiveTriggersTotal: number;
     predictiveEffectivenessUpdated: number;
     predictiveAutoDisabled: number;
-    // Step 17: Compiled Context Bundle Repair
+    // Step 18: Compiled Context Bundle Repair
     compiledContextBundlesRebuilt: number;
     compiledContextBundlesSkipped: number;
     compiledContextBytesGenerated: number;
@@ -1608,6 +1614,9 @@ export async function runCanonicaNightly(options: {
         graphIndexRebuilt: 0,
         graphIndexEntities: 0,
         graphIndexRelations: 0,
+        supportBoardCardsCreated: 0,
+        supportBoardCardsUpdated: 0,
+        supportBoardSummaryWritten: 0,
         predictiveSuggestionsGenerated: 0,
         predictiveTriggersTotal: 0,
         predictiveEffectivenessUpdated: 0,
@@ -1646,6 +1655,8 @@ export async function runCanonicaNightly(options: {
                     frictionEntities: result.totalFrictionEntities,
                     trustMetricsWritten: result.totalTrustMetricsWritten,
                     graphIndexRebuilt: result.graphIndexRebuilt,
+                    supportBoardCardsCreated: result.supportBoardCardsCreated,
+                    supportBoardCardsUpdated: result.supportBoardCardsUpdated,
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                     compiledContextBundlesRebuilt: result.compiledContextBundlesRebuilt,
                     compiledContextBytesGenerated: result.compiledContextBytesGenerated,
@@ -1662,6 +1673,7 @@ export async function runCanonicaNightly(options: {
                     founderOnboardingEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_FOUNDER_ONBOARDING,
                     ticketKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE,
                     graphEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH,
+                    supportBoardSyncEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD_SYNC,
                     predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT,
                     compiledContextBundlesEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES,
                 },
@@ -2056,6 +2068,32 @@ export async function runCanonicaNightly(options: {
                         skippedDuplicate: taskResult.skippedDuplicate,
                         skippedLowConfidence: taskResult.skippedLowConfidence,
                         errorCount: taskResult.errors?.length || 0,
+                    })
+                );
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD_SYNC) {
+                await runTenantTask(
+                    tenantRun,
+                    'support_board_sync',
+                    'syncSupportBoardNightly',
+                    () => syncSupportBoardNightly(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.supportBoardCardsCreated += taskResult.cardsCreated;
+                        result.supportBoardCardsUpdated += taskResult.cardsUpdated;
+                        result.supportBoardSummaryWritten += taskResult.summaryWritten ? 1 : 0;
+                    },
+                    (taskResult) => ({
+                        candidatesAnalyzed: taskResult.candidatesAnalyzed,
+                        cardsCreated: taskResult.cardsCreated,
+                        cardsUpdated: taskResult.cardsUpdated,
+                        cardsSkippedResolved: taskResult.cardsSkippedResolved,
+                        cardsSkippedUnchanged: taskResult.cardsSkippedUnchanged,
+                        summaryWritten: taskResult.summaryWritten,
+                        openCards: taskResult.openCards,
+                        needsAnswerCards: taskResult.needsAnswerCards,
+                        highPriorityCards: taskResult.highPriorityCards,
+                        totalRecentCards: taskResult.totalRecentCards,
                     })
                 );
             }

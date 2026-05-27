@@ -39,7 +39,7 @@ export default function SetupFunnelSection() {
             <div className="mx-auto max-w-7xl">
                 <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                     <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">First-session setup</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">First-session setup</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
                             Set up the first support layer in one session.
                         </h2>

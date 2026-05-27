@@ -103,6 +103,7 @@ export const POST = withAuth(async (request, session) => {
         const activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1;
         const targetQty = activeStoreCount + 1;
         const hasMasterStore = initialStoresList.some((s: any) => s?.isMaster === true);
+        const masterListRepairNeeded = masterStore.isMaster === true && !hasMasterStore;
         masterPromoted = (
             masterStore.isMaster !== true
             && !hasMasterStore
@@ -122,6 +123,7 @@ export const POST = withAuth(async (request, session) => {
                 outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
             };
         }
+        const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
 
         // Enforce outlet count limit (excludes master store)
         const maxOutlets = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT;
@@ -288,7 +290,7 @@ export const POST = withAuth(async (request, session) => {
                     },
                 },
             };
-            if (masterPromoted) {
+            if (shouldMarkCurrentStoreAsMasterInTenant) {
                 storesSummaryPayload.stores[storeId] = {
                     isMaster: true,
                     modifiedOn: now,
@@ -307,7 +309,7 @@ export const POST = withAuth(async (request, session) => {
             // Update tenant storesList
             const currentStoresList = tenantData?.storesList || [];
             const normalizedStoresList = currentStoresList.map((store: any) => (
-                masterPromoted && Number(store?.storeId) === Number(storeId)
+                shouldMarkCurrentStoreAsMasterInTenant && Number(store?.storeId) === Number(storeId)
                     ? { ...store, isMaster: true }
                     : store
             ));

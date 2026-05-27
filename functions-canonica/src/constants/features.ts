@@ -136,6 +136,24 @@ export const FUNCTION_FLAGS = {
     ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 
     /**
+     * Canonica Support Board Nightly Sync
+     *
+     * When true + ENABLE_CANONICA_NIGHTLY is true:
+     * creates bounded, deduped Support Board cards from repeated fallback,
+     * negative feedback, escalation clusters, drifted answers, and release
+     * impact. Also writes platformSummary/supportBoardSummary_{tId}_{sId}
+     * so owners can see the review workload without scanning raw logs.
+     *
+     * Does not create cards for every ticket and never publishes answers.
+     * Default is false because tickets, signals, and drift already have their
+     * own owner surfaces; enable per rollout when the tenant wants consolidated
+     * Support Board review work.
+     *
+     * @see __docs__/canonica/support-board/
+     */
+    ENABLE_CANONICA_SUPPORT_BOARD_SYNC: false,
+
+    /**
      * Canonica Compiled Context Bundles
      *
      * When true + ENABLE_CANONICA_NIGHTLY is true:

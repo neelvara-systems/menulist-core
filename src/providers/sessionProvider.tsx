@@ -21,6 +21,7 @@ import {
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
 import { isMasterLocationContext } from '@lib/multiOutlet/locationAccess';
+import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import { getPermissionsForRole } from '@lib/permissions/hasPermission';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
@@ -341,13 +342,29 @@ export default function SessionProvider({ children, session }: Props) {
         if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
 
         const loginStoreId = Number(session.user?.storeId);
-        const canUseStoreContext = isMasterLocationContext({
+        const requestedStoreContextId = Number(activeStoreContext || 0);
+        const requestedStoreSummary: any = tenantDetails.storesList.find(
+            (store: any) => Number(store?.storeId) === requestedStoreContextId,
+        );
+        const requestedStoreIsActive = Boolean(
+            requestedStoreSummary
+            && requestedStoreSummary.active !== false
+            && requestedStoreSummary.storeDetails?.active !== false
+        );
+        const loginStoreCanActAsMaster = isMasterLocationContext({
             storeDetails: loginStoreDetails,
             tenantDetails,
         });
-        const targetStoreId = canUseStoreContext && activeStoreContext && activeStoreContext !== loginStoreId
-            ? activeStoreContext
-            : null;
+        const canUseStoreContext = Boolean(
+            requestedStoreContextId
+            && requestedStoreContextId !== loginStoreId
+            && requestedStoreIsActive
+            && (
+                loginStoreCanActAsMaster
+                || canUserAccessStore({ sessionUser: session.user as any, storeId: requestedStoreContextId })
+            )
+        );
+        const targetStoreId = canUseStoreContext ? requestedStoreContextId : null;
 
         if (activeStoreContext && !targetStoreId) {
             setActiveStoreContext(null);
@@ -483,7 +500,13 @@ export default function SessionProvider({ children, session }: Props) {
     ]);
 
     useEffect(() => {
-        const authorityStoreDetails = loginStoreDetails || storeDetails;
+        const loginStoreCanActAsMaster = isMasterLocationContext({
+            storeDetails: loginStoreDetails,
+            tenantDetails,
+        });
+        const authorityStoreDetails = loginStoreCanActAsMaster
+            ? (loginStoreDetails || storeDetails)
+            : (storeDetails || loginStoreDetails);
         if (objectNullCheck(authorityStoreDetails)) {
             if (!authorityStoreDetails?.roles) return;
 
@@ -492,11 +515,28 @@ export default function SessionProvider({ children, session }: Props) {
                 return;
             }
 
-            // Get user's single role for their login store. HQ users keep HQ
-            // authority while viewing an outlet context.
+            // HQ users keep HQ authority while viewing an outlet context. Other
+            // mapped users use the role assigned to the store they are viewing.
+            const permissionStoreId = Number(
+                loginStoreCanActAsMaster
+                    ? session?.user?.storeId
+                    : authorityStoreDetails?.storeId || session?.user?.storeId
+            );
+            const loginStoreId = Number(session?.user?.storeId);
+            const loginStoreRoleId = session?.user?.stores?.find(
+                (store: any) => Number(store.storeId) === loginStoreId
+            )?.role || ((session?.user as any)?.role || (session as any)?.role);
+            const canSwitchFromLoginStore = Boolean(
+                loginStoreDetails?.roles?.length
+                && getPermissionsForRole(loginStoreRoleId, loginStoreDetails.roles || [])?.canSwitchStores
+            );
             const userRoleId = session?.user?.stores?.find(
-                (store: any) => Number(store.storeId) === Number(session.user.storeId)
-            )?.role;
+                (store: any) => Number(store.storeId) === permissionStoreId
+            )?.role || (
+                permissionStoreId === Number(session?.user?.storeId)
+                    ? ((session?.user as any)?.role || (session as any)?.role)
+                    : undefined
+            );
 
             // Find matching role definition from store
             const userRole = authorityStoreDetails.roles?.find((r: any) => r.id === userRoleId);
@@ -505,21 +545,32 @@ export default function SessionProvider({ children, session }: Props) {
                 const rolePermissions = getPermissionsForRole(userRoleId, authorityStoreDetails.roles || []);
                 // For outlet stores: apply master's outletPolicy to restrict permissions
                 // Master store's outletPolicy is the chain-wide gate for what outlets can do
-                const isMaster = isMasterLocationContext({
+                const isMaster = loginStoreCanActAsMaster || isMasterLocationContext({
                     storeDetails: authorityStoreDetails,
                     tenantDetails,
                 });
                 if (!isMaster && tenantDetails?.storesList?.length) {
                     const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
                     const outletPolicy = masterStore?.storeDetails?.outletPolicy;
-                    setUserPermissions(applyOutletPolicy(rolePermissions, outletPolicy, false));
+                    const effectivePermissions = applyOutletPolicy(rolePermissions, outletPolicy, false);
+                    setUserPermissions({
+                        ...effectivePermissions,
+                        canSwitchStores: loginStoreCanActAsMaster
+                            ? effectivePermissions.canSwitchStores
+                            : canSwitchFromLoginStore,
+                    });
                 } else {
                     // Master store or single store - direct permissions
-                    setUserPermissions(rolePermissions);
+                    setUserPermissions({
+                        ...rolePermissions,
+                        canSwitchStores: loginStoreCanActAsMaster
+                            ? rolePermissions.canSwitchStores
+                            : canSwitchFromLoginStore,
+                    });
                 }
             }
         }
-    }, [loginStoreDetails, session?.user?.storeId, session?.user?.stores, storeDetails, tenantDetails])
+    }, [loginStoreDetails, session, storeDetails, tenantDetails])
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -560,9 +611,15 @@ export default function SessionProvider({ children, session }: Props) {
         && activeStoreContextId > 0
         && activeStoreContextId !== loginStoreId;
     const activeStoreContextMatchesTenant = Boolean(
+        hasActiveStoreContext
+        && tenantDetails?.storesList?.some((store: any) => (
+            Number(store?.storeId) === activeStoreContextId
+            && store?.active !== false
+            && store?.storeDetails?.active !== false
+        )),
+    ) && (
         loginStoreIsMaster
-        && hasActiveStoreContext
-        && tenantDetails?.storesList?.some((store: any) => Number(store?.storeId) === activeStoreContextId),
+        || canUserAccessStore({ sessionUser: session?.user as any, storeId: activeStoreContextId })
     );
     const hasStoreContextBootstrapData = Boolean(loginStoreDetails && tenantDetails?.storesList?.length);
     const expectedStoreIdForRender = activeStoreContextMatchesTenant

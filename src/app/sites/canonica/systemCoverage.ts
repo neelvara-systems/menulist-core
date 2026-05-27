@@ -9,7 +9,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Team access',
-                detail: 'Owners can add workspace members, assign Canonica-specific roles, reset temporary passcodes, and force sign-out without exposing MenuList staff controls.',
+                detail: 'Owners can add workspace members, assign Canonica-specific roles, reset temporary passcodes, and force sign-out while keeping access scoped to the Canonica workspace.',
             },
             {
                 title: 'Knowledge import',
@@ -44,6 +44,10 @@ export const CANONICA_SYSTEM_COVERAGE = [
             {
                 title: 'Tickets as fallback',
                 detail: 'When approved content is missing, users can raise a ticket with safe debugging context and the resolved case can feed the knowledge queue.',
+            },
+            {
+                title: 'Support Board',
+                detail: 'Owners can track selected support gaps, private notes, status history, assignee context, and answer-proposal handoff without mirroring every ticket by default.',
             },
             {
                 title: 'Changelog awareness',

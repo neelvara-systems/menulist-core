@@ -431,8 +431,8 @@ const styles: Record<string, CSSProperties> = {
         minHeight: 36,
         padding: '8px 10px',
         borderRadius: 8,
-        border: '1px solid rgba(139,139,255,0.35)',
-        background: 'rgba(99,102,241,0.1)',
+        border: `1px solid ${colors.primaryLight}`,
+        background: 'rgba(20,184,166,0.1)',
         color: colors.primaryLight,
         fontSize: 12,
         fontWeight: 600,
@@ -459,7 +459,7 @@ const styles: Record<string, CSSProperties> = {
     checkboxInput: { width: 16, height: 16, accentColor: colors.primary },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
-        border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)',
+        border: '1px solid rgba(20,184,166,0.3)', background: 'rgba(20,184,166,0.08)',
         marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
     },
     planLabel: { fontSize: 13, fontWeight: 600, color: colors.primaryLight },
@@ -499,7 +499,7 @@ const styles: Record<string, CSSProperties> = {
     detailValue: { display: 'block', fontSize: 14, fontWeight: 600, color: colors.textPrimary },
     apiKey: {
         display: 'block', fontSize: 12, fontFamily: 'monospace', color: colors.primaryLight,
-        background: 'rgba(99,102,241,0.1)', padding: '6px 10px', borderRadius: 6,
+        background: 'rgba(20,184,166,0.1)', padding: '6px 10px', borderRadius: 6,
         wordBreak: 'break-all', marginTop: 4,
     },
     nextSteps: { width: '100%', marginBottom: 16 },

@@ -15,6 +15,11 @@ const NAV_LINKS = [
     { label: 'Updates', href: '/updates' },
 ];
 
+const MOBILE_OTHER_LINKS = [
+    ...NAV_LINKS.filter((link) => link.href !== '/product'),
+    { label: 'Contact', href: '/contact' },
+];
+
 export default function CanonicaHeader({ basePath = '' }: { basePath?: string }) {
     const L = (props: { href: string; className?: string; children: ReactNode; [key: `data-${string}`]: string | undefined }) => (
         <CanonicaLink basePath={basePath} {...props} />
@@ -59,7 +64,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                                 <L
                                                     key={area.href}
                                                     href={area.href}
-                                                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.06]"
+                                                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-teal-300/25 hover:bg-teal-500/[0.06]"
                                                 >
                                                     <div className="text-xs font-semibold text-[#d6d6ef]">{area.label}</div>
                                                     <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{area.description}</p>
@@ -101,7 +106,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                         href="/get-started"
                         data-canonica-event="header_cta_clicked"
                         data-canonica-label="start_setup"
-                        className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+                        className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                     >
                         Start free setup
                     </L>
@@ -114,7 +119,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                     >
                         <LuMenu size={22} aria-hidden />
                     </summary>
-                    <div className="fixed left-0 right-0 top-16 max-h-[calc(100svh-4rem)] overflow-y-auto border-t border-white/[0.06] bg-[#0a0a1a] px-6 py-4 shadow-2xl shadow-black/30">
+                    <div className="fixed left-0 right-0 top-16 max-h-[calc(100svh-4rem)] overflow-y-auto border-t border-white/[0.06] bg-[#0a0a1a] px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-2xl shadow-black/30">
                         <nav className="flex flex-col gap-3">
                             <L
                                 href="/product"
@@ -150,20 +155,25 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                     </L>
                                 ))}
                             </div>
-                            {NAV_LINKS.filter((link) => link.href !== '/product').map((link) => (
-                                <L
-                                    key={link.href}
-                                    href={link.href}
-                                    className="rounded-lg px-3 py-2 text-sm font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white"
-                                >
-                                    {link.label}
-                                </L>
-                            ))}
+                            <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                                <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                    Other
+                                </div>
+                                {MOBILE_OTHER_LINKS.map((link) => (
+                                    <L
+                                        key={link.href}
+                                        href={link.href}
+                                        className="rounded-lg px-3 py-2 text-xs font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white"
+                                    >
+                                        {link.label}
+                                    </L>
+                                ))}
+                            </div>
                             <L
                                 href="/get-started"
                                 data-canonica-event="mobile_header_cta_clicked"
                                 data-canonica-label="start_setup"
-                                className="mt-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                                className="mt-2 rounded-lg bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white"
                             >
                                 Start free setup
                             </L>

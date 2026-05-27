@@ -39,7 +39,7 @@ import { Avatar, Badge, Button, Divider, Dropdown, Flex, Space, theme, Tooltip, 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { LuChevronDown, LuChevronRight, LuHelpCircle, LuHome, LuMenu, LuMoon, LuPanelLeftClose, LuPanelLeftOpen, LuSun } from 'react-icons/lu';
+import { LuChevronDown, LuChevronRight, LuHome, LuMenu, LuMoon, LuPanelLeftClose, LuPanelLeftOpen, LuSun } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -163,10 +163,6 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
     const handleReturn = () => {
         clearForceDesktopMode();
         router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.ACTIVATION, currentHostname));
-    };
-
-    const handleOpenHelp = () => {
-        router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
     };
 
     const userData = {
@@ -349,15 +345,6 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick, on
             ) : null}
             {!showMenuButton ? (
                 <>
-                    <Tooltip title="Help">
-                        <Button
-                            aria-label="Open help"
-                            icon={<LuHelpCircle />}
-                            onClick={handleOpenHelp}
-                            style={{ height: 44, minWidth: 44, padding: 0 }}
-                            type="text"
-                        />
-                    </Tooltip>
                     <Tooltip title={isDarkMode ? 'Use light mode' : 'Use dark mode'}>
                         <Button
                             aria-label={isDarkMode ? 'Use light mode' : 'Use dark mode'}

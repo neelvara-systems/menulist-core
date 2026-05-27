@@ -89,7 +89,7 @@ export default function CanonicaIntegrationsPage() {
                 <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                     <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
                         <div>
-                            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">Integrations</p>
+                            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">Integrations</p>
                             <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
                                 Notify owners when support truth needs attention.
                             </h1>
@@ -102,7 +102,7 @@ export default function CanonicaIntegrationsPage() {
                                     href="/product/workflow-notifications"
                                     data-canonica-event="integrations_cta_clicked"
                                     data-canonica-label="workflow_notifications"
-                                    className="rounded-xl bg-indigo-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                                    className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                                 >
                                     View workflow notifications
                                 </CanonicaLink>
@@ -131,7 +131,7 @@ export default function CanonicaIntegrationsPage() {
                                     </span>
                                 </div>
                                 <div className="grid gap-4 p-5 sm:p-6">
-                                    <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/10 p-4">
+                                    <div className="rounded-2xl border border-teal-300/20 bg-teal-400/10 p-4">
                                         <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
                                             <LuBell aria-hidden size={18} className="text-[#1eceff]" />
                                             Nightly support digest
@@ -162,7 +162,7 @@ export default function CanonicaIntegrationsPage() {
                 <section className="border-b border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
                         <div className="mx-auto mb-10 max-w-3xl text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">What can notify</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">What can notify</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Alerts for review work, not raw logs.</h2>
                             <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
                                 The owner should know when support needs attention. They should not have to read integration event streams.
@@ -188,7 +188,7 @@ export default function CanonicaIntegrationsPage() {
                 <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
                     <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Owner controls</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner controls</p>
                             <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Configure destination, filters, and confidence.</h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
                                 Slack and email are self-service. Broader workflow adapters should remain controlled rollout until credential handling, tenant authorization, and delivery behavior are ready for every workspace.
@@ -211,11 +211,11 @@ export default function CanonicaIntegrationsPage() {
                     </div>
                 </section>
 
-                <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
+                <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
                         <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                             <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
                                 <h2 className="text-3xl font-bold leading-tight sm:text-4xl">From support movement to owner attention.</h2>
                             </div>
                             <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
@@ -247,7 +247,7 @@ export default function CanonicaIntegrationsPage() {
                         <CanonicaLink
                             basePath={basePath}
                             href="/product/workflow-notifications"
-                            className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                            className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
                             View workflow notifications
                         </CanonicaLink>

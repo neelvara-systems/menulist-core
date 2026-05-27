@@ -21,7 +21,7 @@ type PreviewConfig = {
     route: string;
     sidebarActive: string;
     badge: string;
-    badgeTone: 'emerald' | 'sky' | 'indigo' | 'amber';
+    badgeTone: 'emerald' | 'sky' | 'teal' | 'amber';
     leftEyebrow: string;
     leftTitle: string;
     leftStatus: string;
@@ -42,7 +42,7 @@ const TABS: PreviewTab[] = ['Product setup', 'Key app pages', 'Widget install', 
 const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
     emerald: 'bg-emerald-500/10 text-emerald-300',
     sky: 'bg-sky-500/10 text-sky-300',
-    indigo: 'bg-indigo-500/10 text-indigo-300',
+    teal: 'bg-teal-500/10 text-teal-200',
     amber: 'bg-amber-500/10 text-amber-300',
 };
 
@@ -111,7 +111,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
         route: 'app.canonica.app/workspace/widget',
         sidebarActive: 'Widget',
         badge: 'Install ready',
-        badgeTone: 'indigo',
+        badgeTone: 'teal',
         leftEyebrow: 'Widget controls',
         leftTitle: 'One script, governed runtime',
         leftStatus: 'Origin locked',
@@ -195,7 +195,7 @@ function QueueRows({ rows }: { rows: RowItem[] }) {
                     <div className="text-sm font-semibold text-white">{row.title}</div>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                         <span className="rounded-full bg-white/[0.04] px-2 py-1 text-[#808099]">{row.meta}</span>
-                        <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-300">{row.result}</span>
+                        <span className="rounded-full bg-teal-500/10 px-2 py-1 text-teal-200">{row.result}</span>
                     </div>
                 </div>
             ))}
@@ -211,7 +211,7 @@ export default function ProductPreviewSection() {
         <section className="relative overflow-hidden border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.11),transparent_34%),rgba(255,255,255,0.01)] px-4 py-16 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Support launch checklist
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
@@ -235,7 +235,7 @@ export default function ProductPreviewSection() {
                                 onClick={() => setActiveTab(tab)}
                                 className={`whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
                                     active
-                                        ? 'border-white/20 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
+                                        ? 'border-white/20 bg-white/[0.13] text-white shadow-lg shadow-teal-500/10'
                                         : 'border-transparent bg-white/[0.03] text-[#8f8faa] hover:border-white/[0.12] hover:text-white'
                                 }`}
                             >
@@ -264,7 +264,7 @@ export default function ProductPreviewSection() {
                         <div className="grid min-h-[34rem] lg:grid-cols-[15rem_1fr]">
                             <aside className="hidden border-r border-white/[0.06] bg-[#080818] p-4 lg:block">
                                 <div className="mb-6 flex items-center gap-3">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-sm font-bold text-white">C</div>
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-sm font-bold text-white">C</div>
                                     <div>
                                         <div className="text-sm font-semibold text-white">Canonica</div>
                                         <div className="text-xs text-[#6b6b8a]">Workspace</div>
@@ -274,7 +274,7 @@ export default function ProductPreviewSection() {
                                     {SIDEBAR_ITEMS.map((label) => (
                                         <div
                                             key={label}
-                                            className={`rounded-xl px-3 py-2 ${label === preview.sidebarActive ? 'bg-indigo-500/15 text-white' : 'text-[#808099]'}`}
+                                            className={`rounded-xl px-3 py-2 ${label === preview.sidebarActive ? 'bg-teal-500/15 text-white' : 'text-[#808099]'}`}
                                         >
                                             {label}
                                         </div>
@@ -316,7 +316,7 @@ export default function ProductPreviewSection() {
                                                 <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">{preview.rightEyebrow}</div>
                                                 <h3 className="mt-1 text-lg font-semibold text-white">{preview.rightTitle}</h3>
                                             </div>
-                                            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">{preview.context}</span>
+                                            <span className="rounded-full bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-200">{preview.context}</span>
                                         </div>
                                         <div className="rounded-2xl border border-white/[0.06] bg-[#070714] p-4">
                                             <div className="rounded-xl bg-white/[0.04] p-4">
@@ -330,7 +330,7 @@ export default function ProductPreviewSection() {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <div className="mt-4 w-full rounded-xl bg-indigo-500 px-4 py-3 text-center text-sm font-semibold text-white">
+                                            <div className="mt-4 w-full rounded-xl bg-teal-700 px-4 py-3 text-center text-sm font-semibold text-white">
                                                 Ask Canonica
                                             </div>
                                         </div>

@@ -1,35 +1,40 @@
 'use client';
 
 /**
- * StoreSwitcher — Header dropdown for master users to switch between stores
- * Visible only when isMasterUser === true (storesList.length > 1)
+ * StoreSwitcher — Header dropdown for users with mapped multi-store access
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §8.4
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { logger } from '@lib/monitoring/logger';
+import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
-import { useContext } from 'react';
+import { useSession } from 'next-auth/react';
+import { useContext, useMemo } from 'react';
 import { LuMapPin, LuStar } from 'react-icons/lu';
 
 export default function StoreSwitcher() {
-    const { tenantDetails, storeDetails, userPermissions, isMasterUser, activeStoreContext, setActiveStoreContext } =
+    const { tenantDetails, storeDetails, userPermissions, activeStoreContext, setActiveStoreContext } =
         useContext(PlatformGlobalDataContext);
+    const { data: session } = useSession();
 
-    const activeStoresList = tenantDetails?.storesList?.filter((store: any) => store.active !== false) || [];
-    const masterStoreId = Number(activeStoresList.find((store: any) => store?.isMaster === true)?.storeId || storeDetails?.storeId || 0);
+    const accessibleStoresList = useMemo(
+        () => getAccessibleStoreSummaries({ sessionUser: session?.user as any, tenantDetails }),
+        [session?.user, tenantDetails],
+    );
+    const loginStoreId = Number(session?.user?.storeId || 0);
+    const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || loginStoreId || 0);
 
-    // Only show for master users with canSwitchStores permission and more than one active store.
-    if (!isMasterUser || activeStoresList.length <= 1 || !userPermissions?.canSwitchStores) return null;
+    if (accessibleStoresList.length <= 1 || !userPermissions?.canSwitchStores) return null;
 
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
 
-    const options = activeStoresList.map((store) => ({
-        value: store.storeId,
+    const options = accessibleStoresList.map((store) => ({
+        value: Number(store.storeId),
         label: (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {store.isMaster ? <LuStar size={14} /> : <LuMapPin size={14} />}
@@ -39,11 +44,9 @@ export default function StoreSwitcher() {
         ),
     }));
 
-    const currentStoreId = activeStoreContext || storeDetails?.storeId;
-
     const handleSwitch = async (targetStoreId: number) => {
-        if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
-            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
+        if (Number(targetStoreId) === loginStoreId) {
+            if (loginStoreId) await refreshFirebaseAuthClaims(loginStoreId);
             setActiveStoreContext(null);
             return;
         }

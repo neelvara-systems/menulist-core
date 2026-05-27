@@ -14,6 +14,7 @@
 import {
     DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
 } from '@/components/shared/dashboardShell/DashboardSidebarShell';
+import { FEATURE_FLAGS } from '@config/features';
 import {
     CANONICA_DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
     CANONICA_MANAGEMENT_ROUTES,
@@ -21,7 +22,7 @@ import {
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
-import { getCanonicaRouteRequiredPermission } from '@constant/canonica/permissions';
+import { CANONICA_PERMISSION_KEYS, getCanonicaRouteRequiredPermission } from '@constant/canonica/permissions';
 import { useAppSelector } from '@hook/useAppSelector';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
@@ -41,6 +42,12 @@ const { Content } = Layout;
 const CANONICA_MOBILE_BOTTOM_CLEARANCE = 'calc(24px + env(safe-area-inset-bottom))';
 const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
 const AppSettingsSheet = dynamic(() => import('@/components/mobile/sheets/AppSettingsSheet'), { ssr: false });
+const CANONICA_CUSTOMER_ROUTE_OWNER_FALLBACKS: Partial<Record<string, string>> = {
+    [CANONICA_ROUTES.HELP]: CANONICA_ROUTES.KNOWLEDGE_BASE,
+    [CANONICA_ROUTES.DOCS]: CANONICA_ROUTES.KNOWLEDGE_BASE,
+    [CANONICA_ROUTES.RELEASE_NOTES]: CANONICA_ROUTES.CHANGELOG,
+    [CANONICA_ROUTES.SUPPORT]: CANONICA_ROUTES.TICKETS,
+};
 
 export default function CanonicaDashboardLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -77,15 +84,49 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     const requiredPermission = useMemo(() => getCanonicaRouteRequiredPermission(normalizedPathname), [normalizedPathname]);
     const canEvaluateRoutePermission = !requiredPermission || Boolean(access);
     const hasRoutePermission = !requiredPermission || access?.isPlatformAdmin || access?.permissions?.[requiredPermission] === true;
+    const managementFallbackRoute = useMemo(() => {
+        if (access?.isPlatformAdmin) return CANONICA_ROUTES.ACTIVATION;
+
+        const permissions = access?.permissions;
+        if (permissions?.[CANONICA_PERMISSION_KEYS.VIEW_READINESS]) return CANONICA_ROUTES.ACTIVATION;
+        if (permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT]) {
+            return FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD ? CANONICA_ROUTES.SUPPORT_BOARD : CANONICA_ROUTES.TICKETS;
+        }
+        if (permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE]) return CANONICA_ROUTES.KNOWLEDGE_BASE;
+        if (permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_WIDGET]) return CANONICA_ROUTES.WIDGET;
+        if (permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_TEAM]) return CANONICA_ROUTES.TEAM;
+        if (permissions?.[CANONICA_PERMISSION_KEYS.MANAGE_BILLING]) return CANONICA_ROUTES.BILLING;
+
+        return CANONICA_ROUTES.HELP;
+    }, [access]);
+    const ownerCustomerRouteFallback = useMemo(() => {
+        const fallbackRoute = CANONICA_CUSTOMER_ROUTE_OWNER_FALLBACKS[normalizedPathname];
+        if (!fallbackRoute) return null;
+
+        const fallbackPermission = getCanonicaRouteRequiredPermission(fallbackRoute);
+        if (!fallbackPermission || access?.isPlatformAdmin || access?.permissions?.[fallbackPermission] === true) {
+            return fallbackRoute;
+        }
+
+        return managementFallbackRoute;
+    }, [access?.isPlatformAdmin, access?.permissions, managementFallbackRoute, normalizedPathname]);
 
     useEffect(() => {
         if (status === 'loading') return;
         if (accessLoading) return;
         if (accessError) return;
-        if (canEvaluateRoutePermission && ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission)) {
-            router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
+        if (canEvaluateRoutePermission && canUseManagementSurfaces && ownerCustomerRouteFallback) {
+            router.replace(toCanonicaDashboardRoute(ownerCustomerRouteFallback, currentHostname));
+            return;
         }
-    }, [accessError, accessLoading, canEvaluateRoutePermission, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, router, status]);
+        if (canEvaluateRoutePermission && isAdminRoute && !canUseManagementSurfaces) {
+            router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
+            return;
+        }
+        if (canEvaluateRoutePermission && !hasRoutePermission) {
+            router.replace(toCanonicaDashboardRoute(managementFallbackRoute, currentHostname));
+        }
+    }, [accessError, accessLoading, canEvaluateRoutePermission, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, managementFallbackRoute, ownerCustomerRouteFallback, router, status]);
 
     useEffect(() => {
         if (status === 'loading') {
@@ -121,7 +162,12 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         };
     }, [pathname, session, status]);
 
-    const shouldRedirectAway = !accessError && canEvaluateRoutePermission && ((isAdminRoute && !canUseManagementSurfaces) || !hasRoutePermission);
+    const shouldRedirectOwnerCustomerRoute = canUseManagementSurfaces && Boolean(ownerCustomerRouteFallback);
+    const shouldRedirectAway = !accessError && canEvaluateRoutePermission && (
+        shouldRedirectOwnerCustomerRoute ||
+        (isAdminRoute && !canUseManagementSurfaces) ||
+        !hasRoutePermission
+    );
     const shouldShowAuthError = !shouldRedirectAway && (
         firebaseAuthError ||
         Boolean(accessError) ||

@@ -19,7 +19,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
             <div className="mx-auto max-w-6xl">
                 <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
                     <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Pricing clarity</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing clarity</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
                             Start free, then move to predictable INR plans.
                         </h2>
@@ -34,7 +34,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                             key={plan.planId}
                             className={`rounded-2xl border p-5 ${
                                 plan.isRecommended
-                                    ? 'border-indigo-500/35 bg-indigo-500/[0.08]'
+                                    ? 'border-teal-500/35 bg-teal-500/[0.08]'
                                     : 'border-white/[0.06] bg-white/[0.02]'
                             }`}
                         >
@@ -44,7 +44,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                                     <p className="mt-2 text-sm leading-relaxed text-[#808099]">{PLAN_FIT[plan.planId]}</p>
                                 </div>
                                 {plan.isRecommended && (
-                                    <span className="rounded-full bg-indigo-500/20 px-2.5 py-1 text-[11px] font-semibold text-indigo-300">
+                                    <span className="rounded-full bg-teal-500/20 px-2.5 py-1 text-[11px] font-semibold text-teal-200">
                                         Popular
                                     </span>
                                 )}
@@ -69,7 +69,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         href="/get-started"
                         data-canonica-event="homepage_pricing_clicked"
                         data-canonica-label="start_beta_from_pricing_preview"
-                        className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                        className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
                         Start free setup
                     </CanonicaLink>

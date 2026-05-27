@@ -29,7 +29,7 @@ export default function CanonicaAboutPage() {
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">About</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">About</p>
                         <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl">
                             AI can build apps fast. Support still has to be correct.
                         </h1>
@@ -64,18 +64,16 @@ export default function CanonicaAboutPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-3xl">
-                        <h2 className="mb-4 text-2xl font-bold">Built by the MenuList team</h2>
+                        <h2 className="mb-4 text-2xl font-bold">Built for teams shipping fast</h2>
                         <p className="mb-6 text-lg text-[#a0a0c0]">
-                            Canonica was built from real support infrastructure work inside the{' '}
-                            <a href="https://menulist.ai" className="text-indigo-400 hover:text-indigo-300" target="_blank" rel="noopener noreferrer">MenuList</a>
-                            {' '}ecosystem, then separated into its own product for SaaS founders who need support accuracy without building a full support team.
+                            Canonica is built for SaaS teams that need support accuracy without building a full support team. It treats product pages, help content, fallback tickets, and approved answers as one governed support layer.
                         </p>
                         <CanonicaLink
                             basePath={basePath}
                             href="/get-started"
                             data-canonica-event="about_cta_clicked"
                             data-canonica-label="start_free_setup"
-                            className="inline-block rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+                            className="inline-block rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
                             Start free setup
                         </CanonicaLink>

@@ -96,6 +96,7 @@ export const POST = withAuth(async (request, session) => {
 
         const storesList = tenantSnap.data()?.storesList || [];
         const hasMasterStore = storesList.some((store: any) => store?.isMaster === true);
+        const masterListRepairNeeded = storeData.isMaster === true && !hasMasterStore;
         const masterPromoted = (
             storeData.isMaster !== true
             && !hasMasterStore
@@ -112,6 +113,7 @@ export const POST = withAuth(async (request, session) => {
             ...(storeData.outletPolicy || DEFAULT_OUTLET_POLICY),
             ...v.data.policy,
         };
+        const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
 
         await db.runTransaction(async (tx) => {
             tx.set(storeRef, {
@@ -120,7 +122,7 @@ export const POST = withAuth(async (request, session) => {
                 outletPolicy: mergedPolicy,
             }, { merge: true });
 
-            if (masterPromoted) {
+            if (shouldMarkCurrentStoreAsMasterInTenant) {
                 tx.update(tenantRef, {
                     storesList: storesList.map((store: any) => (
                         Number(store?.storeId) === Number(storeId)

@@ -6,7 +6,7 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
         <section className="border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.13),transparent_42%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         The aha moment
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">

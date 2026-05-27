@@ -93,7 +93,38 @@ export const getSubscriptionByIdServer = async (id: string): Promise<FirestoreSu
 
 const getMasterStoreIdFromList = (storesList?: MinimalStoreDataType[]): number | null => {
     if (!storesList?.length) return null;
-    return storesList.find((store) => store.isMaster === true)?.storeId ?? null;
+
+    const normalizedStores = storesList
+        .map((store) => {
+            const storeId = Number(store?.storeId);
+            return Number.isFinite(storeId) && storeId > 0
+                ? { store, storeId }
+                : null;
+        })
+        .filter((store): store is { store: MinimalStoreDataType; storeId: number } => Boolean(store));
+
+    const explicitMaster = normalizedStores.find(({ store }) => (
+        store?.isMaster === true
+        || store?.storeDetails?.isMaster === true
+    ));
+    if (explicitMaster) return explicitMaster.storeId;
+
+    // Legacy tenants may have store.isMaster=true while tenants.storesList
+    // missed the same marker. If all outlets are explicitly isMaster:false,
+    // the remaining active unflagged store is the master without another read.
+    const activeStores = normalizedStores.filter(({ store }) => (
+        (store as any)?.active !== false
+        && store?.storeDetails?.active !== false
+    ));
+    if (activeStores.length === 1) return activeStores[0].storeId;
+
+    const unflaggedActiveStores = activeStores.filter(({ store }) => (
+        store?.isMaster !== false
+        && store?.storeDetails?.isMaster !== false
+    ));
+    if (unflaggedActiveStores.length === 1) return unflaggedActiveStores[0].storeId;
+
+    return null;
 };
 
 const fetchSubscriptionRawServer = async (

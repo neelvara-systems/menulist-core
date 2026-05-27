@@ -1,9 +1,9 @@
 export const CANONICA_THEME = {
-    name: 'Dark Control Plane',
+    name: 'Verdigris Control Plane',
     colors: {
-        primary: '#6366F1',
-        primaryHover: '#5558E6',
-        primaryLight: '#8B8BFF',
+        primary: '#0F766E',
+        primaryHover: '#115E59',
+        primaryLight: '#5EEAD4',
         background: '#0A0A1A',
         backgroundSubtle: '#0F0F23',
         backgroundDeep: '#080817',
@@ -16,7 +16,7 @@ export const CANONICA_THEME = {
         textSecondary: '#A0A0C0',
         textMuted: '#6B6B8A',
         fieldBackground: '#111124',
-        success: '#10B981',
+        success: '#22C55E',
         warning: '#F59E0B',
         danger: '#EF4444',
     },

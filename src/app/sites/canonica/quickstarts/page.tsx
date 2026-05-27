@@ -130,7 +130,7 @@ export default function CanonicaQuickstartsPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Developer quickstarts</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Developer quickstarts</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Add page-aware support without building a support stack.
                     </h1>
@@ -143,7 +143,7 @@ export default function CanonicaQuickstartsPage() {
                     <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-5">
                         {SAFE_CONTEXT.map(([label, body]) => (
                             <article key={label} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-300">{label}</div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-teal-200">{label}</div>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{body}</p>
                             </article>
                         ))}
@@ -156,7 +156,7 @@ export default function CanonicaQuickstartsPage() {
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-16">
                     <div className="mx-auto max-w-6xl">
                         <div className="mb-8 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Environment setup</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Environment setup</p>
                             <h2 className="text-3xl font-bold text-white">Keep install values out of committed code.</h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
                                 Put only the public Canonica widget key and optional script URL in client-safe env variables. Canonica does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app.
@@ -198,7 +198,7 @@ export default function CanonicaQuickstartsPage() {
                         <CanonicaLink basePath={basePath} href="/install" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             View install guide
                         </CanonicaLink>
-                        <CanonicaLink basePath={basePath} href="/get-started" className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-600">
+                        <CanonicaLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
                             Start free setup
                         </CanonicaLink>
                     </div>

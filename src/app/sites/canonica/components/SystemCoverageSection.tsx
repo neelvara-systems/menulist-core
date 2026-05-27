@@ -10,7 +10,7 @@ export default function SystemCoverageSection() {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-7xl">
                 <div className="mb-14 max-w-3xl">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Product System
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">

@@ -28,7 +28,7 @@ const ONE_PAGER = [
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
     ['Runtime rate limits', 'Public widget config, search, feedback, predictive, and API paths are bounded and validated before expensive work.'],
     ['Tenant scope', 'Dashboard and runtime reads resolve Canonica workspace scope server-side; client context is never trusted as tenant identity.'],
-    ['Team access', 'Workspace members use Canonica-specific roles and owner-managed reset controls; MenuList restaurant staff screens remain separate.'],
+    ['Team access', 'Workspace members use Canonica-specific roles and owner-managed reset controls for support work.'],
     ['Incident contact', 'Report security or data-handling concerns without sending secrets or full customer datasets in the first message.'],
 ];
 
@@ -41,7 +41,7 @@ export default function CanonicaSecurityOnePagerPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security and ops one-pager</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security and ops one-pager</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         The short version for founders, developers, and reviewers.
                     </h1>
@@ -63,7 +63,7 @@ export default function CanonicaSecurityOnePagerPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[1fr_0.9fr]">
-                        <article className="rounded-[1.5rem] border border-indigo-400/20 bg-indigo-500/[0.07] p-6">
+                        <article className="rounded-[1.5rem] border border-teal-300/20 bg-teal-500/[0.07] p-6">
                             <h2 className="text-2xl font-bold text-white">What to send through context</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
                                 Send stable labels that describe where the user is stuck: <strong>billing_invoices</strong>, <strong>onboarding_import</strong>, <strong>team_settings</strong>, plan name, role name, workflow name, or entity hints.
@@ -87,7 +87,7 @@ export default function CanonicaSecurityOnePagerPage() {
                         <CanonicaLink basePath={basePath} href="/security" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             Open full security page
                         </CanonicaLink>
-                        <a href="mailto:hello@canonica.app" className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-600">
+                        <a href="mailto:hello@canonica.app" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
                             Contact security
                         </a>
                     </div>

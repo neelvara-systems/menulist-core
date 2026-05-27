@@ -49,32 +49,32 @@ export default function CanonicaLogoMark({
             {title ? <title id={titleId}>{title}</title> : null}
             <defs>
                 <linearGradient id={leftGradientId} x1="1306" y1="836" x2="1792" y2="892" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#dbe7ff" />
-                    <stop offset="0.34" stopColor="#aebcff" />
-                    <stop offset="0.62" stopColor="#777cff" />
-                    <stop offset="1" stopColor="#4b45dd" />
+                    <stop stopColor="#ecfeff" />
+                    <stop offset="0.34" stopColor="#99f6e4" />
+                    <stop offset="0.62" stopColor="#2dd4bf" />
+                    <stop offset="1" stopColor="#0f766e" />
                 </linearGradient>
                 <linearGradient id={rightGradientId} x1="1608" y1="798" x2="2065" y2="920" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#7774ff" />
-                    <stop offset="0.38" stopColor="#5550e3" />
-                    <stop offset="0.72" stopColor="#352e9e" />
-                    <stop offset="1" stopColor="#21186d" />
+                    <stop stopColor="#5eead4" />
+                    <stop offset="0.38" stopColor="#14b8a6" />
+                    <stop offset="0.72" stopColor="#0f766e" />
+                    <stop offset="1" stopColor="#064e3b" />
                 </linearGradient>
                 <linearGradient id={frontGradientId} x1="1578" y1="742" x2="1810" y2="922" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#9faaff" />
-                    <stop offset="0.42" stopColor="#696dff" />
-                    <stop offset="1" stopColor="#4b45db" />
+                    <stop stopColor="#ccfbf1" />
+                    <stop offset="0.42" stopColor="#2dd4bf" />
+                    <stop offset="1" stopColor="#0f766e" />
                 </linearGradient>
                 <linearGradient id={lowerGradientId} x1="1594" y1="812" x2="1737" y2="982" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#8d98ef" />
-                    <stop offset="0.52" stopColor="#6263df" />
-                    <stop offset="1" stopColor="#352f9d" />
+                    <stop stopColor="#99f6e4" />
+                    <stop offset="0.52" stopColor="#14b8a6" />
+                    <stop offset="1" stopColor="#065f46" />
                 </linearGradient>
                 <linearGradient id={highlightGradientId} x1="1320" y1="694" x2="2020" y2="1050" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#ffffff" stopOpacity="0.62" />
-                    <stop offset="0.34" stopColor="#dce6ff" stopOpacity="0.28" />
-                    <stop offset="0.66" stopColor="#9698ff" stopOpacity="0.18" />
-                    <stop offset="1" stopColor="#5b55ff" stopOpacity="0.2" />
+                    <stop offset="0.34" stopColor="#ccfbf1" stopOpacity="0.28" />
+                    <stop offset="0.66" stopColor="#5eead4" stopOpacity="0.18" />
+                    <stop offset="1" stopColor="#0f766e" stopOpacity="0.2" />
                 </linearGradient>
                 <filter
                     id={shadowId}
@@ -86,7 +86,7 @@ export default function CanonicaLogoMark({
                     filterUnits="userSpaceOnUse"
                 >
                     <feDropShadow dx="0" dy="20" stdDeviation="18" floodColor="#050514" floodOpacity="0.48" />
-                    <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#aebcff" floodOpacity="0.18" />
+                    <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#99f6e4" floodOpacity="0.18" />
                 </filter>
                 <filter
                     id={edgeId}
@@ -109,15 +109,15 @@ export default function CanonicaLogoMark({
             <g filter={`url(#${shadowId})`} mask={`url(#${cutoutId})`}>
                 <path d={RIGHT_PATH} fill="none" stroke={`url(#${rightGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="118" />
                 <path d={LEFT_PATH} fill="none" stroke={`url(#${leftGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="118" />
-                <path d="M1712 731L1594 847" fill="none" stroke="#191654" strokeLinecap="round" strokeWidth="34" opacity="0.34" />
+                <path d="M1712 731L1594 847" fill="none" stroke="#063a35" strokeLinecap="round" strokeWidth="34" opacity="0.34" />
                 <path d="M1662.82 723.153L1784.28 847.619L1719.9 908.993" fill="none" stroke={`url(#${frontGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="118" />
                 <path d="M1717.59 972.827L1594.55 846.738L1658.1 784.526" fill="none" stroke={`url(#${lowerGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="118" />
             </g>
             <g filter={`url(#${edgeId})`} mask={`url(#${cutoutId})`} opacity="0.64">
                 <path d={LEFT_PATH} fill="none" stroke={`url(#${highlightGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="7" />
-                <path d={RIGHT_PATH} fill="none" stroke="#817dff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" opacity="0.28" />
+                <path d={RIGHT_PATH} fill="none" stroke="#5eead4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" opacity="0.28" />
             </g>
-            <path d="M1692 802L1737 846L1692 890L1648 846Z" fill="none" stroke="#141144" strokeWidth="5" opacity="0.46" />
+            <path d="M1692 802L1737 846L1692 890L1648 846Z" fill="none" stroke="#042f2e" strokeWidth="5" opacity="0.46" />
         </svg>
     );
 }

@@ -5,8 +5,12 @@ import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
+import { logger } from '@lib/monitoring/logger';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
@@ -49,7 +53,7 @@ import {
     LuUsers,
     LuX,
 } from 'react-icons/lu';
-import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import type { MobilePlatformInternalScreenKey } from './MobilePlatformInternalScreen';
 
@@ -216,7 +220,14 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tPresence = useTranslations('MobilePresenceMonitor');
     const { token } = theme.useToken();
     const router = useRouter();
-    const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
+    const {
+        activeStoreContext,
+        setActiveStoreContext,
+        tenantDetails,
+        storeDetails,
+        userPermissions,
+        isMasterUser,
+    } = useContext(PlatformGlobalDataContext);
     const businessCopyCoverage = useMemo(
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails],
@@ -227,6 +238,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSwitchingStore, setIsSwitchingStore] = useState(false);
     const [officialPageBackTarget, setOfficialPageBackTarget] = useState<MoreSubScreen>('businessProfileHub');
     const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextLogoutClickRef = useRef(false);
@@ -280,6 +292,65 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         || sessionUser.phone
         || sessionUser.phoneUsername
         || userEmail;
+    const accessibleStoreSummaries = useMemo(
+        () => getAccessibleStoreSummaries({ sessionUser: session?.user as any, tenantDetails }),
+        [session?.user, tenantDetails],
+    );
+    const loginStoreId = Number(sessionUser.storeId || 0);
+    const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || loginStoreId || 0);
+    const currentStoreSummary = accessibleStoreSummaries.find((store: any) => Number(store.storeId) === currentStoreId)
+        || tenantDetails?.storesList?.find((store: any) => Number(store.storeId) === currentStoreId)
+        || null;
+    const canSwitchStoreContext = Boolean(userPermissions?.canSwitchStores && accessibleStoreSummaries.length > 1);
+    const storeSwitchOptions = useMemo(
+        () => accessibleStoreSummaries.map((store: any) => {
+            const storeId = Number(store.storeId);
+            const label = `${getStoreContextName(store, `Store ${storeId}`)}${store.isMaster ? ' (HQ)' : ''}`;
+            return {
+                label,
+                value: String(storeId),
+            };
+        }),
+        [accessibleStoreSummaries],
+    );
+    const currentStoreName = currentStoreSummary
+        ? getStoreContextName(currentStoreSummary, `Store ${currentStoreId}`)
+        : storeDetails
+            ? getStoreContextName(storeDetails as any, `Store ${currentStoreId}`)
+            : 'Current branch';
+
+    const handleStoreDropdownChange = useCallback(async (value: string) => {
+        const targetStoreId = Number(value);
+        if (!targetStoreId || targetStoreId === currentStoreId || isSwitchingStore) return;
+
+        setIsSwitchingStore(true);
+        try {
+            if (targetStoreId === loginStoreId) {
+                if (loginStoreId) {
+                    await refreshFirebaseAuthClaims(loginStoreId);
+                }
+                setActiveStoreContext(null);
+            } else {
+                const res = await fetch('/api/auth/switch-store', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetStoreId }),
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || 'Failed to switch branch');
+                }
+                await refreshFirebaseAuthClaims(targetStoreId);
+                setActiveStoreContext(targetStoreId);
+            }
+            Toast.show({ content: 'Switched branch', duration: 1500, icon: 'success' });
+        } catch (error: any) {
+            logger.error('[MobileMore] Store switch failed', error);
+            Toast.show({ content: error?.message || 'Failed to switch branch', duration: 2200 });
+        } finally {
+            setIsSwitchingStore(false);
+        }
+    }, [currentStoreId, isSwitchingStore, loginStoreId, setActiveStoreContext]);
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
@@ -700,6 +771,32 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     <LuChevronRight color={token.colorTextQuaternary} size={18} />
                 </Flex>
             </Card>
+
+            {canSwitchStoreContext ? (
+                <Card>
+                    <Flex gap={10} vertical>
+                        <Flex align="center" gap={10}>
+                            {currentStoreSummary?.isMaster ? (
+                                <LuBuilding2 color={token.colorPrimary} size={20} />
+                            ) : (
+                                <LuMapPin color={token.colorPrimary} size={20} />
+                            )}
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text strong>Branch</Text>
+                                <Text ellipsis type="secondary">{currentStoreName}</Text>
+                            </Flex>
+                        </Flex>
+                        <Select
+                            disabled={isSwitchingStore}
+                            onChange={handleStoreDropdownChange}
+                            options={storeSwitchOptions}
+                            placeholder="Select branch"
+                            value={currentStoreId ? String(currentStoreId) : undefined}
+                        />
+                        <Text type="secondary">{accessibleStoreSummaries.length} branches available</Text>
+                    </Flex>
+                </Card>
+            ) : null}
 
             <div
                 style={{

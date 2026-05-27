@@ -7,10 +7,12 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { grantUserStoreAccess } from "@lib/multiOutlet/serverStoreAccess";
+import { logger } from "@lib/monitoring/logger";
+import { canUserAccessStore } from "@lib/multiOutlet/storeSwitchAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
+import { buildSecurityContext } from "@lib/security/securityContext";
 import { secureError } from "@lib/security/secureLogger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -56,9 +58,6 @@ export const POST = withAuth(async (request, session) => {
             Number(tenantId),
         );
         if (permissionError) return permissionError;
-        if (!callerStoreSnap.exists || !callerStoreSnap.data()?.isMaster) {
-            return NextResponse.json({ error: "Only master users can switch" }, { status: 403 });
-        }
 
         const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
         const storesList = tenantSnap.data()?.storesList || [];
@@ -70,16 +69,19 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Store is inactive" }, { status: 400 });
         }
 
-        const currentStoreRole = Array.isArray(session.user?.stores)
-            ? session.user.stores.find((store: any) => Number(store?.storeId) === Number(currentStoreId))?.role
-            : undefined;
-        await grantUserStoreAccess(
-            db,
-            session.uId || session.user?.id,
-            Number(targetStoreId),
-            targetStore.name || `Store ${targetStoreId}`,
-            currentStoreRole || session.role || session.user?.role,
-        );
+        const switchAccessUser = {
+            ...(session.user || {}),
+            platformRole: session.user?.platformRole || session.platformRole,
+        };
+        if (!canUserAccessStore({ sessionUser: switchAccessUser as any, storeId: targetStoreId })) {
+            logger.security("Unauthorized Store Switch Attempt", {
+                ...buildSecurityContext(session, request),
+                endpoint: "/api/auth/switch-store",
+                targetStoreId,
+                tenantId,
+            }, "high");
+            return NextResponse.json({ error: "Store access not allowed" }, { status: 403 });
+        }
 
         return NextResponse.json({
             success: true,

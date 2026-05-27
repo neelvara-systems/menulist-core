@@ -72,7 +72,7 @@ export default function CanonicaTermsOfServicePage() {
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Terms of Service</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Terms of Service</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Terms of Service</h1>
                         <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 22, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">

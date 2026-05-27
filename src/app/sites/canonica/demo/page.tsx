@@ -31,7 +31,7 @@ export default function CanonicaDemoPage() {
                 <section className="px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <div className="mx-auto mb-10 max-w-3xl text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Interactive demo</p>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Interactive demo</p>
                             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
                                 See page-aware support in 60 seconds.
                             </h1>
@@ -71,7 +71,7 @@ export default function CanonicaDemoPage() {
                             href="/get-started"
                             data-canonica-event="demo_cta_clicked"
                             data-canonica-label="start_free_setup"
-                            className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
+                            className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                         >
                             Start free setup
                         </CanonicaLink>

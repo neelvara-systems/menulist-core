@@ -38,7 +38,7 @@ export default function LaunchSetupProductPage() {
                 canvasBadge="Setup in progress"
                 canvasItems={[
                     { title: 'Product profile', description: 'Company name, product name, support email, product URL, and workspace identity are captured once.' },
-                    { title: 'Team access', description: 'Add workspace members, assign Canonica roles, and keep support controls separated from MenuList staff screens.' },
+                    { title: 'Team access', description: 'Add workspace members, assign Canonica roles, and keep support controls scoped to the workspace.' },
                     { title: 'Starter knowledge', description: 'Docs, FAQs, release notes, and common answers become the seed for reviewed support content.' },
                     { title: 'Product surfaces', description: 'Billing, onboarding, settings, releases, and other support-heavy pages are mapped early.' },
                 ]}

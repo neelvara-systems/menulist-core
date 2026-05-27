@@ -39,6 +39,8 @@ export const DB_COLLECTIONS = {
     CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
     CANONICA_CACHE_VERSIONS: 'canonica_cacheVersions',
     CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
+    CANONICA_CONTACT_ENQUIRIES: 'canonica_contactEnquiries',
+    CANONICA_SUPPORT_BOARD_CARDS: 'canonica_supportBoardCards',
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs

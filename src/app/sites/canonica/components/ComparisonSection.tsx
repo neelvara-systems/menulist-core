@@ -62,7 +62,7 @@ export default function ComparisonSection() {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-4xl">
                 <div className="mb-12 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
                         Why Canonica
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">
@@ -90,7 +90,7 @@ export default function ComparisonSection() {
                             <div className="border-l border-white/[0.06] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
                                 Knowledge base
                             </div>
-                            <div className="border-l border-white/[0.06] bg-indigo-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-indigo-400">
+                            <div className="border-l border-white/[0.06] bg-teal-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-teal-300">
                                 Canonica
                             </div>
                         </div>
@@ -113,7 +113,7 @@ export default function ComparisonSection() {
                                 <div className="border-l border-white/[0.06] px-6 py-4 text-sm text-[#6b6b8a]">
                                     {row.kb}
                                 </div>
-                                <div className="border-l border-white/[0.06] bg-indigo-500/[0.03] px-6 py-4 text-sm text-[#a0a0c0]">
+                                <div className="border-l border-white/[0.06] bg-teal-500/[0.03] px-6 py-4 text-sm text-[#a0a0c0]">
                                     {row.canonica}
                                 </div>
                             </div>

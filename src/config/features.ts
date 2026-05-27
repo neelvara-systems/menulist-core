@@ -2016,13 +2016,45 @@ export const FEATURE_FLAGS = {
      * board; cards stay linked to tickets, conversations, support signals,
      * canonical-answer proposals, releases, product surfaces, or manual support notes.
      *
-     * Cost model: one bounded board query on load plus explicit, bounded source
-     * sync actions for recent tickets/signals. Internal notes are embedded with
-     * a cap to avoid extra listeners or subcollection scans.
+     * Cost model: one bounded board query on load. Internal notes and status
+     * history are embedded with caps to avoid extra listeners or subcollection scans.
      *
      * @see __docs__/canonica/support-board/
      */
     ENABLE_CANONICA_SUPPORT_BOARD: true,
+
+    /**
+     * Canonica Support Board Source Sync
+     *
+     * true: support-control users can explicitly import bounded unresolved
+     *       tickets and actionable support signals into Support Board cards.
+     * false: ticket/signal sync CTAs are hidden and sync functions no-op.
+     *
+     * Default stays false because tickets and signals already have their own
+     * owner surfaces. Enable only for tenants that want the board to become a
+     * consolidated review queue.
+     *
+     * Cost model when enabled: each manual sync reads up to 50 source docs and
+     * writes at most 20 deduped board cards.
+     *
+     * @see __docs__/canonica/support-board/
+     */
+    ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC: false,
+
+    /**
+     * Canonica Support Board Nightly Summary Read
+     *
+     * true: Support Board reads the compact nightly summary document written by
+     *       the scheduler (`platformSummary/supportBoardSummary_{tId}_{sId}`).
+     * false: Support Board skips that read entirely.
+     *
+     * Keep false unless `ENABLE_CANONICA_SUPPORT_BOARD_SYNC` is enabled in
+     * functions-canonica. This avoids one extra Firestore read on every board
+     * refresh when the nightly preparation path is not live.
+     *
+     * @see __docs__/canonica/support-board/
+     */
+    ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY: false,
 
     /**
      * Canonica Email Notifications

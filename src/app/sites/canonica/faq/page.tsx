@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, owner Q&A, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, owner Q&A, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -64,7 +64,7 @@ const FAQS = [
     },
     {
         question: 'Can I invite my team into Canonica?',
-        answer: 'Yes. Canonica supports workspace members, Canonica-specific roles, custom permissions, owner-managed passcode reset, and force sign-out. These controls are separate from MenuList staff screens.',
+        answer: 'Yes. Canonica supports workspace members, Canonica-specific roles, custom permissions, owner-managed passcode reset, and force sign-out. These controls live inside the Canonica workspace.',
     },
     {
         question: 'What makes Canonica page-aware?',
@@ -115,6 +115,14 @@ const FAQS = [
         answer: 'Yes. Canonica can complement ticket tools as the governed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
     },
     {
+        question: 'What is the Support Board?',
+        answer: 'Support Board is a private owner/staff workboard for selected support gaps, internal notes, status history, and answer-proposal handoff. It helps owners track follow-up without turning Canonica into a project-management tool.',
+    },
+    {
+        question: 'Does Support Board sync every ticket or signal?',
+        answer: 'No. Tickets and signals already have their own screens. Support Board is manual-first by default; ticket/signal sync and nightly board preparation stay controlled rollout paths so work is not duplicated or made unnecessarily expensive.',
+    },
+    {
         question: 'Can Canonica notify my team in Slack or email?',
         answer: 'Yes. Canonica supports Slack and email workflow notifications for governance events such as digest summaries, coverage drops, repeated answer failures, and test delivery. Broader adapter integrations should stay controlled rollout until they are safe for every workspace.',
     },
@@ -143,8 +151,8 @@ const FAQS = [
         answer: 'No. Public packaging is predictable monthly pricing in INR. Beta setup can start free, paid plans and support-credit top-ups live in Canonica Billing, and usage limits protect infrastructure without punishing support deflection.',
     },
     {
-        question: 'Does Canonica use MenuList data?',
-        answer: 'No. MenuList is a separate product and one independent client integration. Canonica workspaces, dashboard, widget, scheduler, and Firebase data stay under Canonica product boundaries.',
+        question: 'Does widget context decide workspace identity?',
+        answer: 'No. Widget page context helps Canonica choose relevant support. Workspace identity is resolved through Canonica workspace, domain, widget key, and authenticated scope controls.',
     },
 ];
 
@@ -171,10 +179,10 @@ export default function CanonicaFaqPage() {
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">FAQ</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, team access, AI-built apps, page-aware support, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>
