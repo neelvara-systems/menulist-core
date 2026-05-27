@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuRefreshCw, LuX } from 'react-icons/lu';
+import { LuRefreshCw } from 'react-icons/lu';
 
 const DISMISSED_BUILD_KEY = 'menulist_owner_update_dismissed_build';
 
@@ -156,7 +156,7 @@ export default function OwnerAppUpdatePrompt() {
                             </div>
                         ) : null}
                     </div>
-                    <button
+                    {/* <button
                         aria-label="Dismiss update prompt"
                         onClick={handleDismiss}
                         style={{
@@ -174,7 +174,7 @@ export default function OwnerAppUpdatePrompt() {
                         type="button"
                     >
                         <LuX size={19} />
-                    </button>
+                    </button> */}
                 </div>
                 <button
                     onClick={handleRefresh}

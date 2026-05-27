@@ -4,21 +4,25 @@ import TextElement from "@antdComponent/textElement";
 import { PermissionKey } from "@constant/permissions";
 import { DEFAULT_ROLE_IDS } from "@data/defaultRoles";
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPermissionsInitialData";
+import { useAppDispatch } from "@hook/useAppDispatch";
+import { deleteRoleDefinition } from "@lib/staffManagement/client";
 import EditorWrapper from "@organisms/editor/editorWrapper";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
+import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { StoreRoleDataType } from "@type/platform/roles";
 import { arrayNullCheck, objectNullCheck } from "@util/utils";
-import { Button, Card, Divider, Flex, Space, Tag, theme } from "antd";
+import { Alert, Button, Card, Divider, Empty, Flex, Popconfirm, Space, Tag, theme } from "antd";
 import { Fragment, useContext, useState } from "react";
-import { LuCheck, LuPen, LuPlus, LuX } from "react-icons/lu";
+import { LuCheck, LuPen, LuPlus, LuShieldCheck, LuTrash2, LuX } from "react-icons/lu";
 import RoleDetailsModal from "./roleDetailsModal";
 const { Meta } = Card
 
 function UserPermissionsPage() {
     const [activeRole, setActiveRole] = useState<StoreRoleDataType>(null);
-    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { setStoreDetails, storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [showDetailsModal, setShowDetailsModal] = useState({ active: false, data: null })
     const { token } = theme.useToken();
+    const dispatch = useAppDispatch();
     const canAssignRoles = userPermissions?.canAssignRoles === true;
 
     const onCloseRoleModal = (storeData) => {
@@ -28,6 +32,25 @@ function UserPermissionsPage() {
         }
         setShowDetailsModal({ active: false, data: null })
     }
+
+    const onDeactivateRole = async (role: StoreRoleDataType) => {
+        if (!role?.id || role.id === DEFAULT_ROLE_IDS.OWNER || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+
+        try {
+            const response = await deleteRoleDefinition({
+                roleId: role.id,
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+            });
+            const nextStoreDetails = { ...storeDetails, roles: response.roles };
+            setStoreDetails(nextStoreDetails);
+            const nextActiveRole = response.roles.find((item) => item.id === role.id) || null;
+            setActiveRole(nextActiveRole);
+            dispatch(showSuccessToast("Role deactivated"));
+        } catch (err: any) {
+            dispatch(showErrorToast(err?.message || "Could not deactivate role"));
+        }
+    };
 
     // NOTE: Permission strategies removed - single role per store makes it unnecessary
 
@@ -40,30 +63,49 @@ function UserPermissionsPage() {
 
             <Card>
                 <EditorWrapper gap={30}>
+                    {!canAssignRoles && (
+                        <Alert
+                            message="Read-only access"
+                            description="Your current role can view role permissions but cannot change them."
+                            showIcon
+                            type="info"
+                        />
+                    )}
                     <Flex vertical gap={10}>
                         <TextElement size={"medium"} text={"Available Roles"} />
                         {arrayNullCheck(storeDetails?.roles) && <TextElement size={"small"} text={`Select a role to view its permissions`} />}
-                        <Flex wrap="wrap" gap={10}>
+                        <Flex wrap="wrap" gap={12}>
                             {storeDetails?.roles?.map((role, index) => (
                                 <Card
                                     key={index}
                                     hoverable
-                                    style={{ width: 280, outline: activeRole?.id == role?.id ? `2px solid ${token.colorPrimary}` : "unset" }}
+                                    style={{
+                                        background: activeRole?.id == role?.id ? token.colorPrimaryBg : token.colorBgContainer,
+                                        borderColor: activeRole?.id == role?.id ? token.colorPrimaryBorder : token.colorBorderSecondary,
+                                        width: 280,
+                                    }}
                                     onClick={() => setActiveRole(role)}
                                 >
                                     <Meta
-                                        title={<>{role.name} {!role.active && <Tag color="warning">Inactive</Tag>}</>}
+                                        title={<Flex align="center" gap={6} wrap="wrap">{role.name} {!role.active && <Tag color="warning">Inactive</Tag>}</Flex>}
                                         description={role.description}
                                     />
                                 </Card>
                             ))}
 
-                            <Divider type="vertical" style={{ height: "auto" }} />
-
                             <Card
                                 hoverable
                                 aria-disabled={!canAssignRoles}
-                                style={{ width: 180, display: "flex", justifyContent: "center", alignItems: "center" }}
+                                style={{
+                                    background: token.colorFillQuaternary,
+                                    borderColor: token.colorBorderSecondary,
+                                    cursor: canAssignRoles ? "pointer" : "not-allowed",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    opacity: canAssignRoles ? 1 : 0.6,
+                                    width: 180,
+                                }}
                                 onClick={() => {
                                     if (!canAssignRoles) return;
                                     setActiveRole(null);
@@ -75,15 +117,49 @@ function UserPermissionsPage() {
                         </Flex>
                     </Flex>
 
+                    {!objectNullCheck(activeRole) && (
+                        <Empty description="Select a role to view permissions" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    )}
+
                     {objectNullCheck(activeRole) && (
                         <Flex vertical gap={10}>
                             <Card
                                 style={{ width: "100%" }}
                                 title={`${activeRole.name} Role Permissions`}
-                                extra={<Button disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER} type="primary" icon={<LuPen />} onClick={() => setShowDetailsModal({ active: true, data: activeRole })}>Edit Role</Button>}
+                                extra={(
+                                    <Flex gap={8} wrap="wrap">
+                                        <Button
+                                            disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
+                                            type="primary"
+                                            icon={<LuPen />}
+                                            onClick={() => setShowDetailsModal({ active: true, data: activeRole })}
+                                        >
+                                            Edit Role
+                                        </Button>
+                                        <Popconfirm
+                                            cancelText="Cancel"
+                                            okButtonProps={{ danger: true }}
+                                            okText="Deactivate"
+                                            onConfirm={() => onDeactivateRole(activeRole)}
+                                            title="Deactivate this role?"
+                                        >
+                                            <Button
+                                                danger
+                                                disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
+                                                icon={<LuTrash2 />}
+                                            >
+                                                Deactivate
+                                            </Button>
+                                        </Popconfirm>
+                                    </Flex>
+                                )}
                             >
                                 <Flex vertical gap={16}>
-                                    <Meta title={activeRole.description} description={`Last Updated: ${activeRole.modifiedBy || activeRole.createdBy}`} />
+                                    <Meta
+                                        avatar={<LuShieldCheck color={token.colorPrimary} />}
+                                        title={activeRole.description || "No description"}
+                                        description={`Last updated by ${activeRole.modifiedBy || activeRole.createdBy || "system"}`}
+                                    />
 
                                     {objectNullCheck(activeRole, 'permissions') && PERMISSION_CATEGORIES_CONFIG.map((category, catIndex) => (
                                         <Fragment key={catIndex}>

@@ -198,7 +198,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 1. **Dark theme** — Deep navy with verdigris/teal controls. Infrastructure-grade support knowledge visual direction without generic AI-product indigo.
 2. **Tailwind CSS** — Same build pipeline as rest of app. `@tailwind` directives in `styles.css`.
-3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the mobile hamburger can open a right-side drawer with backdrop, Escape close, body scroll lock, and link-close behavior.
+3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the mobile hamburger can open a right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **CanonicaLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
@@ -263,3 +263,5 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-24 | Added public Workflow Notifications and Proactive Help product-feature pages plus a real `/integrations` page now that Slack/email delivery, test notifications, compact health, proactive trigger gating, and bounded delivery are production-ready enough for buyer-facing claims |
 | 2026-05-27 | Converted the Canonica public hamburger menu into a right-side mobile drawer while preserving Product Areas, Product Features, Other, and setup CTA grouping |
 | 2026-05-27 | Completed an end-to-end Canonica website audit across public routes, internal links, desktop/mobile rendered layout, and docs; synced the install-route documentation to the live generated install and Markdown contract surfaces |
+| 2026-05-27 | Fixed the mobile drawer animation lifecycle so the drawer paints off-screen before opening and transitions out before unmounting |
+| 2026-05-27 | Added route icons to every Canonica mobile drawer item and the setup CTA while keeping the existing grouped drawer behavior |

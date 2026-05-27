@@ -1,4 +1,4 @@
-import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuMapPin, LuQrCode, LuReceipt, LuShare2, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuMapPin, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
@@ -41,6 +41,8 @@ export const NAVIGARIONS_ROUTINGS = {
     RESELLER_ONBOARD: `/reseller/onboard`,
     RESELLER_MANAGE: `/reseller/manage`,
     USERS: `/users`,
+    USERS_LIST: `/users/list`,
+    USERS_ROLES: `/users/permissions`,
     SIGNIN: `/signin`,
     FORGOT_PASSWORD: 'forgot-password',
     PLATFORM_ENTITY_BLOCKS: `/platform/entity-blocks`,
@@ -73,7 +75,15 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
     { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
     { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart },
-    { label: 'Users', route: NAVIGARIONS_ROUTINGS.USERS, icon: LuUsers },
+    {
+        label: 'Users',
+        route: NAVIGARIONS_ROUTINGS.USERS,
+        icon: LuUsers,
+        subNav: [
+            { label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers },
+            { label: 'Roles', route: NAVIGARIONS_ROUTINGS.USERS_ROLES, icon: LuShieldCheck },
+        ],
+    },
     { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2 },
     { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
     { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },

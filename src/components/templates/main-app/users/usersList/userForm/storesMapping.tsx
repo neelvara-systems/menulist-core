@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { StoreDataType } from '@type/platform/store';
 import { UserDataType } from '@type/platform/user';
 import { removeObjRef } from '@util/utils';
-import { Button, Card, Empty, Flex, Select, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Flex, Select, Tag, Typography, theme } from 'antd';
 import { Fragment, useContext } from 'react';
 import { LuTrash } from 'react-icons/lu';
 const { Text } = Typography;
@@ -13,6 +13,7 @@ const { Text } = Typography;
 function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, onChangeValue }) {
 
     const { tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext)
+    const { token } = theme.useToken();
     const storesList = staffStores.length
         ? staffStores.map((store) => ({ ...store, storeDetails: store }))
         : (tenantDetails?.storesList || []);
@@ -57,16 +58,19 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
     return (
         <Flex vertical gap={10}>
 
-            {userDetails?.stores?.length > 1 && <Text style={{ minWidth: 150 }}>Total stores Assigned to User
+            {userDetails?.stores?.length > 1 && <Text style={{ minWidth: 150 }}>Store access
                 {Boolean(userDetails?.stores?.length) && <Tag color='blue'>{userDetails?.stores?.length}</Tag>}
             </Text>}
 
             {!Boolean(userDetails?.stores?.length) ? <>
-                <Empty description="No stores assigned to user" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                <Empty description="No store access assigned" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             </> : <>
                 {userDetails?.stores?.map((mappedStore, index) => {
                     return <Fragment key={index}>
-                        <Card size='small'>
+                        <Card
+                            size='small'
+                            styles={{ body: { background: token.colorFillQuaternary } }}
+                        >
                             <Flex vertical gap={10} key={index}>
                                 <Flex>
                                     <Text style={{ minWidth: 100 }}>Store {index + 1}</Text>
@@ -75,7 +79,7 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                                         value={mappedStore?.storeId}
                                         style={{ width: "100%" }}
                                         disabled={!canAssignRoles}
-                                        placeholder="Select Store"
+                                        placeholder="Select store"
                                         onChange={(storeId) => onChangeStoreValue(index, 'storeId', storeId)}
                                         options={storesList?.map((s) => ({ label: `${s.storeId}-${s.name}`, value: s.storeId }))}
                                     />
@@ -85,7 +89,7 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                                     <Select
                                         allowClear
                                         style={{ width: '100%' }}
-                                        placeholder="Please select role"
+                                        placeholder="Select role"
                                         disabled={!canAssignRoles}
                                         defaultValue={mappedStore?.role || ''}
                                         value={mappedStore?.role || ''}
@@ -95,7 +99,7 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                                 </FormElementWrapper>
 
                                 <Flex justify='flex-end'>
-                                    <Button danger disabled={!canAssignRoles} type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Delete Store Mapping</Button>
+                                    <Button danger disabled={!canAssignRoles} type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Remove store access</Button>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -103,7 +107,7 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                 })}
             </>}
             <Flex justify={!Boolean(userDetails?.stores?.length) ? "center" : 'flex-end'}>
-                {(canAssignRoles && storesList?.length > 1 && storesList.length != userDetails?.stores?.length) && <Button type="primary" ghost onClick={onClickAddStore}>Add Store</Button>}
+                {(canAssignRoles && storesList?.length > 1 && storesList.length != userDetails?.stores?.length) && <Button type="primary" ghost onClick={onClickAddStore}>Add store access</Button>}
             </Flex>
 
             {Boolean(userDetails?.stores?.length) && userDetails?.stores?.length > 1 && <>
@@ -121,7 +125,7 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                                 options={userDetails?.stores?.map((s) => ({ label: s.name, value: s.storeId }))}
                             />
                         </Flex>
-                        <TagElement type='default' content="Default store used when user loggedin then user will be redirected to default store" />
+                        <TagElement type='default' content="This is the store the staff member opens first after login." />
                     </Flex>
                 </Card>
             </>}

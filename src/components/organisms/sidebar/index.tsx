@@ -60,6 +60,13 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     useEffect(() => {
+        const getVisibleSubNav = (nav: NavItemType) => (
+            nav.subNav?.filter(subnav => (
+                (!subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
+                && canShowNavForPermissions(subnav)
+            )) || []
+        );
+
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
             if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
@@ -76,6 +83,9 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
                 return false;
             }
+            if (nav.subNav?.length) {
+                return getVisibleSubNav(nav).length > 0 || canShowNavForPermissions(nav);
+            }
             return canShowNavForPermissions(nav);
         });
 
@@ -85,10 +95,10 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             showSubNav: false,
             subNavActive: false,
             active: false,
-            subNav: nav.subNav?.map(subnav => ({
+            subNav: getVisibleSubNav(nav).map(subnav => ({
                 ...subnav,
                 active: false
-            })).filter(subnav => !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
+            }))
         }));
 
         let currentNav: NavItemType | null = null;

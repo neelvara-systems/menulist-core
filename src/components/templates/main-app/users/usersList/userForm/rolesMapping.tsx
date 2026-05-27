@@ -28,7 +28,7 @@ function RolesMapping({ disabled = false, staffStores = [], userDetails, onChang
             <Select
                 allowClear
                 style={{ width: '100%' }}
-                placeholder="Please select role"
+                placeholder="Select role"
                 disabled={disabled}
                 defaultValue={currentRole}
                 value={currentRole}

@@ -3,7 +3,7 @@ import { ALL_PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPermissionsInitialData";
 import { RolePermissions } from "@type/platform/roles";
 import { removeObjRef } from "@util/utils";
-import { Checkbox, Flex, Typography } from "antd";
+import { Checkbox, Flex, Typography, theme } from "antd";
 import { Fragment } from "react";
 const { Text, Title } = Typography;
 
@@ -13,6 +13,7 @@ interface RolesPermissionFormProps {
 }
 
 function RolesPermissionForm({ userPermissions, updatePermissions }: RolesPermissionFormProps) {
+    const { token } = theme.useToken();
 
     const onTogglePermission = (permissionKey: PermissionKey) => {
         const newPermissions = removeObjRef(userPermissions);
@@ -49,7 +50,16 @@ function RolesPermissionForm({ userPermissions, updatePermissions }: RolesPermis
             <Text type="secondary">Toggle permissions for this role. Each permission is a simple on/off switch.</Text>
 
             <Flex vertical gap={16}>
-                <Flex justify="space-between" align="center" style={{ padding: '8px 12px', background: '#f5f5f5', borderRadius: 8 }}>
+                <Flex
+                    justify="space-between"
+                    align="center"
+                    style={{
+                        padding: '10px 12px',
+                        background: token.colorFillQuaternary,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: 8,
+                    }}
+                >
                     <Text strong>Full Access (All Permissions)</Text>
                     <Checkbox
                         checked={isAllEnabled()}

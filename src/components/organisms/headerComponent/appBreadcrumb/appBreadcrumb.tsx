@@ -57,7 +57,8 @@ function AppBreadcrumb() {
         if (activeParentNavIndex != -1) {
             let activeParentNav: NavItemType = navCopy[activeParentNavIndex];
             const subNavEle = [];
-            if (activeParentNav.subNav) {
+            const hasActiveSubNav = activeParentNav.subNav?.some((nav) => nav.active);
+            if (activeParentNav.subNav && hasActiveSubNav) {
                 const subNavCopy = [...activeParentNav.subNav]
                 subNavCopy.map((nav) => {
                     subNavEle.push({

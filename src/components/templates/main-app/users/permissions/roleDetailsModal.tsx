@@ -1,5 +1,4 @@
 import DrawerElement from "@antdComponent/drawerElement";
-import RolesPermissionInitialData from "@data/rolesPermissionsInitialData";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { saveRoleDefinition } from "@lib/staffManagement/client";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
@@ -7,7 +6,7 @@ import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices
 import RolesPermissionForm from "@template/platform/stores/rolesPermissionForm";
 import { StoreRoleDataType } from "@type/platform/roles";
 import { objectNullCheck, removeObjRef } from "@util/utils";
-import { Button, Flex, Input, Switch, Typography } from "antd";
+import { Button, Flex, Input, Switch, Typography, theme } from "antd";
 import { useContext, useEffect, useState } from "react";
 const { Text, Title } = Typography;
 
@@ -16,6 +15,7 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
     const [roleData, setRoleData] = useState<StoreRoleDataType>(modalData?.data);
     const { setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const dispatch = useAppDispatch()
+    const { token } = theme.useToken();
 
     useEffect(() => {
         if (modalData.active) {
@@ -25,7 +25,7 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
                     active: true,
                     description: "",
                     name: "",
-                    permissions: RolesPermissionInitialData,
+                    permissions: {},
                 } as StoreRoleDataType)
         } else {
             setRoleData(null)
@@ -49,7 +49,7 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
                     description: roleData.description || "",
                     id: roleData.id,
                     name: roleData.name,
-                    permissions: roleData.permissions || RolesPermissionInitialData,
+                    permissions: roleData.permissions || {},
                 },
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
@@ -74,34 +74,47 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
             title={objectNullCheck(modalData.data) ? `Edit ${modalData?.data?.name} Role` : 'Add Custom Role'}
             open={objectNullCheck(modalData, 'active')}
             onClose={() => onCancel(null)}
-            style={{ maxWidth: "80vw", minWidth: 600 }}
+            width="min(760px, calc(100vw - 32px))"
             footerActions={[
                 <Button size="large" key="Cancel" type="default" onClick={() => onCancel(null)}>Cancel</Button>,
-                <Button size="large" key="Ok" type="primary" onClick={addUpdateDetails}>{objectNullCheck(modalData, 'data') ? 'Update' : 'Add'}</Button>
+                <Button size="large" key="Ok" type="primary" onClick={addUpdateDetails}>{objectNullCheck(modalData, 'data') ? 'Update Role' : 'Add Role'}</Button>
             ]}
+            styles={{
+                body: { overflow: 'auto' },
+            }}
         >
             <Flex vertical gap={16}>
-                <Flex gap={8} align="center">
-                    <Text style={{ minWidth: 100 }}>Name</Text>
-                    <Input placeholder="Role name" value={roleData?.name || ""} onChange={(e) => onChangeValue('name', e.target.value)} />
-                </Flex>
-
-                <Flex gap={8} align="flex-start">
-                    <Text style={{ minWidth: 100 }}>Description</Text>
-                    <Input.TextArea placeholder="Role description" value={roleData?.description || ""} onChange={(e) => onChangeValue('description', e.target.value)} />
-                </Flex>
-
-                <Flex gap={8} align="center">
-                    <Text style={{ minWidth: 100 }}>Active</Text>
-                    <Switch
-                        checked={roleData?.active !== false}
-                        onChange={() => onChangeValue('active', !Boolean(roleData?.active))}
+                <Flex gap={8} align="center" wrap="wrap">
+                    <Text style={{ minWidth: 110 }}>Name</Text>
+                    <Input
+                        placeholder="Role name"
+                        style={{ flex: 1, minWidth: 260 }}
+                        value={roleData?.name || ""}
+                        onChange={(e) => onChangeValue('name', e.target.value)}
                     />
                 </Flex>
 
-                <Title level={5} style={{ marginTop: 8 }}>Permissions</Title>
+                <Flex gap={8} align="flex-start" wrap="wrap">
+                    <Text style={{ minWidth: 110 }}>Description</Text>
+                    <Input.TextArea
+                        placeholder="Role description"
+                        style={{ flex: 1, minWidth: 260 }}
+                        value={roleData?.description || ""}
+                        onChange={(e) => onChangeValue('description', e.target.value)}
+                    />
+                </Flex>
+
+                <Flex gap={8} align="center">
+                    <Text style={{ minWidth: 110 }}>Active</Text>
+                    <Switch
+                        checked={roleData?.active !== false}
+                        onChange={(checked) => onChangeValue('active', checked)}
+                    />
+                </Flex>
+
+                <Title level={5} style={{ color: token.colorText, marginTop: 8 }}>Permissions</Title>
                 <RolesPermissionForm
-                    userPermissions={roleData?.permissions || RolesPermissionInitialData}
+                    userPermissions={roleData?.permissions || {}}
                     updatePermissions={(permissions) => onChangeValue('permissions', permissions)}
                 />
             </Flex>

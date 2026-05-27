@@ -6,6 +6,42 @@
 
 ---
 
+## May 27, 2026 — Canonica Product Menu Navigation Polish
+
+### Changed
+
+- **Canonica website Product menu now reads like navigation** — The desktop hover menu uses route icons, compact link rows, clearer product-area and feature groups, and a stronger Product overview entry instead of paragraph-heavy cards.
+
+### Cost
+
+- **No Firebase cost change** — This is static website header UI only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 27, 2026 — Canonica Mobile Drawer Icons
+
+### Changed
+
+- **Canonica mobile drawer links now include route icons** — Product overview, Product Areas, Product Features, Other links, and the setup CTA now use the existing Lucide icon stack so the drawer scans faster without changing its route grouping or behavior.
+
+### Cost
+
+- **No Firebase cost change** — This is public website header UI only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 27, 2026 — Canonica Mobile Drawer Animation
+
+### Fixed
+
+- **Canonica mobile hamburger drawer now animates open and closed** — The drawer mounts off-screen first, then applies the open state after a short browser paint delay. Closing removes the open state before unmounting, so the right-to-left slide and backdrop fade are visible.
+
+### Cost
+
+- **No Firebase cost change** — This is public website header UI only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
 ## May 27, 2026 — Canonica Website End-to-End Audit
 
 ### Fixed
@@ -73,7 +109,7 @@
 
 ### Fixed
 
-- **Mobile sidebar parent rows now keep readable colors after theme changes** — The shared dashboard sidebar no longer uses mixed color expressions for parent-row backgrounds, so Canonica PWA drawer rows update cleanly when switching between dark and light mode.
+- **Mobile sidebar parent rows now keep readable colors after theme changes** — The shared dashboard sidebar no longer uses mixed color expressions, and expanded parent rows blend into the sidebar surface while collapsed parent rows keep their shaded treatment.
 
 ### Cost
 

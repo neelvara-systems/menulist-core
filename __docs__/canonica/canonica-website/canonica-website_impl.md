@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.40
+> **Version:** 1.2.42
 > **Last Updated:** 2026-05-27
 > **Audience:** Developers
 
@@ -189,6 +189,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 27 Support Board pass added standalone `/product/support-board`, then updated Support Control, FAQ, Resources, Updates, sitemap metadata, LLM context, and route docs to explain private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff while keeping ticket/signal sync and nightly board preparation marked as controlled rollout instead of default website claims.
 - May 27 contact/mobile pass added a full `/contact` inquiry form backed by a Canonica-only public API route and regrouped the mobile hamburger into Product Areas, Product Features, and Other cards with safe-area bottom padding.
 - May 27 drawer pass converted the public hamburger from an inline mobile panel to a right-side drawer with backdrop, Escape close, body scroll lock, and link-close behavior.
+- May 27 drawer-icon pass added Lucide route icons to every mobile drawer row and the setup CTA while preserving the same Product Areas, Product Features, and Other grouping.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
 - May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.
@@ -316,7 +317,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 - `components/CanonicaScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product dropdown stays CSS-driven. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, and includes safe-area bottom padding.
+- `Header.tsx` — Desktop Product dropdown stays CSS-driven. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
 
 ---
 
@@ -430,3 +431,5 @@ Conversion analytics is client-side only:
 | 2026-05-27 | 1.2.38 | Added the Canonica Agent Install Layer: generated install pages, Markdown mirrors, public agent files, dashboard AI packet actions, and the stable `/widget/v1/canonica-widget.js` contract URL |
 | 2026-05-27 | 1.2.39 | Converted Canonica public mobile navigation to a right-side drawer with backdrop, close handling, body scroll lock, and preserved grouped links |
 | 2026-05-27 | 1.2.40 | Completed an end-to-end public-site audit and aligned install-route implementation docs with the live generated HTML install pages plus Markdown-only contract docs |
+| 2026-05-27 | 1.2.41 | Fixed the mobile drawer animation lifecycle by separating mounted and visible state for right-to-left open and close transitions |
+| 2026-05-27 | 1.2.42 | Added route icons to every Canonica mobile drawer row and the setup CTA using the existing Lucide icon stack |

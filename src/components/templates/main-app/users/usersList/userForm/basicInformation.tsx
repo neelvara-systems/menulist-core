@@ -1,61 +1,53 @@
 import FormElementWrapper from '@atoms/formElementWrapper';
-import PhoneNumberInput from '@atoms/phoneNumberInput'; // Assuming the new component is imported from here
+import PhoneNumberInput from '@atoms/phoneNumberInput';
 import EditorWrapper from '@organisms/editor/editorWrapper';
-import { Button, Flex, Input, Switch, Typography } from 'antd';
-import { LuRefreshCcw, LuUpload } from 'react-icons/lu';
+import { Alert, Input, Switch, Typography } from 'antd';
 const { Text } = Typography;
 
-const imageStyles = {
-    width: "auto",
-    height: 100,
-    borderRadius: "50%"
-}
-
-function BasicInformation({ allowProfileImage = true, userDetails, selectedProfileImage, onChangeValue, fileInputRef }) {
-
-    const renderImage = (src) => {
-        return <>
-            <img src={src} style={imageStyles} />
-            <Button type='text' icon={<LuRefreshCcw />} >Replace</Button>
-        </>
-    }
+function BasicInformation({ userDetails, onChangeValue }) {
+    const isEditing = Boolean(userDetails?.id);
+    const staffLoginId = userDetails?.staffLoginId || userDetails?.loginUsername || '';
+    const isOwnerPasscodeLogin = userDetails?.staffAuthMode === 'owner_passcode';
+    const emailValue = isOwnerPasscodeLogin ? '' : userDetails?.displayEmail || userDetails?.email || '';
 
     return (
         <EditorWrapper gap={20}>
-            {allowProfileImage && <EditorWrapper>
-                <Flex onClick={() => fileInputRef.current.click()} align="center" justify="center" gap={10}>
-                    {selectedProfileImage.src ? renderImage(selectedProfileImage.src) : <>
-                        {userDetails?.profileImage ? renderImage(userDetails?.profileImage) : <>
-                            <Button style={{ height: 100 }} block icon={<LuUpload />}>Upload Profile Image</Button>
-                        </>}
-                    </>}
-                </Flex>
-            </EditorWrapper>}
+            <Alert
+                message={isEditing ? 'Update staff access details for this store.' : 'Create staff with an email invite, or leave email blank to create a Staff ID and passcode.'}
+                showIcon
+                type="info"
+            />
 
-            <FormElementWrapper label="Active" >
+            {isEditing && <FormElementWrapper label="Active">
                 <Switch size="small"
                     defaultChecked={userDetails?.active || false}
                     value={userDetails?.active || false}
-                    onChange={() => onChangeValue('active', !Boolean(userDetails?.active))}
+                    onChange={(checked) => onChangeValue('active', checked)}
                 />
-            </FormElementWrapper>
+            </FormElementWrapper>}
 
             <FormElementWrapper label="Name" mandatory>
-                <Input placeholder="Name" value={userDetails?.name || ""} onChange={(e) => onChangeValue('name', e.target.value)} />
+                <Input placeholder="Staff member name" value={userDetails?.name || ""} onChange={(e) => onChangeValue('name', e.target.value)} />
             </FormElementWrapper>
 
             <FormElementWrapper label='Email'>
                 <Input
-                    disabled={Boolean(userDetails?.id)}
+                    disabled={isEditing}
                     type='email'
                     placeholder="Email, if staff has one"
-                    value={userDetails?.staffAuthMode === 'owner_passcode' ? '' : userDetails?.displayEmail || userDetails?.email || ""}
+                    value={emailValue}
                     onChange={(e) => onChangeValue('email', e.target.value)}
                 />
-                <Text type="secondary">Leave blank to create a staff ID and passcode.</Text>
+                <Text type="secondary">
+                    {isEditing ? 'Email cannot be changed here.' : 'Leave blank to create a Staff ID and passcode.'}
+                </Text>
             </FormElementWrapper>
 
-            <FormElementWrapper label='Phone Number' mandatory>
+            {staffLoginId && <FormElementWrapper label='Staff ID'>
+                <Input disabled value={staffLoginId} />
+            </FormElementWrapper>}
+
+            <FormElementWrapper label='Phone Number'>
                 <PhoneNumberInput
                     countryCode={userDetails?.countryCode || ''}
                     phoneNumber={userDetails?.phoneNumber || ''}

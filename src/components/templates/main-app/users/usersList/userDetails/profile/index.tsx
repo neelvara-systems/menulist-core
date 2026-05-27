@@ -2,245 +2,145 @@ import TextElement from '@antdComponent/textElement';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
-import { Button, Card, Divider, Empty, Flex, Tag, theme } from 'antd';
-import { Fragment, useContext } from 'react';
-import { LuBrain, LuBriefcase, LuCalendar, LuClipboard, LuFile, LuMail, LuPalette, LuPen, LuPhoneCall, LuUser, LuUser2 } from 'react-icons/lu';
-import AddressCard from './addressCard';
+import { Avatar, Button, Card, Divider, Empty, Flex, Tag, Typography, theme } from 'antd';
+import { useContext } from 'react';
+import type { ReactNode } from 'react';
+import { LuBuilding2, LuKeyRound, LuMail, LuPen, LuPhoneCall, LuShieldCheck, LuStore, LuUser, LuUserCheck, LuUserX } from 'react-icons/lu';
+
+const { Text } = Typography;
 
 function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, onClickEdit?: any }) {
-
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
-    const resolveStoreName = (store: any) => {
-        return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
+    const stores = Array.isArray(userDetails?.stores) ? userDetails.stores : [];
+    const staffLoginId = (userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername || '';
+    const isOwnerPasscodeLogin = (userDetails as any)?.staffAuthMode === 'owner_passcode';
+    const displayEmail = isOwnerPasscodeLogin
+        ? ''
+        : (userDetails as any)?.displayEmail || userDetails?.email || '';
+    const phoneLabel = userDetails?.phoneNumber ? `${userDetails?.dialCode || ''} ${userDetails.phoneNumber}`.trim() : '';
+    const alternatePhoneLabel = userDetails?.alternatePhoneNumber?.phoneNumber
+        ? `${userDetails.alternatePhoneNumber.dialCode || ''} ${userDetails.alternatePhoneNumber.phoneNumber}`.trim()
+        : '';
+
+    const getStoreRecord = (storeId: number) => {
+        const tenantStore = tenantDetails?.storesList?.find((store: any) => Number(store?.storeId) === Number(storeId));
+        return tenantStore?.storeDetails || tenantStore || (Number(storeDetails?.storeId) === Number(storeId) ? storeDetails : null);
     };
-    const loginLabel = (userDetails as any)?.staffAuthMode === 'owner_passcode'
-        ? `Staff ID: ${(userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername || '-'}`
-        : (userDetails as any)?.displayEmail || userDetails?.email || '-';
+
+    const resolveStoreName = (store: any) => {
+        const storeRecord = getStoreRecord(Number(store?.storeId));
+        return getStoreContextName(storeRecord || store, `Store ${store?.storeId ?? ''}`);
+    };
+
+    const resolveRoleName = (store: any) => {
+        const storeRecord = getStoreRecord(Number(store?.storeId));
+        return (storeRecord as any)?.roles?.find((role: any) => role.id === store?.role)?.name || store?.role || 'No role set';
+    };
+
+    const renderInfoRow = (icon: ReactNode, label: string, value?: string) => (
+        <Flex align="flex-start" gap={10}>
+            <span style={{ color: token.colorTextSecondary, lineHeight: 1.8 }}>{icon}</span>
+            <Flex vertical gap={2}>
+                <Text type="secondary">{label}</Text>
+                <Text>{value || '-'}</Text>
+            </Flex>
+        </Flex>
+    );
+
+    const statusTag = userDetails?.active !== false
+        ? <Tag color="green" icon={<LuUserCheck />}>Active</Tag>
+        : <Tag color="error" icon={<LuUserX />}>Deactivated</Tag>;
+    const authDisabledTag = (userDetails as any)?.authDisabled === true
+        ? <Tag color="warning">Login disabled</Tag>
+        : null;
+
     return (
-        <Card title='User Profile' style={{ width: '100%', height: "max-content" }} extra={<Button type='primary' ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}>
-            <Flex justify='flex-start' align='flex-start' vertical>
-
-                <Flex gap={20}>
-                    <img src={userDetails?.profileImage} style={{ width: 50, height: 50, borderRadius: 25 }} />
-                    <Flex justify='flex-start' align='flex-start' vertical gap={10}>
-                        <TextElement text={userDetails?.name} icon={<LuUser />} />
-                        <TextElement text={loginLabel} icon={<LuMail />} />
-                        {(userDetails as any)?.staffAuthMode !== 'owner_passcode' && ((userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername) ? (
-                            <TextElement text={`Staff ID: ${(userDetails as any).staffLoginId || (userDetails as any).loginUsername}`} icon={<LuClipboard />} />
-                        ) : null}
-                        <TextElement text={userDetails?.phoneNumber ? `${userDetails?.dialCode} ${userDetails?.phoneNumber}` : '-'} icon={<LuPhoneCall />} />
-                        {userDetails?.alternatePhoneNumber && (
-                            <TextElement
-                                text={`${userDetails.alternatePhoneNumber.dialCode} ${userDetails.alternatePhoneNumber.phoneNumber}`}
-                                icon={<LuPhoneCall />}
-                            />
-                        )}
+        <Card
+            extra={<Button type="primary" ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}
+            style={{ width: '100%', height: 'max-content' }}
+            title="User Profile"
+        >
+            <Flex justify="flex-start" align="flex-start" vertical>
+                <Flex align="flex-start" gap={20} style={{ width: '100%' }}>
+                    <Avatar
+                        icon={<LuUser />}
+                        size={50}
+                        src={userDetails?.profileImage || undefined}
+                        style={{ flexShrink: 0 }}
+                    />
+                    <Flex justify="flex-start" align="flex-start" vertical gap={8} style={{ minWidth: 0 }}>
+                        <Text strong style={{ fontSize: 16 }}>{userDetails?.name || 'Unnamed staff member'}</Text>
+                        <Flex gap={6} wrap="wrap">
+                            {statusTag}
+                            {authDisabledTag}
+                            <Tag color={isOwnerPasscodeLogin ? 'blue' : 'default'}>
+                                {isOwnerPasscodeLogin ? 'Staff ID login' : 'Email login'}
+                            </Tag>
+                        </Flex>
                     </Flex>
                 </Flex>
+
                 <Divider />
 
-                {/* Commissions */}
-                <Flex vertical>
-                    <TextElement text='Commissions' type='secondary' size='medium' />
-                    {userDetails?.commissions ? <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                        <TextElement
-                            text={`Product Commission: ${userDetails.commissions.product || 'Not set'}`}
-                            icon={<LuBriefcase />}
-                        />
-                        <TextElement
-                            text={`Service Commission: ${userDetails.commissions.service || 'Not set'}`}
-                            icon={<LuBriefcase />}
-                        />
-                        <TextElement
-                            text={`Voucher Commission: ${userDetails.commissions.voucher || 'Not set'}`}
-                            icon={<LuBriefcase />}
-                        />
-                        <TextElement
-                            text={`Gift Card Commission: ${userDetails.commissions.giftCard || 'Not set'}`}
-                            icon={<LuBriefcase />}
-                        />
-                    </Flex> :
-                        <TextElement text='Commissions not set' type='secondary' />}
+                <Flex vertical gap={14} style={{ width: '100%' }}>
+                    <TextElement text="Account Access" type="secondary" size="medium" />
+                    {renderInfoRow(<LuUser />, 'Name', userDetails?.name)}
+                    {displayEmail ? renderInfoRow(<LuMail />, 'Email', displayEmail) : null}
+                    {staffLoginId ? renderInfoRow(<LuKeyRound />, 'Staff ID', staffLoginId) : null}
+                    {renderInfoRow(<LuPhoneCall />, 'Phone', phoneLabel)}
+                    {alternatePhoneLabel ? renderInfoRow(<LuPhoneCall />, 'Alternate phone', alternatePhoneLabel) : null}
                 </Flex>
+
                 <Divider />
 
-                {/* Address */}
-                <Flex vertical>
-                    <TextElement text='Address' type='secondary' size='medium' />
-                    {Boolean(userDetails?.addresses?.length) ? (
-                        <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                            {userDetails?.addresses?.map((address: any, index) => (
-                                <AddressCard key={index} address={address} />
-                            ))}
-                        </Flex>
-                    ) : (
-                        <TextElement text='Addresses not found' type='secondary' />
-                    )}
-                </Flex>
-                <Divider />
-
-                {/* Employment */}
-                <Flex vertical>
-                    <TextElement text='Employment' type='secondary' size='medium' />
-                    {userDetails?.employment ? <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                        <TextElement
-                            text={userDetails.employment.jobTitle}
-                            icon={<LuBriefcase />}
-                            type="secondary"
-                        />
-                        <TextElement
-                            text={`${userDetails.employment.designation} • ${userDetails.employment.type}`}
-                            icon={<LuBriefcase />}
-                        />
-                        <TextElement
-                            text={`${userDetails.employment.startDate} - ${userDetails.employment.endDate || 'Present'}`}
-                            icon={<LuCalendar />}
-                        />
-                    </Flex> : <TextElement text='Employment details not found' type='secondary' />}
-                </Flex>
-                <Divider />
-
-                {/* Emergency Contact */}
-                <Flex vertical>
-                    <TextElement text='Emergency Contact' type='secondary' size='medium' />
-                    {userDetails?.emergencyContact ? <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                        <TextElement
-                            text={userDetails.emergencyContact.name}
-                            icon={<LuUser />}
-                        />
-                        <TextElement
-                            text={`${userDetails.emergencyContact.relation}`}
-                            icon={<LuUser />}
-                            type="secondary"
-                        />
-                        <TextElement
-                            text={`${userDetails.emergencyContact.countryCode || ''} ${userDetails.emergencyContact.phoneNumber}`}
-                            icon={<LuPhoneCall />}
-                        />
-                        <TextElement
-                            text={userDetails.emergencyContact.email}
-                            icon={<LuMail />}
-                        />
-                    </Flex>
-                        : <TextElement text='Emergency contact not found' type='secondary' />}
-                </Flex>
-                <Divider />
-
-                {/* Additional Documents */}
-                <Flex vertical>
-                    <TextElement text='Additional Documents' type='secondary' size='medium' />
-                    {userDetails?.additionalDocuments?.length ? (
-                        <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                            {userDetails.additionalDocuments.map((doc, index) => (
-                                <Fragment key={index}>
-                                    <TextElement
-                                        text={`${doc.label} (${doc.type}${doc.size ? ` - ${(doc.size / 1024 / 1024).toFixed(2)}MB` : ''})`}
-                                        icon={<LuFile />}
-                                    />
-                                    <img
-                                        src={doc.url}
-                                        alt={doc.label}
-                                        style={{
-                                            maxWidth: 200,
-                                            maxHeight: 200,
-                                            objectFit: 'contain',
-                                            borderRadius: 8,
-                                            border: `1px solid ${token.colorBorder}`
-                                        }}
-                                    />
-                                </Fragment>
-                            ))}
-                        </Flex>
-                    ) : (
-                        <TextElement text='No additional documents found' type='secondary' />
-                    )}
-                </Flex>
-                <Divider />
-
-                {/* Store Access */}
-                <Flex vertical>
-                    <TextElement text='Store Access' type='secondary' size='medium' />
-                    {userDetails?.stores && userDetails.stores.length > 0 ? (
-                        <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                            {userDetails.stores.map((store, index) => (
-                                <Flex key={index} vertical gap={5}>
-                                    <TextElement
-                                        text={resolveStoreName(store)}
-                                        icon={<LuBriefcase />}
-                                    />
-                                    {/* <Flex gap={8} wrap="wrap">
-                                        {store.roles.map((roleId, roleIndex) => {
-                                            const roleName = storeDetails?.roles?.find(r => r.id == roleId)?.name || roleId;
-                                            return (
-                                                <Tag key={roleIndex} color="blue">
-                                                    {roleName}
-                                                </Tag>
-                                            );
-                                        })}
-                                    </Flex> */}
+                <Flex vertical gap={14} style={{ width: '100%' }}>
+                    <TextElement text="Store Access" type="secondary" size="medium" />
+                    {stores.length ? (
+                        <Flex vertical gap={10}>
+                            {stores.map((store: any) => (
+                                <Flex
+                                    align="center"
+                                    gap={12}
+                                    justify="space-between"
+                                    key={`${store.storeId}-${store.role}`}
+                                    style={{
+                                        background: token.colorFillQuaternary,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 8,
+                                        padding: 12,
+                                    }}
+                                >
+                                    <Flex align="center" gap={10}>
+                                        <LuStore color={token.colorTextSecondary} />
+                                        <Flex vertical gap={2}>
+                                            <Text>{resolveStoreName(store)}</Text>
+                                            <Text type="secondary">Store ID {store.storeId}</Text>
+                                        </Flex>
+                                    </Flex>
+                                    <Flex gap={6} wrap="wrap" justify="flex-end">
+                                        {Number(store.storeId) === Number(userDetails?.storeId)
+                                            ? <Tag color="blue" icon={<LuBuilding2 />}>Default</Tag>
+                                            : null}
+                                        <Tag icon={<LuShieldCheck />}>{resolveRoleName(store)}</Tag>
+                                    </Flex>
                                 </Flex>
                             ))}
                         </Flex>
                     ) : (
-                        <Empty description="No stores assigned" style={{ padding: '12px 0' }} />
+                        <Empty description="No store access assigned" style={{ padding: '12px 0' }} />
                     )}
                 </Flex>
+
                 <Divider />
 
-                {/* Extra Information */}
-                <Flex vertical>
-                    <TextElement text='Additional Information' type='secondary' size='medium' />
-                    <Flex vertical gap={10} style={{ padding: '12px 0' }}>
-                        {userDetails?.birthday && (
-                            <TextElement
-                                text={`Birthday: ${userDetails.birthday}`}
-                                icon={<LuCalendar />}
-                            />
-                        )}
-                        {userDetails?.color && (
-                            <Flex align="center" gap={8}>
-                                <TextElement
-                                    text={`Color: ${userDetails.color}`}
-                                    icon={<LuPalette />}
-                                />
-                                <div style={{
-                                    width: 16,
-                                    height: 16,
-                                    backgroundColor: userDetails.color,
-                                    borderRadius: 4,
-                                    border: `1px solid ${token.colorBorder}`
-                                }} />
-                            </Flex>
-                        )}
-                        {userDetails?.notes && (
-                            <TextElement
-                                text={`Notes: ${userDetails.notes}`}
-                                icon={<LuClipboard />}
-                            />
-                        )}
-                        {userDetails?.gender && (
-                            <TextElement
-                                text={`Gender: ${userDetails.gender.charAt(0).toUpperCase() + userDetails.gender.slice(1)}`}
-                                icon={<LuUser2 />}
-                            />
-                        )}
-                        {userDetails?.skills && (
-                            <Flex gap={5} wrap="wrap">
-                                <TextElement
-                                    text="Skills:"
-                                    icon={<LuBrain />}
-                                />
-                                {userDetails.skills.split(",").map((skill, index) => (
-                                    <Tag key={index} style={{ fontSize: 12, lineHeight: 2 }}>{skill}</Tag>
-                                ))}
-                            </Flex>
-                        )}
-                    </Flex>
+                <Flex vertical gap={8} style={{ width: '100%' }}>
+                    <TextElement text="Permissions" type="secondary" size="medium" />
+                    <Text type="secondary">Permissions are controlled by the role assigned for each store.</Text>
                 </Flex>
             </Flex>
         </Card>
-    )
+    );
 }
 
-export default UserDetails
+export default UserDetails;

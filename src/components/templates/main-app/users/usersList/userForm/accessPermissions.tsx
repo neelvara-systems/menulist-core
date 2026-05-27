@@ -2,6 +2,7 @@ import TagElement from '@antdComponent/tagElement'
 import { PermissionKey } from '@constant/permissions'
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData'
 import { getPermissionsForRole } from '@lib/permissions/hasPermission'
+import type { StaffStoreOption } from '@lib/staffManagement/types'
 import EditorWrapper from '@organisms/editor/editorWrapper'
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider'
 import { RolePermissions } from '@type/platform/roles'
@@ -12,7 +13,7 @@ import { Fragment, useContext, useEffect, useState } from 'react'
 import { LuCheck, LuX } from 'react-icons/lu'
 const { Text } = Typography;
 
-function AccessPermissions({ userDetails }: { userDetails: UserDataType }) {
+function AccessPermissions({ staffStores = [], userDetails }: { staffStores?: StaffStoreOption[], userDetails: UserDataType }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [permissions, setPermissions] = useState<RolePermissions>({})
@@ -24,11 +25,15 @@ function AccessPermissions({ userDetails }: { userDetails: UserDataType }) {
         setUserRoleName('')
 
         if ((Boolean(storeDetails) && Boolean(userDetails?.stores?.length) && 'storeId' in userDetails)) {
-            const store: StoreDataType = tenantDetails.storesList.find((s: any) => s.storeId === (activeStore || userDetails.storeId))?.storeDetails
+            const selectedStoreId = activeStore || userDetails.storeId;
+            const store: StoreDataType = staffStores.find((s) => s.storeId === selectedStoreId) as any
+                || tenantDetails?.storesList?.find((s: any) => s.storeId === selectedStoreId)?.storeDetails
+                || tenantDetails?.storesList?.find((s: any) => s.storeId === selectedStoreId)
+                || (storeDetails?.storeId === selectedStoreId ? storeDetails : null);
             if (!store) return
 
             // Single role per store (not array)
-            const userStoreMapping = userDetails.stores?.find((s: any) => s.storeId === (activeStore || userDetails.storeId));
+            const userStoreMapping = userDetails.stores?.find((s: any) => s.storeId === selectedStoreId);
             const userRoleId = userStoreMapping?.role;  // Single role string
 
             if (!userRoleId) return
@@ -43,11 +48,11 @@ function AccessPermissions({ userDetails }: { userDetails: UserDataType }) {
             if (activeStore == null) setActiveStore(userDetails.storeId);
             setPermissions(finalPermissions)
         }
-    }, [userDetails, activeStore])
+    }, [userDetails, activeStore, staffStores, storeDetails, tenantDetails?.storesList])
 
     return (
         <EditorWrapper>
-            {Boolean(userDetails?.storeIds?.length) && Object.keys(permissions).length > 0 ? <>
+            {Boolean(userDetails?.stores?.length) && Object.keys(permissions).length > 0 ? <>
                 <Flex vertical gap={20}>
 
                     {userDetails?.stores?.length > 1 && <Flex>

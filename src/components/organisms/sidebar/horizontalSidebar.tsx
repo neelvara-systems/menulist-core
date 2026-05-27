@@ -77,16 +77,17 @@ const HorizontalSidebarComponent = () => {
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
                 return;
             }
-            if (!canShowNavForPermissions(nav)) {
+            const visibleSubNav = nav.subNav?.filter((subnav) => (
+                (!subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
+                && canShowNavForPermissions(subnav)
+            ));
+            if (!canShowNavForPermissions(nav) && !visibleSubNav?.length) {
                 return;
             }
 
             // Add dot indicator for Today when action exists (per Strategy Doc)
             const isToday = nav.label === 'Today';
             const showDot = isToday && hasTodayAction;
-            const visibleSubNav = nav.subNav?.filter((subnav) => (
-                !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole)
-            ));
 
             const navItem: any = {
                 key: nav.label,

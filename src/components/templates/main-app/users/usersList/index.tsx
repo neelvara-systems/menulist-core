@@ -8,8 +8,7 @@ import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { removeObjRef } from "@util/utils";
 import { Alert, Button, Card, Flex, Input, Modal, Space, Spin } from "antd";
 import { useContext, useEffect, useState } from "react";
-import { LuListFilter, LuPlus, LuSettings } from "react-icons/lu";
-import { useRouter } from "next/navigation";
+import { LuPlus } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import StaffLoginDetailsContent from "../StaffLoginDetailsContent";
 import UserDetailsModal from "./userDetailsModal";
@@ -45,7 +44,6 @@ function UsersListPage() {
     const [staffStores, setStaffStores] = useState<StaffStoreOption[]>([]);
     const [userDetailsModal, setUserDetailsModal] = useState({ active: false, data: null });
     const [userFormModal, setUserFormModal] = useState({ active: false, data: null });
-    const router = useRouter();
     const dispatch = useAppDispatch();
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
@@ -235,8 +233,6 @@ function UsersListPage() {
 
                         <Flex gap={10}>
                             <Button disabled={!canManageUsers} icon={<LuPlus />} onClick={() => setUserFormModal({ active: true, data: null })}>Add User</Button>
-                            <Button icon={<LuListFilter />}>Filters</Button>
-                            <Button disabled={!canAssignRoles} icon={<LuSettings />} onClick={() => router.push('/users/permissions')}>Roles</Button>
                         </Flex>
 
                     </Flex>

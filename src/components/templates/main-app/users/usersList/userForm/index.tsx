@@ -1,30 +1,20 @@
 import DrawerElement from "@antdComponent/drawerElement"
-import ImageUploadInput from "@atoms/imageUploadInput"
 import { useAppDispatch } from "@hook/useAppDispatch"
 import { _debounce } from "@hook/useDebounce"
 import { createStaffUser, updateStaffUser } from "@lib/staffManagement/client"
 import type { StaffStoreOption } from "@lib/staffManagement/types"
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider"
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast"
-import { UserUploadedFileType } from '@type/common'
 import { UserDataType } from "@type/platform/user"
 import { getObjectDifferance } from "@util/deepMerge"
 import { removeObjRef, updateDeepPathValue } from "@util/utils"
 import { Button, Card, Divider, Flex, Modal, theme } from "antd"
 import { createRef, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { LuBellRing, LuBookOpenCheck, LuCake, LuCalculator, LuCalendarClock, LuClipboardSignature, LuImagePlus, LuLock, LuMapPin, LuSiren, LuStore, LuUpload, LuUploadCloud } from "react-icons/lu"
+import { LuClipboardSignature, LuShieldCheck, LuStore, LuUpload, LuUploadCloud } from "react-icons/lu"
 import StaffLoginDetailsContent from "../../StaffLoginDetailsContent"
 import AccessPermissions from "./accessPermissions"
-import AdditionalDocuments from "./additionalDocuments"
-import AdditionalInfo from "./additionalInfo"
-import Addresses from "./addresses"
 import BasicInformation from "./basicInformation"
-import Comissions from "./comissions"
-import EmergencyContacts from "./emergencyContacts"
-import Employment from "./employment"
-import Notifications from "./notifications"
 import StoresMapping from "./storesMapping"
-import Timings from "./timings"
 import RolesMapping from "./rolesMapping"
 
 type UserModalDataType = {
@@ -38,18 +28,9 @@ type UserModalDataType = {
 }
 
 const ITEMS_LIST_LABELS = {
-    BASE_INFORMATION: "Base Information",
-    ASSIGNED_STORES: "Assigned Stores",
-    ASSIGNED_ROLES: "Assigned Roles",
-    PREMISSIONS: "Premissions",
-    COMMISIONS: "Commisions",
-    NOTIFICATIONS: "Notifications",
-    TIMINGS: "Timings",
-    EMPLOYMENT: "Employment",
-    EMERGENCY_CONTACT: "Emergency Contact",
-    ADDRESSES: "Addresses",
-    ADDITIONAL_DOCUMENTS: "Documents",
-    ADDITIONAL_INFO: "Additional Info",
+    STAFF_DETAILS: "Staff Details",
+    STORE_ACCESS: "Store Access",
+    PERMISSIONS: "Permissions",
 }
 /**
  * Form to add or update a user
@@ -60,8 +41,6 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
 
     const [userDetails, setUserDetails] = useState<UserDataType>(null)
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext)
-    const fileInputRef = useRef(null);
-    const [selectedProfileImage, setSelectedProfileImage] = useState<UserUploadedFileType>({ name: "", size: 0, type: "", url: null })
     const dispatch = useAppDispatch();
     const [activeTab, setActiveTab] = useState(0)
     const { token } = theme.useToken();
@@ -94,11 +73,11 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
     } as UserDataType)
 
     useEffect(() => {
+        if (modalData.active) setActiveTab(0);
         if (modalData.data) {
             const userToUpdate = modalData.data;
             setUserDetails(userToUpdate);
         } else {
-            setSelectedProfileImage({ name: "", size: 0, type: "", url: null })
             setUserDetails(modalData.active ? getInitialUser() : null)
         }
     }, [modalData, storeDetails?.storeId, storeDetails?.tenantId])
@@ -126,10 +105,6 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
 
     const scrollSmoothHandler = (index) => {
         scrollRefs.current[index].current.scrollIntoView({ behavior: "smooth" });
-    };
-
-    const handleFileChange = async (selectedProfileImage: UserUploadedFileType) => {
-        setSelectedProfileImage(selectedProfileImage)
     };
 
     const onCreate = async () => {
@@ -236,76 +211,30 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
 
     const TAB_ITEMS_LIST = [
         {
-            label: ITEMS_LIST_LABELS.BASE_INFORMATION,
+            label: ITEMS_LIST_LABELS.STAFF_DETAILS,
             active: true,
-            children: <BasicInformation allowProfileImage={false} fileInputRef={fileInputRef} userDetails={userDetails} selectedProfileImage={selectedProfileImage} onChangeValue={onChangeValue} />,
+            children: <BasicInformation userDetails={userDetails} onChangeValue={onChangeValue} />,
             icon: <LuClipboardSignature />,
         },
         {
-            label: ITEMS_LIST_LABELS.ASSIGNED_STORES,
-            active: tenantDetails?.storesList?.length > 1,
-            children: <StoresMapping canAssignRoles={canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />,
+            label: ITEMS_LIST_LABELS.STORE_ACCESS,
+            active: true,
+            children: (
+                <Flex vertical gap={16}>
+                    {tenantDetails?.storesList?.length > 1 ? (
+                        <StoresMapping canAssignRoles={canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />
+                    ) : (
+                        <RolesMapping disabled={!canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />
+                    )}
+                </Flex>
+            ),
             icon: <LuStore />,
         },
         {
-            label: ITEMS_LIST_LABELS.ASSIGNED_ROLES,
+            label: ITEMS_LIST_LABELS.PERMISSIONS,
             active: true,
-            children: <RolesMapping disabled={!canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuLock />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.PREMISSIONS,
-            active: true,
-            children: <AccessPermissions userDetails={userDetails} />,
-            icon: <LuLock />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.COMMISIONS,
-            active: true,
-            children: <Comissions userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuCalculator />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.TIMINGS,
-            active: true,
-            children: <Timings userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuCalendarClock />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.NOTIFICATIONS,
-            active: true,
-            children: <Notifications userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuBellRing />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.EMPLOYMENT,
-            active: true,
-            children: <Employment userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuBookOpenCheck />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.EMERGENCY_CONTACT,
-            active: true,
-            children: <EmergencyContacts userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuSiren />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.ADDRESSES,
-            active: true,
-            children: <Addresses userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuMapPin />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.ADDITIONAL_DOCUMENTS,
-            active: true,
-            children: <AdditionalDocuments userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuImagePlus />,
-        },
-        {
-            label: ITEMS_LIST_LABELS.ADDITIONAL_INFO,
-            active: true,
-            children: <AdditionalInfo userDetails={userDetails} onChangeValue={onChangeValue} />,
-            icon: <LuCake />,
+            children: <AccessPermissions staffStores={staffStores} userDetails={userDetails} />,
+            icon: <LuShieldCheck />,
         },
     ]
 
@@ -334,7 +263,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                 </Fragment>
             })}
         </Flex>
-    }, [userDetails, activeTab, selectedProfileImage])
+    }, [userDetails, activeTab, canAssignRoles, staffStores, tenantDetails?.storesList?.length])
 
     return (
         <DrawerElement
@@ -359,7 +288,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         >
             <>
                 <Flex justify="flex-start" gap={20}>
-                    <Flex vertical gap={10} style={{ width: 230 }}>
+                    <Flex vertical gap={10} style={{ width: 190 }}>
                         {TAB_ITEMS_LIST.filter(t => t.active).map((item, index) => {
                             return <Fragment key={index}>
                                 <Button
@@ -384,16 +313,10 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                         })}
                     </Flex>
                     <Divider type="vertical" style={{ height: "calc(100vh - 130px)" }} />
-                    <Flex style={{ overflow: "auto", height: "calc(100vh - 130px)", maxWidth: 500 }} onScroll={onScroll}>
+                    <Flex style={{ overflow: "auto", height: "calc(100vh - 130px)", width: "min(620px, calc(100vw - 300px))" }} onScroll={onScroll}>
                         {renderForm()}
                     </Flex>
                 </Flex>
-                {modalData.active && <ImageUploadInput onUploadFile={handleFileChange} fileInputRef={fileInputRef}
-                    cropperConfiguarations={{
-                        active: true,
-                        ratio: 1,
-                        cropBoxResizable: false
-                    }} />}
             </>
         </DrawerElement>
     )
