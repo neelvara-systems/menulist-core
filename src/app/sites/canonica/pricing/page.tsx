@@ -6,6 +6,7 @@ import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
+import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
@@ -74,7 +75,7 @@ export default function CanonicaPricingPage() {
         <>
             <CanonicaPageStructuredData path="/pricing" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing</p>
                     <h1 className="text-4xl font-bold sm:text-5xl">Start free. Upgrade when support volume grows.</h1>
@@ -162,17 +163,16 @@ export default function CanonicaPricingPage() {
                 </section>
 
                 <section className="border-y border-white/[0.06] bg-white/[0.01] px-6 py-14">
-                    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Support credits</p>
-                            <h2 className="text-2xl font-bold text-white">Credits keep support capacity predictable.</h2>
-                            <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                Support credits cover AI-assisted answers, fallback handling, and governance work. Public help pages and normal widget loading do not use credits.
-                            </p>
-                            <p className="mt-3 text-sm leading-relaxed text-[#808099]">
+                    <div className="mx-auto max-w-6xl">
+                        <SectionHeader
+                            eyebrow="Support credits"
+                            title="Credits keep support capacity predictable."
+                            description="Support credits cover AI-assisted answers, fallback handling, and governance work. Public help pages and normal widget loading do not use credits."
+                        >
+                            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
                                 Top-ups are for launch spikes, large imports, or heavy review periods without forcing a plan change.
                             </p>
-                            <div className="mt-5 flex flex-wrap gap-3">
+                            <div className="mt-5 flex flex-wrap justify-center gap-3">
                                 <CanonicaLink
                                     basePath={basePath}
                                     href="/roi-calculator"
@@ -188,8 +188,8 @@ export default function CanonicaPricingPage() {
                                     Review proof pack
                                 </CanonicaLink>
                             </div>
-                        </div>
-                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
+                        </SectionHeader>
+                        <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
                             <div className="text-lg font-semibold text-white">{supportCreditPack.name}</div>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">{supportCreditPack.description}</p>
                             <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-white/[0.06] pt-5">

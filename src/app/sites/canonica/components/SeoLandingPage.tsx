@@ -2,6 +2,7 @@ import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CanonicaHubDiagram, CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
 import CanonicaLink from './CanonicaLink';
 import CanonicaPageStructuredData from './PageStructuredData';
+import SectionHeader from './SectionHeader';
 
 export type SeoLandingPageProps = {
     eyebrow: string;
@@ -37,7 +38,7 @@ export default function SeoLandingPage({
     const diagramId = `cn-seo-${(canonicalPath || title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
     return (
-        <main className="pt-16">
+        <main className="cn-page-flow">
             {canonicalPath ? <CanonicaPageStructuredData path={canonicalPath} /> : null}
             <section className="px-6 py-24 text-center">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">{eyebrow}</p>
@@ -67,15 +68,11 @@ export default function SeoLandingPage({
 
             <section className="border-t border-white/[0.06] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Question flow</p>
-                            <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">{question}</h2>
-                        </div>
-                        <p className="text-base leading-relaxed text-[#a0a0c0]">
-                            Canonica turns a generic support gap into a reviewed answer that matches the current product page.
-                        </p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="Question flow"
+                        title={question}
+                        description="Canonica turns a generic support gap into a reviewed answer that matches the current product page."
+                    />
                     <CanonicaHubDiagram
                         idPrefix={`${diagramId}-question`}
                         inputLabel="Before Canonica"
@@ -106,11 +103,11 @@ export default function SeoLandingPage({
 
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-10 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Setup path</p>
-                        <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Approved knowledge stays the authority.</h2>
-                        <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">{ownerReview}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="Setup path"
+                        title="Approved knowledge stays the authority."
+                        description={ownerReview}
+                    />
                     <CanonicaSequenceDiagram
                         idPrefix={`${diagramId}-setup`}
                         splitAfter={Math.ceil(setupSteps.length / 2)}
@@ -124,15 +121,12 @@ export default function SeoLandingPage({
 
             <section className="border-t border-white/[0.06] px-6 py-20">
                 <div className="mx-auto max-w-6xl">
-                    <div className="mb-8 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Explore Canonica</p>
-                        <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                            The same loop across setup, widget, support, and governance.
-                        </h2>
-                        <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Each product area has a dedicated page so founders, support teams, product teams, and engineers can evaluate the part they care about first.
-                        </p>
-                    </div>
+                    <SectionHeader
+                        className="mb-8"
+                        eyebrow="Explore Canonica"
+                        title="The same loop across setup, widget, support, and governance."
+                        description="Each product area has a dedicated page so founders, support teams, product teams, and engineers can evaluate the part they care about first."
+                    />
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                         {CANONICA_PRODUCT_AREAS.map((area) => (
                             <CanonicaLink

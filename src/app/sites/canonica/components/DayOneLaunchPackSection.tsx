@@ -1,4 +1,5 @@
 import CanonicaLink from './CanonicaLink';
+import SectionHeader from './SectionHeader';
 
 type DayOneLaunchPackSectionProps = {
     basePath?: string;
@@ -78,23 +79,15 @@ export default function DayOneLaunchPackSection({
     const isProduct = context === 'product';
 
     return (
-        <section className={`${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] bg-[radial-gradient(circle_at_22%_0%,rgba(30,206,255,0.08),transparent_34%),radial-gradient(circle_at_80%_18%,rgba(20,184,166,0.12),transparent_32%),rgba(255,255,255,0.012)] px-4 py-20 sm:px-6`}>
+        <section className={`${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] bg-[radial-gradient(circle_at_22%_0%,rgba(30,206,255,0.08),transparent_34%),radial-gradient(circle_at_80%_18%,rgba(20,184,166,0.12),transparent_32%),rgba(255,255,255,0.012)] px-6 py-20 sm:px-6`}>
             <div className="mx-auto max-w-7xl">
-                <div className="mb-10 grid gap-6 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                            Day-one launch pack
-                        </p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                            {isProduct
-                                ? 'The practical setup layer behind the product.'
-                                : 'Everything needed to prove Canonica on the first rollout.'}
-                        </h2>
-                    </div>
-                    <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Canonica should not feel like another dashboard to configure. The first rollout now has quickstarts, starter surfaces, import templates, install verification, buyer proof, and a security handoff that all point back to owner-approved support knowledge.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="Day-one launch pack"
+                    title={isProduct
+                        ? 'The practical setup layer behind the product.'
+                        : 'Everything needed to prove Canonica on the first rollout.'}
+                    description="Canonica should not feel like another dashboard to configure. The first rollout now has quickstarts, starter surfaces, import templates, install verification, buyer proof, and a security handoff that all point back to owner-approved support knowledge."
+                />
 
                 <div className="grid gap-4 lg:grid-cols-6">
                     {PACK_ITEMS.map((item) => (

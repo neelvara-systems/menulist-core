@@ -6,6 +6,7 @@ import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 import ProductPreviewSection from '../components/ProductPreviewSection';
+import SectionHeader from '../components/SectionHeader';
 import SupportKnowledgeMapSection from '../components/SupportKnowledgeMapSection';
 import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
@@ -114,7 +115,7 @@ export default function CanonicaProductPage() {
         <>
             <CanonicaPageStructuredData path="/product" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 {/* Hero */}
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Product</p>
@@ -141,15 +142,11 @@ export default function CanonicaProductPage() {
 
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
-                        <div className="mx-auto mb-10 max-w-3xl text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Product areas</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                                Each part of Canonica has its own job.
-                            </h2>
-                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, Support Board follow-up, and answer review.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            eyebrow="Product areas"
+                            title="Each part of Canonica has its own job."
+                            description="Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, Support Board follow-up, and answer review."
+                        />
                         <div className="grid gap-4 md:grid-cols-2">
                             {CANONICA_PRODUCT_AREAS.map((area) => (
                                 <CanonicaLink
@@ -177,17 +174,11 @@ export default function CanonicaProductPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
-                        <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-                            <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Support features</p>
-                                <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                                    Core product features get their own pages.
-                                </h2>
-                            </div>
-                            <p className="text-base leading-relaxed text-[#a0a0c0]">
-                                Each Canonica feature page explains its outcome, workflow, and how it connects back to controlled support knowledge.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            eyebrow="Support features"
+                            title="Core product features get their own pages."
+                            description="Each Canonica feature page explains its outcome, workflow, and how it connects back to controlled support knowledge."
+                        />
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {CANONICA_SUPPORT_FEATURES.map((feature) => (
                                 <CanonicaLink
@@ -211,16 +202,12 @@ export default function CanonicaProductPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
-                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Runtime readiness</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                                Approved support context is prepared before runtime needs it.
-                            </h2>
-                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Canonica keeps governed source records separate, then prepares approved public widget context and private server context into versioned runtime bundles. That keeps user-facing support fast without exposing drafts, tickets, audit logs, or workspace internals.
-                            </p>
-                        </div>
+                    <div className="mx-auto max-w-6xl">
+                        <SectionHeader
+                            eyebrow="Runtime readiness"
+                            title="Approved support context is prepared before runtime needs it."
+                            description="Canonica keeps governed source records separate, then prepares approved public widget context and private server context into versioned runtime bundles. That keeps user-facing support fast without exposing drafts, tickets, audit logs, or workspace internals."
+                        />
                         <div className="grid gap-3 md:grid-cols-2">
                             {[
                                 ['Owner-visible readiness', 'Activation shows compiled context status, version, stale state, public/private readiness, and manual rebuild controls.'],
@@ -241,13 +228,12 @@ export default function CanonicaProductPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
-                        <div className="mb-12 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Behind the support layer</p>
-                            <h2 className="text-3xl font-bold sm:text-4xl">Not only a chatbot.</h2>
-                            <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                                Canonica keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            className="mb-12"
+                            eyebrow="Behind the support layer"
+                            title="Not only a chatbot."
+                            description="Canonica keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center."
+                        />
                         <div className="grid gap-4 md:grid-cols-2">
                             {CANONICA_ENGINE_PILLARS.map((pillar) => (
                                 <article
@@ -278,13 +264,12 @@ export default function CanonicaProductPage() {
                         className={`border-t border-white/[0.06] px-6 py-20 ${i % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
                     >
                         <div className="mx-auto max-w-4xl">
-                            <span className="mb-4 inline-block rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-300">
-                                {feature.badge}
-                            </span>
-                            <h2 className="mb-4 text-3xl font-bold">{feature.title}</h2>
-                            <p className="mb-8 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                {feature.description}
-                            </p>
+                            <SectionHeader
+                                className="mb-8"
+                                eyebrow={feature.badge}
+                                title={feature.title}
+                                description={feature.description}
+                            />
                             <ul className="space-y-3">
                                 {feature.capabilities.map((cap, j) => (
                                     <li key={j} className="flex items-start gap-3 text-sm text-[#808099]">

@@ -1,6 +1,7 @@
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
+import SectionHeader from './SectionHeader';
 
 const AREA_PROOF: Record<string, string> = {
     'Set up support': 'Workspace, team access, product profile, starter knowledge, key app pages, widget key, and activation readiness.',
@@ -13,19 +14,11 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
     return (
         <section className="border-t border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
-                <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                            What Canonica gives you
-                        </p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                            Support for the parts founders actually need first.
-                        </h2>
-                    </div>
-                    <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Start with setup, add the widget, publish help, and review missing answers. The deeper control-plane language stays available after the value is clear.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="What Canonica gives you"
+                    title="Support for the parts founders actually need first."
+                    description="Start with setup, add the widget, publish help, and review missing answers. The deeper control-plane language stays available after the value is clear."
+                />
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {CANONICA_PRODUCT_AREAS.map((area, index) => (

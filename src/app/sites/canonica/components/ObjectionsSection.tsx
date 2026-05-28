@@ -1,3 +1,5 @@
+import SectionHeader from './SectionHeader';
+
 const OBJECTIONS = [
     {
         question: 'Does Canonica replace Intercom or Zendesk?',
@@ -31,12 +33,12 @@ const OBJECTIONS = [
 
 export default function ObjectionsSection() {
     return (
-        <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
+        <section className="border-t border-white/[0.06] px-6 py-20">
             <div className="mx-auto max-w-4xl">
-                <div className="mb-10 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Founder questions</p>
-                    <h2 className="text-3xl font-bold sm:text-4xl">The answers buyers need before setup.</h2>
-                </div>
+                <SectionHeader
+                    eyebrow="Founder questions"
+                    title="The answers buyers need before setup."
+                />
                 <div className="grid gap-4">
                     {OBJECTIONS.map((item) => (
                         <article key={item.question} className="rounded-2xl border border-white/[0.06] bg-[#101028] p-5">

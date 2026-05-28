@@ -2,11 +2,12 @@
 
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CanonicaPageContext } from '../../../packages/canonica-web/src';
 
 const MENULIST_CANONICA_WIDGET_KEY = process.env.NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY?.trim() || '';
 const CONFIGURED_SCRIPT_SRC = process.env.NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC?.trim() || '';
+const MOBILE_WIDGET_MEDIA_QUERY = '(max-width: 767px), (pointer: coarse)';
 
 const BLOCKED_ROUTES = [
     '/help-center',
@@ -85,16 +86,44 @@ function buildPageContext(pathname: string): CanonicaPageContext {
 
 export default function MenuListCanonicaWidgetEmbed() {
     const pathname = normalizePathname(usePathname());
+    const [runtimeState, setRuntimeState] = useState({ ready: false, mobile: false });
     const scriptSrc = useMemo(() => resolveWidgetScriptSrc(), []);
     const blockedRoute = isBlockedRoute(pathname);
+    const shouldSuppressWidget = blockedRoute || runtimeState.mobile;
     const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
 
     useEffect(() => {
-        if (!MENULIST_CANONICA_WIDGET_KEY || blockedRoute) return;
-        window.CanonicaWidget?.page?.(pageContext);
-    }, [blockedRoute, pageContext]);
+        const mediaQuery = window.matchMedia(MOBILE_WIDGET_MEDIA_QUERY);
+        const syncRuntimeState = () => {
+            setRuntimeState({
+                ready: true,
+                mobile: mediaQuery.matches,
+            });
+        };
 
-    if (!MENULIST_CANONICA_WIDGET_KEY) return null;
+        syncRuntimeState();
+        mediaQuery.addEventListener('change', syncRuntimeState);
+
+        return () => {
+            mediaQuery.removeEventListener('change', syncRuntimeState);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!MENULIST_CANONICA_WIDGET_KEY || !runtimeState.ready) return;
+
+        if (shouldSuppressWidget) {
+            window.CanonicaWidget?.hide?.();
+            window.CanonicaWidget?.close?.();
+            window.CanonicaWidget?.setContext?.(null);
+            return;
+        }
+
+        window.CanonicaWidget?.show?.();
+        window.CanonicaWidget?.page?.(pageContext);
+    }, [pageContext, runtimeState.ready, shouldSuppressWidget]);
+
+    if (!MENULIST_CANONICA_WIDGET_KEY || !runtimeState.ready || shouldSuppressWidget) return null;
 
     return (
         <Script
@@ -109,6 +138,7 @@ export default function MenuListCanonicaWidgetEmbed() {
             data-user-role="owner"
             data-entity-hints={(pageContext.entityHints || []).join(',')}
             data-blocked-routes={BLOCKED_ROUTES.join(',')}
+            data-mobile-visibility="hide"
         />
     );
 }

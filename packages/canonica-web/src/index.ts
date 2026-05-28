@@ -28,13 +28,15 @@ export type CanonicaPageContext = {
   entityHints?: string[];
 };
 
-export type CanonicaWidgetEventName = 'open' | 'close' | 'context' | 'ready';
+export type CanonicaWidgetEventName = 'open' | 'close' | 'context' | 'ready' | 'hide' | 'show';
 
 export type CanonicaWidgetRuntime = {
-  setContext?: (context: CanonicaPageContext) => void;
-  page?: (context: CanonicaPageContext) => void;
+  setContext?: (context: CanonicaPageContext | null) => void;
+  page?: (context: CanonicaPageContext | null) => void;
   open?: () => void;
   close?: () => void;
+  hide?: () => void;
+  show?: () => void;
   clearHistory?: () => void;
   on?: (eventName: string, callback: (payload?: unknown) => void) => void;
   off?: (eventName: string, callback: (payload?: unknown) => void) => void;
@@ -60,6 +62,8 @@ export type CanonicaWebClient = {
   setContext: (context: CanonicaPageContext) => CanonicaValidationResult;
   open: () => void;
   close: () => void;
+  hide: () => void;
+  show: () => void;
   clearHistory: () => void;
   on: (eventName: CanonicaWidgetEventName, callback: (payload?: unknown) => void) => () => void;
   off: (eventName: CanonicaWidgetEventName, callback: (payload?: unknown) => void) => void;
@@ -296,6 +300,12 @@ export function createCanonicaWebClient(initialOptions: CanonicaInitOptions): Ca
     },
     close() {
       getRuntime()?.close?.();
+    },
+    hide() {
+      getRuntime()?.hide?.();
+    },
+    show() {
+      getRuntime()?.show?.();
     },
     clearHistory() {
       getRuntime()?.clearHistory?.();

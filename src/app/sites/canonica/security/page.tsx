@@ -6,6 +6,7 @@ import CanonicaLink from '../components/CanonicaLink';
 import { CanonicaHubDiagram } from '../components/CanonicaFlowDiagram';
 import { CanonicaStatusBoard } from '../components/CanonicaProofBlocks';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
+import SectionHeader from '../components/SectionHeader';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
@@ -217,7 +218,7 @@ export default function CanonicaSecurityPage() {
         <>
             <CanonicaPageStructuredData path="/security" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security</p>
@@ -334,13 +335,11 @@ export default function CanonicaSecurityPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto max-w-5xl">
-                        <div className="mb-10 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Trust controls</p>
-                            <h2 className="text-3xl font-bold text-white">What Canonica protects by design</h2>
-                            <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                                These controls map to the implemented Canonica runtime: dashboard APIs, widget config, widget search, feedback, tenant-scoped rules, summaries, and owner review queues.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            eyebrow="Trust controls"
+                            title="What Canonica protects by design"
+                            description="These controls map to the implemented Canonica runtime: dashboard APIs, widget config, widget search, feedback, tenant-scoped rules, summaries, and owner review queues."
+                        />
                         <div className="grid gap-4 lg:grid-cols-2">
                             {TRUST_AREAS.map((area) => (
                                 <article key={area.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">

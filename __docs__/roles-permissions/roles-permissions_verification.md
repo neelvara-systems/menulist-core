@@ -2,7 +2,7 @@
 
 **Feature:** Staff management and permissions  
 **Status:** Code path passed; environment action noted  
-**Last Updated:** May 19, 2026
+**Last Updated:** May 27, 2026
 
 ---
 
@@ -30,6 +30,18 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | WhatsApp Web sharing | `countryCode` was passed but not used when `dialCode` was absent. | WhatsApp phone formatting now falls back from country code to the shared country dial-code list before opening WhatsApp Web. |
 | Firebase cost docs | Staff login sharing and self-service password change were not fully reflected in cost docs. | Firebase doc now lists client-only copy/share as zero reads/writes and self-service password change as one user metadata write plus Firebase Auth update. |
 
+## May 27, 2026 UI Hardening Verification
+
+| Area | Result |
+| --- | --- |
+| Users navigation | Passed: `Users` renders as a parent nav item with `Users List` and `Roles` children; `/users/list` and `/users/permissions` mark the correct child active. |
+| User details drawer | Passed: clicking view opens the profile directly. Legacy left navigation and old sections such as dashboard, appointments, orders, commissions, employment, emergency contact, documents, and additional info are not present inside the drawer. |
+| User edit drawer | Passed: edit opens one drawer after details closes. The drawer exposes only Staff Details, Store Access, and Permissions. |
+| Add user drawer | Passed: add exposes the same current field set and the Staff ID/passcode creation hint. |
+| Roles screen | Passed: role cards, role detail panel, owner role action locks, add custom role drawer, manager edit role drawer, and permission toggles render correctly. New custom roles start with all permissions off. |
+| Light/dark mode | Passed: Users and Roles surfaces render in light mode; Roles page and role drawer render with dark theme token backgrounds after toggling dark mode, then the session was restored to light mode. |
+| Data writes during UI QA | Not performed: create/update/deactivate buttons were not submitted against the connected Firebase store because role deletion is soft-deactivate and would leave test data behind. |
+
 ---
 
 ## Automated Verification
@@ -44,7 +56,7 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | `npm run lint` | Passed. |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed. |
 | `git diff --check` | Passed. |
-| `npm run build` | Passed. |
+| `npm run build` | Previously passed on May 19. Not rerun on May 27 per repo no-build rule. |
 
 ---
 

@@ -78,6 +78,7 @@ body:has(.canonica-site) {
     position: relative;
     border-top: 1px solid rgba(255, 255, 255, 0.075);
     padding-block: clamp(5rem, 8vw, 7rem);
+    padding-inline: 1.5rem;
 }
 
 .cn-home-flow > section:first-child {
@@ -128,6 +129,68 @@ body:has(.canonica-site) {
     z-index: 1;
 }
 
+.cn-page-flow {
+    background: var(--cn-bg);
+}
+
+.cn-page-flow > section {
+    position: relative;
+    border-top: 1px solid rgba(255, 255, 255, 0.075);
+    padding-block: clamp(4rem, 16vw, 5.5rem);
+    padding-inline: 1.5rem;
+}
+
+.cn-page-flow > section:first-child {
+    border-top: 0;
+    padding-top: clamp(5.5rem, 11vh, 6.8rem);
+    padding-bottom: clamp(4rem, 8vh, 6rem);
+}
+
+.cn-page-flow > section:first-child:not([class*='bg-']) {
+    background:
+        linear-gradient(180deg, rgba(20, 184, 166, 0.04) 0%, rgba(10, 10, 26, 0) 46%),
+        var(--cn-bg);
+}
+
+.cn-page-flow > section:not([class*='bg-']):nth-child(4n + 2) {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.052) 0%, rgba(255, 255, 255, 0.026) 100%),
+        var(--cn-bg-band);
+}
+
+.cn-page-flow > section:not([class*='bg-']):nth-child(4n + 3) {
+    background:
+        linear-gradient(180deg, rgba(45, 212, 191, 0.035) 0%, rgba(10, 10, 26, 0.18) 100%),
+        var(--cn-bg-band-muted);
+}
+
+.cn-page-flow > section:not([class*='bg-']):nth-child(4n + 4) {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, rgba(255, 255, 255, 0.008) 100%),
+        var(--cn-bg-band-deep);
+}
+
+.cn-page-flow > section:not([class*='bg-']):nth-child(4n + 5) {
+    background:
+        linear-gradient(180deg, rgba(34, 211, 238, 0.035) 0%, rgba(20, 184, 166, 0.024) 100%),
+        #0f1022;
+}
+
+.cn-page-flow > section:not([class*='bg-'])::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.018) 50%, transparent 100%);
+    opacity: 0.75;
+}
+
+.cn-page-flow > section:not([class*='bg-']) > * {
+    position: relative;
+    z-index: 1;
+}
+
 @media (max-width: 640px) {
     .cn-home-flow > section {
         padding-block: clamp(4rem, 16vw, 5.5rem);
@@ -136,6 +199,15 @@ body:has(.canonica-site) {
     .cn-home-flow > section:first-child {
         padding-top: 6.5rem;
         padding-bottom: 4.5rem;
+    }
+
+    .cn-page-flow > section {
+        padding-block: clamp(3.5rem, 14vw, 4.8rem);
+    }
+
+    .cn-page-flow > section:first-child {
+        padding-top: 5.75rem;
+        padding-bottom: 4rem;
     }
 }
 

@@ -1,4 +1,5 @@
 import { CanonicaStatusBoard } from './CanonicaProofBlocks';
+import SectionHeader from './SectionHeader';
 
 const TRUST_CONTROLS = [
     {
@@ -56,13 +57,11 @@ export default function HomeTrustSection() {
     return (
         <section className="border-t border-white/[0.06] px-6 py-20">
             <div className="mx-auto max-w-6xl">
-                <div className="mb-10 max-w-3xl">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security at a glance</p>
-                    <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Safe page context, not secret data.</h2>
-                    <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica only needs safe context like page, feature, workflow, plan, or role. Approved runtime context can be served from compiled bundles, while secrets, tokens, card data, private customer records, and unrelated personal data stay out.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="Security at a glance"
+                    title="Safe page context, not secret data."
+                    description="Canonica only needs safe context like page, feature, workflow, plan, or role. Approved runtime context can be served from compiled bundles, while secrets, tokens, card data, private customer records, and unrelated personal data stay out."
+                />
                 <CanonicaStatusBoard items={TRUST_CONTROLS} />
             </div>
         </section>

@@ -4,6 +4,7 @@ import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
+import SectionHeader from '../components/SectionHeader';
 import { CANONICA_FRAMEWORK_SNIPPETS } from '@lib/canonica/installContract/contract';
 
 export const metadata: Metadata = {
@@ -78,7 +79,7 @@ export default function CanonicaQuickstartsPage() {
         <>
             <CanonicaPageStructuredData path="/quickstarts" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Developer quickstarts</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
@@ -105,13 +106,12 @@ export default function CanonicaQuickstartsPage() {
 
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-16">
                     <div className="mx-auto max-w-6xl">
-                        <div className="mb-8 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Environment setup</p>
-                            <h2 className="text-3xl font-bold text-white">Keep install values out of committed code.</h2>
-                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Put only the public Canonica widget key and optional script URL in client-safe env variables. Canonica does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            className="mb-8"
+                            eyebrow="Environment setup"
+                            title="Keep install values out of committed code."
+                            description="Put only the public Canonica widget key and optional script URL in client-safe env variables. Canonica does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app."
+                        />
                         <div className="grid gap-4 lg:grid-cols-3">
                             {ENV_EXAMPLES.map(([title, code]) => (
                                 <article key={title} className="rounded-2xl border border-white/[0.06] bg-[#101028] p-5">

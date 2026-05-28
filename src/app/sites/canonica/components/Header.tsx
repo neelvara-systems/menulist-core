@@ -29,6 +29,7 @@ import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLogoMark from './CanonicaLogoMark';
 import CanonicaLink from './CanonicaLink';
+import useIsMobile from '../../../../hooks/useIsMobile';
 
 const NAV_LINKS = [
     { label: 'Product', href: '/product' },
@@ -99,6 +100,8 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     const openTimerRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
+    const { isMobile, hasMounted } = useIsMobile();
+    const shouldShowMobileNavigation = hasMounted && isMobile;
 
     const clearDrawerTimers = useCallback(() => {
         if (openTimerRef.current !== null) {
@@ -112,13 +115,14 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
     }, []);
 
     const openDrawer = useCallback(() => {
+        if (!shouldShowMobileNavigation) return;
         clearDrawerTimers();
         setIsDrawerMounted(true);
         openTimerRef.current = window.setTimeout(() => {
             openTimerRef.current = null;
             setIsDrawerVisible(true);
         }, DRAWER_OPEN_DELAY_MS);
-    }, [clearDrawerTimers]);
+    }, [clearDrawerTimers, shouldShowMobileNavigation]);
 
     const closeDrawer = useCallback(() => {
         if (!isDrawerMounted) return;
@@ -161,6 +165,12 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isDrawerMounted, closeDrawer]);
 
+    useEffect(() => {
+        if (!shouldShowMobileNavigation && isDrawerMounted) {
+            closeDrawer();
+        }
+    }, [shouldShowMobileNavigation, isDrawerMounted, closeDrawer]);
+
     return (
         <>
             <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a1a]/80 backdrop-blur-xl">
@@ -170,7 +180,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                         <span className="text-lg font-semibold tracking-tight text-white">Canonica</span>
                     </L>
 
-                    <nav className="hidden items-center gap-5 lg:gap-6 md:flex">
+                    <nav className="hidden items-center gap-5 md:flex">
                         <div className="group/product relative flex h-16 items-center">
                             <L
                                 href="/product"
@@ -180,7 +190,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                 <LuChevronDown size={14} className="transition group-hover/product:rotate-180 group-focus-within/product:rotate-180" aria-hidden />
                             </L>
 
-                            <div className="absolute left-1/2 top-full z-[80] hidden w-[44rem] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
+                            <div className="absolute left-1/2 top-full z-[80] hidden w-[min(52rem,calc(100vw-3rem))] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
                                 <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                     <L
                                         href="/product"
@@ -195,7 +205,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                         </span>
                                         <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                     </L>
-                                    <div className="grid gap-3 lg:grid-cols-[1fr_1.05fr]">
+                                    <div className="grid gap-3 lg:grid-cols-[0.95fr_1.35fr]">
                                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
                                             <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
                                                 Product areas
@@ -232,11 +242,11 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                                         <L
                                                             key={feature.href}
                                                             href={feature.href}
-                                                            className="group/menu-item flex min-h-[4.25rem] items-start gap-2.5 rounded-xl p-2.5 transition hover:bg-sky-400/[0.055]"
+                                                            className="group/menu-item flex min-h-[4.25rem] items-start gap-3 rounded-xl p-2.5 transition hover:bg-sky-400/[0.055]"
                                                         >
                                                             <MegaMenuIcon icon={Icon} />
-                                                            <span className="min-w-0">
-                                                                <span className="block text-xs font-semibold text-[#eeeeff]">{feature.label}</span>
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block whitespace-nowrap text-xs font-semibold text-[#eeeeff]">{feature.label}</span>
                                                                 <span className="mt-0.5 line-clamp-2 block text-[11px] leading-relaxed text-[#8585a3]">
                                                                     {feature.heroBullets[0]}
                                                                 </span>
@@ -269,30 +279,32 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                         </L>
                     </div>
 
-                    <button
-                        aria-expanded={isDrawerVisible}
-                        aria-label="Open navigation"
-                        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white md:hidden"
-                        onClick={openDrawer}
-                        onTouchStart={openDrawer}
-                        type="button"
-                    >
-                        <LuMenu size={22} aria-hidden />
-                    </button>
+                    {shouldShowMobileNavigation ? (
+                        <button
+                            aria-expanded={isDrawerVisible}
+                            aria-label="Open navigation"
+                            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white"
+                            onClick={openDrawer}
+                            onTouchStart={openDrawer}
+                            type="button"
+                        >
+                            <LuMenu size={22} aria-hidden />
+                        </button>
+                    ) : null}
                 </div>
             </header>
 
-            {isDrawerMounted && (
+            {isDrawerMounted && shouldShowMobileNavigation && (
                 <>
                     <div
                         aria-hidden="true"
-                        className={`cn-mobile-drawer-backdrop fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm md:hidden ${isDrawerVisible ? 'cn-mobile-drawer-backdrop--open' : ''}`}
+                        className={`cn-mobile-drawer-backdrop fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm ${isDrawerVisible ? 'cn-mobile-drawer-backdrop--open' : ''}`}
                         onClick={closeDrawer}
                     />
                     <aside
                         aria-label="Canonica navigation"
                         aria-modal="true"
-                        className={`cn-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[#0a0a1a] shadow-2xl shadow-black/60 md:hidden ${isDrawerVisible ? 'cn-mobile-drawer--open' : ''}`}
+                        className={`cn-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[#0a0a1a] shadow-2xl shadow-black/60 ${isDrawerVisible ? 'cn-mobile-drawer--open' : ''}`}
                         role="dialog"
                     >
                         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] px-5 pt-[env(safe-area-inset-top)]">

@@ -176,7 +176,7 @@ export default function CanonicaFaqPage() {
             <CanonicaPageStructuredData path="/faq" />
             <CanonicaHeader basePath={basePath} />
             <JsonLdScript id="canonica-faq-jsonld" data={faqJsonLd} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>

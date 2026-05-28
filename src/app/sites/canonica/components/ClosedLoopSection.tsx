@@ -1,4 +1,5 @@
 import { CanonicaLoopDiagram } from './CanonicaFlowDiagram';
+import SectionHeader from './SectionHeader';
 
 const LOOP_STEPS = [
     {
@@ -35,21 +36,14 @@ const APPROVAL_POINTS = [
 
 export default function ClosedLoopSection() {
     return (
-        <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
-            <div className="mx-auto max-w-6xl">
-                <div className="mb-12 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                            Learning loop
-                        </p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                            Every missed question becomes a support fix.
-                        </h2>
-                    </div>
-                    <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Canonica’s aha moment is not that a widget answers questions. It is that page-aware questions, fallback, tickets, private board notes, and feedback become review work that improves future answers.
-                    </p>
-                </div>
+        <section className="border-t border-white/[0.06] px-6 py-20">
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    className="mb-12"
+                    eyebrow="Learning loop"
+                    title="Every missed question becomes a support fix."
+                    description="Canonica’s aha moment is not that a widget answers questions. It is that page-aware questions, fallback, tickets, private board notes, and feedback become review work that improves future answers."
+                />
 
                 <CanonicaLoopDiagram idPrefix="cn-closed-loop" items={LOOP_STEPS} />
 

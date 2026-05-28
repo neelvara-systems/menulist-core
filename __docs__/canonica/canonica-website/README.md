@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for Canonica product
 > **Status:** ✅ IMPLEMENTED — refreshed for AI-built SaaS founders, self-service Canonica, and agent-readable public discovery
-> **Date:** 2026-05-27
+> **Date:** 2026-05-28
 > **Domain:** canonica.app (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
@@ -140,6 +140,7 @@
 | `src/app/sites/canonica/components/CanonicaLogoMark.tsx` | Shared inline SVG icon-mark component used across header, footer, diagrams, loaders, and dashboard navigation without PNG UI usage |
 | `src/app/sites/canonica/components/CanonicaFlowDiagram.tsx` | Reusable Canonica hub, column-based sequence, and loop diagrams with logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | `src/app/sites/canonica/components/CanonicaProofBlocks.tsx` | Reusable proof blocks for before/after examples, status snapshots, and fit/decision tiles that reduce text-heavy sections without adding runtime data calls |
+| `src/app/sites/canonica/components/SectionHeader.tsx` | Shared centered section-introduction treatment for eyebrow, heading, and supporting copy across homepage, product, high-intent public pages, and SEO page templates |
 | `public/canonica-favicon.ico` | Canonica favicon bundle with 16, 32, and 48px PNG entries |
 | `public/canonica-icon-*.png` | Canonica square favicon/PWA icon family generated from the same recolored source mark |
 | `public/canonica-splash/apple-splash-*.png` | Canonica iOS startup image family used by Canonica website and dashboard PWA metadata |
@@ -265,3 +266,5 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-27 | Completed an end-to-end Canonica website audit across public routes, internal links, desktop/mobile rendered layout, and docs; synced the install-route documentation to the live generated install and Markdown contract surfaces |
 | 2026-05-27 | Fixed the mobile drawer animation lifecycle so the drawer paints off-screen before opening and transitions out before unmounting |
 | 2026-05-27 | Added route icons to every Canonica mobile drawer item and the setup CTA while keeping the existing grouped drawer behavior |
+| 2026-05-28 | Adjusted the desktop Product dropdown so product-feature labels stay on one line while descriptions remain clamped |
+| 2026-05-28 | Added a shared centered section-header component and applied it across homepage, product, high-intent public pages, and SEO page templates so eyebrow, heading, and subheading presentation stays consistent |

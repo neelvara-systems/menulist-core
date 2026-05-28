@@ -69,9 +69,9 @@ export default function CanonicaTermsOfServicePage() {
         <>
             <CanonicaPageStructuredData path="/terms-of-service" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24">
-                    <div className="mx-auto max-w-3xl">
+                    <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Terms of Service</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Terms of Service</h1>
                         <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 22, 2026</p>

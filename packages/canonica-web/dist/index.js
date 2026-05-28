@@ -225,6 +225,14 @@ export function createCanonicaWebClient(initialOptions) {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.close) === null || _b === void 0 ? void 0 : _b.call(_a);
         },
+        hide() {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.hide) === null || _b === void 0 ? void 0 : _b.call(_a);
+        },
+        show() {
+            var _a, _b;
+            (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.show) === null || _b === void 0 ? void 0 : _b.call(_a);
+        },
         clearHistory() {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.clearHistory) === null || _b === void 0 ? void 0 : _b.call(_a);

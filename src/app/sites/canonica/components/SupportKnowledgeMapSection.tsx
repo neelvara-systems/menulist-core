@@ -1,4 +1,5 @@
 import CanonicaLogoMark from './CanonicaLogoMark';
+import SectionHeader from './SectionHeader';
 
 type SupportKnowledgeMapSectionProps = {
     context?: 'home' | 'product';
@@ -45,19 +46,14 @@ export default function SupportKnowledgeMapSection({
     return (
         <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
             <div className="mx-auto max-w-7xl">
-                <div className="mx-auto mb-12 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Support knowledge map
-                    </p>
-                    <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        {isProduct
-                            ? 'One governed source behind every support surface.'
-                            : 'Turn your existing notes into support users can trust.'}
-                    </h2>
-                    <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Add docs, FAQs, custom Q&A, release notes, setup guides, and common answers. Canonica connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback.
-                    </p>
-                </div>
+                <SectionHeader
+                    className="mb-12"
+                    eyebrow="Support knowledge map"
+                    title={isProduct
+                        ? 'One governed source behind every support surface.'
+                        : 'Turn your existing notes into support users can trust.'}
+                    description="Add docs, FAQs, custom Q&A, release notes, setup guides, and common answers. Canonica connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback."
+                />
 
                 <div className="cn-support-map" data-canonica-reveal>
                     <svg className="cn-support-map__paths cn-support-map__paths--desktop" viewBox="0 0 1000 420" aria-hidden="true" focusable="false">

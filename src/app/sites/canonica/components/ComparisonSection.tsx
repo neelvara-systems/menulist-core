@@ -1,3 +1,5 @@
+import SectionHeader from './SectionHeader';
+
 const COMPARISON_ROWS = [
     {
         feature: 'Answers user questions',
@@ -60,18 +62,13 @@ const COMPARISON_ROWS = [
 export default function ComparisonSection() {
     return (
         <section className="border-t border-white/[0.06] px-6 py-24">
-            <div className="mx-auto max-w-4xl">
-                <div className="mb-12 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Why Canonica
-                    </p>
-                    <h2 className="text-3xl font-bold sm:text-4xl">
-                        Chatbots answer. Helpdesks route. Canonica keeps approved support correct.
-                    </h2>
-                    <p className="mt-4 text-lg text-[#a0a0c0]">
-                        It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer.
-                    </p>
-                </div>
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    className="mb-12"
+                    eyebrow="Why Canonica"
+                    title="Chatbots answer. Helpdesks route. Canonica keeps approved support correct."
+                    description="It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer."
+                />
 
                 {/* Comparison table */}
                 <div className="overflow-x-auto rounded-2xl border border-white/[0.06]">

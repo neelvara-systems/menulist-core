@@ -77,11 +77,14 @@ const HorizontalSidebarComponent = () => {
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
                 return;
             }
-            const visibleSubNav = nav.subNav?.filter((subnav) => (
-                (!subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
-                && canShowNavForPermissions(subnav)
-            ));
-            if (!canShowNavForPermissions(nav) && !visibleSubNav?.length) {
+            const parentPermissionAllowed = canShowNavForPermissions(nav);
+            const visibleSubNav = nav.subNav?.filter((subnav) => {
+                const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
+                const subNavPermissionAllowed = canShowNavForPermissions(subnav)
+                    || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);
+                return platformRoleAllowed && subNavPermissionAllowed;
+            });
+            if (!parentPermissionAllowed && !visibleSubNav?.length) {
                 return;
             }
 

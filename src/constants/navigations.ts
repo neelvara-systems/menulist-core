@@ -78,6 +78,7 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     {
         label: 'Users',
         route: NAVIGARIONS_ROUTINGS.USERS,
+        defaultRoute: NAVIGARIONS_ROUTINGS.USERS_LIST,
         icon: LuUsers,
         subNav: [
             { label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers },

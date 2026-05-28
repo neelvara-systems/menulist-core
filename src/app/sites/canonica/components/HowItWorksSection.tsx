@@ -1,4 +1,5 @@
 import { CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
+import SectionHeader from './SectionHeader';
 
 const STEPS = [
     {
@@ -36,16 +37,12 @@ const STEPS = [
 export default function HowItWorksSection() {
     return (
         <section className="border-t border-white/[0.06] px-6 py-24">
-            <div className="mx-auto max-w-4xl">
-                {/* Section header */}
-                <div className="mb-16 text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        How it works
-                    </p>
-                    <h2 className="text-3xl font-bold sm:text-4xl">
-                        Launch support without building a support team
-                    </h2>
-                </div>
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    className="mb-16"
+                    eyebrow="How it works"
+                    title="Launch support without building a support team"
+                />
 
                 <CanonicaSequenceDiagram
                     idPrefix="cn-how-it-works"

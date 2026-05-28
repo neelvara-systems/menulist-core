@@ -6,6 +6,44 @@
 
 ---
 
+## May 28, 2026 — Canonica Section Header Alignment
+
+### Changed
+
+- **Canonica website section introductions now use one centered treatment** — Homepage sections, Product sections, Integrations, Pricing, Quickstarts, Security, and shared product/SEO page templates now use the same centered eyebrow, heading, and subheading pattern instead of alternating between centered, left-aligned, and split layouts.
+
+### Cost
+
+- **No Firebase cost change** — This is static website component and documentation work only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 28, 2026 — Canonica Product Menu Label Fit
+
+### Fixed
+
+- **Canonica website Product menu feature labels stay on one line** — The desktop Product dropdown gives the feature column more room and keeps feature labels such as Knowledge Base and FAQ Management from wrapping into two rows.
+
+### Cost
+
+- **No Firebase cost change** — This is static website header UI only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 28, 2026 — Canonica Widget Mobile Suppression
+
+### Fixed
+
+- **MenuList owner mobile no longer gets trapped behind the Canonica widget** — The owner-layout embed suppresses the external widget on mobile viewports and force-hides any already-open widget when the route is blocked.
+- **Canonica widget runtime now exposes hide/show controls** — Client products can force-hide the launcher and open iframe during native mobile or internal admin routes, then release it when the widget should be available again.
+- **Canonica widget runtime types match the browser contract** — The web package now includes nullable context clearing plus `hide()` and `show()` on the runtime/client type surface.
+
+### Cost
+
+- **No Firebase cost change** — These are shared dashboard UI and widget-loader client changes only. They add no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
 ## May 27, 2026 — Canonica Product Menu Navigation Polish
 
 ### Changed

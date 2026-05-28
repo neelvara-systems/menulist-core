@@ -178,13 +178,13 @@ export default function DashboardSidebarShell({
         const isParentItem = Boolean(options.showChevron);
         const isCollapsedDesktop = isCollapsed && !isHover && !mobile;
         const collapsedActiveParent = hasActiveChild && isCollapsed && !isHover && !mobile;
-        const useStrongActiveStyle = isExactActive || collapsedActiveParent;
+        const useStrongActiveStyle = !(mobile && isParentItem) && (isExactActive || collapsedActiveParent);
         const itemHover = hoverId === item.key || hasActiveChild || isExactActive;
         const iconActive = Boolean(item.iconActive || isActive || itemHover);
         const foreground = useStrongActiveStyle ? token.colorTextLightSolid : (itemHover ? token.colorPrimaryTextActive : token.colorText);
         const isExpandedParent = isParentItem && item.expanded && showExpandedSidebar;
-        const parentBackground = isExpandedParent ? token.colorBgBase : token.colorFillSecondary;
-        const parentActiveBackground = isExpandedParent ? token.colorBgBase : token.colorPrimaryBg;
+        const parentBackground = mobile || isExpandedParent ? token.colorBgBase : token.colorFillSecondary;
+        const parentActiveBackground = mobile || isExpandedParent ? token.colorBgBase : token.colorPrimaryBg;
         const itemBackground = useStrongActiveStyle
             ? token.colorPrimary
             : (hasActiveChild ? parentActiveBackground : (isParentItem ? parentBackground : (itemHover ? token.colorBgTextHover : token.colorBgBase)));

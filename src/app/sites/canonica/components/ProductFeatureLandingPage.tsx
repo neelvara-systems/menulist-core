@@ -18,6 +18,7 @@ import type { IconType } from 'react-icons';
 import type { CanonicaProductFeature } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
 import { CanonicaHubDiagram, CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
+import SectionHeader from './SectionHeader';
 
 const CARD_ICONS: IconType[] = [
     LuBookOpen,
@@ -155,7 +156,7 @@ export default function ProductFeatureLandingPage({
     const featureName = feature.label === 'FAQ Management' ? 'FAQ management' : feature.label.toLowerCase();
 
     return (
-        <main className="pt-16">
+        <main className="cn-page-flow">
             <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                     <div>
@@ -197,11 +198,11 @@ export default function ProductFeatureLandingPage({
 
             <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.13),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 text-white sm:px-6">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mx-auto mb-10 max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">{feature.label}</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.proofTitle}</h2>
-                        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{feature.proofDescription}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow={feature.label}
+                        title={feature.proofTitle}
+                        description={feature.proofDescription}
+                    />
                     <div className="grid gap-5 md:grid-cols-2">
                         {feature.cards.map((card, index) => {
                             const Icon = CARD_ICONS[index % CARD_ICONS.length];
@@ -226,13 +227,11 @@ export default function ProductFeatureLandingPage({
 
             <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-10 grid gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:items-end">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.workflowTitle}</h2>
-                        </div>
-                        <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.workflowDescription}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="Workflow"
+                        title={feature.workflowTitle}
+                        description={feature.workflowDescription}
+                    />
                     <CanonicaSequenceDiagram
                         idPrefix={`cn-feature-workflow-${feature.slug}`}
                         splitAfter={Math.ceil(feature.workflowSteps.length / 2)}
@@ -246,11 +245,11 @@ export default function ProductFeatureLandingPage({
 
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-10 max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Connected product truth</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.connectedTitle}</h2>
-                        <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">{feature.connectedDescription}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="Connected product truth"
+                        title={feature.connectedTitle}
+                        description={feature.connectedDescription}
+                    />
                     <CanonicaHubDiagram
                         idPrefix={`cn-feature-connected-${feature.slug}`}
                         inputLabel="Feature layer"
@@ -278,11 +277,11 @@ export default function ProductFeatureLandingPage({
             </section>
 
             <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
-                <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Questions</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">What owners usually ask about {featureName}.</h2>
-                    </div>
+                <div className="mx-auto max-w-6xl">
+                    <SectionHeader
+                        eyebrow="Questions"
+                        title={`What owners usually ask about ${featureName}.`}
+                    />
                     <div className="space-y-3">
                         {feature.faq.map((item) => (
                             <article key={item.title} className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">

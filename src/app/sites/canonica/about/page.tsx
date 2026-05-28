@@ -26,9 +26,9 @@ export default function CanonicaAboutPage() {
         <>
             <CanonicaPageStructuredData path="/about" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24">
-                    <div className="mx-auto max-w-3xl">
+                    <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">About</p>
                         <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl">
                             AI can build apps fast. Support still has to be correct.

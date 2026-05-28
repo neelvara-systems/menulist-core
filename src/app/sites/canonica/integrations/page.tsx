@@ -15,6 +15,7 @@ import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CanonicaSequenceDiagram } from '../components/CanonicaFlowDiagram';
+import SectionHeader from '../components/SectionHeader';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
@@ -85,7 +86,7 @@ export default function CanonicaIntegrationsPage() {
         <>
             <CanonicaPageStructuredData path="/integrations" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                     <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
                         <div>
@@ -161,13 +162,11 @@ export default function CanonicaIntegrationsPage() {
 
                 <section className="border-b border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
-                        <div className="mx-auto mb-10 max-w-3xl text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">What can notify</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Alerts for review work, not raw logs.</h2>
-                            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                                The owner should know when support needs attention. They should not have to read integration event streams.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            eyebrow="What can notify"
+                            title="Alerts for review work, not raw logs."
+                            description="The owner should know when support needs attention. They should not have to read integration event streams."
+                        />
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {DELIVERY_CARDS.map((card) => {
                                 const Icon = card.icon;
@@ -186,15 +185,13 @@ export default function CanonicaIntegrationsPage() {
                 </section>
 
                 <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
-                    <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner controls</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Configure destination, filters, and confidence.</h2>
-                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Slack and email are self-service. Broader workflow adapters should remain controlled rollout until credential handling, tenant authorization, and delivery behavior are ready for every workspace.
-                            </p>
-                        </div>
-                        <div className="rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-5">
+                    <div className="mx-auto max-w-6xl">
+                        <SectionHeader
+                            eyebrow="Owner controls"
+                            title="Configure destination, filters, and confidence."
+                            description="Slack and email are self-service. Broader workflow adapters should remain controlled rollout until credential handling, tenant authorization, and delivery behavior are ready for every workspace."
+                        />
+                        <div className="mx-auto max-w-3xl rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-5">
                             <div className="mb-5 flex items-center gap-2">
                                 <LuSlidersHorizontal aria-hidden className="text-[#1eceff]" />
                                 <h3 className="text-lg font-bold text-white">Event filters</h3>
@@ -213,15 +210,11 @@ export default function CanonicaIntegrationsPage() {
 
                 <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
-                        <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-                            <div>
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
-                                <h2 className="text-3xl font-bold leading-tight sm:text-4xl">From support movement to owner attention.</h2>
-                            </div>
-                            <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                Configure destinations, choose events, send a test, then let critical alerts and digest summaries keep support governance visible.
-                            </p>
-                        </div>
+                        <SectionHeader
+                            eyebrow="Workflow"
+                            title="From support movement to owner attention."
+                            description="Configure destinations, choose events, send a test, then let critical alerts and digest summaries keep support governance visible."
+                        />
                         <CanonicaSequenceDiagram
                             idPrefix="cn-integrations-workflow"
                             splitAfter={3}

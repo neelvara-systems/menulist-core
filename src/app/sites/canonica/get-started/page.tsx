@@ -46,16 +46,18 @@ export default function CanonicaGetStartedPage() {
         <>
             <CanonicaPageStructuredData path="/get-started" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-24">
                     <div className="mx-auto w-full max-w-3xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
-                        <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                            Create your Canonica workspace.
-                        </h1>
-                        <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Sign in with Google, add your app, invite the people who need access, pick the pages where users get stuck, and get a widget key for your first support layer.
-                        </p>
+                        <div className="text-center">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
+                            <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
+                                Create your Canonica workspace.
+                            </h1>
+                            <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
+                                Sign in with Google, add your app, invite the people who need access, pick the pages where users get stuck, and get a widget key for your first support layer.
+                            </p>
+                        </div>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}

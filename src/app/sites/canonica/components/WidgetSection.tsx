@@ -1,5 +1,6 @@
 import CanonicaLink from './CanonicaLink';
 import { CanonicaStatusBoard } from './CanonicaProofBlocks';
+import SectionHeader from './SectionHeader';
 
 const WIDGET_STATES = [
     {
@@ -83,18 +84,13 @@ const SAMPLE_CONTEXT = `window.CanonicaWidget?.page({
 
 export default function WidgetSection({ basePath = '' }: { basePath?: string }) {
     return (
-        <section className="border-y border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
+        <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
-                <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Page-Aware Widget
-                    </p>
-                    <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        Put help inside the screen where users are stuck.
-                    </h2>
-                    <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Users ask from inside your app. Canonica reads safe page hints, accepts explicit screenshot attachments when needed, finds canonical answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing.
-                    </p>
+                <SectionHeader
+                    eyebrow="Page-Aware Widget"
+                    title="Put help inside the screen where users are stuck."
+                    description="Users ask from inside your app. Canonica reads safe page hints, accepts explicit screenshot attachments when needed, finds canonical answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing."
+                >
                     <CanonicaLink
                         basePath={basePath}
                         href="/install"
@@ -102,7 +98,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                     >
                         View widget install
                     </CanonicaLink>
-                </div>
+                </SectionHeader>
 
                 <div className="grid gap-4 lg:grid-cols-12">
                     <article className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#101028] text-white shadow-2xl shadow-black/25 lg:col-span-8 lg:row-span-2">

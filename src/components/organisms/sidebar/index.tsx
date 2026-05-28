@@ -60,12 +60,16 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     useEffect(() => {
-        const getVisibleSubNav = (nav: NavItemType) => (
-            nav.subNav?.filter(subnav => (
-                (!subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
-                && canShowNavForPermissions(subnav)
-            )) || []
-        );
+        const getVisibleSubNav = (nav: NavItemType) => {
+            const parentPermissionAllowed = canShowNavForPermissions(nav);
+
+            return nav.subNav?.filter(subnav => {
+                const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
+                const subNavPermissionAllowed = canShowNavForPermissions(subnav)
+                    || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);
+                return platformRoleAllowed && subNavPermissionAllowed;
+            }) || [];
+        };
 
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {

@@ -1,5 +1,6 @@
 import { getCanonicaPlans } from '@data/canonica/plans';
 import CanonicaLink from './CanonicaLink';
+import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
     canonica_starter: 'Best for one AI-built SaaS app with early repeated questions.',
@@ -17,17 +18,11 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
     return (
         <section className="border-t border-white/[0.06] px-6 py-20">
             <div className="mx-auto max-w-6xl">
-                <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing clarity</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                            Start free, then move to predictable INR plans.
-                        </h2>
-                    </div>
-                    <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Support credits are plan capacity for governed answers, chat assistance, and knowledge governance work. Static hosted help pages and widget loading do not consume credits.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="Pricing clarity"
+                    title="Start free, then move to predictable INR plans."
+                    description="Support credits are plan capacity for governed answers, chat assistance, and knowledge governance work. Static hosted help pages and widget loading do not consume credits."
+                />
                 <div className="grid gap-4 lg:grid-cols-3">
                     {plans.map((plan) => (
                         <article

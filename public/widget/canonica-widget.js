@@ -18,6 +18,8 @@
  *   window.CanonicaWidget.page({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
  *   window.CanonicaWidget.open()
  *   window.CanonicaWidget.close()
+ *   window.CanonicaWidget.hide()
+ *   window.CanonicaWidget.show()
  *   window.CanonicaWidget.clearHistory()
  *   window.CanonicaWidget.on('open', function () {})
  *
@@ -120,6 +122,7 @@
 
     // ===== STATE =====
     var isOpen = false;
+    var forceHidden = false;
     var container = null;
     var iframe = null;
     var launcher = null;
@@ -489,7 +492,7 @@
     }
 
     function shouldHideLauncher() {
-        return isCurrentRouteBlocked() || launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
+        return forceHidden || isCurrentRouteBlocked() || launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
     }
 
     function getLauncherStyles() {
@@ -628,6 +631,7 @@
     function toggleWidget() { isOpen ? closeWidget() : openWidget(); }
 
     function openWidget() {
+        if (forceHidden) return;
         if (isCurrentRouteBlocked()) return;
         if (isMobile && mobileVisibility === 'hide') return;
         if (!container) createWidget();
@@ -702,10 +706,26 @@
     }
 
     function syncRouteAvailability() {
-        if (isCurrentRouteBlocked() && isOpen) {
+        if ((forceHidden || isCurrentRouteBlocked()) && isOpen) {
             closeWidget();
         }
         updateWidgetChrome();
+    }
+
+    function hideWidget() {
+        forceHidden = true;
+        closeWidget();
+        if (container) {
+            container.style.display = 'none';
+        }
+        updateWidgetChrome();
+        emitEvent('hide', {});
+    }
+
+    function showWidget() {
+        forceHidden = false;
+        syncRouteAvailability();
+        emitEvent('show', {});
     }
 
     function scheduleRouteAvailabilitySync() {
@@ -750,11 +770,13 @@
             emitEvent('context', { context: sanitizedContext });
             sendContextToIframe();
             syncRouteAvailability();
-            if (sanitizedContext && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
+            if (sanitizedContext && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },
         close: function () { closeWidget(); },
+        hide: function () { hideWidget(); },
+        show: function () { showWidget(); },
         clearHistory: function () { clearHistory(); },
         reset: function () { clearHistory(); },
         on: function (eventName, callback) {
@@ -772,6 +794,7 @@
 
     function requestPredictiveHelp(ctx) {
         if (!predictiveEnabled) return;
+        if (forceHidden) return;
         if (!ctx || !ctx.page || !window.fetch) return;
         if (isCurrentRouteBlocked()) return;
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);

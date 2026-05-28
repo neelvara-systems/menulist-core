@@ -251,7 +251,14 @@ function UsersListPage() {
                 </Space>
             </Card>
 
-            <UserDetailsModal modalData={userDetailsModal} onCloseModal={onCloseDetailsModal} onClickEdit={(user) => setUserFormModal({ active: true, data: user })} />
+            <UserDetailsModal
+                modalData={userDetailsModal}
+                onCloseModal={onCloseDetailsModal}
+                onClickEdit={(user) => {
+                    setUserDetailsModal({ active: false, data: null });
+                    setUserFormModal({ active: true, data: user });
+                }}
+            />
             <UserAddUpdateForm
                 canAssignRoles={canAssignRoles}
                 modalData={userFormModal}

@@ -57,17 +57,19 @@ export default function CanonicaContactPage() {
         <>
             <CanonicaPageStructuredData path="/contact" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-20 sm:py-24">
                     <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
                         <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Contact</p>
-                            <h1 className="max-w-2xl text-4xl font-bold leading-tight text-white sm:text-5xl">
-                                Talk to Canonica before support gets noisy.
-                            </h1>
-                            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                Send your product URL, the questions users repeat, and where support breaks today. We will help you decide whether Canonica fits your launch.
-                            </p>
+                            <div className="text-center">
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Contact</p>
+                                <h1 className="mx-auto max-w-2xl text-4xl font-bold leading-tight text-white sm:text-5xl">
+                                    Talk to Canonica before support gets noisy.
+                                </h1>
+                                <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
+                                    Send your product URL, the questions users repeat, and where support breaks today. We will help you decide whether Canonica fits your launch.
+                                </p>
+                            </div>
 
                             <div className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
                                 <h2 className="text-base font-semibold text-white">What to include</h2>

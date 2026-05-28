@@ -1,6 +1,6 @@
 # Roles & Permissions — Technical Implementation
 
-**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** May 19, 2026
+**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** May 27, 2026
 
 > **Scope:** This document covers Layer 1 (staff-level RBAC). For Layer 2 (OutletPolicy chain restrictions) and the two-layer interaction model, see [Multi-Chain Permissions](../multi-chain-permissions/multi-chain-permissions_impl.md).
 
@@ -48,6 +48,8 @@ roles: StoreRoleDataType[]          stores: [{
 | Self-service password/passcode change API (`/api/auth/change-password`) | ✅ Done |
 | Role CRUD API (`/api/staff/roles`)                   | ✅ Done |
 | Desktop and mobile staff screens use API             | ✅ Done |
+| Desktop Users navigation split (`Users List` + `Roles`) | ✅ Done |
+| Desktop staff details/add/edit UI aligned to current staff fields | ✅ Done |
 
 ---
 
@@ -257,10 +259,10 @@ Categories:
 
 | Surface | Files | Contract |
 | --- | --- | --- |
-| Desktop staff | `src/components/templates/main-app/users/usersList/*` | Loads staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, signs out active staff through `forceSignOutStaffUser()` |
-| Desktop roles | `src/components/templates/main-app/users/permissions/*` | Saves through `saveRoleDefinition()` |
+| Desktop staff | `src/components/templates/main-app/users/usersList/*` | `/users/list` loads staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, signs out active staff through `forceSignOutStaffUser()`. Details drawer opens the profile directly. Add/edit drawer only exposes current staff fields: Staff Details, Store Access, and Permissions. |
+| Desktop roles | `src/components/templates/main-app/users/permissions/*` | `/users/permissions` saves through `saveRoleDefinition()` and deactivates roles through `deleteRoleDefinition()`. Custom role creation starts with all permissions off until the owner enables them. |
 | Desktop app guard | `src/components/auth/OwnerPermissionGuard.tsx` | Blocks direct route access for protected owner pages after permissions resolve |
-| Desktop navigation | `src/components/organisms/sidebar/*` | Uses `permissionRequirements.ts` so hidden navigation and direct route guard share the same route contract |
+| Desktop navigation | `src/constants/navigations.ts`, `src/components/organisms/sidebar/*` | `Users` is a parent navigation item. `Users List` routes to `/users/list`; `Roles` routes to `/users/permissions`. Child items are permission-filtered with the same `permissionRequirements.ts` contract used by direct route guards. |
 | Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop, including force sign-out |
 | Mobile roles | `src/components/mobile/screens/MobileRolesScreen.tsx` | Uses the same role client helpers as desktop |
 | Mobile app shell | `src/components/mobile/MobileShell.tsx`, `MobileNavigation.tsx` | Filters bottom tabs by role permissions and falls back to More when a tab is not available |

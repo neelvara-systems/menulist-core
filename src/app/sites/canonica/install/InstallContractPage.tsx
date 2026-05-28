@@ -31,7 +31,7 @@ export default function CanonicaInstallContractPage({ docKey }: { docKey: Canoni
     return (
         <>
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Canonica Agent Install Layer</p>

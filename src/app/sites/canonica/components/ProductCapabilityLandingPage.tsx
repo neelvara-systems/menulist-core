@@ -1,6 +1,7 @@
 import CanonicaLink from './CanonicaLink';
 import { CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
 import CanonicaPageStructuredData from './PageStructuredData';
+import SectionHeader from './SectionHeader';
 
 export type ProductCapabilityCard = {
     title: string;
@@ -87,7 +88,7 @@ export default function ProductCapabilityLandingPage({
     canonicalPath,
 }: ProductCapabilityLandingPageProps) {
     return (
-        <main className="pt-16">
+        <main className="cn-page-flow">
             {canonicalPath ? <CanonicaPageStructuredData path={canonicalPath} /> : null}
             <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto max-w-7xl">
@@ -197,11 +198,11 @@ export default function ProductCapabilityLandingPage({
 
             <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mx-auto mb-10 max-w-3xl text-center">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">What this gives the owner</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{bentoTitle}</h2>
-                        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{bentoDescription}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="What this gives the owner"
+                        title={bentoTitle}
+                        description={bentoDescription}
+                    />
                     <div className={`grid gap-4 md:grid-cols-2 ${bentoCards.length >= 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'}`}>
                         {bentoCards.map((card, index) => (
                             <article
@@ -218,13 +219,11 @@ export default function ProductCapabilityLandingPage({
 
             <section className="px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Workflow</p>
-                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{workflowTitle}</h2>
-                        </div>
-                        <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{workflowDescription}</p>
-                    </div>
+                    <SectionHeader
+                        eyebrow="Workflow"
+                        title={workflowTitle}
+                        description={workflowDescription}
+                    />
 
                     <CanonicaSequenceDiagram
                         idPrefix={`cn-product-capability-${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}

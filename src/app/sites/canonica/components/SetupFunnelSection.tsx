@@ -1,4 +1,5 @@
 import { CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
+import SectionHeader from './SectionHeader';
 
 const SETUP_STEPS = [
     {
@@ -35,19 +36,13 @@ const SETUP_STEPS = [
 
 export default function SetupFunnelSection() {
     return (
-        <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
+        <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
-                <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">First-session setup</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                            Set up the first support layer in one session.
-                        </h2>
-                    </div>
-                    <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        The setup flow stays founder-friendly: add the app, pick the important pages, import what exists, install the widget, then review what users should see first.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="First-session setup"
+                    title="Set up the first support layer in one session."
+                    description="The setup flow stays founder-friendly: add the app, pick the important pages, import what exists, install the widget, then review what users should see first."
+                />
                 <CanonicaSequenceDiagram
                     idPrefix="cn-setup-funnel"
                     splitAfter={3}

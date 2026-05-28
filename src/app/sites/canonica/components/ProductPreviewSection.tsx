@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import SectionHeader from './SectionHeader';
 
 type PreviewTab = 'Product setup' | 'Key app pages' | 'Widget install' | 'Answer review';
 
@@ -210,17 +211,11 @@ export default function ProductPreviewSection() {
     return (
         <section className="relative overflow-hidden border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.11),transparent_34%),rgba(255,255,255,0.01)] px-4 py-16 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-7xl">
-                <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Support launch checklist
-                    </p>
-                    <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        See what is ready before users rely on support.
-                    </h2>
-                    <p className="mt-4 text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Product profile, imported knowledge, mapped app pages, widget install, compiled context readiness, and first approved answers stay visible in one launch path.
-                    </p>
-                </div>
+                <SectionHeader
+                    eyebrow="Support launch checklist"
+                    title="See what is ready before users rely on support."
+                    description="Product profile, imported knowledge, mapped app pages, widget install, compiled context readiness, and first approved answers stay visible in one launch path."
+                />
 
                 <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:justify-center" role="tablist" aria-label="Canonica product preview">
                     {TABS.map((tab) => {

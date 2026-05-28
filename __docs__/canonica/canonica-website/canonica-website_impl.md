@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.42
-> **Last Updated:** 2026-05-27
+> **Version:** 1.2.44
+> **Last Updated:** 2026-05-28
 > **Audience:** Developers
 
 ---
@@ -99,6 +99,7 @@ src/app/sites/canonica/
     ├── CanonicaLogoMark.tsx       # Inline vector infinity mark for crisp website header/footer branding
     ├── CanonicaFlowDiagram.tsx    # Reusable animated hub, column-sequence, and loop diagrams
     ├── CanonicaProofBlocks.tsx    # Reusable before/after, status snapshot, and decision proof blocks
+    ├── SectionHeader.tsx          # Shared centered eyebrow, heading, and subheading treatment for section intros
     ├── CanonicaLink.tsx           # Dev/production-aware Link wrapper
     ├── CanonicaAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
     ├── CanonicaScrollReveal.tsx   # Layout-level reveal observer for public sections, cards, CTA controls, and footer groups
@@ -190,6 +191,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 27 contact/mobile pass added a full `/contact` inquiry form backed by a Canonica-only public API route and regrouped the mobile hamburger into Product Areas, Product Features, and Other cards with safe-area bottom padding.
 - May 27 drawer pass converted the public hamburger from an inline mobile panel to a right-side drawer with backdrop, Escape close, body scroll lock, and link-close behavior.
 - May 27 drawer-icon pass added Lucide route icons to every mobile drawer row and the setup CTA while preserving the same Product Areas, Product Features, and Other grouping.
+- May 28 product-menu label pass widened the desktop Product dropdown feature column and made feature labels single-line so Knowledge Base, FAQ Management, Workflow Notifications, and similar headings do not wrap.
+- May 28 section-header pass added `SectionHeader.tsx` and applied the same centered eyebrow, heading, and subheading treatment across homepage sections, Product sections, Integrations, Pricing, Quickstarts, Security, and shared product/SEO page templates.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
 - May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.
@@ -433,3 +436,5 @@ Conversion analytics is client-side only:
 | 2026-05-27 | 1.2.40 | Completed an end-to-end public-site audit and aligned install-route implementation docs with the live generated HTML install pages plus Markdown-only contract docs |
 | 2026-05-27 | 1.2.41 | Fixed the mobile drawer animation lifecycle by separating mounted and visible state for right-to-left open and close transitions |
 | 2026-05-27 | 1.2.42 | Added route icons to every Canonica mobile drawer row and the setup CTA using the existing Lucide icon stack |
+| 2026-05-28 | 1.2.43 | Adjusted the desktop Product dropdown feature column and single-line labels so product-feature headings do not wrap |
+| 2026-05-28 | 1.2.44 | Added a shared centered section-header component across homepage, product, high-intent public pages, and SEO page templates so section intros use one visual treatment |

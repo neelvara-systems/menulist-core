@@ -27,7 +27,7 @@ export default function CanonicaDemoPage() {
         <>
             <CanonicaPageStructuredData path="/demo" />
             <CanonicaHeader basePath={basePath} />
-            <main className="pt-16">
+            <main className="cn-page-flow">
                 <section className="px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <div className="mx-auto mb-10 max-w-3xl text-center">

@@ -123,6 +123,8 @@ v2 JavaScript API (exposed on `window.CanonicaWidget`):
 - `setContext(null)` — clears product context and sends a clear message to the iframe so stale page context is not reused
 - `open()` — programmatically open widget
 - `close()` — programmatically close widget
+- `hide()` — force-hide the launcher and close any open iframe until `show()` is called
+- `show()` — release a previous `hide()` call and reapply the saved launcher/route availability rules
 - `clearHistory()` / `reset()` — clears in-memory widget conversation and pending input
 - `getContext()` — returns the current sanitized context payload
 - `on(event, callback)` / `off(event, callback)` — listens to `open`, `close`, `context`, and `history:clear` events without coupling the host app to iframe internals
@@ -234,7 +236,7 @@ NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica
 NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
 ```
 
-`src/components/canonica/MenuListCanonicaWidgetEmbed.tsx` is mounted from the MenuList owner layout and returns `null` when the key is absent. With the key present, it loads the public widget script, passes sanitized owner-route context (`projects`, `today`, `business-settings`, `billing`, and adjacent dashboard routes), and blocks `/help-center`, `/canonica`, and `/__canonica` paths. The route context does not include MenuList tenant IDs, store IDs, user IDs, or raw business records.
+`src/components/canonica/MenuListCanonicaWidgetEmbed.tsx` is mounted from the MenuList owner layout and returns `null` when the key is absent. With the key present, it loads the public widget script, passes sanitized owner-route context (`projects`, `today`, `business-settings`, `billing`, and adjacent dashboard routes), and blocks `/help-center`, `/canonica`, and `/__canonica` paths. The MenuList owner embed also suppresses the external widget on mobile viewports and calls the widget `hide()`/`close()` contract on blocked or mobile states so an already-open iframe cannot trap the mobile owner shell. The route context does not include MenuList tenant IDs, store IDs, user IDs, or raw business records.
 
 `publicApi` remains reserved for Canonica public API credentials. `validatePublicApiKey()` supports both credential sources, but each route explicitly opts into only the sources and scopes it accepts. Widget runtime routes only accept `canonicaWidgetApi` credentials in separated Firebase mode and fail closed if Canonica Admin is unavailable. MenuList public API routes only accept `ml_` keys.
 
@@ -564,6 +566,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-28 | 2.5.0   | Added runtime `hide()`/`show()` controls and made the MenuList owner embed suppress, close, and hide the external Canonica widget on mobile or blocked routes so sidebar navigation cannot leave the help iframe over the app. |
 | 2026-05-25 | 2.4.9   | Added the store-doc widget key manager: bounded named keys, rename/delete/copy actions, encrypted recoverable widget-key storage when configured, `keyHashes` array lookup, and legacy single-key compatibility. |
 | 2026-05-25 | 2.4.9   | Added MenuList owner-layout external-client embed behind `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY`; script source follows the local/QA/prod Canonica host matrix and no widget key is committed. |
 | 2026-05-25 | 2.4.8   | Hardened separated Firebase key validation so `cn_` widget keys resolve only through Canonica Firestore, widget runtime routes do not query MenuList `publicApi`, MenuList public API routes reject non-`ml_` keys, and widget questions appear in `/canonica/widget` activity. |
