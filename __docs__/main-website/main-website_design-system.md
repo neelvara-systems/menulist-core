@@ -46,9 +46,9 @@
   --brand-light: #dbeafe; /* Subtle brand backgrounds (blue-100) */
   --brand-gradient: linear-gradient(
     90deg,
-    #27a8e3 0%,
+    #0051d1 0%,
     #0284c7 52%,
-    #0051d1 100%
+    #27a8e3 100%
   ); /* Brand mark/accent only */
 
   /* CTA */
@@ -89,9 +89,9 @@ The public website supports system dark mode through the same website tokens. Th
   --brand-secondary: #6daefa;
   --brand-gradient: linear-gradient(
     90deg,
-    #5eead4 0%,
+    #7aa7ff 0%,
     #38bdf8 48%,
-    #7aa7ff 100%
+    #5eead4 100%
   );
 
   /* Shared contrast panels for footer/proof/editorial dark surfaces */
@@ -128,8 +128,8 @@ Brand gradient rule:
 - Use `--brand-gradient` only for the MenuList mark, auth-page product title, and deliberate headline highlight spans.
 - Do not apply the gradient to website wordmark text, body copy, full headings, CTA buttons, cards, icons, or page backgrounds.
 - Keep light mode as the default for light system preferences. Dark mode is a complete system-preference theme, not a browser-only inversion.
-- The deeper teal-to-blue gradient is the approved light-mode accent because it keeps the MenuList identity while reading more clearly on white.
-- Use the brighter teal-to-blue gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
+- The deeper blue-to-teal gradient is the approved light-mode accent because it starts with stronger authority on white and resolves into the lighter MenuList accent.
+- Use the brighter blue-to-teal gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
 - Dark surfaces must use dark gray (`#121212` family), not pure black, so cards, headers, pricing, forms, and generated assets keep readable depth.
 - Fixed utility overlays, sticky CTAs, footer preference controls, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
 - Footer, proof bands, discovery panels, phone frames, and other dark editorial panels must use the shared contrast-panel variables instead of one-off navy, cyan, white, or green treatments.

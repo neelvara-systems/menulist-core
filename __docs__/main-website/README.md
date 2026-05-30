@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.12 (Feature Card Rhythm Polish)
+**Version:** 3.6.13 (Headline Gradient Direction)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 30, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -60,6 +60,8 @@ Version 3.6.10 changes the multi-location diagram to use the same animated pulse
 Version 3.6.11 aligns the main website with production-ready Menu Link Import without adding a separate homepage section. The homepage workflow and `/how-it-works` source maps now include an owner-provided existing menu link as a source input beside photo, PDF, and typed text. Copy stays conservative: MenuList prepares an owner-reviewed version and does not claim generic scraping, marketplace import, or automatic publishing. Pricing, payment, subscription, Razorpay, auth, onboarding, public `/create-menu` runtime internals, and public customer menu runtime were not changed.
 
 Version 3.6.12 tightens the shared `WebsiteFeatureCard` vertical rhythm after visual QA found excessive empty space between blue subtitles and body copy in public-surface cards. Cards now stack heading, subtitle, and description as one readable proof unit, and grid rows size from their tallest card content instead of a fixed-feeling card minimum. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.13 reverses the shared headline/accent gradient so large highlighted text starts with the stronger MenuList blue and resolves into the lighter accent. The official logo mark gradient was not changed. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -608,6 +610,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.13 | May 30, 2026 | Reversed the shared headline/accent gradient so highlighted text starts with stronger blue and finishes with the lighter accent, without changing the official logo mark. |
 | 3.6.12 | May 30, 2026 | Tightened shared website feature-card spacing so subtitles and descriptions read as one grouped proof unit, with card rows sized from the tallest content in that row. |
 | 3.6.7 | May 24, 2026 | Changed the multi-location diagram to pulse all outlet paths together and aligned the master card treatment with outlet cards. |
 | 3.6.6 | May 24, 2026 | Renamed the homepage workflow section to a source-to-public value bridge while keeping the simpler homepage diagram distinct from the fuller `/how-it-works` diagram. |
