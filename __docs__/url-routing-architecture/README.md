@@ -1,11 +1,11 @@
 # URL Routing Architecture
 
-> **Feature:** Core URL Handling & Public Routing Infrastructure  
-> **Status:** 🔒 **LOCKED** — Phase 1 + Phase 2 + Gap Resolution Complete  
-> **Date:** February 19, 2026  
-> **Author:** Cascade (Lead Architect)  
-> **Feature Flags:** `ENABLE_STORED_SLUGS` (ON), `ENABLE_MULTI_OUTLET` (ON), `ENABLE_OBP` (OFF)  
-> **ADRs:** 11 decisions documented — see [url-routing-architecture_adr.md](./url-routing-architecture_adr.md)  
+> **Feature:** Core URL Handling & Public Routing Infrastructure
+> **Status:** 🔒 **LOCKED** — Phase 1 + Phase 2 + Product-Domain Guardrails Complete
+> **Date:** May 30, 2026
+> **Author:** Cascade (Lead Architect)
+> **Feature Flags:** `ENABLE_STORED_SLUGS` (ON), `ENABLE_MULTI_OUTLET` (ON), `ENABLE_OBP` (OFF), `ENABLE_MYCODEX_READER` (ON)
+> **ADRs:** 12 decisions documented — see [url-routing-architecture_adr.md](./url-routing-architecture_adr.md)
 > **Codebase = Single Source of Truth**
 
 ---
@@ -34,6 +34,7 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
+- **Product-domain separation** (`menulist.ai` = MenuList, `canonica.app` = Canonica, `menulist.digital` = MyCodex)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
 - **Permanent project slugs** (stored, not derived from names)
@@ -75,6 +76,27 @@ Tenant (account container — billing, stores list)
 **Critical fact:** For public rendering, ONLY store is read. Tenant is NEVER fetched during public page rendering. This is an explicit architecture decision documented in `src/types/platform/tenant.ts:12-13`.
 
 ### Current URL Flow
+
+#### Product / Platform Domain Gate
+
+Requests are classified before tenant routing:
+
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Canonica, and MyCodex by deployment stage.
+2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
+3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
+4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
+
+| Host                                    | Classification | Rewrite / Behavior                 |
+| --------------------------------------- | -------------- | ---------------------------------- |
+| `menulist.ai` / `www.menulist.ai`       | Platform       | MenuList website / platform routes |
+| `canonica.app` / `www.canonica.app`     | Product        | `/sites/canonica`                  |
+| `menulist.digital` / `www.menulist.digital` | Product    | `/sites/mycodex`                   |
+| `brand.menulist.ai`                    | Tenant         | `/client`                          |
+| Verified restaurant custom domain       | Tenant         | `/client`                          |
+
+`menulist.digital` is reserved for the internal MyCodex documentation reader. It must stay in the product-domain registry so it is not mistaken for a restaurant custom domain.
+
+#### Tenant Route Flow
 
 ```
 Customer opens: storypizza.menulist.ai/pune/menu
@@ -139,6 +161,7 @@ Customer opens: storypizza.menulist.ai/pune/menu
 ### What's Already Well-Built
 
 - ✅ Domain resolution (subdomain + custom domain)
+- ✅ Product-domain resolution before tenant routing
 - ✅ Multi-tenant middleware with security headers
 - ✅ SSR with Suspense + streaming skeletons
 - ✅ Timeout (5s) + retry (1x) for Firestore reads
@@ -165,6 +188,7 @@ Customer opens: storypizza.menulist.ai/pune/menu
 | No CDN cache headers                      | `s-maxage=60, stale-while-revalidate=300` on all client pages    | ADR-8         |
 | No subdomain→custom domain redirect       | Page-level 301 redirect when store has verified custom domain    | ADR-5         |
 | No trailing slash/lowercase normalization | Edge middleware 301 redirect                                     | ADR-6         |
+| Internal docs host could be mistaken for tenant/custom domain | `menulist.digital` registered as MyCodex product domain | ADR-12 |
 
 ---
 

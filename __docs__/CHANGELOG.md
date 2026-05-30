@@ -6,6 +6,19 @@
 
 ---
 
+## May 30, 2026 — MyCodex Product Domain Routing
+
+### Changed
+
+- **MyCodex now uses `menulist.digital` as a dedicated internal product host** — `menulist.digital` and `www.menulist.digital` are documented as product domains that rewrite to `/sites/mycodex` before tenant/custom-domain routing can treat the host as a restaurant domain.
+- **URL routing docs now include product-domain guardrails** — The URL routing architecture README, spec, implementation guide, ADRs, and Firebase cost note now describe MenuList, Canonica, and MyCodex host separation.
+
+### Cost
+
+- **No Firebase cost change** — MyCodex host classification is middleware/domain-registry logic and the reader serves repository markdown from `__docs__`. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
 ## May 28, 2026 — Canonica Section Header Alignment
 
 ### Changed

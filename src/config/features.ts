@@ -5,6 +5,15 @@
 
 export const FEATURE_FLAGS = {
     /**
+     * Enable the MyCodex documentation reader.
+     *
+     * This is a private developer surface mounted through /__mycodex locally
+     * and the dedicated menulist.digital host on Vercel. It must not claim
+     * MenuList or Canonica production domains.
+     */
+    ENABLE_MYCODEX_READER: true,
+
+    /**
      * Enable Upstash rate limiting
      *
      * true: Use Upstash for rate limiting (production)

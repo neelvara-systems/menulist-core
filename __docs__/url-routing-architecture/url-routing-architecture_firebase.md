@@ -1,14 +1,16 @@
 # URL Routing Architecture — Firebase Cost Tracking
 
-> **Audience:** Founder / Cost Control  
-> **Last Updated:** February 19, 2026  
-> **Version:** 3.0 (Phase 1 + Phase 2 + Cost Optimization Audit)
+> **Audience:** Founder / Cost Control
+> **Last Updated:** May 30, 2026
+> **Version:** 3.1 (Phase 1 + Phase 2 + Product-Domain Guardrails)
 
 ---
 
 ## Overview
 
 URL Routing Architecture **reduces** total Firebase reads across all public surfaces through 6 targeted optimizations. The feature itself adds zero additional writes.
+
+The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware and serves local repository markdown from `__docs__`.
 
 ### Cost Optimization Summary (Implemented Feb 19, 2026)
 
@@ -44,6 +46,7 @@ URL Routing Architecture **reduces** total Firebase reads across all public surf
 | Subdomain availability check        | `stores` (WHERE subdomain)             | Owner clicks "Check Availability"            | **1 read** — owner-triggered only, not public traffic              |
 | Brand OBP outlet list               | `stores` (WHERE tenantId + active)     | Brand OBP store selector (multi-store)       | **N reads** — cached 60s, only multi-store brands                  |
 | Custom domain verify                | Vercel API (not Firestore)             | Owner clicks "Check Verification"            | **0 Firestore reads** — Vercel API only                            |
+| MyCodex host classification         | None                                   | Requests to `menulist.digital`               | **0 Firestore reads** — product-domain registry + local markdown   |
 
 **Net public page read impact:** Same as before for single-store (cached). Multi-store adds 0-1 conditional read (cached 60s).
 
@@ -58,6 +61,7 @@ CDN cache headers (`s-maxage=60, stale-while-revalidate=300`) will **reduce** to
 | Store slug on project creation      | `platformSummary/projects_{sId}` | Every `addProject()` call                        | **0 additional** — slug added to existing `syncProjectToSummary()` write |
 | Update slug on rename               | `platformSummary/projects_{sId}` | Every `updateProjectMetadata()` with name change | **0 additional** — slug update part of existing summary sync             |
 | Store outletSlug on outlet creation | `stores/{sId}`                   | Every outlet creation                            | **0 additional** — outletSlug added to existing store doc creation       |
+| MyCodex domain registration         | None                             | Static deployment-domain configuration           | **0 writes** — no Firestore document mutation                            |
 
 **Net write impact: ZERO additional writes.**
 

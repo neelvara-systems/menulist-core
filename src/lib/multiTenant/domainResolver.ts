@@ -178,6 +178,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/_next/',
         '/sites/',
         '/__canonica',
+        '/__mycodex',
         '/__surfaceos',
         '/__growthos',
         '/__visualmeta',

@@ -25,12 +25,13 @@ import {
     getActiveProductDomains,
     getProductDeploymentTarget,
 } from './deploymentTargets';
+import { FEATURE_FLAGS } from '@config/features';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductId = 'menulist' | 'canonica' | 'surfaceos' | 'growthOS' | 'visualmeta';
+export type ProductId = 'menulist' | 'canonica' | 'surfaceos' | 'growthOS' | 'visualmeta' | 'mycodex';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Domain Configuration
@@ -104,6 +105,14 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         devPathPrefix: '/__visualmeta',
         internalBasePath: '/sites/visualmeta',
         enabled: false, // placeholder — not yet built
+    },
+    {
+        id: 'mycodex',
+        name: 'MyCodex',
+        domains: getActiveProductDomains('mycodex'),
+        devPathPrefix: getProductDeploymentTarget('mycodex', 'local').devPathPrefix,
+        internalBasePath: '/sites/mycodex',
+        enabled: FEATURE_FLAGS.ENABLE_MYCODEX_READER,
     },
 ];
 

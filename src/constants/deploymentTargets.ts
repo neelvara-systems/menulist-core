@@ -8,7 +8,7 @@
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'canonica';
+export type DeploymentProductId = 'menulist' | 'canonica' | 'mycodex';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -41,6 +41,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '/__canonica',
             firebaseProjectId: 'canonica-qa',
         },
+        mycodex: {
+            productId: 'mycodex',
+            url: 'http://localhost:3000/__mycodex/',
+            domains: [],
+            devPathPrefix: '/__mycodex',
+            firebaseProjectId: '',
+        },
     },
     preview: {
         menulist: {
@@ -57,6 +64,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'canonica-qa',
         },
+        mycodex: {
+            productId: 'mycodex',
+            url: 'https://menulist.digital',
+            domains: ['menulist.digital', 'www.menulist.digital'],
+            devPathPrefix: '',
+            firebaseProjectId: '',
+        },
     },
     production: {
         menulist: {
@@ -72,6 +86,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             domains: ['canonica.app', 'www.canonica.app'],
             devPathPrefix: '',
             firebaseProjectId: 'canonica',
+        },
+        mycodex: {
+            productId: 'mycodex',
+            url: 'https://menulist.digital',
+            domains: ['menulist.digital', 'www.menulist.digital'],
+            devPathPrefix: '',
+            firebaseProjectId: '',
         },
     },
 };
@@ -118,7 +139,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'canonica'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'canonica', 'mycodex'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

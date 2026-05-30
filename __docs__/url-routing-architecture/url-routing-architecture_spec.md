@@ -1,9 +1,9 @@
 # URL Routing Architecture — Business Specification
 
-> **Audience:** CEO, PM, Product Team  
-> **Last Updated:** February 19, 2026  
-> **Version:** 2.0  
-> **Status:** 🔒 LOCKED — Phase 1 + Phase 2 Complete
+> **Audience:** CEO, PM, Product Team
+> **Last Updated:** May 30, 2026
+> **Version:** 2.1
+> **Status:** 🔒 LOCKED — Phase 1 + Phase 2 + Product-Domain Guardrails Complete
 
 ---
 
@@ -21,6 +21,7 @@
 
 - Permanent stored slugs on every project (rename → old URL redirects automatically)
 - Brand-level subdomain ownership (one URL for the brand, locations as paths)
+- Product-domain carve-outs before tenant routing (`canonica.app`, `menulist.digital`)
 - Reserved namespace preventing future platform conflicts
 - CDN cache headers for global edge delivery
 
@@ -69,6 +70,14 @@
 - Subdomain uniqueness enforcement (pre-check + storeId suffix fallback)
 - Firebase cost optimization (6 optimizations across all public surfaces)
 
+### In-Scope (Product-Domain Guardrails — Implemented May 30, 2026)
+
+- Dedicated MyCodex internal reader host: `menulist.digital` / `www.menulist.digital`
+- MyCodex local path prefix: `/__mycodex`
+- Product-domain classification before tenant/custom-domain routing
+- Feature flag: `ENABLE_MYCODEX_READER`
+- No MenuList tenant/store/project routing for `menulist.digital`
+
 ### Out-of-Scope
 
 - Public data API endpoints
@@ -108,6 +117,7 @@
 | **Brand-level subdomain** | Subdomain set on master store only. Outlets use `outletSlug` path segments     |
 | **Single-store behavior** | Zero visible difference for single-store brands (95% of users)                 |
 | **Backward compat**       | Projects without stored slugs fall back to `slugify(name)` matching            |
+| **Product host isolation** | Internal product hosts are registered before tenant routing and never treated as restaurant custom domains |
 
 ---
 
@@ -126,5 +136,6 @@
 | **ADR-9**  | Subdomain uniqueness pre-check         | Globally unique subdomains                             |
 | **ADR-10** | Resolver reads projectsSummary         | 1 read vs N, slug field accessible                     |
 | **ADR-11** | Outlet path routing via outletSlug     | Multi-store brand URL resolution                       |
+| **ADR-12** | Product hosts before tenant routing    | `menulist.digital` serves MyCodex, not restaurant custom-domain flow |
 
 See [url-routing-architecture_adr.md](./url-routing-architecture_adr.md) for full rationale.

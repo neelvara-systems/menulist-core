@@ -1,7 +1,7 @@
 # URL Routing Architecture — Architecture Decision Records (ADRs)
 
-> **Last Updated:** February 19, 2026  
-> **Version:** 2.0 (Phase 1 + Phase 2 + Bug Fixes)  
+> **Last Updated:** May 30, 2026
+> **Version:** 2.1 (Phase 1 + Phase 2 + Product-Domain Guardrails)
 > **Purpose:** Single source of truth for WHY decisions were made. Future sessions read this FIRST.
 
 ---
@@ -23,8 +23,8 @@
 - `src/types/platform/store.ts:127` — `outletSlug?: string` on StoreDataType (outlets only)
 - Competitor audit in `_archive/architecture-validation.md`
 
-**What ChatGPT proposed:** Brand-level subdomain (accepted)  
-**What we initially rejected:** This (incorrectly — see `_archive/chatgpt-review.md`)  
+**What ChatGPT proposed:** Brand-level subdomain (accepted)
+**What we initially rejected:** This (incorrectly — see `_archive/chatgpt-review.md`)
 **Correction:** Re-accepted after deeper codebase audit proved store-level was accidental
 
 ---
@@ -199,6 +199,35 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 ---
 
+## ADR-12: Internal Product Hosts Must Be Registered Before Tenant Routing
+
+**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`.
+
+**Why:**
+
+- MyCodex needs Vercel access from anywhere, not only local `/__mycodex`.
+- Unknown hosts are treated as tenant custom domains by the public menu router.
+- Registering `menulist.digital` as a product domain prevents MenuList tenant/custom-domain logic from attempting to resolve it as a restaurant.
+- The host is separate from MenuList (`menulist.ai`) and Canonica (`canonica.app`) production domains.
+
+**Runtime contract:**
+
+| Host | Expected classification | Expected rewrite |
+| ---- | ----------------------- | ---------------- |
+| `menulist.digital` | Product: MyCodex | `/sites/mycodex` |
+| `www.menulist.digital` | Product: MyCodex | `/sites/mycodex` |
+| `menulist.ai` | Platform/MenuList | no MyCodex rewrite |
+| `canonica.app` | Product: Canonica | `/sites/canonica` |
+
+**Source files:**
+
+- `src/constants/deploymentTargets.ts` — `mycodex` preview/production domains
+- `src/constants/productDomains.ts` — MyCodex product site entry guarded by `ENABLE_MYCODEX_READER`
+- `src/lib/multiTenant/domainResolver.ts` — product-domain check runs before platform/subdomain/custom classification
+- `src/middleware.ts` — product domains rewrite before tenant routing
+
+---
+
 ## Decision Log (Chronological)
 
 | Date         | Decision                                | Rationale                                    |
@@ -215,3 +244,4 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 | Feb 19, 2026 | Subdomain uniqueness pre-check (ADR-9)  | Prevents duplicate subdomains                |
 | Feb 19, 2026 | Resolver reads projectsSummary (ADR-10) | Data source fix — slug field was unreachable |
 | Feb 19, 2026 | Outlet path routing (ADR-11)            | Multi-store brand URL resolution             |
+| May 30, 2026 | MyCodex domain carve-out (ADR-12)       | Keep internal reader off tenant/custom routing |

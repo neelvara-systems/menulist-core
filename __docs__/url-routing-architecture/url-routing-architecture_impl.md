@@ -234,14 +234,17 @@ For each tenant:
 
 ## Deployment Environments & URL Configuration
 
-### Domains
+### Product Domains
 
-| Environment           | Domain                   | Purpose                                            |
-| --------------------- | ------------------------ | -------------------------------------------------- |
-| **Production**        | `menulist.ai`            | Custom domain — marketing, dashboard, client menus |
-| **Vercel Production** | `menulistai.vercel.app`  | Vercel's auto-assigned production domain           |
-| **Staging/Preview**   | `menulist-ai.vercel.app` | Static preview alias for staging branch            |
-| **Local**             | `localhost:3000`         | Development                                        |
+| Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
+| -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
+| MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
+| Canonica | `localhost:3000/__canonica`  | `ecomsai.com`, `www.ecomsai.com`           | `canonica.app`, `www.canonica.app`         | Canonica website and product routes          |
+| MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
+
+Source of truth: `src/constants/deploymentTargets.ts`.
+
+`menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
 ### Key Env Var: `NEXT_PUBLIC_APP_URL`
 
@@ -256,16 +259,20 @@ Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`scree
 
 ### Where Vercel Domains Are Registered
 
-- **`constants/urls.ts`** — `VERCEL_URLS` array + `PLATFORM_DOMAINS` array
+- **`src/constants/deploymentTargets.ts`** — stage-specific product domain matrix
+- **`src/constants/productDomains.ts`** — enabled product site registry and internal route groups
+- **`src/constants/urls.ts`** — derives `PLATFORM_DOMAINS` from MenuList domains plus `ALL_PRODUCT_DOMAINS`
 - **`corsValidation.ts`** — `ALLOWED_ORIGINS` includes `...VERCEL_URLS`
 - **`csp-allowlist.ts`** — `frameSources` includes `https://vercel.live`
 - **`middleware.ts`** — CSP allows `'unsafe-inline'` for styles/scripts (Ant Design + Next.js require it)
 
 ### Adding a New Vercel Domain
 
-1. Add to `VERCEL_URLS` in `constants/urls.ts`
-2. Add to `PLATFORM_DOMAINS` in `constants/urls.ts` (prevents tenant routing)
-3. CORS and CSP pick it up automatically via the shared constants
+1. If it is a product/internal platform host, add it to the matching product in `src/constants/deploymentTargets.ts`.
+2. Add or update the product site entry in `src/constants/productDomains.ts`.
+3. Confirm `ALL_PRODUCT_DOMAINS` includes the host so `PLATFORM_DOMAINS` excludes it from tenant/custom-domain routing.
+4. Add the domain to the Vercel project and point DNS to Vercel.
+5. Do not add product hosts through owner custom-domain flows.
 
 ---
 

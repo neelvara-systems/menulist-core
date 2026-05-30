@@ -74,12 +74,16 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID',
         'CANONICA_FIREBASE_PROJECT_ID',
     ],
+    mycodex: [],
 } as const;
 
 const PLATFORM_ALIAS_VAR = 'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES';
 
-const describeProduct = (productId: DeploymentProductId) =>
-    productId === 'menulist' ? 'MenuList' : 'Canonica';
+const describeProduct = (productId: DeploymentProductId) => {
+    if (productId === 'menulist') return 'MenuList';
+    if (productId === 'canonica') return 'Canonica';
+    return 'MyCodex';
+};
 
 const getEnvValue = (varName: string) => process.env[varName]?.trim();
 

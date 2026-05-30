@@ -1,0 +1,317 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Custom Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Glassmorphism ────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dark .glass {
+  background: rgba(9, 9, 11, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-panel {
+  background: rgba(20, 20, 25, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ─── Markdown Prose ───────────────────────────────────── */
+.prose-custom {
+  font-family: var(--font-sans), sans-serif;
+  line-height: 1.75;
+}
+
+/* H1 */
+.prose-custom h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, #18181b 40%, #9333ea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 0.5rem;
+}
+
+.dark .prose-custom h1 {
+  background: linear-gradient(135deg, #fff 40%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* H2 */
+.prose-custom h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  color: #18181b;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 0.25rem;
+}
+
+.dark .prose-custom h2 {
+  color: #f4f4f5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* H3 */
+.prose-custom h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  color: #27272a;
+}
+
+.dark .prose-custom h3 {
+  color: #e4e4e7;
+}
+
+/* H4 */
+.prose-custom h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #3f3f46;
+}
+
+.dark .prose-custom h4 {
+  color: #d4d4d8;
+}
+
+/* Paragraph */
+.prose-custom p {
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  color: #52525b;
+}
+
+.dark .prose-custom p {
+  color: #a1a1aa;
+}
+
+/* Links */
+.prose-custom a {
+  color: #9333ea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-bottom: 1px dashed rgba(147, 51, 234, 0.4);
+}
+
+.prose-custom a:hover {
+  color: #7e22ce;
+  border-bottom: 1px solid #9333ea;
+}
+
+.dark .prose-custom a {
+  color: #c084fc;
+  border-bottom: 1px dashed rgba(192, 132, 252, 0.4);
+}
+
+.dark .prose-custom a:hover {
+  color: #e9d5ff;
+  border-bottom: 1px solid #c084fc;
+}
+
+/* UL */
+.prose-custom ul {
+  list-style-type: none;
+  padding-left: 1.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose-custom ul > li {
+  position: relative;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  color: #52525b;
+}
+
+.dark .prose-custom ul > li {
+  color: #a1a1aa;
+}
+
+.prose-custom ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.625rem;
+  width: 5px;
+  height: 5px;
+  background-color: #9333ea;
+  border-radius: 50%;
+}
+
+.dark .prose-custom ul > li::before {
+  background-color: #a855f7;
+}
+
+/* OL */
+.prose-custom ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.prose-custom ol > li {
+  padding-left: 0.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  color: #52525b;
+}
+
+.dark .prose-custom ol > li {
+  color: #a1a1aa;
+}
+
+/* Blockquote */
+.prose-custom blockquote {
+  font-style: italic;
+  border-left: 4px solid #9333ea;
+  padding-left: 1.25rem;
+  margin: 1.5rem 0;
+  color: #3f3f46;
+  background: rgba(147, 51, 234, 0.04);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.dark .prose-custom blockquote {
+  color: #d4d4d8;
+  background: rgba(168, 85, 247, 0.05);
+}
+
+/* Inline code */
+.prose-custom code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9em;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  color: #be185d;
+}
+
+.dark .prose-custom code {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f472b6;
+}
+
+/* Code block */
+.prose-custom pre {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  background-color: #f4f4f5 !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+}
+
+.dark .prose-custom pre {
+  background-color: #0c0c0e !important;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.prose-custom pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: #18181b;
+  font-size: 0.875rem;
+}
+
+.dark .prose-custom pre code {
+  color: #e4e4e7;
+}
+
+/* Tables */
+.prose-custom table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+.prose-custom th {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: #18181b;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.dark .prose-custom th {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.prose-custom td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.75rem 1rem;
+  color: #52525b;
+}
+
+.dark .prose-custom td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #a1a1aa;
+}
+
+.prose-custom tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.dark .prose-custom tr:hover {
+  background-color: rgba(255, 255, 255, 0.01);
+}
