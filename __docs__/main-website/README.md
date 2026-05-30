@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.11 (Existing Menu Link Intake Alignment)
+**Version:** 3.6.12 (Feature Card Rhythm Polish)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 25, 2026
+**Last Updated:** May 30, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -58,6 +58,8 @@ Version 3.6.9 aligns the `/how-it-works` supporting source-map output connector 
 Version 3.6.10 changes the multi-location diagram to use the same animated pulse-stroke pattern as the homepage source map instead of custom moving circle dots. The static dotted paths remain in place, the pulse path uses `ws-map-pulse-flow` with the same dash shape and duration as the homepage, and all outlet paths stay synchronized. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Version 3.6.11 aligns the main website with production-ready Menu Link Import without adding a separate homepage section. The homepage workflow and `/how-it-works` source maps now include an owner-provided existing menu link as a source input beside photo, PDF, and typed text. Copy stays conservative: MenuList prepares an owner-reviewed version and does not claim generic scraping, marketplace import, or automatic publishing. Pricing, payment, subscription, Razorpay, auth, onboarding, public `/create-menu` runtime internals, and public customer menu runtime were not changed.
+
+Version 3.6.12 tightens the shared `WebsiteFeatureCard` vertical rhythm after visual QA found excessive empty space between blue subtitles and body copy in public-surface cards. Cards now stack heading, subtitle, and description as one readable proof unit, and grid rows size from their tallest card content instead of a fixed-feeling card minimum. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -606,6 +608,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.12 | May 30, 2026 | Tightened shared website feature-card spacing so subtitles and descriptions read as one grouped proof unit, with card rows sized from the tallest content in that row. |
 | 3.6.7 | May 24, 2026 | Changed the multi-location diagram to pulse all outlet paths together and aligned the master card treatment with outlet cards. |
 | 3.6.6 | May 24, 2026 | Renamed the homepage workflow section to a source-to-public value bridge while keeping the simpler homepage diagram distinct from the fuller `/how-it-works` diagram. |
 | 3.6.5 | May 24, 2026 | Added a reduced-motion-aware pulse overlay, light always-on center-ring pulse, and synchronized destination-card border-only highlight to the homepage, How It Works, and Multi-location source-map diagrams while keeping the static dotted paths in place. |

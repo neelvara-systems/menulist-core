@@ -331,7 +331,7 @@ Rules:
 
 - Icon placement is top-right, not sometimes left and sometimes inline.
 - Grid defaults to `ws-feature-card-grid`: `repeat(auto-fit, minmax(320px, 1fr))`, `gap: var(--ws-space-6)`, `max-width: 1120px`.
-- Card body uses `ws-feature-card`: spacious padding, stable min-height, calm border/background, no hover movement.
+- Card body uses `ws-feature-card`: spacious padding, content-led row height, calm border/background, no hover movement, and compact stacked spacing so the subtitle and description read as one proof unit.
 - Titles use 18px / 800 weight in normal cards and 16px in compact cards.
 - Subtitles can use brand blue only when they clarify the card role; body copy stays `--ws-text-secondary`.
 - Footer/proof lines sit behind a top border and should express the outcome, not repeat the description.

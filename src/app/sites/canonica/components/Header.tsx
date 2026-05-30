@@ -190,7 +190,27 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                 <LuChevronDown size={14} className="transition group-hover/product:rotate-180 group-focus-within/product:rotate-180" aria-hidden />
                             </L>
 
-                            <div className="absolute left-1/2 top-full z-[80] hidden w-[min(52rem,calc(100vw-3rem))] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
+                            <div
+                                className="
+                                    absolute left-1/2 top-full z-[80] w-[min(52rem,calc(100vw-3rem))]
+                                    -translate-x-1/2 pt-3
+                                    origin-top scale-95 opacity-0
+                                    invisible translate-y-2
+                                    transition-all duration-200 ease-out
+                                    pointer-events-none
+                                    group-hover/product:visible
+                                    group-hover/product:translate-y-0
+                                    group-hover/product:scale-100
+                                    group-hover/product:opacity-100
+                                    group-hover/product:pointer-events-auto
+                                    group-focus-within/product:visible
+                                    group-focus-within/product:translate-y-0
+                                    group-focus-within/product:scale-100
+                                    group-focus-within/product:opacity-100
+                                    group-focus-within/product:pointer-events-auto
+                                    motion-safe:transition-all
+                                "
+                            >
                                 <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                     <L
                                         href="/product"
