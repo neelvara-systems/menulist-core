@@ -92,7 +92,7 @@ interface MyCodexLayoutProps {
 export default function MyCodexLayout({ children }: MyCodexLayoutProps) {
     return (
         <div
-            className={`${inter.variable} font-sans min-h-screen flex flex-col bg-white text-zinc-900 antialiased selection:bg-purple-500/30 selection:text-purple-700 dark:bg-zinc-950 dark:text-zinc-50 dark:selection:text-purple-200`}
+            className={`${inter.variable} mycodex-app-shell font-sans min-h-screen flex flex-col bg-white text-zinc-900 antialiased selection:bg-purple-500/30 selection:text-purple-700 dark:bg-zinc-950 dark:text-zinc-50 dark:selection:text-purple-200`}
         >
             {/* Anti-FOUC: set dark class before first paint */}
             {/* eslint-disable-next-line react/no-danger */}

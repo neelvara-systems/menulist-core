@@ -43,6 +43,7 @@ Do not promise:
 Market sources:
 
 - Google Pomelli: https://blog.google/innovation-and-ai/models-and-research/google-labs/pomelli/
+- Canva AI 2.0: https://www.canva.com/newsroom/news/canva-create-2026-ai/
 - Canva Visual Suite 2.0: https://www.canva.com/newsroom/news/canva-create-2025/
 - Constant Contact SMB marketing spend report: https://www.constantcontact.com/news/2026-02-11-small-businesses-double-down-for-2026-majority-plan-to-increase-marketing-budgets-to-combat-inflation
 - BrightLocal AI local recommendation research: https://www.brightlocal.com/research/lcrs-ai-trust/
@@ -66,7 +67,21 @@ Close:
 
 The owner still approves and posts manually. MenuList just removes the blank page and reduces mistakes.
 
-## 5. Packaging
+## 5. Launch Offer
+
+Market the first version around the core loop only:
+
+| Included at launch | Public explanation |
+| --- | --- |
+| Do This Now | One clear action from the current menu. |
+| Menu readiness | Shows when menu details are ready, limited, or stale. |
+| Multi-handoff kit | One action becomes WhatsApp, Instagram, Google draft, staff, and print/counter copy. |
+| Staff Brief Pack | A short line staff can use today, plus what to avoid. |
+| Manual use | Owner copies, downloads, prints, shares, or marks used. |
+
+Do not lead with review replies, image assets, offers, customer replies, multi-outlet, or history until those paths are implemented and support-ready.
+
+## 6. Packaging
 
 Recommended packages:
 
@@ -78,7 +93,7 @@ Recommended packages:
 
 Do not sell GrowthOS to non-MenuList clients in the current plan.
 
-## 6. Pricing Direction
+## 7. Pricing Direction
 
 Pricing should be tied to:
 
@@ -95,7 +110,7 @@ Do not price on:
 - rank improvement
 - number of posts automatically published
 
-## 7. Public Language Rules
+## 8. Public Language Rules
 
 Use:
 
@@ -103,6 +118,7 @@ Use:
 - ready to share
 - from your current menu
 - copy, download, print
+- staff brief
 - owner-approved
 - accurate menu details
 
@@ -117,18 +133,38 @@ Avoid:
 - ROI dashboard
 - guaranteed results
 - auto-posting
+- chatbot
+- staff management
+- loyalty
+- coupon engine
 
-## 8. Sales Objection Handling
+## 9. Pilot-Only Upsells
+
+These should not appear in public pricing until the pilot proves demand:
+
+| Capability | Why not public yet |
+| --- | --- |
+| Existing Image Adaptation | Needs proof that image/print assets are a repeated owner need. |
+| Owner-Confirmed Offer Builder | Creates new offer truth and expiry obligations. |
+| Review Triage expansion | Reputation/legal/food-safety risks need careful pilot. |
+| Customer FAQ Reply Snippets | Must stay copyable snippets, not chatbot/inbox. |
+| Photo Capture Prompts | Only useful if owners act on missing-photo prompts. |
+| Multi-Outlet Localized Kits | Valuable only for multi-outlet pilot clients. |
+| Used History UI | Must remain activity memory, not ROI. |
+
+## 10. Sales Objection Handling
 
 | Objection | Response |
 | --- | --- |
 | "I already use Canva." | Keep using Canva for design. Growth Kits are for quick, accurate menu-based messages and prompts. |
 | "Can it post for me?" | Not in the approved version. It prepares drafts you can copy or publish yourself. |
 | "Will this get more orders?" | It helps you keep local updates current. It does not promise or measure order lift. |
-| "Can my staff use it?" | Yes, if their MenuList role allows access. Staff lines are one of the intended outputs. |
-| "Can it reply to reviews?" | It can draft replies from text you provide. Automatic review ingestion depends on Google access and approval. |
+| "Can my staff use it?" | Yes, if their MenuList role allows access. Staff Brief gives a short line for what to suggest or avoid today. |
+| "Can it reply to reviews?" | Only if the guarded review reply mode is enabled. It uses text you provide and may warn when a public reply is not recommended. |
+| "Can it create offers?" | Not in the first version. Offers create business truth and need separate owner confirmation rules. |
+| "Can it make images?" | Not by default. The first version uses text and staff/print copy; existing-image assets can be piloted later. |
 
-## 9. Launch Readiness
+## 11. Launch Readiness
 
 Do not market publicly until:
 

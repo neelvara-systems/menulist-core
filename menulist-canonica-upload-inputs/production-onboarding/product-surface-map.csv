@@ -1,0 +1,13 @@
+surface_key,label,product,route_patterns,feature,page,workflow,user_role,entity_hints,screenshot_priority,notes
+menulist_dashboard,Owner dashboard,MenuList,"/dashboard,/today",dashboard,dashboard,use_dashboard,owner,"dashboard,business_status,setup_status",P0,"Primary MenuList owner route for proving widget seen and page context."
+menulist_projects,Projects and menus,MenuList,"/projects,/projects/*",projects,projects,manage_menu,owner,"menu,project,public_menu,publish",P0,"Most important owner support surface for menu management."
+menulist_create_menu,Create menu,MenuList,"/create-menu,/use-menulist",menu_intake,create_menu,upload_or_import_menu,owner,"upload,menu_link_import,review",P0,"Use for intake analogy and setup support."
+menulist_extraction_review,Extraction review,MenuList,"owner extraction review screen",menu_review,review,approve_extracted_menu,owner,"review,approval,menu_item,category",P0,"Capture only with approved scrubbed demo data."
+menulist_business_settings,Business settings,MenuList,"/business-settings,/business-settings/*",business_settings,business_settings,manage_business_profile,owner,"business_profile,hours,address,public_truth",P1,"Useful for public truth and OBP support questions."
+menulist_users,Users and permissions,MenuList,"/users,/users/*",users,users,manage_staff,owner,"staff,permissions,role",P1,"Use for staff access canonical answers."
+menulist_locations,Locations and outlets,MenuList,"/locations,/locations/*",locations,locations,manage_locations,owner,"outlet,location,multi_location",P1,"Use for multi-location Canonica surface coverage."
+menulist_feedback,Customer feedback,MenuList,"/feedback,/platform/support-tickets",feedback,feedback,review_customer_feedback,owner,"feedback,reviews,support_ticket",P1,"Use for support signal loop proof."
+menulist_transactions,Transactions and billing,MenuList,"/transactions,/billing",billing,billing,review_billing_activity,owner,"billing,transactions,subscription",P2,"Keep billing captures scrubbed or avoid public asset use."
+menulist_public_menu,Public menu,MenuList,"public /client menu route",public_menu,public_menu,view_public_menu,customer,"menu,item,category,price,availability",P0,"Public product truth example; verify exact production route before capture."
+menulist_official_business_page,Official Business Page,MenuList,"Official Business Page public route",official_business_page,obp,view_business_truth,customer,"business_profile,hours,menu,public_discovery",P0,"Use as Canonica proof of product-source-backed public truth."
+menulist_digital_screen,Digital Screen,MenuList,"/screen/*",digital_screen,screen,display_current_menu,customer,"screen,menu,public_surface",P2,"Optional capture if it strengthens launch assets."

@@ -35,9 +35,9 @@ See what is included
 - WhatsApp messages and status copy from current menu items
 - Google Business Profile update drafts
 - Instagram caption drafts
-- staff lines for walk-in recommendations
+- Staff Brief lines for walk-in recommendations
 - printable counter or table prompts
-- review reply drafts from review text you provide
+- optional guarded review reply drafts when enabled
 
 ## Proof Line
 
@@ -62,15 +62,18 @@ For restaurants that want quick, accurate messages and in-store prompts without 
 - Monthly kit allowance
 - Menu-based messages and captions
 - Google update drafts
-- Staff and print prompts
-- Owner-approved review reply drafts
+- Staff Brief and print prompts
+- Manual copy, share, download, print, and mark-used actions
 
 ### Not Included
 
-- automatic posting
+- posts sent by MenuList
 - ad management
 - social calendar
 - revenue reporting
+- customer inbox
+- staff management
+- offer/coupon engine
 
 ## FAQ
 
@@ -92,7 +95,7 @@ Yes. You can copy and share kits from the mobile owner app.
 
 ### Can it reply to Google reviews?
 
-It can prepare a reply draft from review text you provide. Automatic review access depends on Google approval and is not part of the initial add-on.
+Only if the guarded review reply option is enabled for your store. It uses review text you provide. Automatic review access is not part of the initial add-on.
 
 ### Will it increase orders?
 
@@ -113,7 +116,7 @@ Avoid terms:
 
 - AI marketing automation
 - auto social posting
-- guaranteed restaurant growth
+- promised restaurant growth
 - sales boost software
 - campaign optimizer
 

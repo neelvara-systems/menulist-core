@@ -55,6 +55,11 @@
 | `/hosted-help-center-for-saas` | SEO Landing | Hosted SaaS help center page for docs, FAQ, and changelog on support domains |
 | `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team, including optional user-attached visual context |
 | `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
+| `/pre-onboarding` | Pre-Onboarding Kit | Public preparation page for customers using AI coding agents to create Canonica-ready source packages before Knowledge Intake |
+| `/pre-onboarding.md` | Pre-Onboarding Prompt | Machine-readable master prompt for Codex, Cursor, Windsurf, Antigravity, Claude Code, and other AI agents using repo, multi-product repo, docs, website, or owner-note sources |
+| `/pre-onboarding/guide` | Pre-Onboarding Guide | End-to-end public runbook for owners and AI agents before Canonica Knowledge Intake |
+| `/pre-onboarding/owner-guide.md` | Owner Guide | Machine-readable owner checklist for source preparation, review, upload, and live-support gates |
+| `/pre-onboarding/agent-guide.md` | Agent Guide | Machine-readable operating rules for AI coding agents preparing Canonica input packages |
 | `/install` | Agent Install Layer | Primary install surface for copying the Canonica AI install packet, downloading the agent kit, reading the frozen v1 widget contract, and verifying runtime status |
 | `/install/ai-agent` | AI Agent Install | Copyable agent packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents |
 | `/install/manual` | Manual Install | Human-readable v1 widget script install steps |
@@ -121,6 +126,12 @@
 | `src/app/sites/canonica/updates/page.tsx` | Public website update log |
 | `src/app/sites/canonica/demo/page.tsx` | Static product demo route |
 | `src/app/sites/canonica/demo/CanonicaPublicDemo.tsx` | Client-side demo interaction state |
+| `src/app/sites/canonica/pre-onboarding/page.tsx` | Public Pre-Onboarding Kit page |
+| `src/app/sites/canonica/pre-onboarding.md/route.ts` | Machine-readable pre-onboarding master prompt route |
+| `src/app/sites/canonica/pre-onboarding/guide/page.tsx` | Detailed public owner/agent guide page |
+| `src/app/sites/canonica/pre-onboarding/owner-guide.md/route.ts` | Machine-readable owner guide route |
+| `src/app/sites/canonica/pre-onboarding/agent-guide.md/route.ts` | Machine-readable agent guide route |
+| `src/lib/canonica/preOnboardingPrompt.ts` | Shared Canonica pre-onboarding prompt text and output contract |
 | `src/app/sites/canonica/security/page.tsx` | Public security/trust page with facts, runtime controls, and disclosure |
 | `src/app/sites/canonica/faq/page.tsx` | Public FAQ page with FAQ structured data |
 | `src/app/sites/canonica/contact/page.tsx` | Public contact page |

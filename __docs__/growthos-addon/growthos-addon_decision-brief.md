@@ -82,15 +82,44 @@ Build the paid add-on around a simple action flow:
 5. Copy, download, print, or share manually.
 6. Optionally mark as used.
 
-The first kit families:
+The freeze-ready V1 core is:
+
+| Capability | Decision | Owner value |
+| --- | --- | --- |
+| Do This Now Inbox | Build first | Avoids blank-page thinking. |
+| Menu Truth Readiness Checklist | Build first | Prevents wrong or incomplete public copy. |
+| Owner Voice basics | Build first | Makes copy usable without prompt editing. |
+| Compliance Preflight | Build first | Stops invented offers, stale prices, unavailable items, and risky wording. |
+| One Kit to Multiple Handoffs | Build first | One action creates WhatsApp, Instagram, Google draft, staff, and print copy. |
+| Staff Brief Pack | Build first | Helps staff say the right thing today. |
+| Basic export logging | Build first | Records copy/share/download/print/mark-used only, with no ROI claims. |
+| Mobile latest-kit fallback | Build first | Keeps the last usable kit visible when refresh or generation fails. |
+
+The first kit families should be:
 
 | Kit family | Owner moment | Outputs |
 | --- | --- | --- |
 | Today Action Kit | "What should I post or send today?" | WhatsApp status, WhatsApp message, Instagram caption, Google update draft |
 | Menu Event Kit | "This item changed or deserves attention." | item caption, image reuse/generation option, QR link text, staff line |
-| In-store Push Kit | "Customers are already inside." | staff line, poster/tent copy, digital screen line |
+| Staff Brief Kit | "What should staff say or avoid today?" | main staff line, avoid list, public menu fallback, counter prompt copy |
+| In-store Push Kit | "Customers are already inside." | poster/tent copy, digital screen line |
 | Local Trust Kit | "My public presence should look current." | GBP update draft, hours/status reminder copy, public link copy |
-| Review Reply Kit | "I need to respond carefully." | owner-approved reply draft from pasted review text |
+| Review Reply Guard | "I need to respond carefully." | guarded reply draft from pasted text only, hidden from daily inbox |
+
+## Pilot-Dependent Features
+
+Do not build these before the core loop proves real owner use:
+
+| Feature | Decision |
+| --- | --- |
+| Existing Image Adaptation | Add only after text/staff kits are used. Use existing images only; no design canvas and no AI image generation in V1. |
+| Owner-Confirmed Offer Builder | Defer. It creates new business truth and must not invent discounts or leave expired offers usable. |
+| Review Triage expansion | Defer beyond pasted-text guard. Food-safety, legal, abusive, and refund cases need conservative handling. |
+| Customer FAQ Reply Snippets | P2. Useful if owners/staff repeatedly ask for WhatsApp/DM reply shortcuts. |
+| Photo Capture Prompts | P2. Useful if missing images repeatedly block kit value. |
+| Multi-Outlet Localized Kits | P2. Build only with multi-outlet pilot demand and strict store-specific facts. |
+| Used History UI | P2. Export rows are V1; dashboards and ROI remain rejected. |
+| Advanced low-data/offline kit access | P2. V1 only keeps the latest loaded kit visible with stale warnings. |
 
 ## What We Should Not Build
 
@@ -106,6 +135,11 @@ Do not build:
 - prompt playground
 - multi-brand brand-kit system
 - direct writes to MenuList truth
+- invented offers
+- customer inbox/chatbot
+- staff management
+- loyalty/coupon system
+- AI image generation as default
 - new standalone product domain
 - new scheduler
 

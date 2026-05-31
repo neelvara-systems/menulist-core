@@ -128,6 +128,33 @@ Follow same naming conventions as MenuList (`{feature-name}_{doc-type}.md`).
 
 ---
 
+## Rule 9B: Pre-Onboarding Maintenance
+
+The Canonica Pre-Onboarding Input Kit is a first-class onboarding surface. When Canonica Knowledge Intake, source limits, payload fields, live-support readiness gates, product-surface mapping, widget context requirements, screenshot/asset policy, or onboarding positioning changes, update all matching pre-onboarding surfaces in the same pass:
+
+- `src/lib/canonica/preOnboardingPrompt.ts`
+- `src/app/sites/canonica/pre-onboarding/page.tsx`
+- `src/app/sites/canonica/pre-onboarding/guide/page.tsx`
+- `src/app/sites/canonica/pre-onboarding.md/route.ts`
+- `src/app/sites/canonica/pre-onboarding/owner-guide.md/route.ts`
+- `src/app/sites/canonica/pre-onboarding/agent-guide.md/route.ts`
+- `__docs__/canonica/pre-onboarding-input-kit/`
+- Canonica resources, sitemap/site config, and LLM context links
+
+Treat the MenuList Canonica onboarding package as the reference example for coverage quality: source-backed, owner-reviewed, private-data-safe, and explicit about production confirmation gates.
+
+Do not hardcode the pre-onboarding process to the MenuList repo shape. Public prompt and guide surfaces must support `repo_and_website`, `multi_product_repo`, `website_only`, `docs_only`, `owner_notes_only`, and `mixed` source modes. Keep explicit copy/paste placeholders for product name, slug, website URL, app URL, repo/docs path, target product paths, excluded sister products, help docs, pricing/legal/trust/contact links, support email, product stage, source mode, approval status, screenshot permission, workspace status, and owner notes.
+
+The 26 Canonica source families are a standardized upload/input shape, not proof that the client has all source types. Missing or inapplicable source families must be marked `Not available` or `Not applicable` with source-mode reasoning instead of invented content.
+
+When a Canonica pre-onboarding client repo contains multiple products, apps, brands, domains, dashboards, or packages, the preparation flow must map all product-like surfaces first, target the named product only, include shared infrastructure only when support-relevant, and document sister-product exclusions. Never blend source truth across products because it lives in the same codebase.
+
+When market-adjacent expectations appear (repo-to-docs, URL sync, OpenAPI docs, support-export FAQ generation, demo walkthroughs, screenshots, or website copy briefs), Canonica pre-onboarding may prepare review-ready briefs, source maps, scripts, FAQ seeds, and capture plans. It must not claim final public assets, legal answers, demo videos, or website copy are approved until the owner signs off.
+
+Canonica pre-onboarding must state source-access and AI IDE capability limits plainly. It may say a package is complete for accessible source coverage only after validation. It must not guarantee perfect output across every AI IDE, private repo, login-only app, restricted website, recording, file, product shape, or model. Blocked or unavailable sources must be marked pending instead of treated as covered.
+
+---
+
 ## Rule 11: File Organization (Product Isolation)
 
 All Canonica-specific code lives in `/canonica/` subfolders:

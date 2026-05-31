@@ -115,7 +115,8 @@ export const FUNCTION_FLAGS = {
      * from canonica_entityRelations. The index enables 1-hop graph traversal
      * during retrieval (client-side flag: ENABLE_CANONICA_KNOWLEDGE_GRAPH).
      *
-     * Cost: 1 relation read + 1 platformSummary write per tenant per night.
+     * Cost: bounded entity/relation/answer/source-version summary reads plus
+     * a conditional platformSummary write only when the source hash changed.
      *
      * @see __docs__/canonica/knowledge-graph-exploitation/
      */

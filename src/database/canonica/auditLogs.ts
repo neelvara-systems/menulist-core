@@ -21,8 +21,14 @@ import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaAuditLog } from "@type/canonica";
 
 const COLLECTION = DB_COLLECTIONS.CANONICA_AUDIT_LOGS;
+const MAX_AUDIT_LOGS_PER_LOAD = 200;
 
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
+const clampAuditLimit = (value: number, fallback: number) => {
+    const normalized = Math.floor(Number(value));
+    if (!Number.isFinite(normalized) || normalized <= 0) return fallback;
+    return Math.min(normalized, MAX_AUDIT_LOGS_PER_LOAD);
+};
 
 /**
  * Log an audit event (append-only — no update/delete allowed)
@@ -45,12 +51,13 @@ export const addAuditLog = async (data: Omit<CanonicaAuditLog, 'id'>) => {
 export const getAuditLogs = async (tId: number, sId: number, maxResults: number = 100) => {
     return await apiCallComposer(
         async () => {
+            const boundedMaxResults = clampAuditLimit(maxResults, 100);
             const q = query(
                 getCollectionRef(),
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 orderBy('timestamp', 'desc'),
-                limit(maxResults)
+                limit(boundedMaxResults)
             );
             const snapshot = await getDocs(q);
             const list: CanonicaAuditLog[] = [];

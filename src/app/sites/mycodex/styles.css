@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --mycodex-safe-top: env(safe-area-inset-top, 0px);
+  --mycodex-safe-right: env(safe-area-inset-right, 0px);
+  --mycodex-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mycodex-safe-left: env(safe-area-inset-left, 0px);
+  --mycodex-mobile-header-height: calc(4rem + var(--mycodex-safe-top));
+}
+
+@supports (padding-top: constant(safe-area-inset-top)) {
+  :root {
+    --mycodex-safe-top: constant(safe-area-inset-top);
+    --mycodex-safe-right: constant(safe-area-inset-right);
+    --mycodex-safe-bottom: constant(safe-area-inset-bottom);
+    --mycodex-safe-left: constant(safe-area-inset-left);
+  }
+}
+
+.mycodex-app-shell,
+.mycodex-reader-shell,
+.mycodex-safe-page {
+  min-height: 100dvh;
+}
+
+.mycodex-safe-page {
+  padding-top: calc(2.5rem + var(--mycodex-safe-top));
+  padding-right: calc(1rem + var(--mycodex-safe-right));
+  padding-bottom: calc(2.5rem + var(--mycodex-safe-bottom));
+  padding-left: calc(1rem + var(--mycodex-safe-left));
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -27,6 +57,86 @@
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(212, 212, 216, 0.28);
+}
+
+@media (max-width: 767px) {
+  .mycodex-progress-bar {
+    top: var(--mycodex-safe-top);
+  }
+
+  .mycodex-mobile-header {
+    box-sizing: border-box;
+    height: var(--mycodex-mobile-header-height);
+    padding-top: var(--mycodex-safe-top);
+    padding-right: calc(1rem + var(--mycodex-safe-right));
+    padding-left: calc(1rem + var(--mycodex-safe-left));
+  }
+
+  .mycodex-main {
+    min-height: 100dvh;
+    padding-top: var(--mycodex-mobile-header-height) !important;
+  }
+
+  .mycodex-sidebar,
+  .mycodex-settings-drawer {
+    box-sizing: border-box;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .mycodex-sidebar {
+    padding-left: var(--mycodex-safe-left);
+  }
+
+  .mycodex-sidebar-mobile-header,
+  .mycodex-settings-header {
+    box-sizing: border-box;
+    min-height: var(--mycodex-mobile-header-height);
+    padding-top: var(--mycodex-safe-top);
+  }
+
+  .mycodex-settings-header,
+  .mycodex-settings-body {
+    padding-right: calc(1rem + var(--mycodex-safe-right));
+    padding-left: calc(1rem + var(--mycodex-safe-left));
+  }
+
+  .mycodex-sidebar-nav,
+  .mycodex-settings-body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mycodex-sidebar-footer {
+    padding-bottom: calc(1rem + var(--mycodex-safe-bottom)) !important;
+  }
+
+  .mycodex-settings-body {
+    padding-bottom: calc(1.25rem + var(--mycodex-safe-bottom)) !important;
+  }
+
+  .mycodex-article {
+    padding-right: calc(1rem + var(--mycodex-safe-right)) !important;
+    padding-bottom: calc(1.5rem + var(--mycodex-safe-bottom)) !important;
+    padding-left: calc(1rem + var(--mycodex-safe-left)) !important;
+  }
+
+  .mycodex-audio-player {
+    bottom: calc(1.25rem + var(--mycodex-safe-bottom)) !important;
+    left: calc(1rem + var(--mycodex-safe-left)) !important;
+    right: calc(5rem + var(--mycodex-safe-right)) !important;
+  }
+
+  .mycodex-scroll-top {
+    right: calc(1rem + var(--mycodex-safe-right)) !important;
+    bottom: calc(1.25rem + var(--mycodex-safe-bottom)) !important;
+  }
+
+  .mycodex-action-toast {
+    right: calc(1rem + var(--mycodex-safe-right)) !important;
+    bottom: calc(5rem + var(--mycodex-safe-bottom)) !important;
+    left: calc(1rem + var(--mycodex-safe-left)) !important;
+  }
 }
 
 /* Markdown reader */
@@ -116,6 +226,18 @@
 
 .dark .prose-custom p {
   color: #d4d4d8;
+}
+
+.prose-custom .mycodex-speaking-block {
+  background: rgba(14, 165, 233, 0.08);
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0 0.3rem rgba(14, 165, 233, 0.08);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .prose-custom .mycodex-speaking-block {
+  background: rgba(56, 189, 248, 0.1);
+  box-shadow: 0 0 0 0.3rem rgba(56, 189, 248, 0.1);
 }
 
 .prose-custom a {

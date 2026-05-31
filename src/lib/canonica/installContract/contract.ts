@@ -904,6 +904,9 @@ export function renderCanonicaLlmsTxt() {
 ## Start here
 
 - [Install Canonica with an AI coding agent](${CANONICA_SITE_URL}/install/ai-agent.md): Copyable install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.
+- [Pre-Onboarding Kit](${CANONICA_SITE_URL}/pre-onboarding.md): Master prompt for preparing available product sources, multi-product repo boundaries, website links, docs, owner notes, policies, support questions, and screenshot rules before Canonica onboarding.
+- [Pre-Onboarding Owner Guide](${CANONICA_SITE_URL}/pre-onboarding/owner-guide.md): End-to-end owner checklist for using the prompt and reviewing generated inputs.
+- [Pre-Onboarding Agent Guide](${CANONICA_SITE_URL}/pre-onboarding/agent-guide.md): Operating rules for AI coding agents preparing Canonica input packages.
 - [Canonica Widget Contract v1](${CANONICA_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
 - [Manual install](${CANONICA_SITE_URL}/install/manual.md): Human-readable script install.
 - [Next.js install](${CANONICA_SITE_URL}/install/frameworks/nextjs.md): App Router and Pages Router instructions.
@@ -948,6 +951,11 @@ export function renderCanonicaLlmsFullTxt() {
 - ${CANONICA_SITE_URL}/product/support-control
 - ${CANONICA_SITE_URL}/product/knowledge-governance
 - ${CANONICA_SITE_URL}/demo
+- ${CANONICA_SITE_URL}/pre-onboarding
+- ${CANONICA_SITE_URL}/pre-onboarding.md
+- ${CANONICA_SITE_URL}/pre-onboarding/guide
+- ${CANONICA_SITE_URL}/pre-onboarding/owner-guide.md
+- ${CANONICA_SITE_URL}/pre-onboarding/agent-guide.md
 - ${CANONICA_SITE_URL}/install
 - ${CANONICA_SITE_URL}/install/ai-agent
 - ${CANONICA_SITE_URL}/install/contracts.md

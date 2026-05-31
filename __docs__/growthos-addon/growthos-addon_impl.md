@@ -31,8 +31,15 @@ Add these flags to `src/config/features.ts` only during implementation:
 ENABLE_GROWTHOS_ADDON: false,
 GROWTHOS_ADDON_ACCESS: "disabled" as "disabled" | "pilot" | "paid",
 GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
-GROWTHOS_IMAGE_MODE: "existing_only" as "existing_only" | "generate_if_missing",
-GROWTHOS_REVIEW_REPLY_MODE: "manual_paste" as "manual_paste" | "disabled",
+GROWTHOS_STAFF_BRIEF_MODE: "deterministic" as "disabled" | "deterministic",
+GROWTHOS_IMAGE_MODE: "disabled" as "disabled" | "existing_only",
+GROWTHOS_REVIEW_REPLY_MODE: "manual_paste_guarded" as "disabled" | "manual_paste_guarded",
+GROWTHOS_OFFER_BUILDER_MODE: "disabled" as "disabled" | "pilot",
+GROWTHOS_QUICK_REPLIES_MODE: "disabled" as "disabled" | "pilot",
+GROWTHOS_PHOTO_PROMPTS_MODE: "disabled" as "disabled" | "pilot",
+GROWTHOS_MULTI_OUTLET_MODE: "disabled" as "disabled" | "pilot",
+GROWTHOS_USED_HISTORY_UI: "disabled" as "disabled" | "pilot",
+GROWTHOS_LOW_DATA_CACHE: "latest_only" as "disabled" | "latest_only" | "pilot",
 ```
 
 Rules:
@@ -40,8 +47,10 @@ Rules:
 - `ENABLE_GROWTHOS_ADDON` is the master kill switch.
 - `GROWTHOS_ADDON_ACCESS` controls pilot/paid visibility.
 - `GROWTHOS_DIRECT_POSTING` must remain `"disabled"` for the approved scope.
-- `GROWTHOS_IMAGE_MODE` starts as `"existing_only"` unless pricing explicitly covers image generation.
-- `GROWTHOS_REVIEW_REPLY_MODE` starts as `"manual_paste"` and does not ingest Google reviews.
+- `GROWTHOS_STAFF_BRIEF_MODE` is V1 core and deterministic.
+- `GROWTHOS_IMAGE_MODE` starts disabled. It may move to `"existing_only"` only after pilot demand; never default to image generation.
+- `GROWTHOS_REVIEW_REPLY_MODE` starts as `"manual_paste_guarded"` only if the guarded review flow is implemented; it does not ingest Google reviews.
+- offer builder, quick replies, photo prompts, multi-outlet localization, used history UI, and advanced low-data behavior remain disabled until pilot admission.
 
 Do not reuse `ENABLE_TODAY_WEEKLY_GROWTH_PACK` as the GrowthOS flag. That flag remains paused for the older Today wedge.
 
@@ -109,6 +118,43 @@ interface GrowthOSKit {
 }
 ```
 
+Required V1 action and destination types:
+
+```ts
+type GrowthOSActionType =
+  | "promote_item"
+  | "menu_event"
+  | "staff_push"
+  | "local_trust"
+  | "truth_fix"
+  | "review_reply";
+
+type GrowthOSDestination =
+  | "whatsapp_status"
+  | "whatsapp_message"
+  | "instagram_caption"
+  | "google_update_draft"
+  | "staff_brief"
+  | "counter_prompt"
+  | "qr_table_prompt"
+  | "review_reply";
+```
+
+Staff brief output remains inside the kit output structure. It does not create a staff system.
+
+```ts
+interface GrowthOSStaffBriefOutput {
+  destination: "staff_brief";
+  mainLine: string;
+  reason?: string;
+  avoidLines?: string[];
+  menuLinkLine?: string;
+  counterPrompt?: string;
+  expiresAt: Timestamp;
+  preflight: GrowthOSPreflightResult;
+}
+```
+
 ### `growthosExports/{exportId}`
 
 Execution signal only.
@@ -120,12 +166,23 @@ interface GrowthOSExport {
   sId: string;
   kitId: string;
   destination: GrowthOSDestination;
-  method: "copy" | "share" | "download" | "print";
+  method: "copy" | "share" | "download" | "print" | "mark_used";
   exportedAt: Timestamp;
 }
 ```
 
 Do not store revenue, order, footfall, or inferred performance in GrowthOS export rows.
+
+### Deferred Data Models
+
+Do not add these collections or document types in the V1 core unless the pilot explicitly unlocks them:
+
+| Deferred model | Reason |
+| --- | --- |
+| `growthosOffers` | Owner-Confirmed Offer Builder creates new business truth and needs separate governance. |
+| persisted quick replies | Most customer snippets should be deterministic and generated from source facts, not stored per read. |
+| persisted image assets | Existing Image Adaptation should generate on owner action and persist only when needed. |
+| multi-outlet campaign group | Multi-outlet localization should remain per selected store, not brand campaign ops. |
 
 ## 5. Types And Constants
 
@@ -140,6 +197,9 @@ Planned files:
 | `src/lib/growthos/actionRanking.ts` | Ranks action candidates using campaign engine plus store state. |
 | `src/lib/growthos/kitBuilder.ts` | Deterministic kit assembly and AI prompt input preparation. |
 | `src/lib/growthos/outputGuard.ts` | Sanitizes and rejects unsafe or unsupported claims. |
+| `src/lib/growthos/staffBrief.ts` | Builds deterministic staff brief output and avoid lists from source facts. |
+| `src/lib/growthos/readiness.ts` | Computes ready/limited/blocked/stale states for kit families. |
+| `src/lib/growthos/reviewGuard.ts` | Triage-first manual pasted review reply guard when enabled. |
 | `src/database/growthos/index.ts` | Client DAL and write helpers. |
 
 ## 6. API Routes
@@ -151,7 +211,7 @@ Use API routes only for operations that need server-side auth, paid capacity che
 | `POST /api/growthos/actions/refresh` | Build/rerank current action summary from MenuList truth. No provider call by default. |
 | `POST /api/growthos/kits/generate` | Generate one paid Growth Kit. Uses AI only when deterministic output is insufficient. |
 | `POST /api/growthos/kits/export` | Record copy/share/download/print execution signal. |
-| `POST /api/growthos/reviews/suggest` | Optional wrapper around review reply assist for owner-pasted review text. |
+| `POST /api/growthos/reviews/suggest` | Optional guarded wrapper around review reply assist for owner-pasted review text. |
 
 Each route must:
 
@@ -175,7 +235,9 @@ Preferred launch accounting:
 | Deterministic action ranking | Free. No provider call. |
 | Text kit generation | Add `GROWTHOS_KIT_GENERATION` or reuse `CAMPAIGN_CAPTION` only if product finance accepts shared accounting. |
 | Review reply draft | Reuse `REVIEW_REPLY_SUGGESTION` if the payload matches existing review assist behavior. |
-| Missing item image | Reuse `IMAGE_GENERATION` only when `GROWTHOS_IMAGE_MODE === "generate_if_missing"`. |
+| Staff brief | 0 units in V1 deterministic mode. |
+| Existing image adaptation | 0 provider units; Storage/render cost only when pilot-enabled and owner-triggered. |
+| Missing item image | No provider call in V1. Use photo prompt later instead of generating fake food. |
 
 If `GROWTHOS_KIT_GENERATION` is added:
 
@@ -211,7 +273,9 @@ Desktop views:
 
 - add-on overview
 - current action queue
+- menu truth readiness checklist
 - generated kit detail
+- Staff Brief Pack output
 - copy/download/print controls
 - stale source warning
 - entitlement empty state
@@ -234,6 +298,15 @@ Use mobile-native patterns:
 
 The mobile host can initially be the real owner Today tab currently rendered by `src/components/mobile/screens/MobileHoursScreen.tsx`, plus a compact Growth Kits screen if navigation supports it.
 
+Required mobile V1 behaviors:
+
+- copy/share latest message
+- copy/share Staff Brief
+- mark used
+- regenerate stale kit
+- keep latest loaded kit visible when refresh/generation fails
+- no long editor, analytics, calendar, channel setup, or design variant browsing
+
 ## 9. Direct Posting Policy
 
 No direct posting in the approved implementation.
@@ -254,6 +327,15 @@ Not allowed:
 - schedule posts
 - auto-repeat posts
 
+Also not allowed in V1:
+
+- direct WhatsApp API sending
+- CRM/inbox handling
+- staff management
+- offer invention
+- loyalty/coupon flow
+- AI image generation by default
+
 ## 10. Freshness And Staleness
 
 Every kit must have a source fact hash.
@@ -273,6 +355,10 @@ Critical facts:
 - opening hours for the promoted date
 - public menu link
 - review text for reply drafts
+
+Staff Brief expires at end of business day or when item availability/store status/public link changes.
+
+Offer kits, if ever approved, must expire at the earliest of offer end date, critical fact change, or manual deactivation.
 
 ## 11. Scheduler Policy
 
@@ -301,13 +387,30 @@ Security-sensitive implementation requirements:
 
 1. Add flags, constants, types, schemas, and entitlement helper.
 2. Add source fact builder and deterministic action ranking.
-3. Add DAL summary read/write helpers.
-4. Add API route for action refresh.
-5. Add kit builder and text generation route with AI capacity checks.
-6. Add desktop Growth Kits shell.
-7. Add mobile Growth Kits support.
-8. Add export tracking.
-9. Add stale source detection.
-10. Add tests and docs parity verification.
+3. Add readiness checklist logic.
+4. Add deterministic Staff Brief builder and preflight.
+5. Add DAL summary read/write helpers.
+6. Add API route for action refresh.
+7. Add kit builder and text generation route with AI capacity checks.
+8. Add desktop Growth Kits shell.
+9. Add mobile Growth Kits support, including latest-kit fallback.
+10. Add export tracking for copy/share/download/print/mark-used.
+11. Add stale source detection.
+12. Add guarded review reply only if safety and privacy tests pass.
+13. Add tests and docs parity verification.
 
 Do not activate the add-on for production until desktop, mobile, entitlement, cost, security, and support docs all pass.
+
+## 14. Pilot Extension Admission
+
+Do not implement pilot extensions until pilot evidence exists.
+
+| Extension | Admission criteria | Technical guard |
+| --- | --- | --- |
+| Existing Image Adaptation | Owners use text/staff kits and image assets are a repeated blocker. | `GROWTHOS_IMAGE_MODE="existing_only"`, owner-triggered render only. |
+| Customer FAQ Reply Snippets | Owners/staff repeatedly need menu/hour/item reply snippets. | Deterministic templates, no chatbot, no inbox. |
+| Photo Capture Prompts | Missing item images block recommended kits and owners upload after prompts. | No provider call; prompts rank only useful items. |
+| Multi-Outlet Localized Kits | Multi-outlet pilot has store-specific differences. | Generate per selected store; no broad fanout. |
+| Used History UI | Owners use multiple kits and need memory/repetition control. | Paginated export rows only, no ROI. |
+| Advanced Low-Data Access | Mobile use is high and refresh failures are observed. | Latest kit only; strict stale/entitlement policy. |
+| Owner-Confirmed Offer Builder | Founder approves new offer truth governance. | Separate offer facts with validity, terms, expiry, and store scope. |

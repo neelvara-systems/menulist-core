@@ -38,7 +38,7 @@ export default function MyCodexLoginPage({ searchParams }: MyCodexLoginPageProps
     const signedOut = firstValue(searchParams?.status) === 'signed-out';
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
+        <main className="mycodex-safe-page flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-10 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-50">
             <section className="w-full max-w-sm">
                 <div className="mb-8 flex items-center justify-center gap-3">
                     <MyCodexLogoMark className="h-10 w-6 shrink-0" />

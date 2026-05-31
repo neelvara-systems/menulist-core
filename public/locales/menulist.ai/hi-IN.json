@@ -2718,7 +2718,11 @@
             "q8": "क्या इससे Google या AI search में placement guarantee होती है?",
             "a8": "नहीं। Search engines और AI systems खुद decide करते हैं कि वे क्या crawl, cite और show करते हैं। MenuList आपका official page और menu clear, structured public business information की तरह तैयार करता है ताकि उन systems के पास पढ़ने के लिए बेहतर source हो।",
             "q9": "क्या staff MenuList use कर सकता है बिना full owner access के?",
-            "a9": "हाँ। Owners staff accounts बना सकते हैं, roles assign कर सकते हैं, staff passcodes reset कर सकते हैं और कोई staff छोड़ने पर access sign out कर सकते हैं। Staff सिर्फ वही areas use कर सकता है जो उसके role में allowed हैं।"
+            "a9": "हाँ। Owners staff accounts बना सकते हैं, roles assign कर सकते हैं, staff passcodes reset कर सकते हैं और कोई staff छोड़ने पर access sign out कर सकते हैं। Staff सिर्फ वही areas use कर सकता है जो उसके role में allowed हैं।",
+            "q10": "क्या मैं अपना existing menu link import कर सकता हूं?",
+            "a10": "हाँ। Signed-in owners ऐसा public menu link paste कर सकते हैं जो उनके business का हो या जिसे import करने की permission हो। MenuList review के लिए draft prepare करता है, ताकि link एक starting point रहे, maintain करने के लिए another public version नहीं।",
+            "q11": "क्या imported menu content अपने आप publish हो जाता है?",
+            "a11": "नहीं। Imported content आपके approve करने तक review में रहता है। अगर source साफ़ पढ़ा नहीं जा सके, तो आप menu photo या file upload कर सकते हैं, या menu manually edit कर सकते हैं।"
         },
         "FinalCta": {
             "title": "एक public menu बनाएं ",

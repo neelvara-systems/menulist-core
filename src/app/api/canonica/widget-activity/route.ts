@@ -102,7 +102,8 @@ const fetchFallbackWidgetActivity = async (
 ) => {
     const snapshot = await db
         .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
-        .orderBy('createdOn', 'desc')
+        .where('tId', '==', tenantId)
+        .where('sId', '==', storeId)
         .limit(FALLBACK_SCAN_LIMIT)
         .get();
 

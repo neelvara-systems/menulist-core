@@ -70,6 +70,6 @@ Required indexes:
 
 ## Future Cost Improvements
 
-- Add archive status and server-side compact summaries if board volume becomes high.
 - Use cursor-based scan reduction if tenant signal volume grows beyond current caps.
 - Feed Weekly Digest from `supportBoardSummary_{tId}_{sId}` instead of scanning board cards.
+- Follow the Canonica-wide [Cost Read-Model Guardrails](../cost-read-model-guardrails/README.md) before adding any new Support Board source sync or realtime behavior.

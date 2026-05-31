@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 25, 2026
+**Last Updated:** May 31, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -484,6 +484,8 @@ Key FAQ topics:
 - Search/AI placement caveat.
 - Staff access without owner access.
 - Pricing entry point.
+- Existing menu link import as an authenticated owner setup path, not a public scraper.
+- Imported content remains review-first and never publishes automatically.
 
 ---
 

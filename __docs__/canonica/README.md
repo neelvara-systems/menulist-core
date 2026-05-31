@@ -65,6 +65,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Canonica team members, workspace roles, permission claims, and rule-level access control |
 | 18  | `support-board/`                                 | Product/Ops/Dev | Private owner/staff Support Board, Needs Answer queue, internal notes, and future support-work roadmap |
 | 19  | `knowledge-intake-command-center/`               | Product/Ops/Dev | Planned founder-first, paid-gated source intake architecture that sits above the current KB generation pipeline |
+| 20  | `cost-read-model-guardrails/`                    | Developers/Ops | Canonica-wide summary-doc, bounded-list, listener, and Firebase cost guardrails |
 
 ---
 

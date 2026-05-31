@@ -57,6 +57,50 @@ function readPng(publicPath) {
   return PNG.sync.read(fs.readFileSync(path.join(ROOT, 'public', publicPath.replace(/^\//, ''))));
 }
 
+function getVisiblePngStats(png) {
+  let visiblePixels = 0;
+  let visibleXTotal = 0;
+  let visibleYTotal = 0;
+  let visibleMinX = png.width;
+  let visibleMaxX = -1;
+  let visibleMinY = png.height;
+  let visibleMaxY = -1;
+  let paleTilePixels = 0;
+
+  for (let index = 0; index < png.data.length; index += 4) {
+    const alpha = png.data[index + 3];
+    if (alpha <= 8) continue;
+
+    const pixelIndex = index >> 2;
+    const x = pixelIndex % png.width;
+    const y = Math.floor(pixelIndex / png.width);
+    visiblePixels += 1;
+    visibleXTotal += x;
+    visibleYTotal += y;
+    visibleMinX = Math.min(visibleMinX, x);
+    visibleMaxX = Math.max(visibleMaxX, x);
+    visibleMinY = Math.min(visibleMinY, y);
+    visibleMaxY = Math.max(visibleMaxY, y);
+
+    if (png.data[index] > 215 && png.data[index + 1] > 220 && png.data[index + 2] > 230) {
+      paleTilePixels += 1;
+    }
+  }
+
+  const visibleWidth = visibleMaxX - visibleMinX + 1;
+  const visibleHeight = visibleMaxY - visibleMinY + 1;
+
+  return {
+    visiblePixels,
+    visibleCenterX: visibleXTotal / visiblePixels,
+    visibleCenterY: visibleYTotal / visiblePixels,
+    visibleWidth,
+    visibleHeight,
+    visibleAspectRatio: visibleWidth / visibleHeight,
+    paleTilePixels,
+  };
+}
+
 function verifyManifest() {
   const manifest = JSON.parse(read('public/mycodex.webmanifest'));
 
@@ -84,6 +128,8 @@ function verifyManifest() {
 }
 
 function verifyTransparentLogoAssets() {
+  const sourceLogoStats = getVisiblePngStats(PNG.sync.read(fs.readFileSync(path.join(ROOT, 'public/mycodex-logo.png'))));
+
   for (const [file, [expectedWidth, expectedHeight]] of EXPECTED_TRANSPARENT_LOGOS.entries()) {
     const png = PNG.sync.read(fs.readFileSync(path.join(ROOT, file)));
     assert(png.width === expectedWidth, `${file} width must be ${expectedWidth}`);
@@ -97,46 +143,19 @@ function verifyTransparentLogoAssets() {
     ].map(([x, y]) => png.data[((png.width * y + x) << 2) + 3]);
     assert(cornerAlpha.every((alpha) => alpha === 0), `${file} must keep transparent corners`);
 
-    let visiblePixels = 0;
-    let visibleXTotal = 0;
-    let visibleYTotal = 0;
-    let visibleMinX = png.width;
-    let visibleMaxX = -1;
-    let visibleMinY = png.height;
-    let visibleMaxY = -1;
-    let paleTilePixels = 0;
-    for (let index = 0; index < png.data.length; index += 4) {
-      const alpha = png.data[index + 3];
-      if (alpha <= 8) continue;
-      const pixelIndex = index >> 2;
-      const x = pixelIndex % png.width;
-      const y = Math.floor(pixelIndex / png.width);
-      visiblePixels += 1;
-      visibleXTotal += x;
-      visibleYTotal += y;
-      visibleMinX = Math.min(visibleMinX, x);
-      visibleMaxX = Math.max(visibleMaxX, x);
-      visibleMinY = Math.min(visibleMinY, y);
-      visibleMaxY = Math.max(visibleMaxY, y);
-      if (png.data[index] > 215 && png.data[index + 1] > 220 && png.data[index + 2] > 230) {
-        paleTilePixels += 1;
-      }
-    }
+    const stats = getVisiblePngStats(png);
 
-    assert(visiblePixels > 0, `${file} must contain visible logo pixels`);
-    const visibleCenterX = visibleXTotal / visiblePixels;
-    const visibleCenterY = visibleYTotal / visiblePixels;
-    assert(Math.abs(visibleCenterX - (png.width - 1) / 2) <= png.width * 0.025, `${file} visible mark must be horizontally centered`);
-    assert(Math.abs(visibleCenterY - (png.height - 1) / 2) <= png.height * 0.025, `${file} visible mark must be vertically centered`);
+    assert(stats.visiblePixels > 0, `${file} must contain visible logo pixels`);
+    assert(Math.abs(stats.visibleCenterX - (png.width - 1) / 2) <= png.width * 0.025, `${file} visible mark must be horizontally centered`);
+    assert(Math.abs(stats.visibleCenterY - (png.height - 1) / 2) <= png.height * 0.025, `${file} visible mark must be vertically centered`);
 
     if (expectedWidth === expectedHeight) {
-      const visibleWidth = visibleMaxX - visibleMinX + 1;
-      const visibleHeight = visibleMaxY - visibleMinY + 1;
-      assert(visibleWidth >= expectedWidth * 0.5 && visibleWidth <= expectedWidth * 0.7, `${file} must contain the portrait logo instead of stretching it across the square canvas`);
-      assert(visibleHeight >= expectedHeight * 0.75 && visibleHeight <= expectedHeight * 0.9, `${file} must preserve the source logo height inside the square canvas`);
+      assert(stats.visibleWidth >= expectedWidth * 0.45 && stats.visibleWidth <= expectedWidth * 0.6, `${file} must contain the portrait logo with install-icon padding instead of stretching it across the square canvas`);
+      assert(stats.visibleHeight >= expectedHeight * 0.65 && stats.visibleHeight <= expectedHeight * 0.78, `${file} must preserve the source logo with install-icon padding inside the square canvas`);
+      assert(Math.abs(stats.visibleAspectRatio - sourceLogoStats.visibleAspectRatio) <= 0.02, `${file} must keep the source logo aspect ratio and must not look compressed`);
     }
 
-    assert(paleTilePixels < visiblePixels * 0.02, `${file} must not include the pale background tile`);
+    assert(stats.paleTilePixels < stats.visiblePixels * 0.02, `${file} must not include the pale background tile`);
   }
 }
 

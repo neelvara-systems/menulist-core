@@ -35,6 +35,11 @@ GrowthOS must follow existing MenuList cost discipline:
 | Generate kit | 1-3 reads | Read source facts immediately before generation to prevent stale output. |
 | Copy/share/download kit | 0 reads | UI should already have kit data. |
 | Review reply draft | 0-1 reads | Owner-pasted text can avoid review collection reads. |
+| Staff Brief generation | 0 additional reads when source facts are already loaded | Deterministic V1 output from same source facts. |
+| Latest kit mobile fallback | 0 additional server reads after failed refresh | Uses last successfully loaded kit payload on device. |
+| Existing Image Adaptation pilot | 1-2 reads when owner requests asset | Verify item image, item facts, public link, and current source hash. |
+| Customer FAQ snippets pilot | 0-1 reads | Prefer current summary/source facts; most snippets deterministic. |
+| Multi-outlet pilot | 1 summary/source read per selected store | Never fan out across all stores automatically. |
 
 ## 4. Planned Firestore Writes
 
@@ -45,6 +50,10 @@ GrowthOS must follow existing MenuList cost discipline:
 | Generate image | Existing image pipeline costs | Reuse current image generation accounting and Storage path. |
 | Copy/share/download/print | 1-2 writes | Export row plus optional kit status update. |
 | Mark stale | 1 write | Only when a stale check is run and critical facts changed. |
+| Staff Brief copied/shared | 1 export write | Execution signal only. |
+| Mark used | 1 export write or kit status update | No ROI or customer attribution. |
+| Existing Image Adaptation pilot | 0-2 writes | Export row plus Storage metadata only when owner downloads/persists. |
+| Owner-Confirmed Offer Builder later | 1 offer write plus audit/status updates | Deferred; creates new business truth and needs separate approval. |
 
 ## 5. Planned Collections
 
@@ -87,6 +96,42 @@ Retention:
 - keep as bounded operational history
 - do not join to orders, revenue, or customer activity for ROI claims
 
+Allowed methods:
+
+```txt
+copy
+share
+download
+print
+mark_used
+regenerate
+stale
+```
+
+Forbidden fields:
+
+```txt
+revenue
+orders
+footfall
+customerId
+estimatedLift
+roi
+conversion
+attribution
+```
+
+### Deferred/Pilot Collections
+
+Do not create these in V1:
+
+| Collection | Gate |
+| --- | --- |
+| `growthosOffers` | Owner-Confirmed Offer Builder approved after pilot and governance review. |
+| `growthosAssets` | Existing Image Adaptation pilot needs persisted asset history. |
+| `growthosQuickReplies` | Usually unnecessary because snippets should be deterministic. |
+| `growthosOutletGroups` | Avoid campaign-center behavior; multi-outlet kits stay per selected store. |
+
 ## 6. Index Plan
 
 Likely composite indexes:
@@ -124,7 +169,11 @@ Planned cost model:
 | Deterministic copy from existing templates | No | 0 units |
 | Text Growth Kit | Yes, when needed | 1-2 units, final cost after token measurement |
 | Review reply draft | Yes | Reuse `REVIEW_REPLY_SUGGESTION` unit cost if payload fits |
-| Missing image generation | Yes | Reuse existing image generation unit cost |
+| Staff Brief | No in V1 | 0 units deterministic |
+| Customer FAQ snippets | No for standard snippets | 0 units deterministic |
+| Photo Capture Prompt | No | 0 units, metadata/readiness only |
+| Existing Image Adaptation | No provider call | Render/Storage cost only if pilot enabled |
+| Missing image generation | No in approved scope | Do not generate fake food in V1 |
 
 Current cost evidence:
 
@@ -155,3 +204,17 @@ Do not ship until:
 - no realtime listener is required for normal use
 - no direct posting API introduces hidden external costs
 - Firebase rules and indexes are documented if changed
+
+## 11. Pilot Cost Gates
+
+| Feature | Cost decision |
+| --- | --- |
+| Staff Brief Pack | V1 deterministic. No provider cost. One export write only when copied/shared/marked used. |
+| Existing Image Adaptation | Pilot only. Generate on owner action; Storage write only if persisted; no AI provider call. |
+| Owner-Confirmed Offer Builder | Deferred. Adds offer writes and expiry/stale logic; do not add before pilot. |
+| Review Reply Guard | Manual paste only. One bounded provider call with no raw review logging. |
+| Customer FAQ Reply Snippets | Pilot. Deterministic snippets from current facts; export write only when copied. |
+| Photo Capture Prompts | Pilot. Readiness/ranking only; photo upload uses existing MenuList image flow. |
+| Multi-Outlet Localized Kits | Pilot. Per selected store only; no brand-wide background refresh. |
+| Used History UI | Pilot. Paginated `growthosExports`; no aggregate dashboard unless proven necessary. |
+| Low-Data Mobile Access | V1 latest-kit fallback uses local state. No extra Firestore writes. |

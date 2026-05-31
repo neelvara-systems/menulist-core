@@ -13,8 +13,10 @@
 | `ENABLE_GROWTHOS_ADDON=false` | No Growth Kits navigation, Today entry point, API generation, or mobile card is available. |
 | `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if entitlement exists. |
 | `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
-| `GROWTHOS_IMAGE_MODE=existing_only` | Missing item image does not trigger image generation. |
-| `GROWTHOS_REVIEW_REPLY_MODE=manual_paste` | Review reply requires owner-pasted text. |
+| `GROWTHOS_STAFF_BRIEF_MODE=deterministic` | Staff Brief generation uses current source facts with no provider call. |
+| `GROWTHOS_IMAGE_MODE=disabled` | Missing item image does not trigger image generation or asset rendering. |
+| `GROWTHOS_REVIEW_REPLY_MODE=manual_paste_guarded` | Review reply requires pasted text and triage before draft. |
+| offer/quick-reply/photo/multi-outlet pilot flags disabled | No pilot-only UI or API path appears. |
 
 ## 2. Entitlement Tests
 
@@ -34,8 +36,10 @@
 | Price changed after kit generation | Kit becomes stale before copy/export. |
 | Public menu link missing | Kit either omits link or blocks link-based destination. |
 | Store closed today | Kit does not imply the item is available today. |
-| Item has no image and image mode is existing-only | Kit still works without generating image. |
+| Item has no image and image mode is disabled/existing-only | Text and Staff Brief kits still work without generating image. |
 | Review text not supplied | Review reply cannot be generated. |
+| Staff Brief item unavailable | Staff Brief must not suggest it and should place it in avoid list if relevant. |
+| Store-specific facts differ | No cross-store kit reuse unless facts are identical. |
 
 ## 4. Output Safety Tests
 
@@ -43,6 +47,7 @@
 | --- | --- |
 | Prompt attempts to add discount | Output rejects or removes unsupported discount. |
 | Prompt attempts "best in city" claim | Output rejects unsupported claim. |
+| Prompt attempts to invent offer | Output rejects unsupported offer. |
 | Generated copy includes phone number in GBP text | Output warns or removes if not sourced/allowed. |
 | Regulated category wording appears | Output blocks or requires owner review. |
 | Model returns malformed JSON | API returns safe error without charging if no successful output. |
@@ -66,8 +71,10 @@
 | --- | --- |
 | Open Growth Kits home | One summary read target. |
 | Generate deterministic action queue | Bounded reads and one summary write target. |
+| Generate Staff Brief | No provider call and no extra write until kit/export action. |
 | Generate text kit | Capacity check before provider call; kit, summary, AI log, and capacity writes only as expected. |
 | Copy output | One export write and optional kit status update. |
+| Mark used | Execution signal only; no ROI/order/customer field written. |
 | View history | Paginated query only. |
 | No activity | No background writes. |
 
@@ -80,6 +87,8 @@
 | Long item name | Text wraps without layout overlap. |
 | Copy action | Clipboard copy succeeds and records export. |
 | Stale kit | Copy action blocked or warning requires regeneration. |
+| Staff Brief Pack | Main line, avoid list, menu fallback, copy/share/mark-used render correctly. |
+| Used History UI flag disabled | No analytics/history dashboard appears beyond core execution signals. |
 | Direct posting | No direct posting control appears. |
 
 ## 8. Mobile UI Tests
@@ -91,6 +100,8 @@
 | Long text | Wraps without overlapping buttons. |
 | Kit detail sheet | All outputs are reachable without dense desktop UI. |
 | Stale kit | Warning is visible and action remains clear. |
+| Refresh/generation failure | Latest loaded kit remains visible with retry state. |
+| Staff Brief mobile card | Copy/share/mark-used works with 44px targets. |
 | Free/base store | Cannot access through mobile route or deep link. |
 
 ## 9. Review Reply Tests
@@ -100,10 +111,26 @@
 | Positive review pasted | Short thank-you draft generated. |
 | Negative review pasted | Calm owner-approved draft generated or warning shown. |
 | Volatile review pasted | System can advise not to reply publicly. |
+| Food-safety/legal review pasted | Public reply can be blocked or escalation warning shown. |
+| Raw review text on error | Raw review text is not logged. |
 | No pasted text | Generate button disabled. |
 | GBP ingestion unavailable | No automatic review fetch is attempted. |
 
-## 10. Docs And Public Copy Tests
+## 10. Pilot Extension Tests
+
+| Test | Expected result |
+| --- | --- |
+| Existing Image Adaptation enabled | Uses existing item image only, owner-triggered, no AI image provider call. |
+| Missing image in image adaptation | Shows Add Photo/readiness prompt; does not generate fake image. |
+| Offer Builder disabled | No offer creation UI/API appears. |
+| Offer Builder later enabled | Owner-created offer required; expired/unavailable/store-mismatched offers blocked. |
+| Customer FAQ snippets enabled | Snippets are deterministic where possible and never act as chatbot/inbox. |
+| Photo Capture Prompts enabled | Prompts rank only useful missing-image items and do not become a tutorial. |
+| Multi-outlet enabled | Outputs are store-specific and blocked per outlet when facts differ. |
+| Used History UI enabled | Shows copied/shared/downloaded/printed/marked-used only; no revenue/ROI. |
+| Advanced low-data enabled | Stale price/availability-sensitive copy is not silently reusable offline. |
+
+## 11. Docs And Public Copy Tests
 
 | Test | Expected result |
 | --- | --- |
@@ -114,7 +141,7 @@
 | Docs mention Firebase cost | Pass required. |
 | Docs mention mobile support | Pass required. |
 
-## 11. Rollout Tests
+## 12. Rollout Tests
 
 | Test | Expected result |
 | --- | --- |
@@ -124,7 +151,7 @@
 | Feature flag turned off | Module disappears and APIs stop generation safely. |
 | Billing capacity exhausted | Owner sees clear capacity message and no provider call occurs. |
 
-## 12. Completion Criteria
+## 13. Completion Criteria
 
 Implementation is not complete until:
 

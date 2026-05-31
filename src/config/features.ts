@@ -14,6 +14,14 @@ export const FEATURE_FLAGS = {
     ENABLE_MYCODEX_READER: true,
 
     /**
+     * Enable browser-local read-aloud controls in MyCodex.
+     *
+     * This uses the user's device/browser SpeechSynthesis engine only. It
+     * must not call OpenAI, Google Cloud, Firebase, or any provider route.
+     */
+    ENABLE_MYCODEX_AUDIO_READER: true,
+
+    /**
      * Enable the internal Website Asset Operating System package.
      *
      * This is a separate-product-style internal architecture used only by

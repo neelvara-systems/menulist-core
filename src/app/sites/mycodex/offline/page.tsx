@@ -20,7 +20,7 @@ export const dynamic = 'force-static';
 
 export default function MyCodexOfflinePage() {
     return (
-        <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-50">
+        <main className="mycodex-safe-page flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-50">
             <section className="w-full max-w-sm text-center">
                 <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#e4e9f4]">
                     <MyCodexLogoMark className="h-16 w-[38px]" />

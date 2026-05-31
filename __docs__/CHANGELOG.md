@@ -6,6 +6,71 @@
 
 ---
 
+## May 31, 2026 — GrowthOS Deep Conversation Review
+
+### Changed
+
+- **Growth Kits scope is now freeze-ready** — Reviewed the 3,606-line GrowthOS discussion and updated the active GrowthOS Add-on docs so V1 starts with Do This Now, truth readiness, owner voice basics, compliance preflight, one kit to multiple handoffs, Staff Brief Pack, basic export logging, and mobile latest-kit fallback.
+- **Pilot features are separated from launch scope** — Existing image adaptation, customer reply snippets, photo capture prompts, multi-outlet localized kits, used-history UI, advanced low-data access, offer builder, and review-triage expansion are now explicitly pilot-gated or deferred.
+- **Staff Brief Pack promoted to V1 core** — Staff guidance is now documented as a high-leverage owner workflow, while staff management, shifts, commissions, internal chat, CRM, loyalty, and auto-posting remain rejected.
+- **Conversation review archived** — Added `__docs__/growthos-addon/_archive/growthos-deep-conversation-review-2026-05-31.md` with line-range mapping and final accept/defer/reject decisions.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, or deploys.
+
+---
+
+## May 31, 2026 — MyCodex Installed Icon Padding
+
+### Fixed
+
+- **MyCodex installed icon now has more breathing room** — The PWA icon artwork keeps the same transparent logo mark, but the generated install icons now use additional internal padding so the iPhone home-screen icon no longer appears oversized.
+
+### Cost
+
+- **No Firebase or provider cost** — This is a static MyCodex asset update only. It adds no reads, writes, listeners, functions, storage operations, or API routes.
+
+---
+
+## May 31, 2026 — MyCodex Reader Preference Persistence
+
+### Fixed
+
+- **Reader settings now survive app relaunches safely** — MyCodex loads saved reader, audio, navigation, and recent-document preferences before persistence writes run, preventing first-render defaults from resetting stored settings.
+- **Navigation expansion is now remembered** — Expanded documentation folders are stored under `mycodex:expanded-folders` so mobile and desktop navigation returns to the reader's last browsing shape.
+
+### Cost
+
+- **No Firebase or provider cost** — Preferences remain browser-local in `localStorage`. This adds no reads, writes, listeners, functions, storage operations, or API routes.
+
+---
+
+## May 31, 2026 — MyCodex iOS PWA Safe Areas
+
+### Fixed
+
+- **MyCodex now respects iPhone PWA safe areas** — Mobile header, reader content, navigation drawer, settings drawer, login/offline pages, audio mini-player, scroll-to-top button, and status toast now reserve iOS status-bar, notch, home-indicator, and horizontal safe-area space.
+
+### Cost
+
+- **No Firebase or provider cost** — This is MyCodex-scoped CSS/layout handling only. It adds no reads, writes, listeners, functions, storage operations, or API routes.
+
+---
+
+## May 31, 2026 — MyCodex Audio Reader
+
+### Added
+
+- **MyCodex can read docs aloud without provider cost** — Added browser/device voice reading for selected text, current section, and full page inside the MyCodex settings drawer.
+- **Reader comfort settings** — Added local voice selection, speed control, follow-reading scroll, best-effort keep-screen-awake, pause/resume/stop, active-block highlight, and an active mini-player.
+
+### Cost
+
+- **No Firebase or cloud TTS cost** — The reader uses the browser `speechSynthesis` API only. It adds no Firestore operations, Cloud Functions, Storage operations, OpenAI calls, Google Cloud calls, or MyCodex audio API route.
+
+---
+
 ## May 31, 2026 — Canonica Product Pipeline Alignment Audit
 
 ### Fixed
@@ -13,11 +78,12 @@
 - **Owner launch checklist stays in owner routes** — Customer-facing compatibility routes remain available for support surfaces, but owner checklist actions now open Knowledge Base, Ticket Inbox, and Changelog management screens.
 - **Canonica graph and audit writes keep product scope** — Nightly graph summaries now carry `pId/tId/sId`, Firestore rules recognize the live `entityGraphIndex_*` summary document, old graph summaries get a one-time metadata backfill, and system audit logs from nightly/draft/bootstrap flows include Canonica product scope.
 - **Non-Canonica signed-in accounts leave the dashboard path** — An authenticated Google account without a Canonica workspace is routed to Canonica pricing/subscription instead of seeing a blocked dashboard state.
+- **Canonica Firestore read paths now have explicit guardrails** — Added Canonica-wide cost read-model docs, tenant-scoped the widget activity fallback query, and clamped signal, audit, and Support Board list limits.
 
 ### Cost
 
 - **Low one-time metadata cost** — Existing graph summary documents may receive one merge write to add `pId/tId/sId`; unchanged summaries still skip normal graph rewrites.
-- **No new listeners or unbounded scans** — The audit changes add no public reads, no realtime listeners, no new collections, and no scheduler fan-out.
+- **No new listeners or unbounded scans** — The audit changes add no public reads, no realtime listeners, no new collections, and no scheduler fan-out. Widget activity fallback reads are now tenant-scoped, and caller-provided list limits are clamped.
 
 ## May 31, 2026 — VisualMeta Separate Product Planning
 

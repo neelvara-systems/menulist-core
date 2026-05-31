@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { FEATURE_FLAGS } from '@config/features';
 import MyCodexLogoMark from './MyCodexLogoMark';
 import { 
     LuMenu, 
@@ -32,7 +33,11 @@ import {
     LuLogOut,
     LuArrowLeft,
     LuArrowRight,
-    LuHistory
+    LuHistory,
+    LuVolume2,
+    LuPlay,
+    LuPause,
+    LuSquare
 } from 'react-icons/lu';
 
 interface DocNode {
@@ -54,6 +59,24 @@ interface ReaderHistoryEntry {
     sourcePath: string;
     visitedAt: number;
 }
+
+interface SpeechChunk {
+    text: string;
+    element: HTMLElement | null;
+    label: string;
+}
+
+interface WakeLockSentinelLike extends EventTarget {
+    readonly released: boolean;
+    readonly type: 'screen';
+    release: () => Promise<void>;
+}
+
+type NavigatorWithWakeLock = Navigator & {
+    wakeLock?: {
+        request: (type: 'screen') => Promise<WakeLockSentinelLike>;
+    };
+};
 
 interface MyCodexClientContainerProps {
     docsTree: DocNode[];
@@ -94,16 +117,26 @@ const normalizeMarkdownDocPath = (value: string) => {
 const READER_FONT_SIZE_STORAGE_KEY = 'mycodex:reader-font-size';
 const READER_WIDTH_STORAGE_KEY = 'mycodex:reader-width';
 const READER_NAV_STORAGE_KEY = 'mycodex:sidebar-pinned';
+const READER_EXPANDED_FOLDERS_STORAGE_KEY = 'mycodex:expanded-folders';
 const READER_RECENT_DOCS_STORAGE_KEY = 'mycodex:recent-docs';
+const READER_AUDIO_VOICE_STORAGE_KEY = 'mycodex:audio-voice';
+const READER_AUDIO_RATE_STORAGE_KEY = 'mycodex:audio-rate';
+const READER_AUDIO_AUTOSCROLL_STORAGE_KEY = 'mycodex:audio-autoscroll';
+const READER_AUDIO_WAKE_LOCK_STORAGE_KEY = 'mycodex:audio-wake-lock';
 const DEFAULT_READER_FONT_SIZE = 16;
 const MIN_READER_FONT_SIZE = 10;
 const MAX_READER_FONT_SIZE = 22;
+const DEFAULT_READER_AUDIO_RATE = 1;
+const MIN_READER_AUDIO_RATE = 0.75;
+const MAX_READER_AUDIO_RATE = 1.5;
+const SPEECH_CHUNK_MAX_LENGTH = 900;
 const MAX_TREE_INDENT_DEPTH = 4;
 const MAX_SCREENSHOT_HEIGHT = 14000;
 const MAX_RECENT_DOCS = 8;
 const SETTINGS_DRAWER_TRANSITION_MS = 300;
 
 type ReaderWidth = 'focus' | 'standard' | 'wide';
+type AudioStatus = 'idle' | 'playing' | 'paused';
 
 const READER_WIDTH_STEPS: ReaderWidth[] = ['focus', 'standard', 'wide'];
 const READER_WIDTH_VALUES: Record<ReaderWidth, string> = {
@@ -211,11 +244,69 @@ const isReaderHistoryEntry = (value: unknown): value is ReaderHistoryEntry => {
         && typeof entry.visitedAt === 'number';
 };
 
+const isExpandedFoldersRecord = (value: unknown): value is Record<string, boolean> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    return Object.values(value).every((entry) => typeof entry === 'boolean');
+};
+
 const clampReaderFontSize = (value: number) => Math.min(MAX_READER_FONT_SIZE, Math.max(MIN_READER_FONT_SIZE, value));
+const clampSpeechRate = (value: number) => Math.min(MAX_READER_AUDIO_RATE, Math.max(MIN_READER_AUDIO_RATE, value));
+
+const normalizeSpeechText = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const splitSpeechText = (text: string) => {
+    const normalized = normalizeSpeechText(text);
+    if (!normalized) return [];
+
+    const sentences = normalized.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [normalized];
+    const chunks: string[] = [];
+    let currentChunk = '';
+
+    const pushChunk = () => {
+        if (currentChunk) {
+            chunks.push(currentChunk);
+            currentChunk = '';
+        }
+    };
+
+    sentences.forEach((sentence) => {
+        const cleanedSentence = normalizeSpeechText(sentence);
+        if (!cleanedSentence) return;
+
+        if (cleanedSentence.length > SPEECH_CHUNK_MAX_LENGTH) {
+            pushChunk();
+            let longLine = '';
+            cleanedSentence.split(/\s+/).forEach((word) => {
+                const candidate = longLine ? `${longLine} ${word}` : word;
+                if (candidate.length > SPEECH_CHUNK_MAX_LENGTH && longLine) {
+                    chunks.push(longLine);
+                    longLine = word;
+                } else {
+                    longLine = candidate;
+                }
+            });
+            if (longLine) chunks.push(longLine);
+            return;
+        }
+
+        const candidate = currentChunk ? `${currentChunk} ${cleanedSentence}` : cleanedSentence;
+        if (candidate.length > SPEECH_CHUNK_MAX_LENGTH) {
+            pushChunk();
+            currentChunk = cleanedSentence;
+        } else {
+            currentChunk = candidate;
+        }
+    });
+
+    pushChunk();
+    return chunks;
+};
 
 const isReaderWidth = (value: string | null): value is ReaderWidth => (
     value === 'focus' || value === 'standard' || value === 'wide'
 );
+
+const IS_AUDIO_READER_ENABLED = FEATURE_FLAGS.ENABLE_MYCODEX_AUDIO_READER;
 
 export default function MyCodexClientContainer({
     docsTree,
@@ -239,11 +330,32 @@ export default function MyCodexClientContainer({
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [settingsMounted, setSettingsMounted] = useState(false);
     const [recentDocs, setRecentDocs] = useState<ReaderHistoryEntry[]>([]);
+    const [readerSettingsHydrated, setReaderSettingsHydrated] = useState(false);
+    const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+    const [speechVoices, setSpeechVoices] = useState<SpeechSynthesisVoice[]>([]);
+    const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+    const [speechRate, setSpeechRate] = useState(DEFAULT_READER_AUDIO_RATE);
+    const [speechAutoScroll, setSpeechAutoScroll] = useState(true);
+    const [keepScreenAwake, setKeepScreenAwake] = useState(true);
+    const [isWakeLockSupported, setIsWakeLockSupported] = useState(false);
+    const [wakeLockActive, setWakeLockActive] = useState(false);
+    const [wakeLockUnavailable, setWakeLockUnavailable] = useState(false);
+    const [audioStatus, setAudioStatus] = useState<AudioStatus>('idle');
+    const [activeSpeechLabel, setActiveSpeechLabel] = useState('');
+    const [speechProgress, setSpeechProgress] = useState({ current: 0, total: 0 });
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const readerCaptureRef = useRef<HTMLDivElement | null>(null);
     const actionStatusTimerRef = useRef<number | null>(null);
     const settingsCloseTimerRef = useRef<number | null>(null);
     const settingsOpenFrameRef = useRef<number | null>(null);
+    const speechQueueRef = useRef<SpeechChunk[]>([]);
+    const speechIndexRef = useRef(0);
+    const speechSessionRef = useRef(0);
+    const activeSpeechElementRef = useRef<HTMLElement | null>(null);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+    const wakeLockMessageShownRef = useRef(false);
+    const speakSpeechChunkRef = useRef<(index: number) => void>(() => undefined);
 
     const clearSettingsAnimationHandles = useCallback(() => {
         if (settingsCloseTimerRef.current !== null) {
@@ -296,6 +408,37 @@ export default function MyCodexClientContainer({
             setSidebarPinned(false);
         }
 
+        const storedVoiceURI = localStorage.getItem(READER_AUDIO_VOICE_STORAGE_KEY);
+        if (storedVoiceURI) {
+            setSelectedVoiceURI(storedVoiceURI);
+        }
+
+        const storedSpeechRate = Number(localStorage.getItem(READER_AUDIO_RATE_STORAGE_KEY));
+        if (Number.isFinite(storedSpeechRate)) {
+            setSpeechRate(clampSpeechRate(storedSpeechRate));
+        }
+
+        const storedAutoScroll = localStorage.getItem(READER_AUDIO_AUTOSCROLL_STORAGE_KEY);
+        if (storedAutoScroll === 'false') {
+            setSpeechAutoScroll(false);
+        }
+
+        const storedWakeLock = localStorage.getItem(READER_AUDIO_WAKE_LOCK_STORAGE_KEY);
+        if (storedWakeLock === 'false') {
+            setKeepScreenAwake(false);
+        }
+
+        try {
+            const storedExpandedFolders = JSON.parse(localStorage.getItem(READER_EXPANDED_FOLDERS_STORAGE_KEY) || '{}');
+            if (isExpandedFoldersRecord(storedExpandedFolders)) {
+                setExpandedFolders(storedExpandedFolders);
+            } else {
+                localStorage.removeItem(READER_EXPANDED_FOLDERS_STORAGE_KEY);
+            }
+        } catch {
+            localStorage.removeItem(READER_EXPANDED_FOLDERS_STORAGE_KEY);
+        }
+
         try {
             const storedRecentDocs = JSON.parse(localStorage.getItem(READER_RECENT_DOCS_STORAGE_KEY) || '[]');
             if (Array.isArray(storedRecentDocs)) {
@@ -304,11 +447,13 @@ export default function MyCodexClientContainer({
         } catch {
             localStorage.removeItem(READER_RECENT_DOCS_STORAGE_KEY);
         }
+
+        setReaderSettingsHydrated(true);
     }, []);
 
     // Apply dark class to <html> and persist
     useEffect(() => {
-        if (isDark === null) return;
+        if (isDark === null || !readerSettingsHydrated) return;
         const root = document.documentElement;
         if (isDark) {
             root.classList.add('dark');
@@ -317,21 +462,91 @@ export default function MyCodexClientContainer({
             root.classList.remove('dark');
             localStorage.setItem('theme', 'light');
         }
-    }, [isDark]);
+    }, [isDark, readerSettingsHydrated]);
 
     const toggleTheme = () => setIsDark((prev) => !prev);
 
     useEffect(() => {
+        if (!readerSettingsHydrated) return;
         localStorage.setItem(READER_FONT_SIZE_STORAGE_KEY, String(readerFontSize));
-    }, [readerFontSize]);
+    }, [readerFontSize, readerSettingsHydrated]);
 
     useEffect(() => {
+        if (!readerSettingsHydrated) return;
         localStorage.setItem(READER_WIDTH_STORAGE_KEY, readerWidth);
-    }, [readerWidth]);
+    }, [readerSettingsHydrated, readerWidth]);
 
     useEffect(() => {
+        if (!readerSettingsHydrated) return;
         localStorage.setItem(READER_NAV_STORAGE_KEY, String(sidebarPinned));
-    }, [sidebarPinned]);
+    }, [readerSettingsHydrated, sidebarPinned]);
+
+    useEffect(() => {
+        if (!readerSettingsHydrated) return;
+        try {
+            localStorage.setItem(READER_EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(expandedFolders));
+        } catch {
+            // Expanded folders are convenience state; never block reading.
+        }
+    }, [expandedFolders, readerSettingsHydrated]);
+
+    useEffect(() => {
+        if (!readerSettingsHydrated) return;
+        if (!selectedVoiceURI) return;
+        localStorage.setItem(READER_AUDIO_VOICE_STORAGE_KEY, selectedVoiceURI);
+    }, [readerSettingsHydrated, selectedVoiceURI]);
+
+    useEffect(() => {
+        if (!readerSettingsHydrated) return;
+        localStorage.setItem(READER_AUDIO_RATE_STORAGE_KEY, String(speechRate));
+    }, [readerSettingsHydrated, speechRate]);
+
+    useEffect(() => {
+        if (!readerSettingsHydrated) return;
+        localStorage.setItem(READER_AUDIO_AUTOSCROLL_STORAGE_KEY, String(speechAutoScroll));
+    }, [readerSettingsHydrated, speechAutoScroll]);
+
+    useEffect(() => {
+        if (!readerSettingsHydrated) return;
+        localStorage.setItem(READER_AUDIO_WAKE_LOCK_STORAGE_KEY, String(keepScreenAwake));
+    }, [keepScreenAwake, readerSettingsHydrated]);
+
+    useEffect(() => {
+        if (!IS_AUDIO_READER_ENABLED) return;
+        if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance === 'undefined') return;
+
+        const synthesis = window.speechSynthesis;
+        setIsSpeechSupported(true);
+
+        const loadVoices = () => {
+            const voices = synthesis.getVoices();
+            setSpeechVoices(voices);
+            setSelectedVoiceURI((previousVoiceURI) => {
+                if (previousVoiceURI && voices.some((voice) => voice.voiceURI === previousVoiceURI)) {
+                    return previousVoiceURI;
+                }
+
+                const storedVoiceURI = localStorage.getItem(READER_AUDIO_VOICE_STORAGE_KEY);
+                if (storedVoiceURI && voices.some((voice) => voice.voiceURI === storedVoiceURI)) {
+                    return storedVoiceURI;
+                }
+
+                return voices.find((voice) => voice.default)?.voiceURI || voices[0]?.voiceURI || previousVoiceURI;
+            });
+        };
+
+        loadVoices();
+        synthesis.addEventListener('voiceschanged', loadVoices);
+
+        return () => {
+            synthesis.removeEventListener('voiceschanged', loadVoices);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!IS_AUDIO_READER_ENABLED) return;
+        setIsWakeLockSupported(Boolean((navigator as NavigatorWithWakeLock).wakeLock?.request));
+    }, []);
 
     useEffect(() => {
         const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
@@ -580,13 +795,376 @@ export default function MyCodexClientContainer({
         });
     }, [currentDocumentTitle, currentPath, documentSourcePath]);
 
-    const showActionStatus = (message: string, tone: 'success' | 'error' | 'info' = 'success') => {
+    const showActionStatus = useCallback((message: string, tone: 'success' | 'error' | 'info' = 'success') => {
         setActionStatus({ message, tone });
         if (actionStatusTimerRef.current) {
             window.clearTimeout(actionStatusTimerRef.current);
         }
         actionStatusTimerRef.current = window.setTimeout(() => setActionStatus(null), 2400);
-    };
+    }, []);
+
+    const releaseWakeLock = useCallback(async () => {
+        const currentWakeLock = wakeLockRef.current;
+        wakeLockRef.current = null;
+
+        if (currentWakeLock && !currentWakeLock.released) {
+            try {
+                await currentWakeLock.release();
+            } catch {
+                // The browser may already have released it during visibility changes.
+            }
+        }
+
+        setWakeLockActive(false);
+    }, []);
+
+    const requestWakeLock = useCallback(async () => {
+        if (!IS_AUDIO_READER_ENABLED || !keepScreenAwake) return;
+
+        const nav = navigator as NavigatorWithWakeLock;
+        if (!nav.wakeLock?.request) {
+            setIsWakeLockSupported(false);
+            setWakeLockUnavailable(true);
+            if (!wakeLockMessageShownRef.current) {
+                showActionStatus('Keep-awake is not available in this browser', 'info');
+                wakeLockMessageShownRef.current = true;
+            }
+            return;
+        }
+
+        if (wakeLockRef.current && !wakeLockRef.current.released) {
+            setWakeLockActive(true);
+            setWakeLockUnavailable(false);
+            return;
+        }
+
+        try {
+            const wakeLock = await nav.wakeLock.request('screen');
+            wakeLockRef.current = wakeLock;
+            setIsWakeLockSupported(true);
+            setWakeLockActive(true);
+            setWakeLockUnavailable(false);
+            wakeLock.addEventListener('release', () => {
+                if (wakeLockRef.current === wakeLock) {
+                    wakeLockRef.current = null;
+                }
+                setWakeLockActive(false);
+            }, { once: true });
+        } catch {
+            wakeLockRef.current = null;
+            setWakeLockActive(false);
+            setWakeLockUnavailable(true);
+            if (!wakeLockMessageShownRef.current) {
+                showActionStatus('Keep-awake could not start on this device', 'info');
+                wakeLockMessageShownRef.current = true;
+            }
+        }
+    }, [keepScreenAwake, showActionStatus]);
+
+    const clearSpeechHighlight = useCallback(() => {
+        if (activeSpeechElementRef.current) {
+            activeSpeechElementRef.current.classList.remove('mycodex-speaking-block');
+            activeSpeechElementRef.current = null;
+        }
+    }, []);
+
+    const endSpeechSession = useCallback((shouldCancel = true) => {
+        speechSessionRef.current += 1;
+
+        if (shouldCancel && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+
+        utteranceRef.current = null;
+        speechQueueRef.current = [];
+        speechIndexRef.current = 0;
+        setAudioStatus('idle');
+        setActiveSpeechLabel('');
+        setSpeechProgress({ current: 0, total: 0 });
+        clearSpeechHighlight();
+        void releaseWakeLock();
+    }, [clearSpeechHighlight, releaseWakeLock]);
+
+    const getSpeechVoice = useCallback(() => {
+        if (speechVoices.length === 0) return null;
+        return speechVoices.find((voice) => voice.voiceURI === selectedVoiceURI)
+            || speechVoices.find((voice) => voice.default)
+            || speechVoices[0]
+            || null;
+    }, [selectedVoiceURI, speechVoices]);
+
+    const markActiveSpeechElement = useCallback((element: HTMLElement | null) => {
+        clearSpeechHighlight();
+        if (!element) return;
+
+        element.classList.add('mycodex-speaking-block');
+        activeSpeechElementRef.current = element;
+
+        if (speechAutoScroll) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [clearSpeechHighlight, speechAutoScroll]);
+
+    const speakSpeechChunk = useCallback((index: number) => {
+        if (!IS_AUDIO_READER_ENABLED || !isSpeechSupported || !('speechSynthesis' in window)) return;
+
+        const chunk = speechQueueRef.current[index];
+        if (!chunk) {
+            endSpeechSession(false);
+            return;
+        }
+
+        const sessionId = speechSessionRef.current;
+        const synthesis = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(chunk.text);
+        const voice = getSpeechVoice();
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+        }
+        utterance.rate = speechRate;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        utterance.onstart = () => {
+            setAudioStatus('playing');
+            setActiveSpeechLabel(chunk.label);
+            setSpeechProgress({
+                current: index + 1,
+                total: speechQueueRef.current.length,
+            });
+            markActiveSpeechElement(chunk.element);
+            void requestWakeLock();
+        };
+
+        utterance.onend = () => {
+            if (sessionId !== speechSessionRef.current) return;
+            if (speechIndexRef.current !== index) return;
+            const nextIndex = index + 1;
+            if (nextIndex < speechQueueRef.current.length) {
+                speechIndexRef.current = nextIndex;
+                window.setTimeout(() => speakSpeechChunkRef.current(nextIndex), 0);
+                return;
+            }
+
+            endSpeechSession(false);
+            showActionStatus('Finished reading', 'info');
+        };
+
+        utterance.onerror = () => {
+            if (sessionId !== speechSessionRef.current) return;
+            endSpeechSession(true);
+            showActionStatus('Could not play audio', 'error');
+        };
+
+        utteranceRef.current = utterance;
+        synthesis.speak(utterance);
+    }, [endSpeechSession, getSpeechVoice, isSpeechSupported, markActiveSpeechElement, requestWakeLock, showActionStatus, speechRate]);
+
+    useEffect(() => {
+        speakSpeechChunkRef.current = speakSpeechChunk;
+    }, [speakSpeechChunk]);
+
+    useEffect(() => {
+        return () => {
+            endSpeechSession(true);
+        };
+    }, [endSpeechSession]);
+
+    useEffect(() => {
+        endSpeechSession(true);
+    }, [currentPath, endSpeechSession]);
+
+    useEffect(() => {
+        if (!IS_AUDIO_READER_ENABLED) return;
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && audioStatus === 'playing') {
+                void requestWakeLock();
+                return;
+            }
+
+            if (document.visibilityState !== 'visible') {
+                void releaseWakeLock();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [audioStatus, releaseWakeLock, requestWakeLock]);
+
+    useEffect(() => {
+        if (!keepScreenAwake) {
+            wakeLockMessageShownRef.current = false;
+            void releaseWakeLock();
+            return;
+        }
+
+        if (audioStatus === 'playing') {
+            void requestWakeLock();
+        }
+    }, [audioStatus, keepScreenAwake, releaseWakeLock, requestWakeLock]);
+
+    const getSelectedSpeechText = useCallback(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed) return '';
+
+        const rootElement = readerCaptureRef.current;
+        const selectionRange = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        const isInsideReader = Boolean(rootElement && selectionRange && rootElement.contains(selectionRange.commonAncestorContainer));
+
+        return isInsideReader ? normalizeSpeechText(selection.toString()) : '';
+    }, []);
+
+    const getReadableSpeechElements = useCallback(() => {
+        const proseRoot = readerCaptureRef.current?.querySelector('.prose-custom');
+        if (!proseRoot) return [];
+
+        const readableSelector = 'h1, h2, h3, h4, p, li, blockquote';
+
+        return Array.from(proseRoot.querySelectorAll<HTMLElement>(readableSelector))
+            .filter((element) => {
+                if (element.closest('pre, code')) return false;
+                const parentReadableElement = element.parentElement?.closest(readableSelector);
+                if (parentReadableElement && proseRoot.contains(parentReadableElement)) return false;
+                return normalizeSpeechText(element.innerText || '').length > 1;
+            });
+    }, []);
+
+    const getSpeechChunksForElements = useCallback((elements: HTMLElement[]) => (
+        elements.flatMap((element) => {
+            const elementText = normalizeSpeechText(element.innerText || '');
+            const elementLabel = /^H[1-4]$/.test(element.tagName)
+                ? elementText
+                : currentDocumentTitle;
+
+            return splitSpeechText(elementText).map((text) => ({
+                text,
+                element,
+                label: elementLabel,
+            }));
+        })
+    ), [currentDocumentTitle]);
+
+    const getCurrentSectionSpeechElements = useCallback(() => {
+        const readableElements = getReadableSpeechElements();
+        if (readableElements.length === 0) return [];
+
+        const headingElements = readableElements.filter((element) => /^H[1-4]$/.test(element.tagName));
+        if (headingElements.length === 0) return readableElements;
+
+        const headerOffset = 120;
+        let activeHeading = headingElements[0];
+        headingElements.forEach((heading) => {
+            if (heading.getBoundingClientRect().top <= headerOffset) {
+                activeHeading = heading;
+            }
+        });
+
+        const startIndex = readableElements.indexOf(activeHeading);
+        const activeLevel = Number(activeHeading.tagName.replace('H', ''));
+        const sectionElements: HTMLElement[] = [];
+
+        for (let index = startIndex; index < readableElements.length; index += 1) {
+            const element = readableElements[index];
+            if (index > startIndex && /^H[1-4]$/.test(element.tagName)) {
+                const level = Number(element.tagName.replace('H', ''));
+                if (level <= activeLevel) break;
+            }
+            sectionElements.push(element);
+        }
+
+        return sectionElements.length > 0 ? sectionElements : readableElements;
+    }, [getReadableSpeechElements]);
+
+    const startSpeechQueue = useCallback((chunks: SpeechChunk[], emptyMessage: string) => {
+        if (!IS_AUDIO_READER_ENABLED) return;
+
+        if (!isSpeechSupported || !('speechSynthesis' in window)) {
+            showActionStatus('Voice reading is not available in this browser', 'error');
+            return;
+        }
+
+        const cleanChunks = chunks.filter((chunk) => normalizeSpeechText(chunk.text).length > 0);
+        if (cleanChunks.length === 0) {
+            showActionStatus(emptyMessage, 'info');
+            return;
+        }
+
+        speechSessionRef.current += 1;
+        window.speechSynthesis.cancel();
+        speechQueueRef.current = cleanChunks;
+        speechIndexRef.current = 0;
+        setSpeechProgress({ current: 0, total: cleanChunks.length });
+        setActiveSpeechLabel('');
+        speakSpeechChunkRef.current(0);
+    }, [isSpeechSupported, showActionStatus]);
+
+    const readSelectedText = useCallback(() => {
+        const selectedText = getSelectedSpeechText();
+        if (!selectedText) {
+            showActionStatus('Select document text first', 'info');
+            return;
+        }
+
+        startSpeechQueue(
+            splitSpeechText(selectedText).map((text) => ({
+                text,
+                element: null,
+                label: 'Selected text',
+            })),
+            'Selected text is empty'
+        );
+    }, [getSelectedSpeechText, showActionStatus, startSpeechQueue]);
+
+    const readCurrentSection = useCallback(() => {
+        startSpeechQueue(
+            getSpeechChunksForElements(getCurrentSectionSpeechElements()),
+            'No readable section found'
+        );
+    }, [getCurrentSectionSpeechElements, getSpeechChunksForElements, startSpeechQueue]);
+
+    const readCurrentPage = useCallback(() => {
+        startSpeechQueue(
+            getSpeechChunksForElements(getReadableSpeechElements()),
+            'No readable page content found'
+        );
+    }, [getReadableSpeechElements, getSpeechChunksForElements, startSpeechQueue]);
+
+    const pauseSpeech = useCallback(() => {
+        if (!isSpeechSupported || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.pause();
+        setAudioStatus('paused');
+        void releaseWakeLock();
+    }, [isSpeechSupported, releaseWakeLock]);
+
+    const resumeSpeech = useCallback(() => {
+        if (!isSpeechSupported || !('speechSynthesis' in window)) return;
+        window.speechSynthesis.resume();
+        setAudioStatus('playing');
+        void requestWakeLock();
+    }, [isSpeechSupported, requestWakeLock]);
+
+    const toggleSpeechPause = useCallback(() => {
+        if (audioStatus === 'playing') {
+            pauseSpeech();
+            return;
+        }
+
+        if (audioStatus === 'paused') {
+            resumeSpeech();
+            return;
+        }
+
+        readCurrentSection();
+    }, [audioStatus, pauseSpeech, readCurrentSection, resumeSpeech]);
+
+    const stopSpeech = useCallback(() => {
+        endSpeechSession(true);
+        showActionStatus('Reading stopped', 'info');
+    }, [endSpeechSession, showActionStatus]);
 
     const getCurrentShareUrl = () => window.location.href;
 
@@ -918,6 +1496,11 @@ export default function MyCodexClientContainer({
         '--mycodex-font-size': `${readerFontSize}px`,
         maxWidth: READER_WIDTH_VALUES[readerWidth],
     } as CSSProperties;
+    const speechRateLabel = `${speechRate.toFixed(2).replace(/\.?0+$/, '')}x`;
+    const speechProgressLabel = speechProgress.total > 0
+        ? `${speechProgress.current}/${speechProgress.total}`
+        : '';
+    const selectedVoiceName = speechVoices.find((voice) => voice.voiceURI === selectedVoiceURI)?.name || 'System voice';
 
     const readerControlButtonClass = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-95 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:border-sky-700 dark:hover:text-sky-300';
     const documentActionButtonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300';
@@ -1108,15 +1691,15 @@ export default function MyCodexClientContainer({
     };
 
     return (
-        <div className="flex-1 flex flex-col md:flex-row relative overflow-x-clip">
+        <div className="mycodex-reader-shell flex-1 flex flex-col md:flex-row relative overflow-x-clip">
             <div
                 aria-hidden="true"
-                className="fixed left-0 top-0 z-[60] h-0.5 bg-sky-500 transition-[width] duration-150 dark:bg-sky-400"
+                className="mycodex-progress-bar fixed left-0 top-0 z-[60] h-0.5 bg-sky-500 transition-[width] duration-150 dark:bg-sky-400"
                 style={{ width: `${readingProgress}%` }}
             />
 
             {/* Header / Mobile Action Bar */}
-            <header className="fixed inset-x-0 top-0 z-50 h-16 w-full flex items-center justify-between px-4 md:hidden bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80">
+            <header className="mycodex-mobile-header fixed inset-x-0 top-0 z-50 h-16 w-full flex items-center justify-between px-4 md:hidden bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2">
                     <MyCodexLogoMark className="h-7 w-[17px] shrink-0" />
                     <span className="font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -1147,6 +1730,7 @@ export default function MyCodexClientContainer({
 
             {/* Sidebar (Desktop Slide/Lock & Mobile Modal Drawer) */}
             <aside className={`
+                mycodex-sidebar
                 fixed inset-y-0 left-0 z-[60] w-72 md:w-80 flex flex-col transform transition-transform duration-300 ease-in-out
                 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-r border-zinc-200 dark:border-zinc-800/80
                 ${sidebarPinned ? 'md:sticky md:top-0 md:h-screen md:translate-x-0' : 'md:hidden'}
@@ -1178,7 +1762,7 @@ export default function MyCodexClientContainer({
                 </div>
 
                 {/* Mobile Drawer Close Button */}
-                <div className="flex md:hidden justify-between items-center px-4 py-4 border-b border-zinc-200 dark:border-zinc-900">
+                <div className="mycodex-sidebar-mobile-header flex md:hidden justify-between items-center px-4 py-4 border-b border-zinc-200 dark:border-zinc-900">
                     <span className="font-bold text-zinc-700 dark:text-zinc-300">Navigation</span>
                     <button
                         type="button"
@@ -1219,7 +1803,7 @@ export default function MyCodexClientContainer({
                 </div>
 
                 {/* Navigation Links Scroll Container */}
-                <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1 select-none">
+                <nav className="mycodex-sidebar-nav flex-1 overflow-y-auto px-3 py-3 space-y-1 select-none">
                     {/* Master Index Quicklink */}
                     <a
                         href={buildUrl('/')}
@@ -1245,7 +1829,7 @@ export default function MyCodexClientContainer({
                 </nav>
 
                 {/* Footer bar */}
-                <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-900 bg-zinc-50/30 dark:bg-zinc-950/30 flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                <div className="mycodex-sidebar-footer px-6 py-4 border-t border-zinc-200 dark:border-zinc-900 bg-zinc-50/30 dark:bg-zinc-950/30 flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
                     <span>v2.2 Stable</span>
                     <a href="https://menulist.ai" target="_blank" rel="noopener noreferrer" className="hover:text-sky-600 dark:hover:text-sky-300 transition-colors">menulist.ai</a>
                 </div>
@@ -1273,11 +1857,11 @@ export default function MyCodexClientContainer({
                         aria-modal={settingsOpen}
                         aria-hidden={!settingsOpen}
                         aria-label="Reader settings"
-                        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md transform flex-col border-l border-zinc-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
+                        className={`mycodex-settings-drawer fixed inset-y-0 right-0 z-[70] flex w-full max-w-md transform flex-col border-l border-zinc-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
                             settingsOpen ? 'translate-x-0' : 'translate-x-full'
                         }`}
                     >
-                        <div className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 px-4 dark:border-zinc-800">
+                        <div className="mycodex-settings-header flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 px-4 dark:border-zinc-800">
                             <div>
                                 <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Settings</div>
                                 <div className="text-xs text-zinc-500 dark:text-zinc-500">Reader and document actions</div>
@@ -1292,7 +1876,7 @@ export default function MyCodexClientContainer({
                             </button>
                         </div>
 
-                        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+                        <div className="mycodex-settings-body flex-1 space-y-5 overflow-y-auto px-4 py-5">
                             <section className="space-y-3">
                                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
                                     <LuFileText className="h-4 w-4" />
@@ -1395,6 +1979,128 @@ export default function MyCodexClientContainer({
                                 </div>
                             </section>
 
+                            {IS_AUDIO_READER_ENABLED && (
+                                <section className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+                                        <LuVolume2 className="h-4 w-4" />
+                                        <span>Audio</span>
+                                    </div>
+
+                                    {!isSpeechSupported ? (
+                                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+                                            Voice reading is not available in this browser. Use Chrome, Safari, or the installed PWA on a device with text-to-speech enabled.
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button type="button" onClick={readSelectedText} className={documentActionButtonClass}>
+                                                    <LuVolume2 className="h-4 w-4" />
+                                                    <span>Selection</span>
+                                                </button>
+                                                <button type="button" onClick={readCurrentSection} className={documentActionButtonClass}>
+                                                    <LuPlay className="h-4 w-4" />
+                                                    <span>Section</span>
+                                                </button>
+                                                <button type="button" onClick={readCurrentPage} className={documentActionButtonClass}>
+                                                    <LuFileText className="h-4 w-4" />
+                                                    <span>Page</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={toggleSpeechPause}
+                                                    className={`${documentActionButtonClass} ${audioStatus === 'playing' ? 'border-sky-300 text-sky-700 dark:border-sky-700 dark:text-sky-300' : ''}`}
+                                                >
+                                                    {audioStatus === 'playing' ? <LuPause className="h-4 w-4" /> : <LuPlay className="h-4 w-4" />}
+                                                    <span>{audioStatus === 'playing' ? 'Pause' : audioStatus === 'paused' ? 'Resume' : 'Play section'}</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={stopSpeech}
+                                                    disabled={audioStatus === 'idle'}
+                                                    className={`${documentActionButtonClass} col-span-2 disabled:cursor-not-allowed disabled:opacity-40`}
+                                                >
+                                                    <LuSquare className="h-4 w-4" />
+                                                    <span>Stop reading</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/60">
+                                                <label className="block space-y-1.5">
+                                                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">Voice</span>
+                                                    <select
+                                                        value={selectedVoiceURI}
+                                                        onChange={(event) => setSelectedVoiceURI(event.target.value)}
+                                                        className="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-800 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400/30 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:focus:border-sky-600"
+                                                    >
+                                                        {speechVoices.length === 0 ? (
+                                                            <option value="">{selectedVoiceName}</option>
+                                                        ) : (
+                                                            speechVoices.map((voice) => (
+                                                                <option key={voice.voiceURI} value={voice.voiceURI}>
+                                                                    {voice.name} ({voice.lang})
+                                                                </option>
+                                                            ))
+                                                        )}
+                                                    </select>
+                                                </label>
+
+                                                <label className="block space-y-2">
+                                                    <span className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+                                                        <span>Speed</span>
+                                                        <span>{speechRateLabel}</span>
+                                                    </span>
+                                                    <input
+                                                        type="range"
+                                                        min={MIN_READER_AUDIO_RATE}
+                                                        max={MAX_READER_AUDIO_RATE}
+                                                        step={0.05}
+                                                        value={speechRate}
+                                                        onChange={(event) => setSpeechRate(clampSpeechRate(Number(event.target.value)))}
+                                                        className="w-full accent-sky-600"
+                                                    />
+                                                </label>
+
+                                                <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950">
+                                                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Follow while reading</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={speechAutoScroll}
+                                                        onChange={(event) => setSpeechAutoScroll(event.target.checked)}
+                                                        className="h-5 w-5 accent-sky-600"
+                                                    />
+                                                </label>
+
+                                                <label className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950">
+                                                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Keep screen awake</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={keepScreenAwake}
+                                                        onChange={(event) => setKeepScreenAwake(event.target.checked)}
+                                                        className="h-5 w-5 accent-sky-600"
+                                                    />
+                                                </label>
+
+                                                {keepScreenAwake && (
+                                                    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+                                                        {wakeLockActive
+                                                            ? 'Screen awake while reading'
+                                                            : wakeLockUnavailable || !isWakeLockSupported
+                                                                ? 'Keep-awake unavailable on this browser'
+                                                                : 'Keep-awake starts during playback'}
+                                                    </div>
+                                                )}
+
+                                                {audioStatus !== 'idle' && (
+                                                    <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800 dark:border-sky-900/70 dark:bg-sky-950/50 dark:text-sky-200">
+                                                        {audioStatus === 'paused' ? 'Paused' : 'Reading'} {speechProgressLabel ? `(${speechProgressLabel})` : ''}: {activeSpeechLabel || currentDocumentTitle}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </section>
+                            )}
+
                             <section className="space-y-3">
                                 <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
                                     Navigation
@@ -1465,7 +2171,7 @@ export default function MyCodexClientContainer({
             )}
 
             {/* Main Content Area */}
-            <main className="flex-1 min-w-0 overflow-x-clip bg-zinc-50 pt-16 dark:bg-zinc-950 md:pt-0">
+            <main className="mycodex-main flex-1 min-w-0 overflow-x-clip bg-zinc-50 pt-16 dark:bg-zinc-950 md:pt-0">
                 <div className="sticky top-0 z-40 hidden h-16 items-center border-b border-zinc-200/80 bg-zinc-50/95 px-8 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/95 md:flex">
                     <div className="flex w-full items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
@@ -1524,7 +2230,7 @@ export default function MyCodexClientContainer({
                 </div>
 
                 <div className="flex min-w-0 flex-col lg:flex-row">
-                    <article className="flex-1 min-w-0 overflow-x-clip px-4 py-6 md:px-10 md:py-8">
+                    <article className="mycodex-article flex-1 min-w-0 overflow-x-clip px-4 py-6 md:px-10 md:py-8">
                         <div ref={readerCaptureRef} className="mx-auto w-full transition-[max-width] duration-200" style={readerStyle}>
                             {/* Breadcrumbs */}
                             {currentSlug.length > 0 && (
@@ -1598,12 +2304,48 @@ export default function MyCodexClientContainer({
                 </div>
             </main>
 
+            {IS_AUDIO_READER_ENABLED && audioStatus !== 'idle' && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    className="mycodex-audio-player fixed bottom-5 left-4 right-20 z-[55] flex min-h-14 items-center gap-3 rounded-2xl border border-zinc-200 bg-white/95 px-3 py-2 text-zinc-800 shadow-2xl shadow-black/10 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95 dark:text-zinc-100 sm:left-auto sm:right-20 sm:w-80"
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
+                        <LuVolume2 className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs font-bold">
+                            {audioStatus === 'paused' ? 'Paused' : 'Reading'} {speechProgressLabel}
+                        </div>
+                        <div className="truncate text-[11px] font-medium text-zinc-500 dark:text-zinc-500">
+                            {activeSpeechLabel || currentDocumentTitle}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleSpeechPause}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+                        aria-label={audioStatus === 'playing' ? 'Pause reading' : 'Resume reading'}
+                    >
+                        {audioStatus === 'playing' ? <LuPause className="h-4 w-4" /> : <LuPlay className="h-4 w-4" />}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={stopSpeech}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+                        aria-label="Stop reading"
+                    >
+                        <LuSquare className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
             {/* Scroll-To-Top Button */}
             {showScrollTop && (
                 <button
                     type="button"
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="fixed bottom-5 right-4 md:bottom-6 md:right-6 p-3 rounded-full bg-sky-600 hover:bg-sky-500 text-white shadow-xl shadow-sky-600/20 hover:scale-105 active:scale-95 transition-all duration-200 z-50 border border-sky-400/20"
+                    className="mycodex-scroll-top fixed bottom-5 right-4 md:bottom-6 md:right-6 p-3 rounded-full bg-sky-600 hover:bg-sky-500 text-white shadow-xl shadow-sky-600/20 hover:scale-105 active:scale-95 transition-all duration-200 z-50 border border-sky-400/20"
                     style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     aria-label="Scroll to top"
                 >
@@ -1615,7 +2357,7 @@ export default function MyCodexClientContainer({
                 <div
                     role="status"
                     aria-live="polite"
-                    className={`fixed bottom-20 left-4 right-4 z-[70] rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl backdrop-blur sm:left-auto sm:right-6 sm:w-fit ${
+                    className={`mycodex-action-toast fixed bottom-20 left-4 right-4 z-[70] rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl backdrop-blur sm:left-auto sm:right-6 sm:w-fit ${
                         actionStatus.tone === 'error'
                             ? 'border-red-200 bg-red-50/95 text-red-700 dark:border-red-900/60 dark:bg-red-950/90 dark:text-red-200'
                             : actionStatus.tone === 'info'

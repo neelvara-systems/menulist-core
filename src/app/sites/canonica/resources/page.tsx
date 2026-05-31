@@ -48,6 +48,8 @@ const RESOURCE_GROUPS = [
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
             ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
+            ['Pre-Onboarding Kit', '/pre-onboarding', 'Use your AI coding agent to prepare Canonica-ready source inputs before setup.'],
+            ['Pre-Onboarding Guide', '/pre-onboarding/guide', 'Follow the owner and agent runbook before uploading prepared sources.'],
             ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
             ['Knowledge Intake', '/product/knowledge-intake', 'Teach Canonica from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.'],
             ['Knowledge Base', '/product/knowledge-base', 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.'],

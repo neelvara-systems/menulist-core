@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.13 (Headline Gradient Direction)
+**Version:** 3.6.14 (Menu Link Import FAQ Guardrails)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 30, 2026
+**Last Updated:** May 31, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,7 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.11** | **Existing Menu Link Intake Alignment** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.14** | **Menu Link Import FAQ Guardrails** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
 Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Source-to-public bridge -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -62,6 +62,8 @@ Version 3.6.11 aligns the main website with production-ready Menu Link Import wi
 Version 3.6.12 tightens the shared `WebsiteFeatureCard` vertical rhythm after visual QA found excessive empty space between blue subtitles and body copy in public-surface cards. Cards now stack heading, subtitle, and description as one readable proof unit, and grid rows size from their tallest card content instead of a fixed-feeling card minimum. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Version 3.6.13 reverses the shared headline/accent gradient so large highlighted text starts with the stronger MenuList blue and resolves into the lighter accent. The official logo mark gradient was not changed. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.14 adds homepage FAQ guardrails for Menu Link Import after validating external feedback against the current implementation. Existing menu link import is presented as an authenticated owner setup path: owners may paste a public menu link they own or have permission to use, MenuList prepares a review draft, and nothing publishes automatically. The public `/create-menu` runtime was not changed and should not expose a public link-import CTA until that input is supported there.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -610,6 +612,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.14 | May 31, 2026 | Added homepage FAQ guardrails for authenticated Menu Link Import and documented that the public `/create-menu` route should not advertise a link-import CTA until it supports that input directly. |
 | 3.6.13 | May 30, 2026 | Reversed the shared headline/accent gradient so highlighted text starts with stronger blue and finishes with the lighter accent, without changing the official logo mark. |
 | 3.6.12 | May 30, 2026 | Tightened shared website feature-card spacing so subtitles and descriptions read as one grouped proof unit, with card rows sized from the tallest content in that row. |
 | 3.6.7 | May 24, 2026 | Changed the multi-location diagram to pulse all outlet paths together and aligned the master card treatment with outlet cards. |

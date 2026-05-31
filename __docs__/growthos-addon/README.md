@@ -8,6 +8,39 @@
 
 ---
 
+## May 31, 2026 Deep Review Update
+
+The large ChatGPT GrowthOS conversation was reviewed line by line and archived here:
+
+```txt
+__docs__/growthos-addon/_archive/growthos-deep-conversation-review-2026-05-31.md
+```
+
+Final decision from that review:
+
+| Feature/angle | Decision |
+| --- | --- |
+| Do This Now Inbox | V1 core |
+| Menu Truth Readiness Checklist | V1 core |
+| Owner Voice basics | V1 core |
+| Compliance Preflight | V1 core |
+| One Kit to Multiple Handoffs | V1 core |
+| Staff Brief Pack | V1 core |
+| Basic export logging | V1 core, execution signals only |
+| Latest kit visible after refresh/generation failure | V1 core mobile resilience |
+| Review reply from pasted text | Guarded optional V1, triage-first, no ingestion |
+| Existing Image Adaptation | Pilot extension after core text/staff loop |
+| Owner-Confirmed Offer Builder | Deferred; creates new business truth |
+| Customer FAQ Reply Snippets | P2 pilot-dependent |
+| Photo Capture Prompts | P2 pilot-dependent |
+| Multi-Outlet Localized Kits | P2 pilot-dependent |
+| Used History UI | P2 pilot-dependent; no ROI |
+| Advanced low-data/offline behavior | P2 pilot-dependent |
+
+The implementation plan should start only with the V1 core loop:
+
+> MenuList finds one useful action, checks truth, creates one kit, and the owner copies/shares/downloads/prints/marks it used.
+
 ## Decision Summary
 
 GrowthOS should move forward as a MenuList higher-tier add-on because MenuList already owns the hard part: current menu truth, store status, item availability, images, public links, and owner context.
@@ -27,11 +60,11 @@ It produces:
 - WhatsApp status or message copy
 - Google Business Profile update drafts
 - Instagram caption drafts
-- in-store staff lines
+- Staff Brief Pack lines for today's counter/team guidance
 - printable poster or QR tent copy
-- owner-approved review reply drafts when the owner supplies review text, or when GBP review access is formally unlocked
+- guarded review reply drafts only when the owner supplies review text
 
-It does not publish automatically in the first approved implementation. It does not write MenuList menu truth. It does not claim revenue lift or campaign ROI.
+It does not publish automatically. It does not write MenuList menu truth. It does not claim revenue lift or campaign ROI.
 
 ## What Changed From Old Docs
 
@@ -61,6 +94,7 @@ This folder is now the active GrowthOS implementation-planning source.
 | Evidence | What it means for GrowthOS |
 | --- | --- |
 | Google Pomelli launched for SMB social campaign generation, using a business website to build brand DNA and generate campaign ideas/assets. Source: https://blog.google/innovation-and-ai/models-and-research/google-labs/pomelli/ | Generic SMB marketing generation is real and crowded. MenuList must differentiate through live menu truth, not generic campaign creation. |
+| Canva AI 2.0 is moving toward conversational, agentic, multi-channel campaign creation, scheduling, web research, and brand intelligence. Source: https://www.canva.com/newsroom/news/canva-create-2026-ai/ | GrowthOS should not become a creative agent, scheduler, brand workspace, or campaign suite. |
 | Canva Visual Suite 2.0 emphasizes cross-format campaign creation and Magic Studio scale. Source: https://www.canva.com/newsroom/news/canva-create-2025/ | Broad creative suites are moving fast. GrowthOS should avoid canvas/design workflows and stay output-first. |
 | Constant Contact reported 68 percent of surveyed SMBs expected to increase marketing budgets and 74 percent expected to spend more time on marketing in 2026. Source: https://www.constantcontact.com/news/2026-02-11-small-businesses-double-down-for-2026-majority-plan-to-increase-marketing-budgets-to-combat-inflation | SMBs are willing to spend, but they need efficiency and usable output, not more dashboards. |
 | BrightLocal reported AI local recommendations rising from 6 percent in 2025 to 45 percent in 2026, with consumers still fact-checking reviews and source material. Source: https://www.brightlocal.com/research/lcrs-ai-trust/ | Local truth consistency matters more, not less. GrowthOS should amplify accurate, current business facts. |
@@ -94,6 +128,8 @@ The first approved implementation should be a paid add-on module inside MenuList
 4. Lets the owner copy, download, share, or print the output.
 5. Records only execution signals such as copied, downloaded, or printed.
 6. Never claims business outcome, order lift, or ROI.
+7. Gives staff a short, current line for what to suggest or avoid today.
+8. Keeps the latest usable kit visible on mobile when refresh or generation fails.
 
 ## Product Boundaries
 

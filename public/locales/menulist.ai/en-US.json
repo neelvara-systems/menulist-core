@@ -2983,7 +2983,11 @@
             "q8": "Will this guarantee Google or AI search placement?",
             "a8": "No. Search engines and AI systems decide what they crawl, cite, and show. MenuList prepares your official page and menu as clear, structured public business information so those systems have a better source to read.",
             "q9": "Can staff use MenuList without getting full owner access?",
-            "a9": "Yes. Owners can create staff accounts, assign roles, reset staff passcodes, and sign out staff access when someone leaves. Staff can use only the areas their role allows."
+            "a9": "Yes. Owners can create staff accounts, assign roles, reset staff passcodes, and sign out staff access when someone leaves. Staff can use only the areas their role allows.",
+            "q10": "Can I import my existing menu link?",
+            "a10": "Yes. Signed-in owners can paste a public menu link they own or have permission to use. MenuList prepares a draft for review, so the link becomes a starting point rather than another public version to maintain.",
+            "q11": "Will imported menu content publish automatically?",
+            "a11": "No. Imported content stays in review until you approve it. If a source cannot be read clearly, you can upload a menu photo or file instead, or edit the menu manually."
         },
         "FinalCta": {
             "title": "Make one public menu ",

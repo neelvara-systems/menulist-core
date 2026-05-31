@@ -30,6 +30,13 @@ const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(canonicaFirebaseClient, COLLECTION, docId);
 const getSummaryDocRef = (tId: number, sId: number) => doc(canonicaFirebaseClient, SUMMARY_COLLECTION, `supportBoardSummary_${tId}_${sId}`);
+const clampBoardLimit = (value: number) => {
+    const normalized = Math.floor(Number(value));
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+        return CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_CARDS_PER_LOAD;
+    }
+    return Math.min(normalized, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_CARDS_PER_LOAD);
+};
 
 export type CreateCanonicaSupportBoardCardInput = Pick<
     CanonicaSupportBoardCard,
@@ -265,7 +272,7 @@ export const listCanonicaSupportBoardCards = async (
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 orderBy('modifiedOn', 'desc'),
-                limit(Math.min(maxResults, CANONICA_SUPPORT_BOARD_CONSTRAINTS.MAX_CARDS_PER_LOAD)),
+                limit(clampBoardLimit(maxResults)),
             );
             const snapshot = await getDocs(q);
             const cards: CanonicaSupportBoardCard[] = [];

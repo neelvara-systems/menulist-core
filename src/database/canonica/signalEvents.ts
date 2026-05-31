@@ -21,8 +21,15 @@ import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaSignalEvent } from "@type/canonica";
 
 const COLLECTION = DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS;
+const MAX_RECENT_SIGNAL_EVENTS = 500;
+const MAX_BATCH_SIGNAL_EVENTS_PER_QUERY = 1000;
 
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
+const clampPositiveInt = (value: number, fallback: number, max: number) => {
+    const normalized = Math.floor(Number(value));
+    if (!Number.isFinite(normalized) || normalized <= 0) return fallback;
+    return Math.min(normalized, max);
+};
 
 /**
  * Add a signal event (append-only)
@@ -85,8 +92,10 @@ export const getRecentSignalEvents = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const boundedWindowDays = clampPositiveInt(windowDays, 14, 90);
+            const boundedMaxResults = clampPositiveInt(maxResults, MAX_RECENT_SIGNAL_EVENTS, MAX_RECENT_SIGNAL_EVENTS);
             const windowStart = new Date();
-            windowStart.setDate(windowStart.getDate() - windowDays);
+            windowStart.setDate(windowStart.getDate() - boundedWindowDays);
             const windowTimestamp = Timestamp.fromDate(windowStart);
 
             const q = query(
@@ -95,7 +104,7 @@ export const getRecentSignalEvents = async (
                 where('sId', '==', sId),
                 where('timestamp', '>=', windowTimestamp),
                 orderBy('timestamp', 'desc'),
-                limit(maxResults)
+                limit(boundedMaxResults)
             );
             const snapshot = await getDocs(q);
             const list: CanonicaSignalEvent[] = [];
@@ -155,8 +164,9 @@ export const getBatchSignalCounts = async (
 
             if (entityIds.length === 0) return result;
 
+            const boundedWindowDays = clampPositiveInt(windowDays, 14, 90);
             const windowStart = new Date();
-            windowStart.setDate(windowStart.getDate() - windowDays);
+            windowStart.setDate(windowStart.getDate() - boundedWindowDays);
             const windowTimestamp = Timestamp.fromDate(windowStart);
 
             // Firestore `in` supports max 30 values per query
@@ -169,7 +179,7 @@ export const getBatchSignalCounts = async (
                     where('sId', '==', sId),
                     where('entityId', 'in', batch),
                     where('timestamp', '>=', windowTimestamp),
-                    limit(1000)
+                    limit(MAX_BATCH_SIGNAL_EVENTS_PER_QUERY)
                 );
                 const snapshot = await getDocs(q);
                 snapshot.forEach((d) => {

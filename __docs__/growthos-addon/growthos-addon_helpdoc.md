@@ -15,9 +15,9 @@ You can use a kit for:
 - WhatsApp status or messages
 - Instagram captions
 - Google Business Profile update drafts
-- staff recommendation lines
+- Staff Brief recommendation lines
 - printable counter or table prompts
-- review reply drafts from text you provide
+- guarded review reply drafts from text you provide, when enabled
 
 Growth Kits does not post anything automatically.
 
@@ -56,24 +56,28 @@ Google reviews posts before showing them publicly.
 ## Use A Staff Line
 
 1. Open the kit.
-2. Read the staff line.
-3. Share it with your team for the day.
+2. Read the Staff Brief.
+3. Copy or share it with your team for the day.
+4. Mark it used if you already shared it.
 
 Example:
 
 ```txt
 If someone asks for a quick snack, mention the paneer roll today.
+Do not suggest mango shake today. It is unavailable.
 ```
 
 ## Use A Review Reply Draft
 
 1. Open the review reply option.
 2. Paste the review text.
-3. Create a reply draft.
-4. Read it before posting.
+3. Create a guarded reply draft.
+4. Read the recommendation first.
 5. Copy it only if it sounds right for your business.
 
 Do not post a reply if the kit says a public reply is not recommended.
+
+Review replies may not be enabled for every store.
 
 ## Old Menu Details Warning
 
@@ -84,6 +88,12 @@ This kit may use old menu details.
 ```
 
 Create the kit again before using it. This can happen when an item price, availability, hours, or public link changed after the kit was created.
+
+## When Refresh Fails
+
+If the mobile app cannot refresh right away, it may still show your latest loaded kit.
+
+If you see a stale warning, create the kit again before using price, availability, hours, or link-specific text.
 
 ## What Growth Kits Will Not Do
 
@@ -96,6 +106,10 @@ Growth Kits will not:
 - change your Google Business Profile
 - promise more orders
 - show revenue reports
+- manage staff tasks
+- run a customer inbox or chatbot
+- create offers or discounts for you
+- create fake food images
 
 ## Troubleshooting
 
@@ -106,6 +120,7 @@ Growth Kits will not:
 | The kit is too generic | Choose a more specific menu item or use an item with an image. |
 | I cannot create a kit | Check whether Growth Kits is included in your plan or add-on. |
 | I cannot use review replies | Review replies may be disabled for your store or require pasted review text. |
+| Staff line suggests the wrong item | Check item availability in MenuList, then create the kit again. |
 
 ## Need Help
 

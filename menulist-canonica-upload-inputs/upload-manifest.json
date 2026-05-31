@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "packageName": "menulist-canonica-upload-inputs",
+  "createdOn": "2026-05-31",
+  "sourceProduct": "MenuList",
+  "targetProduct": "Canonica",
+  "targetJobTitle": "MenuList production client onboarding and asset proof",
+  "intakeConstraints": {
+    "maxSourcesPerJob": 50,
+    "runtimeSourceTextChars": 40000,
+    "apiSourceTextMaxChars": 50000,
+    "reviewRequiredBeforeAuthority": true
+  },
+  "sourceFiles": [
+    {
+      "path": "source-inputs/01-product-context.md",
+      "sourceType": "product_note",
+      "title": "MenuList product context",
+      "tags": ["product_context", "positioning", "source_of_truth"],
+      "contextKeys": ["product", "website", "official_source"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/02-menu-intake-and-owner-review.md",
+      "sourceType": "help_doc",
+      "title": "Menu intake and owner review",
+      "tags": ["intake", "owner_review", "upload", "menu_link_import"],
+      "contextKeys": ["create_menu", "menu_import", "review"],
+      "intendedTargets": ["kb_article", "faq", "product_surface"]
+    },
+    {
+      "path": "source-inputs/03-public-surfaces-and-discovery.md",
+      "sourceType": "help_doc",
+      "title": "Public surfaces and discovery",
+      "tags": ["public_surface", "obp", "menu_kit", "discovery"],
+      "contextKeys": ["public_menu", "obp", "discovery"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/04-menu-governance-and-correctness.md",
+      "sourceType": "help_doc",
+      "title": "Menu governance and correctness",
+      "tags": ["governance", "correctness", "quality", "trust"],
+      "contextKeys": ["mce", "quality", "trust"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/05-owner-operations-staff-and-multi-location.md",
+      "sourceType": "help_doc",
+      "title": "Owner operations, staff, mobile, and multi-location",
+      "tags": ["operations", "mobile", "staff", "multi_location", "pos_sync"],
+      "contextKeys": ["operations", "staff", "multi_location"],
+      "intendedTargets": ["kb_article", "faq", "product_surface"]
+    },
+    {
+      "path": "source-inputs/06-canonica-example-story.md",
+      "sourceType": "product_note",
+      "title": "Why MenuList is the Canonica example",
+      "tags": ["canonica_example", "support_story", "website_story"],
+      "contextKeys": ["canonica_website", "demo_story", "support_knowledge"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/07-asset-and-screenshot-context.md",
+      "sourceType": "product_note",
+      "title": "MenuList asset and screenshot context",
+      "tags": ["assets", "screenshots", "website", "marketing"],
+      "contextKeys": ["asset_factory", "screenshots", "marketing"],
+      "intendedTargets": ["kb_article", "product_surface"]
+    },
+    {
+      "path": "source-inputs/08-support-faq-seed.csv",
+      "sourceType": "csv",
+      "title": "MenuList support FAQ seed",
+      "tags": ["faq_seed", "support_seed", "buyer_questions"],
+      "contextKeys": ["faq", "support", "sales"],
+      "intendedTargets": ["faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/09-risk-boundaries-and-review-rules.md",
+      "sourceType": "product_note",
+      "title": "MenuList risk boundaries and review rules",
+      "tags": ["risk", "approval", "privacy", "public_claims"],
+      "contextKeys": ["risk", "public_claims", "privacy"],
+      "intendedTargets": ["kb_article", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/10-production-onboarding-context.md",
+      "sourceType": "product_note",
+      "title": "MenuList production onboarding context",
+      "tags": ["production_onboarding", "dashboard_demo", "widget", "asset_proof"],
+      "contextKeys": ["production_onboarding", "dashboard_demo", "widget"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/11-account-access-and-onboarding-support.md",
+      "sourceType": "help_doc",
+      "title": "MenuList account, access, and onboarding support",
+      "tags": ["account_access", "onboarding", "login", "staff_login"],
+      "contextKeys": ["account", "signin", "claim_business", "staff_access"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/12-menu-creation-import-review-and-editor-support.md",
+      "sourceType": "help_doc",
+      "title": "Menu creation, import, review, and editor support",
+      "tags": ["menu_creation", "menu_import", "editor", "review"],
+      "contextKeys": ["projects", "create_menu", "editor", "command_center"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/13-public-menu-qr-sharing-and-official-page-support.md",
+      "sourceType": "help_doc",
+      "title": "Public menu, QR, sharing, and Official Business Page support",
+      "tags": ["public_menu", "qr", "sharing", "obp"],
+      "contextKeys": ["public_menu", "qr", "official_business_page"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/14-business-settings-store-profile-and-presence-support.md",
+      "sourceType": "help_doc",
+      "title": "Business settings, store profile, and presence support",
+      "tags": ["business_settings", "store_profile", "hours", "temporary_status"],
+      "contextKeys": ["business_settings", "store_settings", "hours", "presence"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/15-menu-kit-digital-screens-and-customer-app-support.md",
+      "sourceType": "help_doc",
+      "title": "Menu Kit, Digital Screens, and Customer App support",
+      "tags": ["menu_kit", "digital_screens", "customer_app", "physical_surfaces"],
+      "contextKeys": ["menu_kit", "digital_screens", "customer_app"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/16-billing-subscription-enhancements-and-payments-support.md",
+      "sourceType": "help_doc",
+      "title": "Billing, subscription, enhancements, and payments support",
+      "tags": ["billing", "subscription", "payments", "enhancements"],
+      "contextKeys": ["billing", "subscription", "enhancement_packs", "payments"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/17-staff-roles-locations-and-outlet-policy-support.md",
+      "sourceType": "help_doc",
+      "title": "Staff, roles, locations, and outlet policy support",
+      "tags": ["staff", "roles", "locations", "outlet_policy"],
+      "contextKeys": ["users", "roles", "locations", "multi_outlet"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/18-dashboard-analytics-feedback-and-help-center-support.md",
+      "sourceType": "help_doc",
+      "title": "Dashboard, analytics, feedback, and Help Center support",
+      "tags": ["dashboard", "analytics", "feedback", "help_center"],
+      "contextKeys": ["dashboard", "analytics", "feedback", "help_center"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/19-troubleshooting-escalation-and-risk-review-support.md",
+      "sourceType": "help_doc",
+      "title": "Troubleshooting, escalation, and risk review support",
+      "tags": ["troubleshooting", "escalation", "risk", "support"],
+      "contextKeys": ["troubleshooting", "support", "escalation"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/20-live-owner-support-operating-contract.md",
+      "sourceType": "product_note",
+      "title": "Canonica live owner support operating contract for MenuList",
+      "tags": ["live_support", "answer_contract", "safety", "smb_owner"],
+      "contextKeys": ["live_support", "owner_support", "answer_safety"],
+      "intendedTargets": ["kb_article", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/21-live-support-coverage-index.md",
+      "sourceType": "product_note",
+      "title": "MenuList live support coverage index for Canonica",
+      "tags": ["coverage_index", "live_support", "readiness", "knowledge_gap"],
+      "contextKeys": ["coverage", "live_support", "readiness"],
+      "intendedTargets": ["kb_article", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/22-live-website-public-truth.md",
+      "sourceType": "website_page",
+      "title": "MenuList live website public truth",
+      "tags": ["live_website", "public_truth", "positioning", "public_surfaces"],
+      "contextKeys": ["website", "public_positioning", "source_of_truth"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/23-live-website-feature-capability-coverage.md",
+      "sourceType": "website_page",
+      "title": "MenuList live website feature capability coverage",
+      "tags": ["live_website", "features", "capabilities", "support_coverage"],
+      "contextKeys": ["features", "website_claims", "support_coverage"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    },
+    {
+      "path": "source-inputs/24-public-pricing-legal-trust-and-contact-support.md",
+      "sourceType": "website_page",
+      "title": "Public pricing, legal, trust, and contact support",
+      "tags": ["pricing", "legal", "privacy", "trust", "refunds", "contact"],
+      "contextKeys": ["pricing", "legal", "trust_security", "contact"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/25-repo-docs-menulist-source-map.md",
+      "sourceType": "product_note",
+      "title": "MenuList repo documentation source map",
+      "tags": ["repo_docs", "source_map", "coverage", "evidence"],
+      "contextKeys": ["repo_docs", "coverage_map", "evidence"],
+      "intendedTargets": ["kb_article", "canonical_proposal"]
+    },
+    {
+      "path": "source-inputs/26-undercovered-operations-from-repo-docs.md",
+      "sourceType": "help_doc",
+      "title": "Undercovered MenuList operations from repo docs",
+      "tags": ["operations", "special_menu", "presence_monitor", "external_sync", "quality_signals"],
+      "contextKeys": ["special_menu", "presence_monitor", "customer_messages", "external_sync"],
+      "intendedTargets": ["kb_article", "faq", "canonical_proposal", "product_surface"]
+    }
+  ],
+  "productionOnboardingFiles": [
+    {
+      "path": "production-onboarding/menulist-client-profile.json",
+      "status": "operator-input",
+      "publicUse": "Do not publish directly; use to configure the Canonica production client profile."
+    },
+    {
+      "path": "production-onboarding/onboarding-runbook.md",
+      "status": "operator-runbook",
+      "publicUse": "Internal launch checklist, not customer-facing copy."
+    },
+    {
+      "path": "production-onboarding/dashboard-demo-data-requirements.md",
+      "status": "asset-readiness-contract",
+      "publicUse": "Use to decide when Canonica dashboard screenshots are meaningful enough for website assets."
+    },
+    {
+      "path": "production-onboarding/product-surface-map.csv",
+      "status": "surface-map-input",
+      "publicUse": "Use to create Canonica Product Surfaces for MenuList."
+    },
+    {
+      "path": "production-onboarding/widget-context-events.jsonl",
+      "status": "safe-context-examples",
+      "publicUse": "Use as a route-context reference only; do not add private identifiers."
+    },
+    {
+      "path": "production-onboarding/knowledge-output-targets.md",
+      "status": "review-output-targets",
+      "publicUse": "Internal checklist for expected Canonica outputs."
+    },
+    {
+      "path": "production-onboarding/production-data-safety.md",
+      "status": "privacy-and-approval-rules",
+      "publicUse": "Internal approval and screenshot-scrub rules."
+    },
+    {
+      "path": "production-onboarding/live-smb-support-coverage-checklist.md",
+      "status": "live-support-readiness-gate",
+      "publicUse": "Internal checklist before enabling Canonica for live MenuList owner support."
+    },
+    {
+      "path": "production-onboarding/live-owner-support-test-questions.csv",
+      "status": "live-support-answer-review-set",
+      "publicUse": "Internal pre-live answer test set for Canonica MenuList support."
+    }
+  ],
+  "assetFiles": [
+    {
+      "path": "asset-inputs/current-approved-assets",
+      "status": "generated-approved-placeholder",
+      "publicUse": "Allowed only as generated MenuList website demo visuals, not real customer screenshots."
+    },
+    {
+      "path": "asset-inputs/private-reference-captures",
+      "status": "private-reference-only",
+      "publicUse": "Do not publish or describe as real customer proof without founder approval."
+    },
+    {
+      "path": "asset-inputs/screenshot-capture-plan.md",
+      "status": "capture-plan",
+      "publicUse": "Planning document for future routed screenshots."
+    },
+    {
+      "path": "asset-inputs/canonica-website-asset-slots.md",
+      "status": "website-asset-slot-map",
+      "publicUse": "Use after MenuList production onboarding and screenshot approval."
+    }
+  ]
+}

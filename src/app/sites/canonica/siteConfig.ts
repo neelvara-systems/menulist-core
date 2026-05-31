@@ -71,6 +71,20 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         changeFrequency: 'weekly',
     },
     {
+        path: '/pre-onboarding',
+        title: 'Pre-Onboarding Kit | Canonica',
+        description: 'Use an AI coding agent to prepare product website links, docs, owner notes, policies, support questions, and screenshot rules before Canonica onboarding.',
+        priority: 0.84,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/pre-onboarding/guide',
+        title: 'Pre-Onboarding Guide | Canonica',
+        description: 'End-to-end guide for using the Canonica pre-onboarding prompt with a product repo, docs, public website, owner notes, screenshots, and owner review.',
+        priority: 0.78,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/use-cases',
         title: 'Use Cases | Canonica',
         description: 'Support use cases for AI-built SaaS apps across billing, onboarding, settings, releases, support fallback, and product errors.',

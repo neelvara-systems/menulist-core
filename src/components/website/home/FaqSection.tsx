@@ -7,7 +7,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const FAQ_COUNT = 10;
+const FAQ_COUNT = 12;
 
 export default function FaqSection() {
   const t = useTranslations('Website');

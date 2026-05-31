@@ -231,9 +231,13 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `platformSummary/sourceVersions_{tId}_{sId}`
 - `platformSummary/bundleManifest_{tId}_{sId}`
 - `platformSummary/bundleBuildLock_{tId}_{sId}`
+- `platformSummary/supportBoardSummary_{tId}_{sId}`
+- `platformSummary/knowledgeIntakeSummary_{tId}_{sId}`
+- `platformSummary/predictiveTriggers_{tId}_{sId}`
+- `platformSummary/integrationHealth_{tId}_{sId}`
 - `platformSummary/mcpSignal_{tId}_{sId}_{dateKey}`
 
-Dashboard and scheduler flows should prefer summary docs over scanning growing collections.
+Dashboard and scheduler flows should prefer summary docs over scanning growing collections. Detail lists must stay tenant-scoped and bounded; realtime listeners are exceptional and require a documented cost reason. See [Cost Read-Model Guardrails](../cost-read-model-guardrails/README.md).
 
 ---
 
