@@ -48,7 +48,7 @@ function sanitizeMetadata(metadata: Record<string, unknown> | undefined): Record
 }
 
 export async function POST(request: NextRequest) {
-    const auth = await authenticateCanonicaPublicApi(request, 'POST /api/canonica/public/v1/signals');
+    const auth = await authenticateCanonicaPublicApi(request, 'POST /api/canonica/public/v1/signals', 'signals:write');
     if (auth.ok === false) return auth.response;
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) {

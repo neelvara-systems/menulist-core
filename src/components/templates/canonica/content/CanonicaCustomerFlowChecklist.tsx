@@ -66,13 +66,13 @@ export default function CanonicaCustomerFlowChecklist({
     const items: CustomerFlowItem[] = [
         {
             key: 'help-center',
-            title: 'Open the Help Center',
+            title: 'Review public help content',
             description: hasPublicKnowledge
                 ? 'Customers can browse approved articles and FAQs from the public help surface.'
                 : 'Publish one approved article or FAQ before this becomes useful to customers.',
             status: hasPublicKnowledge ? 'ready' : 'pending',
-            actionLabel: hasPublicKnowledge ? 'Preview' : 'Import Content',
-            route: hasPublicKnowledge ? CANONICA_ROUTES.HELP : CANONICA_ROUTES.KNOWLEDGE_INTAKE,
+            actionLabel: hasPublicKnowledge ? 'Review Knowledge Base' : 'Import Content',
+            route: hasPublicKnowledge ? CANONICA_ROUTES.KNOWLEDGE_BASE : CANONICA_ROUTES.KNOWLEDGE_INTAKE,
             icon: LuBookOpen,
         },
         {
@@ -99,24 +99,24 @@ export default function CanonicaCustomerFlowChecklist({
         },
         {
             key: 'ticket-fallback',
-            title: 'Submit a fallback ticket',
+            title: 'Review fallback tickets',
             description: hasTicketFallback
                 ? 'Ticket fallback has a support email and sender configuration.'
                 : 'Set support email and sender configuration so unresolved questions do not get missed.',
             status: hasTicketFallback ? 'ready' : 'needs_review',
-            actionLabel: hasTicketFallback ? 'Preview Ticket Form' : 'Review Notifications',
-            route: hasTicketFallback ? CANONICA_ROUTES.SUPPORT : CANONICA_ROUTES.ACTIVATION,
+            actionLabel: hasTicketFallback ? 'Open Ticket Inbox' : 'Review Notifications',
+            route: hasTicketFallback ? CANONICA_ROUTES.TICKETS : CANONICA_ROUTES.ACTIVATION,
             icon: LuTicket,
         },
         {
             key: 'release-notes',
-            title: 'Check release notes',
+            title: 'Review release notes',
             description: hasReleaseNotes
                 ? 'Customers can see recent product changes from the release notes surface.'
                 : 'Add release notes when product changes affect support answers.',
             status: hasReleaseNotes ? 'ready' : 'optional',
-            actionLabel: hasReleaseNotes ? 'Preview Releases' : 'Add Release',
-            route: hasReleaseNotes ? CANONICA_ROUTES.RELEASE_NOTES : CANONICA_ROUTES.CHANGELOG,
+            actionLabel: hasReleaseNotes ? 'Review Changelog' : 'Add Release',
+            route: CANONICA_ROUTES.CHANGELOG,
             icon: LuRadioTower,
         },
         {

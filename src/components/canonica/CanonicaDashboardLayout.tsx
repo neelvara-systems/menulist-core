@@ -22,6 +22,7 @@ import {
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import { CANONICA_LOCAL_DEV_PATH_PREFIX, isCanonicaProductHostname } from '@constant/canonica/domains';
 import { CANONICA_PERMISSION_KEYS, getCanonicaRouteRequiredPermission } from '@constant/canonica/permissions';
 import { useAppSelector } from '@hook/useAppSelector';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
@@ -73,7 +74,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
     const [firebaseAuthError, setFirebaseAuthError] = useState(false);
-    const { access, error: accessError, loading: accessLoading } = useCanonicaAccess();
+    const { access, error: accessError, errorCode: accessErrorCode, loading: accessLoading } = useCanonicaAccess();
     const layoutBackground = token.colorBgLayout;
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
@@ -110,10 +111,23 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
 
         return managementFallbackRoute;
     }, [access?.isPlatformAdmin, access?.permissions, managementFallbackRoute, normalizedPathname]);
+    const canonicaPublicPricingRoute = useMemo(() => (
+        isCanonicaProductHostname(currentHostname)
+            ? '/pricing'
+            : `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`
+    ), [currentHostname]);
+    const shouldRedirectToPublicPricing = status === 'authenticated'
+        && !accessLoading
+        && accessErrorCode === 'CANONICA_ACCOUNT_REQUIRED'
+        && isAdminRoute;
 
     useEffect(() => {
         if (status === 'loading') return;
         if (accessLoading) return;
+        if (shouldRedirectToPublicPricing) {
+            router.replace(canonicaPublicPricingRoute);
+            return;
+        }
         if (accessError) return;
         if (canEvaluateRoutePermission && canUseManagementSurfaces && ownerCustomerRouteFallback) {
             router.replace(toCanonicaDashboardRoute(ownerCustomerRouteFallback, currentHostname));
@@ -126,7 +140,7 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
         if (canEvaluateRoutePermission && !hasRoutePermission) {
             router.replace(toCanonicaDashboardRoute(managementFallbackRoute, currentHostname));
         }
-    }, [accessError, accessLoading, canEvaluateRoutePermission, canUseManagementSurfaces, currentHostname, hasRoutePermission, isAdminRoute, managementFallbackRoute, ownerCustomerRouteFallback, router, status]);
+    }, [accessError, accessLoading, canEvaluateRoutePermission, canUseManagementSurfaces, canonicaPublicPricingRoute, currentHostname, hasRoutePermission, isAdminRoute, managementFallbackRoute, ownerCustomerRouteFallback, router, shouldRedirectToPublicPricing, status]);
 
     useEffect(() => {
         if (status === 'loading') {
@@ -163,10 +177,12 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     }, [pathname, session, status]);
 
     const shouldRedirectOwnerCustomerRoute = canUseManagementSurfaces && Boolean(ownerCustomerRouteFallback);
-    const shouldRedirectAway = !accessError && canEvaluateRoutePermission && (
-        shouldRedirectOwnerCustomerRoute ||
-        (isAdminRoute && !canUseManagementSurfaces) ||
-        !hasRoutePermission
+    const shouldRedirectAway = shouldRedirectToPublicPricing || (
+        !accessError && canEvaluateRoutePermission && (
+            shouldRedirectOwnerCustomerRoute ||
+            (isAdminRoute && !canUseManagementSurfaces) ||
+            !hasRoutePermission
+        )
     );
     const shouldShowAuthError = !shouldRedirectAway && (
         firebaseAuthError ||

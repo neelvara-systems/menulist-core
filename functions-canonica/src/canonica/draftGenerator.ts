@@ -30,6 +30,7 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 
 const MAX_DRAFTS_PER_RUN = 10;
 const DRAFT_PROMPT_VERSION = 'v1';
+const DRAFT_ACTOR = 'system:draft_generator_nightly';
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT (mirrors src/lib/canonica/draftPrompt.ts)
@@ -364,19 +365,29 @@ export async function generateDraftsForNewProposals(
                 // Mark as pending
                 await proposalDoc.ref.update({
                     'suggestedChange.draftStatus': 'pending',
+                    modifiedOn: Timestamp.now(),
+                    modifiedBy: DRAFT_ACTOR,
                 });
 
                 // Gather context
                 const entityId = proposal.relatedEntityIds?.[0];
                 if (!entityId) {
-                    await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
+                    await proposalDoc.ref.update({
+                        'suggestedChange.draftStatus': 'failed',
+                        modifiedOn: Timestamp.now(),
+                        modifiedBy: DRAFT_ACTOR,
+                    });
                     result.draftsFailed++;
                     continue;
                 }
 
                 const entity = await getEntityContext(entityId);
                 if (!entity) {
-                    await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
+                    await proposalDoc.ref.update({
+                        'suggestedChange.draftStatus': 'failed',
+                        modifiedOn: Timestamp.now(),
+                        modifiedBy: DRAFT_ACTOR,
+                    });
                     result.draftsFailed++;
                     continue;
                 }
@@ -393,7 +404,11 @@ export async function generateDraftsForNewProposals(
                 // Parse response
                 const parsed = parseDraftResponse(rawResponse);
                 if (!parsed) {
-                    await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
+                    await proposalDoc.ref.update({
+                        'suggestedChange.draftStatus': 'failed',
+                        modifiedOn: Timestamp.now(),
+                        modifiedBy: DRAFT_ACTOR,
+                    });
                     result.draftsFailed++;
                     logger.warn('[Canonica Draft] Failed to parse Gemini response', {
                         tId,
@@ -417,10 +432,13 @@ export async function generateDraftsForNewProposals(
                     'suggestedChange.draftSignalExamples': signalExamples.slice(0, 5),
                     'suggestedChange.draftEntityContext': `${entity.name}: ${entity.description}`.substring(0, 500),
                     'suggestedChange.draftPromptVersion': DRAFT_PROMPT_VERSION,
+                    modifiedOn: Timestamp.now(),
+                    modifiedBy: DRAFT_ACTOR,
                 });
 
                 // Audit log
                 await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                    pId: 'CN',
                     tId,
                     sId,
                     action: 'draft_generated',
@@ -449,7 +467,11 @@ export async function generateDraftsForNewProposals(
                     error,
                 });
                 try {
-                    await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
+                    await proposalDoc.ref.update({
+                        'suggestedChange.draftStatus': 'failed',
+                        modifiedOn: Timestamp.now(),
+                        modifiedBy: DRAFT_ACTOR,
+                    });
                 } catch { /* non-blocking */ }
                 result.draftsFailed++;
             }

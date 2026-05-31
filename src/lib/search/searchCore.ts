@@ -676,7 +676,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
     const effectiveCacheKey = `${EMBEDDING_CACHE_VERSION}:${mountContext === 'widget' ? `widget:${cacheLookupKey}` : cacheLookupKey}`;
-    const withSavedSearchHistory = async (result: CoreSearchResult): Promise<CoreSearchResult> => {
+    const withSavedSearchHistory = async (
+        result: CoreSearchResult,
+        historyContext: {
+            matchedEntityIds?: string[];
+            fallbackReason?: string;
+            confidence?: CoreSearchResult['confidence'];
+        } = {},
+    ): Promise<CoreSearchResult> => {
+        const matchedEntityIds = Array.isArray(historyContext.matchedEntityIds)
+            ? historyContext.matchedEntityIds.filter((id): id is string => typeof id === 'string' && Boolean(id)).slice(0, 20)
+            : undefined;
         const savedHistory = await addAiSearchHistoryServer({
             query: searchQuery,
             cacheKey: cacheLookupKey,
@@ -692,7 +702,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             answerSource: result.answerSource || (result.canonical ? 'canonical' : result.references?.length ? 'rag' : 'empty'),
             canonicalAnswerId: result.canonicalAnswerId,
             faqAnswerId: result.faqAnswerId,
-            confidence: result.confidence,
+            matchedEntityIds,
+            fallbackReason: historyContext.fallbackReason,
+            confidence: result.confidence || historyContext.confidence,
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
@@ -917,6 +929,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         });
     }
 
+    const canonicalMissHistoryContext = {
+        matchedEntityIds: canonicalResult.matchedEntityIds,
+        fallbackReason: canonicalResult.fallbackReason,
+        confidence: canonicalResult.confidence,
+    };
+    const saveWithCanonicalMissContext = (result: CoreSearchResult) =>
+        withSavedSearchHistory(result, canonicalMissHistoryContext);
+
     // ===== STAGE 5: OWNER FAQ / CUSTOM ANSWER RETRIEVAL =====
     // Published FAQs are owner-approved short answers. They run after canonical
     // miss and before embeddings/RAG, so custom Q&A can resolve common questions
@@ -955,7 +975,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 },
             });
 
-            return withSavedSearchHistory({
+            return saveWithCanonicalMissContext({
                 craftedAnswer: faqResult.faq.answer,
                 references: faqResult.references,
                 suggestedQuestions: [],
@@ -1011,7 +1031,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     // ===== STAGE 5: RAG FALLBACK (Vector Search) =====
@@ -1062,13 +1082,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
 
     if (snapshot.empty) {
-        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     const documentsFound = snapshot.docs.map(doc => {
@@ -1090,7 +1110,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     if (!documentsFound.length) {
-        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     if (!documentsMatched.length) {
@@ -1108,7 +1128,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     const documentsForPrompt = documentsMatched.slice(0, RAG_CONTEXT_LIMIT);
@@ -1173,7 +1193,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     mountContext,
                 }
             });
-            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         const craftedAnswer = typeof generatedData.craftedAnswer === 'string'
@@ -1197,7 +1217,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 logType: 'ANSWER_EMPTY',
                 data: { query: searchQuery, mountContext }
             });
-            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         // Resolve reference IDs to full document objects
@@ -1223,7 +1243,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     mountContext,
                 }
             });
-            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         // Save search history
@@ -1239,6 +1259,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             craftedAnswer,
             references: resolvedReferences,
             answerSource: 'rag',
+            matchedEntityIds: canonicalMissHistoryContext.matchedEntityIds,
+            fallbackReason: canonicalMissHistoryContext.fallbackReason,
+            confidence: canonicalMissHistoryContext.confidence,
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
@@ -1305,5 +1328,5 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     // Gemini returned null — use shared empty escalation helper
-    return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+    return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
 }

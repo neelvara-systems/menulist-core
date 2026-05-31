@@ -8,6 +8,7 @@
 **Author:** Cascade (synthesized from 6 strategy docs, 3 constitution docs, 4 ChatGPT reviews, full codebase audit)  
 **Purpose:** Permanent founder reference — the honest top-view of everything we're building and why  
 **Updates:** Only when a product's fundamental nature changes
+**May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
 
 ---
 
@@ -539,7 +540,7 @@ If you have to ask → **No.** Build when the signal is unmistakable.
 | `__docs__/constitution/12-product-separation-doctrine.md` | Separation rules |
 | `__docs__/strategy/product-positioning-map.md` | 3-product stack |
 | `__docs__/control-layer-strategy/README.md` | Control Layer strategy |
-| `__docs__/growth-execution-strategy/README.md` | GrowthOS strategy |
+| `__docs__/growthos-addon/README.md` | Active GrowthOS add-on plan |
 | `__docs__/visual-meta/README.md` | VisualMeta strategy |
 | `__docs__/strategy/product-strategy-2026.md` | 2026 roadmap |
 

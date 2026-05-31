@@ -1,4 +1,5 @@
 import { getUnitCost } from '@constant/AI/unitCosts';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
@@ -39,6 +40,11 @@ type FinalizeUsageInput = {
 };
 
 const db = canonicaFirestoreAdmin as FirebaseFirestore.Firestore;
+const CANONICA_INTAKE_USAGE_ACTIONS = new Set<string>([
+    AI_ACTIONS_TYPES.CANONICA_INTAKE_OCR,
+    AI_ACTIONS_TYPES.CANONICA_INTAKE_TRANSCRIPTION,
+    AI_ACTIONS_TYPES.CANONICA_INTAKE_EMBEDDING,
+]);
 
 const now = () => admin.firestore.Timestamp.now();
 
@@ -47,6 +53,14 @@ const cleanText = (value: unknown, max = 300) => String(value || '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
+
+const stringifyMetadataValue = (value: unknown): string => {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
 
 const sanitizeMetadata = (value: unknown): Record<string, any> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -58,7 +72,7 @@ const sanitizeMetadata = (value: unknown): Record<string, any> => {
                 ? cleanText(nested, 500)
                 : typeof nested === 'number' || typeof nested === 'boolean' || nested === null
                     ? nested
-                    : cleanText(JSON.stringify(nested).slice(0, 500), 500),
+                    : cleanText(stringifyMetadataValue(nested).slice(0, 500), 500),
         ])
         .filter(([key]) => Boolean(key)));
 };
@@ -143,8 +157,12 @@ export async function reserveCanonicaIntakeUsage(scope: CanonicaScope, input: Re
     if (!db || typeof (db as any).collection !== 'function') {
         throw new Error('Canonica Firebase is not configured.');
     }
+    const action = cleanText(input.action, 120);
+    if (!CANONICA_INTAKE_USAGE_ACTIONS.has(action)) {
+        throw new Error('Unsupported Canonica intake usage action.');
+    }
 
-    const unitsRequired = Math.max(0, getUnitCost(input.action));
+    const unitsRequired = Math.max(0, getUnitCost(action));
     const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
     const ledgerRef = db.collection(DB_COLLECTIONS.CANONICA_INTAKE_USAGE_LEDGER).doc();
     const timestamp = now();
@@ -206,7 +224,7 @@ export async function reserveCanonicaIntakeUsage(scope: CanonicaScope, input: Re
             sId: Number(scope.sId),
             jobId: cleanText(input.jobId, 160) || null,
             sourceId: cleanText(input.sourceId, 160) || null,
-            action: cleanText(input.action, 120),
+            action,
             status: 'reserved',
             provider: cleanText(input.provider, 80) || null,
             model: cleanText(input.model, 80) || null,

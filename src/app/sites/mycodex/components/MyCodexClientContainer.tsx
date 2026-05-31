@@ -1046,7 +1046,12 @@ export default function MyCodexClientContainer({
         h3: ({ children, node: _node, ...props }: any) => {
             const id = createHeadingId(getNodeText(children));
             return <h3 id={id} {...props}>{children}</h3>;
-        }
+        },
+        table: ({ children, node: _node, ...props }: any) => (
+            <div className="mycodex-scroll-block" role="region" aria-label="Scrollable table">
+                <table {...props}>{children}</table>
+            </div>
+        ),
     }), [currentSlug, isLocalDev]);
 
     // Recursive sidebar node renderer
@@ -1519,7 +1524,7 @@ export default function MyCodexClientContainer({
                 </div>
 
                 <div className="flex min-w-0 flex-col lg:flex-row">
-                    <article className="flex-1 min-w-0 overflow-x-auto px-4 py-6 md:px-10 md:py-8">
+                    <article className="flex-1 min-w-0 overflow-x-clip px-4 py-6 md:px-10 md:py-8">
                         <div ref={readerCaptureRef} className="mx-auto w-full transition-[max-width] duration-200" style={readerStyle}>
                             {/* Breadcrumbs */}
                             {currentSlug.length > 0 && (
@@ -1547,7 +1552,7 @@ export default function MyCodexClientContainer({
                             )}
 
                             {/* Main Markdown Body */}
-                            <div className="prose prose-custom max-w-none overflow-x-auto">
+                            <div className="prose prose-custom max-w-none">
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={customComponents}

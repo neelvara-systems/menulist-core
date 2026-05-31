@@ -419,6 +419,7 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
             });
 
             await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                pId: 'CN',
                 tId, sId,
                 action: newDriftFlag ? 'drift_detected' : 'drift_cleared',
                 entityType: 'canonicalAnswer',
@@ -537,7 +538,9 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
             }
 
             const proposal = {
-                tId, sId,
+                pId: 'CN',
+                tId,
+                sId,
                 targetAnswerId,
                 relatedEntityIds: [entityId],
                 mutationType,
@@ -551,11 +554,15 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 confidenceScore: Math.min(cluster.total / 20, 1.0),
                 status: 'pending_review',
                 createdOn: Timestamp.now(),
+                modifiedOn: Timestamp.now(),
+                createdBy: 'system:mutation_engine_nightly',
+                modifiedBy: 'system:mutation_engine_nightly',
             };
 
             const proposalRef = await db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).add(proposal);
 
             await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                pId: 'CN',
                 tId, sId,
                 action: 'mutation_proposal_generated',
                 entityType: 'mutationProposal',
@@ -631,14 +638,35 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
         const signal = signalDoc.data();
         const metadata = signal.metadata || {};
 
-        // Extract searchable text from metadata
+        // Extract searchable support context from metadata. Keeping this broad
+        // reduces unresolved-signal churn without adding extra Firestore reads.
+        const productContext = metadata.productContext && typeof metadata.productContext === 'object'
+            ? metadata.productContext
+            : {};
         const searchText = [
             metadata.subject,
             metadata.title,
             metadata.query,
-            metadata.messageId,
+            metadata.message,
+            metadata.summary,
+            metadata.category,
+            metadata.contextKey,
+            metadata.surfaceId,
+            metadata.surfaceLabel,
             metadata.comments,
-        ].filter(Boolean).join(' ').toLowerCase();
+            metadata.featureRequest,
+            metadata.fallbackReason,
+            metadata.answerSource,
+            productContext.contextKey,
+            productContext.feature,
+            productContext.page,
+            productContext.workflow,
+            ...(Array.isArray(metadata.contextKeys) ? metadata.contextKeys : []),
+            ...(Array.isArray(metadata.relatedContextKeys) ? metadata.relatedContextKeys : []),
+            ...(Array.isArray(metadata.triggerTypes) ? metadata.triggerTypes : []),
+            ...(Array.isArray(metadata.reasons) ? metadata.reasons : []),
+            ...(Array.isArray(metadata.featureIssues) ? metadata.featureIssues : []),
+        ].filter((value) => typeof value === 'string' || typeof value === 'number').join(' ').toLowerCase();
 
         if (!searchText) continue;
 
@@ -1068,7 +1096,9 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
 
             // Create auto-proposal
             await db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).add({
-                tId, sId,
+                pId: 'CN',
+                tId,
+                sId,
                 targetAnswerId: '',
                 relatedEntityIds: [entityId],
                 mutationType: 'new_answer_required',
@@ -1082,9 +1112,13 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
                 confidenceScore: Math.min(missCount / 20, 1.0),
                 status: 'pending_review',
                 createdOn: Timestamp.now(),
+                modifiedOn: Timestamp.now(),
+                createdBy: 'system:fallback_detector_nightly',
+                modifiedBy: 'system:fallback_detector_nightly',
             });
 
             await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                pId: 'CN',
                 tId, sId,
                 action: 'auto_proposal_from_recurring_fallback',
                 entityType: 'mutationProposal',
@@ -1324,8 +1358,8 @@ function hashGraphPayload(value: any): string {
  * Rebuild the precomputed entity graph index for a tenant.
  * Reads entities + relations, builds a flat map, writes to platformSummary.
  * 
- * Cost: 1 read (relations) + 1 write (graph index doc).
- * Entities and answers are already loaded by earlier nightly steps.
+ * Cost: bounded entity + relation + answer reads plus one existing summary read.
+ * Writes only when the deterministic source hash changes or tenant metadata is missing.
  */
 async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphRebuildResult> {
     const result: GraphRebuildResult = { rebuilt: false, entityCount: 0, relationCount: 0, orphanRelations: 0 };
@@ -1447,9 +1481,10 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     // 5. Write graph index to platformSummary
     const docKey = `entityGraphIndex_${tId}_${sId}`;
     const existingDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).get();
-    const previousVersion = existingDoc.exists ? (existingDoc.data()?.version || 0) : 0;
-    const preservedInteractionRules = existingDoc.exists && existingDoc.data()?.interactionRules
-        ? existingDoc.data()?.interactionRules
+    const existingData = existingDoc.exists ? existingDoc.data() || {} : {};
+    const previousVersion = existingDoc.exists ? (existingData.version || 0) : 0;
+    const preservedInteractionRules = existingDoc.exists && existingData.interactionRules
+        ? existingData.interactionRules
         : undefined;
     const sourceHash = hashGraphPayload({
         entityCount: result.entityCount,
@@ -1457,13 +1492,29 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         graph,
         interactionRules: preservedInteractionRules || [],
     });
+    const missingScopeMetadata = existingDoc.exists && (
+        existingData.pId !== 'CN'
+        || Number(existingData.tId) !== Number(tId)
+        || Number(existingData.sId) !== Number(sId)
+    );
 
-    if (existingDoc.exists && existingDoc.data()?.sourceHash === sourceHash) {
+    if (existingDoc.exists && existingData.sourceHash === sourceHash) {
+        if (missingScopeMetadata) {
+            await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).set({
+                pId: 'CN',
+                tId,
+                sId,
+                metadataBackfilledAt: Timestamp.now(),
+            }, { merge: true });
+        }
         result.unchanged = true;
         return result;
     }
 
     await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).set({
+        pId: 'CN',
+        tId,
+        sId,
         lastRebuiltAt: Timestamp.now(),
         version: previousVersion + 1,
         entityCount: result.entityCount,

@@ -716,8 +716,17 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
 
     const patch = sanitizeReviewItemPatch(input);
     const nextTarget = (patch.target || current.target) as CanonicaIntakeReviewItem['target'];
+    const nextStatus = (patch.status || current.status) as CanonicaIntakeReviewItem['status'];
+    const nextEntityIds = patch.entityIds !== undefined ? patch.entityIds : current.entityIds;
     if (nextTarget === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG && patch.status === CANONICA_INTAKE_REVIEW_STATUS.ACCEPTED) {
         throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
+    }
+    if (
+        nextTarget === CANONICA_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+        && nextStatus === CANONICA_INTAKE_REVIEW_STATUS.ACCEPTED
+        && cleanIdList(nextEntityIds, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS).length === 0
+    ) {
+        throw new Error('Add at least one related entity before accepting a canonical answer proposal.');
     }
     await ref.set({
         ...patch,
@@ -783,6 +792,7 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
         reviewItems: deduped.length,
     }), { merge: true });
     await batch.commit();
+    await refreshJobCounters(scope, jobId);
     return { created: deduped.length };
 }
 
@@ -880,6 +890,13 @@ async function publishReviewItem(
     item: CanonicaIntakeReviewItem,
     actor?: IntakeActor,
 ): Promise<{ id: string; segments: CanonicaPublicCacheSegment[] } | null> {
+    const currentSnap = await reviewItemRef(item.id).get();
+    if (!currentSnap.exists) return null;
+    const current = { id: currentSnap.id, ...currentSnap.data() } as CanonicaIntakeReviewItem;
+    if (Number(current.tId) !== Number(scope.tId) || Number(current.sId) !== Number(scope.sId) || current.jobId !== job.id) {
+        return null;
+    }
+    item = current;
     if (item.status !== CANONICA_INTAKE_REVIEW_STATUS.ACCEPTED) return null;
     if (item.publishTargetId) {
         return { id: item.publishTargetId, segments: [] };
@@ -904,7 +921,7 @@ async function publishReviewItem(
 }
 
 async function publishArticle(scope: IntakeScope, job: CanonicaKnowledgeIntakeJob, item: CanonicaIntakeReviewItem, actor?: IntakeActor) {
-    const articleDoc = db.collection(DB_COLLECTIONS.KB_ARTICLES).doc();
+    const articleDoc = db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(`intake_article_${sha256(`${scope.tId}:${scope.sId}:${item.id}`).slice(0, 24)}`);
     const categoryId = job.defaultCategoryId || DEFAULT_CATEGORY_ID;
     const sectionId = job.defaultSectionId || DEFAULT_SECTION_ID;
     const categoryTitle = job.defaultCategoryTitle || DEFAULT_CATEGORY_TITLE;
@@ -1111,14 +1128,18 @@ async function publishSurface(scope: IntakeScope, item: CanonicaIntakeReviewItem
 }
 
 async function publishCanonicalProposal(scope: IntakeScope, item: CanonicaIntakeReviewItem, actor?: IntakeActor) {
-    const proposalRef = db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).doc();
+    const proposalRef = db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).doc(`intake_proposal_${sha256(`${scope.tId}:${scope.sId}:${item.id}`).slice(0, 24)}`);
+    const relatedEntityIds = cleanIdList(item.entityIds, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS);
+    if (relatedEntityIds.length === 0) {
+        throw new Error('Add at least one related entity before publishing a canonical answer proposal.');
+    }
     await proposalRef.set({
         id: proposalRef.id,
         pId: PRODUCT_IDS.CANONICA,
         tId: scope.tId,
         sId: scope.sId,
         targetAnswerId: '',
-        relatedEntityIds: cleanIdList(item.entityIds, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS),
+        relatedEntityIds,
         mutationType: CANONICA_MUTATION_TYPE.NEW_ANSWER_REQUIRED,
         signalSummary: {
             ticketCount: 0,
@@ -1512,11 +1533,37 @@ function normalizeSourceType(value: unknown): CanonicaKnowledgeSource['type'] {
     return values.includes(value as any) ? value as CanonicaKnowledgeSource['type'] : CANONICA_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE;
 }
 
+const stringifyMetadataValue = (value: unknown): string => {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
+
+function sanitizeMetadataValue(value: unknown, depth = 0): any {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'string') return cleanText(value, 500);
+    if (typeof value === 'number' || typeof value === 'boolean') return value;
+    if (value instanceof Date) return value.toISOString();
+    if (depth >= 2) return cleanText(stringifyMetadataValue(value), 500);
+    if (Array.isArray(value)) {
+        return value.slice(0, 20).map(item => sanitizeMetadataValue(item, depth + 1));
+    }
+    if (typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+            .slice(0, 12)
+            .map(([key, val]) => [cleanText(key, 80), sanitizeMetadataValue(val, depth + 1)])
+            .filter(([key]) => Boolean(key)));
+    }
+    return cleanText(value, 200);
+}
+
 function sanitizeMetadata(value: unknown) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     return Object.fromEntries(Object.entries(value as Record<string, any>)
         .slice(0, 20)
-        .map(([key, val]) => [cleanText(key, 80), typeof val === 'string' ? cleanText(val, 300) : val])
+        .map(([key, val]) => [cleanText(key, 80), sanitizeMetadataValue(val)])
         .filter(([key]) => Boolean(key)));
 }
 

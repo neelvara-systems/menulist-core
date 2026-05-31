@@ -47,7 +47,11 @@ export async function POST(request: NextRequest) {
             includePublicApi: true,
             cacheTtlMs: 30_000,
         });
-        if (!auth || !hasPublicApiCredentialScope(auth.credential, 'public:read')) {
+        if (
+            !auth
+            || !hasPublicApiCredentialScope(auth.credential, 'public:read')
+            || !hasPublicApiCredentialScope(auth.credential, 'signals:write')
+        ) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
 

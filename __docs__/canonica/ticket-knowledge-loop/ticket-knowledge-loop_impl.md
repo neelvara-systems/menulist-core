@@ -136,6 +136,7 @@ All data lives on existing collections:
 
 - `canonica_signalEvents` — enriched metadata on ticket resolution signals
 - `canonica_mutationProposals` — proposals with `draftSource: 'ticket_resolution'`
+- Ticket-resolution proposal writes include Canonica `pId`, `createdBy` / `modifiedBy`, and `modifiedOn`; merges into existing proposals also update modification metadata.
 - `canonica_auditLogs` — provenance tracking
 - `supportTickets` — read-only (never modified by this feature)
 

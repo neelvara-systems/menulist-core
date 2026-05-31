@@ -45,6 +45,8 @@ const CONFIG = {
     draftPromptVersion: 'v1-ticket',
 };
 
+const CANONICA_PRODUCT_ID = 'CN';
+
 // ═══════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════
@@ -308,6 +310,8 @@ export async function extractTicketKnowledge(
                             'suggestedChange.sourceTicketIds': [...existingTicketIds, ...newTicketIds].slice(0, 20),
                             'suggestedChange.sourceTicketCount': existingTicketIds.length + newTicketIds.length,
                             'signalSummary.ticketCount': (existingData.signalSummary?.ticketCount || 0) + newTicketIds.length,
+                            modifiedOn: Timestamp.now(),
+                            modifiedBy: 'system:ticket_resolution_extractor',
                         });
                         result.proposalsMerged++;
                     } else {
@@ -350,6 +354,7 @@ export async function extractTicketKnowledge(
 
                 // 2d. Create mutation proposal with ticket_resolution source
                 const proposalData = {
+                    pId: CANONICA_PRODUCT_ID,
                     tId,
                     sId,
                     targetAnswerId: '',
@@ -384,12 +389,16 @@ export async function extractTicketKnowledge(
                     confidenceScore: parsed.confidence,
                     status: 'pending_review',
                     createdOn: Timestamp.now(),
+                    modifiedOn: Timestamp.now(),
+                    createdBy: 'system:ticket_resolution_extractor',
+                    modifiedBy: 'system:ticket_resolution_extractor',
                 };
 
                 const proposalRef = await db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).add(proposalData);
 
                 // Audit log
                 await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                    pId: CANONICA_PRODUCT_ID,
                     tId,
                     sId,
                     action: 'ticket_knowledge_extracted',

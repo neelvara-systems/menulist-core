@@ -88,7 +88,7 @@ All 5 accessible via `GovernanceHub` (`governance/index.tsx`) — 8-tab Ant Desi
 | 3.2 | Signal Time Decay          | ✅     | `signalMutation.ts` lines 63-91: exponential decay, 7-day half-life                         |
 | 3.3 | Batch Signal Count Queries | ✅     | `signalEvents.ts` `getBatchSignalCounts()` — Firestore `in` operator, 30-entity batches     |
 | 3.4 | Answer Version History     | ✅     | `AnswerVersionHistory.tsx` (7.5KB) + DAL                                                    |
-| 3.5 | Signal TTL (12-month)      | ✅     | `signalEvents.ts` `archiveExpiredSignals()` + `canonicaNightly.ts` step 8                   |
+| 3.5 | Signal TTL (12-month)      | ✅     | `canonicaNightly.ts` `archiveExpiredSignals()` Admin SDK cleanup                            |
 | 4.1 | White-Label Branding       | ✅     | `WhiteLabelBranding.tsx` (10.8KB) + `branding.ts` DAL + `CanonicaBrandingConfig` type       |
 | 4.2 | Multi-Language Articles    | ✅     | `MultiLanguageArticles.tsx` (13.4KB) + `/api/canonica/translate` route + Gemini integration |
 

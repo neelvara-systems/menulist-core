@@ -38,6 +38,11 @@ const cleanSignalContextText = (value: unknown, maxLength = 140): string | null 
 
 const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) => {
     const contextKey = cleanSignalContextText(historyData.contextKey, 140);
+    const matchedEntityIds = Array.isArray(historyData.matchedEntityIds)
+        ? historyData.matchedEntityIds
+            .filter((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()))
+            .slice(0, 10)
+        : [];
     const productContext = {
         contextKey,
         feature: cleanSignalContextText(historyData.surfaceFeature, 120),
@@ -51,6 +56,8 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
         answerSource: cleanSignalContextText(historyData.answerSource, 80),
         confidence: cleanSignalContextText(historyData.confidence, 40),
         contextKey,
+        fallbackReason: cleanSignalContextText(historyData.fallbackReason, 180),
+        matchedEntityIds,
         productContext: hasProductContext ? productContext : null,
         relatedContextKeys: contextKey ? [contextKey] : [],
     };
@@ -167,8 +174,12 @@ export async function POST(request: NextRequest) {
             try {
                 const { emitCanonicaSignal } = await import('@lib/canonica/signalEmitter');
                 const { CANONICA_SIGNAL_TYPE } = await import('@type/canonica');
+                const matchedEntityId = Array.isArray(historyData.matchedEntityIds)
+                    ? historyData.matchedEntityIds.find((id: unknown) => typeof id === 'string' && Boolean(id.trim()))
+                    : undefined;
                 await emitCanonicaSignal({
                     type: CANONICA_SIGNAL_TYPE.CHAT_NEGATIVE,
+                    entityId: matchedEntityId,
                     tId,
                     sId,
                     metadata: {

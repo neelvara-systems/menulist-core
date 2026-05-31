@@ -170,7 +170,7 @@ Feedback review reads are capped in the DAL at 200 rows even if a caller passes 
 | Collection | Read | Create | Update/Delete |
 |------------|------|--------|---------------|
 | `feedback` | Platform admin, support-control users in same `tId+sId`, or the submitting user reading their own row | Platform admin/support-control users, or an authenticated tenant user creating their own feedback row | Support-control update only; delete denied |
-| `canonica_signalEvents` | Support-control users in same `tId+sId` | Support-control users, plus self-scoped `type='feedback'` events from Help Center feedback | Support-control update/delete only |
+| `canonica_signalEvents` | Support-control users in same `tId+sId` | Support-control users, plus self-scoped `type='feedback'` events from Help Center feedback | Append-only; client update/delete denied. Canonica nightly/admin TTL owns archival. |
 
 This allows end users to submit and view their own latest feedback without granting them access to owner review surfaces.
 

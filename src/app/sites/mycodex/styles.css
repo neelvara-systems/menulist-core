@@ -35,6 +35,9 @@
   font-family: var(--font-sans), sans-serif;
   font-size: var(--mycodex-font-size, 16px);
   line-height: 1.78;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .dark .prose-custom {
@@ -230,10 +233,13 @@
   background-color: #f8fafc !important;
   border: 1px solid rgba(24, 24, 27, 0.1);
   border-radius: 0.75rem;
+  max-width: 100%;
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding: 1rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dark .prose-custom pre {
@@ -253,12 +259,25 @@
   color: #e4e4e7;
 }
 
+.prose-custom .mycodex-scroll-block {
+  max-width: 100%;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose-custom .mycodex-scroll-block table {
+  min-width: 100%;
+  width: max-content;
+}
+
 .prose-custom table {
-  width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.9em;
-  margin: 1.5rem 0;
+  margin: 0;
   overflow: hidden;
   text-align: left;
 }
@@ -282,6 +301,24 @@
   border-bottom: 1px solid rgba(24, 24, 27, 0.08);
   padding: 0.7rem 0.9rem;
   vertical-align: top;
+}
+
+@media (max-width: 767px) {
+  .prose-custom .mycodex-scroll-block {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .prose-custom .mycodex-scroll-block table {
+    min-width: max-content;
+  }
+
+  .prose-custom :where(th, td) {
+    white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
 }
 
 .dark .prose-custom td {

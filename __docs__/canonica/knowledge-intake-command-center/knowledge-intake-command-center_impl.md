@@ -834,6 +834,12 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 - Review queue keeps canonical answer drafts as mutation proposals; no authoritative answer is auto-published.
 - Published outputs include source metadata/lineage where the destination supports it.
 - Runtime destination post-write actions are implemented for KB articles, FAQs, product surfaces, public content cache, compiled context source versions, article embeddings, and product-surface summaries. Canonical mutation proposals remain governance-only until approved through the canonical-answer workflow, and changelog publishing remains owner-managed outside intake.
+- Intake-published KB articles and canonical mutation proposals use deterministic destination IDs from the review item, so retry or double-click publish cannot create duplicate destination records for the same approved intake item.
+- Non-canonical runtime search history now carries canonical miss context (`matchedEntityIds`, confidence, and fallback reason) into FAQ/RAG/empty results, so recurring fallback, trust metrics, and mutation signals can connect misses back to product entities without extra runtime reads.
+- Canonical proposal review items require at least one related product entity before they can be accepted or published into the governance queue.
+- Intake source and usage metadata is key-count, depth, array, and string length bounded before Firestore writes.
+- Intake usage reservations are allowlisted to Canonica intake OCR, transcription, and embedding actions so unsupported future actions fail closed instead of silently recording zero-unit processing.
+- Intake API licensing checks use the store subscription mirror first, then a direct subscription document or capped tenant/store subscription query when the mirror is stale. Credit-shortage errors return a credits/payment status instead of a generic server failure.
 - No intake-only source/readiness counters are written day one.
 - Published article embeddings are attempted during publish; failures leave `embeddingStatus: failed` without blocking help-center publication.
 - Workspace summary doc updates from owner-triggered server transitions and from summary-only Canonica nightly analytics.
@@ -852,3 +858,4 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 | 2026-05-31 | 1.2.0 | Added bounded job orchestration, lease/idempotency rules, credit settlement, and privacy filtering. |
 | 2026-05-31 | 1.3.0 | Added summary-first read model, bucketed intake directory, source-version fields, and summary repair helpers. |
 | 2026-05-31 | 1.4.0 | Added runtime destination matrix and search/cache/bundle alignment rules for existing Canonica KB, FAQ, canonical, surface, release, widget, and hosted-help flows. |
+| 2026-05-31 | 1.5.0 | Added publish idempotency and runtime fallback signal alignment after the end-to-end intake-to-mutation review. |

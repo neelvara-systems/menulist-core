@@ -43,6 +43,54 @@ const createTraceId = () => {
     return `cn_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
+const cleanSignalText = (value: unknown, maxLength = 500): string => (
+    String(value || '')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxLength)
+);
+
+const stringifySignalValue = (value: unknown): string => {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+};
+
+const sanitizeSignalMetadataValue = (value: unknown, depth = 0): any => {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'string') return cleanSignalText(value, 500);
+    if (typeof value === 'number' || typeof value === 'boolean') return value;
+    if (value instanceof Date) return value.toISOString();
+    if (depth >= 3) return cleanSignalText(stringifySignalValue(value).slice(0, 500), 500);
+    if (Array.isArray(value)) {
+        return value
+            .slice(0, 20)
+            .map((item) => {
+                if (typeof item === 'string') return cleanSignalText(item, 180);
+                if (typeof item === 'number' || typeof item === 'boolean' || item === null) return item;
+                return cleanSignalText(stringifySignalValue(item).slice(0, 500), 500);
+            });
+    }
+    if (typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+            .slice(0, 12)
+            .map(([key, nested]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(nested, depth + 1)])
+            .filter(([key]) => Boolean(key)));
+    }
+    return cleanSignalText(value, 200);
+};
+
+const sanitizeSignalMetadata = (metadata: unknown): Record<string, any> => {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
+    return Object.fromEntries(Object.entries(metadata as Record<string, unknown>)
+        .slice(0, 30)
+        .map(([key, value]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(value)])
+        .filter(([key]) => Boolean(key)));
+};
+
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;
     if (value === null) return null;
@@ -64,6 +112,8 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
 
     const now = new Date();
     const traceId = createTraceId();
+    const createdBy = cleanSignalText(params.metadata?.source || 'system:canonica_signal', 140) || 'system:canonica_signal';
+    const uId = cleanSignalText(params.metadata?.userId || 'system', 140) || 'system';
     await canonicaFirestoreAdmin.collection(DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS).add(sanitizeForFirestore({
         pId: PRODUCT_IDS.CANONICA,
         tId: params.tId,
@@ -71,12 +121,12 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         entityId: params.entityId || 'unresolved',
         type: params.type,
         timestamp: now,
-        metadata: params.metadata || {},
+        metadata: sanitizeSignalMetadata(params.metadata),
         createdOn: now,
         modifiedOn: now,
-        createdBy: params.metadata?.source || 'system:canonica_signal',
-        modifiedBy: params.metadata?.source || 'system:canonica_signal',
-        uId: params.metadata?.userId || 'system',
+        createdBy,
+        modifiedBy: createdBy,
+        uId,
         traceId,
         requestId: traceId,
     }));
@@ -217,7 +267,7 @@ export const emitCanonicaSignal = async (params: EmitSignalParams): Promise<void
             entityId: params.entityId || 'unresolved',
             type: params.type,
             timestamp: Timestamp.now(),
-            metadata: params.metadata,
+            metadata: sanitizeSignalMetadata(params.metadata),
         });
     } catch (error) {
         // Fire-and-forget: log but never throw

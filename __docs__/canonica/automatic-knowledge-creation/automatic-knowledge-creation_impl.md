@@ -341,6 +341,7 @@ Step 9: Draft Generation for New Proposals
 
 - Draft generation failure does NOT affect proposal creation
 - `draftStatus: 'failed'` is set on the proposal
+- Draft status updates also refresh proposal `modifiedOn` / `modifiedBy` metadata so the governance queue reflects system-side draft activity.
 - Founder can manually trigger regeneration from governance UI
 - Error logged but never thrown (fire-and-forget pattern)
 

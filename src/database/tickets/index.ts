@@ -152,9 +152,12 @@ export const addTicket = async (data: SupportTicketType) => {
             const signalType = data.source === 'ai_escalation'
                 ? CANONICA_SIGNAL_TYPE.ESCALATION
                 : CANONICA_SIGNAL_TYPE.TICKET;
+            const escalationMatchedEntityIds = data.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
+            const signalEntityId = escalationMatchedEntityIds.find((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()));
 
             emitCanonicaSignal({
                 type: signalType,
+                entityId: signalEntityId,
                 tId: submitData.tId,
                 sId: submitData.sId,
                 metadata: {
@@ -165,6 +168,8 @@ export const addTicket = async (data: SupportTicketType) => {
                     priority: data.priority,
                     ...(data.source === 'ai_escalation' && {
                         query: data.escalationContext?.query,
+                        matchedEntityIds: escalationMatchedEntityIds,
+                        fallbackReason: data.escalationContext?.retrievalDebug?.canonicalResult?.fallbackReason,
                         triggerTypes: data.escalationContext?.triggerTypes,
                         conversationId: data.escalationContext?.conversationId,
                     }),

@@ -27,7 +27,9 @@
 2. `X-API-Key` exists and starts with `cn_`.
 3. Rate limit is checked before Firestore key lookup.
 4. `validatePublicApiKey()` resolves the hash-only key from `stores.publicApi.apiKeyHash`; Canonica public APIs disable the legacy raw-key fallback and do not opt into widget-only credential sources.
-5. The resolved key must be a Canonica public API key (`productId: "CN"` when present, `purpose` starts with `canonica` when present, and scope permits `public:read`).
+5. The resolved key must be a Canonica public API key (`productId: "CN"` when present, `purpose` starts with `canonica` when present, and the endpoint's required scope is present).
+   - Read endpoints require `public:read`.
+   - Signal-ingestion endpoints require `signals:write`.
 6. If the request has an `Origin`, it must match the store's allowed origins.
 7. `tId` and `sId` are derived from the resolved store, never from the request body.
 
@@ -58,6 +60,7 @@ Widget credentials are intentionally separate:
 ### `POST /api/canonica/public/v1/signals`
 
 - Requires `ENABLE_CANONICA_SIGNAL_MUTATION`.
+- Requires an explicit `signals:write` public API key scope; `public:read` alone cannot write signals.
 - Validates signal type against `CANONICA_SIGNAL_TYPE`.
 - Sanitizes metadata to primitive values with key and value limits.
 - Calls `emitCanonicaSignal()`.

@@ -23,6 +23,7 @@ export function getCanonicaKnowledgeIntakeErrorStatus(error: unknown): number {
     if (!(error instanceof Error)) return 500;
     const message = error.message.toLowerCase();
     if (message.includes('not found')) return 404;
+    if (message.includes('not enough canonica support credits') || message.includes('active canonica subscription')) return 402;
     if (message.includes('not available') || message.includes('active canonica beta or subscription')) return 403;
     if (message.includes('too large')) return 413;
     if (
@@ -149,7 +150,41 @@ async function hasActiveCanonicaLicense(tId: number, sId: number): Promise<{ all
         return { allowed: false, status: 403, message: 'Canonica workspace is not available.' };
     }
 
-    if (hasActiveSubscriptionWindow(storeData.canonicaSubscription)) {
+    const storeSubscription = storeData.canonicaSubscription || {};
+    if (hasActiveSubscriptionWindow(storeSubscription)) {
+        return { allowed: true };
+    }
+
+    const summarySubscriptionId = String(storeSubscription.id || storeSubscription.providerSubscriptionId || '').trim();
+    if (summarySubscriptionId) {
+        const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(summarySubscriptionId).get();
+        if (subscriptionSnap.exists) {
+            const subscription = subscriptionSnap.data() || {};
+            const subscriptionTenantId = Number(subscription.tId || subscription.tenantId);
+            const subscriptionStoreId = Number(subscription.sId || subscription.storeId);
+            if (
+                subscriptionTenantId === Number(tId)
+                && subscriptionStoreId === Number(sId)
+                && hasActiveSubscriptionWindow(subscription)
+            ) {
+                return { allowed: true };
+            }
+        }
+    }
+
+    const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .where('tenantId', '==', Number(tId))
+        .where('storeId', '==', Number(sId))
+        .limit(5)
+        .get();
+    const activeSubscription = subscriptionSnap.docs
+        .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
+        .find((subscription: Record<string, any>) => (
+            Number(subscription.tId || subscription.tenantId) === Number(tId)
+            && Number(subscription.sId || subscription.storeId) === Number(sId)
+            && hasActiveSubscriptionWindow(subscription)
+        ));
+    if (activeSubscription) {
         return { allowed: true };
     }
 

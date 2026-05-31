@@ -886,7 +886,7 @@ MenuList does not require high founder intervention. SurfaceOS adds API complexi
 
 - `__docs__/constitution/11-product-evolution-doctrine.md` — Evolution sequence
 - `__docs__/constitution/12-product-separation-doctrine.md` — Separation rules
-- `__docs__/growth-execution-strategy/README.md` — GrowthOS strategy
+- `__docs__/growthos-addon/README.md` — Active GrowthOS add-on plan
 - `__docs__/visual-meta/README.md` — VisualMeta strategy
 - `__docs__/surface-os/_archive/chatgpt-review.md` — ChatGPT conversation review
 

@@ -1,0 +1,148 @@
+# VisualMeta - Test Cases
+
+**Status:** Planning QA matrix
+**Created:** May 31, 2026
+**Runtime status:** No tests can run until implementation exists.
+
+---
+
+## 1. Product Flag Tests
+
+| Test | Expected |
+| --- | --- |
+| `ENABLE_VISUALMETA_PRODUCT=false` | No VisualMeta dashboard route, API mutation, or provider call is available. |
+| `ENABLE_VISUALMETA_PUBLIC_SITE=false` | Public VisualMeta site is not served. |
+| `ENABLE_VISUALMETA_GENERATION=false` | Generation APIs reject before provider work. |
+| `ENABLE_VISUALMETA_EXPORT_KITS=false` | Export kit creation is blocked. |
+| Provider flag off | No provider call or credit reservation occurs. |
+
+## 2. Routing Tests
+
+| Test | Expected |
+| --- | --- |
+| `/__visualmeta` local route when enabled | Renders VisualMeta local surface. |
+| VisualMeta host route | Resolves as product route before tenant/custom-domain routing. |
+| VisualMeta host with MenuList client path | Does not resolve MenuList tenant route. |
+| MenuList host | Does not expose VisualMeta dashboard. |
+| Canonica host | Does not expose VisualMeta dashboard. |
+
+## 3. Auth And Scope Tests
+
+| Test | Expected |
+| --- | --- |
+| unauthenticated API call | rejected |
+| MenuList-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
+| Canonica-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
+| VisualMeta reviewer approves allowed unit | accepted |
+| reviewer writes outside scope | rejected |
+| client tries to write billing ledger | rejected |
+
+## 4. Firebase Rule Tests
+
+| Test | Expected |
+| --- | --- |
+| document missing `pId` | rejected |
+| document has `pId != "VM"` | rejected |
+| wrong `tId/sId` | rejected |
+| write to immutable export manifest | rejected |
+| append review event in scope | accepted |
+| source upload outside VisualMeta Storage prefix | rejected |
+| public bucket read without signed URL | rejected |
+
+## 5. Source Import Tests
+
+| Test | Expected |
+| --- | --- |
+| import MenuList item snapshot | copied with `sourceContext.sourcePId="ML"` |
+| import external file | source hash created |
+| source facts change after import | existing content unit can be marked stale |
+| VisualMeta render after import | no live MenuList read required |
+| import attempts MenuList write-back | blocked |
+
+## 6. Generation Tests
+
+| Test | Expected |
+| --- | --- |
+| invalid prompt/request | rejected by Zod |
+| Safe Mode enabled | provider work blocked |
+| insufficient credits | provider work blocked |
+| rate limit exceeded | request rejected before provider call |
+| provider success | job, asset/text, ledger, and credit settlement written |
+| provider failure | job failed and reserved credits refunded/settled correctly |
+| generated result | draft status only |
+
+## 7. Review Tests
+
+| Test | Expected |
+| --- | --- |
+| approve valid candidate | review event written and unit status becomes approved |
+| reject candidate | review event written and unit remains not approved |
+| approve stale unit | blocked |
+| approve without required source facts visible | blocked by UI acceptance |
+| generated output marks itself final | impossible |
+
+## 8. Export Kit Tests
+
+| Test | Expected |
+| --- | --- |
+| export with unapproved units | blocked |
+| export approved units | manifest created and export kit ready |
+| export manifest after ready | immutable |
+| correction after export | new kit version created |
+| signed download expired | fresh signed URL required |
+| ZIP packaging failure | kit marked failed and audit logged |
+
+## 9. Mobile Tests
+
+| Test | Expected |
+| --- | --- |
+| mobile review list loads | paginated and scoped |
+| mobile reviewer sees source facts | visible before approval |
+| approve from mobile | same API and audit path as desktop |
+| reject from mobile | requires note or reason when configured |
+| mobile generation provider call directly | impossible |
+| mobile large batch setup | not shown |
+
+## 10. Cost Tests
+
+| Test | Expected |
+| --- | --- |
+| project list has many projects | paginated, no broad scan |
+| content units exceed page size | paginated |
+| batch job limit exceeded | rejected before enqueue |
+| rejected candidates retention window passes | cleanup eligible under VisualMeta function only |
+| credit reservation interrupted | ledger stays balanced |
+| billing scope missing | no MenuList fallback |
+
+## 11. Product Boundary Tests
+
+| Test | Expected |
+| --- | --- |
+| VisualMeta project created | stored in VisualMeta collections only |
+| VisualMeta asset uploaded | stored in VisualMeta Storage only |
+| MenuList cache invalidation triggered by VisualMeta prep | no, because no MenuList write occurs |
+| Canonica functions touched by VisualMeta job | never |
+| GrowthOS action created by VisualMeta export | never without explicit future integration |
+
+## 12. Public Copy Tests
+
+| Test | Expected |
+| --- | --- |
+| website claims direct publishing | fail |
+| website claims guaranteed growth | fail |
+| website says VisualMeta changes MenuList truth | fail |
+| website describes Final Content Kits | pass |
+| helpdoc requires human approval | pass |
+
+## 13. Required Verification Commands After Implementation
+
+```bash
+npx tsc --noEmit --incremental false
+firebase --config firebase-visualmeta.json emulators:exec "npm run test:visualmeta:rules"
+```
+
+Add product route smoke tests after the actual host and route implementation exists.
+
+## 14. Documentation Cost
+
+This QA matrix creates no runtime cost.

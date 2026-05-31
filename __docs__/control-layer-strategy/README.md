@@ -536,7 +536,7 @@ The Control Layer is the **architectural framework** for how truth flows. The 6-
 | --------------------- | --------------------------------------------------------- |
 | Constitution doctrine | `__docs__/constitution/11-product-evolution-doctrine.md`  |
 | Product Separation    | `__docs__/constitution/12-product-separation-doctrine.md` |
-| GrowthOS Strategy     | `__docs__/growth-execution-strategy/README.md`            |
+| GrowthOS Add-on Plan  | `__docs__/growthos-addon/README.md`                       |
 | Positioning Map       | `__docs__/strategy/product-positioning-map.md`            |
 | CFI Strategy          | `__docs__/customer-facing-infrastructure/README.md`       |
 | Future Roadmap        | `__docs__/strategy/menulist-future-roadmap-ssot.md`       |

@@ -1,6 +1,6 @@
 # MenuListAI Platform Documentation
 
-**Last Updated**: February 12, 2026  
+**Last Updated**: May 31, 2026
 **Status**: Production Ready  
 **Naming Convention**: `__docs__/[feature-name]/` (kebab-case) → `[feature-name]_spec.md`, `[feature-name]_impl.md`
 
@@ -24,7 +24,8 @@
 | Folder                                           | What's Inside                               |
 | ------------------------------------------------ | ------------------------------------------- |
 | **[social-content/](./social-content/)**         | Social media content generation (campaigns) |
-| **[growthos-command-center/](./growthos-command-center/)** | GrowthOS action-queue planning, review, cost, mobile, and decision docs |
+| **[growthos-addon/](./growthos-addon/)**         | GrowthOS add-on planning for MenuList higher-tier clients |
+| **[visual-meta/](./visual-meta/)**               | VisualMeta separate-product planning for approved Final Content Kits |
 | **[staff-prompt/](./staff-prompt/)**             | Staff prompt system                         |
 | **[gbp-sync/](./gbp-sync/)**                     | Google Business Profile sync                |
 | **[reviews-reputation/](./reviews-reputation/)** | Reviews and reputation management           |
@@ -125,5 +126,5 @@
 
 ---
 
-**Last Updated**: February 12, 2026  
+**Last Updated**: May 31, 2026
 **Documentation Version**: 4.0

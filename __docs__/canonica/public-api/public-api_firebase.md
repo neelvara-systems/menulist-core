@@ -24,11 +24,13 @@
 | --- | ---: | ---: | --- |
 | Answers | 2-5 reads | 0 | Hash-only key lookup + entity index + optional latest release + answer queries |
 | Entities | 2 reads to capped page | 0 | Hash-only key lookup + capped entity registry query |
-| Signals | 1 read | 1 write | Hash-only key lookup + append-only signal event |
+| Signals | 1 read | 1 write | Hash-only key lookup + explicit `signals:write` scope + append-only signal event |
 
 All endpoints are rate-limited per API key before expensive work starts.
 
 Widget-only credentials live under `stores.canonicaWidgetApi` and are not used by these public API endpoints. This avoids broader API authorization from embeddable widget keys while preserving a single store-document lookup pattern.
+
+Read-only public API keys must not be allowed to create support signals. `/api/canonica/public/v1/signals` requires `signals:write`, while entities/answers continue to require `public:read`.
 
 ---
 

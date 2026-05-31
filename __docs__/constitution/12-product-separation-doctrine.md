@@ -1,10 +1,11 @@
 # Product Separation Doctrine
 
-**Version:** 1.0  
-**Status:** 🔒 LOCKED — Permanent separation rules  
-**Authority:** Maximum — Overrides all bundling, merging, or feature-sharing proposals  
-**Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check  
-**Review:** `__docs__/growth-execution-strategy/_archive/chatgpt-review.md`  
+**Version:** 1.0
+**Status:** 🔒 LOCKED — Permanent separation rules
+**Authority:** Maximum — Overrides all bundling, merging, or feature-sharing proposals
+**Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check
+**Review:** `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md`
+**GrowthOS Current Plan:** `__docs__/growthos-addon/README.md`
 **Positioning Map:** `__docs__/strategy/product-positioning-map.md`
 
 ---
@@ -156,8 +157,8 @@ If one product fails, the others must remain unaffected.
 - Separate error handling
 - No shared failure modes
 
-If GrowthOS produces bad content → MenuList remains trustworthy.  
-If VisualMeta is unavailable → MenuList runs normally.  
+If GrowthOS produces bad content → MenuList remains trustworthy.
+If VisualMeta is unavailable → MenuList runs normally.
 If MenuList has a bug → GrowthOS and VisualMeta degrade gracefully.
 
 ---
@@ -216,7 +217,7 @@ Use this test for every feature proposal, partnership, or expansion idea:
 
 ---
 
-**Document Signature:** Founder Constitution  
-**Created:** February 19, 2026  
-**Lock:** Permanent — no expiry  
+**Document Signature:** Founder Constitution
+**Created:** February 19, 2026
+**Lock:** Permanent — no expiry
 **Modification:** Founder only, requires explicit unlock decision

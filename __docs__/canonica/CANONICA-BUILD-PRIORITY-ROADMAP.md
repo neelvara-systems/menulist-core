@@ -86,7 +86,7 @@ Improve the quality of signals and mutation proposals after real-world data prov
 | 3.2 | **Signal Time Decay**                  | Recent signals weighted higher than old ones. Prevents stale signals from dominating clusters.      | Low    | ✅ **DONE** (2026-03-07). Exponential decay with 7-day half-life in signalMutation.ts                   |
 | 3.3 | **Batch Signal Count Queries**         | Currently N reads per entity in drift loop. Batch with `in` query for 10-30x read reduction.        | Medium | ✅ **DONE** (2026-03-07). getBatchSignalCounts() in signalEvents.ts, used by driftDetection.ts          |
 | 3.4 | **Canonical Answer Version History**   | Answer-level changelog. Proves governance rigor. Audit trail exists but no per-answer history view. | Low    | ✅ **DONE** (2026-03-07). getAnswerVersionHistory() DAL + AnswerVersionHistory.tsx UI in governance hub |
-| 3.5 | **Signal TTL (12-month auto-archive)** | Doctrine says archive > 12 months. No TTL implemented. Prevents unbounded signal growth.            | Low    | ✅ **DONE** (2026-03-07). archiveExpiredSignals() in signalEvents.ts, called by nightly scheduler       |
+| 3.5 | **Signal TTL (12-month auto-archive)** | Doctrine says archive > 12 months. No TTL implemented. Prevents unbounded signal growth.            | Low    | ✅ **DONE** (2026-03-07). `archiveExpiredSignals()` runs in the Canonica nightly scheduler with Admin SDK access       |
 
 ---
 

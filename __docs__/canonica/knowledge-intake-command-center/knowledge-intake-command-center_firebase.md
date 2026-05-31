@@ -138,6 +138,12 @@ Implemented in the existing Canonica nightly scheduler:
 - never calls AI providers
 - never publishes review items
 
+### 4.3 Runtime Signal Alignment
+
+Published intake output flows through the existing KB, FAQ, product-surface, and mutation-proposal destinations. Runtime search records store matched entity IDs and fallback reason even when the final answer comes from FAQ, RAG, or the empty-response path. Widget feedback and escalation-ticket signals bind the first matched entity when available, so nightly mutation can skip unnecessary unresolved-signal update work.
+
+Intake source metadata and usage-ledger metadata are bounded before write. Usage-ledger reservations fail closed unless the action is one of the supported Canonica intake actions (`canonica_intake_ocr`, `canonica_intake_transcription`, or `canonica_intake_embedding`), so a future caller cannot accidentally process paid intake work as a zero-unit unknown action. Active-license checks read the store subscription mirror first, then use a direct subscription doc or capped tenant/store subscription query only when the mirror is missing/stale. Canonical answer proposal review items must carry at least one related entity before acceptance/publish so downstream governance approval is never blocked by an entity-less proposal.
+
 This gives activation/dashboard analytics without hidden processing or source/review scans.
 
 ### 4.2.1 Platform Intake Monitor
@@ -595,3 +601,4 @@ When implemented with this contract:
 | 2026-05-31 | 1.2.0 | Added lease/concurrency, credit reservation/settlement, and privacy-filter cost controls. |
 | 2026-05-31 | 1.3.0 | Added summary-first read model, bucketed intake directory, source-version manifest, and scheduler repair contract. |
 | 2026-05-31 | 1.4.0 | Added runtime destination post-write cost matrix and clarified that intake-only counters must not force public bundle rebuilds. |
+| 2026-05-31 | 1.5.0 | Added runtime fallback signal alignment and deterministic intake publish IDs to reduce duplicate writes and unresolved-signal repair work. |

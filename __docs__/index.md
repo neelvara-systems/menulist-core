@@ -2,7 +2,7 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** February 12, 2026 | **Total Features:** 30+ | **Doc Types:** 7 per feature
+> **Last Updated:** May 31, 2026 | **Total Features:** 30+ | **Doc Types:** 7 per feature
 
 ---
 
@@ -37,7 +37,8 @@
 | 12  | **Pricing Integrity System**      | `pricing-integrity-system/`                  |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 13  | **Reviews & Reputation**          | `reviews-reputation/`                        |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 14  | **Social Content**                | `social-content/`                            |  ➖  |  ➖  |    ➖     |   ➖    |   ➖    |    ➖    |   ✅   |
-| 14a | **GrowthOS Command Center**       | `growthos-command-center/`                   |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| 14a | **GrowthOS Add-on**               | `growthos-addon/`                            |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| 14b | **VisualMeta**                    | `visual-meta/`                               |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 15  | **Staff Prompt**                  | `staff-prompt/`                              |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 16  | **Stores Management**             | `stores-management/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17  | **Roles & Permissions**           | `roles-permissions/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |

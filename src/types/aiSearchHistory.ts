@@ -27,6 +27,7 @@ export interface AiSearchHistory {
     answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string; // Final answer source for audit/analytics
     faqAnswerId?: string;             // Published owner FAQ/custom answer used, when applicable
     matchedEntityIds?: string[];      // Entity IDs matched during retrieval
+    fallbackReason?: string;          // Canonical miss reason captured before FAQ/RAG fallback
     confidence?: string;              // 'high' | 'medium' | 'low' | 'none'
     sourceVersions?: CanonicaCacheSourceVersions; // Source freshness manifest captured when cached
     mountContext?: 'help_center' | 'widget' | 'api' | string; // Surface that initiated the search

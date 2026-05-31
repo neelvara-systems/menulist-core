@@ -6,6 +6,57 @@
 
 ---
 
+## May 31, 2026 — Canonica Product Pipeline Alignment Audit
+
+### Fixed
+
+- **Owner launch checklist stays in owner routes** — Customer-facing compatibility routes remain available for support surfaces, but owner checklist actions now open Knowledge Base, Ticket Inbox, and Changelog management screens.
+- **Canonica graph and audit writes keep product scope** — Nightly graph summaries now carry `pId/tId/sId`, Firestore rules recognize the live `entityGraphIndex_*` summary document, old graph summaries get a one-time metadata backfill, and system audit logs from nightly/draft/bootstrap flows include Canonica product scope.
+- **Non-Canonica signed-in accounts leave the dashboard path** — An authenticated Google account without a Canonica workspace is routed to Canonica pricing/subscription instead of seeing a blocked dashboard state.
+
+### Cost
+
+- **Low one-time metadata cost** — Existing graph summary documents may receive one merge write to add `pId/tId/sId`; unchanged summaries still skip normal graph rewrites.
+- **No new listeners or unbounded scans** — The audit changes add no public reads, no realtime listeners, no new collections, and no scheduler fan-out.
+
+## May 31, 2026 — VisualMeta Separate Product Planning
+
+### Added
+
+- **VisualMeta is now planned as a separate product** — Added a full VisualMeta documentation set that treats VisualMeta as product code `VM`, separate from MenuList, GrowthOS, Canonica, and the internal Website Asset Operating System.
+- **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Canonica-style doctrine.
+- **Product separation doctrine** — Added VisualMeta core doctrine, non-goals charter, infrastructure freeze, and product separation playbook covering routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests.
+
+### Product Decision
+
+- **Separate product, export-only** — VisualMeta prepares source-backed, human-approved Final Content Kits. It does not publish, schedule, manage live MenuList truth, run ads, replace Canva/Adobe/Photoroom, or auto-approve generated output.
+- **Old VisualMeta strategy archived** — Moved the previous single-file VisualMeta strategy to `__docs__/visual-meta/_archive/visual-meta-strategy-2026-05-31.md` so the new doc set is the active planning source.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, or deploys.
+
+---
+
+## May 31, 2026 — GrowthOS Add-on Planning
+
+### Added
+
+- **GrowthOS is now planned as a MenuList add-on** — Added a fresh GrowthOS Add-on documentation set that treats GrowthOS as a higher-tier MenuList service labelled Growth Kits, not a standalone product.
+- **End-to-end Growth Kits plan** — Documented owner value, market context, product scope, implementation plan, feature flags, entitlement gates, mobile support, Firebase cost, help copy, website copy, marketing packaging, and test cases.
+
+### Product Decision
+
+- **Manual output first** — Growth Kits prepares copy/download/print materials from current MenuList truth. Direct posting, scheduling, ROI claims, standalone routing, and Google review ingestion remain out of scope.
+- **Old GrowthOS docs stay historical** — The older GrowthOS strategy and command-center docs now point to `__docs__/growthos-addon/` as the active implementation-planning source.
+- **Old GrowthOS folders archived** — Moved previous standalone GrowthOS strategy and command-center docs under `__docs__/growthos-addon/_archive/`, leaving only redirect stubs at the old paths to avoid implementation confusion.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, or deploys.
+
+---
+
 ## May 31, 2026 — Today Weekly Growth Pack
 
 ### Added
@@ -101,9 +152,17 @@
 - **Canonica nightly now refreshes intake analytics** — The existing Canonica scheduler writes compact intake summary data from bounded recent job docs and does not retry failed jobs, crawl URLs, call providers, or publish review items.
 - **Canonica intake now has a scoped platform monitor** — Platform admins can open `/platform/canonica-intake`, select a workspace from `canonicaTenantsSummary`, observe scoped intake jobs, credit ledger rows, media extraction usage, scheduler intake health, and run a selected-workspace nightly retry.
 
+### Fixed
+
+- **Canonica fallback signals now keep entity context** — FAQ/RAG/empty search paths, widget feedback, and escalation tickets preserve matched entity IDs and fallback reasons so nightly mutation can create useful proposals without extra entity-resolution reads.
+- **Canonica intake publishing is idempotent and entity-safe** — Intake-published KB articles and canonical-answer proposals use deterministic destination IDs, and canonical proposals require at least one related entity before entering governance.
+- **Canonica intake license checks tolerate stale mirrors** — Paid intake routes use the store subscription mirror first, then a direct subscription record or capped tenant/store fallback before blocking an active workspace.
+- **Canonica public signal ingestion now requires write scope** — Public read keys can still read entity/answer endpoints, but `/public/v1/signals` and MCP sessions that can write signals now require explicit `signals:write`.
+- **Canonica intake usage ledger fails closed for unknown actions** — Only known intake OCR, transcription, and embedding actions can reserve intake usage; unsupported future actions cannot silently record zero-unit paid processing.
+
 ### Cost
 
-- **Firebase cost is bounded and explicit** — Paid media extraction adds one ledger write plus subscription/store credit updates per reservation, one source write on success, one AI operation log, and one job counter update. The scheduler adds up to 20 job reads plus one summary read per tenant run and writes only when the summary hash changes. The platform monitor first reads one tenant summary and recent scheduler logs; selected-workspace detail refresh adds up to 10 intake jobs and 10 ledger rows. No raw media Storage retention, realtime listener, hidden retry worker, or unbounded intake scan was added.
+- **Firebase cost is bounded and explicit** — Paid media extraction adds one ledger write plus subscription/store credit updates per reservation, one source write on success, one AI operation log, and one job counter update. The scheduler adds up to 20 job reads plus one summary read per tenant run and writes only when the summary hash changes. The platform monitor first reads one tenant summary and recent scheduler logs; selected-workspace detail refresh adds up to 10 intake jobs and 10 ledger rows. Runtime signal alignment adds fields to existing search/ticket/feedback writes rather than new writes. Intake license checks add a direct subscription read or capped subscription query only when the store mirror is missing or stale. No raw media Storage retention, realtime listener, hidden retry worker, or unbounded intake scan was added.
 
 ---
 
@@ -1947,7 +2006,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 - **Signal Time Decay (3.2):** Exponential decay with 7-day half-life. Recent signals contribute more to weighted scores than older ones within the 14-day window.
 - **Batch Signal Count Queries (3.3):** Drift engine now uses `getBatchSignalCounts()` with Firestore `in` operator — reduces N per-entity reads to ceil(N/30) reads. 10-30x read reduction.
 - **Canonical Answer Version History (3.4):** `getAnswerVersionHistory()` DAL function + `AnswerVersionHistory.tsx` governance UI tab. Full per-answer timeline of drift, mutation, and validation events.
-- **Signal TTL Auto-Archive (3.5):** `archiveExpiredSignals()` function + wired as **Step 8** in nightly scheduler. Deletes signal events older than 12 months per doctrine mandate.
+- **Signal TTL Auto-Archive (3.5):** `archiveExpiredSignals()` is wired in the Canonica nightly scheduler. Deletes signal events older than 12 months per doctrine mandate.
 - **White-Label / Custom Branding (4.1):** `CanonicaBrandingConfig` type + `WhiteLabelBranding.tsx` settings UI + `branding.ts` DAL (save/load via platformSummary). Fully wired end-to-end.
 - **Multi-Language KB Articles (4.2):** `CanonicaArticleTranslation` type + `MultiLanguageArticles.tsx` management UI + `/api/canonica/translate` route (Gemini 2.0 Flash). Fully wired end-to-end.
 - **3 new feature flags:** `ENABLE_CANONICA_SIGNAL_QUALITY`, `ENABLE_CANONICA_WHITE_LABEL`, `ENABLE_CANONICA_MULTI_LANGUAGE` — all OFF by default.
@@ -3016,10 +3075,10 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 ### New
 
-- **GrowthOS Complete Product Strategy** — Comprehensive strategy document for GrowthOS — a future transactional execution engine that produces ready-to-use promotional content for SMBs. Consolidates 10 ChatGPT design documents into one master doc. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, 6 canonical use cases, workflow engine design, content quality rules, MenuList relationship contract, monetization (pay-per-kit), and kill criteria. Cross-checked against codebase: MenuList's existing Social Content Engine already implements ~60% of GrowthOS vision. See [strategy](./growth-execution-strategy/README.md).
+- **GrowthOS Complete Product Strategy** — Comprehensive strategy document for GrowthOS — a future transactional execution engine that produces ready-to-use promotional content for SMBs. Consolidates 10 ChatGPT design documents into one master doc. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, 6 canonical use cases, workflow engine design, content quality rules, MenuList relationship contract, monetization (pay-per-kit), and kill criteria. Cross-checked against codebase: MenuList's existing Social Content Engine already implements ~60% of GrowthOS vision. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
 - **Product Separation Doctrine (Constitution 12)** — New governance document permanently locking the separation between MenuList, GrowthOS, and VisualMeta. Ten rules: (1) Product identity lock — each answers exactly one question. (2) AI posture rules — Authority (MenuList), Delegate (GrowthOS), Assistant (VisualMeta). (3) Time horizon lock — Continuous/Immediate/Deliberate. (4) Dependency direction — one-way read-only from MenuList outward. (5) Surface & UI firewall — no shared components. (6) Monetization separation — subscription/per-kit/per-project. (7) Language separation. (8) Failure isolation. (9) Priority order locked: MenuList #1, GrowthOS #2, VisualMeta #3. (10) Red-Flag Test for feature assignment. See [doctrine](./constitution/12-product-separation-doctrine.md).
 - **Product Positioning Map** — One-page strategic reference showing how MenuList (infrastructure), GrowthOS (execution), and VisualMeta (preparation) form a vertical stack with separate jobs, time horizons, AI postures, surfaces, and monetization. Includes Red-Flag Test: "If it's a bit of all three → kill it." See [positioning map](./strategy/product-positioning-map.md).
-- **AgentKits Marketing Repo Analysis** — Assessment of [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) (18 agents, 93 commands, 28 skills). Only ~15% relevant to SMB context. Extractable: copywriting frameworks, workflow structure patterns, brand safety rules. Not useful: enterprise marketing (lead scoring, CRO, email funnels, programmatic SEO). See [analysis](./growth-execution-strategy/agentkits-repo-analysis.md).
+- **AgentKits Marketing Repo Analysis** — Assessment of [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) (18 agents, 93 commands, 28 skills). Only ~15% relevant to SMB context. Extractable: copywriting frameworks, workflow structure patterns, brand safety rules. Not useful: enterprise marketing (lead scoring, CRO, email funnels, programmatic SEO). Archived at [analysis](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/agentkits-repo-analysis.md).
 
 ---
 
@@ -3029,7 +3088,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 - **Product Evolution Doctrine (Constitution 11)** — New governance document locking MenuList's 3-year product direction. Six rules: (1) Product sequence lock: MenuList → Control Layer inside → GrowthOS → VisualMeta optional. (2) Customer-facing only boundary — PERMANENT: never POS/CRM/inventory/payroll. (3) "5-Minute Understanding" rule — non-tech SMB must understand purpose in 5 minutes without training. (4) "Calm, elite infrastructure" identity — simple surface, deep underneath, locked 3 years. (5) Silent autopilot design principle — owner updates once, correct everywhere. (6) Kill-switch philosophy for anything that adds complexity. See [doctrine](./constitution/11-product-evolution-doctrine.md).
 - **Control Layer Strategy** — Comprehensive strategic framework documenting how MenuList evolves from "menu infrastructure" to "business truth infrastructure." Consolidates 18 ChatGPT design documents into single master doc. Maps 5 Control Layer Pillars (Business Identity Truth, Operational Public Truth, Menu & Offering Truth, Public Communication Layer, Presence Consistency Layer) to existing 6-Pillar CFI framework. Includes data model, authority hierarchy, surface control map, conflict resolution rules, rollout phases, failure scenarios, and strategic moat analysis. Cross-checked: 60-70% of vision already exists in codebase. See [strategy](./control-layer-strategy/README.md).
-- **Growth Execution Strategy (DEFERRED)** — Future reference document for GrowthOS — the revenue execution engine that would sit on top of MenuList's truth infrastructure. Consolidates 9 ChatGPT design documents. Clearly marked as DEFERRED with explicit prerequisites (200+ active stores, >70% link adoption, founder unlock). Documents boundary rules: GrowthOS reads from truth layer, never writes. See [strategy](./growth-execution-strategy/README.md).
+- **Growth Execution Strategy (DEFERRED)** — Future reference document for GrowthOS — the revenue execution engine that would sit on top of MenuList's truth infrastructure. Consolidates 9 ChatGPT design documents. Clearly marked as DEFERRED with explicit prerequisites (200+ active stores, >70% link adoption, founder unlock). Documents boundary rules: GrowthOS reads from truth layer, never writes. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
 
 ---
 

@@ -14,7 +14,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDocs, limit, orderBy, query, Timestamp, where, writeBatch } from "@firebase/firestore";
+import { addDoc, collection, getDocs, limit, orderBy, query, Timestamp, where } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
@@ -186,52 +186,5 @@ export const getBatchSignalCounts = async (
             return result;
         },
         "getBatchSignalCounts"
-    );
-};
-
-/**
- * Archive (delete) signal events older than TTL.
- * Doctrine mandates: "Archive events > 12 months"
- * Called by nightly scheduler.
- * 
- * Phase 4 — Signal TTL (3.5)
- * 
- * @returns Number of signals archived (deleted)
- */
-export const archiveExpiredSignals = async (
-    tId: number,
-    sId: number,
-    ttlMonths: number = 12,
-    batchLimit: number = 100
-): Promise<number> => {
-    return await apiCallComposer(
-        async () => {
-            const cutoff = new Date();
-            cutoff.setMonth(cutoff.getMonth() - ttlMonths);
-            const cutoffTimestamp = Timestamp.fromDate(cutoff);
-
-            const q = query(
-                getCollectionRef(),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
-                where('timestamp', '<', cutoffTimestamp),
-                limit(batchLimit)
-            );
-            const snapshot = await getDocs(q);
-
-            if (snapshot.empty) return 0;
-
-            // Use batched writes for efficient deletion (max 500 per batch)
-            const batch = writeBatch(canonicaFirebaseClient);
-            let count = 0;
-            snapshot.forEach((d) => {
-                batch.delete(doc(canonicaFirebaseClient, COLLECTION, d.id));
-                count++;
-            });
-            await batch.commit();
-
-            return count;
-        },
-        "archiveExpiredSignals"
     );
 };

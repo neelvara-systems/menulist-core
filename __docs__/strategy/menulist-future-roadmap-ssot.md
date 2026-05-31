@@ -889,7 +889,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 - `__docs__/constitution/11-product-evolution-doctrine.md` — Constitution-level doctrine (3-year lock)
 - `__docs__/control-layer-strategy/README.md` — Consolidated ControlOS strategy
-- `__docs__/growth-execution-strategy/README.md` — GrowthOS future reference (DEFERRED)
+- `__docs__/growthos-addon/README.md` — Active GrowthOS add-on plan
 
 ## Session 7 Topics (February 19, 2026 — Late Evening)
 
@@ -903,13 +903,13 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **Kill Criteria for GrowthOS (NEW):** DOC 10 — when to shut down, banned expansions, red-flag test. Written by Cascade (ChatGPT referenced but never produced it).
 - **Monetization Model (NEW):** Pay-per-kit or prepaid bundles. No subscriptions, no unlimited, no feature tiers. Cascade note: Indian market likely needs prepaid bundles (₹199/5 kits).
 
-**Cascade Review:** 85% accuracy. Strong philosophical framework. Key gap: ChatGPT unaware Social Content Engine already exists (~60% of GrowthOS vision). Over-emphasized separation when most value already inside MenuList. 5/6 use cases already implemented as campaign types. Full review at `__docs__/growth-execution-strategy/_archive/chatgpt-review.md`
+**Cascade Review:** 85% accuracy. Strong philosophical framework. Key gap: ChatGPT unaware Social Content Engine already exists (~60% of GrowthOS vision). Over-emphasized separation when most value already inside MenuList. 5/6 use cases already implemented as campaign types. Full review archived at `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md`
 
 **Documents Created/Updated:**
 
-- `__docs__/growth-execution-strategy/README.md` — Comprehensive GrowthOS strategy (replaced brief version from Session 6)
-- `__docs__/growth-execution-strategy/_archive/chatgpt-review.md` — Full conversation review
-- `__docs__/growth-execution-strategy/agentkits-repo-analysis.md` — Repo extraction plan
+- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md` — Archived comprehensive GrowthOS strategy
+- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md` — Archived full conversation review
+- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/agentkits-repo-analysis.md` — Archived repo extraction plan
 - `__docs__/strategy/product-positioning-map.md` — 3-product positioning map
 - `__docs__/constitution/12-product-separation-doctrine.md` — Product separation doctrine
 

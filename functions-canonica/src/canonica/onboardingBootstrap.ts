@@ -51,6 +51,7 @@ const CONFIG = {
 } as const;
 
 const BOOTSTRAP_PROMPT_VERSION = 'v1';
+const CANONICA_PRODUCT_ID = 'CN';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -510,6 +511,7 @@ async function autoPromoteEntities(
 
                 // Audit log
                 await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                    pId: CANONICA_PRODUCT_ID,
                     tId,
                     sId,
                     action: 'entity_auto_promoted_onboarding',
@@ -686,6 +688,7 @@ async function generateDraftsForPromotedEntities(
 
             // Create mutation proposal with draft
             await db.collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS).add({
+                pId: CANONICA_PRODUCT_ID,
                 tId,
                 sId,
                 targetAnswerId: '',
@@ -715,10 +718,13 @@ async function generateDraftsForPromotedEntities(
                 status: 'pending_review',
                 createdOn: Timestamp.now(),
                 modifiedOn: Timestamp.now(),
+                createdBy: 'system:onboarding_bootstrap',
+                modifiedBy: 'system:onboarding_bootstrap',
             });
 
             // Audit log
             await db.collection(DB_COLLECTIONS.CANONICA_AUDIT_LOGS).add({
+                pId: CANONICA_PRODUCT_ID,
                 tId,
                 sId,
                 action: 'draft_generated_onboarding',

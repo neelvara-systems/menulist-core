@@ -89,6 +89,8 @@ Zero new Firestore collections. All data stored in existing collections:
 | Promoted entities | `canonica_entities`          | Same as manual promote                                                       |
 | Search index      | `canonica_entitySearchIndex` | Same as manual promote                                                       |
 | Answer drafts     | `canonica_mutationProposals` | Proposals with `draftStatus: generated`, `draftSource: onboarding_bootstrap` |
+
+Generated onboarding-bootstrap proposals are Canonica-scoped with `pId: "CN"` and system actor metadata (`createdBy`, `modifiedBy`, `modifiedOn`) so they match the normal governance proposal contract.
 | Progress          | `kb_generation_jobs`         | Additive `onboardingBootstrap` field on existing job doc                     |
 | Audit trail       | `canonica_auditLogs`         | Actions: `entity_auto_promoted_onboarding`, `draft_generated_onboarding`     |
 

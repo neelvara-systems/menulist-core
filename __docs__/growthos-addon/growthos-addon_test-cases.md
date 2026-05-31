@@ -1,0 +1,136 @@
+# GrowthOS Add-on - Test Cases
+
+**Status:** Planning test matrix
+**Run before activation:** Yes
+**Applies to:** Desktop, mobile, API, DAL, security, cost, docs
+
+---
+
+## 1. Feature Flag Tests
+
+| Test | Expected result |
+| --- | --- |
+| `ENABLE_GROWTHOS_ADDON=false` | No Growth Kits navigation, Today entry point, API generation, or mobile card is available. |
+| `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if entitlement exists. |
+| `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
+| `GROWTHOS_IMAGE_MODE=existing_only` | Missing item image does not trigger image generation. |
+| `GROWTHOS_REVIEW_REPLY_MODE=manual_paste` | Review reply requires owner-pasted text. |
+
+## 2. Entitlement Tests
+
+| Test | Expected result |
+| --- | --- |
+| Free/base store opens desktop route directly | Access denied with owner-safe message. |
+| Free/base store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
+| Paid eligible store opens module | Growth Kits summary appears. |
+| Pilot allowlist excludes store | Store cannot access even when flag is on. |
+| Entitlement removed mid-session | Next generation/export attempt is blocked. |
+
+## 3. Source Truth Tests
+
+| Test | Expected result |
+| --- | --- |
+| Item unavailable | Kit must not promote it. |
+| Price changed after kit generation | Kit becomes stale before copy/export. |
+| Public menu link missing | Kit either omits link or blocks link-based destination. |
+| Store closed today | Kit does not imply the item is available today. |
+| Item has no image and image mode is existing-only | Kit still works without generating image. |
+| Review text not supplied | Review reply cannot be generated. |
+
+## 4. Output Safety Tests
+
+| Test | Expected result |
+| --- | --- |
+| Prompt attempts to add discount | Output rejects or removes unsupported discount. |
+| Prompt attempts "best in city" claim | Output rejects unsupported claim. |
+| Generated copy includes phone number in GBP text | Output warns or removes if not sourced/allowed. |
+| Regulated category wording appears | Output blocks or requires owner review. |
+| Model returns malformed JSON | API returns safe error without charging if no successful output. |
+| Forbidden public language appears | Output guard replaces or rejects it. |
+
+## 5. API Security Tests
+
+| Test | Expected result |
+| --- | --- |
+| Missing auth | Route rejects. |
+| Wrong tenant/store | Route rejects and logs security event. |
+| Invalid body | Zod validation rejects. |
+| Rate limit exceeded | Route rejects before expensive work. |
+| Safe Mode on | Provider calls are blocked. |
+| Insufficient AI capacity | Provider call is not made. |
+| Raw review text causes API error | Raw text is not logged. |
+
+## 6. Firebase Cost Tests
+
+| Test | Expected result |
+| --- | --- |
+| Open Growth Kits home | One summary read target. |
+| Generate deterministic action queue | Bounded reads and one summary write target. |
+| Generate text kit | Capacity check before provider call; kit, summary, AI log, and capacity writes only as expected. |
+| Copy output | One export write and optional kit status update. |
+| View history | Paginated query only. |
+| No activity | No background writes. |
+
+## 7. Desktop UI Tests
+
+| Test | Expected result |
+| --- | --- |
+| Paid store sees Growth Kits module | Navigation and page render only when gate passes. |
+| No eligible action | Shows calm empty state, not suggestions theater. |
+| Long item name | Text wraps without layout overlap. |
+| Copy action | Clipboard copy succeeds and records export. |
+| Stale kit | Copy action blocked or warning requires regeneration. |
+| Direct posting | No direct posting control appears. |
+
+## 8. Mobile UI Tests
+
+| Test | Expected result |
+| --- | --- |
+| Paid store opens mobile Today | Latest Growth Kit entry point is visible when eligible. |
+| Copy/share buttons | Minimum 44px target and instant feedback. |
+| Long text | Wraps without overlapping buttons. |
+| Kit detail sheet | All outputs are reachable without dense desktop UI. |
+| Stale kit | Warning is visible and action remains clear. |
+| Free/base store | Cannot access through mobile route or deep link. |
+
+## 9. Review Reply Tests
+
+| Test | Expected result |
+| --- | --- |
+| Positive review pasted | Short thank-you draft generated. |
+| Negative review pasted | Calm owner-approved draft generated or warning shown. |
+| Volatile review pasted | System can advise not to reply publicly. |
+| No pasted text | Generate button disabled. |
+| GBP ingestion unavailable | No automatic review fetch is attempted. |
+
+## 10. Docs And Public Copy Tests
+
+| Test | Expected result |
+| --- | --- |
+| Website copy claims auto-posting | Fail. |
+| Website copy promises orders/revenue | Fail. |
+| Helpdoc implies Google publishing is automatic | Fail. |
+| Marketing copy uses banned public terms | Fail for public surfaces. |
+| Docs mention Firebase cost | Pass required. |
+| Docs mention mobile support | Pass required. |
+
+## 11. Rollout Tests
+
+| Test | Expected result |
+| --- | --- |
+| Internal test store | All paths work with flag on and entitlement active. |
+| Pilot store | Owner can create and copy at least one kit without instruction. |
+| Non-pilot paid store | Hidden unless access mode allows paid rollout. |
+| Feature flag turned off | Module disappears and APIs stop generation safely. |
+| Billing capacity exhausted | Owner sees clear capacity message and no provider call occurs. |
+
+## 12. Completion Criteria
+
+Implementation is not complete until:
+
+- desktop and mobile paths pass
+- API security tests pass
+- entitlement bypass tests pass
+- Firestore rules/indexes are updated and deployed if changed
+- docs match implemented flags, paths, and data shapes
+- `npx tsc --noEmit --incremental false` passes for code implementation work

@@ -114,7 +114,7 @@ All queries use existing indexes:
 
 - **Draft content on proposals:** Permanent (follows proposal lifecycle)
 - **Approved drafts → canonical answers:** Permanent (governed knowledge)
-- **Signal events used for context:** 12-month TTL (existing `archiveExpiredSignals`)
+- **Signal events used for context:** 12-month TTL through the Canonica nightly Admin SDK cleanup (`archiveExpiredSignals`)
 - **Audit logs:** Permanent (append-only, existing policy)
 
 ---

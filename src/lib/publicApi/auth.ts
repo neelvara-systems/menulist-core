@@ -125,6 +125,7 @@ export function logApiRequest(
 export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetApi';
 export type PublicApiCredentialScope =
     | 'public:read'
+    | 'signals:write'
     | 'widget:config'
     | 'widget:content'
     | 'widget:search'
@@ -349,6 +350,10 @@ export function hasPublicApiCredentialScope(
 
     if (requiredScope === 'public:read') {
         return purpose !== 'canonica_widget';
+    }
+
+    if (requiredScope === 'signals:write') {
+        return false;
     }
 
     return false;

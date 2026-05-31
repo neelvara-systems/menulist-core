@@ -63,8 +63,7 @@ service cloud.firestore {
       allow read: if isCanonicaScopedReadWithSupportControl();
       allow create: if isCanonicaScopedCreateWithSupportControl()
         || isCanonicaFeedbackSignalCreate();
-      allow update: if isCanonicaScopedUpdateWithSupportControl();
-      allow delete: if isCanonicaScopedDeleteWithSupportControl();
+      allow update, delete: if false;
     }
 
     match /canonica_auditLogs/{docId} {
@@ -420,7 +419,7 @@ service cloud.firestore {
     }
 
     function isCanonicaPlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
     }
 
     function isCanonicaPlatformSummaryClientReadableDoc(document) {
@@ -450,7 +449,7 @@ service cloud.firestore {
           && hasCanonicaKnowledgeControlPermission()
         )
         || (
-          document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$')
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent)_.*$')
           && hasCanonicaKnowledgeControlPermission()
         )
         || (
@@ -473,7 +472,7 @@ service cloud.firestore {
           && hasCanonicaReadinessPermission()
         )
         || (
-          document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest)_.*$')
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest)_.*$')
           && (
             hasCanonicaKnowledgeControlPermission()
             || hasCanonicaPermission('canRebuildContext')

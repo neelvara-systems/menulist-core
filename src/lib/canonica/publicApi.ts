@@ -1,5 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
-import { apiError, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, logApiRequest, validatePublicApiKey } from '@lib/publicApi/auth';
+import { apiError, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,6 +21,7 @@ type CanonicaPublicApiAuthResult =
 export async function authenticateCanonicaPublicApi(
     request: NextRequest,
     endpoint: string,
+    requiredScope: PublicApiCredentialScope = 'public:read',
 ): Promise<CanonicaPublicApiAuthResult> {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_PUBLIC_API) {
         return { ok: false, response: apiError('FEATURE_DISABLED', 'Canonica public API is not available', 404) };
@@ -67,7 +68,7 @@ export async function authenticateCanonicaPublicApi(
     if (publicApi.purpose && !String(publicApi.purpose).startsWith('canonica')) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
-    if (!hasPublicApiCredentialScope(publicApi, 'public:read')) {
+    if (!hasPublicApiCredentialScope(publicApi, requiredScope)) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
 

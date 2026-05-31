@@ -6,6 +6,7 @@
 **Source:** ChatGPT Strategic Session → Cascade Cross-Check  
 **Status:** 🔒 LOCKED — Separation rules are permanent  
 **Governance:** `__docs__/constitution/12-product-separation-doctrine.md`
+**May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
 
 ---
 
@@ -286,7 +287,7 @@ Per Constitution Docs 11, 12, 15:
 | --------------------------------------------------------- | ---------------------------------- |
 | `__docs__/constitution/11-product-evolution-doctrine.md`  | Product sequence lock              |
 | `__docs__/constitution/12-product-separation-doctrine.md` | Separation rules (doctrine)        |
-| `__docs__/growth-execution-strategy/README.md`            | GrowthOS complete strategy         |
+| `__docs__/growthos-addon/README.md`                       | Active GrowthOS add-on plan        |
 | `__docs__/visual-meta/README.md`                          | VisualMeta complete strategy       |
 | `__docs__/control-layer-strategy/README.md`               | ControlOS / Control Layer strategy |
 | `__docs__/strategy/menulist-future-roadmap-ssot.md`       | Overall build sequence             |
