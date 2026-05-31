@@ -1,18 +1,18 @@
 # Website Asset Operating System - Spec
 
-**Audience:** Founder, product, design, Codex operators  
-**Status:** Internal v1 implemented  
-**Product boundary:** Separate-product-style internal architecture, Canonica-adjacent  
-**Not a public feature:** Yes  
+**Audience:** Founder, product, design, Codex operators
+**Status:** Internal v1 implemented
+**Product boundary:** Separate-product-style internal architecture, Answerlattice-adjacent
+**Not a public feature:** Yes
 **Public launch:** No
 
 ---
 
 ## Executive Summary
 
-Website Asset Operating System creates a durable repo-native contract for website and marketing assets across MenuList and Canonica.
+Website Asset Operating System creates a durable repo-native contract for website and marketing assets across MenuList and Answerlattice.
 
-Today, MenuList already has generated website assets and strict asset requirements. Canonica has a complete public website with reusable visual proof components. The missing layer is a shared operating contract that tells Codex:
+Today, MenuList already has generated website assets and strict asset requirements. Answerlattice has a complete public website with reusable visual proof components. The missing layer is a shared operating contract that tells Codex:
 
 - what asset slots exist;
 - why each slot exists;
@@ -24,16 +24,16 @@ Today, MenuList already has generated website assets and strict asset requiremen
 
 The first version creates the contract, package, audit loop, review loop, and brief generator. It does not generate polished videos or publish new public media.
 
-The practical product thesis is Canonica-adjacent: Canonica governs what support knowledge should say; AssetOS governs what product media should show and whether that media still matches the real product.
+The practical product thesis is Answerlattice-adjacent: Answerlattice governs what support knowledge should say; AssetOS governs what product media should show and whether that media still matches the real product.
 
 ## Goals
 
-1. Preserve MenuList and Canonica brand/product context in durable repo files.
+1. Preserve MenuList and Answerlattice brand/product context in durable repo files.
 2. Give Codex a repeatable workflow for asset audit, brief generation, review, and safe regeneration.
 3. Prevent asset sprawl through manifest ownership, naming rules, budgets, and stale detection.
-4. Keep MenuList, Canonica, GrowthOS, and VisualMeta product boundaries intact.
+4. Keep MenuList, Answerlattice, GrowthOS, and VisualMeta product boundaries intact.
 5. Support deterministic asset production before optional manual finishing tools.
-6. Reuse Canonica product-surface, intake, release, feedback, and drift context as read-only source material for asset briefs and stale-review decisions.
+6. Reuse Answerlattice product-surface, intake, release, feedback, and drift context as read-only source material for asset briefs and stale-review decisions.
 
 ## Non-Goals
 
@@ -41,7 +41,7 @@ The practical product thesis is Canonica-adjacent: Canonica governs what support
 | --- | --- |
 | Public standalone product | No external ICP or public runtime exists yet. |
 | Owner-facing MenuList feature | The workflow is for founder/operator marketing assets, not SMB owners. |
-| Canonica runtime feature | It can sit beside Canonica's product truth layer, but it does not answer support questions, publish KB content, mutate signals, or control widgets. |
+| Answerlattice runtime feature | It can sit beside Answerlattice's product truth layer, but it does not answer support questions, publish KB content, mutate signals, or control widgets. |
 | GrowthOS feature | It does not generate SMB promotion kits for customers. |
 | VisualMeta launch | It is not a content-preparation workspace with users, billing, or export kits. |
 | First-pass final videos | Contract must exist before media generation. |
@@ -63,8 +63,8 @@ The practical product thesis is Canonica-adjacent: Canonica governs what support
 | Product separation | Product identities are locked and cannot blur. See `__docs__/constitution/12-product-separation-doctrine.md:14`. |
 | Product sequence | Later products must not start before MenuList is stable. See `__docs__/constitution/11-product-evolution-doctrine.md:50`. |
 | MenuList website assets | Existing asset rules and generated P0 visuals already live under `__docs__/main-website/` and `public/images/website/`. |
-| Canonica website assets | Canonica has static public proof components, OG image, logo, PWA icons, and splash assets. |
-| Canonica operating surface | Canonica has product surfaces, knowledge intake, canonical answers, feedback signals, drift governance, changelog context, and readiness summaries that can inform asset briefs without becoming AssetOS state. |
+| Answerlattice website assets | Answerlattice has static public proof components, OG image, logo, PWA icons, and splash assets. |
+| Answerlattice operating surface | Answerlattice has product surfaces, knowledge intake, canonical answers, feedback signals, drift governance, changelog context, and readiness summaries that can inform asset briefs without becoming AssetOS state. |
 | Scripts | Root scripts now include asset audit, review, brief, fingerprint, and missing-placeholder commands. |
 | Dependencies | Playwright, Remotion, Motion Canvas, and FFmpeg wrappers are not present in `package.json`. |
 
@@ -75,16 +75,16 @@ The practical product thesis is Canonica-adjacent: Canonica governs what support
 | Requirement | Rule |
 | --- | --- |
 | Internal only | The first version is not public, billable, or owner-facing. |
-| Cross-product | MenuList and Canonica can both declare asset slots without sharing product identity. |
-| Read-only product input | Asset scripts may inspect website source, docs, tokens, and public demo data; they must not mutate MenuList or Canonica product data. |
+| Cross-product | MenuList and Answerlattice can both declare asset slots without sharing product identity. |
+| Read-only product input | Asset scripts may inspect website source, docs, tokens, and public demo data; they must not mutate MenuList or Answerlattice product data. |
 | Approval split | Safe deterministic assets can be generated; brand-defining hero/launch assets require founder approval before publishing. |
 
-### Canonica-Adjacent Source Model
+### Answerlattice-Adjacent Source Model
 
-| Canonica surface | AssetOS use | Boundary |
+| Answerlattice surface | AssetOS use | Boundary |
 | --- | --- | --- |
-| Product surfaces | Use as source context for what Canonica screens, concepts, and public proof should show. | Do not create, edit, or publish product surfaces. |
-| Knowledge intake | Use approved source references to improve asset briefs. | Do not ingest files into Canonica or approve knowledge drafts. |
+| Product surfaces | Use as source context for what Answerlattice screens, concepts, and public proof should show. | Do not create, edit, or publish product surfaces. |
+| Knowledge intake | Use approved source references to improve asset briefs. | Do not ingest files into Answerlattice or approve knowledge drafts. |
 | Canonical answers and KB | Use approved public truth to avoid misleading website media. | Do not write KB, FAQs, answers, or mutations. |
 | Changelog and release context | Mark assets for review when product behavior or claims changed. | Do not publish releases or public changelog entries. |
 | Feedback, support signals, and drift | Identify missing, confusing, or stale public proof. | Do not write signals, tickets, Support Board cards, or drift decisions. |
@@ -158,7 +158,7 @@ Briefs must be generated before assets. Each brief should read:
 - current website copy;
 - design-system references;
 - current assets;
-- relevant Canonica product-surface, release, intake, signal, or drift context when the slot is Canonica-related;
+- relevant Answerlattice product-surface, release, intake, signal, or drift context when the slot is Answerlattice-related;
 - relevant demo-flow rules.
 
 ## Autonomy Levels
@@ -167,7 +167,7 @@ Briefs must be generated before assets. Each brief should read:
 | --- | --- | --- |
 | 1 | Audit only | Report missing, stale, oversized, disconnected, or off-contract assets. |
 | 2 | Safe generation | Generate deterministic briefs, posters, OG images, screenshots, simple static composites, and optimized variants. |
-| 3 | Founder approval | Prepare hero motion, launch videos, brand-defining Canonica motion, real customer screenshots, analytics proof, and ad/social campaign visuals for review. |
+| 3 | Founder approval | Prepare hero motion, launch videos, brand-defining Answerlattice motion, real customer screenshots, analytics proof, and ad/social campaign visuals for review. |
 
 ## Brand Direction
 
@@ -183,11 +183,11 @@ MenuList assets can show concrete product UI. They must reinforce:
 - no external sync claims unless implemented;
 - no "AI" visual language.
 
-### Canonica
+### Answerlattice
 
-Canonica assets should feel systemic and infrastructural. They must reinforce:
+Answerlattice assets should feel systemic and infrastructural. They must reinforce:
 
-- support knowledge control plane;
+- governed answer infrastructure;
 - canonical answers;
 - governed review;
 - page-aware widget and hosted help;
@@ -202,8 +202,8 @@ The first implementation creates:
 
 1. `AGENTS.md` asset rules.
 2. `.agents/skills/website-asset-factory/SKILL.md`.
-3. Brand context docs for MenuList and Canonica.
-4. Asset slot files for MenuList and Canonica website assets.
+3. Brand context docs for MenuList and Answerlattice.
+4. Asset slot files for MenuList and Answerlattice website assets.
 5. `packages/asset-factory/manifest/assets.json`.
 6. `packages/asset-factory/scripts/audit-assets.ts`.
 7. `packages/asset-factory/scripts/review-assets.ts`.
@@ -221,12 +221,12 @@ The product is architected as separate internal infrastructure now:
 - package boundary: `packages/asset-factory/`;
 - docs boundary: `__docs__/website-asset-operating-system/`;
 - agent boundary: `.agents/skills/website-asset-factory/`;
-- runtime boundary: no public route, no MenuList owner UI, no Canonica runtime UI;
+- runtime boundary: no public route, no MenuList owner UI, no Answerlattice runtime UI;
 - data boundary: local files only, no Firebase.
 
-This lets the system be tested on MenuList and Canonica assets without creating public product pressure.
+This lets the system be tested on MenuList and Answerlattice assets without creating public product pressure.
 
-For Canonica, this means AssetOS can become the internal media layer beside the support knowledge control plane. It should consume Canonica truth as evidence, not become a second Canonica database or runtime.
+For Answerlattice, this means AssetOS can become the internal media layer beside the governed answer infrastructure. It should consume Answerlattice truth as evidence, not become a second Answerlattice database or runtime.
 
 ## Open Questions
 

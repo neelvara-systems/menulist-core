@@ -39,9 +39,9 @@ ChatGPT independently arrived at a graph model that closely mirrors what MenuLis
 **Codebase Reality:**
 
 - MenuList is the core product with full infrastructure
-- Canonica exists as a separate product (support knowledge control plane for SaaS)
+- Answerlattice exists as a separate product (governed answer infrastructure for SaaS)
 - SurfaceOS, GrowthOS, VisualMeta **do not exist** — they are ChatGPT abstractions
-- Multi-product file organization is LOCKED (`.cascade/rules/CANONICA_RULES.md`)
+- Multi-product file organization is LOCKED (`.cascade/rules/ANSWERLATTICE_RULES.md`)
 
 **VERDICT: PARTIAL AGREE — Strategic framing only**
 
@@ -50,7 +50,7 @@ The parent entity concept is valid for future corporate structure, but:
 - ❌ SurfaceOS, GrowthOS, VisualMeta don't exist and aren't planned
 - ✅ MenuList as gravity center aligns with Constitution #15 (Category Dominance)
 - ✅ "Surface intelligence" already lives inside MenuList (GBP sync, OBP, screens, QR)
-- ✅ Multi-product architecture already designed (MenuList + Canonica pattern)
+- ✅ Multi-product architecture already designed (MenuList + Answerlattice pattern)
 
 **Action:** NONE. Strategic insight noted. No code or architecture changes.
 

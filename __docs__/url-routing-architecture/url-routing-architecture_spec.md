@@ -21,7 +21,7 @@
 
 - Permanent stored slugs on every project (rename → old URL redirects automatically)
 - Brand-level subdomain ownership (one URL for the brand, locations as paths)
-- Product-domain carve-outs before tenant routing (`canonica.app`, `menulist.digital`)
+- Product-domain carve-outs before tenant routing (`answerlattice.com`, `menulist.digital`)
 - Reserved namespace preventing future platform conflicts
 - CDN cache headers for global edge delivery
 
@@ -121,7 +121,7 @@
 | **Backward compat**       | Projects without stored slugs fall back to `slugify(name)` matching            |
 | **Product host isolation** | Internal product hosts are registered before tenant routing and never treated as restaurant custom domains |
 | **Internal reader access** | MyCodex Vercel access uses a first-party login page, validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side, and persists access with a signed `HttpOnly` session cookie |
-| **Internal reader discovery** | MyCodex routes must be no-index/no-follow and must serve disallow-all `robots.txt` without affecting MenuList or Canonica discovery |
+| **Internal reader discovery** | MyCodex routes must be no-index/no-follow and must serve disallow-all `robots.txt` without affecting MenuList or Answerlattice discovery |
 
 ---
 

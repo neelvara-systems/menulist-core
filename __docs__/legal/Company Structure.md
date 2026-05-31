@@ -1,11 +1,11 @@
-# Single Source of Truth: OPC Registration, Legal Structure, GST, Payments, IP, and Product Ownership for MenuList + Canonica
+# Single Source of Truth: OPC Registration, Legal Structure, GST, Payments, IP, and Product Ownership for MenuList + Answerlattice
 
 ## 1. Purpose of This Document
 
 This document defines the agreed registration and operating structure for launching and managing multiple SaaS/software products, starting with:
 
 - MenuList
-- Canonica
+- Answerlattice
 - Future products under the same parent company
 
 The purpose is to create one clear legal, tax, payment, ownership, and operational structure so the founder does not need to revisit prior discussions or make fragmented decisions during CA/CS consultation.
@@ -29,10 +29,10 @@ The final decision is:
 
 ```text
 Register one neutral OPC as the parent company.
-Use it to operate MenuList, Canonica, and future products.
+Use it to operate MenuList, Answerlattice, and future products.
 ```
 
-The company should not be named after MenuList or Canonica.
+The company should not be named after MenuList or Answerlattice.
 
 Correct structure:
 
@@ -40,11 +40,11 @@ Correct structure:
 [Neutral Parent Name] OPC Private Limited
 │
 ├── MenuList
-├── Canonica
+├── Answerlattice
 └── Future products
 ```
 
-MenuList and Canonica will remain separate products with separate websites, positioning, pricing, product databases, and customer journeys.
+MenuList and Answerlattice will remain separate products with separate websites, positioning, pricing, product databases, and customer journeys.
 
 But legally, they will be operated by one parent OPC.
 
@@ -53,7 +53,7 @@ Example footer structure:
 ```text
 MenuList is operated by [Parent Company Name] OPC Private Limited.
 
-Canonica is operated by [Parent Company Name] OPC Private Limited.
+Answerlattice is operated by [Parent Company Name] OPC Private Limited.
 ```
 
 ---
@@ -190,7 +190,7 @@ The CA/CS/legal advisor should help create or advise on:
 This is important because otherwise there can be confusion later:
 
 - Who owns MenuList code?
-- Who owns Canonica code?
+- Who owns Answerlattice code?
 - Who owns domains?
 - Who owns trademarks?
 - Who owns product content?
@@ -287,12 +287,12 @@ Do not name the company:
 
 ```text
 MenuList OPC Private Limited
-Canonica OPC Private Limited
+Answerlattice OPC Private Limited
 ```
 
 Reason:
 
-- MenuList and Canonica are separate products.
+- MenuList and Answerlattice are separate products.
 - Future products may be added.
 - Naming the company after one product creates hierarchy confusion.
 - A neutral parent name makes the structure future-proof.
@@ -421,7 +421,7 @@ Current product names:
 
 ```text
 MenuList
-Canonica
+Answerlattice
 ```
 
 The product trademarks should ideally be filed in the name of the OPC after incorporation.
@@ -430,7 +430,7 @@ Preferred trademark filing order:
 
 ```text
 1. MenuList wordmark — Class 42
-2. Canonica wordmark — Class 42
+2. Answerlattice wordmark — Class 42
 3. Parent company wordmark — Class 42, if parent name is important externally
 4. Logo trademarks later
 5. Class 9 later if mobile/downloadable apps become important
@@ -455,7 +455,7 @@ Class = 42
 
 ```text
 Applicant = [Parent Company Name] OPC Private Limited
-Trademark = Canonica
+Trademark = Answerlattice
 Class = 42
 ```
 
@@ -465,7 +465,7 @@ Cleanest path:
 
 ```text
 Incorporate OPC first.
-Then file MenuList and Canonica trademarks under OPC.
+Then file MenuList and Answerlattice trademarks under OPC.
 ```
 
 ---
@@ -480,7 +480,7 @@ For each product:
 
 ```text
 MenuList logo
-Canonica logo
+Answerlattice logo
 Parent company logo, if any
 ```
 
@@ -858,7 +858,7 @@ Product-specific descriptions:
 ```text
 MenuList is a SaaS product that helps businesses manage and publish customer-facing business information, menu data, public business pages, and related discovery surfaces.
 
-Canonica is a SaaS product that helps software/product owners manage support knowledge, FAQs, docs, feedback, tickets, changelogs, and customer-facing support surfaces.
+Answerlattice is a SaaS product that helps software/product owners manage support knowledge, FAQs, docs, feedback, tickets, changelogs, and customer-facing support surfaces.
 ```
 
 Keep the payment gateway description simple and non-confusing.
@@ -880,7 +880,7 @@ MenuList must have:
 6. About/Company footer
 ```
 
-Canonica must have:
+Answerlattice must have:
 
 ```text
 1. Terms of Service
@@ -907,7 +907,7 @@ Contact: [Company/Product Email]
 ```
 
 ```text
-Canonica is operated by [Parent Company Name] OPC Private Limited.
+Answerlattice is operated by [Parent Company Name] OPC Private Limited.
 Registered Office: [Registered Office Address]
 Contact: [Company/Product Email]
 ```
@@ -922,8 +922,8 @@ Required payment metadata:
 
 ```text
 legal_entity = [Parent Company Name] OPC Private Limited
-product = menulist / canonica
-invoice_prefix = ML / CN
+product = menulist / answerlattice
+invoice_prefix = ML / AL
 plan = product plan name
 currency = INR / USD / other
 customer_country = country
@@ -937,7 +937,7 @@ Invoice prefix structure:
 
 ```text
 ML-0001 = MenuList invoice
-CN-0001 = Canonica invoice
+AL-0001 = Answerlattice invoice
 ```
 
 Do not mix product revenue without product tags.
@@ -1007,7 +1007,7 @@ Items to assign to OPC:
 
 ```text
 1. MenuList codebase
-2. Canonica codebase
+2. Answerlattice codebase
 3. Product names
 4. Product logos
 5. Product designs
@@ -1025,7 +1025,7 @@ Items to assign to OPC:
 Ask legal advisor/CA:
 
 ```text
-Can you prepare Founder IP Assignment Agreement transferring MenuList and Canonica product IP to the OPC?
+Can you prepare Founder IP Assignment Agreement transferring MenuList and Answerlattice product IP to the OPC?
 Can brother’s contributions be covered through a contributor/IP assignment or consulting agreement?
 Can we prepare a board resolution authorising founder and brother to operate product accounts?
 ```
@@ -1125,7 +1125,7 @@ Use this exact script:
 ```text
 We want to register one neutral OPC for a multi-product SaaS/software business.
 
-The company will operate MenuList, Canonica, and future software products.
+The company will operate MenuList, Answerlattice, and future software products.
 
 The sole member and first director will be my mother.
 
@@ -1201,7 +1201,7 @@ Please advise the exact documents, compliance requirements, authorisation docume
 
 ```text
 1. Should trademarks be filed after OPC incorporation?
-2. Should MenuList and Canonica wordmarks be filed in Class 42?
+2. Should MenuList and Answerlattice wordmarks be filed in Class 42?
 3. Is Class 9 needed now or later?
 4. Can you prepare IP assignment from founder/brother to OPC?
 5. Should domains be transferred to OPC ownership?
@@ -1279,7 +1279,7 @@ Trademark search notes
 
 ```text
 MenuList domain details
-Canonica domain details
+Answerlattice domain details
 GitHub repo ownership
 Firebase project ownership
 Vercel/hosting ownership
@@ -1312,7 +1312,7 @@ Follow this exact order.
 1. MCA name search.
 2. Trademark search for parent name.
 3. Trademark search for MenuList.
-4. Trademark search for Canonica.
+4. Trademark search for Answerlattice.
 5. Domain check for parent name.
 6. Social handle check.
 ```
@@ -1343,11 +1343,11 @@ Follow this exact order.
 ### Stage 5: Product/Payment Readiness
 
 ```text
-1. Add company footer to MenuList and Canonica.
+1. Add company footer to MenuList and Answerlattice.
 2. Add Terms, Privacy, Refund, Contact, Pricing pages.
 3. Activate Razorpay.
 4. Configure product-wise payment metadata.
-5. Configure invoice prefixes: ML and CN.
+5. Configure invoice prefixes: ML and AL.
 6. Enable subscriptions.
 7. Later request international payments.
 ```
@@ -1355,9 +1355,9 @@ Follow this exact order.
 ### Stage 6: IP Protection
 
 ```text
-1. Transfer/assign MenuList and Canonica IP to OPC.
+1. Transfer/assign MenuList and Answerlattice IP to OPC.
 2. File MenuList wordmark in Class 42.
-3. File Canonica wordmark in Class 42.
+3. File Answerlattice wordmark in Class 42.
 4. File parent company wordmark if needed.
 5. File logo marks later after brand is stable.
 ```
@@ -1379,11 +1379,11 @@ Do not:
 
 ```text
 1. Register proprietorship for this business.
-2. Name the company after MenuList or Canonica.
+2. Name the company after MenuList or Answerlattice.
 3. Use rented address unless necessary.
 4. Leave brother/founder roles informal forever.
 5. Keep product IP personally owned without assignment.
-6. Mix MenuList and Canonica revenue without metadata.
+6. Mix MenuList and Answerlattice revenue without metadata.
 7. Activate payment gateway before legal pages are ready.
 8. File logo trademark before wordmark.
 9. Buy every domain extension unnecessarily.
@@ -1405,14 +1405,14 @@ Sole Member: Mother
 Director: Mother
 Nominee: Founder
 Operators: Founder + Brother
-Products: MenuList, Canonica, future products
+Products: MenuList, Answerlattice, future products
 Bank Account: Company current account
 GST: Company GST, as advised
 Payment Gateway: Razorpay first
 Global Payments: Razorpay international / Stripe later if available / MoR later if needed
 IP Owner: OPC
 Trademarks: Filed under OPC
-Invoices: Product-wise prefixes ML and CN
+Invoices: Product-wise prefixes ML and AL
 Future: Convert OPC to Private Limited when strategically necessary
 ```
 

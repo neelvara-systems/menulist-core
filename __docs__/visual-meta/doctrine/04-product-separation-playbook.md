@@ -2,7 +2,7 @@
 
 **Status:** Planning playbook
 **Created:** May 31, 2026
-**Model:** Canonica-style separation adapted for VisualMeta
+**Model:** Answerlattice-style separation adapted for VisualMeta
 
 ---
 
@@ -44,7 +44,7 @@ When VisualMeta imports from another product, store copied source context:
 
 ```ts
 sourceContext: {
-  sourcePId: "ML" | "CN" | "GR" | "external",
+  sourcePId: "ML" | "AL" | "GR" | "external",
   sourceTId?: number,
   sourceSId?: number,
   sourceDocId?: string,
@@ -55,11 +55,11 @@ sourceContext: {
 }
 ```
 
-VisualMeta must not hold live pointers that require MenuList or Canonica reads at render time.
+VisualMeta must not hold live pointers that require MenuList or Answerlattice reads at render time.
 
 ## 4. Session Bridge
 
-Use the same pattern as Canonica only where needed:
+Use the same pattern as Answerlattice only where needed:
 
 - default login can hold `productAccounts.VM`
 - VisualMeta routes resolve session scope from the VisualMeta account
@@ -88,7 +88,7 @@ If VisualMeta needs server-side functions, use:
 functions-visualmeta/
 ```
 
-Do not add VisualMeta scheduled jobs to MenuList functions or Canonica functions.
+Do not add VisualMeta scheduled jobs to MenuList functions or Answerlattice functions.
 
 If scheduled cleanup or batch processing is needed, it must live in VisualMeta's own functions package with leases, bounded reads, and cost docs.
 

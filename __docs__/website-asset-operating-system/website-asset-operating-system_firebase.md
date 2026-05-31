@@ -37,7 +37,7 @@ The implementation stays local/repo-only:
 | Risk | Cost impact | Rule |
 | --- | --- | --- |
 | Capturing real owner dashboard data | Firestore reads and possible privacy risk | Use founder-approved demo tenant only. |
-| Generating assets from live Canonica dashboards | Firestore reads | Prefer static public pages or sanitized demo routes. |
+| Generating assets from live Answerlattice dashboards | Firestore reads | Prefer static public pages or sanitized demo routes. |
 | Storing raw video in Firebase Storage | Storage and egress costs | Do not store raw/working files in Firebase by default. |
 | Running Cloud Function render jobs | Invocation, CPU, storage cost | Not allowed in first implementation. |
 | Scheduled asset audits in Firebase | Scheduler/function cost | Use local Codex automation or CI first. |
@@ -47,7 +47,7 @@ The implementation stays local/repo-only:
 
 | Asset type | Allowed location |
 | --- | --- |
-| Small approved WebP/PNG/JPG website assets | `public/images/website/` or existing Canonica public paths |
+| Small approved WebP/PNG/JPG website assets | `public/images/website/` or existing Answerlattice public paths |
 | Small approved WebM/MP4 loops under budget | Public repo path if size budget passes |
 | OG/social image | Public repo path |
 | Raw recordings | Not in Git public paths |

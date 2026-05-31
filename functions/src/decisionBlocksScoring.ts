@@ -1933,10 +1933,10 @@ export const computeDecisionBlocksScores = onSchedule({
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // CANONICA — MOVED TO SEPARATE FIREBASE PROJECT
-        // Canonica nightly now runs independently in functions-canonica/
-        // @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
-        // @see __docs__/canonica/doctrine/08-product-separation-playbook.md
+        // ANSWERLATTICE — MOVED TO SEPARATE FIREBASE PROJECT
+        // Answerlattice nightly now runs independently in functions-answerlattice/
+        // @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
+        // @see __docs__/answerlattice/doctrine/08-product-separation-playbook.md
         // ═══════════════════════════════════════════════════════════════
 
         // ═══════════════════════════════════════════════════════════════

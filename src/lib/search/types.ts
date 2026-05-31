@@ -1,11 +1,11 @@
 /**
- * Canonica Unified Search — Shared Types
+ * Answerlattice Unified Search — Shared Types
  *
  * Single source of truth for all search pipeline types.
  * Used by both Help Center (authenticated) and Widget (API key) surfaces.
  *
- * @see __docs__/canonica/help-widget/
- * @see __docs__/canonica/help-center/
+ * @see __docs__/answerlattice/help-widget/
+ * @see __docs__/answerlattice/help-center/
  */
 
 import type { ValidatedContextPayload } from '@lib/validation/contextSchema';
@@ -68,8 +68,8 @@ export interface CoreSearchResult {
     /** KB article references (full objects with similarityScore) */
     references: any[];
 
-    /** Context-aware related content resolved from Canonica Product Surfaces */
-    relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem;
+    /** Context-aware related content resolved from Answerlattice Product Surfaces */
+    relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem;
 
     /** AI-generated follow-up questions */
     suggestedQuestions: string[];
@@ -110,11 +110,11 @@ export interface CoreSearchResult {
     /** Whether an image was successfully processed */
     imageProcessed: boolean;
 
-    /** Escalation metadata (only present when ENABLE_CANONICA_AI_ESCALATION is ON) */
-    escalation?: import('@lib/canonica/escalationTypes').EscalationMetadata;
+    /** Escalation metadata (only present when ENABLE_ANSWERLATTICE_AI_ESCALATION is ON) */
+    escalation?: import('@lib/answerlattice/escalationTypes').EscalationMetadata;
 
-    /** Knowledge Graph expansion metadata (only present when ENABLE_CANONICA_KNOWLEDGE_GRAPH is ON) */
-    graphExpansion?: import('@type/canonica').CanonicaGraphExpansionResult;
+    /** Knowledge Graph expansion metadata (only present when ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH is ON) */
+    graphExpansion?: import('@type/answerlattice').AnswerlatticeGraphExpansionResult;
 }
 
 // ===== PERFORMANCE METRICS =====

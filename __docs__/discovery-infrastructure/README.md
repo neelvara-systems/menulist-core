@@ -110,7 +110,7 @@ Current production contract:
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |
 | LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ Current category/type-aware public business data description          |
 | Website page JSON-LD                        | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | ✅ Server-rendered homepage graph plus WebPage/BreadcrumbList on active platform pages |
-| Agent-readiness verifier                    | `scripts/verification/verify-agent-readiness.js` | ✅ Checks MenuList and Canonica route registries, structured-data wrappers, robots, sitemap, and LLM files |
+| Agent-readiness verifier                    | `scripts/verification/verify-agent-readiness.js` | ✅ Checks MenuList and Answerlattice route registries, structured-data wrappers, robots, sitemap, and LLM files |
 
 ### Freshness & Truth Signals
 
@@ -293,4 +293,4 @@ MenuList is infrastructure, not SaaS. The primary metric is **dataset coverage**
 | Mar 10, 2026 | **DOC CONSOLIDATION:** Merged `seo-aeo-discovery-infrastructure/` + `infrastructure-gap-analysis/` into this folder                                             |
 | Mar 10, 2026 | **DOC UPDATE:** Added Entity Identity Rules (invariants), Item Similarity Matching documentation, Dataset Coverage Metrics, strengthened Doctrine Rules         |
 | May 9, 2026  | **PARITY UPDATE:** Corrected discovery copy to avoid Google/Maps/AI overclaims, updated `/client` route evidence, robots/sitemap status, flag defaults, and current llms.txt line counts |
-| May 23, 2026 | **AGENT-READABLE WEBSITE HARDENING:** Added server-rendered website JSON-LD coverage, removed legacy `/product` from platform discovery inventories, documented PAL/WebMCP boundaries, and added `verify:agent-readiness` for MenuList and Canonica |
+| May 23, 2026 | **AGENT-READABLE WEBSITE HARDENING:** Added server-rendered website JSON-LD coverage, removed legacy `/product` from platform discovery inventories, documented PAL/WebMCP boundaries, and added `verify:agent-readiness` for MenuList and Answerlattice |

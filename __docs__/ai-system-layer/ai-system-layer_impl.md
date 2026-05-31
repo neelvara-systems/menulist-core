@@ -62,7 +62,7 @@ The gateway is a transparent proxy with the same interface as `GoogleGenAI`.
 - `src/app/api/image-editing/route.ts`
 - `src/app/api/new-item-metadata/route.ts`
 - `src/app/api/campaigns/caption/route.ts`
-- `src/app/api/canonica/translate/route.ts`
+- `src/app/api/answerlattice/translate/route.ts`
 - `src/app/api/analytics/weekly-narrative/generate-local/route.ts`
 - `src/app/api/public/create-menu/route.ts`
 - `src/lib/vectorEmbeddings/index.ts`

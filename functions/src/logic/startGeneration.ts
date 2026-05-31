@@ -43,7 +43,7 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
 
             // const sources = extractProvenance(article.content);
             const newArticleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc();
-            // Inherit tId/sId from parent job for multi-tenant isolation (CANONICA_RULES Rule 6)
+            // Inherit tId/sId from parent job for multi-tenant isolation (ANSWERLATTICE_RULES Rule 6)
             const jobTId = typeof job.tId === 'string' ? parseInt(job.tId) : job.tId;
             const jobSId = typeof job.sId === 'string' ? parseInt(job.sId) : job.sId;
 

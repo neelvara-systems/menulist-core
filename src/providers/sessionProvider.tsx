@@ -10,10 +10,10 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import {
-    getCanonicaScopedSession,
-    isCanonicaRuntimeRoute,
-    resolveCanonicaSessionScope,
-} from '@lib/canonica/sessionScope';
+    getAnswerlatticeScopedSession,
+    isAnswerlatticeRuntimeRoute,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { startLogCapture } from '@lib/localLogs/localLogsTracker';
 import { clearUserContext, logger, setUserContext } from '@lib/monitoring/logger';
 import {
@@ -102,16 +102,16 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
     const [firebaseAuthReady, setFirebaseAuthReady] = useState(
-        !session?.user?.storeId && !(session?.user as any)?.productAccounts?.CN?.storeId
+        !session?.user?.storeId && !(session?.user as any)?.productAccounts?.AL?.storeId
     )
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const activeSubscriptionStoreIdRef = useRef<number | null>(null);
     const activeSubscriptionRequestStoreIdRef = useRef<number | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const isCanonicaRoute = isCanonicaRuntimeRoute(normalizedPathname, currentHostname);
-    const canonicaScope = isCanonicaRoute ? resolveCanonicaSessionScope(session) : null;
-    const effectiveSession = isCanonicaRoute ? getCanonicaScopedSession(session as any) : session;
+    const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
+    const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(session) : null;
+    const effectiveSession = isAnswerlatticeRoute ? getAnswerlatticeScopedSession(session as any) : session;
     const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
     const isStoreIndependentRoute =
@@ -120,12 +120,12 @@ export default function SessionProvider({ children, session }: Props) {
         || normalizedPathname.startsWith('/platform/')
         || normalizedPathname === '/ops'
         || normalizedPathname.startsWith('/ops/')
-        || isCanonicaRoute
+        || isAnswerlatticeRoute
         || normalizedPathname === '/reseller'
         || normalizedPathname.startsWith('/reseller/');
     const canRenderBeforeStoreData = Boolean(session) && (
-        (isCanonicaRoute && Boolean(canonicaScope))
-        || (isPlatformSession && isCanonicaRoute)
+        (isAnswerlatticeRoute && Boolean(answerlatticeScope))
+        || (isPlatformSession && isAnswerlatticeRoute)
         || (isPlatformSession && isStoreIndependentRoute)
         || (isResellerSession && (normalizedPathname === '/reseller' || normalizedPathname.startsWith('/reseller/')))
     );
@@ -240,7 +240,7 @@ export default function SessionProvider({ children, session }: Props) {
             console.info('[MenuList session debug]', debugSession);
         }
 
-        if (isCanonicaRoute) {
+        if (isAnswerlatticeRoute) {
             setActiveSubscriptionLoading(false);
             return;
         }
@@ -334,7 +334,7 @@ export default function SessionProvider({ children, session }: Props) {
         effectiveSession?.user?.tenantId,
         fetchActiveSubscriptionForStore,
         firebaseAuthReady,
-        isCanonicaRoute,
+        isAnswerlatticeRoute,
         session,
     ]) // Re-run the effect when the session changes
 
@@ -683,10 +683,10 @@ export default function SessionProvider({ children, session }: Props) {
                 {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (
                     <BrandedPageLoader
                         page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"}
-                        brand={isCanonicaRoute ? 'canonica' : 'menulist'}
+                        brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
                     />
                 ) : (session && !isStoreContextReadyForRender) ? (
-                    <BrandedPageLoader page="Loading Store Data" brand={isCanonicaRoute ? 'canonica' : 'menulist'} />
+                    <BrandedPageLoader page="Loading Store Data" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />
                 ) : children}
             </PlatformGlobalDataProvider>
         </Provider>

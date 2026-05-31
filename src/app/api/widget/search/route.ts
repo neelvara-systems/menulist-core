@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
  * All retrieval logic lives in src/lib/search/searchCore.ts.
  *
  * Auth: API key via X-API-Key header (same as Platform Pull API)
- * No NextAuth required — this is for end-users of SaaS products embedding Canonica.
- * Rate limited per API key. Feature-flagged via ENABLE_CANONICA_WIDGET.
+ * No NextAuth required — this is for end-users of SaaS products embedding Answerlattice.
+ * Rate limited per API key. Feature-flagged via ENABLE_ANSWERLATTICE_WIDGET.
  *
  * @see src/lib/search/searchCore.ts — The canonical search pipeline
- * @see __docs__/canonica/help-widget/
+ * @see __docs__/answerlattice/help-widget/
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -19,11 +19,11 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PRODUCT_IDS } from '@constant/product';
 import { recordAiOperation } from '@lib/ai/operationLog';
 import {
-    CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH,
-    CANONICA_CHAT_IMAGE_MAX_BYTES,
-    isAllowedCanonicaChatImageMimeType,
-    normalizeCanonicaChatImageMimeType,
-} from '@lib/canonica/chatImagePolicy';
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH,
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
+    isAllowedAnswerlatticeChatImageMimeType,
+    normalizeAnswerlatticeChatImageMimeType,
+} from '@lib/answerlattice/chatImagePolicy';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -58,7 +58,7 @@ const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test
 
 export async function POST(request: NextRequest) {
     // Feature flag check
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
     }
 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         if (!apiKey) {
             return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
         }
-        if (!apiKey.startsWith('cn_')) {
+        if (!apiKey.startsWith('al_')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
 
@@ -93,9 +93,9 @@ export async function POST(request: NextRequest) {
         const authResult = await validatePublicApiKey(apiKey, {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
-            includeCanonicaWidgetApi: true,
+            includeAnswerlatticeWidgetApi: true,
             includePublicApi: false,
-            preferCanonicaWidgetApi: true,
+            preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'CN') {
+        if (credential.productId && credential.productId !== 'AL') {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
@@ -139,10 +139,10 @@ export async function POST(request: NextRequest) {
 
         // ===== CONTEXT-AWARE SUPPORT =====
         let validatedContext: import('@lib/validation/contextSchema').ValidatedContextPayload | undefined;
-        if (body.context && FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_AWARE) {
+        if (body.context && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_AWARE) {
             try {
-                const { CanonicaContextSchema } = await import('@lib/validation/contextSchema');
-                validatedContext = CanonicaContextSchema.parse(body.context);
+                const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
+                validatedContext = AnswerlatticeContextSchema.parse(body.context);
             } catch {
                 validatedContext = undefined;
             }
@@ -153,12 +153,12 @@ export async function POST(request: NextRequest) {
         if (body.imageBase64 && body.imageMimeType) {
             try {
                 const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
-                const imageMimeType = normalizeCanonicaChatImageMimeType(body.imageMimeType);
+                const imageMimeType = normalizeAnswerlatticeChatImageMimeType(body.imageMimeType);
 
-                if (!isAllowedCanonicaChatImageMimeType(imageMimeType)) {
+                if (!isAllowedAnswerlatticeChatImageMimeType(imageMimeType)) {
                     throw new Error(`Unsupported widget image MIME type: ${imageMimeType || 'missing'}`);
                 }
-                if (!imageBase64 || imageBase64.length > CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH) {
+                if (!imageBase64 || imageBase64.length > ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH) {
                     throw new Error('Widget image payload is empty or too large');
                 }
                 if (!isLikelyBase64(imageBase64)) {
@@ -166,8 +166,8 @@ export async function POST(request: NextRequest) {
                 }
 
                 const decodedImage = Buffer.from(imageBase64, 'base64');
-                if (!decodedImage.byteLength || decodedImage.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Widget image exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                if (!decodedImage.byteLength || decodedImage.byteLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Widget image exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
                 imageBuffer = { imageBase64, mimeType: imageMimeType };
             } catch (error) {
@@ -235,13 +235,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Add procedure for guided workflows
-        if (result.procedure && FEATURE_FLAGS.ENABLE_CANONICA_GUIDED_WORKFLOWS) {
+        if (result.procedure && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS) {
             response.procedure = result.procedure;
         }
 
         // Add graph expansion data for Knowledge Graph Exploitation (Item #11)
         // Widget receives compact version: interaction explanation + related suggestions only
-        if (result.graphExpansion && FEATURE_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH) {
+        if (result.graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {
             response.graphExpansion = {
                 interactionDetected: result.graphExpansion.interactionDetected || null,
                 relatedSuggestions: result.graphExpansion.relatedSuggestions || [],
@@ -263,10 +263,10 @@ export async function POST(request: NextRequest) {
                     suggestedQuestionsCount: result.suggestedQuestions?.length || 0,
                 },
                 model: 'coreSearch',
-                pId: PRODUCT_IDS.CANONICA,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
                 processingTime: Date.now() - operationStart,
                 sId,
-                source: 'canonica_widget_search',
+                source: 'answerlattice_widget_search',
                 tId,
                 uId: 'widget',
             }).catch((error) => {

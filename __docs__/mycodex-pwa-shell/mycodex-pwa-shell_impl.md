@@ -51,4 +51,4 @@ The approved `public/mycodex-logo.svg` mark remains the source logo. Square PWA 
 
 ## Boundaries
 
-All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Canonica shells.
+All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Answerlattice shells.

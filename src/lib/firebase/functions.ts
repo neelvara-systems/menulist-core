@@ -1,15 +1,15 @@
 'use client';
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { canonicaFunctions } from './canonicaFirebaseClient';
+import { answerlatticeFunctions } from './answerlatticeFirebaseClient';
 import { firebaseApp } from './firebaseClient';
 
 // MenuList Cloud Functions (ecomsai locally/preview; menulist in production)
 const functions = getFunctions(firebaseApp);
 
-// Canonica Cloud Functions — canonica-qa locally/preview; canonica in production
+// Answerlattice Cloud Functions — answerlattice-qa locally/preview; answerlattice in production
 export const regenerateEmbedding = async (articleId: string) => {
-    const regenerateEmbeddingFn = httpsCallable(canonicaFunctions, 'regenerateEmbedding');
+    const regenerateEmbeddingFn = httpsCallable(answerlatticeFunctions, 'regenerateEmbedding');
     try {
         const result = await regenerateEmbeddingFn({ articleId });
         return result.data;
@@ -22,7 +22,7 @@ export const regenerateEmbedding = async (articleId: string) => {
 export type PublishApprovedJobPayload = { jobId: string; finalCategories: any; }
 
 export const publishApprovedJob = async (payload: PublishApprovedJobPayload) => {
-    const publishApprovedJobFn = httpsCallable(canonicaFunctions, 'publishApprovedJobFn');
+    const publishApprovedJobFn = httpsCallable(answerlatticeFunctions, 'publishApprovedJobFn');
     try {
         const result = await publishApprovedJobFn(payload);
         return result.data;

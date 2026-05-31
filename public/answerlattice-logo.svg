@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="1220 560 940 580" role="img" aria-labelledby="title desc">
+  <title id="title">Answerlattice logo mark</title>
+  <desc id="desc">A dimensional infinity mark in Answerlattice verdigris and teal.</desc>
+  <defs>
+    <linearGradient id="left-band" x1="1306" y1="836" x2="1792" y2="892" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ecfeff"/>
+      <stop offset="0.34" stop-color="#99f6e4"/>
+      <stop offset="0.62" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="right-band" x1="1608" y1="798" x2="2065" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5eead4"/>
+      <stop offset="0.38" stop-color="#14b8a6"/>
+      <stop offset="0.72" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#064e3b"/>
+    </linearGradient>
+    <linearGradient id="front-band" x1="1578" y1="742" x2="1810" y2="922" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ccfbf1"/>
+      <stop offset="0.42" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="lower-band" x1="1594" y1="812" x2="1737" y2="982" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#99f6e4"/>
+      <stop offset="0.52" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#065f46"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="1320" y1="694" x2="2020" y2="1050" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0.62"/>
+      <stop offset="0.34" stop-color="#ccfbf1" stop-opacity="0.28"/>
+      <stop offset="0.66" stop-color="#5eead4" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0f766e" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="shadow" x="1200" y="540" width="980" height="630" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#050514" flood-opacity="0.48"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#99f6e4" flood-opacity="0.18"/>
+    </filter>
+    <filter id="edge-shadow" x="1200" y="540" width="980" height="630" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="-3" dy="-3" stdDeviation="2" flood-color="#fff" flood-opacity="0.22"/>
+      <feDropShadow dx="4" dy="8" stdDeviation="5" flood-color="#070622" flood-opacity="0.45"/>
+    </filter>
+    <mask id="cutout" x="1200" y="540" width="980" height="630" maskUnits="userSpaceOnUse">
+      <rect x="1200" y="540" width="980" height="630" fill="#fff"/>
+      <path d="M1692 802L1737 846L1692 890L1648 846Z" fill="#000"/>
+    </mask>
+  </defs>
+  <g filter="url(#shadow)" mask="url(#cutout)">
+    <path d="M1715.48 970.547C1739.76 999.424 1772.14 1020.36 1808.44 1030.66C1844.73 1040.95 1883.28 1040.13 1919.11 1028.3C1954.94 1016.47 1986.4 994.177 2009.43 964.294C2032.46 934.41 2046 898.31 2048.32 860.652C2050.63 822.995 2041.61 785.508 2022.4 753.03C2003.2 720.552 1974.71 694.575 1940.6 678.449C1906.49 662.324 1868.33 656.792 1831.05 662.567C1793.76 668.341 1752.25 692.743 1724.62 718.43M1717.59 972.827L1594.55 846.738L1658.1 784.526" fill="none" stroke="url(#right-band)" stroke-linecap="round" stroke-linejoin="round" stroke-width="118"/>
+    <path d="M1664.9 725.404C1640.93 696.899 1608.97 676.232 1573.14 666.07C1537.31 655.908 1499.26 656.717 1463.89 668.394C1428.53 680.07 1397.48 702.078 1374.74 731.577C1352.01 761.076 1338.63 796.711 1336.35 833.884C1334.07 871.057 1342.98 908.061 1361.93 940.12C1380.88 972.18 1409.01 997.823 1442.68 1013.74C1476.35 1029.66 1514.02 1035.12 1550.82 1029.42C1587.63 1023.72 1627.82 1000.02 1655.09 974.66M1662.82 723.153L1784.28 847.619L1719.9 908.993" fill="none" stroke="url(#left-band)" stroke-linecap="round" stroke-linejoin="round" stroke-width="118"/>
+    <path d="M1712 731L1594 847" fill="none" stroke="#063a35" stroke-linecap="round" stroke-width="34" opacity="0.34"/>
+    <path d="M1662.82 723.153L1784.28 847.619L1719.9 908.993" fill="none" stroke="url(#front-band)" stroke-linecap="round" stroke-linejoin="round" stroke-width="118"/>
+    <path d="M1717.59 972.827L1594.55 846.738L1658.1 784.526" fill="none" stroke="url(#lower-band)" stroke-linecap="round" stroke-linejoin="round" stroke-width="118"/>
+  </g>
+  <g filter="url(#edge-shadow)" mask="url(#cutout)" opacity="0.64">
+    <path d="M1664.9 725.404C1640.93 696.899 1608.97 676.232 1573.14 666.07C1537.31 655.908 1499.26 656.717 1463.89 668.394C1428.53 680.07 1397.48 702.078 1374.74 731.577C1352.01 761.076 1338.63 796.711 1336.35 833.884C1334.07 871.057 1342.98 908.061 1361.93 940.12C1380.88 972.18 1409.01 997.823 1442.68 1013.74C1476.35 1029.66 1514.02 1035.12 1550.82 1029.42C1587.63 1023.72 1627.82 1000.02 1655.09 974.66M1662.82 723.153L1784.28 847.619L1719.9 908.993" fill="none" stroke="url(#highlight)" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"/>
+    <path d="M1715.48 970.547C1739.76 999.424 1772.14 1020.36 1808.44 1030.66C1844.73 1040.95 1883.28 1040.13 1919.11 1028.3C1954.94 1016.47 1986.4 994.177 2009.43 964.294C2032.46 934.41 2046 898.31 2048.32 860.652C2050.63 822.995 2041.61 785.508 2022.4 753.03C2003.2 720.552 1974.71 694.575 1940.6 678.449C1906.49 662.324 1868.33 656.792 1831.05 662.567C1793.76 668.341 1752.25 692.743 1724.62 718.43M1717.59 972.827L1594.55 846.738L1658.1 784.526" fill="none" stroke="#5eead4" stroke-linecap="round" stroke-linejoin="round" stroke-width="6" opacity="0.28"/>
+  </g>
+  <path d="M1692 802L1737 846L1692 890L1648 846Z" fill="none" stroke="#042f2e" stroke-width="5" opacity="0.46"/>
+</svg>

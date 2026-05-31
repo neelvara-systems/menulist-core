@@ -1,5 +1,5 @@
 ---
-description: Master Execution Prompt — the central brain for ALL development (MenuList + Canonica). Auto-detects product context, routes workflows, validates everything. Use this to start ANY session.
+description: Master Execution Prompt — the central brain for ALL development (MenuList + Answerlattice). Auto-detects product context, routes workflows, validates everything. Use this to start ANY session.
 ---
 
 # Master Execution Prompt
@@ -14,11 +14,11 @@ Before ANY other action, determine which product this task belongs to:
 
 | Signal                                                                                                                                                                   | Product      | Load                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | ----------------------------------- |
-| Mentions help center, KB, tickets, chat monitoring, AI chatbot, RAG, changelog, feedback, support infrastructure, Canonica, ontology, canonical answers, drift detection | **Canonica** | Canonica doctrine + rules           |
+| Mentions help center, KB, tickets, chat monitoring, AI chatbot, RAG, changelog, feedback, support infrastructure, Answerlattice, ontology, canonical answers, drift detection | **Answerlattice** | Answerlattice doctrine + rules           |
 | Mentions menu, projects, editor, B2C view, OBP, campaigns, stores, outlets, billing, subscriptions, POS, digital screens, onboarding, dashboard (owner)                  | **MenuList** | MenuList constitution + rules       |
-| File path contains `helpCenter/`, `helpChat/`, `knowledgeBase/`, `chatManagement/`, `supportTickets/`, `changelog/`, `feedback/`, `KBGeneration/`, `vectorEmbeddings/`   | **Canonica** | Canonica context                    |
+| File path contains `helpCenter/`, `helpChat/`, `knowledgeBase/`, `chatManagement/`, `supportTickets/`, `changelog/`, `feedback/`, `KBGeneration/`, `vectorEmbeddings/`   | **Answerlattice** | Answerlattice context                    |
 | File path contains `projects/`, `editor/`, `b2cView/`, `campaigns/`, `billing/`, `stores/`, `multiOutlet/`, `dashboard/`                                                 | **MenuList** | MenuList context                    |
-| Ambiguous or cross-product                                                                                                                                               | **Ask user** | "Is this for MenuList or Canonica?" |
+| Ambiguous or cross-product                                                                                                                                               | **Ask user** | "Is this for MenuList or Answerlattice?" |
 
 ### Context Loading Per Product
 
@@ -29,14 +29,14 @@ Before ANY other action, determine which product this task belongs to:
 3. Load relevant feature docs from `__docs__/[feature-name]/`
 4. Apply all existing MenuList workflows and rules
 
-**If Canonica:**
+**If Answerlattice:**
 
-1. Read `__docs__/canonica/doctrine/01-core-doctrine.md` — Canonica identity + 5 pillars
-2. Read `__docs__/canonica/doctrine/02-non-goals-charter.md` — what NOT to build
-3. Read `__docs__/canonica/doctrine/03-infrastructure-freeze-v1.md` — frozen architecture
-4. Load relevant Canonica docs from `__docs__/canonica/[feature]/`
-5. Apply `.cascade/rules/CANONICA_RULES.md`
-6. Apply Canonica-specific feature rejection filter (from non-goals charter)
+1. Read `__docs__/answerlattice/doctrine/01-core-doctrine.md` — Answerlattice identity + 5 pillars
+2. Read `__docs__/answerlattice/doctrine/02-non-goals-charter.md` — what NOT to build
+3. Read `__docs__/answerlattice/doctrine/03-infrastructure-freeze-v1.md` — frozen architecture
+4. Load relevant Answerlattice docs from `__docs__/answerlattice/[feature]/`
+5. Apply `.cascade/rules/ANSWERLATTICE_RULES.md`
+6. Apply Answerlattice-specific feature rejection filter (from non-goals charter)
 
 **Shared rules (BOTH products):**
 
@@ -52,7 +52,7 @@ Before ANY other action, determine which product this task belongs to:
 Always start response with:
 
 ```
-**Product:** [MenuList | Canonica]
+**Product:** [MenuList | Answerlattice]
 **Stage:** [Stage N — Name]
 **Action:** [What I'm doing]
 ```
@@ -93,20 +93,20 @@ Always start response with:
 - The Master Prompt is the AUTHORITY — it decides which workflow to run
 - User does NOT need to specify `/chatgpt-review` or `/new-feature` etc. — the Master Prompt detects and routes
 - **Product detection happens FIRST** — before any other action
-- MenuList laws apply to MenuList work. Canonica doctrine applies to Canonica work.
+- MenuList laws apply to MenuList work. Answerlattice doctrine applies to Answerlattice work.
 - Shared codebase patterns (DAL, auth, Firebase) apply to BOTH
 - Codebase truth > Cascade analysis > Web research > ChatGPT suggestions > Assumptions
 
 ## Two-Product Architecture Summary
 
-| Aspect            | MenuList                        | Canonica                                 |
+| Aspect            | MenuList                        | Answerlattice                                 |
 | ----------------- | ------------------------------- | ---------------------------------------- |
-| **Identity**      | Canonical public business truth | Support Knowledge Control Plane for SaaS |
-| **Docs**          | `__docs__/[feature]/`           | `__docs__/canonica/` + `doctrine/`       |
-| **Rules**         | `.cascade/rules/` (existing)    | `.cascade/rules/CANONICA_RULES.md`       |
-| **Constitution**  | `__docs__/constitution/`        | `__docs__/canonica/doctrine/`            |
-| **Feature flags** | `src/config/features.ts`        | Same file, `ENABLE_CANONICA_*` prefix    |
-| **DB constants**  | `src/constants/database.ts`     | Same file, `CANONICA_*` prefix           |
+| **Identity**      | Canonical public business truth | Governed Answer Infrastructure for SaaS Support |
+| **Docs**          | `__docs__/[feature]/`           | `__docs__/answerlattice/` + `doctrine/`       |
+| **Rules**         | `.cascade/rules/` (existing)    | `.cascade/rules/ANSWERLATTICE_RULES.md`       |
+| **Constitution**  | `__docs__/constitution/`        | `__docs__/answerlattice/doctrine/`            |
+| **Feature flags** | `src/config/features.ts`        | Same file, `ENABLE_ANSWERLATTICE_*` prefix    |
+| **DB constants**  | `src/constants/database.ts`     | Same file, `ANSWERLATTICE_*` prefix           |
 | **Non-goals**     | Feature Rejection Gate          | `doctrine/02-non-goals-charter.md`       |
 | **Freeze**        | 3-year freeze (existing)        | 3-year freeze (independent)              |
 

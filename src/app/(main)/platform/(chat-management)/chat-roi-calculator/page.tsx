@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import ROICalculator from '@template/platform/chatManagement/ROICalculator';
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
 
 export const metadata: Metadata = {
     title: 'ROI Calculator | Chat Management',
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function ROICalculatorPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Chat ROI Calculator" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Chat ROI Calculator" />;
     }
 
     return <ROICalculator />;

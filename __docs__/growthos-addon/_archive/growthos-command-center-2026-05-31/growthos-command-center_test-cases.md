@@ -83,7 +83,7 @@
 | --- | --- | --- |
 | RT-1 | `localhost:3000/__growthos` | Rewrites to GrowthOS site only when flag enabled. |
 | RT-2 | MenuList host | Still serves MenuList routes. |
-| RT-3 | Canonica host | Still serves Canonica routes. |
+| RT-3 | Answerlattice host | Still serves Answerlattice routes. |
 | RT-4 | MyCodex host | Still serves MyCodex routes. |
 | RT-5 | Tenant custom domain | Not captured by GrowthOS product host logic. |
 

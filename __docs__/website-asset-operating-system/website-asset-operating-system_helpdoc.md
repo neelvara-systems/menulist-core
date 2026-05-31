@@ -8,7 +8,7 @@
 
 ## Quick Summary
 
-Website Asset Operating System is the internal workflow for checking and refreshing MenuList and Canonica website assets. It tells Codex what assets should exist, how to judge them, and when founder approval is required.
+Website Asset Operating System is the internal workflow for checking and refreshing MenuList and Answerlattice website assets. It tells Codex what assets should exist, how to judge them, and when founder approval is required.
 
 ## Before Using It
 
@@ -59,7 +59,7 @@ npm run assets:brief -- --slot menulist.home.hero.official-source
 Use this only for internal planning. It does not update the public website.
 
 ```bash
-npm run assets:generate:missing -- --slot canonica.home.hero.support-control-motion
+npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion
 ```
 
 The output goes under `packages/asset-factory/published/placeholders/`.
@@ -122,8 +122,8 @@ Use the optimizer path once implemented. Until then, do not publish the asset. T
 
 Use the rejection rules, not personal taste alone. Reject if:
 
-- Canonica looks like a generic SaaS dashboard;
-- Canonica looks like MenuList with different colors;
+- Answerlattice looks like a generic SaaS dashboard;
+- Answerlattice looks like MenuList with different colors;
 - MenuList looks like POS, payroll, CRM, or restaurant operations software;
 - the clip needs explanation;
 - it shows too many features at once;
@@ -139,6 +139,6 @@ That means the implementation is incomplete. The workflow should store brand con
 
 - `__docs__/website-asset-operating-system/website-asset-operating-system_usage-guide.md`
 - `__docs__/main-website/main-website_image-assets.md`
-- `__docs__/canonica/canonica-website/README.md`
+- `__docs__/answerlattice/answerlattice-website/README.md`
 - `__docs__/strategy/product-universe-ssot.md`
 - `__docs__/constitution/12-product-separation-doctrine.md`

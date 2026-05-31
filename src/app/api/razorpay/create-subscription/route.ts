@@ -6,7 +6,7 @@ import {
 } from "@lib/billing/productBillingServer";
 import {
     getBillingPlansForProduct,
-    isCanonicaBillingProduct,
+    isAnswerlatticeBillingProduct,
     normalizeBillingProductId,
 } from "@lib/billing/productBillingPlans";
 import { logger } from "@lib/monitoring/logger";
@@ -99,14 +99,14 @@ export const POST = withAuth(async (request, session) => {
 
         const { tenantId, storeId } = scope;
 
-        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }

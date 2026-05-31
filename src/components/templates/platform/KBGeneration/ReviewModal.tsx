@@ -1,7 +1,7 @@
 'use client';
 
 import { updateJob } from "@database/kb-generation/jobs";
-import { rebuildProductSurfaceContentSummary } from "@database/canonica/productSurfaces";
+import { rebuildProductSurfaceContentSummary } from "@database/answerlattice/productSurfaces";
 import { getArticleById, updateArticle } from "@database/knowledgeBase/articles";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { publishApprovedJob, PublishApprovedJobPayload, regenerateEmbedding } from '@lib/firebase/functions';

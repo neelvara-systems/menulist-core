@@ -1,13 +1,13 @@
 /**
  * Generic Notification Service
  *
- * Reusable email notification system for Canonica (and future products).
+ * Reusable email notification system for Answerlattice (and future products).
  * Built on top of the existing SMTP infrastructure (nodemailer).
  *
  * Design:
  * - Generic: any event type, any template, any recipient
  * - Fire-and-forget: never blocks the calling operation
- * - Feature-flagged: ENABLE_CANONICA_NOTIFICATIONS
+ * - Feature-flagged: ENABLE_ANSWERLATTICE_NOTIFICATIONS
  * - Idempotent: dedup by eventType + referenceId
  * - Rate-limited: max 20 notifications per recipient per day
  * - Logged: all sends/failures written to notificationLogs collection
@@ -22,7 +22,7 @@
  *     metadata: { ticketSubject, replyPreview, ticketUrl },
  *   });
  *
- * @see __docs__/canonica/email-notifications/
+ * @see __docs__/answerlattice/email-notifications/
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -30,7 +30,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS, ProductId } from '@constant/product';
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { createHash } from 'crypto';
 import type { Firestore } from 'firebase-admin/firestore';
@@ -59,7 +59,7 @@ export interface NotificationPayload {
     metadata: Record<string, any>;
     /** Optional: override the "from" address */
     from?: string;
-    /** Product owning this notification. Canonica writes logs to Canonica Firebase. */
+    /** Product owning this notification. Answerlattice writes logs to Answerlattice Firebase. */
     productId?: ProductId | string;
     /** Optional: skip idempotency check (for time-sensitive notifications) */
     skipDedup?: boolean;
@@ -80,29 +80,29 @@ export function isNotificationSmtpConfigured(): boolean {
     return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.CANONICA) {
-    const isCanonica = productId === PRODUCT_IDS.CANONICA;
-    const canonicaDbAvailable = Boolean(
-        canonicaFirestoreAdmin
-        && typeof (canonicaFirestoreAdmin as any).collection === 'function'
+export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.ANSWERLATTICE) {
+    const isAnswerlattice = productId === PRODUCT_IDS.ANSWERLATTICE;
+    const answerlatticeDbAvailable = Boolean(
+        answerlatticeFirestoreAdmin
+        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function'
     );
 
     return {
-        enabled: FEATURE_FLAGS.ENABLE_CANONICA_NOTIFICATIONS,
+        enabled: FEATURE_FLAGS.ENABLE_ANSWERLATTICE_NOTIFICATIONS,
         smtpConfigured: isNotificationSmtpConfigured(),
         fromAddress: DEFAULT_FROM,
-        logTarget: isCanonica ? DB_COLLECTIONS.CANONICA_NOTIFICATION_LOGS : NOTIFICATION_LOGS,
+        logTarget: isAnswerlattice ? DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS : NOTIFICATION_LOGS,
         productId,
-        canonicaDbAvailable,
+        answerlatticeDbAvailable,
     };
 }
 
 function getNotificationLogTarget(productId?: ProductId | string): NotificationLogTarget | null {
-    if (productId === PRODUCT_IDS.CANONICA) {
-        if (canonicaFirestoreAdmin && typeof (canonicaFirestoreAdmin as any).collection === 'function') {
+    if (productId === PRODUCT_IDS.ANSWERLATTICE) {
+        if (answerlatticeFirestoreAdmin && typeof (answerlatticeFirestoreAdmin as any).collection === 'function') {
             return {
-                db: canonicaFirestoreAdmin,
-                collectionName: DB_COLLECTIONS.CANONICA_NOTIFICATION_LOGS,
+                db: answerlatticeFirestoreAdmin,
+                collectionName: DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS,
             };
         }
         return null;
@@ -254,12 +254,12 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             referenceId,
             metadata,
             from,
-            productId = PRODUCT_IDS.CANONICA,
+            productId = PRODUCT_IDS.ANSWERLATTICE,
             skipDedup = false,
         } = payload;
 
         // 1. Feature flag
-        if (!FEATURE_FLAGS.ENABLE_CANONICA_NOTIFICATIONS) return false;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_NOTIFICATIONS) return false;
 
         // 2. Basic validation
         if (!recipientEmail || !eventType || !referenceId) return false;

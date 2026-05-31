@@ -7,8 +7,8 @@ import {
     getSubscriptionById as getMenuListSubscriptionById,
     updateSubscription as updateMenuListSubscription,
 } from '@database/subscriptions/server';
-import { getCanonicaScopedSession, resolveCanonicaSessionScope, canUseCanonicaManagement } from '@lib/canonica/sessionScope';
-import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { getAnswerlatticeScopedSession, resolveAnswerlatticeSessionScope, canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { getGracePeriodInfo } from '@util/razorpay';
@@ -16,7 +16,7 @@ import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { getActivePlanTypeForSubscription, safeSyncStorePlanEntitlementFromSubscription } from './subscriptionEntitlementSync';
 import { validateTransition } from './subscriptionStateMachine';
-import { normalizeBillingProductId, isCanonicaBillingProduct } from './productBillingPlans';
+import { normalizeBillingProductId, isAnswerlatticeBillingProduct } from './productBillingPlans';
 
 export type ProductBillingScope = {
     productId: ProductId;
@@ -50,11 +50,11 @@ const sanitizeForAdminFirestore = (value: any): any => {
 };
 
 export const getBillingFirestoreAdminForProduct = (productId: ProductId): FirebaseFirestore.Firestore => {
-    if (productId === PRODUCT_IDS.CANONICA) {
-        if (!canonicaFirestoreAdmin || typeof (canonicaFirestoreAdmin as any).collection !== 'function') {
-            throw new Error('Canonica Firebase is not configured.');
+    if (productId === PRODUCT_IDS.ANSWERLATTICE) {
+        if (!answerlatticeFirestoreAdmin || typeof (answerlatticeFirestoreAdmin as any).collection !== 'function') {
+            throw new Error('Answerlattice Firebase is not configured.');
         }
-        return canonicaFirestoreAdmin;
+        return answerlatticeFirestoreAdmin;
     }
 
     return firestoreAdmin;
@@ -68,17 +68,17 @@ export const resolveBillingScopeFromSession = (
     const userId = session?.user?.id;
     if (!userId) return null;
 
-    if (productId === PRODUCT_IDS.CANONICA) {
-        if (!canUseCanonicaManagement(session)) return null;
-        const canonicaScope = resolveCanonicaSessionScope(session);
-        if (!canonicaScope) return null;
+    if (productId === PRODUCT_IDS.ANSWERLATTICE) {
+        if (!canUseAnswerlatticeManagement(session)) return null;
+        const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
+        if (!answerlatticeScope) return null;
 
         return {
             productId,
-            tenantId: canonicaScope.tenantId,
-            storeId: canonicaScope.storeId,
+            tenantId: answerlatticeScope.tenantId,
+            storeId: answerlatticeScope.storeId,
             userId,
-            scopedSession: getCanonicaScopedSession(session),
+            scopedSession: getAnswerlatticeScopedSession(session),
         };
     }
 
@@ -126,7 +126,7 @@ const toMillis = (value: any): number => {
     return Number(value) || 0;
 };
 
-const normalizeCanonicaSubscription = (
+const normalizeAnswerlatticeSubscription = (
     data: Record<string, any>,
     id: string,
     tenantId: number,
@@ -145,7 +145,7 @@ const normalizeCanonicaSubscription = (
     currency: data.currency || 'INR',
     status: data.status || 'pending',
     planType: data.planType || 'MONTH',
-    planName: data.planName || 'Canonica Plan',
+    planName: data.planName || 'Answerlattice Plan',
     planId: data.planId || '',
     paymentMethod: data.paymentMethod || { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
     statuses: Array.isArray(data.statuses) ? data.statuses : [],
@@ -153,7 +153,7 @@ const normalizeCanonicaSubscription = (
     shortUrl: data.shortUrl || '',
 } as FirestoreSubscriptionDoc);
 
-const isCanonicaSubscriptionForScope = (
+const isAnswerlatticeSubscriptionForScope = (
     subscription: FirestoreSubscriptionDoc,
     tenantId: number,
     storeId: number,
@@ -162,7 +162,7 @@ const isCanonicaSubscriptionForScope = (
     && Number(subscription.storeId ?? subscription.sId) === Number(storeId)
 );
 
-const isCurrentCanonicaSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
+const isCurrentAnswerlatticeSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
     if (['pending', 'paused', 'past_due'].includes(String(subscription.status))) return true;
     if (subscription.status === 'active') {
         const cycleEndMs = toMillis(subscription.cycleEndDate);
@@ -180,7 +180,7 @@ export const createProductInitialSubscription = async (
     providerSubscriptionId: string,
     data: Omit<FirestoreSubscriptionDoc, 'id'>,
 ): Promise<void> => {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         await createMenuListInitialSubscription(providerSubscriptionId, data);
         return;
     }
@@ -196,7 +196,7 @@ export const updateProductSubscription = async (
     subscriptionId: string,
     data: Partial<FirestoreSubscriptionDoc>,
 ): Promise<void> => {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         await updateMenuListSubscription(subscriptionId, data);
         return;
     }
@@ -211,7 +211,7 @@ export const getProductSubscriptionById = async (
     productId: ProductId,
     id: string,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListSubscriptionById(id);
     }
 
@@ -224,21 +224,21 @@ export const getProductSubscriptionById = async (
     return { ...(docSnap.data() as FirestoreSubscriptionDoc), id };
 };
 
-const fetchCanonicaSubscriptionRaw = async (
+const fetchAnswerlatticeSubscriptionRaw = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.CANONICA);
+    const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
     const collectionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
-    const subscriptionSummary = storeSnap.exists ? storeSnap.data()?.canonicaSubscription : null;
+    const subscriptionSummary = storeSnap.exists ? storeSnap.data()?.answerlatticeSubscription : null;
     const summarySubscriptionId = String(subscriptionSummary?.id || subscriptionSummary?.providerSubscriptionId || '').trim();
 
     if (summarySubscriptionId) {
         const subscriptionSnap = await collectionRef.doc(summarySubscriptionId).get();
         if (subscriptionSnap.exists) {
-            const subscription = normalizeCanonicaSubscription(subscriptionSnap.data() || {}, subscriptionSnap.id, tenantId, storeId);
-            if (isCanonicaSubscriptionForScope(subscription, tenantId, storeId) && isCurrentCanonicaSubscription(subscription)) {
+            const subscription = normalizeAnswerlatticeSubscription(subscriptionSnap.data() || {}, subscriptionSnap.id, tenantId, storeId);
+            if (isAnswerlatticeSubscriptionForScope(subscription, tenantId, storeId) && isCurrentAnswerlatticeSubscription(subscription)) {
                 return subscription;
             }
         }
@@ -251,9 +251,9 @@ const fetchCanonicaSubscriptionRaw = async (
         .get();
 
     return fallbackSnapshot.docs
-        .map((docSnap) => normalizeCanonicaSubscription(docSnap.data(), docSnap.id, tenantId, storeId))
-        .filter((subscription) => isCanonicaSubscriptionForScope(subscription, tenantId, storeId))
-        .filter(isCurrentCanonicaSubscription)
+        .map((docSnap) => normalizeAnswerlatticeSubscription(docSnap.data(), docSnap.id, tenantId, storeId))
+        .filter((subscription) => isAnswerlatticeSubscriptionForScope(subscription, tenantId, storeId))
+        .filter(isCurrentAnswerlatticeSubscription)
         .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate))[0] || null;
 };
 
@@ -294,11 +294,11 @@ export const getDirectActiveProductSubscriptionForStore = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListDirectActiveSubscriptionForStore(tenantId, storeId);
     }
 
-    const raw = await fetchCanonicaSubscriptionRaw(tenantId, storeId);
+    const raw = await fetchAnswerlatticeSubscriptionRaw(tenantId, storeId);
     if (!raw) return null;
     return await expireIfGracePeriodEnded(productId, raw);
 };
@@ -309,7 +309,7 @@ export const getActiveProductSubscriptionForStore = async (
     storeId: number,
     tenantStoresList?: MinimalStoreDataType[],
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListActiveSubscriptionForStore(tenantId, storeId, tenantStoresList);
     }
 
@@ -339,14 +339,14 @@ export const writeProductPaymentTransactionAudit = async (
     return docRef.id;
 };
 
-export const syncCanonicaSubscriptionEntitlementFromSubscription = async (
+export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> => {
     const storeId = String(subscription.storeId || '').trim();
     if (!storeId) return;
 
-    const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.CANONICA);
+    const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.ANSWERLATTICE);
     const syncedAt = admin.firestore.FieldValue.serverTimestamp();
     const activePlanType = getActivePlanTypeForSubscription(subscription);
     const subscriptionSummary = {
@@ -357,7 +357,7 @@ export const syncCanonicaSubscriptionEntitlementFromSubscription = async (
         status: subscription.status || null,
         currency: subscription.currency || null,
         amount: subscription.amount ?? null,
-        isBeta: subscription.planId === 'canonica_beta',
+        isBeta: subscription.planId === 'answerlattice_beta',
         subscriptionEndDate: subscription.subscriptionEndDate || null,
         monthlyCreditsAllowance: subscription.monthlyCreditsAllowance ?? 0,
         updatedAt: syncedAt,
@@ -366,8 +366,8 @@ export const syncCanonicaSubscriptionEntitlementFromSubscription = async (
     await Promise.all([
         db.collection(DB_COLLECTIONS.STORES).doc(storeId).set({
             activePlanType,
-            canonicaSubscription: subscriptionSummary,
-            canonicaBillingUpdatedAt: syncedAt,
+            answerlatticeSubscription: subscriptionSummary,
+            answerlatticeBillingUpdatedAt: syncedAt,
         }, { merge: true }),
         subscription.id
             ? db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscription.id).set({
@@ -387,15 +387,15 @@ export async function safeSyncProductSubscriptionEntitlementFromSubscription(
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> {
-    if (!isCanonicaBillingProduct(productId)) {
+    if (!isAnswerlatticeBillingProduct(productId)) {
         await safeSyncStorePlanEntitlementFromSubscription(subscription, source);
         return;
     }
 
     try {
-        await syncCanonicaSubscriptionEntitlementFromSubscription(subscription, source);
+        await syncAnswerlatticeSubscriptionEntitlementFromSubscription(subscription, source);
     } catch (error) {
-        logger.error('Failed to sync Canonica subscription entitlement', error, {
+        logger.error('Failed to sync Answerlattice subscription entitlement', error, {
             source,
             subscriptionId: subscription.id,
             tenantId: subscription.tenantId,

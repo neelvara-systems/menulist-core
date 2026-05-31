@@ -1010,19 +1010,19 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 ## Session 12 Topics (March 6, 2026)
 
-- **canonica.app Domain Purchased:** Domain acquired. ChatGPT provided domain infrastructure setup recommendations (subdomain structure, HTTPS, email, trademark, social handles).
-- **Canonica Support Stack Evaluation:** ChatGPT evaluated Canonica against 6-layer SaaS support stack model: Interaction (sufficient), Knowledge (very strong), Answer Generation (complete), Governance (excellent), Signal (sufficient), Operations (intentionally light). Assessment ~85% accurate.
-- **Three "Missing Pieces" Claim — ALL WRONG:** ChatGPT identified 3 items as "the only meaningful gaps": (1) Canonical Coverage Measurement, (2) Signal Entity Resolution, (3) Nightly Governance Scheduler. **All three were already implemented on March 3, 2026.** ChatGPT has zero codebase awareness. `canonicaNightly.ts` runs a 7-step batch job including all three plus recurring fallback detection, impact tracking, and confidence auto-adjustment.
-- **Launch Strategy:** Controlled activation → observation → launch. Aligns with existing `CANONICA-ACTIVATION-EXPERIMENT.md` (4-week framework with Go/No-Go criteria).
+- **answerlattice.com Domain Purchased:** Domain acquired. ChatGPT provided domain infrastructure setup recommendations (subdomain structure, HTTPS, email, trademark, social handles).
+- **Answerlattice Support Stack Evaluation:** ChatGPT evaluated Answerlattice against 6-layer SaaS support stack model: Interaction (sufficient), Knowledge (very strong), Answer Generation (complete), Governance (excellent), Signal (sufficient), Operations (intentionally light). Assessment ~85% accurate.
+- **Three "Missing Pieces" Claim — ALL WRONG:** ChatGPT identified 3 items as "the only meaningful gaps": (1) Canonical Coverage Measurement, (2) Signal Entity Resolution, (3) Nightly Governance Scheduler. **All three were already implemented on March 3, 2026.** ChatGPT has zero codebase awareness. `answerlatticeNightly.ts` runs a 7-step batch job including all three plus recurring fallback detection, impact tracking, and confidence auto-adjustment.
+- **Launch Strategy:** Controlled activation → observation → launch. Aligns with existing `ANSWERLATTICE-ACTIVATION-EXPERIMENT.md` (4-week framework with Go/No-Go criteria).
 - **MenuList as First Client:** MenuList as design partner / Tenant #1. Entity category suggestions for ontology bootstrap (Features, Workflows, States, Errors, Billing). Already documented in doctrine.
 - **10 Failure Modes (HIGH VALUE):** Operational warnings for first deployment. 4 genuinely new (Entity Ontology Collapse, Canonical Answer Overfitting, Admin Cognitive Overload, Governance Loop Breaking). 6 already mitigated in codebase. Weekly governance cycle recommended (Mon: proposals, Wed: drift, Fri: answers).
 
-**Cascade Review:** ~60% accuracy. Core claim (3 missing pieces) is 0% accurate — all built. Domain recommendations are sound but operational (not engineering). Failure mode warnings are genuinely valuable. Full review at `__docs__/canonica/_archive/chatgpt-review-domain-launch-readiness.md`
+**Cascade Review:** ~60% accuracy. Core claim (3 missing pieces) is 0% accurate — all built. Domain recommendations are sound but operational (not engineering). Failure mode warnings are genuinely valuable. Full review at `__docs__/answerlattice/_archive/chatgpt-review-domain-launch-readiness.md`
 
 **Documents Updated:**
 
-- `__docs__/canonica/CANONICA-ACTIVATION-EXPERIMENT.md` — Added §10 (10 Failure Modes), §11 (Entity Categories for MenuList), §12 (Authoring Guidelines)
-- `__docs__/canonica/_archive/chatgpt-review-domain-launch-readiness.md` — Full conversation review (NEW)
+- `__docs__/answerlattice/ANSWERLATTICE-ACTIVATION-EXPERIMENT.md` — Added §10 (10 Failure Modes), §11 (Entity Categories for MenuList), §12 (Authoring Guidelines)
+- `__docs__/answerlattice/_archive/chatgpt-review-domain-launch-readiness.md` — Full conversation review (NEW)
 
 **Domain Action Items (Business Operations — NOT Engineering):**
 
@@ -1032,9 +1032,9 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 | Set up www → non-www redirect                                                     | P1       | Founder |
 | Set up professional email (founder@, hello@, support@, security@)                 | P1       | Founder |
 | Configure SPF/DKIM/DMARC for email                                                | P1       | Founder |
-| Reserve social handles (@canonica / @canonicaapp) on X, LinkedIn, GitHub, YouTube | P2       | Founder |
+| Reserve social handles (@answerlattice / @answerlatticeapp) on X, LinkedIn, GitHub, YouTube | P2       | Founder |
 | File trademark (Class 9: software, Class 42: SaaS)                                | P2       | Founder |
-| Optionally acquire canonica.com later                                             | P3       | Founder |
+| Optionally acquire answerlattice.com later                                             | P3       | Founder |
 
 ---
 

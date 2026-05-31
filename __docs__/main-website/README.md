@@ -35,7 +35,7 @@ Version 3.5.8 removes the old homepage `SolutionSection` because its one-source 
 
 Version 3.5.9 hardens the public agent-readable context files after reviewing Chrome's agentic web / WebMCP guidance. `public/llms.txt` and `public/llms-full.txt` now state what public agents may read, which official handoff links they may route to, and which actions remain owner/admin-only. Homepage layout, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
-Version 3.6.0 completes the website-layer SEO/AEO hardening pass for the agentic web. Homepage JSON-LD is server-rendered, active marketing/legal pages emit page-level WebPage and BreadcrumbList JSON-LD, discovery URLs use `https://menulist.ai`, `/product` remains a framework-level permanent legacy redirect but is omitted from sitemap/LLM discovery, and `npm run verify:agent-readiness` validates MenuList and Canonica discovery surfaces. WebMCP, MCP, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+Version 3.6.0 completes the website-layer SEO/AEO hardening pass for the agentic web. Homepage JSON-LD is server-rendered, active marketing/legal pages emit page-level WebPage and BreadcrumbList JSON-LD, discovery URLs use `https://menulist.ai`, `/product` remains a framework-level permanent legacy redirect but is omitted from sitemap/LLM discovery, and `npm run verify:agent-readiness` validates MenuList and Answerlattice discovery surfaces. WebMCP, MCP, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Version 3.6.1 removes repeated reassurance and surface-list copy from the public website. The homepage final CTA is now title/subtitle/CTA only, supporting-page heroes no longer repeat the phone/PWA and review-before-publish helper lines, the pricing page no longer repeats the full customer-surface promise, and the footer/FAQ/hero copy now use shorter official-source language. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -119,7 +119,7 @@ These archived documents are not source-code backups and are not restoration tar
 | `public/locales/menulist.ai/en-US.json`                     | Website locale default + base file (Website namespace) |
 | `src/styles/website.css`                                    | Website-specific styles                        |
 | `src/config/features.ts`                                    | `ENABLE_PUBLIC_MENU_ENTRY` flag                |
-| `scripts/verification/verify-agent-readiness.js`            | MenuList + Canonica route/discovery/structured-data verifier |
+| `scripts/verification/verify-agent-readiness.js`            | MenuList + Answerlattice route/discovery/structured-data verifier |
 
 Supported website locale files:
 - `public/locales/menulist.ai/en-US.json`
@@ -600,7 +600,7 @@ Stage 7.21 responds to visual QA on the dark homepage hero and repeated card gri
 - Added `WebsiteFeatureCard.tsx` for a consistent public website card language: spacious body, top-right icon, stable min-height, and calm border/background treatment.
 - Moved homepage public-surface, setup-relief, and rollout cards to the shared card pattern.
 - Reused the same card pattern on Product, Features, About, Get Started, Pricing decision, and Trust/Security pages where compact icon-left cards previously felt inconsistent.
-- Kept MenuList visual identity separate from Canonica: same disciplined card rhythm, not Canonica colors, copy, or product framing.
+- Kept MenuList visual identity separate from Answerlattice: same disciplined card rhythm, not Answerlattice colors, copy, or product framing.
 
 Protected scope:
 

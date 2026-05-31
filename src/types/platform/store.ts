@@ -516,30 +516,30 @@ export type StoreDataType = {
 
     /**
      * Public API configuration for external system access.
-     * Owner generates a read-only API key in Business Settings or a Canonica widget key.
+     * Owner generates a read-only API key in Business Settings or an Answerlattice widget key.
      * External systems use X-API-Key header to pull data.
      * Raw public API keys are legacy-only; new public API keys are stored as SHA-256 hashes and shown once.
-     * Canonica widget keys use the dedicated `canonicaWidgetApi` manager below.
+     * Answerlattice widget keys use the dedicated `answerlatticeWidgetApi` manager below.
      *
-     * Feature flags: ENABLE_PUBLIC_API, ENABLE_CANONICA_WIDGET
+     * Feature flags: ENABLE_PUBLIC_API, ENABLE_ANSWERLATTICE_WIDGET
      */
     publicApi?: {
         apiKey?: string;        // Legacy raw key fallback only
         apiKeyHash?: string;    // SHA-256 hash used by current validation path
-        keyPrefix?: string;     // Display-only prefix, e.g. cn_1234
+        keyPrefix?: string;     // Display-only prefix, e.g. al_1234
         createdAt?: string;     // ISO 8601
-        productId?: 'CN' | string;
-        purpose?: 'canonica_widget' | string;
+        productId?: 'AL' | string;
+        purpose?: 'answerlattice_widget' | string;
         scopes?: string[];
     };
 
     /**
-     * Dedicated Canonica widget credential.
+     * Dedicated Answerlattice widget credential.
      * Kept separate from `publicApi` so embeddable widget keys cannot authorize
-     * broader Canonica public API routes.
+     * broader Answerlattice public API routes.
      */
-    canonicaWidgetApi?: {
-        schemaVersion?: 'canonica.widgetKeys.v1';
+    answerlatticeWidgetApi?: {
+        schemaVersion?: 'answerlattice.widgetKeys.v1';
         activeKeyHash?: string | null;
         keyHashes?: string[];
         keysByHash?: Record<string, {
@@ -550,8 +550,8 @@ export type StoreDataType = {
             encryptedKey?: string | null;
             encryptionVersion?: string | null;
             status: 'active' | 'revoked';
-            productId?: 'CN' | string;
-            purpose?: 'canonica_widget' | string;
+            productId?: 'AL' | string;
+            purpose?: 'answerlattice_widget' | string;
             scopes?: string[];
             createdAt?: string;
             updatedAt?: string | null;
@@ -563,22 +563,22 @@ export type StoreDataType = {
         keyPrefix?: string;
         createdAt?: string;
         updatedAt?: string | null;
-        productId?: 'CN' | string;
-        purpose?: 'canonica_widget' | string;
+        productId?: 'AL' | string;
+        purpose?: 'answerlattice_widget' | string;
         scopes?: string[];
     };
 
     // ─────────────────────────────────────────────────────────────
-    // CANONICA WIDGET CONFIGURATION
-    // @see __docs__/canonica/help-widget/help-widget_impl.md
+    // ANSWERLATTICE WIDGET CONFIGURATION
+    // @see __docs__/answerlattice/help-widget/help-widget_impl.md
     // ─────────────────────────────────────────────────────────────
 
     /**
      * Widget launcher customization config.
-     * Set by SaaS founder in Canonica dashboard settings.
+     * Set by SaaS founder in Answerlattice dashboard settings.
      * Read by embed script via data attributes.
      *
-     * Feature flag: ENABLE_CANONICA_WIDGET
+     * Feature flag: ENABLE_ANSWERLATTICE_WIDGET
      */
     widgetConfig?: {
         position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -601,17 +601,17 @@ export type StoreDataType = {
      * If configured, widget requests from unlisted origins are rejected (403).
      * Empty array = allow all origins (backward compatible).
      *
-     * Feature flag: ENABLE_CANONICA_WIDGET
+     * Feature flag: ENABLE_ANSWERLATTICE_WIDGET
      */
     widgetAllowedOrigins?: string[];
 
     /**
-     * Canonica hosted Help Center settings.
+     * Answerlattice hosted Help Center settings.
      * Powers anonymous customer-facing docs domains such as help.example.com.
-     * Domain resolution uses canonica_publicHelpSites registry docs, not this
+     * Domain resolution uses answerlattice_publicHelpSites registry docs, not this
      * store document, to keep public page reads to one cached lookup.
      *
-     * Feature flag: ENABLE_CANONICA_HOSTED_HELP_CENTER
+     * Feature flag: ENABLE_ANSWERLATTICE_HOSTED_HELP_CENTER
      */
     hostedHelpConfig?: {
         enabled?: boolean;

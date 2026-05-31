@@ -27,7 +27,7 @@ const languageObjectSchema = z.object({
 const contentLengthSchema = z.enum(['Standard', 'Detailed']);
 
 const actionSchema = z.enum(['generate', 'translate', 'describe']);
-const billingProductIdSchema = z.enum(['ML', 'CN']).optional();
+const billingProductIdSchema = z.enum(['ML', 'AL']).optional();
 
 // ═══════════════════════════════════════════════════════════
 // DESCRIPTION API

@@ -17,7 +17,7 @@ import hiIN from '../../public/locales/menulist.ai/hi-IN.json';
 import mrIN from '../../public/locales/menulist.ai/mr-IN.json';
 import taIN from '../../public/locales/menulist.ai/ta-IN.json';
 import teIN from '../../public/locales/menulist.ai/te-IN.json';
-import zhCN from '../../public/locales/menulist.ai/zh-CN.json';
+import zhCN from '../../public/locales/menulist.ai/zh-AL.json';
 
 const localeMessages: Record<string, Record<string, any>> = {
     'ar-SA': arSA,
@@ -30,7 +30,7 @@ const localeMessages: Record<string, Record<string, any>> = {
     'mr-IN': mrIN,
     'ta-IN': taIN,
     'te-IN': teIN,
-    'zh-CN': zhCN,
+    'zh-AL': zhCN,
 };
 
 const supportedLocales = AppSupportedLocales as readonly string[];

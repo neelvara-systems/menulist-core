@@ -111,8 +111,8 @@ Next.js App Router monorepo split by **route group + product + tenancy**:
   - Shared auth/public utility pages (signin/forgot-password/error pages used by owner flows).
 - `src/app/client/[[...slug]]/`
   - Tenant/public rendering for menus, official pages, custom domain/subdomain routes.
-- `src/app/(canonica)/` and `src/app/sites/canonica/`
-  - Canonica route surface + marketing endpoint for `/sites/canonica` through domain routing.
+- `src/app/(answerlattice)/` and `src/app/sites/answerlattice/`
+  - Answerlattice route surface + marketing endpoint for `/sites/answerlattice` through domain routing.
 - `src/app/api/`, `src/app/widget/`, `src/app/feedback/`, and utility roots such as `screen`, `manifest.webmanifest`.
 
 ### 4.2 Routing and domain strategy
@@ -124,8 +124,8 @@ Routing controlled in:
 
 Observed behavior:
 - Product domain routing:
-  - `canonica.app` and other configured product hosts route via middleware to `/sites/<productId>` through `productDomains.ts`.
-  - In local dev, product prefixes such as `/__canonica/...` also resolve to `/sites/canonica/...`.
+  - `answerlattice.com` and other configured product hosts route via middleware to `/sites/<productId>` through `productDomains.ts`.
+  - In local dev, product prefixes such as `/__answerlattice/...` also resolve to `/sites/answerlattice/...`.
 - Tenant routing:
   - `*.menulist.ai` and validated custom domains resolve to tenant mode and rewrite into `/client/...`.
   - Middleware injects tenant headers: `x-tenant-subdomain`, `x-tenant-custom-domain`, and `x-tenant-type`.
@@ -135,7 +135,7 @@ Observed behavior:
 - Protection behavior:
   - Direct `/sites/*` hits are redirected in Vercel production.
   - Direct `/client` hits on platform hosts are redirected back to `/`.
-- Middleware bypasses routing for asset/API/system paths to avoid unsafe rewrites (`/api`, `/_next`, `/__canonica`, `/sites`, etc.).
+- Middleware bypasses routing for asset/API/system paths to avoid unsafe rewrites (`/api`, `/_next`, `/__answerlattice`, `/sites`, etc.).
 
 ### 4.3 Security and header layer
 - CSP, HSTS (env-sensitive), security headers, frame policy, referrer policy in middleware.
@@ -184,9 +184,9 @@ Observed behavior:
 - Integrations and sync: `integrations`, `posDeliveryQueue`, `integration*` namespaces in extension layers
 - AI/ops helper collections: `menulistAiOperations`, plus `AI_OPERATIONS_COLLECTIONS` mapping in same module
 
-### 6.2 Canonica separation
+### 6.2 Answerlattice separation
 Canonical note:
-- Canonica has isolated collections/configs (`CANONICA_*`) and separate Firebase expectations.
+- Answerlattice has isolated collections/configs (`ANSWERLATTICE_*`) and separate Firebase expectations.
 - It must not be mixed with MenuList operational logic unless explicitly in cross-product routing context.
 
 ### 6.3 State correctness and cache discipline
@@ -231,7 +231,7 @@ Canonical note:
 - Multi-chain permissions
 - Messaging onboarding
 - Reseller workflows
-- Predictive/collaborative support infrastructure (Canonica-facing parts)
+- Predictive/collaborative support infrastructure (Answerlattice-facing parts)
 
 ### 7.5 Where feature docs live
 The canonical feature inventory is in `__docs__/index.md`.
@@ -285,7 +285,7 @@ Use it when adding/modifying features; expected docs set: `_spec`, `_impl`, `_ma
 - Website references discovery capability as positioning evidence without claiming guaranteed ranking outcomes.
 
 ### 8.6 Cross-check evidence updates
-- Active route group map verified in `src/app` now includes: `(website)`, `(main)`, `(canonica)`, `(global-pages)`, `client`, `sites`, `api`, `feedback`, `widget`, `screen`, `manifest.webmanifest`, and utility roots.
+- Active route group map verified in `src/app` now includes: `(website)`, `(main)`, `(answerlattice)`, `(global-pages)`, `client`, `sites`, `api`, `feedback`, `widget`, `screen`, `manifest.webmanifest`, and utility roots.
 - Homepage ordering is verified in `src/components/website/home/HomePage.tsx` as 18 sections (including `StickyCta`).
 - Routing truth is verified against `src/middleware.ts`, `src/lib/multiTenant/domainResolver.ts`, and `src/constants/productDomains.ts`.
 - Cache invalidation path is verified via `src/lib/cache/publicClientCache.ts` and `src/app/api/revalidate/menu/route.ts` (`menu-store-{id}`, `store-{id}`, `client-stores`).

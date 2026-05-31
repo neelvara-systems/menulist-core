@@ -1,17 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import {
-    CANONICA_ALL_PERMISSIONS,
-    type CanonicaPermissionKey,
-    DEFAULT_CANONICA_ROLE_IDS,
-    DEFAULT_CANONICA_ROLE_METADATA,
-    normalizeCanonicaRolePermissions,
-} from '@constant/canonica/permissions';
+    ANSWERLATTICE_ALL_PERMISSIONS,
+    type AnswerlatticePermissionKey,
+    DEFAULT_ANSWERLATTICE_ROLE_IDS,
+    DEFAULT_ANSWERLATTICE_ROLE_METADATA,
+    normalizeAnswerlatticeRolePermissions,
+} from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
-import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
-import { canonicaAdminApp, canonicaAuthAdmin, canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
+import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -49,44 +49,44 @@ async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> 
     }
 }
 
-async function createCanonicaCustomTokenIfNeeded(
+async function createAnswerlatticeCustomTokenIfNeeded(
     email: string,
     displayName: string | null | undefined,
     customClaims: Record<string, unknown>,
 ): Promise<string | null> {
-    if (shouldUseSharedCanonicaFirebase) return null;
+    if (shouldUseSharedAnswerlatticeFirebase) return null;
 
-    if (!canonicaAdminApp) {
-        secureLog('[Auth] Canonica Firebase Admin not configured for separate auth sync');
+    if (!answerlatticeAdminApp) {
+        secureLog('[Auth] Answerlattice Firebase Admin not configured for separate auth sync');
         return null;
     }
 
-    let canonicaUid: string;
+    let answerlatticeUid: string;
 
     try {
-        const canonicaUser = await canonicaAuthAdmin.getUserByEmail(email);
-        canonicaUid = canonicaUser.uid;
+        const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
+        answerlatticeUid = answerlatticeUser.uid;
     } catch (error: any) {
         if (error?.code !== 'auth/user-not-found') {
-            secureError('[Auth] Canonica user lookup failed during auth sync', error, { email });
+            secureError('[Auth] Answerlattice user lookup failed during auth sync', error, { email });
             throw error;
         }
 
-        const newCanonicaUser = await canonicaAuthAdmin.createUser({
+        const newAnswerlatticeUser = await answerlatticeAuthAdmin.createUser({
             email,
             emailVerified: true,
             displayName: displayName || undefined,
         });
-        canonicaUid = newCanonicaUser.uid;
+        answerlatticeUid = newAnswerlatticeUser.uid;
     }
 
-    await canonicaAuthAdmin.setCustomUserClaims(canonicaUid, customClaims);
-    return canonicaAuthAdmin.createCustomToken(canonicaUid, customClaims);
+    await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUid, customClaims);
+    return answerlatticeAuthAdmin.createCustomToken(answerlatticeUid, customClaims);
 }
 
-async function getCanonicaAuthUserByEmail(email: string): Promise<any | null> {
-    if (shouldUseSharedCanonicaFirebase) return null;
-    const db = canonicaFirestoreAdmin as any;
+async function getAnswerlatticeAuthUserByEmail(email: string): Promise<any | null> {
+    if (shouldUseSharedAnswerlatticeFirebase) return null;
+    const db = answerlatticeFirestoreAdmin as any;
     if (!db || typeof db.collection !== 'function') return null;
 
     const normalizedEmail = String(email || '').toLowerCase().trim();
@@ -145,34 +145,34 @@ const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
         || normalizedRole === 'owner';
 };
 
-const buildCanonicaPermissionClaims = (permissions: Partial<Record<CanonicaPermissionKey, boolean>>) => (
-    CANONICA_ALL_PERMISSIONS.reduce((acc, permission) => {
+const buildAnswerlatticePermissionClaims = (permissions: Partial<Record<AnswerlatticePermissionKey, boolean>>) => (
+    ANSWERLATTICE_ALL_PERMISSIONS.reduce((acc, permission) => {
         acc[permission] = permissions[permission] === true;
         return acc;
-    }, {} as Record<CanonicaPermissionKey, boolean>)
+    }, {} as Record<AnswerlatticePermissionKey, boolean>)
 );
 
-const resolveCanonicaPermissionClaims = async (params: {
+const resolveAnswerlatticePermissionClaims = async (params: {
     productId: ProductId;
     roleId: unknown;
     storeId: number;
     platformRole: unknown;
 }) => {
-    if (params.productId !== PRODUCT_IDS.CANONICA) return {};
+    if (params.productId !== PRODUCT_IDS.ANSWERLATTICE) return {};
 
-    const normalizedRoleId = String(params.roleId || DEFAULT_CANONICA_ROLE_IDS.STAFF).trim().toLowerCase();
-    if (isPlatformSupportRole(params.platformRole) || normalizedRoleId === DEFAULT_CANONICA_ROLE_IDS.OWNER) {
-        return buildCanonicaPermissionClaims(DEFAULT_CANONICA_ROLE_METADATA[DEFAULT_CANONICA_ROLE_IDS.OWNER].permissions);
+    const normalizedRoleId = String(params.roleId || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF).trim().toLowerCase();
+    if (isPlatformSupportRole(params.platformRole) || normalizedRoleId === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER) {
+        return buildAnswerlatticePermissionClaims(DEFAULT_ANSWERLATTICE_ROLE_METADATA[DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER].permissions);
     }
 
-    const defaultRole = Object.entries(DEFAULT_CANONICA_ROLE_METADATA)
+    const defaultRole = Object.entries(DEFAULT_ANSWERLATTICE_ROLE_METADATA)
         .find(([roleId]) => roleId === normalizedRoleId)?.[1];
     let rolePermissions = defaultRole?.permissions || {};
 
-    const db = canonicaFirestoreAdmin as any;
+    const db = answerlatticeFirestoreAdmin as any;
     if (db && typeof db.collection === 'function' && params.storeId) {
         const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(params.storeId)).get();
-        const roles = Array.isArray(storeSnap.data()?.canonicaRoles) ? storeSnap.data()?.canonicaRoles : [];
+        const roles = Array.isArray(storeSnap.data()?.answerlatticeRoles) ? storeSnap.data()?.answerlatticeRoles : [];
         const storeRole = roles.find((role: any) => String(role?.id || '').trim().toLowerCase() === normalizedRoleId);
         if (storeRole?.active === false) {
             rolePermissions = {};
@@ -181,7 +181,7 @@ const resolveCanonicaPermissionClaims = async (params: {
         }
     }
 
-    return buildCanonicaPermissionClaims(normalizeCanonicaRolePermissions(rolePermissions));
+    return buildAnswerlatticePermissionClaims(normalizeAnswerlatticeRolePermissions(rolePermissions));
 };
 
 const normalizeProductId = (value: unknown): ProductId => {
@@ -232,63 +232,63 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         let { uid, targetStoreId } = validation.data;
         const requestedProductId = normalizeProductId(validation.data.productId);
-        const shouldUseCanonicaUserContext = requestedProductId === PRODUCT_IDS.CANONICA && !shouldUseSharedCanonicaFirebase;
+        const shouldUseAnswerlatticeUserContext = requestedProductId === PRODUCT_IDS.ANSWERLATTICE && !shouldUseSharedAnswerlatticeFirebase;
 
-        const defaultDbUser = shouldUseCanonicaUserContext
+        const defaultDbUser = shouldUseAnswerlatticeUserContext
             ? await getAuthUserByEmail(session.user.email)
             : null;
         const hasDefaultPlatformAccess = isPlatformSupportRole((defaultDbUser as any)?.platformRole)
             || isPlatformSupportRole((session as any)?.platformRole)
             || isPlatformSupportRole((session as any)?.user?.platformRole);
 
-        const canonicaDbUser = shouldUseCanonicaUserContext
-            ? await getCanonicaAuthUserByEmail(session.user.email)
+        const answerlatticeDbUser = shouldUseAnswerlatticeUserContext
+            ? await getAnswerlatticeAuthUserByEmail(session.user.email)
             : null;
-        if (shouldUseCanonicaUserContext && canonicaDbUser && (
-            canonicaDbUser.active === false
-            || canonicaDbUser.deleted === true
-            || canonicaDbUser.authDisabled === true
+        if (shouldUseAnswerlatticeUserContext && answerlatticeDbUser && (
+            answerlatticeDbUser.active === false
+            || answerlatticeDbUser.deleted === true
+            || answerlatticeDbUser.authDisabled === true
         )) {
-            secureLog('[Auth] Rejected inactive Canonica auth profile', {
+            secureLog('[Auth] Rejected inactive Answerlattice auth profile', {
                 email: session.user.email,
-                userId: canonicaDbUser.id,
+                userId: answerlatticeDbUser.id,
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const canonicaUserMatchesRequestedStore = canonicaDbUser && (
-            !targetStoreId || canAccessStore(canonicaDbUser, targetStoreId)
+        const answerlatticeUserMatchesRequestedStore = answerlatticeDbUser && (
+            !targetStoreId || canAccessStore(answerlatticeDbUser, targetStoreId)
         );
 
-        // Get user from the product-specific auth profile. Canonica has its own
-        // Firebase project, so tenant/store claims must come from the Canonica
+        // Get user from the product-specific auth profile. Answerlattice has its own
+        // Firebase project, so tenant/store claims must come from the Answerlattice
         // user doc when one exists. Platform/support access is preserved as a
-        // platformRole overlay, not as a reason to mint Canonica tokens for the
+        // platformRole overlay, not as a reason to mint Answerlattice tokens for the
         // default MenuList tenant.
-        let dbUser: any = shouldUseCanonicaUserContext && hasDefaultPlatformAccess && canonicaUserMatchesRequestedStore
+        let dbUser: any = shouldUseAnswerlatticeUserContext && hasDefaultPlatformAccess && answerlatticeUserMatchesRequestedStore
             ? {
-                ...canonicaDbUser,
-                platformRole: (defaultDbUser as any)?.platformRole || (canonicaDbUser as any)?.platformRole,
-                pId: PRODUCT_IDS.CANONICA,
-                productId: PRODUCT_IDS.CANONICA,
+                ...answerlatticeDbUser,
+                platformRole: (defaultDbUser as any)?.platformRole || (answerlatticeDbUser as any)?.platformRole,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                productId: PRODUCT_IDS.ANSWERLATTICE,
             }
-            : shouldUseCanonicaUserContext && hasDefaultPlatformAccess && defaultDbUser
+            : shouldUseAnswerlatticeUserContext && hasDefaultPlatformAccess && defaultDbUser
                 ? {
                     ...defaultDbUser,
-                    pId: PRODUCT_IDS.CANONICA,
-                    productId: PRODUCT_IDS.CANONICA,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    productId: PRODUCT_IDS.ANSWERLATTICE,
                 }
-                : shouldUseCanonicaUserContext
-                    ? canonicaDbUser
+                : shouldUseAnswerlatticeUserContext
+                    ? answerlatticeDbUser
                     : await getAuthUserByEmail(session.user.email);
 
-        if (!dbUser && shouldUseCanonicaUserContext) {
+        if (!dbUser && shouldUseAnswerlatticeUserContext) {
             const fallbackDbUser: any = defaultDbUser || await getAuthUserByEmail(session.user.email);
             const fallbackPlatformRole = String(fallbackDbUser?.platformRole || '').toUpperCase();
             if (isPlatformSupportRole(fallbackPlatformRole)) {
                 dbUser = {
                     ...fallbackDbUser,
-                    pId: PRODUCT_IDS.CANONICA,
-                    productId: PRODUCT_IDS.CANONICA,
+                    pId: PRODUCT_IDS.ANSWERLATTICE,
+                    productId: PRODUCT_IDS.ANSWERLATTICE,
                 };
             }
         }
@@ -307,7 +307,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const claimStoreId = hasDefaultPlatformAccess && shouldUseCanonicaUserContext
+        const claimStoreId = hasDefaultPlatformAccess && shouldUseAnswerlatticeUserContext
             ? Number(dbUser?.storeId)
             : resolveClaimStoreId(dbUser, targetStoreId);
 
@@ -318,7 +318,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             : undefined;
         const userRole = storeRole || dbUser.role;
         const productId = normalizeProductId(dbUser.pId || dbUser.productId);
-        const canonicaPermissionClaims = await resolveCanonicaPermissionClaims({
+        const answerlatticePermissionClaims = await resolveAnswerlatticePermissionClaims({
             productId,
             roleId: userRole,
             storeId: claimStoreId,
@@ -334,9 +334,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uId: dbUser.id,
             admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
             storeIds: getStoreIdsClaim(dbUser),
-            ...canonicaPermissionClaims,
+            ...answerlatticePermissionClaims,
         };
-        const canonicaCustomToken = await createCanonicaCustomTokenIfNeeded(
+        const answerlatticeCustomToken = await createAnswerlatticeCustomTokenIfNeeded(
             session.user.email,
             session.user.name,
             customClaims,
@@ -369,7 +369,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 success: true,
                 customToken,
                 claims: customClaims,
-                canonicaCustomToken,
+                answerlatticeCustomToken,
             });
         }
 
@@ -411,7 +411,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({
             success: true,
             customToken,  // Client can use this to sign in
-            canonicaCustomToken,
+            answerlatticeCustomToken,
             claims: customClaims
         });
 

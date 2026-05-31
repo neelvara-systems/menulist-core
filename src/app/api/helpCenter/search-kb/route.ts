@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Rate limiting: Per-user AI operation limit
  *
  * @see src/lib/search/searchCore.ts — The canonical search pipeline
- * @see __docs__/canonica/help-center/
+ * @see __docs__/answerlattice/help-center/
  */
 
 import { LOG_FILES } from '@constant/logging';
@@ -18,11 +18,11 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import {
-    getCanonicaScopedSession,
-    isCanonicaRuntimeRoute,
-    isCanonicaSupportClientRoute,
-    resolveCanonicaSessionScope,
-} from '@lib/canonica/sessionScope';
+    getAnswerlatticeScopedSession,
+    isAnswerlatticeRuntimeRoute,
+    isAnswerlatticeSupportClientRoute,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
@@ -88,10 +88,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ? (context as any).productContext
             : undefined;
         const candidateProductContext = rawProductContext || legacyProductContext;
-        if (candidateProductContext && contextFlags.ENABLE_CANONICA_CONTEXT_AWARE) {
+        if (candidateProductContext && contextFlags.ENABLE_ANSWERLATTICE_CONTEXT_AWARE) {
             try {
-                const { CanonicaContextSchema } = await import('@lib/validation/contextSchema');
-                const parsedContext = CanonicaContextSchema.parse(candidateProductContext);
+                const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
+                const parsedContext = AnswerlatticeContextSchema.parse(candidateProductContext);
                 const trustedSessionRole = session?.user?.role || session?.role;
                 productContext = {
                     ...parsedContext,
@@ -104,14 +104,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const refererUrl = parseHeaderUrl(request.headers.get('referer'));
         const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
-        const isCanonicaRuntimeSearch = isCanonicaRuntimeRoute(refererUrl?.pathname, refererUrl?.hostname)
-            || isCanonicaRuntimeRoute(null, host);
-        const isCanonicaClientSupportSearch = isCanonicaSupportClientRoute(refererUrl?.pathname)
-            && Boolean(resolveCanonicaSessionScope(session));
-        const shouldUseCanonicaScopedSearch = isCanonicaRuntimeSearch || isCanonicaClientSupportSearch;
-        const searchSession = shouldUseCanonicaScopedSearch ? getCanonicaScopedSession(session) : session;
-        if (shouldUseCanonicaScopedSearch && !resolveCanonicaSessionScope(searchSession)) {
-            return NextResponse.json({ error: 'Canonica workspace is not available' }, { status: 403 });
+        const isAnswerlatticeRuntimeSearch = isAnswerlatticeRuntimeRoute(refererUrl?.pathname, refererUrl?.hostname)
+            || isAnswerlatticeRuntimeRoute(null, host);
+        const isAnswerlatticeClientSupportSearch = isAnswerlatticeSupportClientRoute(refererUrl?.pathname)
+            && Boolean(resolveAnswerlatticeSessionScope(session));
+        const shouldUseAnswerlatticeScopedSearch = isAnswerlatticeRuntimeSearch || isAnswerlatticeClientSupportSearch;
+        const searchSession = shouldUseAnswerlatticeScopedSearch ? getAnswerlatticeScopedSession(session) : session;
+        if (shouldUseAnswerlatticeScopedSearch && !resolveAnswerlatticeSessionScope(searchSession)) {
+            return NextResponse.json({ error: 'Answerlattice workspace is not available' }, { status: 403 });
         }
 
         // ===== CORE SEARCH — Single source of truth =====

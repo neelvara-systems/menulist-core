@@ -9,43 +9,43 @@
 
 ## Short Answer
 
-Website Asset Operating System is the internal system that lets Codex manage MenuList and Canonica website assets without you explaining the brand, product boundaries, asset rules, and approval logic every time.
+Website Asset Operating System is the internal system that lets Codex manage MenuList and Answerlattice website assets without you explaining the brand, product boundaries, asset rules, and approval logic every time.
 
 Use it when you want to check, refresh, brief, or review website visuals such as hero images, social previews, product screenshots, launch images, PWA icons, splash screens, or future short product clips.
 
-It is built like a separate product internally, but it is not public and not sold yet. Its strongest practical role is beside Canonica, where product knowledge, product surfaces, feedback signals, and drift context already exist.
+It is built like a separate product internally, but it is not public and not sold yet. Its strongest practical role is beside Answerlattice, where product knowledge, product surfaces, feedback signals, and drift context already exist.
 
 ## Why This Exists
 
 Before this system, every asset task needed repeated explanation:
 
 - what MenuList is allowed to show;
-- what Canonica is allowed to show;
+- what Answerlattice is allowed to show;
 - which files are real public website assets;
 - which screenshots are safe;
 - which assets need founder approval;
 - which visuals are stale;
 - which assets are missing;
 - which generated images are too large;
-- which visuals would blur MenuList, Canonica, GrowthOS, or VisualMeta.
+- which visuals would blur MenuList, Answerlattice, GrowthOS, or VisualMeta.
 
 Now that context lives in the repo.
 
 The goal is not just to make images. The goal is to make assets governed, repeatable, and safe.
 
-## How This Relates To Canonica
+## How This Relates To Answerlattice
 
-Canonica is the support knowledge control plane. It controls what the product knows, what support answers should say, what signals show gaps, and where product knowledge has drifted.
+Answerlattice is the governed answer infrastructure. It controls what the product knows, what support answers should say, what signals show gaps, and where product knowledge has drifted.
 
 AssetOS controls the media side of that same truth problem:
 
-| Canonica asks | AssetOS asks |
+| Answerlattice asks | AssetOS asks |
 | --- | --- |
 | What should users be told when they ask for help? | What should the website or product media show? |
 | Which knowledge is approved, missing, stale, or risky? | Which assets are approved, missing, stale, or risky? |
 | Which product surfaces and signals prove the answer? | Which source files and briefs prove the visual? |
 
-Use Canonica context when planning Canonica assets:
+Use Answerlattice context when planning Answerlattice assets:
 
 - product surfaces can explain what the visual must represent;
 - approved intake sources can improve briefs;
@@ -53,7 +53,7 @@ Use Canonica context when planning Canonica assets:
 - feedback and support signals can show which public proof is confusing or missing;
 - drift/readiness summaries can help decide whether an asset is safe to publish.
 
-The boundary is important. AssetOS can read Canonica docs and summaries as source context, but it must not write Canonica KB content, tickets, support signals, widget config, product surfaces, or Firebase data.
+The boundary is important. AssetOS can read Answerlattice docs and summaries as source context, but it must not write Answerlattice KB content, tickets, support signals, widget config, product surfaces, or Firebase data.
 
 ## What It Does
 
@@ -63,7 +63,7 @@ The boundary is important. AssetOS can read Canonica docs and summaries as sourc
 | Generate briefs | Creates a clear brief before Codex or a designer creates an asset. |
 | Review assets | Scores assets against brand fit, strategy fit, clarity, file size, and approval state. |
 | Lock fingerprints | Records source-file hashes so future code/docs changes can mark assets stale. |
-| Protect boundaries | Stops MenuList from becoming asset/campaign software and stops Canonica from looking like MenuList or a generic helpdesk. |
+| Protect boundaries | Stops MenuList from becoming asset/campaign software and stops Answerlattice from looking like MenuList or a generic helpdesk. |
 | Stage future media | Lets us plan videos/clips internally before putting anything public. |
 
 ## What It Does Not Do
@@ -72,7 +72,7 @@ The boundary is important. AssetOS can read Canonica docs and summaries as sourc
 | --- | --- |
 | Public website or landing page | This is not public yet. |
 | MenuList owner feature | Restaurant owners should not see or manage this. |
-| Canonica runtime feature | It can read Canonica context for asset briefs, but Canonica support answers/widgets do not depend on it. |
+| Answerlattice runtime feature | It can read Answerlattice context for asset briefs, but Answerlattice support answers/widgets do not depend on it. |
 | Firebase writes | It is local repo tooling only. |
 | Automatic public publishing | Founder-review assets stay blocked until approved. |
 | Real customer screenshot publishing | Real customer data needs explicit approval and scrubbing. |
@@ -87,7 +87,7 @@ The boundary is important. AssetOS can read Canonica docs and summaries as sourc
 | Asset skill | `.agents/skills/website-asset-factory/` | Instructions Codex should load for asset tasks. |
 | Review prompt | `.github/codex/prompts/asset-review.md` | Checklist for future asset reviews. |
 | MenuList public assets | `public/images/website/` | Current MenuList website images. |
-| Canonica public assets | `public/canonica-*`, `public/canonica-splash/` | Current Canonica OG, logo, icon, and splash assets. |
+| Answerlattice public assets | `public/answerlattice-*`, `public/answerlattice-splash/` | Current Answerlattice OG, logo, icon, and splash assets. |
 
 ## The Important Files
 
@@ -95,9 +95,9 @@ The boundary is important. AssetOS can read Canonica docs and summaries as sourc
 | --- | --- |
 | `packages/asset-factory/manifest/assets.json` | Which assets exist, their status, files, review state, and source fingerprints. |
 | `packages/asset-factory/slots/menulist.asset-slots.ts` | MenuList asset slots and rules. |
-| `packages/asset-factory/slots/canonica.asset-slots.ts` | Canonica asset slots and rules. |
+| `packages/asset-factory/slots/answerlattice.asset-slots.ts` | Answerlattice asset slots and rules. |
 | `packages/asset-factory/brand/menulist.asset-context.md` | MenuList brand and rejection rules. |
-| `packages/asset-factory/brand/canonica.asset-context.md` | Canonica brand and rejection rules. |
+| `packages/asset-factory/brand/answerlattice.asset-context.md` | Answerlattice brand and rejection rules. |
 | `packages/asset-factory/briefs/` | Generated briefs for each asset slot. |
 | `packages/asset-factory/raw/` | Local-only raw files. Do not commit media here. |
 | `packages/asset-factory/working/` | Local-only work files. Do not commit media here. |
@@ -136,7 +136,7 @@ Current healthy result should have:
 Before creating an asset, generate its brief:
 
 ```bash
-npm run assets:brief -- --slot canonica.home.hero.support-control-motion
+npm run assets:brief -- --slot answerlattice.home.hero.support-control-motion
 ```
 
 The brief appears in:
@@ -188,7 +188,7 @@ Do not run this casually to hide drift. Use it only after the source and asset s
 For a missing future asset, you can create an internal placeholder:
 
 ```bash
-npm run assets:generate:missing -- --slot canonica.home.hero.support-control-motion
+npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion
 ```
 
 This writes an SVG under:
@@ -208,7 +208,7 @@ Audit the Website Asset Operating System and tell me which MenuList website asse
 ```
 
 ```text
-Generate a brief for canonica.home.hero.support-control-motion and explain what kind of asset should be created.
+Generate a brief for answerlattice.home.hero.support-control-motion and explain what kind of asset should be created.
 ```
 
 ```text
@@ -216,7 +216,7 @@ Review current MenuList website assets using the asset factory rules. Do not cha
 ```
 
 ```text
-Create a draft plan for the Canonica hero motion asset, but keep it internal and do not publish anything.
+Create a draft plan for the Answerlattice hero motion asset, but keep it internal and do not publish anything.
 ```
 
 ```text
@@ -257,11 +257,11 @@ MenuList assets must not show:
 - private owner/customer data;
 - generic AI visuals.
 
-## Canonica Rules
+## Answerlattice Rules
 
-Canonica assets should show:
+Answerlattice assets should show:
 
-- support knowledge control plane;
+- governed answer infrastructure;
 - canonical answers;
 - page-aware widget context;
 - hosted help;
@@ -269,7 +269,7 @@ Canonica assets should show:
 - product-surface governance;
 - dark infrastructure visual language.
 
-Canonica assets must not show:
+Answerlattice assets must not show:
 
 - restaurant/menu visuals;
 - MenuList tenant data;
@@ -283,8 +283,8 @@ Canonica assets must not show:
 Use it when:
 
 - updating MenuList website visuals;
-- updating Canonica website visuals;
-- checking Canonica website media after product-surface, release, feedback, or drift changes;
+- updating Answerlattice website visuals;
+- checking Answerlattice website media after product-surface, release, feedback, or drift changes;
 - preparing OG/social preview images;
 - planning a hero animation or product clip;
 - checking whether assets are stale after page/component changes;
@@ -294,7 +294,7 @@ Use it when:
 Do not use it for:
 
 - editing MenuList restaurant owner features;
-- editing Canonica support runtime;
+- editing Answerlattice support runtime;
 - creating GrowthOS customer marketing kits;
 - launching VisualMeta;
 - publishing public product pages for this system.
@@ -318,23 +318,23 @@ The current implementation is ready for internal testing on our own products.
 Known expected warnings:
 
 - future MenuList hero motion is missing;
-- future Canonica hero motion is missing;
-- future Canonica authority-transfer motion is missing;
-- future Canonica page-aware widget clip is missing;
+- future Answerlattice hero motion is missing;
+- future Answerlattice authority-transfer motion is missing;
+- future Answerlattice page-aware widget clip is missing;
 - some draft/social/analytics assets require founder review.
 
 These are correct warnings. They mean the system is protecting public output instead of silently approving unfinished media.
 
-Current Canonica drift note:
+Current Answerlattice drift note:
 
-- If `npm run assets:audit` reports blocked Canonica OG/logo/PWA/splash assets because `__docs__/canonica/canonica-website/README.md` changed, do not treat that as an AssetOS code failure.
-- That means Canonica product/website truth changed after those approved asset fingerprints were locked.
-- Review the affected Canonica assets against the new Canonica website truth. If they still match, lock fingerprints intentionally with `npm run assets:fingerprint`. If not, generate new briefs and refresh the assets.
+- If `npm run assets:audit` reports blocked Answerlattice OG/logo/PWA/splash assets because `__docs__/answerlattice/answerlattice-website/README.md` changed, do not treat that as an AssetOS code failure.
+- That means Answerlattice product/website truth changed after those approved asset fingerprints were locked.
+- Review the affected Answerlattice assets against the new Answerlattice website truth. If they still match, lock fingerprints intentionally with `npm run assets:fingerprint`. If not, generate new briefs and refresh the assets.
 
 ## Simple Founder Decision Rule
 
 Keep it internal until it proves repeatable value.
 
-If it only helps us manage MenuList and Canonica assets, keep it internal.
+If it only helps us manage MenuList and Answerlattice assets, keep it internal.
 
-If the same workflow repeatedly works for our products and a real external buyer becomes clear, then evaluate product extraction later without mixing it into MenuList or Canonica.
+If the same workflow repeatedly works for our products and a real external buyer becomes clear, then evaluate product extraction later without mixing it into MenuList or Answerlattice.

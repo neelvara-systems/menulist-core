@@ -130,7 +130,7 @@ export const SearchRequestSchema = z.object({
         .nullable(),
 
     // Context-aware support metadata. This is validated again by
-    // CanonicaContextSchema in the route so conversation history and product
+    // AnswerlatticeContextSchema in the route so conversation history and product
     // context stay separately owned.
     productContext: z.unknown().optional(),
 

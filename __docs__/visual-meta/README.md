@@ -4,7 +4,7 @@
 **Product code:** `VM`
 **Status:** Stage 1 planning docs only. Implementation not started. Product routes and Firebase targets are not active.
 **Created:** May 31, 2026
-**Product decision:** Treat VisualMeta as a separate product, with separation discipline similar to Canonica.
+**Product decision:** Treat VisualMeta as a separate product, with separation discipline similar to Answerlattice.
 
 ---
 
@@ -49,9 +49,9 @@ The gap is not "make an image" or "design a post." The gap is:
 | VisualMeta already has product code reserved as `VM` | `src/constants/product.ts:11-17` |
 | VisualMeta has a disabled product-domain placeholder | `src/constants/productDomains.ts:99-108` |
 | Deployment target matrix does not include VisualMeta yet | `src/constants/deploymentTargets.ts:10-28` |
-| Canonica is the separation model: shared Vercel app, separate product host and Firebase target | `__docs__/canonica/doctrine/08-product-separation-playbook.md:8-24` |
-| Canonica separate-mode uses product-scoped sessions and does not make MenuList own Canonica data | `__docs__/canonica/doctrine/08-product-separation-playbook.md:26-37` |
-| Multi-product tenancy already reserves `VM` for VisualMeta | `__docs__/canonica/doctrine/07-multi-product-tenancy.md:25-38` |
+| Answerlattice is the separation model: shared Vercel app, separate product host and Firebase target | `__docs__/answerlattice/doctrine/08-product-separation-playbook.md:8-24` |
+| Answerlattice separate-mode uses product-scoped sessions and does not make MenuList own Answerlattice data | `__docs__/answerlattice/doctrine/08-product-separation-playbook.md:26-37` |
+| Multi-product tenancy already reserves `VM` for VisualMeta | `__docs__/answerlattice/doctrine/07-multi-product-tenancy.md:25-38` |
 | MenuList image generation has protected single-image, image-editing, and batch-image APIs | `src/app/api/image-generation/route.ts:24-100`, `src/app/api/image-editing/route.ts:73-146`, `src/app/api/image-generation/batch-trigger/route.ts:19-120` |
 | Batch image worker already uses Cloud Tasks and capacity checks, but remains MenuList-scoped | `src/app/api/image-generation/batch-generation/route.ts:22-70` |
 | Existing AI unit costs include image generation, batch image generation, image editing, translation, and rewrite costs | `src/constants/AI/unitCosts.ts:19-92` |
@@ -62,8 +62,8 @@ The gap is not "make an image" or "design a post." The gap is:
 | --- | --- |
 | MenuList | MenuList may become a client/source of VisualMeta, but VisualMeta must not write back into MenuList truth. |
 | GrowthOS | GrowthOS produces immediate post/send/use actions. VisualMeta prepares deliberate reviewed kits. |
-| Canonica | Canonica governs support knowledge. VisualMeta governs content readiness. They use similar separation patterns but do not share runtime data. |
-| Website Asset Operating System | AssetOS is internal tooling for MenuList/Canonica website assets. VisualMeta is a market-facing product. Do not merge them. |
+| Answerlattice | Answerlattice governs support knowledge. VisualMeta governs content readiness. They use similar separation patterns but do not share runtime data. |
+| Website Asset Operating System | AssetOS is internal tooling for MenuList/Answerlattice website assets. VisualMeta is a market-facing product. Do not merge them. |
 | Canva/Adobe | VisualMeta is not a canvas, design suite, or enterprise creative automation platform. |
 | Photoroom | VisualMeta is not only product photo automation. Images are one content unit in the kit. |
 
@@ -102,9 +102,9 @@ VisualMeta will not:
 - measure ROI
 - optimize campaigns
 
-## Canonica-Like Separation Target
+## Answerlattice-Like Separation Target
 
-VisualMeta should follow the Canonica split pattern:
+VisualMeta should follow the Answerlattice split pattern:
 
 | Layer | VisualMeta target |
 | --- | --- |
@@ -140,7 +140,7 @@ The active implementation contract is the Implementation Lock plus current spec/
 | [Doctrine](./doctrine/01-core-doctrine.md) | Core identity and pillars. |
 | [Non-Goals](./doctrine/02-non-goals-charter.md) | Permanent exclusions. |
 | [Infrastructure Freeze](./doctrine/03-infrastructure-freeze-v1.md) | 3-year architecture freeze target. |
-| [Separation Playbook](./doctrine/04-product-separation-playbook.md) | Canonica-like product separation plan. |
+| [Separation Playbook](./doctrine/04-product-separation-playbook.md) | Answerlattice-like product separation plan. |
 
 ## Historical Docs
 

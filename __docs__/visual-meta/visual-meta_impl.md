@@ -9,11 +9,11 @@
 
 ## 1. Implementation Principle
 
-Build VisualMeta with Canonica-grade product separation.
+Build VisualMeta with Answerlattice-grade product separation.
 
-VisualMeta may reuse generalized engineering patterns from MenuList and Canonica, but it must own its runtime data, billing, routes, Storage paths, and functions.
+VisualMeta may reuse generalized engineering patterns from MenuList and Answerlattice, but it must own its runtime data, billing, routes, Storage paths, and functions.
 
-Do not implement VisualMeta by placing records inside MenuList `projects`, MenuList AI packs, Canonica collections, or GrowthOS docs.
+Do not implement VisualMeta by placing records inside MenuList `projects`, MenuList AI packs, Answerlattice collections, or GrowthOS docs.
 
 Use [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) as the direct bridge from planning to code. This implementation plan explains the architecture; the lock document freezes schemas, flags, storage paths, route contracts, and activation gates.
 
@@ -23,7 +23,7 @@ Reusable patterns:
 
 - product code already reserved as `PRODUCT_IDS.VISUAL_META`
 - product-domain placeholder exists but is disabled
-- Canonica product separation docs define a working model for shared app, separate host, and separate Firebase
+- Answerlattice product separation docs define a working model for shared app, separate host, and separate Firebase
 - MenuList image generation APIs prove auth, Safe Mode, rate limits, capacity checks, provider calls, Storage upload, Cloud Tasks, and AI operation logging
 - AI unit-cost constants already cover image generation, batch image generation, image editing, translation, and rewrite categories
 
@@ -32,7 +32,7 @@ Must not reuse directly:
 - MenuList project collections as VisualMeta collections
 - MenuList owner navigation as VisualMeta navigation
 - MenuList AI enhancement packs as VisualMeta credits
-- Canonica Firebase helpers for VisualMeta data
+- Answerlattice Firebase helpers for VisualMeta data
 - GrowthOS action model for VisualMeta projects
 
 ## 3. Required Feature Flags
@@ -113,7 +113,7 @@ storage-visualmeta.rules
 functions-visualmeta/
 ```
 
-Do not add VisualMeta scheduled jobs to MenuList or Canonica functions.
+Do not add VisualMeta scheduled jobs to MenuList or Answerlattice functions.
 
 ## 6. Data Model
 
@@ -235,7 +235,7 @@ Source imports use copied context:
 
 ```ts
 type VisualMetaSourceContext = {
-  sourcePId: "ML" | "CN" | "GR" | "external" | "manual" | "upload";
+  sourcePId: "ML" | "AL" | "GR" | "external" | "manual" | "upload";
   sourceTId?: number;
   sourceSId?: number;
   sourceDocId?: string;
@@ -269,7 +269,7 @@ Planned APIs:
 | `GET /api/visualmeta/projects/[id]` | Project detail. |
 | `POST /api/visualmeta/source-snapshots/create` | Create source snapshot. |
 | `POST /api/visualmeta/source/upload` | Register uploaded source files. |
-| `POST /api/visualmeta/source/import` | Copy source snapshot from MenuList, Canonica, GrowthOS, or external source. |
+| `POST /api/visualmeta/source/import` | Copy source snapshot from MenuList, Answerlattice, GrowthOS, or external source. |
 | `POST /api/visualmeta/content-units/create` | Create content units from source snapshot. |
 | `GET /api/visualmeta/projects/[id]/content-units` | Paginated content unit list. |
 | `POST /api/visualmeta/candidates/assets/create` | Register uploaded/imported asset candidate. |

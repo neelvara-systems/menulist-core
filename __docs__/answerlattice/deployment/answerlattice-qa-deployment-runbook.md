@@ -1,0 +1,403 @@
+# Answerlattice QA Deployment Runbook
+
+> Last updated: 2026-05-25
+> Environment: QA / staging
+> Firebase project: `answerlattice-qa`
+> Local dev URL: `http://localhost:3000/__answerlattice/`
+> Product staging domain: `ecomsai.com`
+> Product production domain: `answerlattice.com`
+
+This runbook records the Answerlattice QA infrastructure setup and the repeatable production checklist. Do not store service account private keys, cron secrets, API keys, OAuth client secrets, or SMTP secrets in this document.
+
+## Current QA State
+
+Answerlattice is running as a separate product inside the shared Next.js/Vercel codebase.
+
+| Area | QA value |
+| --- | --- |
+| Answerlattice Firebase mode | `separate` |
+| Firebase project | `answerlattice-qa` |
+| Firestore database | `(default)` |
+| Firestore location | `nam5` |
+| App Engine region | `us-central` |
+| Cloud Functions region | `us-central1` |
+| Cloud Functions codebase | `answerlattice` |
+| Cloud Functions source | `functions-answerlattice/` |
+| Firestore rules file | `firestore-answerlattice.rules` |
+| Firestore indexes file | `firestore-answerlattice.indexes.json` |
+| Storage rules file | `storage-answerlattice.rules` |
+| Firebase CLI config | `firebase-answerlattice.json` |
+
+QA Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, Artifact Registry, Secret Manager, Pub/Sub, Cloud Run, and App Engine are enabled.
+
+## Environment Target Matrix
+
+| Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
+| --- | --- | --- | --- | --- |
+| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `answerlattice-qa` |
+| Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
+
+The code-level contract lives in `src/constants/deploymentTargets.ts`; `npm run verify:env-targets` checks the matrix, Firebase aliases, and Answerlattice deploy scripts.
+
+## 2026-05-24 Optional Expansion Hardening
+
+Current implementation:
+
+- Workflow integrations are production-scoped to Slack and email self-service setup. Linear/GitHub adapters remain controlled rollout until per-tenant secret handling is self-service safe.
+- Integration events, delivery logs, and delivery rate counters include `expiresAt` and must have Firestore TTL enabled:
+  - `answerlattice_integrationEvents.expiresAt`
+  - `answerlattice_integrationDeliveryLogs.expiresAt`
+  - `answerlattice_integrationRateLimits.expiresAt`
+- The settings API reads compact `platformSummary/integrationHealth_{tId}_{sId}` instead of raw delivery logs.
+- Nightly workflow events are digest-first: at most one nightly summary plus critical coverage / repeated AI failure alerts per active tenant by default.
+- Predictive support is widget-config gated. The widget only calls `/api/answerlattice/predictive-help` when `capabilities.predictiveSupport` is true.
+- Predictive trigger summaries store resolved suggestion snippets and `sourceHash`; unchanged summaries skip writes.
+- Graph summaries store `sourceHash`; unchanged graph rebuilds skip writes.
+- Support Board nightly sync is part of `answerlatticeNightly` but disabled by default. When enabled for a rollout tenant, it creates only deduped support-review cards for repeated misses, negative feedback/escalation clusters, drifted answers, and release impact. It writes `platformSummary/supportBoardSummary_{tId}_{sId}` only when the compact summary changes.
+
+Deployment checklist for this pass:
+
+```bash
+npm --prefix functions-answerlattice run build
+firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
+firebase deploy --only firestore:indexes --project answerlattice-qa --config firebase-answerlattice.json
+```
+
+QA note: the 2026-05-24 Firebase CLI index deploy compiled rules but stopped on an existing `kb_articles` index conflict. Do not use `--force` unless the live index set has been audited, because that can delete indexes that are present in the project but missing from the local file. The TTL fields for this pass were enabled directly with targeted Firestore TTL commands:
+
+```bash
+gcloud firestore fields ttls update expiresAt --collection-group=answerlattice_integrationEvents --database='(default)' --project=answerlattice-qa --enable-ttl --async
+gcloud firestore fields ttls update expiresAt --collection-group=answerlattice_integrationDeliveryLogs --database='(default)' --project=answerlattice-qa --enable-ttl --async
+gcloud firestore fields ttls update expiresAt --collection-group=answerlattice_integrationRateLimits --database='(default)' --project=answerlattice-qa --enable-ttl --async
+```
+
+Verify the TTL state:
+
+```bash
+gcloud firestore fields ttls list --collection-group=answerlattice_integrationEvents --database='(default)' --project=answerlattice-qa
+gcloud firestore fields ttls list --collection-group=answerlattice_integrationDeliveryLogs --database='(default)' --project=answerlattice-qa
+gcloud firestore fields ttls list --collection-group=answerlattice_integrationRateLimits --database='(default)' --project=answerlattice-qa
+```
+
+QA verification after the targeted TTL update showed all three TTL fields in `ACTIVE` state.
+
+Production must repeat the same TTL setup in the production Answerlattice Firebase project after rules/indexes/functions are deployed there.
+
+## 2026-05-21 Product-Separation Verification
+
+Current implementation:
+
+- Answerlattice dashboard routes resolve Answerlattice scope from `productAccounts.AL` on the shared NextAuth profile, or from the Answerlattice `users` document when running in `ANSWERLATTICE_FIREBASE_MODE=separate`.
+- Answerlattice onboarding writes tenant, store, user, subscription, widget key, and summaries to the Answerlattice Firebase project, then writes only the `productAccounts.AL` bridge back to the default auth user document.
+- Answerlattice widget config/key APIs use Answerlattice Firestore in separate mode.
+- Public widget runtime keys validate only against Answerlattice `answerlatticeWidgetApi` for widget routes.
+- Answerlattice AI operation logs write to `answerlattice_aiOperations` in the Answerlattice Firebase project.
+- MenuList owner navigation does not expose Answerlattice management by default. MenuList can mount Answerlattice only as an env-configured external-client widget through the generic public script and a real `al_` widget key.
+
+Verification performed:
+
+- Created an Answerlattice QA test user in default Auth for the NextAuth bridge and in Answerlattice Auth for Answerlattice Firebase claims.
+- Created Answerlattice tenant/store/user data under `answerlattice-qa`.
+- Created, queried, updated, and messaged a support ticket under Answerlattice Firestore.
+- Created and updated a changelog page under Answerlattice Firestore.
+- Confirmed the same ticket and changelog documents were not present in the default MenuList Firebase project.
+- Called `/api/widget/config` with a real `al_*` Answerlattice widget key and received remote config with route blocklist values.
+- Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after allowing tenant write roles to manage their own changelog documents and tenant-scoped reads of `answerlattice_aiOperations`.
+
+Local route verification:
+
+- `Host: ecomsai.com` + `/` rewrites to `/sites/answerlattice`.
+- `Host: ecomsai.com` + `/dashboard` rewrites to `/answerlattice/dashboard`.
+- `Host: menulist.online` + `/dashboard` stays in the MenuList owner app.
+- `/__answerlattice` still renders the Answerlattice site directly for local/dev checks.
+
+## 2026-05-21 Full-Flow QA Pass
+
+Disposable QA account tested:
+
+- Created a default Firebase Auth user and default auth `users/{uid}` record.
+- Called the real `/api/answerlattice/onboard` route, which executed the Answerlattice onboarding transaction and created Answerlattice tenant, store, user, subscription, widget key, and summary docs in `answerlattice-qa`.
+- Verified immediate post-onboarding session bridge returns nested `productAccounts.AL`.
+- Called `/api/auth/set-claims` with `productId: 'AL'` and verified Answerlattice custom token claims use `pId: 'AL'`, the Answerlattice tenant ID, and the Answerlattice store ID.
+- Signed into the Answerlattice Firebase client SDK with the returned Answerlattice custom token and exercised Firestore rules directly.
+
+API/runtime flows tested:
+
+- `GET /api/answerlattice/widget-config`
+- `PUT /api/answerlattice/widget-config`
+- `POST /api/answerlattice/widget-key`
+- `GET /api/widget/config`
+- widget runtime ETag `304`
+- widget runtime origin denial `403`
+- `POST /api/widget/search` validation path without AI generation
+- `POST /api/widget/feedback` with a seeded `aiSearchHistory` record
+- Answerlattice public API feature gate `404`
+- Answerlattice translation feature gate `403`
+- `POST /api/answerlattice/tenant-summary`
+
+Firestore client-rule flows tested against `answerlattice-qa`:
+
+- Allowed tenant-scoped create/read/update for support tickets, changelog pages through a client transaction, KB articles, KB sections, KB generation jobs, KB staging sections/chunks, chat sessions, feedback, AI search history, Answerlattice entities, relations, canonical answers, releases, mutation proposals, signal events, entity search index, entity candidates, cache versions, KB categories, and `platformSummary/trustMetrics_{tId}_{sId}`.
+- Allowed tenant-scoped create/read for Answerlattice audit logs, with updates intentionally denied.
+- Rejected cross-tenant support ticket and cross-tenant changelog writes with `permission-denied`.
+
+Local route flows tested:
+
+- `/__answerlattice`
+- `/__answerlattice/dashboard`
+- `/__answerlattice/widget`
+- `/__answerlattice/tickets`
+- `/__answerlattice/changelog`
+- `/__answerlattice/settings`
+- `/dashboard` remains MenuList.
+
+Cleanup performed:
+
+- Transient test documents were deleted where safe.
+- Disposable Answerlattice tenant/store/user were marked inactive/deleted.
+- Disposable default auth user was marked inactive/deleted and disabled in Firebase Auth.
+
+Fix found during this pass:
+
+- The auth session context cache could briefly serve a pre-onboarding user after the onboarding transaction. `getAuthSessionUserContext()` now bypasses cached users that still have no tenant/store so the immediate post-onboarding session can see `productAccounts.AL`.
+- A QA harness initially attempted to update `answerlattice_auditLogs`, but audit logs are append-only by design. The final client-rule test was rerun using the intended create/read-only audit-log contract and passed.
+
+## 2026-05-21 Client-Product Separation Cleanup
+
+The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Answerlattice remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Answerlattice-issued `answerlatticeWidgetApi` key from their own codebase. MenuList follows that same model through `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY`; no key is committed and no test-host flag is used.
+
+Follow-up verification for this cleanup:
+
+- `/dashboard` remains the MenuList owner app and should not expose Answerlattice management. An Answerlattice widget launcher appears there only if the MenuList client widget key environment variable is configured.
+- Answerlattice dashboard routes remain available through `/__answerlattice/*` locally and Answerlattice host rewrites in QA.
+- Widget runtime endpoints continue to accept only normal `answerlatticeWidgetApi` keys.
+
+## 2026-05-20 Verification Log
+
+Code and config validation:
+
+- `npx tsc --noEmit --incremental false` passed.
+- `npm --prefix functions-answerlattice run build` passed.
+- `git diff --check` passed.
+- `firestore-answerlattice.indexes.json` parses with 37 indexes and 0 field overrides.
+
+QA deploy verification:
+
+- Firestore rules deployed and compiled.
+- Storage rules deployed and compiled.
+- Answerlattice functions deployed successfully to `answerlattice-qa`.
+- Live composite index count is 37.
+- Support-ticket indexes are `READY`:
+  - `deleted ASC, createdOn DESC`
+  - `tId ASC, sId ASC, deleted ASC, createdOn DESC`
+- Manual scheduler smoke test returned `status: "skipped"`, `enabled: false`, and wrote `answerlattice_schedulerRunLogs/{runLogId}` with `product: "answerlattice"`, `trigger: "manual"`, and `phase: "completed"`.
+
+Local Chrome smoke test:
+
+- `http://localhost:3000/__answerlattice` rendered the Answerlattice marketing home.
+- `http://localhost:3000/answerlattice/dashboard` rendered the Answerlattice dashboard.
+- `http://localhost:3000/answerlattice/widget` rendered the widget management route.
+- `http://localhost:3000/answerlattice/settings` rendered the Answerlattice settings route.
+- `http://localhost:3000/answerlattice/knowledge-base` rendered the Answerlattice knowledge-base route.
+- `http://localhost:3000/answerlattice/tickets` rendered without the previous ticket realtime-sync warning after the support-ticket indexes became ready.
+
+## Deployed QA Resources
+
+Firestore rules and indexes:
+
+- `firestore-answerlattice.rules` deployed to `answerlattice-qa`.
+- `firestore-answerlattice.indexes.json` deployed to `answerlattice-qa`.
+- Current index file has composite indexes plus TTL field overrides for Answerlattice integration events, delivery logs, and delivery rate counters.
+- 2026-05-26: Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after adding Answerlattice role permission claims for staff access control. Command: `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`.
+- 2026-05-26: Deployed `firestore-answerlattice.rules` after adding private Support Board rules. The combined Firebase indexes deploy hit a pre-existing remote `kb_articles` index conflict, so the two new `answerlattice_supportBoardCards` composite indexes were created directly with `gcloud firestore indexes composite create`; both are `READY` in `answerlattice-qa`.
+- 2026-05-26: Production Firestore rules deploy for the Support Board was attempted with `firebase deploy --only firestore:rules --project answerlattice-prod --config firebase-answerlattice.json --non-interactive` and was blocked by Firebase permission `403` on project `answerlattice`. Production still needs the same rules deploy, Support Board / `aiSearchHistory` composite indexes, and updated Answerlattice functions deploy after credentials are available.
+- 2026-05-27: Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after adding `supportBoardSummary_*` read access for support-control users. The new `aiSearchHistory` composite index (`tId asc, sId asc, canonical asc, createdOn desc`) was created directly with `gcloud firestore indexes composite create` and verified `READY`. Deployed the existing Answerlattice functions codebase to `answerlattice-qa` after adding Support Board nightly sync to `answerlatticeNightly`.
+- 2026-05-27: Production Firestore rules deploy was retried with `firebase deploy --only firestore:rules --project answerlattice-prod --config firebase-answerlattice.json --non-interactive` and remains blocked by Firebase permission `403` on project `answerlattice`.
+- 2026-05-27: Deployed Answerlattice functions to `answerlattice-qa` after gating Support Board source/nightly sync and adding card status history. Production functions deploy was attempted with `firebase deploy --only functions --project answerlattice-prod --config firebase-answerlattice.json --non-interactive` and remains blocked by Firebase permission `403` on project `answerlattice`.
+- 2026-05-31: Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after adding self-scoped feedback create/read rules and feedback signal create allowance. Deployed Answerlattice functions to `answerlattice-qa` after excluding `entityId="unresolved"` from mutation clustering. The combined indexes deploy still hit the pre-existing remote `kb_articles` conflict, so the two `feedback` composite indexes were created/verified through `gcloud firestore indexes composite create`: `tId asc, sId asc, createdOn desc` and `sId asc, tId asc, uId asc, createdOn desc`.
+
+Storage rules:
+
+- `storage-answerlattice.rules` deployed to `answerlattice-qa`.
+- Rules are Answerlattice-only and deny unknown paths by default.
+- Allowed tenant-scoped paths:
+  - `/chatSessions/chatimages/{tId}/{sId}/{imageId}`
+  - `/supportTickets/documents/{tId}/{sId}/{fileId}`
+  - `/supportTickets/messages/{tId}/{sId}/{fileId}`
+  - `/changelog/files/{tId}/{sId}/{fileId}`
+  - `/ingestion_source_files/{tId}/{sId}/{fileId}`
+
+Functions deployed in `us-central1`:
+
+| Function | Trigger | Memory | Runtime |
+| --- | --- | --- | --- |
+| `answerlatticeNightly` | scheduled hourly master scheduler alias | 512 MiB | nodejs22 |
+| `triggerAnswerlatticeNightly` | HTTPS manual master scheduler trigger | 512 MiB | nodejs22 |
+| `processIntegrationEvent` | Firestore create | 256 MiB | nodejs22 |
+| `embedArticleWorker` | task queue | 1 GiB | nodejs22 |
+| `publishApprovedJobFn` | callable | 1 GiB | nodejs22 |
+| `regenerateEmbedding` | callable | 1 GiB | nodejs22 |
+
+Operational configuration:
+
+- Artifact Registry cleanup policy is set for `gcf-artifacts` in `us-central1`, deleting function images older than 7 days.
+- Secret Manager secret `ANSWERLATTICE_CRON_SECRET` exists in `answerlattice-qa`.
+- The `triggerAnswerlatticeNightly` function has access to `ANSWERLATTICE_CRON_SECRET`.
+- Manual scheduler auth uses `Authorization: Bearer $ANSWERLATTICE_CRON_SECRET`.
+
+## Commands Used For QA
+
+Rules and indexes:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes,storage --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+```
+
+App Engine application:
+
+```bash
+gcloud app create --project answerlattice-qa --region=us-central --quiet
+```
+
+Artifact cleanup:
+
+```bash
+firebase functions:artifacts:setpolicy --project answerlattice-qa --config firebase-answerlattice.json --location us-central1 --days 7 --force
+```
+
+Secret Manager:
+
+```bash
+gcloud services enable secretmanager.googleapis.com --project answerlattice-qa --quiet
+gcloud secrets create ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --replication-policy=automatic
+gcloud secrets versions add ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --data-file=<local-secret-file>
+```
+
+Functions:
+
+```bash
+npm --prefix functions-answerlattice run build
+firebase deploy --only functions --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+```
+
+Inventory check:
+
+```bash
+firebase functions:list --project answerlattice-qa --config firebase-answerlattice.json
+```
+
+When Firebase CLI returns `409 index already exists`, verify live indexes before treating it as a failure. On 2026-05-20 the live Answerlattice QA index set matched `firestore-answerlattice.indexes.json` even though Firebase CLI still returned a 409 while reconciling existing vector indexes. Missing individual indexes can be created directly:
+
+```bash
+gcloud firestore indexes composite create \
+  --project=answerlattice-qa \
+  --database='(default)' \
+  --collection-group=supportTickets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=deleted,order=ascending \
+  --field-config=field-path=createdOn,order=descending
+
+gcloud firestore indexes composite create \
+  --project=answerlattice-qa \
+  --database='(default)' \
+  --collection-group=supportTickets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=tId,order=ascending \
+  --field-config=field-path=sId,order=ascending \
+  --field-config=field-path=deleted,order=ascending \
+  --field-config=field-path=createdOn,order=descending
+```
+
+Manual scheduler smoke test:
+
+```bash
+curl -sS -X POST \
+  -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+```
+
+Scoped manual retry for one workspace:
+
+```bash
+curl -sS -X POST \
+  -H "Authorization: Bearer $ANSWERLATTICE_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"tId":123,"sId":456}' \
+  https://us-central1-answerlattice-qa.cloudfunctions.net/triggerAnswerlatticeNightly
+```
+
+Expected QA result when the code default `ENABLE_ANSWERLATTICE_NIGHTLY=true` is deployed and no eligible tenant has `hasEntities=true`:
+
+```json
+{
+  "scheduler": "answerlatticeMasterScheduler",
+  "status": "skipped",
+  "trigger": "manual",
+  "tasks": [
+    {
+      "name": "governance_nightly",
+      "status": "success"
+    }
+  ]
+}
+```
+
+When tenants are processed, the governance batch writes a matching document under `answerlattice_schedulerRunLogs/{runLogId}` with:
+
+- `product: "answerlattice"`
+- `trigger: "manual"`
+- `status: "skipped"` when no eligible tenants exist, otherwise `success` or `partial`
+- `phase: "completed"`
+- `enabled: true`
+
+The master scheduler state always updates `platformSummary/answerlatticeSchedulerState`; per-workspace settlement uses `platformSummary/answerlatticeNightlyState_*` and `platformSummary/answerlatticeNightlyLock_*`.
+
+## Local Development Notes
+
+Local Answerlattice admin code supports two safe paths:
+
+1. Valid explicit `ANSWERLATTICE_FIREBASE_*` service account env vars.
+2. `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=./answerlattice-service-account.json` for local QA testing.
+3. Local Application Default Credentials in non-production only.
+
+If `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app ignores that invalid local credential and tries the Answerlattice service-account JSON path before ADC. Production does not use the local ADC fallback; production must have valid explicit Answerlattice credentials.
+
+`ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS` should point to an ignored local service account JSON file only when needed. Do not commit service account JSON files.
+
+## Production Setup Checklist
+
+Before production launch on `answerlattice.com`:
+
+1. Create the production Answerlattice Firebase/GCP project `answerlattice`.
+2. Enable Firebase Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, Cloud Run, Pub/Sub, Artifact Registry, Secret Manager, and App Engine.
+3. Choose App Engine region before creating the app. This is effectively irreversible.
+4. Add production web app config to Vercel production env:
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID`
+5. Add production server env to Vercel production env:
+   - `ANSWERLATTICE_FIREBASE_MODE=separate`
+   - `ANSWERLATTICE_FIREBASE_PROJECT_ID`
+   - `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`
+   - `ANSWERLATTICE_FIREBASE_PRIVATE_KEY`
+   - `ANSWERLATTICE_FIRESTORE_DATABASE_ID` only if using a non-default database.
+6. Create production `ANSWERLATTICE_CRON_SECRET` in Secret Manager.
+7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-answerlattice.json` against project `answerlattice`.
+8. Run the manual scheduler smoke test and verify the `answerlattice_schedulerRunLogs/{runLogId}` document.
+9. Confirm the target branch's Answerlattice function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap. Support Board nightly sync, optional public API, translation, white-label, and escalation flows remain controlled by rollout flags.
+10. Verify manual scheduler logs, tenant summary discovery, and cost expectations before sending production customer traffic.
+
+## Production Warnings
+
+- Do not reuse QA service account credentials in production.
+- Do not store service account JSON or secret values in docs or Git.
+- Do not point production Answerlattice at the MenuList Firebase project.
+- Do not add Answerlattice scheduled functions to MenuList functions; Answerlattice scheduled work stays in `functions-answerlattice/` and should route through the centralized Answerlattice scheduler before adding a new scheduled export.
+- Do not send production customer traffic until manual trigger logs, tenant summary discovery, and cost expectations are verified in production.

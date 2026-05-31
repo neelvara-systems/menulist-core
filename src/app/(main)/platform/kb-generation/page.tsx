@@ -1,10 +1,10 @@
 import KBGenerationTemplate from '@template/platform/KBGeneration'
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice'
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient'
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice'
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient'
 
 function page() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="KB Generation" />
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="KB Generation" />
     }
 
     return (

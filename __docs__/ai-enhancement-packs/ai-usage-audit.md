@@ -24,7 +24,7 @@ The original February audit found missing usage tracking across the billable AI 
 | Public create-menu extraction | Public/platform operation; operation log, token/cost metadata, no owner balance consumption |
 | Weekly analytics narrative | Internal operation; operation log, token/cost metadata, no owner balance consumption |
 | Help Center and widget search plus embeddings | Internal/public support/control-plane operation log, no owner balance consumption |
-| Canonica translation | Internal Canonica operation log, no MenuList owner balance consumption |
+| Answerlattice translation | Internal Answerlattice operation log, no MenuList owner balance consumption |
 | Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
 
 Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.

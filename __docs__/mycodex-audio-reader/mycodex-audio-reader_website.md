@@ -2,7 +2,7 @@
 
 ## Public Website
 
-No public MenuList or Canonica website copy changes.
+No public MenuList or Answerlattice website copy changes.
 
 ## Reason
 

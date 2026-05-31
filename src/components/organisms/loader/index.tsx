@@ -1,7 +1,7 @@
 import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
-import CanonicaAnimatedLogo from '@atoms/canonicaAnimatedLogo';
+import AnswerlatticeAnimatedLogo from '@atoms/answerlatticeAnimatedLogo';
 import { useAppSelector } from '@hook/useAppSelector';
-import { isCanonicaRuntimeRoute } from '@lib/canonica/sessionScope';
+import { isAnswerlatticeRuntimeRoute } from '@lib/answerlattice/sessionScope';
 import { getLoaderState } from '@reduxSlices/loader';
 import { theme } from 'antd';
 import { usePathname } from 'next/navigation';
@@ -19,7 +19,7 @@ function Loader() {
     const shownAtRef = useRef<number>(0);
     const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const isCanonicaRoute = isCanonicaRuntimeRoute(pathname, currentHostname);
+    const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(pathname, currentHostname);
 
     useEffect(() => {
         if (loading) {
@@ -71,12 +71,12 @@ function Loader() {
         <>
             {isVisible ? <div
                 data-loader-source={loading}
-                data-loader-brand={isCanonicaRoute ? 'canonica' : 'menulist'}
-                className={`${Style.loaderbody} ${isCanonicaRoute ? Style.canonicaLoaderbody : ''}`.trim()}
-                style={isCanonicaRoute ? undefined : { background: token.colorBgMask }}
+                data-loader-brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
+                className={`${Style.loaderbody} ${isAnswerlatticeRoute ? Style.answerlatticeLoaderbody : ''}`.trim()}
+                style={isAnswerlatticeRoute ? undefined : { background: token.colorBgMask }}
             >
-                {isCanonicaRoute
-                    ? <CanonicaAnimatedLogo idPrefix="canonica-global-loader" />
+                {isAnswerlatticeRoute
+                    ? <AnswerlatticeAnimatedLogo idPrefix="answerlattice-global-loader" />
                     : <AnimatedVerticalLogo showLabel={false} />}
             </div> : null}
         </>

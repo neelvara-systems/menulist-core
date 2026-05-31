@@ -7,7 +7,7 @@ import {
     updateProductSubscription,
     writeProductPaymentTransactionAudit,
 } from "@lib/billing/productBillingServer";
-import { isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -277,11 +277,11 @@ export async function POST(request: Request) {
         const syncSubscriptionForProduct = (subscription: FirestoreSubscriptionDoc, source: string) =>
             safeSyncProductSubscriptionEntitlementFromSubscription(eventProductId, subscription, source);
         const markResellerTransactionsForProduct = async (subscriptionId: string, source: string) => {
-            if (!isCanonicaBillingProduct(eventProductId)) {
+            if (!isAnswerlatticeBillingProduct(eventProductId)) {
                 await markResellerTransactionsActiveForSubscription(subscriptionId, source);
             }
         };
-        const shouldSendMenuListBillingMessages = !isCanonicaBillingProduct(eventProductId);
+        const shouldSendMenuListBillingMessages = !isAnswerlatticeBillingProduct(eventProductId);
         const paymentEntity = event.payload?.payment?.entity;
         if (event.payload?.order) {
             const orderEntity = event.payload?.order?.entity;

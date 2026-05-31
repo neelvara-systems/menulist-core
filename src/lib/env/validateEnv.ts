@@ -70,9 +70,9 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
         'FIREBASE_PROJECT_ID',
     ],
-    canonica: [
-        'NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID',
-        'CANONICA_FIREBASE_PROJECT_ID',
+    answerlattice: [
+        'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
+        'ANSWERLATTICE_FIREBASE_PROJECT_ID',
     ],
     mycodex: [],
 } as const;
@@ -85,7 +85,7 @@ const MYCODEX_AUTH_VARS = [
 
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
-    if (productId === 'canonica') return 'Canonica';
+    if (productId === 'answerlattice') return 'Answerlattice';
     return 'MyCodex';
 };
 
@@ -137,15 +137,15 @@ export function validateEnvironment(): EnvValidationResult {
         }
     }
 
-    (['menulist', 'canonica'] as DeploymentProductId[]).forEach((productId) => {
+    (['menulist', 'answerlattice'] as DeploymentProductId[]).forEach((productId) => {
         const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
         PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
             const actualProjectId = getEnvValue(varName);
             const message = `${varName} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
 
             if (!actualProjectId) {
-                if (productId === 'canonica') {
-                    warnings.push(`${message} — Canonica will not use the required ${stage} Firebase project`);
+                if (productId === 'answerlattice') {
+                    warnings.push(`${message} — Answerlattice will not use the required ${stage} Firebase project`);
                 }
                 return;
             }

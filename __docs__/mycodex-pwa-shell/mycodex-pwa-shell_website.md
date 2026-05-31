@@ -2,11 +2,11 @@
 
 ## Public Website
 
-No MenuList or Canonica website copy change.
+No MenuList or Answerlattice website copy change.
 
 ## Reason
 
-MyCodex is a private internal reader. iOS PWA safe-area support is not a public MenuList or Canonica product claim.
+MyCodex is a private internal reader. iOS PWA safe-area support is not a public MenuList or Answerlattice product claim.
 
 ## Internal Release Note
 

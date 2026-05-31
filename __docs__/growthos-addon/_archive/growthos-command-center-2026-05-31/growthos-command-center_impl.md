@@ -191,7 +191,7 @@ Required routing work:
 3. Resolve the current placeholder id casing in `src/constants/productDomains.ts`.
 4. Add middleware/dev-prefix smoke tests.
 5. Update URL routing architecture docs.
-6. Keep MenuList, Canonica, MyCodex, tenant, and custom-domain routing isolated.
+6. Keep MenuList, Answerlattice, MyCodex, tenant, and custom-domain routing isolated.
 
 ## Validation Plan
 

@@ -6,7 +6,7 @@ import {
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
-import { getCreditPacksForProduct, isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -90,14 +90,14 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { tenantId, storeId } = scope;
-        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -329,7 +329,7 @@ export const POST = withAuth(async (request, session) => {
                 sId: storeId,
                 uId: session.user.id,
                 packId,
-                type: isCanonicaBillingProduct(productId) ? 'canonica_credit_pack' : 'ai_enhancement_pack',
+                type: isAnswerlatticeBillingProduct(productId) ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
                 packName: selectedPack.name,
                 paidAt: serverNow,
                 updatedOn: serverNow,
@@ -360,7 +360,7 @@ export const POST = withAuth(async (request, session) => {
 
         const newBalance = transactionResult.newBalance;
 
-        if (!isCanonicaBillingProduct(productId)) {
+        if (!isAnswerlatticeBillingProduct(productId)) {
             // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');

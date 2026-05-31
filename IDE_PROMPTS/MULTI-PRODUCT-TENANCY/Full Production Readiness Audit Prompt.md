@@ -3,12 +3,12 @@ You are performing a FULL PRODUCTION READINESS AUDIT for a multi-product platfor
 This repository contains two major systems:
 
 1. MenuList — customer-facing truth layer
-2. Canonica — knowledge/support control plane
+2. Answerlattice — governed answer infrastructure for SaaS support
 
 Both systems now run in a single Next.js codebase but use **separate Firebase projects**.
 
-MenuList → Firebase project: ecomsai  
-Canonica → Firebase project: canonica
+MenuList → Firebase project: ecomsai
+Answerlattice → Firebase project: answerlattice
 
 The platform architecture includes:
 
@@ -59,14 +59,14 @@ Validate that implementation matches the documented architecture.
 Check:
 
 1. pId / tId / sId identity model enforced everywhere
-2. Canonica documents include required root + sourceContext fields
+2. Answerlattice documents include required root + sourceContext fields
 3. requestBodyComposer behavior matches doctrine
-4. Canonica writes DO NOT use requestBodyComposer for cross-product events
+4. Answerlattice writes DO NOT use requestBodyComposer for cross-product events
 5. DAL separation is correct
 6. MenuList DAL uses MenuList Firebase client
-7. Canonica DAL uses Canonica Firebase client
+7. Answerlattice DAL uses Answerlattice Firebase client
 8. No accidental cross-database access
-9. No shared firebaseClient imports in Canonica DAL
+9. No shared firebaseClient imports in Answerlattice DAL
 
 If violations exist:
 
@@ -83,15 +83,15 @@ Check:
 
 MenuList infrastructure:
 
-src/lib/firebase/firebaseClient.ts  
-src/lib/firebase/firebaseAdmin.ts  
+src/lib/firebase/firebaseClient.ts
+src/lib/firebase/firebaseAdmin.ts
 src/lib/firebase/config.ts
 
-Canonica infrastructure:
+Answerlattice infrastructure:
 
-src/lib/firebase/canonicaFirebaseClient.ts  
-src/lib/firebase/canonicaFirebaseAdmin.ts  
-src/lib/firebase/canonicaConfig.ts
+src/lib/firebase/answerlatticeFirebaseClient.ts
+src/lib/firebase/answerlatticeFirebaseAdmin.ts
+src/lib/firebase/answerlatticeConfig.ts
 
 Validate:
 
@@ -110,7 +110,7 @@ If problems exist:
 
 ---
 
-# PHASE 3 — Canonica Client Token (CCT) Audit
+# PHASE 3 — Answerlattice Client Token (CCT) Audit
 
 Audit the token integration system.
 
@@ -118,17 +118,17 @@ Check:
 
 CCT structure matches doctrine:
 
-clientId  
-traceId  
-requestId  
-pId  
-tId  
-sId  
-uId  
-name  
-email  
-phone  
-iat  
+clientId
+traceId
+requestId
+pId
+tId
+sId
+uId
+name
+email
+phone
+iat
 exp
 
 Validate:
@@ -136,7 +136,7 @@ Validate:
 • token generation location
 • token verification logic
 • secret key usage
-• CanonicaPlatformContext creation
+• AnswerlatticePlatformContext creation
 • idempotency enforcement using requestId
 • traceId propagation to documents
 
@@ -156,9 +156,9 @@ If violations exist:
 
 Audit all DAL files.
 
-Canonica DAL directories:
+Answerlattice DAL directories:
 
-src/database/canonica/
+src/database/answerlattice/
 src/database/knowledgeBase/
 src/database/tickets/
 src/database/chatSessions/
@@ -181,8 +181,8 @@ Validate:
 
 Ensure:
 
-MenuList DAL → ecomsai Firestore  
-Canonica DAL → canonica Firestore
+MenuList DAL → ecomsai Firestore
+Answerlattice DAL → answerlattice Firestore
 
 Fix any violations.
 
@@ -194,8 +194,8 @@ Audit Cloud Functions architecture.
 
 Validate separation:
 
-functions/ → MenuList  
-functions-canonica/ → Canonica
+functions/ → MenuList
+functions-answerlattice/ → Answerlattice
 
 Check:
 
@@ -204,11 +204,11 @@ Check:
 • correct environment usage
 • correct exports
 • correct scheduler placement
-• no Canonica functions remaining in MenuList runtime
+• no Answerlattice functions remaining in MenuList runtime
 
 Ensure:
 
-MenuList scheduler does not call Canonica code.
+MenuList scheduler does not call Answerlattice code.
 
 Fix if needed.
 
@@ -259,11 +259,11 @@ Validate graceful degradation rules.
 
 Ensure:
 
-MenuList continues functioning if Canonica fails.
+MenuList continues functioning if Answerlattice fails.
 
 Check:
 
-• try/catch around Canonica features
+• try/catch around Answerlattice features
 • UI fallback states
 • Firestore error handling
 • callable function failures
@@ -318,8 +318,8 @@ After audit, produce a report containing:
 
 Status must be one of:
 
-• PRODUCTION READY  
-• PRODUCTION READY WITH WARNINGS  
+• PRODUCTION READY
+• PRODUCTION READY WITH WARNINGS
 • NOT READY
 
 ---

@@ -4,10 +4,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { helpCenterArticleRouting } from '@constant/navigations';
 import { updateFaqFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useFeedback } from '@hook/useFeedback';
-import { fetchCanonicaPublicFaqs } from '@lib/canonica/publicContentClient';
+import { fetchAnswerlatticePublicFaqs } from '@lib/answerlattice/publicContentClient';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import FeedbackSection from '@molecules/FeedbackSection';
-import type { CanonicaFaq } from '@type/canonica';
+import type { AnswerlatticeFaq } from '@type/answerlattice';
 import { Button, Collapse, Empty, Flex, Skeleton, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
@@ -28,7 +28,7 @@ const FallbackFaqs = () => {
     return <Collapse accordion items={faqs} />;
 };
 
-const FaqAnswer = ({ faq }: { faq: CanonicaFaq }) => {
+const FaqAnswer = ({ faq }: { faq: AnswerlatticeFaq }) => {
     const feedback = useFeedback(
         {
             contentType: 'faq',
@@ -85,15 +85,15 @@ const FaqAnswer = ({ faq }: { faq: CanonicaFaq }) => {
 };
 
 const FaqView = () => {
-    const [loading, setLoading] = useState(Boolean(FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT));
-    const [faqs, setFaqs] = useState<CanonicaFaq[]>([]);
+    const [loading, setLoading] = useState(Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT));
+    const [faqs, setFaqs] = useState<AnswerlatticeFaq[]>([]);
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
-        if (!FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT) return;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) return;
         let mounted = true;
         setLoading(true);
-        fetchCanonicaPublicFaqs()
+        fetchAnswerlatticePublicFaqs()
             .then((items = []) => {
                 if (!mounted) return;
                 setFaqs(items);
@@ -118,7 +118,7 @@ const FaqView = () => {
         [faqs],
     );
 
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT || failed) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || failed) {
         return <FallbackFaqs />;
     }
 

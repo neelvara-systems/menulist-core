@@ -2,13 +2,13 @@
 
 import { useDragAndDrop } from '@hook/useDragAndDrop';
 import {
-    CANONICA_CHAT_IMAGE_ACCEPT,
-    CANONICA_CHAT_IMAGE_ALLOWED_LABEL,
-    CANONICA_CHAT_IMAGE_ALLOWED_MIME_TYPES,
-    CANONICA_CHAT_IMAGE_MAX_BYTES,
-    isAllowedCanonicaChatImageMimeType,
-    normalizeCanonicaChatImageMimeType,
-} from '@lib/canonica/chatImagePolicy';
+    ANSWERLATTICE_CHAT_IMAGE_ACCEPT,
+    ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL,
+    ANSWERLATTICE_CHAT_IMAGE_ALLOWED_MIME_TYPES,
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
+    isAllowedAnswerlatticeChatImageMimeType,
+    normalizeAnswerlatticeChatImageMimeType,
+} from '@lib/answerlattice/chatImagePolicy';
 import { UserUploadedFileType } from '@type/common';
 import { getBase64 } from '@util/utils';
 import { Button, Flex, Image, Input, message, Tag, theme, Tooltip, Typography, Upload } from 'antd';
@@ -51,17 +51,17 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
     const imageDraftKey = `chat-draft-image-${sessionId || 'new'}`;
 
     const validateImageFile = (file: File): { valid: boolean; error?: string } => {
-        if (file.size > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+        if (file.size > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
             return {
                 valid: false,
-                error: `Image size must be less than ${CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB`,
+                error: `Image size must be less than ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB`,
             };
         }
 
-        if (!isAllowedCanonicaChatImageMimeType(file.type)) {
+        if (!isAllowedAnswerlatticeChatImageMimeType(file.type)) {
             return {
                 valid: false,
-                error: `Only ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`,
+                error: `Only ${ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`,
             };
         }
 
@@ -75,9 +75,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 handleImageUpload(files[0]);
             }
         },
-        accept: [...CANONICA_CHAT_IMAGE_ALLOWED_MIME_TYPES],
+        accept: [...ANSWERLATTICE_CHAT_IMAGE_ALLOWED_MIME_TYPES],
         maxFiles: 1,
-        maxSize: CANONICA_CHAT_IMAGE_MAX_BYTES,
+        maxSize: ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
         disabled,
         validateFile: (file) => validateImageFile(file),
     });
@@ -135,7 +135,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
 
         // Convert to base64 (same pattern as ticket flow)
         const base64 = await getBase64(file as RcFile);
-        const normalizedType = normalizeCanonicaChatImageMimeType(file.type);
+        const normalizedType = normalizeAnswerlatticeChatImageMimeType(file.type);
         setSelectedImage({
             url: base64,  // Base64 string for both preview and sending
             source: base64,  // Alias for backward compatibility
@@ -469,9 +469,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                     gap: 4,
                     alignItems: 'center'
                 }}>
-                    <Tooltip title={`Upload ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} image (max ${CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB)`}>
+                    <Tooltip title={`Upload ${ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL} image (max ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB)`}>
                         <Upload
-                            accept={CANONICA_CHAT_IMAGE_ACCEPT}
+                            accept={ANSWERLATTICE_CHAT_IMAGE_ACCEPT}
                             beforeUpload={handleImageUpload}
                             showUploadList={false}
                             disabled={disabled}

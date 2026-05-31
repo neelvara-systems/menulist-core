@@ -7,7 +7,7 @@
 
 import { updateArticleFeedback } from '@database/knowledgeBase/articles';
 import { updateChangelogFeedback } from '@database/changelog';
-import { updateFaqFeedback } from '@database/canonica/faqs';
+import { updateFaqFeedback } from '@database/answerlattice/faqs';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 

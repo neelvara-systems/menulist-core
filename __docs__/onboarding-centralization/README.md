@@ -16,7 +16,7 @@ Tenant + store creation logic is duplicated across **5 active files** (~80 lines
 |---|------|-----------------------|--------|
 | 1 | `functions/src/messagingOnboarding/publishPipeline.ts` | Yes | ⚠️ DEAD CODE (ADR-10) |
 | 2 | `src/app/api/auth/claim-account/route.ts` | **No** — transfers only | ❌ Not onboarding |
-| 3 | `src/app/api/canonica/onboard/route.ts` | Yes | ✅ Active |
+| 3 | `src/app/api/answerlattice/onboard/route.ts` | Yes | ✅ Active |
 | 4 | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | Yes | ✅ Active |
 | 5 | `src/app/api/onboarding/create-subscription/route.ts` | Yes | ✅ Active |
 | 6 | `src/app/api/public/create-menu/claim/route.ts` | Yes | ✅ Active |
@@ -43,7 +43,7 @@ These exact operations appear in every active file:
 
 | File | Unique Logic |
 |------|-------------|
-| Canonica | productId: 'CN', API key gen, beta subscription |
+| Answerlattice | productId: 'AL', API key gen, beta subscription |
 | msg-preview/approve | Double-publish protection, retry, session state, claimToken, country inference, project creation |
 | create-subscription | Razorpay subscription, plan lookup |
 | public-menu/claim | Draft handling, existing-user branch (add project only) |
@@ -132,7 +132,7 @@ interface TenantStoreResult {
 |------|--------|
 | `src/lib/onboarding/createTenantStore.ts` | **NEW** — Centralized utility |
 | `src/app/api/onboarding/create-subscription/route.ts` | Refactored to use centralized utility |
-| `src/app/api/canonica/onboard/route.ts` | Refactored to use centralized utility |
+| `src/app/api/answerlattice/onboard/route.ts` | Refactored to use centralized utility |
 | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | Refactored to use centralized utility + bug fix |
 | `src/app/api/public/create-menu/claim/route.ts` | Refactored to use centralized utility |
 | `src/app/api/reseller/onboard/route.ts` | Refactored to use centralized utility + bug fix |

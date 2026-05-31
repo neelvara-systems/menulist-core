@@ -2,7 +2,7 @@
 
 **Status:** Active planning decision
 **Decision date:** May 31, 2026
-**Recommended path:** Build as a separate product with Canonica-grade separation.
+**Recommended path:** Build as a separate product with Answerlattice-grade separation.
 
 ---
 
@@ -87,7 +87,7 @@ This maps well to the existing MenuList image generation pipeline, but must be s
 
 ## Architecture Decision
 
-Use Canonica as the separation model:
+Use Answerlattice as the separation model:
 
 - product code `VM`
 - separate Firebase project

@@ -1,11 +1,11 @@
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { PRODUCT_IDS } from "@constant/product";
 import {
-    getCanonicaScopedSession,
-    isCanonicaRuntimeRoute,
-    shouldUseCanonicaClientScopeForRoute,
-} from "@lib/canonica/sessionScope";
-import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
+    getAnswerlatticeScopedSession,
+    isAnswerlatticeRuntimeRoute,
+    shouldUseAnswerlatticeClientScopeForRoute,
+} from "@lib/answerlattice/sessionScope";
+import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
 
@@ -83,12 +83,12 @@ const sameEmail = (left?: string | null, right?: string | null) => (
     String(left || "").toLowerCase().trim() === String(right || "").toLowerCase().trim()
 );
 
-const shouldUseCanonicaScope = (session?: any) => {
+const shouldUseAnswerlatticeScope = (session?: any) => {
     if (typeof window === "undefined") return false;
     if (session) {
-        return shouldUseCanonicaClientScopeForRoute(session, window.location.pathname, window.location.hostname);
+        return shouldUseAnswerlatticeClientScopeForRoute(session, window.location.pathname, window.location.hostname);
     }
-    return isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname);
+    return isAnswerlatticeRuntimeRoute(window.location.pathname, window.location.hostname);
 };
 
 const getEffectiveSessionForFirebaseAuth = (session: any) => {
@@ -96,15 +96,15 @@ const getEffectiveSessionForFirebaseAuth = (session: any) => {
         ? session
         : applyActiveStoreContextToSession(session);
 
-    return shouldUseCanonicaScope(outletScopedSession)
-        ? getCanonicaScopedSession(outletScopedSession)
+    return shouldUseAnswerlatticeScope(outletScopedSession)
+        ? getAnswerlatticeScopedSession(outletScopedSession)
         : outletScopedSession;
 };
 
 async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!session?.user?.email) return { ready: false };
-    const isCanonicaScope = shouldUseCanonicaScope(session);
+    const isAnswerlatticeScope = shouldUseAnswerlatticeScope(session);
 
     const tenantId = getSessionTenantId(session);
     const storeId = getSessionStoreId(session);
@@ -117,7 +117,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     if (currentUser) {
         try {
             const currentToken = await currentUser.getIdTokenResult();
-            if (!isCanonicaScope && claimsMatchSessionStore(currentToken.claims, session)) {
+            if (!isAnswerlatticeScope && claimsMatchSessionStore(currentToken.claims, session)) {
                 return { ready: true, claims: currentToken.claims };
             }
             canRefreshCurrentUser = sameEmail(currentUser.email, session.user.email);
@@ -136,7 +136,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
         body: JSON.stringify({
             ...(canRefreshCurrentUser && currentUser ? { uid: currentUser.uid } : {}),
             targetStoreId: Number(storeId),
-            ...(isCanonicaScope ? { productId: PRODUCT_IDS.CANONICA } : {}),
+            ...(isAnswerlatticeScope ? { productId: PRODUCT_IDS.ANSWERLATTICE } : {}),
         }),
     });
 
@@ -160,7 +160,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
         throw new Error("Firebase Auth sync did not return a custom token");
     }
 
-    await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+    await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
 
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',
@@ -183,7 +183,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         body: JSON.stringify({
             uid: firebaseAuth.currentUser.uid,
             ...(targetStoreId ? { targetStoreId } : {}),
-            ...(shouldUseCanonicaScope() ? { productId: PRODUCT_IDS.CANONICA } : {}),
+            ...(shouldUseAnswerlatticeScope() ? { productId: PRODUCT_IDS.ANSWERLATTICE } : {}),
         }),
     });
 
@@ -205,7 +205,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         );
     }
 
-    await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+    await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
 
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',

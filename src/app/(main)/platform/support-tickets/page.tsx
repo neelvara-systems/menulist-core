@@ -1,10 +1,10 @@
 import SupportTickets from "@template/platform/supportTickets"
-import CanonicaConfigNotice from "@template/platform/CanonicaConfigNotice"
-import { isCanonicaFirebaseConfigured } from "@lib/firebase/canonicaFirebaseClient"
+import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice"
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient"
 
 function page() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Support Tickets" />
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Support Tickets" />
     }
 
     return (

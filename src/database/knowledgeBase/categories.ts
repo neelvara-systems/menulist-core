@@ -1,12 +1,12 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { collection, doc, getDoc, setDoc } from "@firebase/firestore";
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
-import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
-import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
-import { revalidateCanonicaPublicClientCache } from "@lib/cache/canonicaPublicClientCache";
-import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
+import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
+import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
+import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
+import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { updateList } from "@util/utils";
 
@@ -23,12 +23,12 @@ export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) =>
 };
 
 const getCollectionRef = async () => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}`)
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
 }
 
 const getDocRef = async () => {
     const session = await getActiveSession().catch(() => null);
-    return doc(canonicaFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
 }
 
 const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: string) => {
@@ -36,10 +36,10 @@ const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: str
     const tId = Number(session?.tId);
     const sId = Number(session?.sId);
     if (!Number.isFinite(tId) || tId <= 0 || !Number.isFinite(sId) || sId <= 0) {
-        throw new Error('Cannot update Canonica KB cache version without tenant and store scope.');
+        throw new Error('Cannot update Answerlattice KB cache version without tenant and store scope.');
     }
 
-    await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.KB, tId, sId, {
+    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId, {
         reason,
         sourceId,
         sourceType: 'kb_category',
@@ -53,13 +53,13 @@ export const getCategories = async () => {
         async () => {
             const session = await getActiveSession().catch(() => null);
             const scopedDocId = getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId);
-            const docRef = doc(canonicaFirebaseClient, `${COLLECTION}`, scopedDocId);
+            const docRef = doc(answerlatticeFirebaseClient, `${COLLECTION}`, scopedDocId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id };
             }
             if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID && session?.platformRole === 'PLATFORM') {
-                const legacyDocSnap = await getDoc(doc(canonicaFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
+                const legacyDocSnap = await getDoc(doc(answerlatticeFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
                 if (legacyDocSnap.exists()) {
                     const legacyData = legacyDocSnap.data() as KnowledgeBaseCategoriesType;
                     const filteredCategories = Object.fromEntries(
@@ -86,7 +86,7 @@ export const deleteCategory = async (data: any) => {
         async () => {
             const scope = await bumpKnowledgeBaseVersionForSession('category_delete');
             await setDoc(await getDocRef(), data);
-            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'deleteCategory');
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteCategory');
             return data;
         },
         data,
@@ -98,10 +98,10 @@ export const addCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await canonicaRequestBodyComposer(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(category);
             const scope = await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
-            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'addCategory');
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'addCategory');
             return composedCategory;
         },
         category,
@@ -113,10 +113,10 @@ export const updateCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await canonicaRequestBodyComposer(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(category);
             const scope = await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
-            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateCategory');
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateCategory');
             return composedCategory;
         },
         category,
@@ -145,7 +145,7 @@ const _updateSectionArticles = async (
     };
     const scope = await bumpKnowledgeBaseVersionForSession('category_section_articles_update', categoryId);
     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateSectionArticles');
+    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateSectionArticles');
 
     const updatedData = { ...categoriesData };
     updatedData.categories[categoryId] = updatedCategory;
@@ -193,7 +193,7 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
                     };
                     const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_update', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-                    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateArticleInParent');
+                    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateArticleInParent');
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;
@@ -234,7 +234,7 @@ export const deleteArticleFromParent = async (
                     };
                     const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_delete', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-                    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'deleteArticleFromParent');
+                    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteArticleFromParent');
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;

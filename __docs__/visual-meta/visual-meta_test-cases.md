@@ -27,7 +27,7 @@
 | VisualMeta host route | Resolves as product route before tenant/custom-domain routing. |
 | VisualMeta host with MenuList client path | Does not resolve MenuList tenant route. |
 | MenuList host | Does not expose VisualMeta dashboard. |
-| Canonica host | Does not expose VisualMeta dashboard. |
+| Answerlattice host | Does not expose VisualMeta dashboard. |
 
 ## 3. Auth And Scope Tests
 
@@ -35,7 +35,7 @@
 | --- | --- |
 | unauthenticated API call | rejected |
 | MenuList-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
-| Canonica-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
+| Answerlattice-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
 | VisualMeta reviewer approves allowed unit | accepted |
 | reviewer writes outside scope | rejected |
 | client tries to write billing ledger | rejected |
@@ -160,7 +160,7 @@
 | VisualMeta project created | stored in VisualMeta collections only |
 | VisualMeta asset uploaded | stored in VisualMeta Storage only |
 | MenuList cache invalidation triggered by VisualMeta prep | no, because no MenuList write occurs |
-| Canonica functions touched by VisualMeta job | never |
+| Answerlattice functions touched by VisualMeta job | never |
 | GrowthOS action created by VisualMeta export | never without explicit future integration |
 | Export adapter mutates Shopify/PIM/DAM/Cloudinary/Google | never in first implementation |
 | VisualMeta export adapter stores external credential | never in first implementation |

@@ -15,7 +15,7 @@ import { redirect } from 'next/navigation'
 import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
 import OwnerPermissionGuard from '../../components/auth/OwnerPermissionGuard'
 import OwnerAppUpdatePrompt from '../../components/common/OwnerAppUpdatePrompt'
-import MenuListCanonicaWidgetEmbed from '../../components/canonica/MenuListCanonicaWidgetEmbed'
+import MenuListAnswerlatticeWidgetEmbed from '../../components/answerlattice/MenuListAnswerlatticeWidgetEmbed'
 
 export const metadata: Metadata = {
   title: 'MenuList AI Dashboard Main',
@@ -66,7 +66,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             {/* Monitor session expiry and show friendly modal when session expires */}
             <SessionExpiryMonitor />
             <OwnerAppUpdatePrompt />
-            <MenuListCanonicaWidgetEmbed />
+            <MenuListAnswerlatticeWidgetEmbed />
             <NoSSRProvider>
               <AntdLayoutWrapper>
                 <OwnerPermissionGuard>

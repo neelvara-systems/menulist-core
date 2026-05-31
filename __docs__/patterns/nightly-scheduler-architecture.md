@@ -81,17 +81,17 @@ Future MenuList scheduled work must use the existing product-level scheduler ent
 
 - Operational maintenance tasks belong in `menulistMaintenanceScheduler` with a registry entry, cadence, timeout expectation, per-task Firestore lease, and state update.
 - Store-local EOD analytics, Decision Blocks, Menu Intelligence, and store-nightly intelligence tasks belong in `computeDecisionBlocksScores`.
-- Canonica scheduled work belongs in `functions-canonica/`, not in MenuList schedulers.
+- Answerlattice scheduled work belongs in `functions-answerlattice/`, not in MenuList schedulers.
 - New standalone scheduled Cloud Functions are exceptions. Before adding one, document the trigger/SLA reason, Firebase cost impact in INR, expected invocation/read/write shape, monitoring, and why the existing scheduler boundary is not suitable.
 
 ### Product Boundary
 
-These MenuList entry points are for MenuList work only. Canonica is a separate product with its own Firebase project and Cloud Functions package:
+These MenuList entry points are for MenuList work only. Answerlattice is a separate product with its own Firebase project and Cloud Functions package:
 
 - MenuList scheduled work: `functions/src/decisionBlocksScoring.ts` and `functions/src/schedulers/menulistMaintenanceScheduler.ts`
-- Canonica scheduled work: `functions-canonica/src/index.ts` → `canonicaNightly`
+- Answerlattice scheduled work: `functions-answerlattice/src/index.ts` → `answerlatticeNightly`
 
-Do not register Canonica nightly tasks in MenuList schedulers. The shared codebase can reuse patterns, but the deployed scheduler runtime stays product-specific.
+Do not register Answerlattice nightly tasks in MenuList schedulers. The shared codebase can reuse patterns, but the deployed scheduler runtime stays product-specific.
 
 ### Analytics Settlement Contract
 
@@ -375,7 +375,7 @@ if (FUNCTION_FLAGS.ENABLE_YOUR_TASK) {
 - Always gate with feature flag (default OFF)
 - For MenuList store-EOD tasks, add the task here instead of creating a new scheduled CF
 - For different-cadence operational work, keep a separate operational scheduler in `functions/src/triggers/schedulers.ts`
-- For Canonica work, add the task in `functions-canonica/`, not in this MenuList scheduler
+- For Answerlattice work, add the task in `functions-answerlattice/`, not in this MenuList scheduler
 
 ---
 
@@ -460,9 +460,9 @@ At 5k+ stores, the `storesSummary` document may become:
 
 **Not needed now.** Current design is appropriate up to ~3-5k stores.
 
-### Canonica Scheduler Scale
+### Answerlattice Scheduler Scale
 
-Canonica scale is managed separately in `functions-canonica/`. It now has its own centralized scheduler (`functions-canonica/src/canonica/canonicaMasterScheduler.ts`) behind the existing `canonicaNightly` export. Canonica uses the same high-level discipline as MenuList: one scheduled export, tenant/workspace summary discovery, runtime timezone + EOD filtering, and per-workspace/date locks. It does not run inside the MenuList scheduler and does not use MenuList restaurant-specific defaults.
+Answerlattice scale is managed separately in `functions-answerlattice/`. It now has its own centralized scheduler (`functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts`) behind the existing `answerlatticeNightly` export. Answerlattice uses the same high-level discipline as MenuList: one scheduled export, tenant/workspace summary discovery, runtime timezone + EOD filtering, and per-workspace/date locks. It does not run inside the MenuList scheduler and does not use MenuList restaurant-specific defaults.
 
 ---
 
@@ -471,10 +471,10 @@ Canonica scale is managed separately in `functions-canonica/`. It now has its ow
 | Date       | Change                                                                                             |
 | ---------- | -------------------------------------------------------------------------------------------------- |
 | 2026-03-03 | DST-safe runtime timezone computation (replaces stored schedulerHour comparison)                   |
-| 2026-05-25 | Added Canonica centralized scheduler note: separate product scheduler with one scheduled export, timezone/EOD filtering, and workspace/date locks |
+| 2026-05-25 | Added Answerlattice centralized scheduler note: separate product scheduler with one scheduled export, timezone/EOD filtering, and workspace/date locks |
 | 2026-03-03 | Added store mismatch telemetry (expected vs processed count)                                       |
 | 2026-03-03 | Timezone-aware scheduling (hourly + store timezone filter)                                         |
 | 2026-03-03 | Merged masterScheduler tasks (feedback intelligence, KB quality, weekly narrative, health signals) |
-| 2026-05-11 | Reconfirmed product boundary: Canonica nightly lives in `functions-canonica/`, not MenuList scheduler |
-| 2026-03-03 | Removed duplicate canonicaNightly CF from MenuList schedulers                                      |
+| 2026-05-11 | Reconfirmed product boundary: Answerlattice nightly lives in `functions-answerlattice/`, not MenuList scheduler |
+| 2026-03-03 | Removed duplicate answerlatticeNightly CF from MenuList schedulers                                      |
 | 2026-03-03 | Initial architecture documentation                                                                 |

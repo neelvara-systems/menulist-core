@@ -1,15 +1,15 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { arrayUnion, collection, doc, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
 
-const db = canonicaFirebaseClient;
+const db = answerlatticeFirebaseClient;
 
 const COLLECTION = DB_COLLECTIONS.CHANGELOG_FEEDBACK;
 
 const getCollectionRef = (session: any) => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
 };
 
 /**
@@ -34,7 +34,7 @@ export const addChangelogFeedback = async (entryId: string, comment: string, sen
 
         if (!feedbackDoc.exists()) {
             // First feedback for this entry, create the document
-            const newFeedbackDoc = await canonicaRequestBodyComposer({
+            const newFeedbackDoc = await answerlatticeRequestBodyComposer({
                 list: [feedbackPayload],
             });
             tx.set(feedbackDocRef, newFeedbackDoc);

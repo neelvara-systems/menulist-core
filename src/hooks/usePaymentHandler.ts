@@ -29,8 +29,8 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
     const productName = options.productName || 'MenuList.ai';
     const subscriptionCheckoutName = options.subscriptionCheckoutName || `${productName} Subscription`;
     const topupCheckoutName = options.topupCheckoutName || `${productName} Credit Pack`;
-    const hasBillingScope = Boolean(productId === PRODUCT_IDS.CANONICA
-        ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.CANONICA]?.tenantId || session?.user?.productId === PRODUCT_IDS.CANONICA)
+    const hasBillingScope = Boolean(productId === PRODUCT_IDS.ANSWERLATTICE
+        ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.tenantId || session?.user?.productId === PRODUCT_IDS.ANSWERLATTICE)
         : (session?.user?.tenantId && session?.user?.storeId));
 
     const createSubscription = async (plan: Plan, currency: Currency, user: any, remainingCredits: number = 0, quantity: number = 1) => {

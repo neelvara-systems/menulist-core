@@ -1,5 +1,5 @@
 import LoginUserType from "@type/loginUser";
-import { getCanonicaScopedSession, shouldUseCanonicaClientScopeForRoute } from "@lib/canonica/sessionScope";
+import { getAnswerlatticeScopedSession, shouldUseAnswerlatticeClientScopeForRoute } from "@lib/answerlattice/sessionScope";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 
 const CLIENT_SESSION_TTL_MS = 5000;
@@ -24,8 +24,8 @@ const getActiveSession = async () => {
 
     const now = Date.now();
     if (clientSessionCache && now - clientSessionCacheAt < CLIENT_SESSION_TTL_MS) {
-        const scopedSession = shouldUseCanonicaClientScopeForRoute(clientSessionCache, window.location.pathname, window.location.hostname)
-            ? getCanonicaScopedSession(clientSessionCache)
+        const scopedSession = shouldUseAnswerlatticeClientScopeForRoute(clientSessionCache, window.location.pathname, window.location.hostname)
+            ? getAnswerlatticeScopedSession(clientSessionCache)
             : clientSessionCache;
         console.log(`%c🔐 Auth%c session cache hit`, AUTH_LOG_BADGE, AUTH_LOG_TEXT, {
             ageMs: now - clientSessionCacheAt,
@@ -46,8 +46,8 @@ const getActiveSession = async () => {
             const sessionWithType = session as unknown as LoginUserType | null;
             clientSessionCache = sessionWithType;
             clientSessionCacheAt = Date.now();
-            const scopedSession = shouldUseCanonicaClientScopeForRoute(sessionWithType, window.location.pathname, window.location.hostname)
-                ? getCanonicaScopedSession(sessionWithType)
+            const scopedSession = shouldUseAnswerlatticeClientScopeForRoute(sessionWithType, window.location.pathname, window.location.hostname)
+                ? getAnswerlatticeScopedSession(sessionWithType)
                 : sessionWithType;
             const effectiveSession = applyActiveStoreContextToSession(scopedSession);
             console.log(`%c🔐 Auth%c session fetch success`, AUTH_LOG_BADGE, AUTH_SUCCESS_TEXT, {

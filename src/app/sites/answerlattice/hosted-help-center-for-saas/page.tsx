@@ -1,0 +1,50 @@
+import { Metadata } from 'next';
+import { headers } from 'next/headers';
+import AnswerlatticeFooter from '../components/Footer';
+import AnswerlatticeHeader from '../components/Header';
+import SeoLandingPage from '../components/SeoLandingPage';
+
+export const metadata: Metadata = {
+    title: 'Hosted Help Center for SaaS',
+    description: 'Hosted help center for AI-built SaaS with reviewed docs, owner FAQs, changelog content, and the same knowledge powering the app widget.',
+    alternates: { canonical: '/hosted-help-center-for-saas' },
+};
+
+function getBasePath(): string {
+    try {
+        const h = headers();
+        const host = h.get('host') || '';
+        return (h.get('x-product-id') && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))) ? '/__answerlattice' : '';
+    } catch { return ''; }
+}
+
+export default function HostedHelpCenterForSaasPage() {
+    const basePath = getBasePath();
+
+    return (
+        <>
+            <AnswerlatticeHeader basePath={basePath} />
+            <SeoLandingPage
+                basePath={basePath}
+                canonicalPath="/hosted-help-center-for-saas"
+                eyebrow="Hosted help center for SaaS"
+                title="Hosted help center for AI-built SaaS."
+                description="Publish reviewed docs, owner FAQs, and changelog content on a branded support domain while the same knowledge powers your app widget."
+                problem="Small SaaS teams often split docs, changelog, widget answers, and tickets across separate tools. The result is duplicate content, stale answers, and users who still open tickets."
+                question="Where can users read support without logging in?"
+                genericAnswer="Create a public docs site and link it from your app."
+                answerlatticeAnswer="Publish reviewed articles, owner FAQs, and changelog entries on help.yourapp.com while tickets, conversations, and workspace internals stay private."
+                ownerReview="Hosted help content stays part of the same reviewed support knowledge. Owners can connect articles to custom Q&A, surfaces, changelogs, and approved answers instead of maintaining a separate support site."
+                setupSteps={[
+                    'Create your Answerlattice workspace.',
+                    'Import docs, FAQs, custom answers, and release notes.',
+                    'Map content to product surfaces.',
+                    'Configure hosted help domain settings.',
+                    'Publish reviewed help content and keep answer gaps visible.',
+                ]}
+                primaryCta="Start support setup"
+            />
+            <AnswerlatticeFooter basePath={basePath} />
+        </>
+    );
+}

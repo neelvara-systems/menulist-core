@@ -1,10 +1,10 @@
-import CanonicaConfigNotice from "@template/platform/CanonicaConfigNotice";
+import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import PlatformKnowledgeBase from "@template/platform/knowledgeBase";
-import { isCanonicaFirebaseConfigured } from "@lib/firebase/canonicaFirebaseClient";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
 
 export default function KnowledgeBasePage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Knowledge Base" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Knowledge Base" />;
     }
 
     return <PlatformKnowledgeBase />;

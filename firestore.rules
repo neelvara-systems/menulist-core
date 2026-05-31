@@ -132,10 +132,10 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Canonica summary docs
+    // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Answerlattice summary docs
     match /platformSummary/{document} {
       // Platform admins can read every platform summary document.
-      // Canonica tenant users can read/write only the known Canonica summary docs
+      // Answerlattice tenant users can read/write only the known Answerlattice summary docs
       // that carry matching tId/sId fields. All other writes remain server-only.
       allow read: if isPublicScreenSummaryDoc(document)
                   || (
@@ -143,7 +143,7 @@ service cloud.firestore {
                     && (
                       isPlatformAdmin()
                       || isCurrentStoreSummaryDoc(document)
-                      || (isCanonicaPlatformSummaryDoc(document) && isCanonicaTenantMember(resource.data))
+                      || (isAnswerlatticePlatformSummaryDoc(document) && isAnswerlatticeTenantMember(resource.data))
                     )
                   );
       allow create: if isAuthenticated()
@@ -151,8 +151,8 @@ service cloud.firestore {
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
                       || (
-                        isCanonicaPlatformSummaryDoc(document)
-                        && isCanonicaTenantMember(request.resource.data)
+                        isAnswerlatticePlatformSummaryDoc(document)
+                        && isAnswerlatticeTenantMember(request.resource.data)
                       )
                     );
       allow update: if isAuthenticated()
@@ -161,9 +161,9 @@ service cloud.firestore {
                       || canWriteCurrentStoreSummaryDoc(document)
                       || canWriteStoresSummaryDoc(document)
                       || (
-                        isCanonicaPlatformSummaryDoc(document)
-                        && isCanonicaTenantMember(resource.data)
-                        && isCanonicaTenantMember(request.resource.data)
+                        isAnswerlatticePlatformSummaryDoc(document)
+                        && isAnswerlatticeTenantMember(resource.data)
+                        && isAnswerlatticeTenantMember(request.resource.data)
                         && request.resource.data.tId == resource.data.tId
                         && request.resource.data.sId == resource.data.sId
                       )
@@ -207,118 +207,118 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // CANONICA — tenant-scoped client DAL collections
-    // These rules are mirrored in firestore-canonica.rules for dedicated
-    // Canonica Firebase deployments. Admin SDK writes bypass rules.
+    // ANSWERLATTICE — tenant-scoped client DAL collections
+    // These rules are mirrored in firestore-answerlattice.rules for dedicated
+    // Answerlattice Firebase deployments. Admin SDK writes bypass rules.
     // ═══════════════════════════════════════════════════════════
 
-    match /canonica_entities/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_entities/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_entityRelations/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+    match /answerlattice_entityRelations/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
+      allow delete: if isAnswerlatticeScopedDelete();
     }
 
-    match /canonica_canonicalAnswers/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_canonicalAnswers/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_releases/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_releases/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_mutationProposals/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_mutationProposals/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_signalEvents/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+    match /answerlattice_signalEvents/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
+      allow delete: if isAnswerlatticeScopedDelete();
     }
 
-    match /canonica_auditLogs/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
+    match /answerlattice_auditLogs/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
       allow update, delete: if false;
     }
 
-    match /canonica_entitySearchIndex/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_entitySearchIndex/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_entityCandidates/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_entityCandidates/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_frictionDailyStats/{docId} {
-      allow read: if isCanonicaScopedRead();
+    match /answerlattice_frictionDailyStats/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
       allow write: if false;
     }
 
-    match /canonica_schedulerRunLogs/{docId} {
+    match /answerlattice_schedulerRunLogs/{docId} {
       allow read: if isAuthenticated() && isPlatformAdmin();
       allow write: if false;
     }
 
-    match /canonica_integrationEvents/{docId} {
-      allow read: if isCanonicaScopedRead();
+    match /answerlattice_integrationEvents/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
       allow write: if false;
     }
 
-    match /canonica_integrationDeliveryLogs/{docId} {
-      allow read: if isCanonicaScopedRead();
+    match /answerlattice_integrationDeliveryLogs/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
       allow write: if false;
     }
 
-    match /canonica_predictiveTriggers/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
-      allow delete: if isCanonicaScopedDelete();
+    match /answerlattice_predictiveTriggers/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
+      allow delete: if isAnswerlatticeScopedDelete();
     }
 
-    match /canonica_productSurfaces/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_productSurfaces/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_faqs/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_faqs/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
 
-    match /canonica_cacheVersions/{docId} {
-      allow read: if isCanonicaScopedRead();
-      allow create: if isCanonicaScopedCreate();
-      allow update: if isCanonicaScopedUpdate();
+    match /answerlattice_cacheVersions/{docId} {
+      allow read: if isAnswerlatticeScopedRead();
+      allow create: if isAnswerlatticeScopedCreate();
+      allow update: if isAnswerlatticeScopedUpdate();
       allow delete: if false;
     }
     
@@ -1047,11 +1047,11 @@ service cloud.firestore {
         && request.auth.token.platformRole == 'PLATFORM';
     }
 
-    function isCanonicaPlatformSummaryDoc(document) {
+    function isAnswerlatticePlatformSummaryDoc(document) {
       return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$');
     }
 
-    function isCanonicaTenantMember(data) {
+    function isAnswerlatticeTenantMember(data) {
       return request.auth != null
         && data.keys().hasAll(['tId', 'sId'])
         && request.auth.token.tenantId != null
@@ -1060,32 +1060,32 @@ service cloud.firestore {
         && string(data.sId) == string(request.auth.token.storeId);
     }
 
-    function isCanonicaScopedRead() {
+    function isAnswerlatticeScopedRead() {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
+        && (isPlatformAdmin() || isAnswerlatticeTenantMember(resource.data));
     }
 
-    function isCanonicaScopedCreate() {
+    function isAnswerlatticeScopedCreate() {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
+        && (isPlatformAdmin() || isAnswerlatticeTenantMember(request.resource.data));
     }
 
-    function isCanonicaScopedUpdate() {
+    function isAnswerlatticeScopedUpdate() {
       return isAuthenticated()
         && (
           isPlatformAdmin()
           || (
-            isCanonicaTenantMember(resource.data)
-            && isCanonicaTenantMember(request.resource.data)
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
           )
         );
     }
 
-    function isCanonicaScopedDelete() {
+    function isAnswerlatticeScopedDelete() {
       return isAuthenticated()
-        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
+        && (isPlatformAdmin() || isAnswerlatticeTenantMember(resource.data));
     }
 
     function isMenuProcessingJobOwner() {

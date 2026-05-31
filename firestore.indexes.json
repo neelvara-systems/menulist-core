@@ -854,7 +854,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_entities",
+      "collectionGroup": "answerlattice_entities",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -872,7 +872,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_canonicalAnswers",
+      "collectionGroup": "answerlattice_canonicalAnswers",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -890,7 +890,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_canonicalAnswers",
+      "collectionGroup": "answerlattice_canonicalAnswers",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -912,7 +912,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_canonicalAnswers",
+      "collectionGroup": "answerlattice_canonicalAnswers",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -930,7 +930,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_releases",
+      "collectionGroup": "answerlattice_releases",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -952,7 +952,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_releases",
+      "collectionGroup": "answerlattice_releases",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -970,7 +970,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_signalEvents",
+      "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -992,7 +992,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_signalEvents",
+      "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1010,7 +1010,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_signalEvents",
+      "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1032,7 +1032,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_signalEvents",
+      "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1050,7 +1050,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_auditLogs",
+      "collectionGroup": "answerlattice_auditLogs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1076,7 +1076,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_mutationProposals",
+      "collectionGroup": "answerlattice_mutationProposals",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1098,7 +1098,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_mutationProposals",
+      "collectionGroup": "answerlattice_mutationProposals",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1116,7 +1116,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_mutationProposals",
+      "collectionGroup": "answerlattice_mutationProposals",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1138,7 +1138,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_auditLogs",
+      "collectionGroup": "answerlattice_auditLogs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1156,7 +1156,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_auditLogs",
+      "collectionGroup": "answerlattice_auditLogs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1178,7 +1178,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_entityCandidates",
+      "collectionGroup": "answerlattice_entityCandidates",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1196,7 +1196,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_entityCandidates",
+      "collectionGroup": "answerlattice_entityCandidates",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1218,7 +1218,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_entitySearchIndex",
+      "collectionGroup": "answerlattice_entitySearchIndex",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1232,7 +1232,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_entityRelations",
+      "collectionGroup": "answerlattice_entityRelations",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1250,7 +1250,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_frictionDailyStats",
+      "collectionGroup": "answerlattice_frictionDailyStats",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1268,7 +1268,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_frictionDailyStats",
+      "collectionGroup": "answerlattice_frictionDailyStats",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1290,7 +1290,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_signalEvents",
+      "collectionGroup": "answerlattice_signalEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1312,7 +1312,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_integrationEvents",
+      "collectionGroup": "answerlattice_integrationEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1326,7 +1326,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_integrationEvents",
+      "collectionGroup": "answerlattice_integrationEvents",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1340,7 +1340,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_integrationDeliveryLogs",
+      "collectionGroup": "answerlattice_integrationDeliveryLogs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1354,7 +1354,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_integrationDeliveryLogs",
+      "collectionGroup": "answerlattice_integrationDeliveryLogs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1376,7 +1376,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_predictiveTriggers",
+      "collectionGroup": "answerlattice_predictiveTriggers",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1394,7 +1394,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_predictiveTriggers",
+      "collectionGroup": "answerlattice_predictiveTriggers",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1564,7 +1564,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_productSurfaces",
+      "collectionGroup": "answerlattice_productSurfaces",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1586,7 +1586,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_productSurfaces",
+      "collectionGroup": "answerlattice_productSurfaces",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1604,7 +1604,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_faqs",
+      "collectionGroup": "answerlattice_faqs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1626,7 +1626,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_faqs",
+      "collectionGroup": "answerlattice_faqs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1652,7 +1652,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_faqs",
+      "collectionGroup": "answerlattice_faqs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -1682,7 +1682,7 @@
       ]
     },
     {
-      "collectionGroup": "canonica_faqs",
+      "collectionGroup": "answerlattice_faqs",
       "queryScope": "COLLECTION",
       "fields": [
         {

@@ -1,0 +1,23 @@
+# Answerlattice Asset Rules
+
+Answerlattice website assets must show the Governed Answer Infrastructure.
+
+Use:
+
+- dark infrastructure visual language;
+- canonical answers;
+- page-aware widget context;
+- hosted help and support surface governance;
+- drift, review, and missed-question loops.
+
+Avoid:
+
+- restaurant/menu visuals;
+- generic helpdesk or CMS positioning;
+- autonomous chatbot claims;
+- private tickets or tenant data;
+- bright generic SaaS gradients;
+- unsupported public integration claims.
+
+Primary source: `packages/asset-factory/brand/answerlattice.asset-context.md`.
+

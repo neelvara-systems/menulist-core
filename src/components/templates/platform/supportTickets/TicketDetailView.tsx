@@ -2,8 +2,8 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
-import { CANONICA_GOVERNANCE_TABS, getCanonicaGovernanceRoute, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
-import { rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
+import { ANSWERLATTICE_GOVERNANCE_TABS, getAnswerlatticeGovernanceRoute, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
+import { rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
 import { updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
@@ -94,14 +94,14 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
         try {
             const res = await updateTicket({ ...updatePayload, id: ticket.id });
             onUpdate({ ...res, ...updatePayload, id: ticket.id });
-            if (FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) {
+            if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) {
                 rebuildProductSurfaceContentSummary().catch(() => undefined);
             }
 
             // Ticket → Knowledge Loop (Item #9): emit enriched resolution signal
             // Fire-and-forget — never blocks ticket update flow
             if (statusChanged && (values.status === SUPPORT_TICKET_STATUS.RESOLVED || values.status === SUPPORT_TICKET_STATUS.CLOSED)) {
-                import('@lib/canonica/signalEmitter').then(({ emitTicketResolutionSignal }) => {
+                import('@lib/answerlattice/signalEmitter').then(({ emitTicketResolutionSignal }) => {
                     emitTicketResolutionSignal({
                         ticketId: ticket.id,
                         subject: ticket.subject || '',
@@ -141,8 +141,8 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
         .length;
     const hasResolutionContext = resolutionContextLength >= 50;
     const openSignalQueue = () => {
-        router.push(toCanonicaDashboardRoute(
-            getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE),
+        router.push(toAnswerlatticeDashboardRoute(
+            getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE),
             currentHostname,
         ));
     };
@@ -413,9 +413,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 <Text type="secondary">
                     {resolvedForKnowledge
                         ? hasResolutionContext
-                            ? 'Canonica uses the last support replies as evidence for repeated-gap proposals. Review recurring patterns in Signal Queue.'
-                            : 'Add a clear resolution reply before closing similar tickets so Canonica can draft useful knowledge later.'
-                        : 'When this ticket is resolved, Canonica can turn repeated issues into owner-approved knowledge proposals.'}
+                            ? 'Answerlattice uses the last support replies as evidence for repeated-gap proposals. Review recurring patterns in Signal Queue.'
+                            : 'Add a clear resolution reply before closing similar tickets so Answerlattice can draft useful knowledge later.'
+                        : 'When this ticket is resolved, Answerlattice can turn repeated issues into owner-approved knowledge proposals.'}
                 </Text>
                 <Button
                     icon={<LuGitPullRequest />}

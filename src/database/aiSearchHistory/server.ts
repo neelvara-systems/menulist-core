@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { getCanonicaTimestampMillis } from '@lib/canonica/cacheFreshness';
+import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { getAnswerlatticeTimestampMillis } from '@lib/answerlattice/cacheFreshness';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
 
@@ -9,9 +9,9 @@ const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 
 const createTraceId = () => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return `cn_${crypto.randomUUID()}`;
+        return `al_${crypto.randomUUID()}`;
     }
-    return `cn_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    return `al_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
 const sanitizeForFirestore = (value: any): any => {
@@ -35,7 +35,7 @@ const composeAiSearchHistory = (data: Omit<AiSearchHistory, 'id'> | Partial<AiSe
 
     return sanitizeForFirestore({
         ...data,
-        pId: PRODUCT_IDS.CANONICA,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: Number(data.tId || 0),
         sId: Number(data.sId || 0),
         uId: data.uId || 'system',
@@ -69,8 +69,8 @@ export const findCachedSearchByCacheKeyServer = async (
     const candidates = snapshot.docs
         .map((docSnapshot) => ({ ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory))
         .sort((a, b) => {
-            const bCreated = getCanonicaTimestampMillis(b.createdOn || b.modifiedOn);
-            const aCreated = getCanonicaTimestampMillis(a.createdOn || a.modifiedOn);
+            const bCreated = getAnswerlatticeTimestampMillis(b.createdOn || b.modifiedOn);
+            const aCreated = getAnswerlatticeTimestampMillis(a.createdOn || a.modifiedOn);
             return bCreated - aCreated;
         });
 

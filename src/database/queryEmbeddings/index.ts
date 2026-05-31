@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaFirestoreAdmin as firestoreAdmin, CanonicaVector as Vector } from '@lib/firebase/canonicaFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin, AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
 
 const COLLECTION = DB_COLLECTIONS.QUERY_EMBEDDINGS;
 

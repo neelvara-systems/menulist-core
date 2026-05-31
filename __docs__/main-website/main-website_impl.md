@@ -121,7 +121,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Agent context hardening:** v3.5.9 updates `public/llms.txt` and `public/llms-full.txt` after reviewing Chrome's agentic web / WebMCP guidance. The files now define the MenuList PAL boundary: public agents may read owner-published facts and route users to official handoff links, but may not mutate owner-approved truth, POS state, billing, prices, hours, item availability, or sensitive food claims. No homepage layout, SEO runtime, pricing/payment/auth, onboarding, or create-menu runtime behavior changed.
 
-**Agent-readable SEO/AEO hardening:** v3.6.0 moves homepage JSON-LD to server-rendered HTML, adds reusable `WebsitePageStructuredData` coverage for active platform pages, normalizes public discovery URLs to `https://menulist.ai`, and removes the legacy `/product` redirect from sitemap and LLM inventories. The new `npm run verify:agent-readiness` check verifies MenuList and Canonica route registries, structured-data wrappers, robots/LLM links, and redirected-route omissions. WebMCP, MCP, pricing/payment/auth, onboarding, and `/create-menu` runtime behavior were not changed.
+**Agent-readable SEO/AEO hardening:** v3.6.0 moves homepage JSON-LD to server-rendered HTML, adds reusable `WebsitePageStructuredData` coverage for active platform pages, normalizes public discovery URLs to `https://menulist.ai`, and removes the legacy `/product` redirect from sitemap and LLM inventories. The new `npm run verify:agent-readiness` check verifies MenuList and Answerlattice route registries, structured-data wrappers, robots/LLM links, and redirected-route omissions. WebMCP, MCP, pricing/payment/auth, onboarding, and `/create-menu` runtime behavior were not changed.
 The legacy redirect is also registered in `next.config.js` so crawlers receive an HTTP 308 before page streaming begins.
 The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai`; `menulist.online` remains an alias, not the canonical discovery host.
 
@@ -234,7 +234,7 @@ src/pages/
 - Robots: Full crawling enabled (index, follow, max-image-preview: large) with non-www canonical discovery links
 - Agent context: `public/llms.txt` and `public/llms-full.txt` define public business fact access, official handoff boundaries, unknown handling, and WebMCP/MCP deferral
 - Per-page canonical URLs via `alternates.canonical`
-- Verification: `npm run verify:agent-readiness` checks platform/Canonica discovery registries, structured-data coverage, robots, sitemap, and LLM files
+- Verification: `npm run verify:agent-readiness` checks platform/Answerlattice discovery registries, structured-data coverage, robots, sitemap, and LLM files
 
 ---
 

@@ -3,7 +3,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID, ECOMSAI_PLATFORM_USER_NAME } from "@constant/user";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
-import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
+import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 
 type JsonRecord = Record<string, any>;
@@ -105,9 +105,9 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
     const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
     const now = admin.firestore.Timestamp.now();
     const productId = String(input.pId || '').toUpperCase();
-    const shouldWriteCanonicaOperation = productId === PRODUCT_IDS.CANONICA
-        && canonicaFirestoreAdmin
-        && typeof (canonicaFirestoreAdmin as any).collection === 'function';
+    const shouldWriteAnswerlatticeOperation = productId === PRODUCT_IDS.ANSWERLATTICE
+        && answerlatticeFirestoreAdmin
+        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function';
     const data = sanitizeForFirestore({
         ...buildAiOperationLog(input),
         ...(productId ? { pId: productId } : {}),
@@ -120,9 +120,9 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
         modifiedOn: now,
     });
 
-    const docRef = await (shouldWriteCanonicaOperation ? canonicaFirestoreAdmin : firestoreAdmin)
-        .collection(shouldWriteCanonicaOperation
-            ? DB_COLLECTIONS.CANONICA_AI_OPERATIONS
+    const docRef = await (shouldWriteAnswerlatticeOperation ? answerlatticeFirestoreAdmin : firestoreAdmin)
+        .collection(shouldWriteAnswerlatticeOperation
+            ? DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS
             : DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
         .doc(tId)
         .collection(sId)

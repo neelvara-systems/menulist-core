@@ -3,9 +3,9 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { bumpCanonicaCacheVersionAdmin } from '@lib/canonica/cacheVersionAdmin';
-import { CANONICA_CACHE_SOURCES } from '@lib/canonica/cacheVersionManifest';
-import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
+import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { EMBED_MODEL, callGeminiEmbedding } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
@@ -105,7 +105,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         });
 
-        await bumpCanonicaCacheVersionAdmin(CANONICA_CACHE_SOURCES.KB, articleTenantId, articleStoreId, {
+        await bumpAnswerlatticeCacheVersionAdmin(ANSWERLATTICE_CACHE_SOURCES.KB, articleTenantId, articleStoreId, {
             reason: 'article_embedding_api_update',
             sourceId: embeddingPayload.articleId,
             sourceType: 'kb_article',

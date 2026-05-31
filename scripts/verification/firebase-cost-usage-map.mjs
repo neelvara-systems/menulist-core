@@ -12,12 +12,12 @@ const skipPath = (relativePath) => (
   || relativePath.includes('.next')
   || relativePath.includes('functions/lib/')
   || relativePath.includes('src/scripts/fabric')
-  || relativePath.includes('src/lib/canonica/')
-  || relativePath.includes('src/app/(canonica)/')
-  || relativePath.includes('src/app/api/canonica/')
-  || relativePath.includes('src/database/canonica/')
-  || relativePath.includes('functions-canonica/')
-  || relativePath.includes('/canonica/')
+  || relativePath.includes('src/lib/answerlattice/')
+  || relativePath.includes('src/app/(answerlattice)/')
+  || relativePath.includes('src/app/api/answerlattice/')
+  || relativePath.includes('src/database/answerlattice/')
+  || relativePath.includes('functions-answerlattice/')
+  || relativePath.includes('/answerlattice/')
 );
 
 const walk = (directory, files = []) => {

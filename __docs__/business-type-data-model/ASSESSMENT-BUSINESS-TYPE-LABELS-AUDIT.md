@@ -133,7 +133,7 @@ All 9 locale files updated with `next-intl` interpolation variables:
 
 - **Brand references** (`menulist.ai`, `MenuList`) — product name, not business-type label
 - **Internal variable names** (`menuData`, `menuItems`, `fetchMenuData`) — code internals, not UI-facing
-- **Canonica product** — untouched per rules
+- **Answerlattice product** — untouched per rules
 
 ---
 

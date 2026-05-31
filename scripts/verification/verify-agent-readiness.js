@@ -38,10 +38,10 @@ function verifyEnvironmentTargets() {
     getProductDeploymentTarget,
   } = require('../../src/constants/deploymentTargets');
   const {
-    CANONICA_LOCAL_DEV_PATH_PREFIX,
-    CANONICA_PRODUCTION_DOMAINS,
-    CANONICA_STAGING_DOMAINS,
-  } = require('../../src/constants/canonica/domains');
+    ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX,
+    ANSWERLATTICE_PRODUCTION_DOMAINS,
+    ANSWERLATTICE_STAGING_DOMAINS,
+  } = require('../../src/constants/answerlattice/domains');
   const productDomains = read('src/constants/productDomains.ts');
   const urls = read('src/constants/urls.ts');
   const envValidation = read('src/lib/env/validateEnv.ts');
@@ -51,39 +51,39 @@ function verifyEnvironmentTargets() {
   const widgetConfigRoute = read('src/app/api/widget/config/route.ts');
   const widgetSearchRoute = read('src/app/api/widget/search/route.ts');
   const widgetFeedbackRoute = read('src/app/api/widget/feedback/route.ts');
-  const predictiveHelpRoute = read('src/app/api/canonica/predictive-help/route.ts');
+  const predictiveHelpRoute = read('src/app/api/answerlattice/predictive-help/route.ts');
   const publicMenuRoute = read('src/app/api/public/v1/menu/route.ts');
   const publicBusinessRoute = read('src/app/api/public/v1/business/route.ts');
   const searchCore = read('src/lib/search/searchCore.ts');
-  const sessionScope = read('src/lib/canonica/sessionScope.ts');
+  const sessionScope = read('src/lib/answerlattice/sessionScope.ts');
   const activeSession = read('src/lib/auth/getActiveSession.ts');
   const helpCenterSearchRoute = read('src/app/api/helpCenter/search-kb/route.ts');
-  const documentComposer = read('src/lib/canonica/documentComposer.ts');
-  const canonicaDashboardLayout = read('src/components/canonica/CanonicaDashboardLayout.tsx');
+  const documentComposer = read('src/lib/answerlattice/documentComposer.ts');
+  const answerlatticeDashboardLayout = read('src/components/answerlattice/AnswerlatticeDashboardLayout.tsx');
   const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
   const firebaserc = JSON.parse(read('.firebaserc'));
-  const canonicaFunctionsPackage = JSON.parse(read('functions-canonica/package.json'));
+  const answerlatticeFunctionsPackage = JSON.parse(read('functions-answerlattice/package.json'));
 
   assert(DEPLOYMENT_TARGETS.local.menulist.url === 'http://localhost:3000/', 'Local MenuList URL must be localhost root');
-  assert(DEPLOYMENT_TARGETS.local.canonica.url === 'http://localhost:3000/__canonica/', 'Local Canonica URL must be /__canonica');
-  assert(getProductDeploymentTarget('canonica', 'local').devPathPrefix === '/__canonica', 'Local Canonica dev prefix must be /__canonica');
+  assert(DEPLOYMENT_TARGETS.local.answerlattice.url === 'http://localhost:3000/__answerlattice/', 'Local Answerlattice URL must be /__answerlattice');
+  assert(getProductDeploymentTarget('answerlattice', 'local').devPathPrefix === '/__answerlattice', 'Local Answerlattice dev prefix must be /__answerlattice');
   assert(getExpectedFirebaseProjectId('menulist', 'local') === 'ecomsai', 'Local MenuList Firebase project must be ecomsai');
-  assert(getExpectedFirebaseProjectId('canonica', 'local') === 'canonica-qa', 'Local Canonica Firebase project must be canonica-qa');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'answerlattice-qa', 'Local Answerlattice Firebase project must be answerlattice-qa');
 
   assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.online'), 'Preview MenuList domain must include menulist.online');
-  assert(DEPLOYMENT_TARGETS.preview.canonica.domains.includes('ecomsai.com'), 'Preview Canonica domain must include ecomsai.com');
+  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('ecomsai.com'), 'Preview Answerlattice domain must include ecomsai.com');
   assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'ecomsai', 'Preview MenuList Firebase project must be ecomsai');
-  assert(getExpectedFirebaseProjectId('canonica', 'preview') === 'canonica-qa', 'Preview Canonica Firebase project must be canonica-qa');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
 
   assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('menulist.ai'), 'Production MenuList domain must include menulist.ai');
-  assert(DEPLOYMENT_TARGETS.production.canonica.domains.includes('canonica.app'), 'Production Canonica domain must include canonica.app');
+  assert(DEPLOYMENT_TARGETS.production.answerlattice.domains.includes('answerlattice.com'), 'Production Answerlattice domain must include answerlattice.com');
   assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
-  assert(getExpectedFirebaseProjectId('canonica', 'production') === 'canonica', 'Production Canonica Firebase project must be canonica');
+  assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
 
-  assert(CANONICA_LOCAL_DEV_PATH_PREFIX === '/__canonica', 'Canonica local dev prefix constant');
-  assert(CANONICA_STAGING_DOMAINS.includes('ecomsai.com'), 'Canonica staging domain constant');
-  assert(CANONICA_PRODUCTION_DOMAINS.includes('canonica.app'), 'Canonica production domain constant');
-  assertIncludes(productDomains, "getActiveProductDomains('canonica')", 'Product domain registry');
+  assert(ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX === '/__answerlattice', 'Answerlattice local dev prefix constant');
+  assert(ANSWERLATTICE_STAGING_DOMAINS.includes('ecomsai.com'), 'Answerlattice staging domain constant');
+  assert(ANSWERLATTICE_PRODUCTION_DOMAINS.includes('answerlattice.com'), 'Answerlattice production domain constant');
+  assertIncludes(productDomains, "getActiveProductDomains('answerlattice')", 'Product domain registry');
   assertIncludes(productDomains, "getActiveProductDomains('menulist')", 'Product domain registry');
   assertIncludes(urls, 'QA: menulist.online', 'Platform URL domain contract');
   assertIncludes(urls, 'QA: ecomsai.com', 'Platform URL domain contract');
@@ -91,29 +91,29 @@ function verifyEnvironmentTargets() {
   assertIncludes(deploymentTargets, 'resolveKnownProductIdByHostname', 'Deployment target helper');
   assertIncludes(middleware, 'resolveKnownProductIdByHostname', 'Inactive product-domain redirect guard');
   assertIncludes(middleware, 'NextResponse.redirect(url, 308)', 'Inactive product-domain redirect guard');
-  assertIncludes(publicApiAuth, 'shouldUseCanonicaDb', 'Canonica public API auth boundary');
-  assertIncludes(publicApiAuth, 'canonicaFirestoreAdmin', 'Canonica public API auth boundary');
-  assertIncludes(publicApiAuth, 'Canonica API key validation failed closed', 'Canonica public API auth boundary');
-  assertIncludes(widgetConfigRoute, 'includePublicApi: false', 'Canonica widget config auth boundary');
-  assertIncludes(widgetSearchRoute, 'includePublicApi: false', 'Canonica widget search auth boundary');
-  assertIncludes(widgetFeedbackRoute, 'includePublicApi: false', 'Canonica widget feedback auth boundary');
-  assertIncludes(predictiveHelpRoute, 'includePublicApi: false', 'Canonica predictive help auth boundary');
+  assertIncludes(publicApiAuth, 'shouldUseAnswerlatticeDb', 'Answerlattice public API auth boundary');
+  assertIncludes(publicApiAuth, 'answerlatticeFirestoreAdmin', 'Answerlattice public API auth boundary');
+  assertIncludes(publicApiAuth, 'Answerlattice API key validation failed closed', 'Answerlattice public API auth boundary');
+  assertIncludes(widgetConfigRoute, 'includePublicApi: false', 'Answerlattice widget config auth boundary');
+  assertIncludes(widgetSearchRoute, 'includePublicApi: false', 'Answerlattice widget search auth boundary');
+  assertIncludes(widgetFeedbackRoute, 'includePublicApi: false', 'Answerlattice widget feedback auth boundary');
+  assertIncludes(predictiveHelpRoute, 'includePublicApi: false', 'Answerlattice predictive help auth boundary');
   assertIncludes(publicMenuRoute, "startsWith('ml_')", 'MenuList public menu auth boundary');
   assertIncludes(publicBusinessRoute, "startsWith('ml_')", 'MenuList public business auth boundary');
-  assertNotIncludes(searchCore, '/v0/b/ecomsai.appspot.com/o', 'Canonica search storage boundary');
-  assertIncludes(searchCore, 'NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET', 'Canonica search storage boundary');
-  assertIncludes(sessionScope, 'isCanonicaSupportClientRoute', 'MenuList Canonica client support route boundary');
-  assertIncludes(activeSession, 'shouldUseCanonicaClientScopeForRoute', 'MenuList Canonica client session boundary');
-  assertIncludes(helpCenterSearchRoute, 'isCanonicaSupportClientRoute', 'MenuList Help Center Canonica search boundary');
-  assertIncludes(documentComposer, 'sessionSourceContext?.tId', 'Canonica source context preservation boundary');
-  assertIncludes(canonicaDashboardLayout, 'ensureFirebaseAuthForSession', 'Canonica dashboard Firebase Auth sync boundary');
-  assertIncludes(setClaimsRoute, 'hasDefaultPlatformAccess', 'Canonica platform auth sync boundary');
+  assertNotIncludes(searchCore, '/v0/b/ecomsai.appspot.com/o', 'Answerlattice search storage boundary');
+  assertIncludes(searchCore, 'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET', 'Answerlattice search storage boundary');
+  assertIncludes(sessionScope, 'isAnswerlatticeSupportClientRoute', 'MenuList Answerlattice client support route boundary');
+  assertIncludes(activeSession, 'shouldUseAnswerlatticeClientScopeForRoute', 'MenuList Answerlattice client session boundary');
+  assertIncludes(helpCenterSearchRoute, 'isAnswerlatticeSupportClientRoute', 'MenuList Help Center Answerlattice search boundary');
+  assertIncludes(documentComposer, 'sessionSourceContext?.tId', 'Answerlattice source context preservation boundary');
+  assertIncludes(answerlatticeDashboardLayout, 'ensureFirebaseAuthForSession', 'Answerlattice dashboard Firebase Auth sync boundary');
+  assertIncludes(setClaimsRoute, 'hasDefaultPlatformAccess', 'Answerlattice platform auth sync boundary');
   assert(firebaserc.projects['menulist-qa'] === 'ecomsai', '.firebaserc MenuList QA alias');
   assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
-  assert(firebaserc.projects['canonica-qa'] === 'canonica-qa', '.firebaserc Canonica QA alias');
-  assert(firebaserc.projects['canonica-prod'] === 'canonica', '.firebaserc Canonica production alias');
-  assertIncludes(canonicaFunctionsPackage.scripts['deploy:qa'], '--project canonica-qa', 'Canonica Functions QA deploy script');
-  assertIncludes(canonicaFunctionsPackage.scripts['deploy:prod'], '--project canonica', 'Canonica Functions production deploy script');
+  assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
+  assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
+  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:qa'], '--project answerlattice-qa', 'Answerlattice Functions QA deploy script');
+  assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:prod'], '--project answerlattice', 'Answerlattice Functions production deploy script');
 }
 
 function platformPagePathToFile(pagePath) {
@@ -121,9 +121,9 @@ function platformPagePathToFile(pagePath) {
   return `src/app/(website)${pagePath}/page.tsx`;
 }
 
-function canonicaPagePathToFile(pagePath) {
-  if (pagePath === '/') return 'src/app/sites/canonica/page.tsx';
-  return `src/app/sites/canonica${pagePath}/page.tsx`;
+function answerlatticePagePathToFile(pagePath) {
+  if (pagePath === '/') return 'src/app/sites/answerlattice/page.tsx';
+  return `src/app/sites/answerlattice${pagePath}/page.tsx`;
 }
 
 function verifyMenuListDiscovery() {
@@ -185,35 +185,35 @@ function verifyMenuListDiscovery() {
   }
 }
 
-function verifyCanonicaDiscovery() {
-  const { CANONICA_PUBLIC_PAGES } = require('../../src/app/sites/canonica/siteConfig');
-  const robotsRoute = read('src/app/sites/canonica/robots.txt/route.ts');
-  const homepageStructuredData = read('src/app/sites/canonica/components/StructuredData.tsx');
-  const pageStructuredData = read('src/app/sites/canonica/components/PageStructuredData.tsx');
-  const productFeatureRoute = read('src/app/sites/canonica/product/ProductFeatureRoutePage.tsx');
+function verifyAnswerlatticeDiscovery() {
+  const { ANSWERLATTICE_PUBLIC_PAGES } = require('../../src/app/sites/answerlattice/siteConfig');
+  const robotsRoute = read('src/app/sites/answerlattice/robots.txt/route.ts');
+  const homepageStructuredData = read('src/app/sites/answerlattice/components/StructuredData.tsx');
+  const pageStructuredData = read('src/app/sites/answerlattice/components/PageStructuredData.tsx');
+  const productFeatureRoute = read('src/app/sites/answerlattice/product/ProductFeatureRoutePage.tsx');
 
-  assertIncludes(robotsRoute, 'DISCOVERY_CRAWLERS', 'Canonica robots');
-  assertIncludes(robotsRoute, '/llms.txt', 'Canonica robots');
-  assertIncludes(robotsRoute, '/llms-full.txt', 'Canonica robots');
-  assertIncludes(homepageStructuredData, 'JsonLdScript', 'Canonica homepage structured data');
-  assertIncludes(homepageStructuredData, 'hasPart', 'Canonica homepage route graph');
-  assertIncludes(homepageStructuredData, 'buildCanonicaPageId', 'Canonica homepage structured data ID helper');
-  assertIncludes(pageStructuredData, 'BreadcrumbList', 'Canonica page structured data');
-  assertIncludes(pageStructuredData, 'buildPageId', 'Canonica page structured data ID helper');
-  assertIncludes(productFeatureRoute, 'CanonicaPageStructuredData', 'Canonica product feature route wrapper');
+  assertIncludes(robotsRoute, 'DISCOVERY_CRAWLERS', 'Answerlattice robots');
+  assertIncludes(robotsRoute, '/llms.txt', 'Answerlattice robots');
+  assertIncludes(robotsRoute, '/llms-full.txt', 'Answerlattice robots');
+  assertIncludes(homepageStructuredData, 'JsonLdScript', 'Answerlattice homepage structured data');
+  assertIncludes(homepageStructuredData, 'hasPart', 'Answerlattice homepage route graph');
+  assertIncludes(homepageStructuredData, 'buildAnswerlatticePageId', 'Answerlattice homepage structured data ID helper');
+  assertIncludes(pageStructuredData, 'BreadcrumbList', 'Answerlattice page structured data');
+  assertIncludes(pageStructuredData, 'buildPageId', 'Answerlattice page structured data ID helper');
+  assertIncludes(productFeatureRoute, 'AnswerlatticePageStructuredData', 'Answerlattice product feature route wrapper');
 
-  for (const page of CANONICA_PUBLIC_PAGES) {
-    const routeFile = canonicaPagePathToFile(page.path);
-    assert(exists(routeFile), `Canonica route file missing for ${page.path}: ${routeFile}`);
+  for (const page of ANSWERLATTICE_PUBLIC_PAGES) {
+    const routeFile = answerlatticePagePathToFile(page.path);
+    assert(exists(routeFile), `Answerlattice route file missing for ${page.path}: ${routeFile}`);
 
     const content = read(routeFile);
     if (page.path === '/') {
-      assertIncludes(content, '<CanonicaStructuredData />', 'Canonica homepage structured data');
+      assertIncludes(content, '<AnswerlatticeStructuredData />', 'Answerlattice homepage structured data');
       continue;
     }
 
     if (content.includes('ProductCapabilityLandingPage') || content.includes('SeoLandingPage') || content.includes('UseCaseLandingPage')) {
-      assertIncludes(content, `canonicalPath="${page.path}"`, `Canonica structured data path ${page.path}`);
+      assertIncludes(content, `canonicalPath="${page.path}"`, `Answerlattice structured data path ${page.path}`);
       continue;
     }
 
@@ -221,42 +221,42 @@ function verifyCanonicaDiscovery() {
       continue;
     }
 
-    assertIncludes(content, 'CanonicaPageStructuredData', `Canonica page structured data ${page.path}`);
-    assertIncludes(content, `path="${page.path}"`, `Canonica structured data path ${page.path}`);
+    assertIncludes(content, 'AnswerlatticePageStructuredData', `Answerlattice page structured data ${page.path}`);
+    assertIncludes(content, `path="${page.path}"`, `Answerlattice structured data path ${page.path}`);
   }
 }
 
-function verifyCanonicaInstallContract() {
-  const contract = require('../../src/lib/canonica/installContract/contract');
-  const constants = require('../../src/lib/canonica/installContract/constants');
-  const { CanonicaContextSchema } = require('../../src/lib/validation/contextSchema');
-  const publicWidget = read('public/widget/canonica-widget.js');
-  const widgetV1Route = read('src/app/widget/v1/canonica-widget.js/route.ts');
-  const widgetManagement = read('src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx');
-  const installCenter = read('src/components/templates/canonica/install/CanonicaInstallCenter.tsx');
-  const routePermissions = read('src/constants/canonica/permissions.ts');
-  const canonicaRoutes = read('src/constants/canonica/routes.ts');
-  const canonicaDomains = read('src/constants/canonica/domains.ts');
-  const canonicaNavigations = read('src/constants/canonica/navigations.ts');
-  const canonicaQuickstarts = read('src/app/sites/canonica/quickstarts/page.tsx');
-  const canonicaResources = read('src/app/sites/canonica/resources/page.tsx');
-  const canonicaDayOneLaunchPack = read('src/app/sites/canonica/components/DayOneLaunchPackSection.tsx');
-  const canonicaSiteConfig = read('src/app/sites/canonica/siteConfig.ts');
+function verifyAnswerlatticeInstallContract() {
+  const contract = require('../../src/lib/answerlattice/installContract/contract');
+  const constants = require('../../src/lib/answerlattice/installContract/constants');
+  const { AnswerlatticeContextSchema } = require('../../src/lib/validation/contextSchema');
+  const publicWidget = read('public/widget/answerlattice-widget.js');
+  const widgetV1Route = read('src/app/widget/v1/answerlattice-widget.js/route.ts');
+  const widgetManagement = read('src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx');
+  const installCenter = read('src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx');
+  const routePermissions = read('src/constants/answerlattice/permissions.ts');
+  const answerlatticeRoutes = read('src/constants/answerlattice/routes.ts');
+  const answerlatticeDomains = read('src/constants/answerlattice/domains.ts');
+  const answerlatticeNavigations = read('src/constants/answerlattice/navigations.ts');
+  const answerlatticeQuickstarts = read('src/app/sites/answerlattice/quickstarts/page.tsx');
+  const answerlatticeResources = read('src/app/sites/answerlattice/resources/page.tsx');
+  const answerlatticeDayOneLaunchPack = read('src/app/sites/answerlattice/components/DayOneLaunchPackSection.tsx');
+  const answerlatticeSiteConfig = read('src/app/sites/answerlattice/siteConfig.ts');
 
-  assert(constants.CANONICA_WIDGET_SCRIPT_URL === 'https://canonica.app/widget/v1/canonica-widget.js', 'Canonica v1 widget URL must stay stable');
-  assert(constants.CANONICA_WIDGET_SCRIPT_CACHE_CONTROL === 'public, max-age=300, stale-while-revalidate=86400', 'Canonica v1 widget cache policy must stay bounded and non-immutable');
-  assert(contract.CANONICA_AGENT_FILE_TARGETS.includes('.cursor/rules/canonica/RULE.md'), 'Canonica agent file targets must include Cursor RULE.md');
-  assert(contract.CANONICA_AGENT_FILE_TARGETS.includes('.cursor/rules/canonica.mdc'), 'Canonica agent file targets must include Cursor .mdc fallback');
-  assert(contract.CANONICA_PUBLIC_DOC_ROUTES.includes('/install/contracts.md'), 'Canonica public docs routes must include contracts Markdown');
-  assertIncludes(widgetV1Route, 'CANONICA_WIDGET_SCRIPT_CACHE_CONTROL', 'Canonica v1 widget route cache policy');
-  assertIncludes(widgetV1Route, 'X-Canonica-Widget-Contract', 'Canonica v1 widget route contract header');
-  assertIncludes(publicWidget, 'Canonica Help Widget — Public Contract v1', 'Canonica public widget script');
-  assertIncludes(publicWidget, 'data-canonica-key', 'Canonica public widget key attribute');
-  assertIncludes(publicWidget, 'setContext', 'Canonica public widget global API');
-  assertIncludes(publicWidget, 'page:', 'Canonica public widget page API');
-  assertIncludes(publicWidget, 'sensitiveContextPattern', 'Canonica public widget context PII guard');
+  assert(constants.ANSWERLATTICE_WIDGET_SCRIPT_URL === 'https://answerlattice.com/widget/v1/answerlattice-widget.js', 'Answerlattice v1 widget URL must stay stable');
+  assert(constants.ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL === 'public, max-age=300, stale-while-revalidate=86400', 'Answerlattice v1 widget cache policy must stay bounded and non-immutable');
+  assert(contract.ANSWERLATTICE_AGENT_FILE_TARGETS.includes('.cursor/rules/answerlattice/RULE.md'), 'Answerlattice agent file targets must include Cursor RULE.md');
+  assert(contract.ANSWERLATTICE_AGENT_FILE_TARGETS.includes('.cursor/rules/answerlattice.mdc'), 'Answerlattice agent file targets must include Cursor .mdc fallback');
+  assert(contract.ANSWERLATTICE_PUBLIC_DOC_ROUTES.includes('/install/contracts.md'), 'Answerlattice public docs routes must include contracts Markdown');
+  assertIncludes(widgetV1Route, 'ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL', 'Answerlattice v1 widget route cache policy');
+  assertIncludes(widgetV1Route, 'X-Answerlattice-Widget-Contract', 'Answerlattice v1 widget route contract header');
+  assertIncludes(publicWidget, 'Answerlattice Help Widget — Public Contract v1', 'Answerlattice public widget script');
+  assertIncludes(publicWidget, 'data-answerlattice-key', 'Answerlattice public widget key attribute');
+  assertIncludes(publicWidget, 'setContext', 'Answerlattice public widget global API');
+  assertIncludes(publicWidget, 'page:', 'Answerlattice public widget page API');
+  assertIncludes(publicWidget, 'sensitiveContextPattern', 'Answerlattice public widget context PII guard');
 
-  assert(exists('src/app/sites/canonica/install/page.tsx'), 'Canonica public install page must exist');
+  assert(exists('src/app/sites/answerlattice/install/page.tsx'), 'Answerlattice public install page must exist');
   [
     'install.md',
     'install/ai-agent.md',
@@ -269,7 +269,7 @@ function verifyCanonicaInstallContract() {
     'install/frameworks/webflow.md',
     'install/contracts.md',
   ].forEach((routePath) => {
-    assert(exists(`src/app/sites/canonica/${routePath}/route.ts`), `Canonica Markdown route missing: ${routePath}`);
+    assert(exists(`src/app/sites/answerlattice/${routePath}/route.ts`), `Answerlattice Markdown route missing: ${routePath}`);
   });
   [
     'install/verify/page.tsx',
@@ -280,38 +280,38 @@ function verifyCanonicaInstallContract() {
     'install/changelog.md/route.ts',
     'install/contracts/page.tsx',
   ].forEach((routePath) => {
-    assert(!exists(`src/app/sites/canonica/${routePath}`), `Canonica public install route should not exist: ${routePath}`);
+    assert(!exists(`src/app/sites/answerlattice/${routePath}`), `Answerlattice public install route should not exist: ${routePath}`);
   });
 
-  const llms = contract.renderCanonicaLlmsTxt();
-  assertIncludes(llms, '/install/ai-agent.md', 'Canonica llms.txt');
-  assertIncludes(llms, '/install/contracts.md', 'Canonica llms.txt');
-  assertNotIncludes(llms, '/install/verify.md', 'Canonica llms.txt');
-  assertNotIncludes(llms, '/install/security.md', 'Canonica llms.txt');
+  const llms = contract.renderAnswerlatticeLlmsTxt();
+  assertIncludes(llms, '/install/ai-agent.md', 'Answerlattice llms.txt');
+  assertIncludes(llms, '/install/contracts.md', 'Answerlattice llms.txt');
+  assertNotIncludes(llms, '/install/verify.md', 'Answerlattice llms.txt');
+  assertNotIncludes(llms, '/install/security.md', 'Answerlattice llms.txt');
 
-  const secretKey = 'cn_test_raw_secret_value_123456789';
-  const kitFiles = contract.buildCanonicaAgentKitFiles({
+  const secretKey = 'al_test_raw_secret_value_123456789';
+  const kitFiles = contract.buildAnswerlatticeAgentKitFiles({
     widgetKey: secretKey,
-    widgetKeyPrefix: 'cn_test',
+    widgetKeyPrefix: 'al_test',
     allowedOrigins: ['https://app.example.com'],
     blockedRoutes: ['/login', '/billing'],
   });
   const kitText = JSON.stringify(kitFiles);
-  assertNotIncludes(kitText, secretKey, 'Canonica agent kit default contents');
-  assert(kitFiles['.cursor/rules/canonica/RULE.md'], 'Canonica agent kit must include Cursor RULE.md');
-  assert(kitFiles['.cursor/rules/canonica.mdc'], 'Canonica agent kit must include Cursor .mdc fallback');
-  assertIncludes(kitFiles['packet.json'], '"rawWidgetKeyIncluded": false', 'Canonica agent kit packet');
-  assertIncludes(kitFiles['canonica-context-contract-v1.md'], 'Allowed context fields', 'Canonica context contract docs');
-  assertNotIncludes(kitFiles['canonica-context-contract-v1.md'], 'Legacy compatibility', 'Canonica context contract docs');
+  assertNotIncludes(kitText, secretKey, 'Answerlattice agent kit default contents');
+  assert(kitFiles['.cursor/rules/answerlattice/RULE.md'], 'Answerlattice agent kit must include Cursor RULE.md');
+  assert(kitFiles['.cursor/rules/answerlattice.mdc'], 'Answerlattice agent kit must include Cursor .mdc fallback');
+  assertIncludes(kitFiles['packet.json'], '"rawWidgetKeyIncluded": false', 'Answerlattice agent kit packet');
+  assertIncludes(kitFiles['answerlattice-context-contract-v1.md'], 'Allowed context fields', 'Answerlattice context contract docs');
+  assertNotIncludes(kitFiles['answerlattice-context-contract-v1.md'], 'Legacy compatibility', 'Answerlattice context contract docs');
 
-  const packet = contract.buildCanonicaAgentPacketJson({ widgetKey: secretKey, widgetKeyPrefix: 'cn_test' });
-  assert(packet.rawWidgetKeyIncluded === false, 'Canonica dashboard packet must not include raw widget key by default');
-  assert(JSON.stringify(packet).indexOf(secretKey) === -1, 'Canonica dashboard packet must mask raw widget key by default');
-  assert(packet.dashboardOwnsAllowedOrigins === true, 'Canonica dashboard packet must mark allowed origins as dashboard-owned');
-  assert(packet.dashboardOwnsBlockedRoutes === true, 'Canonica dashboard packet must mark blocked routes as dashboard-owned');
-  assert(!('legacyContextFieldMap' in packet), 'Canonica dashboard packet must not expose legacy context guidance before launch');
+  const packet = contract.buildAnswerlatticeAgentPacketJson({ widgetKey: secretKey, widgetKeyPrefix: 'al_test' });
+  assert(packet.rawWidgetKeyIncluded === false, 'Answerlattice dashboard packet must not include raw widget key by default');
+  assert(JSON.stringify(packet).indexOf(secretKey) === -1, 'Answerlattice dashboard packet must mask raw widget key by default');
+  assert(packet.dashboardOwnsAllowedOrigins === true, 'Answerlattice dashboard packet must mark allowed origins as dashboard-owned');
+  assert(packet.dashboardOwnsBlockedRoutes === true, 'Answerlattice dashboard packet must mark blocked routes as dashboard-owned');
+  assert(!('legacyContextFieldMap' in packet), 'Answerlattice dashboard packet must not expose legacy context guidance before launch');
 
-  const parsedContext = CanonicaContextSchema.parse({
+  const parsedContext = AnswerlatticeContextSchema.parse({
     path: '/settings/team',
     title: 'Team settings',
     feature: 'settings',
@@ -320,39 +320,39 @@ function verifyCanonicaInstallContract() {
     locale: 'en',
     tenantId: '123',
   });
-  assert(parsedContext.path === '/settings/team', 'Canonica context schema must accept canonical path');
-  assert(parsedContext.tenantId === undefined, 'Canonica context schema must strip forbidden tenantId');
-  assert(!CanonicaContextSchema.safeParse({ title: 'owner@example.com' }).success, 'Canonica context schema must reject PII-like titles');
+  assert(parsedContext.path === '/settings/team', 'Answerlattice context schema must accept canonical path');
+  assert(parsedContext.tenantId === undefined, 'Answerlattice context schema must strip forbidden tenantId');
+  assert(!AnswerlatticeContextSchema.safeParse({ title: 'owner@example.com' }).success, 'Answerlattice context schema must reject PII-like titles');
 
-  assert(exists('src/app/sites/canonica/agents/canonica/cursor/RULE.md/route.ts'), 'Canonica public Cursor RULE.md route must exist');
-  assertIncludes(installCenter, 'renderCanonicaCursorRuleMd', 'Canonica Install Center Cursor current rule copy');
-  assertIncludes(installCenter, 'renderCanonicaCursorRule', 'Canonica Install Center Cursor legacy fallback copy');
-  assertIncludes(canonicaRoutes, 'INSTALL_CENTER', 'Canonica install center route constant');
-  assertIncludes(canonicaDomains, "'install-center'", 'Canonica product-host dashboard route roots');
-  assertIncludes(routePermissions, 'CANONICA_ROUTES.INSTALL_CENTER', 'Canonica install center route permission');
-  assertIncludes(widgetManagement, 'CANONICA_ROUTES.INSTALL_CENTER', 'Canonica widget route must link to install center');
-  assert((canonicaNavigations.match(/CANONICA_ROUTES\.INSTALL_CENTER/g) || []).length === 1, 'Canonica sidebar must not duplicate the Install Center route');
-  assertNotIncludes(canonicaNavigations, 'widget-install-center', 'Canonica widget sidebar must not duplicate Install Center');
+  assert(exists('src/app/sites/answerlattice/agents/answerlattice/cursor/RULE.md/route.ts'), 'Answerlattice public Cursor RULE.md route must exist');
+  assertIncludes(installCenter, 'renderAnswerlatticeCursorRuleMd', 'Answerlattice Install Center Cursor current rule copy');
+  assertIncludes(installCenter, 'renderAnswerlatticeCursorRule', 'Answerlattice Install Center Cursor legacy fallback copy');
+  assertIncludes(answerlatticeRoutes, 'INSTALL_CENTER', 'Answerlattice install center route constant');
+  assertIncludes(answerlatticeDomains, "'install-center'", 'Answerlattice product-host dashboard route roots');
+  assertIncludes(routePermissions, 'ANSWERLATTICE_ROUTES.INSTALL_CENTER', 'Answerlattice install center route permission');
+  assertIncludes(widgetManagement, 'ANSWERLATTICE_ROUTES.INSTALL_CENTER', 'Answerlattice widget route must link to install center');
+  assert((answerlatticeNavigations.match(/ANSWERLATTICE_ROUTES\.INSTALL_CENTER/g) || []).length === 1, 'Answerlattice sidebar must not duplicate the Install Center route');
+  assertNotIncludes(answerlatticeNavigations, 'widget-install-center', 'Answerlattice widget sidebar must not duplicate Install Center');
 
   const publicInstallCopy = [
     widgetManagement,
     installCenter,
-    canonicaQuickstarts,
-    canonicaResources,
-    canonicaDayOneLaunchPack,
-    canonicaSiteConfig,
+    answerlatticeQuickstarts,
+    answerlatticeResources,
+    answerlatticeDayOneLaunchPack,
+    answerlatticeSiteConfig,
     JSON.stringify(kitFiles),
-    contract.renderCanonicaMarkdownDoc('overview'),
-    contract.renderCanonicaMarkdownDoc('ai-agent'),
+    contract.renderAnswerlatticeMarkdownDoc('overview'),
+    contract.renderAnswerlatticeMarkdownDoc('ai-agent'),
   ].join('\n');
-  assertNotIncludes(publicInstallCopy, '@canonica/web', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'createCanonicaWebClient', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'Typed SDK', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'optional typed helper', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'Legacy compatibility', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'BLOCKED_ROUTES=', 'Canonica public install copy');
-  assertNotIncludes(publicInstallCopy, 'ALLOWED_ORIGINS=', 'Canonica public install copy');
-  assertNotIncludes(widgetManagement, "value: 'sdk'", 'Canonica widget install snippet picker');
+  assertNotIncludes(publicInstallCopy, '@answerlattice/web', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'createAnswerlatticeWebClient', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'Typed SDK', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'optional typed helper', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'Legacy compatibility', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'BLOCKED_ROUTES=', 'Answerlattice public install copy');
+  assertNotIncludes(publicInstallCopy, 'ALLOWED_ORIGINS=', 'Answerlattice public install copy');
+  assertNotIncludes(widgetManagement, "value: 'sdk'", 'Answerlattice widget install snippet picker');
 }
 
 function main() {
@@ -362,8 +362,8 @@ function main() {
     return;
   }
   verifyMenuListDiscovery();
-  verifyCanonicaDiscovery();
-  verifyCanonicaInstallContract();
+  verifyAnswerlatticeDiscovery();
+  verifyAnswerlatticeInstallContract();
   console.log('Agent-readiness discovery surfaces verified');
 }
 

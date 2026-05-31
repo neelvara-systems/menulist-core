@@ -8,7 +8,7 @@ import type {
   AssetSlot,
 } from '../../schemas/asset-schema';
 import { menuListAssetSlots } from '../../slots/menulist.asset-slots';
-import { canonicaAssetSlots } from '../../slots/canonica.asset-slots';
+import { answerlatticeAssetSlots } from '../../slots/answerlattice.asset-slots';
 
 export const REPO_ROOT = path.resolve(__dirname, '../../../..');
 export const ASSET_FACTORY_ROOT = path.join(REPO_ROOT, 'packages/asset-factory');
@@ -45,7 +45,7 @@ export function writeText(repoPath: string, content: string): void {
 }
 
 export function allAssetSlots(): AssetSlot[] {
-  return [...menuListAssetSlots, ...canonicaAssetSlots];
+  return [...menuListAssetSlots, ...answerlatticeAssetSlots];
 }
 
 export function loadManifest(): AssetManifest {
@@ -123,14 +123,14 @@ export function walkFiles(repoPath: string): string[] {
 
 export function findTrackedPublicAssetFiles(): string[] {
   const websiteAssets = walkFiles('public/images/website');
-  const canonicaTopLevel = fs
+  const answerlatticeTopLevel = fs
     .readdirSync(fromRepoPath('public'))
-    .filter((file) => file.startsWith('canonica-'))
+    .filter((file) => file.startsWith('answerlattice-'))
     .map((file) => `public/${file}`)
     .filter((repoPath) => fs.statSync(fromRepoPath(repoPath)).isFile());
-  const canonicaSplash = walkFiles('public/canonica-splash');
+  const answerlatticeSplash = walkFiles('public/answerlattice-splash');
 
-  return [...websiteAssets, ...canonicaTopLevel, ...canonicaSplash]
+  return [...websiteAssets, ...answerlatticeTopLevel, ...answerlatticeSplash]
     .filter((file) => !file.endsWith('.map'))
     .sort();
 }

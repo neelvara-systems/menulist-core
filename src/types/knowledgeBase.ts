@@ -49,7 +49,7 @@ export interface IngestionJobArticle {
     content: any;//tiptap json with provenance
     reEmbedding?: boolean;//when category or section title changes this field need to set as true
     qualityScore?: number;//0-1 confidence score based on content length, structure, source coverage
-    entityIds?: string[];//Canonica entity IDs extracted during ingestion (max 10)
+    entityIds?: string[];//Answerlattice entity IDs extracted during ingestion (max 10)
     generatedFaqs?: KnowledgeBaseGeneratedFaq[];//Reviewable FAQ suggestions generated from this article/import source
 }
 
@@ -121,8 +121,8 @@ export interface IngestionJob {
 
     // Founder Onboarding Bootstrap (additive, freeze-compliant)
     // Tracks automatic entity extraction + canonical answer draft generation after KB publish
-    // Feature-flagged: ENABLE_CANONICA_FOUNDER_ONBOARDING
-    // @see __docs__/canonica/founder-onboarding/
+    // Feature-flagged: ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING
+    // @see __docs__/answerlattice/founder-onboarding/
     onboardingBootstrap?: {
         status: 'pending' | 'extracting' | 'promoting' | 'drafting' | 'completed' | 'failed';
         entitiesExtracted: number;
@@ -209,11 +209,11 @@ export interface KnowledgeBaseArticleType {
     similarityScore?: number; // Cosine similarity (0-1), higher = more relevant
     lastReviewedOn?: Timestamp; // Content freshness tracking — when was this article last reviewed/validated
     reconciliation?: { status?: string; similarArticleIds?: string[]; similarArticles?: KnowledgeBaseArticleType[] }; // Reconciliation metadata from generation
-    entityIds?: string[]; // Canonica entity IDs linked to this article (max 10) — powers entity-centric retrieval
-    contextKeys?: string[]; // Canonica product surface keys linked to this article
-    faqIds?: string[]; // Canonica FAQ IDs linked to this article
+    entityIds?: string[]; // Answerlattice entity IDs linked to this article (max 10) — powers entity-centric retrieval
+    contextKeys?: string[]; // Answerlattice product surface keys linked to this article
+    faqIds?: string[]; // Answerlattice FAQ IDs linked to this article
     generatedFaqs?: KnowledgeBaseGeneratedFaq[]; // Review-only FAQ suggestions, removed after publish
-    tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by CANONICA_RULES Rule 6.
+    tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by ANSWERLATTICE_RULES Rule 6.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }
 

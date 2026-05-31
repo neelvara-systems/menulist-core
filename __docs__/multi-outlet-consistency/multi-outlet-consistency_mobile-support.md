@@ -47,7 +47,7 @@
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
 - Mobile More `Branch` dropdown refreshes Firebase auth claims for the selected mapped store. Switching back to HQ refreshes claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors.
 - Mobile outlet rules sheet uses the shared `OUTLET_POLICY_CATEGORIES` taxonomy with owner-facing labels, allowed/blocked state tags, an unsaved-change warning, and a discard confirmation before closing.
-- Mobile menu command bubble is offset from the Canonica help launcher so the add item/category command sheet remains reachable on phone-sized screens.
+- Mobile menu command bubble is offset from the Answerlattice help launcher so the add item/category command sheet remains reachable on phone-sized screens.
 
 ## Legacy Single-Store Repair
 

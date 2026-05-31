@@ -25,7 +25,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - **Security rules**: `.cascade/rules/SECURITY_IMPLEMENTATION_RULES.md` and `.codex/rules/SECURITY_IMPLEMENTATION_RULES.md`
 - **Mobile rules**: `.cascade/rules/MOBILE_SUPPORT_RULES.md` and `.codex/rules/MOBILE_SUPPORT_RULES.md`
 - **Documentation rules**: `.cascade/rules/DOCUMENTATION_ORGANIZATION_RULES.md` and `.codex/rules/DOCUMENTATION_ORGANIZATION_RULES.md`
-- **Canonica rules**: `.cascade/rules/CANONICA_RULES.md` and `.codex/rules/CANONICA_RULES.md`
+- **Answerlattice rules**: `.cascade/rules/ANSWERLATTICE_RULES.md` and `.codex/rules/ANSWERLATTICE_RULES.md`
 - **Master execution**: `.codex/rules/master-execution.md` and `.codex/workflows/master-execution.md`
 - **Tech stack memory**: `.windsurfrules`
 - **Windsurf workflows**: `.windsurf/workflows/`
@@ -35,11 +35,11 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 
 ### Mandatory Loading Behavior
 
-- Detect product context first: MenuList vs Canonica.
+- Detect product context first: MenuList vs Answerlattice.
 - Load context selectively based on the task. Do not load everything blindly, and do not skip relevant rule files.
 - Always treat `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md` as the development-law source when a task has feature, docs, implementation, audit, or workflow implications.
 - For MenuList work, load MenuList constitution and relevant `__docs__/[feature]/` docs when the task has lifecycle, governance, or feature-scope implications.
-- For Canonica work, load `__docs__/canonica/doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md` before implementation.
+- For Answerlattice work, load `__docs__/answerlattice/doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md` before implementation.
 - For security-sensitive work, read the security rules before editing auth, middleware, API routes, Firestore rules, logging, tenant isolation, or validation code.
 - For mobile work, read mobile support rules before editing mobile screens, sheets, hooks, or mobile UX.
 - For documentation work, read documentation organization rules before moving, creating, or restructuring docs.
@@ -52,7 +52,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 1. **Classify first**: identify product context, request stage, affected surfaces, and risk class before answering or editing.
 2. **Treat master execution as implicit**: use `.codex/workflows/master-execution.md` and `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` as the routing contract whenever a request has implementation, docs, audit, workflow, lifecycle, or unclear-stage implications.
-3. **Load the smallest correct rule set**: after routing, read the stage-specific workflow and IDE prompt, plus security/mobile/documentation/website/customer-facing/Canonica rules only when their triggers apply.
+3. **Load the smallest correct rule set**: after routing, read the stage-specific workflow and IDE prompt, plus security/mobile/documentation/website/customer-facing/Answerlattice rules only when their triggers apply.
 4. **Use source files as live authority**: `AGENTS.md` is the compact memory layer; `IDE_PROMPTS/*`, `.codex/workflows/*`, `.codex/rules/*`, `.cascade/rules/*`, and relevant `__docs__/` files remain the exact source of truth. Re-open them when wording, checklist details, or current contracts matter.
 5. **Auto-continue within safe scope**: do not wait for the user to explicitly request parity checks, final review, mobile review, docs sync, cache checks, or security checks when the selected workflow requires them. Stop only for core architecture changes, breaking changes, dependency conflicts, or genuinely ambiguous product context.
 6. **Skip only truly trivial requests**: a one-line shell answer or isolated wording change can be handled directly, but any repo behavior, owner/customer surface, public output, data contract, route, docs, or workflow request must go through this loop.
@@ -64,13 +64,13 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Choose the lightest useful loop**: small copy edits, direct shell answers, and isolated mechanical changes do not need a full strategy audit unless they touch product doctrine, public claims, legal/security/cost behavior, or source-of-truth contracts.
 - **Do not fight repeated errors**: if the same command, test, build, runtime, dependency, API, or browser error appears twice, stop guessing. Research current docs and primary sources where available, collect 3-5 plausible fixes, choose the smallest efficient fix that fits this repo's architecture, implement it, and verify.
 - **Record durable learnings**: if the confidence loop or repeated-error research reveals a reusable project rule, update the right rule/doc/memory location instead of leaving it only in chat.
-- **Keep memories current by default across the whole project**: after non-trivial MenuList, Canonica, product, architecture, mobile, security, cache, scheduler, deploy, AI, Firebase, or production-hardening work, update the appropriate project docs/rules and, when the active Codex memory policy allows, write the matching memory note before final handoff without waiting for a separate reminder.
+- **Keep memories current by default across the whole project**: after non-trivial MenuList, Answerlattice, product, architecture, mobile, security, cache, scheduler, deploy, AI, Firebase, or production-hardening work, update the appropriate project docs/rules and, when the active Codex memory policy allows, write the matching memory note before final handoff without waiting for a separate reminder.
 
 ### Firebase Infrastructure Auto-Deploy
 
-- If a change modifies Firestore rules, Firestore indexes, Storage rules, or Firebase Cloud Function logic for MenuList or Canonica, deploy the matching Firebase target in the same session after validation. Do not wait for a separate user instruction.
+- If a change modifies Firestore rules, Firestore indexes, Storage rules, or Firebase Cloud Function logic for MenuList or Answerlattice, deploy the matching Firebase target in the same session after validation. Do not wait for a separate user instruction.
 - Scope this auto-deploy rule only to Firebase rules, indexes, and Firebase function logic changes. Do not use it to deploy unrelated Next.js, website, hosting, or app changes unless the user explicitly asks.
-- Use the smallest safe deploy target: MenuList uses the `ecomsai` Firebase project and default `firebase.json`; Canonica uses `firebase-canonica.json`, `firestore-canonica.rules`, `firestore-canonica.indexes.json`, and `functions-canonica/`.
+- Use the smallest safe deploy target: MenuList uses the `ecomsai` Firebase project and default `firebase.json`; Answerlattice uses `firebase-answerlattice.json`, `firestore-answerlattice.rules`, `firestore-answerlattice.indexes.json`, and `functions-answerlattice/`.
 - If validation or deploy fails, fix and retry when safe; if blocked by credentials, project access, missing secrets, or destructive deploy risk, report the blocker with the exact command and error.
 
 ### Vercel Deployment Guard
@@ -107,8 +107,8 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Product Architecture
 
 - **MenuList**: Canonical public business truth infrastructure for SMB restaurants
-- **Canonica**: Support Knowledge Control Plane for SaaS (separate product)
-- **Website Asset Operating System**: Internal-only, separate-product-style asset architecture for MenuList/Canonica website media; never public by default
+- **Answerlattice**: Governed Answer Infrastructure for SaaS Support (separate product)
+- **Website Asset Operating System**: Internal-only, separate-product-style asset architecture for MenuList/Answerlattice website media; never public by default
 - **3-Product Separation**: MenuList vs GrowthOS vs VisualMeta - never merge
 - **Infrastructure Identity**: MenuList is public utility, not SaaS software
 
@@ -179,7 +179,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Read Optimization**: Prefer client-side queries over server functions
 - **Write Patterns**: Batch operations, minimize document writes
 - **Auth Context**: User context affects security rules and costs
-- **Scheduled Function Consolidation**: Do not add new standalone MenuList scheduled Cloud Functions for operational maintenance by default. Add tasks to `functions/src/schedulers/menulistMaintenanceScheduler.ts` with an explicit cadence, per-task Firestore lease, state tracking, and Firebase cost note. Store-EOD analytics/intelligence remains in `functions/src/decisionBlocksScoring.ts`; Canonica scheduled work remains in `functions-canonica/`.
+- **Scheduled Function Consolidation**: Do not add new standalone MenuList scheduled Cloud Functions for operational maintenance by default. Add tasks to `functions/src/schedulers/menulistMaintenanceScheduler.ts` with an explicit cadence, per-task Firestore lease, state tracking, and Firebase cost note. Store-EOD analytics/intelligence remains in `functions/src/decisionBlocksScoring.ts`; Answerlattice scheduled work remains in `functions-answerlattice/`.
 
 ### Mobile Gotchas
 
@@ -233,17 +233,17 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Naming Convention**: Feature doc filenames are lowercase kebab-case with one underscore before doc type, for example `feature-name_spec.md`.
 - **Archive Rule**: Do not delete historical docs; move them to `_archive/`.
 
-### Canonica Rule Summary
+### Answerlattice Rule Summary
 
-- **Identity**: Canonica is the Support Knowledge Control Plane, separate from MenuList.
-- **Doctrine First**: Read the 3 Canonica doctrine files before Canonica work.
-- **Flags and Constants**: Use `ENABLE_CANONICA_*` flags and `CANONICA_*` database constants.
-- **Tenant Shape**: Canonica documents use `pId`, `tId`, and `sId`; do not invent alternate tenant field names.
+- **Identity**: Answerlattice is the Governed Answer Infrastructure, separate from MenuList.
+- **Doctrine First**: Read the 3 Answerlattice doctrine files before Answerlattice work.
+- **Flags and Constants**: Use `ENABLE_ANSWERLATTICE_*` flags and `ANSWERLATTICE_*` database constants.
+- **Tenant Shape**: Answerlattice documents use `pId`, `tId`, and `sId`; do not invent alternate tenant field names.
 - **Canonical Retrieval**: Canonical answers take priority over RAG.
-- **Organization**: Canonica docs live under `__docs__/canonica/`; code lives under `/canonica/` subfolders.
-- **Infrastructure Separation**: Separate Firebase project, Cloud Functions, and clients for Canonica.
-- **Canonica Memory Discipline**: After non-trivial Canonica AI, RAG, widget, Firebase, scheduler, runtime, deploy, or production-hardening work, update the dedicated Canonica memory/docs before final handoff when active memory policy allows it.
-- **Pre-Onboarding Maintenance**: Treat the Canonica Pre-Onboarding Input Kit as a first-class onboarding surface. `/pre-onboarding` is the primary human route; markdown prompt, owner guide, agent guide, and `/pre-onboarding/guide` are companion utility routes. When Knowledge Intake limits, source/payload shape, product-surface mapping, live-support gates, widget context, screenshot policy, source-access limits, AI IDE capability boundaries, or onboarding positioning changes, update the public prompt, owner guide, agent guide, feature docs, header/mobile/footer navigation, homepage placement, resources links, get-started placement, sitemap/site config, and LLM context in the same pass. MenuList's package is the reference coverage standard, but the public process must stay product-shape agnostic with `repo_and_website`, `multi_product_repo`, `website_only`, `docs_only`, `owner_notes_only`, and `mixed` modes, explicit copy/paste placeholders, and `Not available` / `Not applicable` handling instead of invented source coverage. If one repo contains multiple products, map product-like surfaces first, target the named product only, include shared infrastructure only when support-relevant, and document sister-product exclusions. Market-adjacent outputs such as FAQ seeds, demo walkthrough briefs, website claim briefs, screenshots, API support maps, and support-export summaries stay review-ready until owner approval. Never claim the prompt guarantees perfect output across every AI IDE, private repo, login-only app, restricted website, file, recording, product shape, or model; blocked sources stay pending.
+- **Organization**: Answerlattice docs live under `__docs__/answerlattice/`; code lives under `/answerlattice/` subfolders.
+- **Infrastructure Separation**: Separate Firebase project, Cloud Functions, and clients for Answerlattice.
+- **Answerlattice Memory Discipline**: After non-trivial Answerlattice AI, RAG, widget, Firebase, scheduler, runtime, deploy, or production-hardening work, update the dedicated Answerlattice memory/docs before final handoff when active memory policy allows it.
+- **Pre-Onboarding Maintenance**: Treat the Answerlattice Pre-Onboarding Input Kit as a first-class onboarding surface. `/pre-onboarding` is the primary human route; markdown prompt, owner guide, agent guide, and `/pre-onboarding/guide` are companion utility routes. When Knowledge Intake limits, source/payload shape, product-surface mapping, live-support gates, widget context, screenshot policy, source-access limits, AI IDE capability boundaries, or onboarding positioning changes, update the public prompt, owner guide, agent guide, feature docs, header/mobile/footer navigation, homepage placement, resources links, get-started placement, sitemap/site config, and LLM context in the same pass. MenuList's package is the reference coverage standard, but the public process must stay product-shape agnostic with `repo_and_website`, `multi_product_repo`, `website_only`, `docs_only`, `owner_notes_only`, and `mixed` modes, explicit copy/paste placeholders, and `Not available` / `Not applicable` handling instead of invented source coverage. If one repo contains multiple products, map product-like surfaces first, target the named product only, include shared infrastructure only when support-relevant, and document sister-product exclusions. Market-adjacent outputs such as FAQ seeds, demo walkthrough briefs, website claim briefs, screenshots, API support maps, and support-export summaries stay review-ready until owner approval. Never claim the prompt guarantees perfect output across every AI IDE, private repo, login-only app, restricted website, file, recording, product shape, or model; blocked sources stay pending.
 
 ### Tech Stack Freeze
 
@@ -269,7 +269,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Public Entity Addressability**: Customer-facing items and business entities should have stable, human-readable URLs when they are intended to be shareable/indexable.
 - **Public Cache Invalidation**: Any code path that writes public-facing `projects` or `stores` truth must invalidate the public menu/OBP cache. Client/browser DAL paths must use `src/lib/cache/publicClientCache.ts`; server/API paths must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. This applies to desktop, mobile, direct Firestore writes, API routes, special menus, PWA/customer app settings, and multi-outlet propagation/override flows.
 - **Website Auto-Sync**: If a feature changes public/customer-visible capability, check whether website copy, help docs, and output surfaces need updating.
-- **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Canonica website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/VisualMeta.
+- **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Answerlattice website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/VisualMeta.
 
 ---
 
@@ -283,9 +283,9 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Zero Cognitive Load**: If it makes owners think, don't ship
 - **MenuList Memory Discipline**: After non-trivial MenuList owner, customer-facing, mobile, public-output, Firebase, cache, AI, billing, analytics, deploy, or production-hardening work, preserve durable decisions, commands, blockers, and verification results in the appropriate docs/rules/memory before final handoff when active memory policy allows it.
 
-### Canonica Identity (if working on Canonica)
+### Answerlattice Identity (if working on Answerlattice)
 
-- **Support Knowledge Control Plane**: Help center, KB, tickets, chat
+- **Governed Answer Infrastructure**: Help center, KB, tickets, chat
 - **5 Pillars**: Canonical answers, drift detection, etc.
 - **Infrastructure Freeze**: Independent 3-year freeze
 - **Non-Goals Charter**: What NOT to build (feature rejection filter)
@@ -296,7 +296,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ### Master Execution Protocol
 
-- **Product Detection**: Auto-detect MenuList vs Canonica context
+- **Product Detection**: Auto-detect MenuList vs Answerlattice context
 - **Context Loading**: Load appropriate constitution/rules/doctrine
 - **Workflow Routing**: 17 integrated workflows
 - **Validation**: Web search + codebase reuse + ChatGPT input handling
@@ -376,7 +376,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - Verify operational monitoring for modified API routes and Cloud Functions.
 - Verify public content language governance and website/help/changelog impact when public capability changes.
 - Verify public cache invalidation for any touched public-facing `projects` or `stores` write path, including direct Firestore writes that bypass shared desktop/mobile DAL functions.
-- Deploy changed Firebase rules, indexes, or Firebase function logic to the matching MenuList or Canonica Firebase target after validation; this applies only to those infrastructure changes.
+- Deploy changed Firebase rules, indexes, or Firebase function logic to the matching MenuList or Answerlattice Firebase target after validation; this applies only to those infrastructure changes.
 - Run `npx tsc --noEmit --incremental false` unless the task is documentation-only.
 - Preserve important decisions in docs when they would otherwise be lost in chat.
 
@@ -392,7 +392,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ### Key Directories
 
-- `__docs__/`: All documentation (constitution, features, canonica)
+- `__docs__/`: All documentation (constitution, features, answerlattice)
 - `IDE_PROMPTS/`: Development workflow prompts
 - `.cascade/rules/`: Security and implementation rules
 - `src/config/features.ts`: Feature flag management
@@ -442,7 +442,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Data Reuse**: Cache results, avoid duplicate reads
 - **Query Optimization**: Index planning, selective fetching
 - **Real-time Updates**: Use judiciously, cost-aware
-- **Scheduler Discipline**: Cloud Scheduler jobs should stay consolidated by product and workload class. MenuList operational maintenance goes through `menulistMaintenanceScheduler`; MenuList store-EOD work goes through `computeDecisionBlocksScores`; Canonica runs in its own scheduler/package. A new scheduled trigger requires explicit architecture justification, cost impact in INR, and docs update.
+- **Scheduler Discipline**: Cloud Scheduler jobs should stay consolidated by product and workload class. MenuList operational maintenance goes through `menulistMaintenanceScheduler`; MenuList store-EOD work goes through `computeDecisionBlocksScores`; Answerlattice runs in its own scheduler/package. A new scheduled trigger requires explicit architecture justification, cost impact in INR, and docs update.
 
 ---
 
@@ -487,7 +487,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 ### Decision Hierarchy
 
 1. **Security Rules** - Highest authority; cannot be overridden by user preference
-2. **MenuList Constitution / Canonica Doctrine** - Product identity and governance
+2. **MenuList Constitution / Answerlattice Doctrine** - Product identity and governance
 3. **AGENTS.md** - Persistent brain and architecture truths
 4. **Master Execution Rules** - Workflow routing and bug-fix discipline
 5. **Mobile Support Rules** - Platform-specific requirements

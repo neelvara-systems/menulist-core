@@ -6,16 +6,16 @@
 
 MenuList is a Next.js App Router codebase with multiple route groups:
 
-- `src/app/(website)/`  
+- `src/app/(website)/`
   Public marketing/site pages for the product and legal/marketing surfaces.
-- `src/app/(main)/`  
+- `src/app/(main)/`
   Authenticated owner/admin product app.
-- `src/app/client/[[...slug]]/`  
+- `src/app/client/[[...slug]]/`
   Tenant/public customer-facing rendering for menus and official pages.
-- `src/app/(global-pages)/`  
+- `src/app/(global-pages)/`
   Shared global app routes (signin/error/forgot-password, etc.).
-- `src/app/sites/canonica`  
-  Canonica-siloed product route area (do not blend with MenuList logic).
+- `src/app/sites/answerlattice`
+  Answerlattice-siloed product route area (do not blend with MenuList logic).
 
 ## 2) Domain + tenant routing
 
@@ -28,7 +28,7 @@ MenuList is a Next.js App Router codebase with multiple route groups:
   - tenant context headers like `x-tenant-subdomain`, `x-tenant-custom-domain`
 - Domain behavior is strict by product and should not be changed casually:
   - MenuList website domain vs platform domain vs tenant/public slugs
-  - Canonica route separation preserved
+  - Answerlattice route separation preserved
 
 ## 3) Runtime layers
 
@@ -112,9 +112,9 @@ No unnecessary framework/library swaps for “modernization” unless explicitly
 
 For any touched behavior:
 
-1. Validate in docs/spec first  
-2. Confirm owner/public parity impact  
-3. Confirm tenant routing and header path behavior  
-4. Validate cache and write consistency  
-5. Run type/lint  
+1. Validate in docs/spec first
+2. Confirm owner/public parity impact
+3. Confirm tenant routing and header path behavior
+4. Validate cache and write consistency
+5. Run type/lint
 6. Recheck UI behavior in desktop + mobile + public browser route

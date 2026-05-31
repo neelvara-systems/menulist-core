@@ -1,7 +1,7 @@
 {
   "name": "MyCodex",
   "short_name": "MyCodex",
-  "description": "Private documentation reader for MenuList and Canonica operating knowledge.",
+  "description": "Private documentation reader for MenuList and Answerlattice operating knowledge.",
   "theme_color": "#09090b",
   "background_color": "#09090b",
   "display": "standalone",

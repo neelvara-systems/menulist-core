@@ -3,7 +3,7 @@
     "default": "ecomsai",
     "menulist-qa": "ecomsai",
     "menulist-prod": "menulist",
-    "canonica-qa": "canonica-qa",
-    "canonica-prod": "canonica"
+    "answerlattice-qa": "answerlattice-qa",
+    "answerlattice-prod": "answerlattice"
   }
 }

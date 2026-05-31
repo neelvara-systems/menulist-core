@@ -162,17 +162,17 @@ https://us-central1-{firebaseProject}.cloudfunctions.net/messagingOnboarding/wha
 > **Enable/test checklist:** `__docs__/messaging-onboarding/messaging-onboarding_validation.md#to-enable--test`  
 > **Meta docs:** [Cloud API Get Started](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started), [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks), [Messaging Limits](https://developers.facebook.com/docs/whatsapp/messaging-limits), [Pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing)
 
-### Canonica (Multi-Product Setup)
+### Answerlattice (Multi-Product Setup)
 
 | #   | Task                                               | Why                                         | Priority                        | Status |
 | --- | -------------------------------------------------- | ------------------------------------------- | ------------------------------- | ------ |
-| 1   | Create Canonica Firebase project in GCP            | Canonica runs on separate Firebase project  | P0 (before Canonica activation) | ⬜     |
-| 2   | Fill CANONICA*FIREBASE*\* env vars (.env + Vercel) | Required for Canonica Firestore access      | P0 (before Canonica activation) | ⬜     |
-| 3   | Move Cloud Functions to functions-canonica/        | Separate deployment for Canonica CFs        | P0 (before Canonica activation) | ⬜     |
-| 4   | Deploy both function sets                          | MenuList + Canonica CFs deployed separately | P0 (before Canonica activation) | ⬜     |
-| 5   | Enable Canonica feature flags one by one           | Phased activation per doctrine              | P0 (before Canonica activation) | ⬜     |
+| 1   | Create Answerlattice Firebase project in GCP            | Answerlattice runs on separate Firebase project  | P0 (before Answerlattice activation) | ⬜     |
+| 2   | Fill ANSWERLATTICE*FIREBASE*\* env vars (.env + Vercel) | Required for Answerlattice Firestore access      | P0 (before Answerlattice activation) | ⬜     |
+| 3   | Move Cloud Functions to functions-answerlattice/        | Separate deployment for Answerlattice CFs        | P0 (before Answerlattice activation) | ⬜     |
+| 4   | Deploy both function sets                          | MenuList + Answerlattice CFs deployed separately | P0 (before Answerlattice activation) | ⬜     |
+| 5   | Enable Answerlattice feature flags one by one           | Phased activation per doctrine              | P0 (before Answerlattice activation) | ⬜     |
 
-> **Full setup guide:** `__docs__/canonica/doctrine/10-implementation-action-items.md`
+> **Full setup guide:** `__docs__/answerlattice/doctrine/10-implementation-action-items.md`
 
 ---
 
@@ -194,7 +194,7 @@ _Move items here when done. Keep as history._
 | File                                                           | Scope                                       |
 | -------------------------------------------------------------- | ------------------------------------------- |
 | `__docs__/production-readiness/launch-prerequisites.md`        | Detailed monitoring setup guide (Steps 1-9) |
-| `__docs__/canonica/doctrine/10-implementation-action-items.md` | Detailed Canonica manual setup steps        |
+| `__docs__/answerlattice/doctrine/10-implementation-action-items.md` | Detailed Answerlattice manual setup steps        |
 | `__docs__/messaging-onboarding/messaging-onboarding_runbook.md` | WhatsApp Cloud API provider stance, secrets, monitoring, and non-actions |
 | `__docs__/messaging-onboarding/messaging-onboarding_validation.md` | Messaging onboarding enable/test checklist |
 

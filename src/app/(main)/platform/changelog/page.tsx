@@ -1,10 +1,10 @@
 import ChangelogTemplate from '@template/platform/changelog';
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
 
 function ChangelogPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Changelog Management" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Changelog Management" />;
     }
 
     return <ChangelogTemplate />;

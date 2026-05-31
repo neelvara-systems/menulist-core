@@ -7,7 +7,7 @@ import {
     updateProductSubscription,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
-import { isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -108,14 +108,14 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { tenantId, storeId } = scope;
-        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-subscription'))) {
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-subscription'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -152,7 +152,7 @@ export const POST = withAuth(async (request, session) => {
         // 🔒 CRITICAL: Verify user owns this subscription's tenant/store
         const subscriptionMatchesScope = Number(internalSub.tenantId) === Number(tenantId)
             && Number(internalSub.storeId) === Number(storeId);
-        if (!subscriptionMatchesScope || (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId, request))) {
+        if (!subscriptionMatchesScope || (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId, request))) {
             logger.security('Unauthorized Subscription Verification Attempt', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
@@ -279,7 +279,7 @@ export const POST = withAuth(async (request, session) => {
             },
         });
         await updateProductSubscription(productId, razorpay_subscription_id, updatePayload);
-        if (!isCanonicaBillingProduct(productId)) {
+        if (!isAnswerlatticeBillingProduct(productId)) {
             await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
         }
         await safeSyncProductSubscriptionEntitlementFromSubscription(
@@ -292,7 +292,7 @@ export const POST = withAuth(async (request, session) => {
             'api:verify-subscription',
         );
 
-        if (!isCanonicaBillingProduct(productId)) {
+        if (!isAnswerlatticeBillingProduct(productId)) {
             // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');

@@ -76,7 +76,7 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
 | `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
 | `src/app/api/domain/route.ts`                                       | MenuList store custom-domain management via Vercel API (POST/GET/DELETE) |
-| `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Canonica hosted help |
+| `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Answerlattice hosted help |
 | `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
 | `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
 | `src/app/_client/obp/BrandOBPContent.tsx`                           | Multi-store brand OBP (store selector)                    |
@@ -184,7 +184,7 @@ When disabled: slugs derived from name at runtime (current behavior), no redirec
 
 | Variable            | Required                 | Purpose                                                                             |
 | ------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
-| `VERCEL_TOKEN`      | Yes (for custom domains) | Vercel API Bearer token — used by `/api/domain` and Canonica hosted-help settings to add/verify/remove custom domains |
+| `VERCEL_TOKEN`      | Yes (for custom domains) | Vercel API Bearer token — used by `/api/domain` and Answerlattice hosted-help settings to add/verify/remove custom domains |
 | `VERCEL_PROJECT_ID` | Yes (for custom domains) | Vercel project ID — identifies which project to manage domains for                  |
 | `VERCEL_TEAM_ID`    | No                       | Vercel team ID — only needed for team-owned projects                                |
 
@@ -239,18 +239,18 @@ For each tenant:
 | Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
 | MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
-| Canonica | `localhost:3000/__canonica`  | `ecomsai.com`, `www.ecomsai.com`           | `canonica.app`, `www.canonica.app`         | Canonica website and product routes          |
+| Answerlattice | `localhost:3000/__answerlattice`  | `ecomsai.com`, `www.ecomsai.com`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
 
 Source of truth: `src/constants/deploymentTargets.ts`.
 
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
-MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Canonica public-site discovery.
+MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.
 
 MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
 
-MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore includes `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes so Vercel serverless functions receive the same documentation files that local `/__mycodex` reads from disk. Do not broaden this include to MenuList or Canonica routes unless those products also gain explicit filesystem-backed runtime content.
+MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore includes `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes so Vercel serverless functions receive the same documentation files that local `/__mycodex` reads from disk. Do not broaden this include to MenuList or Answerlattice routes unless those products also gain explicit filesystem-backed runtime content.
 
 | Env var | Required on Vercel | Purpose |
 | ------- | ------------------ | ------- |

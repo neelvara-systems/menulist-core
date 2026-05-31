@@ -8,7 +8,7 @@ Let the MyCodex user listen to documentation without paying for generated audio 
 
 - MyCodex only.
 - No MenuList owner/customer surface.
-- No Canonica dashboard, widget, hosted help, or knowledge runtime.
+- No Answerlattice dashboard, widget, hosted help, or knowledge runtime.
 - No provider API route.
 - No crawler/indexing behavior change beyond existing MyCodex no-index controls.
 

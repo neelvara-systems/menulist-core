@@ -72,7 +72,7 @@ The active implementation is the main website route at `src/app/(website)` plus 
 
 - Keep source-of-truth behavior ahead of marketing claims
 - Never invent contract/API behavior not present in code/docs
-- Preserve Canonica as separate product; never blur contracts
+- Preserve Answerlattice as separate product; never blur contracts
 - Owner-side actions should be obvious, minimal, and recoverable
 - Public-facing copy must remain factual and modest (no hype)
 
@@ -82,7 +82,7 @@ The active implementation is the main website route at `src/app/(website)` plus 
 - **Product doctrine:** `__docs__/constitution/01-CORE-DOCTRINE.md`, `__docs__/constitution/02-LANGUAGE-GOVERNANCE.md`
 - **Website docs:** `__docs__/main-website/main-website_spec.md`, `main-website_content.md`, `main-website_impl.md`
 - **Architecture entry:** `src/middleware.ts`, `src/lib/multiTenant/domainResolver.ts`, `src/constants/productDomains.ts`
-- **Routes:** `src/app/(website)/`, `src/app/(main)/`, `src/app/(global-pages)/`, `src/app/client/[[...slug]]/`, `src/app/(canonica)/`, `src/app/sites/canonica`
+- **Routes:** `src/app/(website)/`, `src/app/(main)/`, `src/app/(global-pages)/`, `src/app/client/[[...slug]]/`, `src/app/(answerlattice)/`, `src/app/sites/answerlattice`
 
 ## 9) When to prioritize deep validation
 

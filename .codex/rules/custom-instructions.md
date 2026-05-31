@@ -14,7 +14,7 @@ These instructions apply to all modes and provide the foundational behavior fram
 
 ## Core Identity
 
-You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions must align with MenuList's constitutional governance and infrastructure-first philosophy.
+You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions must align with the active product context: MenuList's constitutional governance for MenuList work, and Answerlattice doctrine for Answerlattice work.
 
 ---
 
@@ -27,10 +27,10 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 - Zero Cognitive Load: If it makes owners think, don't ship
 
 ### 2. Codebase Truth Hierarchy
-1. **MenuList Constitution** (`__docs__/constitution/`) - Supreme authority
+1. **Product doctrine** (`__docs__/constitution/` for MenuList, `__docs__/answerlattice/doctrine/` for Answerlattice) - Supreme authority for the active product
 2. **Master Rules** (`IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md`) - Development governance
 3. **Security Rules** (`.cascade/rules/`) - Implementation constraints
-4. **Feature Documentation** (`__docs__/[feature]/`) - Feature-specific truth
+4. **Feature Documentation** (`__docs__/[feature]/` for MenuList, `__docs__/answerlattice/[feature]/` for Answerlattice) - Feature-specific truth
 5. **Existing Code** - Current implementation reality
 
 ### 3. Zero Tolerance Bug Policy
@@ -98,7 +98,7 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 ## Workflow Integration
 
 ### Master Execution Protocol
-- Auto-detect product context (MenuList vs Canonica)
+- Auto-detect product context (MenuList vs Answerlattice)
 - Load appropriate constitution/rules/doctrine
 - Route to correct workflow automatically
 - Apply shared patterns (DAL, auth, Firebase)

@@ -31,12 +31,12 @@ If issues are found:
 
 This platform contains:
 
-MenuList — truth layer  
-Canonica — knowledge/support system
+MenuList — truth layer
+Answerlattice — governed answer infrastructure
 
 Integration model:
 
-MenuList → Canonica via Canonica Client Token (CCT)
+MenuList → Answerlattice via Answerlattice Client Token (CCT)
 
 Identity model:
 
@@ -44,13 +44,13 @@ pId / tId / sId
 
 Two Firestore databases:
 
-MenuList → ecomsai  
-Canonica → canonica
+MenuList → ecomsai
+Answerlattice → answerlattice
 
 Cloud Functions split:
 
-functions/ → MenuList  
-functions-canonica/ → Canonica
+functions/ → MenuList
+functions-answerlattice/ → Answerlattice
 
 ---
 
@@ -64,9 +64,9 @@ Example cases:
 
 Scenario:
 
-User submits ticket  
-Network fails  
-Frontend retries  
+User submits ticket
+Network fails
+Frontend retries
 Multiple requests sent
 
 Verify:
@@ -98,7 +98,7 @@ Fix any unsafe patterns.
 
 ---
 
-### Canonica Mutation Approval Race
+### Answerlattice Mutation Approval Race
 
 Simulate:
 
@@ -125,11 +125,11 @@ Common Firestore failure patterns:
 
 Audit collections:
 
-entities  
-canonicalAnswers  
-signalEvents  
-mutationProposals  
-tickets  
+entities
+canonicalAnswers
+signalEvents
+mutationProposals
+tickets
 chatSessions
 
 Check:
@@ -191,7 +191,7 @@ Check if requestId prevents duplicate effects.
 
 ### Missing source fields
 
-Ensure Canonica rejects invalid tokens.
+Ensure Answerlattice rejects invalid tokens.
 
 Fix validation logic if needed.
 
@@ -199,12 +199,12 @@ Fix validation logic if needed.
 
 # PHASE 5 — Failure Isolation Simulation
 
-Simulate Canonica infrastructure failure.
+Simulate Answerlattice infrastructure failure.
 
 Assume:
 
-• Canonica Firestore unavailable
-• Canonica callable functions fail
+• Answerlattice Firestore unavailable
+• Answerlattice callable functions fail
 • token verification service unavailable
 
 Verify MenuList behavior.
@@ -232,10 +232,10 @@ Audit all Cloud Functions for:
 
 Check:
 
-canonicaNightly  
-embedArticleWorker  
-regenerateEmbedding  
-publishApprovedJob  
+answerlatticeNightly
+embedArticleWorker
+regenerateEmbedding
+publishApprovedJob
 kbQuality
 
 Ensure:
@@ -258,9 +258,9 @@ Firestore max document size:
 
 Audit documents:
 
-tickets  
-chatSessions  
-canonicalAnswers  
+tickets
+chatSessions
+canonicalAnswers
 signalEvents
 
 Ensure:
@@ -344,8 +344,8 @@ Produce a runtime stability report including:
 
 Verdict must be:
 
-• STABLE FOR PRODUCTION  
-• STABLE WITH RISKS  
+• STABLE FOR PRODUCTION
+• STABLE WITH RISKS
 • NOT SAFE FOR PRODUCTION
 
 Fix issues where safe.

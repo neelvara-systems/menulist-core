@@ -9,7 +9,7 @@ export const FEATURE_FLAGS = {
      *
      * This is a private developer surface mounted through /__mycodex locally
      * and the dedicated menulist.digital host on Vercel. It must not claim
-     * MenuList or Canonica production domains.
+     * MenuList or Answerlattice production domains.
      */
     ENABLE_MYCODEX_READER: true,
 
@@ -26,7 +26,7 @@ export const FEATURE_FLAGS = {
      *
      * This is a separate-product-style internal architecture used only by
      * repo scripts under packages/asset-factory. It must not expose a public
-     * route, owner-facing MenuList UI, or Canonica runtime behavior.
+     * route, owner-facing MenuList UI, or Answerlattice runtime behavior.
      */
     ENABLE_WEBSITE_ASSET_OPERATING_SYSTEM: true,
 
@@ -1905,20 +1905,20 @@ export const FEATURE_FLAGS = {
     ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,
 
     /**
-     * Enable internal platform-owner Canonica intake monitor.
+     * Enable internal platform-owner Answerlattice intake monitor.
      *
-     * Route: /platform/canonica-intake
-     * API: /api/platform/canonica-intake
+     * Route: /platform/answerlattice-intake
+     * API: /api/platform/answerlattice-intake
      * Access: platformRole === 'PLATFORM' only.
      *
      * This is a read-only observability surface for recent intake jobs,
-     * support-credit ledger rows, and Canonica scheduler intake summaries.
+     * support-credit ledger rows, and Answerlattice scheduler intake summaries.
      * It does not create realtime listeners or tenant-facing controls.
      *
      * Cost when enabled: one manual refresh reads up to 40 intake jobs,
      * 40 ledger rows, and 10 scheduler logs by default.
      */
-    ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR: true,
+    ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR: true,
 
     // ═══════════════════════════════════════════════════════════════
     // PLATFORM ENTITY BLOCKS (Internal Admin Control)
@@ -1936,82 +1936,82 @@ export const FEATURE_FLAGS = {
     ENABLE_PLATFORM_ENTITY_BLOCKS: true,
 
     // ═══════════════════════════════════════════════════════════════
-    // CANONICA — Support Knowledge Control Plane
+    // ANSWERLATTICE — Governed Answer Infrastructure
     // Per doctrine: 3-YEAR ARCHITECTURE FREEZE
-    // @see __docs__/canonica/doctrine/05-architecture-evolution.md
+    // @see __docs__/answerlattice/doctrine/05-architecture-evolution.md
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Canonica Product Ontology Layer
+     * Answerlattice Product Ontology Layer
      *
      * true: Entity collections active (entities, entityRelations, entitySearchIndex)
      * false: Ontology layer disabled, existing KB behavior unchanged
      *
      * Pillar 1 of 5 — Foundation layer. Everything else depends on this.
-     * @see __docs__/canonica/doctrine/01-core-doctrine.md
+     * @see __docs__/answerlattice/doctrine/01-core-doctrine.md
      */
-    ENABLE_CANONICA_ONTOLOGY: true,
+    ENABLE_ANSWERLATTICE_ONTOLOGY: true,
 
     /**
-     * Canonica Canonical Answer Engine
+     * Answerlattice Canonical Answer Engine
      *
      * true: Canonical answer retrieval active (canonical-first, RAG fallback)
      * false: Existing RAG-only behavior unchanged
      *
      * Pillar 2 of 5 — Governed, versioned, scoped answer assets.
-     * Requires: ENABLE_CANONICA_ONTOLOGY = true
+     * Requires: ENABLE_ANSWERLATTICE_ONTOLOGY = true
      */
-    ENABLE_CANONICA_CANONICAL_ANSWERS: true,
+    ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS: true,
 
     /**
-     * Canonica Drift Detection Engine
+     * Answerlattice Drift Detection Engine
      *
      * true: 4 drift classes active (version, signal, scope conflict, orphan)
      * false: No drift detection, no governance flags
      *
      * Pillar 3 of 5 — Deterministic, rule-driven governance.
-     * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
+     * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
      */
-    ENABLE_CANONICA_DRIFT_DETECTION: true,
+    ENABLE_ANSWERLATTICE_DRIFT_DETECTION: true,
 
     /**
-     * Canonica Signal Mutation Engine
+     * Answerlattice Signal Mutation Engine
      *
      * true: Signal → mutation proposal pipeline active
      * false: Signals generate analytics only (current behavior)
      *
      * Pillar 4 of 5 — Self-improving knowledge layer.
-     * Requires: ENABLE_CANONICA_DRIFT_DETECTION = true
+     * Requires: ENABLE_ANSWERLATTICE_DRIFT_DETECTION = true
      */
-    ENABLE_CANONICA_SIGNAL_MUTATION: true,
+    ENABLE_ANSWERLATTICE_SIGNAL_MUTATION: true,
 
     /**
-     * Canonica Public API
+     * Answerlattice Public API
      *
      * true: Public canonical answer retrieval API, drift webhooks, signal ingestion
      * false: Internal-only access
      *
      * Pillar 5 of 5 — Infrastructure legitimacy.
-     * Requires: All other Canonica pillars enabled
+     * Requires: All other Answerlattice pillars enabled
      */
-    ENABLE_CANONICA_PUBLIC_API: false,
+    ENABLE_ANSWERLATTICE_PUBLIC_API: false,
 
     /**
-     * Canonica Embeddable Help Widget
+     * Answerlattice Embeddable Help Widget
      *
      * true: Widget embed script + public widget API active
      * false: Widget endpoints return 404
      *
      * Allows SaaS founders to embed a help search widget in their product.
-     * Widget authenticates via the Canonica-scoped canonicaWidgetApi credential.
+     * Widget authenticates via the Answerlattice-scoped answerlatticeWidgetApi credential.
      * Searches KB articles, returns AI answers, supports canonical-first retrieval.
      *
-     * @see __docs__/canonica/help-widget/
+     * @see __docs__/answerlattice/help-widget/
      */
-    ENABLE_CANONICA_WIDGET: true,
+    ENABLE_ANSWERLATTICE_WIDGET: true,
 
     /**
-     * Canonica Agent Install Layer
+     * Answerlattice Agent Install Layer
      *
      * true: Public install contract pages, Markdown mirrors, downloadable
      *       agent files, and dashboard-generated AI install packets are active.
@@ -2021,13 +2021,13 @@ export const FEATURE_FLAGS = {
      * This is an API & Integration layer feature. It does not enable Public API
      * v1 access and does not change widget tenant authority.
      */
-    ENABLE_CANONICA_AGENT_INSTALL: true,
+    ENABLE_ANSWERLATTICE_AGENT_INSTALL: true,
 
     /**
-     * Canonica Hosted Help Center
+     * Answerlattice Hosted Help Center
      *
      * true: Customer-owned help/docs domains such as help.example.com render
-     *       published Canonica KB, FAQ, and changelog content without a user session.
+     *       published Answerlattice KB, FAQ, and changelog content without a user session.
      * false: Hosted help domains return not found while the authenticated Help
      *        Center and widget continue to work.
      *
@@ -2035,57 +2035,57 @@ export const FEATURE_FLAGS = {
      * tenant/store-tagged public content cache. No anonymous ticket, feedback,
      * chat-history, or AI-provider work is performed on page load.
      */
-    ENABLE_CANONICA_HOSTED_HELP_CENTER: true,
+    ENABLE_ANSWERLATTICE_HOSTED_HELP_CENTER: true,
 
     /**
-     * Canonica Client Activation Command Center
+     * Answerlattice Client Activation Command Center
      *
-     * true: Canonica clients get a launch/readiness home that shows workspace,
+     * true: Answerlattice clients get a launch/readiness home that shows workspace,
      *       license, knowledge, product surfaces, widget install, context, and
      *       support signal setup from compact summary docs.
-     * false: Canonica clients use the standard governance dashboard directly.
+     * false: Answerlattice clients use the standard governance dashboard directly.
      *
      * Cost model: reads existing store + platformSummary docs; no broad KB,
      * changelog, ticket, or signal scans on page load. Runtime widget telemetry
      * is throttled onto the existing store doc.
      *
-     * @see __docs__/canonica/client-activation-command-center/
+     * @see __docs__/answerlattice/client-activation-command-center/
      */
-    ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER: true,
+    ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER: true,
 
     /**
-     * Canonica Staff Access Control
+     * Answerlattice Staff Access Control
      *
-     * true: Canonica owners can manage workspace members, roles, and
-     *       Canonica-specific permissions from /canonica/team.
+     * true: Answerlattice owners can manage workspace members, roles, and
+     *       Answerlattice-specific permissions from /answerlattice/team.
      * false: Team Access route/nav and staff APIs return unavailable.
      *
-     * Uses Canonica Firestore workspace/user documents plus the existing
-     * productAccounts.CN login bridge. It does not reuse MenuList owner
+     * Uses Answerlattice Firestore workspace/user documents plus the existing
+     * productAccounts.AL login bridge. It does not reuse MenuList owner
      * dashboard staff screens or MenuList store permission fields.
      */
-    ENABLE_CANONICA_STAFF_ACCESS: true,
+    ENABLE_ANSWERLATTICE_STAFF_ACCESS: true,
 
     /**
-     * Canonica Weekly Digest Surface
+     * Answerlattice Weekly Digest Surface
      *
-     * true: Canonica clients can review a weekly readiness/action digest built
+     * true: Answerlattice clients can review a weekly readiness/action digest built
      *       from existing compact activation, context, coverage, and trust
      *       summaries. No new scheduler or AI generation is required.
      * false: Weekly Digest route/nav item hidden.
      *
-     * Cost model: reuses /api/canonica/activation/summary instead of scanning
+     * Cost model: reuses /api/answerlattice/activation/summary instead of scanning
      * tickets, chats, KB, changelog, or signal collections.
      *
-     * @see __docs__/canonica/self-sellable-product-strategy.md
+     * @see __docs__/answerlattice/self-sellable-product-strategy.md
      */
-    ENABLE_CANONICA_WEEKLY_DIGEST: true,
+    ENABLE_ANSWERLATTICE_WEEKLY_DIGEST: true,
 
     /**
-     * Canonica Feedback Review
+     * Answerlattice Feedback Review
      *
-     * true: Canonica support-control users can review Help Center feedback,
-     *       ratings, feature requests, and suggestions inside the Canonica
+     * true: Answerlattice support-control users can review Help Center feedback,
+     *       ratings, feature requests, and suggestions inside the Answerlattice
      *       dashboard.
      * false: Feedback review route/nav item is hidden.
      *
@@ -2093,14 +2093,14 @@ export const FEATURE_FLAGS = {
      * submission writes one feedback doc and, when signal mutation is enabled,
      * one non-blocking feedback signal event.
      *
-     * @see __docs__/canonica/feedback-system/
+     * @see __docs__/answerlattice/feedback-system/
      */
-    ENABLE_CANONICA_FEEDBACK_REVIEW: true,
+    ENABLE_ANSWERLATTICE_FEEDBACK_REVIEW: true,
 
     /**
-     * Canonica Support Board
+     * Answerlattice Support Board
      *
-     * true: Canonica owners and support staff get a private support workboard
+     * true: Answerlattice owners and support staff get a private support workboard
      *       for missed questions, ticket follow-up, notes, and answer-review work.
      * false: Support Board route/nav and board DAL are hidden.
      *
@@ -2111,12 +2111,12 @@ export const FEATURE_FLAGS = {
      * Cost model: one bounded board query on load. Internal notes and status
      * history are embedded with caps to avoid extra listeners or subcollection scans.
      *
-     * @see __docs__/canonica/support-board/
+     * @see __docs__/answerlattice/support-board/
      */
-    ENABLE_CANONICA_SUPPORT_BOARD: true,
+    ENABLE_ANSWERLATTICE_SUPPORT_BOARD: true,
 
     /**
-     * Canonica Support Board Source Sync
+     * Answerlattice Support Board Source Sync
      *
      * true: support-control users can explicitly import bounded unresolved
      *       tickets and actionable support signals into Support Board cards.
@@ -2129,29 +2129,29 @@ export const FEATURE_FLAGS = {
      * Cost model when enabled: each manual sync reads up to 50 source docs and
      * writes at most 20 deduped board cards.
      *
-     * @see __docs__/canonica/support-board/
+     * @see __docs__/answerlattice/support-board/
      */
-    ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC: false,
+    ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC: false,
 
     /**
-     * Canonica Support Board Nightly Summary Read
+     * Answerlattice Support Board Nightly Summary Read
      *
      * true: Support Board reads the compact nightly summary document written by
      *       the scheduler (`platformSummary/supportBoardSummary_{tId}_{sId}`).
      * false: Support Board skips that read entirely.
      *
-     * Keep false unless `ENABLE_CANONICA_SUPPORT_BOARD_SYNC` is enabled in
-     * functions-canonica. This avoids one extra Firestore read on every board
+     * Keep false unless `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC` is enabled in
+     * functions-answerlattice. This avoids one extra Firestore read on every board
      * refresh when the nightly preparation path is not live.
      *
-     * @see __docs__/canonica/support-board/
+     * @see __docs__/answerlattice/support-board/
      */
-    ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY: false,
+    ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY: false,
 
     /**
-     * Canonica Knowledge Intake Command Center
+     * Answerlattice Knowledge Intake Command Center
      *
-     * true: Canonica owners can collect product URLs, docs, FAQs, release notes,
+     * true: Answerlattice owners can collect product URLs, docs, FAQs, release notes,
      *       pasted notes, and extracted file text into a private review workspace.
      *       Accepted drafts publish into the existing KB, FAQ, canonical-answer,
      *       product-surface, and changelog pipelines.
@@ -2161,34 +2161,34 @@ export const FEATURE_FLAGS = {
      * summary-backed, and never use realtime listeners. Runtime widget/help
      * search continues to read existing published collections.
      *
-     * @see __docs__/canonica/knowledge-intake-command-center/
+     * @see __docs__/answerlattice/knowledge-intake-command-center/
      */
-    ENABLE_CANONICA_KNOWLEDGE_INTAKE: true,
+    ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE: true,
 
     /**
-     * Canonica Intake URL Discovery
+     * Answerlattice Intake URL Discovery
      *
-     * true: Owners can provide public website/help URLs and Canonica will fetch
+     * true: Owners can provide public website/help URLs and Answerlattice will fetch
      *       a capped, SSRF-guarded page/link sample for review.
      * false: Owners can still add pasted text and extracted files manually.
      */
-    ENABLE_CANONICA_INTAKE_URL_DISCOVERY: true,
+    ENABLE_ANSWERLATTICE_INTAKE_URL_DISCOVERY: true,
 
     /**
-     * Canonica Intake Native Connectors
+     * Answerlattice Intake Native Connectors
      *
      * true: Future controlled rollout for Notion/GitHub/Drive native connectors.
      * false: Day-one intake stays file/text/URL based to avoid broad scopes and
      *        high-volume remote sync costs.
      */
-    ENABLE_CANONICA_INTAKE_NATIVE_CONNECTORS: false,
+    ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 
     /**
-     * Canonica Intake Screenshot OCR + Media Transcription
+     * Answerlattice Intake Screenshot OCR + Media Transcription
      *
      * true: Owners can upload screenshots/images and short audio/video clips.
-     *       Canonica extracts support-relevant text through Gemini, records the
-     *       AI operation, and reserves/settles Canonica support credits through
+     *       Answerlattice extracts support-relevant text through Gemini, records the
+     *       AI operation, and reserves/settles Answerlattice support credits through
      *       the intake usage ledger.
      * false: Intake remains browser-extracted text files, pasted text, and URL
      *        sources only.
@@ -2196,10 +2196,10 @@ export const FEATURE_FLAGS = {
      * Raw media is not retained as a source artifact; only the extracted,
      * sanitized support text is stored for review.
      */
-    ENABLE_CANONICA_INTAKE_MEDIA_EXTRACTION: true,
+    ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION: true,
 
     /**
-     * Canonica Email Notifications
+     * Answerlattice Email Notifications
      *
      * true: Email notifications sent for ticket replies, status changes, etc.
      * false: No notification emails sent (silent operation)
@@ -2208,70 +2208,70 @@ export const FEATURE_FLAGS = {
      * Generic and reusable — supports any notification event type via template registry.
      * Fire-and-forget: never blocks the triggering operation.
      *
-     * @see __docs__/canonica/email-notifications/
+     * @see __docs__/answerlattice/email-notifications/
      */
-    ENABLE_CANONICA_NOTIFICATIONS: true,
+    ENABLE_ANSWERLATTICE_NOTIFICATIONS: true,
 
     /**
-     * Canonica Governance UI
+     * Answerlattice Governance UI
      *
      * true: Admin governance dashboards active (answer editor, entity dashboard,
      *       drift dashboard, answer analytics, entity health scores)
      * false: Governance dashboards hidden, backend continues running silently
      *
-     * Phase 3 of Canonica build roadmap — makes backend usable for daily governance.
-     * All governance UI reads from existing Canonica collections (no new collections).
+     * Phase 3 of Answerlattice build roadmap — makes backend usable for daily governance.
+     * All governance UI reads from existing Answerlattice collections (no new collections).
      *
-     * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/canonica-build-priority-roadmap.md Phase 3
+     * Requires: ENABLE_ANSWERLATTICE_ONTOLOGY + ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 3
      */
-    ENABLE_CANONICA_GOVERNANCE_UI: true,
+    ENABLE_ANSWERLATTICE_GOVERNANCE_UI: true,
 
     /**
-     * Canonica Signal Quality Improvements
+     * Answerlattice Signal Quality Improvements
      *
      * true: Enhanced signal processing active (severity weighting, time decay,
      *       batched queries, signal TTL cleanup, answer version history)
      * false: Basic signal processing (equal weight, no decay, per-entity queries)
      *
-     * Phase 4 of Canonica build roadmap — sharpens signal quality after core loop proven.
+     * Phase 4 of Answerlattice build roadmap — sharpens signal quality after core loop proven.
      * No new collections. Enhances existing signal mutation + drift engines.
      *
-     * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
-     * @see __docs__/canonica/canonica-build-priority-roadmap.md Phase 4
+     * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
+     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
      */
-    ENABLE_CANONICA_SIGNAL_QUALITY: false,
+    ENABLE_ANSWERLATTICE_SIGNAL_QUALITY: false,
 
     /**
-     * Canonica White-Label / Custom Branding
+     * Answerlattice White-Label / Custom Branding
      *
      * true: Per-tenant branding config active (custom colors, logo, favicon,
      *       company name on help widget, KB pages, and email notifications)
-     * false: Default Canonica branding used everywhere
+     * false: Default Answerlattice branding used everywhere
      *
-     * Phase 4 of Canonica build roadmap — competitive differentiator for B2B SaaS.
+     * Phase 4 of Answerlattice build roadmap — competitive differentiator for B2B SaaS.
      * Stores branding config on existing tenant/store document (no new collection).
      *
-     * @see __docs__/canonica/canonica-build-priority-roadmap.md Phase 4
+     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
      */
-    ENABLE_CANONICA_WHITE_LABEL: false,
+    ENABLE_ANSWERLATTICE_WHITE_LABEL: false,
 
     /**
-     * Canonica Multi-Language KB Articles
+     * Answerlattice Multi-Language KB Articles
      *
      * true: Articles can have locale field + translated content stored per locale
      * false: English-only articles (current behavior)
      *
-     * Phase 4 of Canonica build roadmap — 75% of internet users non-English.
+     * Phase 4 of Answerlattice build roadmap — 75% of internet users non-English.
      * Additive field on existing kb_articles collection (no new collection).
      * Leverages existing next-intl infrastructure.
      *
-     * @see __docs__/canonica/canonica-build-priority-roadmap.md Phase 4
+     * @see __docs__/answerlattice/answerlattice-build-priority-roadmap.md Phase 4
      */
-    ENABLE_CANONICA_MULTI_LANGUAGE: false,
+    ENABLE_ANSWERLATTICE_MULTI_LANGUAGE: false,
 
     /**
-     * Canonica Context-Aware Support
+     * Answerlattice Context-Aware Support
      * true: Widget/search accepts product context payload (page, feature, workflow, entityHints, plan, role)
      *       Context boosts entity matching scores for more accurate retrieval
      * false: Retrieval uses query text only (existing behavior)
@@ -2279,14 +2279,14 @@ export const FEATURE_FLAGS = {
      * Expansion Item #1 — Foundation for 6 other expansion items.
      * Zero additional Firestore reads/writes. Context processing is in-memory only.
      *
-     * @see __docs__/canonica/context-aware-support/
+     * @see __docs__/answerlattice/context-aware-support/
      */
-    ENABLE_CANONICA_CONTEXT_AWARE: true,
+    ENABLE_ANSWERLATTICE_CONTEXT_AWARE: true,
 
     /**
-     * Canonica Product Surface Contexts
+     * Answerlattice Product Surface Contexts
      *
-     * true: Canonica owners can map product routes/pages/workflows to semantic
+     * true: Answerlattice owners can map product routes/pages/workflows to semantic
      *       support context. KB articles, changelogs, tickets, and runtime
      *       widget/search responses can use the same surface key.
      * false: Context-aware support continues to use only transient page payloads.
@@ -2294,12 +2294,12 @@ export const FEATURE_FLAGS = {
      * Uses one owner-managed collection plus one compact platformSummary read
      * model per tenant/store. Runtime reads are cached and bounded.
      *
-     * @see __docs__/canonica/product-surface-contexts/
+     * @see __docs__/answerlattice/product-surface-contexts/
      */
-    ENABLE_CANONICA_PRODUCT_SURFACES: true,
+    ENABLE_ANSWERLATTICE_PRODUCT_SURFACES: true,
 
     /**
-     * Canonica FAQ Management
+     * Answerlattice FAQ Management
      *
      * true: Owners can review, create, publish, and archive short FAQ answers
      *       linked to KB articles, product surfaces, entities, and tags.
@@ -2309,12 +2309,12 @@ export const FEATURE_FLAGS = {
      * Cost model: one bounded FAQ query for the public tab, paginated owner
      * queries, summary-backed contextual FAQ discovery, and atomic feedback writes.
      *
-     * @see __docs__/canonica/faq-management/
+     * @see __docs__/answerlattice/faq-management/
      */
-    ENABLE_CANONICA_FAQ_MANAGEMENT: true,
+    ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT: true,
 
     /**
-     * Canonica Guided Workflows (Structured Procedure Answers)
+     * Answerlattice Guided Workflows (Structured Procedure Answers)
      *
      * true: Canonical answers support answerType (explanation/navigation/procedure)
      *       with structured steps, warnings, and prerequisites.
@@ -2326,13 +2326,13 @@ export const FEATURE_FLAGS = {
      * Additive field on existing canonical answer type (freeze-compliant).
      * Zero new Firestore collections. Zero additional reads per query.
      *
-     * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/guided-workflows/
+     * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/guided-workflows/
      */
-    ENABLE_CANONICA_GUIDED_WORKFLOWS: false,
+    ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS: false,
 
     /**
-     * Canonica Instant Response Cache (Upstash Redis)
+     * Answerlattice Instant Response Cache (Upstash Redis)
      *
      * true: Canonical answer hits cached in Upstash Redis for sub-10ms responses.
      *       Only deterministic canonical answers are cached (not RAG responses).
@@ -2343,15 +2343,15 @@ export const FEATURE_FLAGS = {
      * Expansion Item #3 — Performance optimization layer.
      * Zero new Firestore collections. Uses existing Upstash Redis (same as rate limiting).
      *
-     * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/instant-response-infrastructure/
+     * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/instant-response-infrastructure/
      */
-    ENABLE_CANONICA_INSTANT_CACHE: true,
+    ENABLE_ANSWERLATTICE_INSTANT_CACHE: true,
 
     /**
-     * Canonica Compiled Context Bundles
+     * Answerlattice Compiled Context Bundles
      *
-     * true: Approved Canonica context is compiled into immutable Firebase
+     * true: Approved Answerlattice context is compiled into immutable Firebase
      *       Storage JSON bundles and served through manifest/cache-first
      *       runtime paths for widget, public API, and MCP.
      * false: Runtime paths keep existing Firestore-backed behavior.
@@ -2360,46 +2360,46 @@ export const FEATURE_FLAGS = {
      * platformSummary manifest + Storage/server cache instead of collection
      * fanout. Storage downloads are versioned and cacheable.
      *
-     * @see __docs__/canonica/compiled-context-distribution/
+     * @see __docs__/answerlattice/compiled-context-distribution/
      */
-    ENABLE_CANONICA_CONTEXT_BUNDLES: true,
+    ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES: true,
 
     /**
-     * Canonica Context Bundle Builder
+     * Answerlattice Context Bundle Builder
      *
      * true: Authenticated owners/admins can rebuild compiled context from the
      *       Activation Command Center; nightly can repair stale manifests.
      * false: Source-version and manifest read paths stay visible, but rebuild
      *        actions are disabled.
      *
-     * Requires: ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     * Requires: ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
      */
-    ENABLE_CANONICA_BUNDLE_BUILDER: true,
+    ENABLE_ANSWERLATTICE_BUNDLE_BUILDER: true,
 
     /**
-     * Canonica Widget Bundle Bootstrap
+     * Answerlattice Widget Bundle Bootstrap
      *
      * true: Widget config response includes active public bundle version and
      *       proxy paths when a ready manifest exists.
      * false: Widget config returns only the legacy remote config payload.
      *
-     * Requires: ENABLE_CANONICA_WIDGET + ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     * Requires: ENABLE_ANSWERLATTICE_WIDGET + ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
      */
-    ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP: true,
+    ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP: true,
 
     /**
-     * Canonica Public API Bundle Reads
+     * Answerlattice Public API Bundle Reads
      *
      * true: Public read endpoints prefer compiled approved bundles and fall
      *       back to bounded Firestore reads if the bundle is missing.
      * false: Public API reads use the existing Firestore read path.
      *
-     * Requires: ENABLE_CANONICA_PUBLIC_API + ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     * Requires: ENABLE_ANSWERLATTICE_PUBLIC_API + ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
      */
-    ENABLE_CANONICA_PUBLIC_API_BUNDLE_READS: true,
+    ENABLE_ANSWERLATTICE_PUBLIC_API_BUNDLE_READS: true,
 
     /**
-     * Canonica MCP
+     * Answerlattice MCP
      *
      * true: Enables session-token auth and read-only JSON-RPC MCP tools backed
      *       by private compiled context bundles.
@@ -2409,12 +2409,12 @@ export const FEATURE_FLAGS = {
      * multiply context reads quickly, so this must never query raw Firestore
      * collections per tool call.
      *
-     * Requires: ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     * Requires: ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES = true
      */
-    ENABLE_CANONICA_MCP: false,
+    ENABLE_ANSWERLATTICE_MCP: false,
 
     /**
-     * Canonica Automatic Knowledge Creation (AI Draft Generation)
+     * Answerlattice Automatic Knowledge Creation (AI Draft Generation)
      *
      * true: When new_answer_required mutation proposals are created (nightly batch
      *       or recurring fallback detection), Gemini generates a structured draft
@@ -2429,29 +2429,29 @@ export const FEATURE_FLAGS = {
      * Doctrine: "LLM assists the control plane. It never becomes the control plane."
      * AI drafts are PROPOSALS — never auto-published.
      *
-     * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
-     * @see __docs__/canonica/automatic-knowledge-creation/
+     * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
+     * @see __docs__/answerlattice/automatic-knowledge-creation/
      */
-    ENABLE_CANONICA_AUTO_KNOWLEDGE: true,
+    ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE: true,
 
     /**
-     * Canonica Product Friction Intelligence
+     * Answerlattice Product Friction Intelligence
      *
      * true: Nightly friction aggregation + weekly AI insight generation active
      * false: No friction stats computed, GovernanceHub friction tab hidden
      *
      * Expansion Item #5 — Converts support signals into product friction insights.
      * Extends existing nightly scheduler (Step 9: daily aggregation, Step 10: weekly insight).
-     * 1 new collection: canonica_frictionDailyStats.
+     * 1 new collection: answerlattice_frictionDailyStats.
      * Insights stored in platformSummary/frictionSnapshot_{tId}_{sId} + platformSummary/friction_{tId}_{sId}.
      *
-     * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
-     * @see __docs__/canonica/product-friction-intelligence/
+     * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
+     * @see __docs__/answerlattice/product-friction-intelligence/
      */
-    ENABLE_CANONICA_FRICTION_INTELLIGENCE: true,
+    ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE: true,
 
     /**
-     * Canonica Founder Onboarding (Knowledge Bootstrap Engine)
+     * Answerlattice Founder Onboarding (Knowledge Bootstrap Engine)
      *
      * true: After KB articles are published, nightly batch auto-extracts entities,
      *       auto-promotes high-confidence candidates, and generates canonical answer
@@ -2462,13 +2462,13 @@ export const FEATURE_FLAGS = {
      * Zero new Firestore collections. Uses existing entity candidates, mutation proposals, audit logs.
      * Cost: ~$0.08/tenant one-time bootstrap.
      *
-     * Requires: ENABLE_CANONICA_ONTOLOGY = true + ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/founder-onboarding/
+     * Requires: ENABLE_ANSWERLATTICE_ONTOLOGY = true + ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/founder-onboarding/
      */
-    ENABLE_CANONICA_FOUNDER_ONBOARDING: true,
+    ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING: true,
 
     /**
-     * Canonica External Workflow Integrations
+     * Answerlattice External Workflow Integrations
      *
      * true: Governance events (drift, mutations, coverage, gaps) pushed to
      *       configured external tools (Slack, Email, Linear, GitHub).
@@ -2476,17 +2476,17 @@ export const FEATURE_FLAGS = {
      * false: No integration events emitted (current behavior)
      *
      * Expansion Item #7 — Outbound event delivery for governance awareness.
-     * 2 new collections: canonica_integrationEvents, canonica_integrationDeliveryLogs.
+     * 2 new collections: answerlattice_integrationEvents, answerlattice_integrationDeliveryLogs.
      * Config in: platformSummary/integrationConfig_{tId}_{sId}.
      * Cost: ~$0.02/month at 10 tenants, ~$1.45 at 1,000 tenants.
      *
-     * Requires: ENABLE_CANONICA_DRIFT_DETECTION = true (events need drift data)
-     * @see __docs__/canonica/workflow-integrations/
+     * Requires: ENABLE_ANSWERLATTICE_DRIFT_DETECTION = true (events need drift data)
+     * @see __docs__/answerlattice/workflow-integrations/
      */
-    ENABLE_CANONICA_WORKFLOW_INTEGRATIONS: true,
+    ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS: true,
 
     /**
-     * Canonica AI Failure Escalation
+     * Answerlattice AI Failure Escalation
      *
      * true: Escalation detection in coreSearch() pipeline. Low-confidence answers
      *       trigger "Still need help?" UI. Tickets created with retrieval debug,
@@ -2497,13 +2497,13 @@ export const FEATURE_FLAGS = {
      * Zero new Firestore collections. Enriches existing ticket + signal docs.
      * Cost: ~$0.01/month at 10 tenants.
      *
-     * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true (for canonical confidence)
-     * @see __docs__/canonica/ai-failure-escalation/
+     * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true (for canonical confidence)
+     * @see __docs__/answerlattice/ai-failure-escalation/
      */
-    ENABLE_CANONICA_AI_ESCALATION: false,
+    ENABLE_ANSWERLATTICE_AI_ESCALATION: false,
 
     /**
-     * Canonica Ticket → Knowledge Loop (Expansion Item #9)
+     * Answerlattice Ticket → Knowledge Loop (Expansion Item #9)
      *
      * true: Ticket resolution signals enriched with conversation data.
      *       Nightly batch extracts knowledge candidates from resolved ticket clusters.
@@ -2513,14 +2513,14 @@ export const FEATURE_FLAGS = {
      * Accumulation architecture: requires 3+ resolved tickets per entity before extraction.
      * Max 5 drafts per nightly run. Working estimate: ~INR 10/tenant/month.
      *
-     * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
-     * Requires: ENABLE_CANONICA_AUTO_KNOWLEDGE = true (for draft generation)
-     * @see __docs__/canonica/ticket-knowledge-loop/
+     * Requires: ENABLE_ANSWERLATTICE_SIGNAL_MUTATION = true
+     * Requires: ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE = true (for draft generation)
+     * @see __docs__/answerlattice/ticket-knowledge-loop/
      */
-    ENABLE_CANONICA_TICKET_KNOWLEDGE: true,
+    ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE: true,
 
     /**
-     * Canonica Founder Trust Layer (Trust Metrics Dashboard)
+     * Answerlattice Founder Trust Layer (Trust Metrics Dashboard)
      *
      * true: Nightly batch aggregates 4 trust metrics (coverage, resolution, drift, entity health)
      *       into platformSummary/trustMetrics_{tId}_{sId}. GovernanceHub shows "System Trust" tab
@@ -2531,30 +2531,30 @@ export const FEATURE_FLAGS = {
      * Zero new Firestore collections. 1 platformSummary doc per tenant.
      * Cost: ~$0.001/month at 10 tenants.
      *
-     * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS + ENABLE_CANONICA_DRIFT_DETECTION = true
-     * @see __docs__/canonica/founder-trust-layer/
+     * Requires: ENABLE_ANSWERLATTICE_ONTOLOGY + ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS + ENABLE_ANSWERLATTICE_DRIFT_DETECTION = true
+     * @see __docs__/answerlattice/founder-trust-layer/
      */
-    ENABLE_CANONICA_TRUST_METRICS: true,
+    ENABLE_ANSWERLATTICE_TRUST_METRICS: true,
 
     /**
-     * Canonica Knowledge Graph Exploitation (Multi-Entity Retrieval)
+     * Answerlattice Knowledge Graph Exploitation (Multi-Entity Retrieval)
      *
      * true: Retrieval expands matched entities via 1-hop graph traversal,
      *       detects cross-feature interactions, and suggests related entities.
-     *       Precomputed graph index rebuilt nightly from canonica_entityRelations.
+     *       Precomputed graph index rebuilt nightly from answerlattice_entityRelations.
      * false: Single-entity retrieval only (existing behavior unchanged).
      *
      * Expansion Item #11 — Makes entity relationships work during retrieval.
      * Zero new Firestore collections. Uses platformSummary/entityGraphIndex_{tId}_{sId}.
      * Cost: 1 summary read per tenant/server cache window when graph cache misses.
      *
-     * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/knowledge-graph-exploitation/
+     * Requires: ENABLE_ANSWERLATTICE_ONTOLOGY + ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/knowledge-graph-exploitation/
      */
-    ENABLE_CANONICA_KNOWLEDGE_GRAPH: true,
+    ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH: true,
 
     /**
-     * Canonica Predictive Support (Proactive Help Triggers)
+     * Answerlattice Predictive Support (Proactive Help Triggers)
      *
      * true: Widget runtime can call predictive-help API on page entry.
      *       Rule-based triggers evaluate context and return proactive suggestions.
@@ -2562,15 +2562,15 @@ export const FEATURE_FLAGS = {
      * false: No proactive help. Widget only shows reactive search results.
      *
      * Expansion Item #12 — Prevents support tickets before they happen.
-     * 1 new collection: canonica_predictiveTriggers.
+     * 1 new collection: answerlattice_predictiveTriggers.
      * 1 platformSummary doc: predictiveTriggers_{tId}_{sId} (read-optimized cache).
      * Cooldowns via existing Upstash Redis.
      * Cost: ~$0.16/month at 10 tenants, ~$22.69 at 1,000 tenants.
      *
-     * Requires: ENABLE_CANONICA_CONTEXT_AWARE + ENABLE_CANONICA_CANONICAL_ANSWERS = true
-     * @see __docs__/canonica/predictive-support/
+     * Requires: ENABLE_ANSWERLATTICE_CONTEXT_AWARE + ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
+     * @see __docs__/answerlattice/predictive-support/
      */
-    ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
+    ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT: true,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

@@ -18,13 +18,13 @@ import {
     LuX,
 } from 'react-icons/lu';
 import {
-    CANONICA_CHAT_IMAGE_ACCEPT,
-    CANONICA_CHAT_IMAGE_ALLOWED_LABEL,
-    CANONICA_CHAT_IMAGE_MAX_BYTES,
-    isAllowedCanonicaChatImageMimeType,
-    normalizeCanonicaChatImageMimeType,
+    ANSWERLATTICE_CHAT_IMAGE_ACCEPT,
+    ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL,
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
+    isAllowedAnswerlatticeChatImageMimeType,
+    normalizeAnswerlatticeChatImageMimeType,
     stripDataUrlPrefix,
-} from '@lib/canonica/chatImagePolicy';
+} from '@lib/answerlattice/chatImagePolicy';
 
 const MAX_SESSION_MESSAGES = 5;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
@@ -246,25 +246,25 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     }, []);
 
     const closeWidget = useCallback(() => {
-        window.parent?.postMessage({ type: 'canonica-widget-close' }, '*');
+        window.parent?.postMessage({ type: 'answerlattice-widget-close' }, '*');
     }, []);
 
     // Listen for context updates from embed script via postMessage
     useEffect(() => {
         const handler = (e: MessageEvent) => {
             if (e.source !== window.parent) return;
-            if (e.data?.type === 'canonica-context-update') {
+            if (e.data?.type === 'answerlattice-context-update') {
                 const nextContext = sanitizeContextPayload(e.data.context);
                 setProductContext(nextContext);
             }
-            if (e.data?.type === 'canonica-widget-visibility') {
+            if (e.data?.type === 'answerlattice-widget-visibility') {
                 const nextHistoryMode: WidgetHistoryMode = e.data.historyMode === 'forget' ? 'forget' : 'session';
                 setHistoryMode(nextHistoryMode);
                 if (e.data.state === 'closed' && e.data.clearHistory) {
                     clearConversation();
                 }
             }
-            if (e.data?.type === 'canonica-widget-config') {
+            if (e.data?.type === 'answerlattice-widget-config') {
                 const nextAccentColor = normalizeHexColor(e.data.config?.accentColor);
                 if (nextAccentColor) setAccentColor(nextAccentColor);
 
@@ -282,10 +282,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     setPoweredByVisible(e.data.config.poweredByVisible);
                 }
             }
-            if (e.data?.type === 'canonica-widget-clear-history') {
+            if (e.data?.type === 'answerlattice-widget-clear-history') {
                 clearConversation();
             }
-            if (e.data?.type === 'canonica-predictive-suggestion' && e.data.suggestion) {
+            if (e.data?.type === 'answerlattice-predictive-suggestion' && e.data.suggestion) {
                 const suggestion = e.data.suggestion;
                 const title = typeof suggestion.title === 'string' ? suggestion.title.slice(0, 160) : '';
                 const summary = typeof suggestion.summary === 'string' ? suggestion.summary.slice(0, 600) : '';
@@ -312,7 +312,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             }
         };
         window.addEventListener('message', handler);
-        window.parent?.postMessage({ type: 'canonica-widget-ready' }, '*');
+        window.parent?.postMessage({ type: 'answerlattice-widget-ready' }, '*');
         return () => window.removeEventListener('message', handler);
     }, [clearConversation]);
 
@@ -437,16 +437,16 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     // Image upload handler
     const handleImageSelect = (file: File) => {
-        const normalizedMimeType = normalizeCanonicaChatImageMimeType(file.type);
-        const maxImageSizeMb = Math.floor(CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024));
+        const normalizedMimeType = normalizeAnswerlatticeChatImageMimeType(file.type);
+        const maxImageSizeMb = Math.floor(ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / (1024 * 1024));
 
-        if (file.size > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+        if (file.size > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
             setError(`Image must be less than ${maxImageSizeMb}MB`);
             return;
         }
 
-        if (!isAllowedCanonicaChatImageMimeType(normalizedMimeType)) {
-            setError(`Only ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`);
+        if (!isAllowedAnswerlatticeChatImageMimeType(normalizedMimeType)) {
+            setError(`Only ${ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`);
             return;
         }
 
@@ -471,7 +471,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         const items = e.clipboardData?.items;
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (isAllowedCanonicaChatImageMimeType(items[i].type)) {
+            if (isAllowedAnswerlatticeChatImageMimeType(items[i].type)) {
                 e.preventDefault();
                 const file = items[i].getAsFile();
                 if (file) handleImageSelect(file);
@@ -782,7 +782,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept={CANONICA_CHAT_IMAGE_ACCEPT}
+                    accept={ANSWERLATTICE_CHAT_IMAGE_ACCEPT}
                     style={{ display: 'none' }}
                     onChange={(e) => { if (e.target.files?.[0]) handleImageSelect(e.target.files[0]); e.target.value = ''; }}
                 />
@@ -790,7 +790,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     style={styles.imageBtn}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
-                    title={`Attach screenshot (${CANONICA_CHAT_IMAGE_ALLOWED_LABEL}, up to 5MB)`}
+                    title={`Attach screenshot (${ANSWERLATTICE_CHAT_IMAGE_ALLOWED_LABEL}, up to 5MB)`}
                     aria-label="Attach screenshot"
                 >
                     <LuImage size={18} aria-hidden />
@@ -822,8 +822,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <div style={styles.footer}>
                     <span style={styles.footerText}>
                         Powered by{' '}
-                        <a href="https://canonica.app" target="_blank" rel="noopener noreferrer" style={{ ...styles.footerLink, color: accentColor }}>
-                            Canonica
+                        <a href="https://answerlattice.com" target="_blank" rel="noopener noreferrer" style={{ ...styles.footerLink, color: accentColor }}>
+                            Answerlattice
                         </a>
                     </span>
                 </div>

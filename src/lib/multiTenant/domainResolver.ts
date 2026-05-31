@@ -2,7 +2,7 @@
  * Multi-Tenant Domain Resolver
  * 
  * Resolves incoming requests to the correct tenant based on:
- * 1. Product website domain (e.g., canonica.app → product website)
+ * 1. Product website domain (e.g., answerlattice.com → product website)
  * 2. Custom domain (e.g., joespizza.com → client menu)
  * 3. Subdomain (e.g., joespizza.menulist.ai → client menu)
  * 4. Platform domain (e.g., menulist.ai → MenuList website)
@@ -29,7 +29,7 @@ export interface ResolvedDomain {
     hostname: string;
     subdomain?: string;        // e.g., "joespizza" from joespizza.menulist.ai
     customDomain?: string;     // e.g., "joespizza.com"
-    productSite?: ProductDomainConfig; // e.g., canonica.app → Canonica config
+    productSite?: ProductDomainConfig; // e.g., answerlattice.com → Answerlattice config
     isPlatform: boolean;
     isClient: boolean;
 }
@@ -53,7 +53,7 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
     // Normalize hostname (remove port if present)
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    // Check if it's a product website domain (canonica.app, surfaceos.app, etc.)
+    // Check if it's a product website domain (answerlattice.com, surfaceos.app, etc.)
     // Must check BEFORE platform domain check since product domains are also in PLATFORM_DOMAINS
     const productSite = resolveProductSiteByHostname(normalizedHost);
     if (productSite && productSite.id !== 'menulist') {
@@ -177,7 +177,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/api/',
         '/_next/',
         '/sites/',
-        '/__canonica',
+        '/__answerlattice',
         '/__mycodex',
         '/__surfaceos',
         '/__growthos',

@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
 import { addDoc, collection, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
@@ -9,17 +9,17 @@ import { addDoc, collection, doc, getDocs, limit, query, setDoc, where } from 'f
 const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 
 const getDocRef = async (docId: string) => {
-    return doc(canonicaFirebaseClient, `${COLLECTION}`, docId)
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId)
 }
 
 const getCollectionRef = async () => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}`)
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
 }
 
 export const addAiSearchHistory = async (data: Omit<AiSearchHistory, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await canonicaRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data);
             const docRef = await addDoc(await getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -68,7 +68,7 @@ export const findCachedSearchByCacheKey = async (
 export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHistory>) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await canonicaRequestBodyComposer(data);
+            const composedData = await answerlatticeRequestBodyComposer(data);
             await setDoc(await getDocRef(data.id), composedData, { merge: true });
             return composedData;
         },

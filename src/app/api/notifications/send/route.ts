@@ -29,7 +29,7 @@ const NotificationRequestSchema = z.object({
     recipientEmail: z.string().trim().email().max(254),
     recipientName: z.string().trim().max(120).optional(),
     referenceId: z.string().trim().min(1).max(160),
-    productId: z.string().trim().max(8).optional().default(PRODUCT_IDS.CANONICA),
+    productId: z.string().trim().max(8).optional().default(PRODUCT_IDS.ANSWERLATTICE),
     skipDedup: z.boolean().optional(),
     metadata: z.record(z.any()).optional().default({}),
 });
@@ -52,7 +52,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const { eventType, recipientEmail, recipientName, referenceId, metadata, productId, skipDedup } = parsed.data;
-        if (productId !== PRODUCT_IDS.CANONICA) {
+        if (productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return NextResponse.json({ error: 'Unsupported notification product' }, { status: 400 });
         }
 

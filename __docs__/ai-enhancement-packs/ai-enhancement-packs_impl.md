@@ -11,7 +11,7 @@ AI enhancement accounting is now enabled end to end for owner-billable AI operat
 
 Billable owner actions call `checkAICapacity()` before Gemini, write a `menulistAiOperations/{tId}/{sId}/{operationId}` event after a successful provider call, then call `consumeAICapacity()` to deduct `monthlyCredits` first and `topUpCredits` second. API responses return `remainingBalance`, and desktop/mobile frontend services sync that balance through `syncBalanceFromResponse()` without an extra subscription read.
 
-Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Canonica widget search, Help Center article embedding, and Canonica translation.
+Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Answerlattice widget search, Help Center article embedding, and Answerlattice translation.
 
 Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
 

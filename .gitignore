@@ -17,7 +17,7 @@
 
 # Firebase Functions
 functions/lib
-functions-canonica/lib
+functions-answerlattice/lib
 
 # misc
 .DS_Store
@@ -37,7 +37,7 @@ yarn-error.log*
 .env.production.local
 .service-account.json
 /service-account.json
-/canonica-service-account.json
+/answerlattice-service-account.json
 /*-service-account.json
 
 # Auto Generated PWA files

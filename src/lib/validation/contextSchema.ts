@@ -1,5 +1,5 @@
 /**
- * Canonica — Context Payload Validation Schema
+ * Answerlattice — Context Payload Validation Schema
  * 
  * Validates and sanitizes the product context payload sent through the v1
  * widget browser contract
@@ -11,8 +11,8 @@
  * - Size limits enforced per field
  * - No PII patterns allowed
  * 
- * Feature-flagged: ENABLE_CANONICA_CONTEXT_AWARE
- * @see __docs__/canonica/context-aware-support/
+ * Feature-flagged: ENABLE_ANSWERLATTICE_CONTEXT_AWARE
+ * @see __docs__/answerlattice/context-aware-support/
  */
 
 import { z } from 'zod';
@@ -79,10 +79,10 @@ const ContextPathSchema = z.string()
     });
 
 /**
- * Zod schema for Canonica context payload.
+ * Zod schema for Answerlattice context payload.
  * All fields optional — system degrades gracefully without context.
  */
-export const CanonicaContextSchema = z.object({
+export const AnswerlatticeContextSchema = z.object({
     contextVersion: z.number().int().min(1).max(10).optional().default(1),
     path: ContextPathSchema.optional(),
     title: ContextTitleSchema.optional(),
@@ -121,4 +121,4 @@ export const CanonicaContextSchema = z.object({
     }
 });
 
-export type ValidatedContextPayload = z.infer<typeof CanonicaContextSchema>;
+export type ValidatedContextPayload = z.infer<typeof AnswerlatticeContextSchema>;

@@ -33,7 +33,7 @@
 | ID | Test | Expected |
 | --- | --- | --- |
 | BRIEF-01 | Generate brief for MenuList hero slot. | Brief includes MenuList positioning, source files, rejection rules, output formats. |
-| BRIEF-02 | Generate brief for Canonica hero motion slot. | Brief avoids generic SaaS/dashboard language and references Canonica visual system. |
+| BRIEF-02 | Generate brief for Answerlattice hero motion slot. | Brief avoids generic SaaS/dashboard language and references Answerlattice visual system. |
 | BRIEF-03 | Generate brief for unknown slot. | Command fails with clear error and lists known slots. |
 | BRIEF-04 | Missing brand context file. | Command fails and explains which source file is missing. |
 
@@ -43,7 +43,7 @@
 | --- | --- | --- |
 | REVIEW-01 | Review generated static asset with all files present. | Passes manifest, size, and fallback checks. |
 | REVIEW-02 | Review video without poster. | Fails fallback completeness. |
-| REVIEW-03 | Review Canonica asset tagged dashboard-like. | Fails brand fit. |
+| REVIEW-03 | Review Answerlattice asset tagged dashboard-like. | Fails brand fit. |
 | REVIEW-04 | Review MenuList asset with POS/payroll visuals. | Fails rejection rules. |
 | REVIEW-05 | Review real customer screenshot. | Blocks until founder approval metadata exists. |
 
@@ -62,9 +62,9 @@
 | --- | --- | --- |
 | BOUNDARY-01 | MenuList asset slot tries to describe a marketing campaign output for SMB owner. | Reject or move to GrowthOS docs. |
 | BOUNDARY-02 | VisualMeta-style content unit/workbench appears in this system. | Reject or document as future VisualMeta-only. |
-| BOUNDARY-03 | Canonica asset slot depends on MenuList tenant data. | Reject. |
+| BOUNDARY-03 | Answerlattice asset slot depends on MenuList tenant data. | Reject. |
 | BOUNDARY-04 | Asset script writes Firebase data. | Reject unless a new approved Firebase cost plan exists. |
-| BOUNDARY-05 | AssetOS uses Canonica product-surface, intake, release, feedback, or drift context. | Allow read-only source context for briefs/audits; reject writes to Canonica runtime, KB, tickets, signals, widgets, product surfaces, or Firebase data. |
+| BOUNDARY-05 | AssetOS uses Answerlattice product-surface, intake, release, feedback, or drift context. | Allow read-only source context for briefs/audits; reject writes to Answerlattice runtime, KB, tickets, signals, widgets, product surfaces, or Firebase data. |
 
 ## Implementation Commands
 
@@ -74,4 +74,4 @@
 | CMD-02 | `npm run assets:review` | Exits 0 when generated/approved files are present and under budget. |
 | CMD-03 | `npm run assets:brief -- --slot menulist.home.hero.official-source` | Writes `packages/asset-factory/briefs/menulist.home.hero.official-source.md`. |
 | CMD-04 | `npm run assets:fingerprint` | Locks watched source hashes for generated/draft assets. |
-| CMD-05 | `npm run assets:generate:missing -- --slot canonica.home.hero.support-control-motion` | Writes an internal SVG placeholder under `packages/asset-factory/published/placeholders/`. |
+| CMD-05 | `npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion` | Writes an internal SVG placeholder under `packages/asset-factory/published/placeholders/`. |

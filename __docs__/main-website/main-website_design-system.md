@@ -336,7 +336,7 @@ Rules:
 - Subtitles can use brand blue only when they clarify the card role; body copy stays `--ws-text-secondary`.
 - Footer/proof lines sit behind a top border and should express the outcome, not repeat the description.
 - Use the compact variant for dense supporting pages such as Features, Pricing decision cards, About principles, and Trust/Security pillars.
-- Do not copy Canonica colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
+- Do not copy Answerlattice colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
 
 ### 5.3 Owner Reassurance Placement
 

@@ -11,9 +11,9 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { getCanonicaWidgetKeyRecordByHash } from "@lib/canonica/widgetKeyManager";
-import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
-import { shouldUseSharedCanonicaFirebase } from "@lib/firebase/canonicaConfig";
+import { getAnswerlatticeWidgetKeyRecordByHash } from "@lib/answerlattice/widgetKeyManager";
+import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
+import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { secureLog } from "@lib/security/secureLogger";
 import { createHash } from "crypto";
@@ -122,7 +122,7 @@ export function logApiRequest(
  *
  * @returns Store data if valid key, null if invalid
  */
-export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetApi';
+export type PublicApiCredentialSource = 'publicApi' | 'answerlatticeWidgetApi';
 export type PublicApiCredentialScope =
     | 'public:read'
     | 'signals:write'
@@ -142,9 +142,9 @@ export type PublicApiKeyValidationResult = {
 export type PublicApiKeyValidationOptions = {
     allowLegacyRawFallback?: boolean;
     includePublicApi?: boolean;
-    includeCanonicaWidgetApi?: boolean;
+    includeAnswerlatticeWidgetApi?: boolean;
     cacheTtlMs?: number;
-    preferCanonicaWidgetApi?: boolean;
+    preferAnswerlatticeWidgetApi?: boolean;
 };
 
 const MAX_VALIDATION_CACHE_TTL_MS = 30_000;
@@ -158,15 +158,15 @@ const buildValidationCacheKey = (
     options: {
         allowLegacyRawFallback: boolean;
         includePublicApi: boolean;
-        includeCanonicaWidgetApi: boolean;
-        preferCanonicaWidgetApi: boolean;
+        includeAnswerlatticeWidgetApi: boolean;
+        preferAnswerlatticeWidgetApi: boolean;
     },
 ) => [
     keyHash,
     options.allowLegacyRawFallback ? 'legacy' : 'hash-only',
     options.includePublicApi ? 'with-public' : 'without-public',
-    options.includeCanonicaWidgetApi ? 'with-widget' : 'without-widget',
-    options.preferCanonicaWidgetApi ? 'prefer-widget' : 'prefer-non-widget',
+    options.includeAnswerlatticeWidgetApi ? 'with-widget' : 'without-widget',
+    options.preferAnswerlatticeWidgetApi ? 'prefer-widget' : 'prefer-non-widget',
 ].join(':');
 
 const getValidationCacheTtl = (ttlMs: number | undefined): number => {
@@ -187,21 +187,21 @@ export async function validatePublicApiKey(
     let credentialSource: PublicApiCredentialSource = 'publicApi';
     const allowLegacyRawFallback = options.allowLegacyRawFallback !== false;
     const includePublicApi = options.includePublicApi !== false;
-    const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
-    const shouldUseCanonicaDb = !shouldUseSharedCanonicaFirebase && normalizedApiKey.startsWith('cn_');
-    const dedicatedCanonicaDb = shouldUseCanonicaDb
-        && canonicaFirestoreAdmin
-        && typeof (canonicaFirestoreAdmin as any).collection === 'function'
-        ? canonicaFirestoreAdmin
+    const includeAnswerlatticeWidgetApi = Boolean(options.includeAnswerlatticeWidgetApi);
+    const shouldUseAnswerlatticeDb = !shouldUseSharedAnswerlatticeFirebase && normalizedApiKey.startsWith('al_');
+    const dedicatedAnswerlatticeDb = shouldUseAnswerlatticeDb
+        && answerlatticeFirestoreAdmin
+        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function'
+        ? answerlatticeFirestoreAdmin
         : null;
-    const preferCanonicaWidgetApi = Boolean(options.preferCanonicaWidgetApi && includeCanonicaWidgetApi);
+    const preferAnswerlatticeWidgetApi = Boolean(options.preferAnswerlatticeWidgetApi && includeAnswerlatticeWidgetApi);
     const cacheTtl = getValidationCacheTtl(options.cacheTtlMs);
     const cacheKey = cacheTtl
         ? buildValidationCacheKey(keyHash, {
             allowLegacyRawFallback,
             includePublicApi,
-            includeCanonicaWidgetApi,
-            preferCanonicaWidgetApi,
+            includeAnswerlatticeWidgetApi,
+            preferAnswerlatticeWidgetApi,
         })
         : '';
 
@@ -215,8 +215,8 @@ export async function validatePublicApiKey(
         }
     }
 
-    if (shouldUseCanonicaDb && !dedicatedCanonicaDb) {
-        secureLog('[Public API] Canonica API key validation failed closed because Canonica Firestore Admin is not configured');
+    if (shouldUseAnswerlatticeDb && !dedicatedAnswerlatticeDb) {
+        secureLog('[Public API] Answerlattice API key validation failed closed because Answerlattice Firestore Admin is not configured');
         if (cacheKey && cacheTtl) {
             validationCache.set(cacheKey, {
                 expiresAt: Date.now() + cacheTtl,
@@ -226,14 +226,14 @@ export async function validatePublicApiKey(
         return null;
     }
 
-    const getCredentialDb = () => shouldUseCanonicaDb
-        ? dedicatedCanonicaDb!
+    const getCredentialDb = () => shouldUseAnswerlatticeDb
+        ? dedicatedAnswerlatticeDb!
         : admin.firestore();
 
-    const queryCanonicaWidgetApi = async () => {
+    const queryAnswerlatticeWidgetApi = async () => {
         const multiKeySnapshot = await getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
-            .where('canonicaWidgetApi.keyHashes', 'array-contains', keyHash)
+            .where('answerlatticeWidgetApi.keyHashes', 'array-contains', keyHash)
             .limit(1)
             .get();
 
@@ -241,21 +241,21 @@ export async function validatePublicApiKey(
 
         return getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
-            .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
+            .where('answerlatticeWidgetApi.apiKeyHash', '==', keyHash)
             .limit(1)
             .get();
     };
 
-    if (preferCanonicaWidgetApi) {
-        const widgetSnapshot = await queryCanonicaWidgetApi();
+    if (preferAnswerlatticeWidgetApi) {
+        const widgetSnapshot = await queryAnswerlatticeWidgetApi();
         if (!widgetSnapshot.empty) {
             const doc = widgetSnapshot.docs[0];
             const storeData = doc.data();
-            const widgetCredential = getCanonicaWidgetKeyRecordByHash(storeData.canonicaWidgetApi, keyHash)
-                || storeData.canonicaWidgetApi;
+            const widgetCredential = getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash)
+                || storeData.answerlatticeWidgetApi;
             const result: PublicApiKeyValidationResult = {
                 credential: widgetCredential,
-                credentialSource: 'canonicaWidgetApi',
+                credentialSource: 'answerlatticeWidgetApi',
                 storeData,
                 storeId: doc.id,
             };
@@ -291,12 +291,12 @@ export async function validatePublicApiKey(
 
     if (
         (!snapshot || snapshot.empty)
-        && includeCanonicaWidgetApi
-        && normalizedApiKey.startsWith('cn_')
-        && !preferCanonicaWidgetApi
+        && includeAnswerlatticeWidgetApi
+        && normalizedApiKey.startsWith('al_')
+        && !preferAnswerlatticeWidgetApi
     ) {
-        snapshot = await queryCanonicaWidgetApi();
-        credentialSource = 'canonicaWidgetApi';
+        snapshot = await queryAnswerlatticeWidgetApi();
+        credentialSource = 'answerlatticeWidgetApi';
     }
 
     if (!snapshot || snapshot.empty) {
@@ -312,8 +312,8 @@ export async function validatePublicApiKey(
 
     const doc = snapshot.docs[0];
     const storeData = doc.data();
-    const widgetCredential = credentialSource === 'canonicaWidgetApi'
-        ? getCanonicaWidgetKeyRecordByHash(storeData.canonicaWidgetApi, keyHash) || storeData.canonicaWidgetApi
+    const widgetCredential = credentialSource === 'answerlatticeWidgetApi'
+        ? getAnswerlatticeWidgetKeyRecordByHash(storeData.answerlatticeWidgetApi, keyHash) || storeData.answerlatticeWidgetApi
         : undefined;
     const result: PublicApiKeyValidationResult = {
         credential: credentialSource === 'publicApi'
@@ -345,11 +345,11 @@ export function hasPublicApiCredentialScope(
 
     const purpose = typeof credential.purpose === 'string' ? credential.purpose : '';
     if (requiredScope.startsWith('widget:')) {
-        return purpose === 'canonica_widget';
+        return purpose === 'answerlattice_widget';
     }
 
     if (requiredScope === 'public:read') {
-        return purpose !== 'canonica_widget';
+        return purpose !== 'answerlattice_widget';
     }
 
     if (requiredScope === 'signals:write') {

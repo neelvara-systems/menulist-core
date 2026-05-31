@@ -1,10 +1,10 @@
 import AnalyticsBackfill from "@template/platform/admin/AnalyticsBackfill";
-import CanonicaConfigNotice from "@template/platform/CanonicaConfigNotice";
-import { isCanonicaFirebaseConfigured } from "@lib/firebase/canonicaFirebaseClient";
+import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
 
 export default function AnalyticsBackfillPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Chat Backfill" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Chat Backfill" />;
     }
 
     return <AnalyticsBackfill />;

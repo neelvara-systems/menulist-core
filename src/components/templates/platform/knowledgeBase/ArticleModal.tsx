@@ -1,13 +1,13 @@
 import TiptapEditor from "@atoms/TiptapEditor";
 import { FEATURE_FLAGS } from "@config/features";
-import { getFaqsByArticleId } from '@database/canonica/faqs';
-import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
+import { getFaqsByArticleId } from '@database/answerlattice/faqs';
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
 import { addArticle, updateArticle } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { extractEditortextForComparison } from "@lib/vectorEmbeddings/articleEmbeddings";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseArticleEmbeddingPayload, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
-import { CANONICA_FAQ_STATUS, type CanonicaFaq } from "@type/canonica";
+import { ANSWERLATTICE_FAQ_STATUS, type AnswerlatticeFaq } from "@type/answerlattice";
 import { getObjectDifferance } from "@util/deepMerge";
 import { getNewIndex } from '@util/utils';
 import { Button, Col, Divider, Form, Grid, Input, InputNumber, Modal, Row, Select, Space, Tag, Tooltip, Typography, message, theme } from "antd";
@@ -42,9 +42,9 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
     const isMobile = screens.md !== true;
 
     const titleValue = Form.useWatch('title', form);
-    const showSurfaceBinding = FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && from !== 'review';
-    const showGeneratedFaqs = FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT && from === 'review';
-    const showFaqLinks = FEATURE_FLAGS.ENABLE_CANONICA_FAQ_MANAGEMENT && from !== 'review' && Boolean(editingArticle);
+    const showSurfaceBinding = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES && from !== 'review';
+    const showGeneratedFaqs = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT && from === 'review';
+    const showFaqLinks = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT && from !== 'review' && Boolean(editingArticle);
 
     const surfaceSelectOptions = useMemo(() => surfaceOptions, [surfaceOptions]);
     const isEditingArticle = Boolean(editingArticle);
@@ -123,11 +123,11 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         if (!open || !showFaqLinks || !editingArticle?.id) return;
         let mounted = true;
         getFaqsByArticleId(editingArticle.id)
-            .then((faqs: CanonicaFaq[] = []) => {
+            .then((faqs: AnswerlatticeFaq[] = []) => {
                 if (!mounted) return;
                 setFaqOptions(
                     faqs.map(faq => ({
-                        label: `${faq.question}${faq.status === CANONICA_FAQ_STATUS.PUBLISHED ? '' : ` (${faq.status.replace('_', ' ')})`}`,
+                        label: `${faq.question}${faq.status === ANSWERLATTICE_FAQ_STATUS.PUBLISHED ? '' : ` (${faq.status.replace('_', ' ')})`}`,
                         value: faq.id,
                     })),
                 );
@@ -149,7 +149,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
         setRefreshingFaqs(true);
         try {
-            const response = await fetch('/api/canonica/faqs/generate-from-article', {
+            const response = await fetch('/api/answerlattice/faqs/generate-from-article', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ articleId: editingArticle.id }),
@@ -161,7 +161,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
             const generatedFaqs = Array.isArray(result?.faqs) ? result.faqs : [];
             if (generatedFaqs.length > 0) {
-                const nextOptions = generatedFaqs.map((faq: CanonicaFaq) => ({
+                const nextOptions = generatedFaqs.map((faq: AnswerlatticeFaq) => ({
                     label: `${faq.question} (needs review)`,
                     value: faq.id,
                 }));
@@ -174,7 +174,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                 });
                 setLinkedFaqIds(previous => Array.from(new Set([
                     ...previous,
-                    ...generatedFaqs.map((faq: CanonicaFaq) => faq.id).filter(Boolean),
+                    ...generatedFaqs.map((faq: AnswerlatticeFaq) => faq.id).filter(Boolean),
                 ])));
             }
 

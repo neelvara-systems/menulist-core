@@ -17,6 +17,6 @@ MyCodex must remain readable and usable when installed as an iOS PWA, including 
 ## Non-Goals
 
 - No MenuList customer menu changes.
-- No Canonica dashboard/website changes.
+- No Answerlattice dashboard/website changes.
 - No native iOS wrapper.
 - No separate mobile app shell outside MyCodex.

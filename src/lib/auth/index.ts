@@ -495,16 +495,16 @@ const getDatabaseUserForSession = (dbUser: any): any => {
 
     // Remove both OAuth and dangerous keys using utility function
     const sanitized = removeKeys(dbUser, excludeKeys) as any;
-    const legacyCanonicaProductAccount = sanitized[`productAccounts.${PRODUCT_IDS.CANONICA}`];
+    const legacyAnswerlatticeProductAccount = sanitized[`productAccounts.${PRODUCT_IDS.ANSWERLATTICE}`];
     const productAccounts = sanitized.productAccounts && typeof sanitized.productAccounts === 'object'
         ? sanitized.productAccounts
         : undefined;
-    const normalizedProductAccounts = legacyCanonicaProductAccount && typeof legacyCanonicaProductAccount === 'object'
+    const normalizedProductAccounts = legacyAnswerlatticeProductAccount && typeof legacyAnswerlatticeProductAccount === 'object'
         ? {
             ...(productAccounts || {}),
-            [PRODUCT_IDS.CANONICA]: {
-                ...(productAccounts?.[PRODUCT_IDS.CANONICA] || {}),
-                ...legacyCanonicaProductAccount,
+            [PRODUCT_IDS.ANSWERLATTICE]: {
+                ...(productAccounts?.[PRODUCT_IDS.ANSWERLATTICE] || {}),
+                ...legacyAnswerlatticeProductAccount,
             },
         }
         : productAccounts;

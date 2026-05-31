@@ -297,23 +297,23 @@
         "notes": "Planned slot only."
       }
     },
-    "canonica.home.og.main": {
+    "answerlattice.home.og.main": {
       "status": "generated",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.home.og.main",
+      "slot": "answerlattice.home.og.main",
       "files": {
-        "og": "public/canonica-og-image.png",
-        "fallback": "public/canonica-og-image.svg"
+        "og": "public/answerlattice-og-image.png",
+        "fallback": "public/answerlattice-og-image.svg"
       },
-      "brief": "packages/asset-factory/briefs/canonica.home.og.main.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.home.og.main.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/canonica.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
-          "packages/asset-factory/brand/canonica.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
-          "__docs__/canonica/canonica-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
-          "src/app/sites/canonica/layout.tsx": "76fc212a32b8db92ae25fd9c46c7d98575ad45a01a81b2e613c0dcea212762b8",
-          "src/app/sites/canonica/components/HeroSection.tsx": "009d74f0f791189267fd5fd2dac21ff92b59232aaaa20b2739bf0973fe5426be"
+          "packages/asset-factory/slots/answerlattice.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
+          "__docs__/answerlattice/answerlattice-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
+          "src/app/sites/answerlattice/layout.tsx": "76fc212a32b8db92ae25fd9c46c7d98575ad45a01a81b2e613c0dcea212762b8",
+          "src/app/sites/answerlattice/components/HeroSection.tsx": "009d74f0f791189267fd5fd2dac21ff92b59232aaaa20b2739bf0973fe5426be"
         },
         "notes": "Locked by assets:fingerprint on 2026-05-31."
       },
@@ -325,26 +325,26 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Existing Canonica OpenGraph asset."
+        "notes": "Existing Answerlattice OpenGraph asset."
       }
     },
-    "canonica.brand.logo.mark": {
+    "answerlattice.brand.logo.mark": {
       "status": "generated",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.brand.logo.mark",
+      "slot": "answerlattice.brand.logo.mark",
       "files": {
-        "primary": "public/canonica-logo-mark.png",
-        "fallback": "public/canonica-logo.svg",
-        "wide": "public/canonica-logo-mark-wide.png"
+        "primary": "public/answerlattice-logo-mark.png",
+        "fallback": "public/answerlattice-logo.svg",
+        "wide": "public/answerlattice-logo-mark-wide.png"
       },
-      "brief": "packages/asset-factory/briefs/canonica.brand.logo.mark.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.brand.logo.mark.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/canonica.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
-          "packages/asset-factory/brand/canonica.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
-          "__docs__/canonica/canonica-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
-          "src/app/sites/canonica/components/CanonicaLogoMark.tsx": "f6a6b0e52049d15065291ad5bcf858fb008646be93ed04c2b47e30ca3479744f"
+          "packages/asset-factory/slots/answerlattice.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
+          "__docs__/answerlattice/answerlattice-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
+          "src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx": "f6a6b0e52049d15065291ad5bcf858fb008646be93ed04c2b47e30ca3479744f"
         },
         "notes": "Locked by assets:fingerprint on 2026-05-31."
       },
@@ -356,38 +356,38 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Existing Canonica logo mark assets."
+        "notes": "Existing Answerlattice logo mark assets."
       }
     },
-    "canonica.pwa.icons": {
+    "answerlattice.pwa.icons": {
       "status": "generated",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.pwa.icons",
+      "slot": "answerlattice.pwa.icons",
       "files": {
-        "primary": "public/canonica-icon-512.png",
-        "fallback": "public/canonica-icon-maskable-512.png",
-        "appleTouch": "public/canonica-apple-touch-icon.png",
-        "favicon16": "public/canonica-favicon-16.png",
-        "favicon32": "public/canonica-favicon-32.png",
-        "faviconIco": "public/canonica-favicon.ico",
-        "icon16": "public/canonica-icon-16.png",
-        "icon32": "public/canonica-icon-32.png",
-        "icon48": "public/canonica-icon-48.png",
-        "icon96": "public/canonica-icon-96.png",
-        "icon128": "public/canonica-icon-128.png",
-        "icon180": "public/canonica-icon-180.png",
-        "icon192": "public/canonica-icon-192.png",
-        "maskable192": "public/canonica-icon-maskable-192.png"
+        "primary": "public/answerlattice-icon-512.png",
+        "fallback": "public/answerlattice-icon-maskable-512.png",
+        "appleTouch": "public/answerlattice-apple-touch-icon.png",
+        "favicon16": "public/answerlattice-favicon-16.png",
+        "favicon32": "public/answerlattice-favicon-32.png",
+        "faviconIco": "public/answerlattice-favicon.ico",
+        "icon16": "public/answerlattice-icon-16.png",
+        "icon32": "public/answerlattice-icon-32.png",
+        "icon48": "public/answerlattice-icon-48.png",
+        "icon96": "public/answerlattice-icon-96.png",
+        "icon128": "public/answerlattice-icon-128.png",
+        "icon180": "public/answerlattice-icon-180.png",
+        "icon192": "public/answerlattice-icon-192.png",
+        "maskable192": "public/answerlattice-icon-maskable-192.png"
       },
-      "brief": "packages/asset-factory/briefs/canonica.pwa.icons.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.pwa.icons.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/canonica.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
-          "packages/asset-factory/brand/canonica.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
-          "__docs__/canonica/canonica-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
-          "public/canonica.webmanifest": "d915e452f32c4f00db682b4c74c05006f48f82b22f4d159a04520bcf0ff47be8",
-          "scripts/website-assets/generate-canonica-splash.js": "1149beb0d002b632aee0079ba65c7af1d9e167b02727c9383d5c863f19849e7d"
+          "packages/asset-factory/slots/answerlattice.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
+          "__docs__/answerlattice/answerlattice-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
+          "public/answerlattice.webmanifest": "d915e452f32c4f00db682b4c74c05006f48f82b22f4d159a04520bcf0ff47be8",
+          "scripts/website-assets/generate-answerlattice-splash.js": "1149beb0d002b632aee0079ba65c7af1d9e167b02727c9383d5c863f19849e7d"
         },
         "notes": "Locked by assets:fingerprint on 2026-05-31."
       },
@@ -399,33 +399,33 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Existing Canonica icon family representative files."
+        "notes": "Existing Answerlattice icon family representative files."
       }
     },
-    "canonica.pwa.splash": {
+    "answerlattice.pwa.splash": {
       "status": "generated",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.pwa.splash",
+      "slot": "answerlattice.pwa.splash",
       "files": {
-        "primary": "public/canonica-splash/apple-splash-1290x2796.png",
-        "splash640x1136": "public/canonica-splash/apple-splash-640x1136.png",
-        "splash750x1334": "public/canonica-splash/apple-splash-750x1334.png",
-        "splash828x1792": "public/canonica-splash/apple-splash-828x1792.png",
-        "splash1125x2436": "public/canonica-splash/apple-splash-1125x2436.png",
-        "splash1170x2532": "public/canonica-splash/apple-splash-1170x2532.png",
-        "splash1179x2556": "public/canonica-splash/apple-splash-1179x2556.png",
-        "splash1242x2208": "public/canonica-splash/apple-splash-1242x2208.png",
-        "splash1242x2688": "public/canonica-splash/apple-splash-1242x2688.png"
+        "primary": "public/answerlattice-splash/apple-splash-1290x2796.png",
+        "splash640x1136": "public/answerlattice-splash/apple-splash-640x1136.png",
+        "splash750x1334": "public/answerlattice-splash/apple-splash-750x1334.png",
+        "splash828x1792": "public/answerlattice-splash/apple-splash-828x1792.png",
+        "splash1125x2436": "public/answerlattice-splash/apple-splash-1125x2436.png",
+        "splash1170x2532": "public/answerlattice-splash/apple-splash-1170x2532.png",
+        "splash1179x2556": "public/answerlattice-splash/apple-splash-1179x2556.png",
+        "splash1242x2208": "public/answerlattice-splash/apple-splash-1242x2208.png",
+        "splash1242x2688": "public/answerlattice-splash/apple-splash-1242x2688.png"
       },
-      "brief": "packages/asset-factory/briefs/canonica.pwa.splash.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.pwa.splash.md",
       "sourceFingerprint": {
         "files": {
-          "packages/asset-factory/slots/canonica.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
-          "packages/asset-factory/brand/canonica.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
-          "__docs__/canonica/canonica-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
-          "src/lib/canonica/pwaAssets.ts": "a470976e611c338f17baf05a0da532f10b7bef093676110f71594eb20c7a33af",
-          "scripts/website-assets/generate-canonica-splash.js": "1149beb0d002b632aee0079ba65c7af1d9e167b02727c9383d5c863f19849e7d"
+          "packages/asset-factory/slots/answerlattice.asset-slots.ts": "fa10741c22276ed5f329ba25ed11ab9798f8068657c59a5632a75eed52bbd060",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "0c62d437ba776385caf018259ebdc5ccda7f1327f7ab3de6d75bcf18910ea9fe",
+          "__docs__/answerlattice/answerlattice-website/README.md": "85a25a806c1f9524273c8cc5d75b70960965b22aa3f27271e7ba40aa7ba160d1",
+          "src/lib/answerlattice/pwaAssets.ts": "a470976e611c338f17baf05a0da532f10b7bef093676110f71594eb20c7a33af",
+          "scripts/website-assets/generate-answerlattice-splash.js": "1149beb0d002b632aee0079ba65c7af1d9e167b02727c9383d5c863f19849e7d"
         },
         "notes": "Locked by assets:fingerprint on 2026-05-31."
       },
@@ -437,16 +437,16 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Representative generated Canonica splash asset; full family remains under public/canonica-splash."
+        "notes": "Representative generated Answerlattice splash asset; full family remains under public/answerlattice-splash."
       }
     },
-    "canonica.home.hero.support-control-motion": {
+    "answerlattice.home.hero.support-control-motion": {
       "status": "missing",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.home.hero.support-control-motion",
+      "slot": "answerlattice.home.hero.support-control-motion",
       "files": {},
-      "brief": "packages/asset-factory/briefs/canonica.home.hero.support-control-motion.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.home.hero.support-control-motion.md",
       "sourceFingerprint": {
         "notes": "Future motion slot. Founder approval required before public use."
       },
@@ -459,13 +459,13 @@
         "notes": "Planned slot only."
       }
     },
-    "canonica.home.section.authority-transfer": {
+    "answerlattice.home.section.authority-transfer": {
       "status": "missing",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.home.section.authority-transfer",
+      "slot": "answerlattice.home.section.authority-transfer",
       "files": {},
-      "brief": "packages/asset-factory/briefs/canonica.home.section.authority-transfer.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.home.section.authority-transfer.md",
       "sourceFingerprint": {
         "notes": "Future motion slot. Founder approval required before public use."
       },
@@ -478,13 +478,13 @@
         "notes": "Planned slot only."
       }
     },
-    "canonica.product.page-aware-widget.clip": {
+    "answerlattice.product.page-aware-widget.clip": {
       "status": "missing",
-      "brand": "canonica",
+      "brand": "answerlattice",
       "version": 1,
-      "slot": "canonica.product.page-aware-widget.clip",
+      "slot": "answerlattice.product.page-aware-widget.clip",
       "files": {},
-      "brief": "packages/asset-factory/briefs/canonica.product.page-aware-widget.clip.md",
+      "brief": "packages/asset-factory/briefs/answerlattice.product.page-aware-widget.clip.md",
       "sourceFingerprint": {
         "notes": "Future product proof clip. Founder review required before public use."
       },

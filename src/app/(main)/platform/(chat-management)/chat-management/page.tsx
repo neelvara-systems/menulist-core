@@ -1,10 +1,10 @@
-import CanonicaConfigNotice from "@template/platform/CanonicaConfigNotice";
+import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import ChatManagementTemplate from "@template/platform/chatManagement";
-import { isCanonicaFirebaseConfigured } from "@lib/firebase/canonicaFirebaseClient";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
 
 export default function ChatManagementPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Chat Management" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Chat Management" />;
     }
 
     return <ChatManagementTemplate />;

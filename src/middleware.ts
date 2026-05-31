@@ -3,9 +3,9 @@
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * Routing Priority:
- * 1. Active product website domains (QA ecomsai.com / prod canonica.app → /sites/canonica,
+ * 1. Active product website domains (QA ecomsai.com / prod answerlattice.com → /sites/answerlattice,
  *    menulist.digital → /sites/mycodex)
- * 2. Dev path prefixes (/__canonica → /sites/canonica) — local dev only
+ * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice) — local dev only
  * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
@@ -22,20 +22,20 @@
 
 import { CSP_ALLOWLIST, CSP_DEV_SETTINGS, buildCSPDirective } from '@config/csp-allowlist';
 import {
-    CANONICA_PRODUCT_PASSTHROUGH_PATHS,
-    getCanonicaDashboardRewritePath,
-} from '@constant/canonica/domains';
+    ANSWERLATTICE_PRODUCT_PASSTHROUGH_PATHS,
+    getAnswerlatticeDashboardRewritePath,
+} from '@constant/answerlattice/domains';
 import {
     getProductDeploymentTarget,
     isActiveProductDomain,
     resolveKnownProductIdByHostname,
 } from '@constant/deploymentTargets';
 import {
-    CANONICA_HOSTED_HELP_DEV_PREFIX,
-    CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH,
-    getCanonicaHostedHelpRewritePath,
-    isCanonicaHostedHelpCandidateHostname,
-} from '@constant/canonica/hostedHelp';
+    ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX,
+    ANSWERLATTICE_HOSTED_HELP_INTERNAL_BASE_PATH,
+    getAnswerlatticeHostedHelpRewritePath,
+    isAnswerlatticeHostedHelpCandidateHostname,
+} from '@constant/answerlattice/hostedHelp';
 import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import {
@@ -61,8 +61,8 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
     const isProduction = process.env.NODE_ENV === 'production' && !isVercelPreview;
     const isDev = !isProduction;
-    const isCanonicaWidgetRoute = request.nextUrl.pathname === '/widget' || request.nextUrl.pathname.startsWith('/widget/');
-    const frameAncestorsDirective = isCanonicaWidgetRoute
+    const isAnswerlatticeWidgetRoute = request.nextUrl.pathname === '/widget' || request.nextUrl.pathname.startsWith('/widget/');
+    const frameAncestorsDirective = isAnswerlatticeWidgetRoute
         ? 'frame-ancestors https: http://localhost:* http://127.0.0.1:*'
         : "frame-ancestors 'none'";
 
@@ -75,7 +75,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     }
 
     // A05: Security Headers (OWASP Recommendations)
-    if (!isCanonicaWidgetRoute) {
+    if (!isAnswerlatticeWidgetRoute) {
         response.headers.set('X-Frame-Options', 'DENY');
     }
     response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -157,8 +157,8 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     return response;
 }
 
-function shouldPassThroughCanonicaProductPath(pathname: string): boolean {
-    if ((CANONICA_PRODUCT_PASSTHROUGH_PATHS as readonly string[]).includes(pathname)) return true;
+function shouldPassThroughAnswerlatticeProductPath(pathname: string): boolean {
+    if ((ANSWERLATTICE_PRODUCT_PASSTHROUGH_PATHS as readonly string[]).includes(pathname)) return true;
     if (pathname.startsWith('/widget/')) return true;
 
     return shouldBypassDomainRouting(pathname);
@@ -246,9 +246,9 @@ export async function middleware(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════
     // Priority 1: Multi-Product Website Routing
     // ═══════════════════════════════════════════════════════════
-    // Product domains (canonica.app, surfaceos.app, etc.) are rewritten
-    // to internal route groups: /sites/canonica/, /sites/surfaceos/, etc.
-    // In local dev, path prefixes work too: /__canonica/pricing → /sites/canonica/pricing
+    // Product domains (answerlattice.com, surfaceos.app, etc.) are rewritten
+    // to internal route groups: /sites/answerlattice/, /sites/surfaceos/, etc.
+    // In local dev, path prefixes work too: /__answerlattice/pricing → /sites/answerlattice/pricing
 
     // Block direct access to /sites/* in production (only reachable via middleware rewrite)
     if (pathname.startsWith('/sites/') && process.env.VERCEL === '1') {
@@ -262,7 +262,7 @@ export async function middleware(request: NextRequest) {
     // SEO, canonical URLs, and tenant-domain validation stay aligned.
     if (
         process.env.VERCEL === '1'
-        && (pathname === CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH || pathname.startsWith(`${CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH}/`))
+        && (pathname === ANSWERLATTICE_HOSTED_HELP_INTERNAL_BASE_PATH || pathname.startsWith(`${ANSWERLATTICE_HOSTED_HELP_INTERNAL_BASE_PATH}/`))
     ) {
         const url = request.nextUrl.clone();
         url.pathname = '/';
@@ -270,19 +270,19 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url, 301);
     }
 
-    // Canonica hosted Help Center domains (help.example.com, docs.example.com).
+    // Answerlattice hosted Help Center domains (help.example.com, docs.example.com).
     // Middleware only routes likely support-domain hostnames; the target page
-    // validates the host against Canonica's cached public registry before
+    // validates the host against Answerlattice's cached public registry before
     // rendering any tenant content.
     if (
         domainInfo.type === 'custom'
-        && isCanonicaHostedHelpCandidateHostname(domainInfo.hostname)
+        && isAnswerlatticeHostedHelpCandidateHostname(domainInfo.hostname)
         && !shouldBypassDomainRouting(pathname)
     ) {
         const url = request.nextUrl.clone();
-        url.pathname = getCanonicaHostedHelpRewritePath(pathname);
+        url.pathname = getAnswerlatticeHostedHelpRewritePath(pathname);
         const response = NextResponse.rewrite(url);
-        response.headers.set('x-canonica-hosted-help-domain', domainInfo.hostname);
+        response.headers.set('x-answerlattice-hosted-help-domain', domainInfo.hostname);
         response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
         return applySecurityHeaders(request, response);
     }
@@ -299,8 +299,8 @@ export async function middleware(request: NextRequest) {
     }
 
     // 1a. Vercel hostname-based product routing.
-    // QA: ecomsai.com → /sites/canonica
-    // Production: canonica.app → /sites/canonica
+    // QA: ecomsai.com → /sites/answerlattice
+    // Production: answerlattice.com → /sites/answerlattice
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
 
@@ -311,22 +311,22 @@ export async function middleware(request: NextRequest) {
             }
         }
 
-        if (productConfig.id === 'canonica') {
-            if (pathname === '/canonica' || pathname.startsWith('/canonica/')) {
+        if (productConfig.id === 'answerlattice') {
+            if (pathname === '/answerlattice' || pathname.startsWith('/answerlattice/')) {
                 const url = request.nextUrl.clone();
-                url.pathname = pathname === '/canonica'
+                url.pathname = pathname === '/answerlattice'
                     ? '/dashboard'
-                    : pathname.slice('/canonica'.length) || '/dashboard';
+                    : pathname.slice('/answerlattice'.length) || '/dashboard';
                 return NextResponse.redirect(url, 301);
             }
 
-            if (shouldPassThroughCanonicaProductPath(pathname)) {
+            if (shouldPassThroughAnswerlatticeProductPath(pathname)) {
                 return applySecurityHeaders(request, NextResponse.next());
             }
 
-            const canonicaDashboardPath = getCanonicaDashboardRewritePath(pathname);
+            const answerlatticeDashboardPath = getAnswerlatticeDashboardRewritePath(pathname);
             const url = request.nextUrl.clone();
-            url.pathname = canonicaDashboardPath ||
+            url.pathname = answerlatticeDashboardPath ||
                 `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
 
             const response = NextResponse.rewrite(url);
@@ -346,14 +346,14 @@ export async function middleware(request: NextRequest) {
         );
     }
 
-    // 1b. Local dev: path-prefix product routing (/__canonica/pricing → /sites/canonica/pricing)
+    // 1b. Local dev: path-prefix product routing (/__answerlattice/pricing → /sites/answerlattice/pricing)
     if (process.env.NODE_ENV === 'development' || !process.env.VERCEL) {
-        if (pathname === CANONICA_HOSTED_HELP_DEV_PREFIX || pathname.startsWith(`${CANONICA_HOSTED_HELP_DEV_PREFIX}/`)) {
+        if (pathname === ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX || pathname.startsWith(`${ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX}/`)) {
             const url = request.nextUrl.clone();
-            const strippedPath = pathname.slice(CANONICA_HOSTED_HELP_DEV_PREFIX.length) || '/';
-            url.pathname = getCanonicaHostedHelpRewritePath(strippedPath);
+            const strippedPath = pathname.slice(ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX.length) || '/';
+            url.pathname = getAnswerlatticeHostedHelpRewritePath(strippedPath);
             const response = NextResponse.rewrite(url);
-            response.headers.set('x-canonica-hosted-help-dev', '1');
+            response.headers.set('x-answerlattice-hosted-help-dev', '1');
             return applySecurityHeaders(request, response);
         }
 
@@ -368,10 +368,10 @@ export async function middleware(request: NextRequest) {
             }
 
             const url = request.nextUrl.clone();
-            const canonicaDashboardPath = product.id === 'canonica'
-                ? getCanonicaDashboardRewritePath(strippedPath)
+            const answerlatticeDashboardPath = product.id === 'answerlattice'
+                ? getAnswerlatticeDashboardRewritePath(strippedPath)
                 : null;
-            url.pathname = canonicaDashboardPath ||
+            url.pathname = answerlatticeDashboardPath ||
                 `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);
@@ -386,7 +386,7 @@ export async function middleware(request: NextRequest) {
 
     // Legacy MenuList website route. Keep this out of next.config.js because
     // Next redirects are hostname-agnostic and would also catch
-    // canonica.app/product before Canonica's product-domain rewrite.
+    // answerlattice.com/product before Answerlattice's product-domain rewrite.
     if ((domainInfo.type === 'platform' || domainInfo.type === 'localhost') && pathname === '/product') {
         const url = request.nextUrl.clone();
         url.pathname = '/how-it-works';

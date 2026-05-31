@@ -50,7 +50,7 @@ Do not put VisualMeta projects into MenuList `projects`.
 - stale source facts invalidate affected output
 - `pId: "VM"` is required on VisualMeta-owned documents
 - cross-product source data lives in `sourceContext`
-- MenuList, Canonica, and GrowthOS data cannot be mutated from VisualMeta
+- MenuList, Answerlattice, and GrowthOS data cannot be mutated from VisualMeta
 - provider calls require cost/capacity checks before execution
 - audit logs are append-only
 

@@ -3,7 +3,7 @@ import { getFunctions } from "firebase-admin/functions";
 import * as functions from 'firebase-functions';
 import { HttpsError } from "firebase-functions/v2/https";
 import { firestoreAdmin } from "../firebaseAdmin";
-import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, CANONICA_FAQS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from "../types";
+import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, ANSWERLATTICE_FAQS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from "../types";
 
 const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
@@ -92,7 +92,7 @@ const buildPublishedFaqDraftsForArticle = (
             id,
             data: {
                 id,
-                pId: "CN",
+                pId: 'AL',
                 tId: tenantId,
                 sId: storeId,
                 uId: job.uId,
@@ -322,7 +322,7 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                 transaction.update(articleRef, updatePayload);
 
                 for (const faqDraft of faqDrafts) {
-                    const faqRef = firestoreAdmin.collection(CANONICA_FAQS_COLLECTION).doc(faqDraft.id);
+                    const faqRef = firestoreAdmin.collection(ANSWERLATTICE_FAQS_COLLECTION).doc(faqDraft.id);
                     transaction.set(faqRef, faqDraft.data, { merge: true });
                 }
             }

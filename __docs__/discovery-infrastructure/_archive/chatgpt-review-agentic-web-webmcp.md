@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-23
 **Source:** YouTube session `https://youtu.be/HdCc-KezQPk` plus ChatGPT conversation provided by the founder
-**Status:** Reviewed against live MenuList and Canonica code/docs
+**Status:** Reviewed against live MenuList and Answerlattice code/docs
 **Decision:** Partial acceptance with bounded implementation
 
 ---
@@ -16,8 +16,8 @@ The ChatGPT plan was directionally right for MenuList: MenuList should own verif
 Immediate accepted change:
 
 - tighten MenuList `llms.txt` / `llms-full.txt` around agent boundaries and unknown handling
-- add Canonica `llms.txt` / `llms-full.txt` routes so `canonica.app` has product-specific agent context
-- server-render active website JSON-LD for MenuList and Canonica public pages
+- add Answerlattice `llms.txt` / `llms-full.txt` routes so `answerlattice.com` has product-specific agent context
+- server-render active website JSON-LD for MenuList and Answerlattice public pages
 - keep redirected legacy URLs out of sitemap and agent-context inventories
 - document PAL as a discovery-infrastructure posture, not a new unbounded product surface
 
@@ -26,7 +26,7 @@ Deferred:
 - WebMCP tools
 - MenuList MCP server
 - new public mutation tools
-- direct public agent edits to business truth or Canonica canonical answers
+- direct public agent edits to business truth or Answerlattice canonical answers
 
 ---
 
@@ -45,7 +45,7 @@ Strategic interpretation:
 
 - WebMCP is an interaction layer.
 - MenuList's durable moat is the truth layer below it.
-- Canonica's durable moat is governed support knowledge, not a public chatbot promise.
+- Answerlattice's durable moat is governed support knowledge, not a public chatbot promise.
 
 ---
 
@@ -58,7 +58,7 @@ Strategic interpretation:
 | Build a Canonical Fact Graph from scratch | Partial | Existing canonical truth, MCE/MOL/snapshots, schema, public API, and discovery docs already cover much of this; do not duplicate a parallel model today |
 | Public agents should get read-only business/menu facts and handoff links | Agree | Agent context files now state this boundary |
 | Public agents should directly update prices, hours, POS, orders, or canonical answers | Reject | Owner/admin verification remains required |
-| Add Canonica to the same PAL plan | Partial | Canonica is a separate product; it gets product-specific agent context files, not MenuList business-truth positioning |
+| Add Answerlattice to the same PAL plan | Partial | Answerlattice is a separate product; it gets product-specific agent context files, not MenuList business-truth positioning |
 | Add MCP server now | Defer | Needs security, cost, API scope, evals, and docs-first implementation |
 | Add WebMCP tools now | Defer | Needs origin-trial maturity, typed React attribute handling, feature flags, evals, and visible UI synchronization |
 
@@ -88,16 +88,16 @@ MenuList must not become:
 - private customer-data automation
 - direct public-agent mutation surface
 
-### Canonica
+### Answerlattice
 
-Canonica is not a restaurant/business truth layer. It is the Support Knowledge Control Plane for SaaS.
+Answerlattice is not a restaurant/business truth layer. It is the Governed Answer Infrastructure for SaaS Support.
 
 The relevant agent-readiness action is product-specific:
 
 - explain the website and product routes clearly to agents
-- keep Canonica's category and non-goals explicit
+- keep Answerlattice's category and non-goals explicit
 - expose supported public pages, demo, install, security, and FAQ context
-- prevent agents from describing Canonica as helpdesk replacement or AI autopilot
+- prevent agents from describing Answerlattice as helpdesk replacement or AI autopilot
 
 ---
 
@@ -108,10 +108,10 @@ Implemented in this pass:
 - `src/components/seo/JsonLdScript.tsx`
 - `src/components/website/SchemaMarkup.tsx`
 - `src/components/website/WebsitePageStructuredData.tsx`
-- `src/app/sites/canonica/components/StructuredData.tsx`
-- `src/app/sites/canonica/components/PageStructuredData.tsx`
-- `src/app/sites/canonica/llms.txt/route.ts`
-- `src/app/sites/canonica/llms-full.txt/route.ts`
+- `src/app/sites/answerlattice/components/StructuredData.tsx`
+- `src/app/sites/answerlattice/components/PageStructuredData.tsx`
+- `src/app/sites/answerlattice/llms.txt/route.ts`
+- `src/app/sites/answerlattice/llms-full.txt/route.ts`
 - `public/llms.txt`
 - `public/llms-full.txt`
 - `public/sitemap.xml`

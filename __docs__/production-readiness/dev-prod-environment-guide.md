@@ -10,17 +10,17 @@
 
 This is the current source-of-truth contract for the shared Vercel app. Code mirrors this in `src/constants/deploymentTargets.ts`, and `npm run verify:env-targets` checks that routing, aliases, and deploy scripts stay aligned.
 
-| Environment | Vercel env | MenuList URL | MenuList Firebase | Canonica URL | Canonica Firebase |
+| Environment | Vercel env | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- | --- |
-| Local development | local | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__canonica/` | `canonica-qa` |
-| Staging / QA | Preview | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `canonica-qa` |
-| Production | Production | `https://menulist.ai` | `menulist` | `https://canonica.app` | `canonica` |
+| Local development | local | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
+| Staging / QA | Preview | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `answerlattice-qa` |
+| Production | Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
-Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `ecomsai`; only Vercel production switches MenuList to the production Firebase project `menulist`. Canonica is separate in every active environment: `canonica-qa` for local/preview and `canonica` for production.
+Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `ecomsai`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
 
 Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
-MenuList can embed Canonica as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is configured with a Canonica-issued `cn_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://ecomsai.com`, and Production uses `https://canonica.app`. Use `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
+MenuList can embed Answerlattice as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is configured with an Answerlattice-issued `al_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://ecomsai.com`, and Production uses `https://answerlattice.com`. Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
 
 ---
 
@@ -30,7 +30,7 @@ MenuList can embed Canonica as an external client on owner routes only when `NEX
 
 | #   | ChatGPT Claim                                    | Verdict            | Codebase Evidence                                                                                                              |
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `ecomsai`, production MenuList uses `menulist`; local/preview Canonica uses `canonica-qa`, production Canonica uses `canonica`. |
+| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `ecomsai`, production MenuList uses `menulist`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
 | 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `ecomsai.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | Single `GEMINI_AI_KEY` used everywhere. Multi-key rotation exists but all keys are for same project                            |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
@@ -120,10 +120,10 @@ MenuList can embed Canonica as an external client on owner routes only when `NEX
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
 | 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `ecomsai`       | Production: `menulist` |
-| 2   | **Firebase (Canonica)** | Same packages                                | Canonica product database               | `NEXT_PUBLIC_CANONICA_FIREBASE_*` (6 vars), `NEXT_PUBLIC_CANONICA_FIREBASE_MODE`, optional `NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID` | `CANONICA_FIREBASE_*`, optional `CANONICA_FIRESTORE_DATABASE_ID` | Local/Preview: `canonica-qa` | Production: `canonica` |
+| 2   | **Firebase (Answerlattice)** | Same packages                                | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_*`, optional `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 3   | **Razorpay**            | `razorpay` v2.9.6                            | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
 | 4   | **Google Gemini AI**    | `@google/genai` v0.12.0                      | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
-| 5   | **Upstash Redis**       | `@upstash/redis` v1.35.6                     | Rate limiting, Canonica cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
+| 5   | **Upstash Redis**       | `@upstash/redis` v1.35.6                     | Rate limiting, Answerlattice cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
 | 6   | **Sentry**              | `@sentry/nextjs` v10.22.0                    | Error tracking                          | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`                                                             | `SENTRY_DSN`                             | Dev Sentry project             | Prod Sentry project         |
 | 7   | **NextAuth**            | `next-auth` v4.24.3                          | Authentication (Google OAuth)           | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                      | N/A                                      | Same OAuth app (OK)            | Same OAuth app              |
 | 8   | **Google Analytics**    | `@google-analytics/data` v5.1.0              | Server-side analytics reads             | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`                                               | N/A                                      | Same (OK for dev)              | Same                        |
@@ -138,7 +138,7 @@ MenuList can embed Canonica as an external client on owner routes only when `NEX
 | Service                 | Why Separate                                                       | How                                    |
 | ----------------------- | ------------------------------------------------------------------ | -------------------------------------- |
 | **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `ecomsai`; set Vercel Production vars to `menulist` |
-| **Firebase (Canonica)** | Canonica data must stay separate from MenuList and from production | Use `canonica-qa` locally/in Preview; use `canonica` in Production |
+| **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Already configured: 2 DSNs in code     |
 | **Upstash**             | Prevent dev rate limit data from affecting prod                    | Can share OR create separate DB        |
@@ -266,25 +266,25 @@ TELEGRAM_CHAT_ID=
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 
-# Canonica Product (if using)
-NEXT_PUBLIC_CANONICA_FIREBASE_MODE=separate
-NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=
-NEXT_PUBLIC_CANONICA_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_CANONICA_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_CANONICA_FIREBASE_APP_ID=
-NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID=
-CANONICA_FIREBASE_MODE=separate
-CANONICA_FIREBASE_PROJECT_ID=
-CANONICA_FIREBASE_PRIVATE_KEY=
-CANONICA_FIREBASE_CLIENT_EMAIL=
-CANONICA_FIRESTORE_DATABASE_ID=
-CANONICA_WIDGET_KEY_ENCRYPTION_SECRET=
+# Answerlattice Product (if using)
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=separate
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY=
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_APP_ID=
+NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID=
+ANSWERLATTICE_FIREBASE_MODE=separate
+ANSWERLATTICE_FIREBASE_PROJECT_ID=
+ANSWERLATTICE_FIREBASE_PRIVATE_KEY=
+ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=
+ANSWERLATTICE_FIRESTORE_DATABASE_ID=
+ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET=
 
-# MenuList as Canonica external client (optional owner-app widget embed)
-NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY=
-NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=
+# MenuList as Answerlattice external client (optional owner-app widget embed)
+NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY=
+NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 ```
 
 ### DEAD Variables (Zero References — Do NOT Add)
@@ -307,21 +307,21 @@ NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=
 **Step 1: Keep Local/Preview Targets Stable**
 
 1. Local MenuList uses `http://localhost:3000/` and Firebase `ecomsai`.
-2. Local Canonica uses `http://localhost:3000/__canonica/` and Firebase `canonica-qa`.
+2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `answerlattice-qa`.
 3. Vercel Preview MenuList uses `https://menulist.online` and Firebase `ecomsai`.
-4. Vercel Preview Canonica uses `https://ecomsai.com` and Firebase `canonica-qa`.
+4. Vercel Preview Answerlattice uses `https://ecomsai.com` and Firebase `answerlattice-qa`.
 
 **Step 2: Configure Local Development**
 
 1. MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` point to `ecomsai`.
-2. Canonica `NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID` and `CANONICA_FIREBASE_PROJECT_ID` point to `canonica-qa`.
-3. Canonica local site access stays under `/__canonica`; do not add local host aliases for Canonica website work.
+2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` and `ANSWERLATTICE_FIREBASE_PROJECT_ID` point to `answerlattice-qa`.
+3. Answerlattice local site access stays under `/__answerlattice`; do not add local host aliases for Answerlattice website work.
 
 **Step 3: Configure Vercel Production**
 
 1. In Vercel Dashboard → Settings → Environment Variables
 2. Set all MenuList `FIREBASE_*` and `NEXT_PUBLIC_FIREBASE_*` vars to the production Firebase project `menulist`.
-3. Set all Canonica `CANONICA_FIREBASE_*` and `NEXT_PUBLIC_CANONICA_FIREBASE_*` vars to the production Firebase project `canonica`.
+3. Set all Answerlattice `ANSWERLATTICE_FIREBASE_*` and `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` vars to the production Firebase project `answerlattice`.
 4. Set `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai` in Production and `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online` in Preview.
 5. Run `npm run verify:env-targets` after env/documentation edits.
 
@@ -691,7 +691,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 **Before Launch (P0):**
 
 - [ ] Configure MenuList production Firebase env vars for `menulist`
-- [ ] Configure Canonica production Firebase env vars for `canonica`
+- [ ] Configure Answerlattice production Firebase env vars for `answerlattice`
 - [ ] Get Razorpay live API keys
 - [ ] Configure Vercel env vars (Preview + Production)
 
@@ -730,7 +730,7 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 | Category               | Count  | Source                                                     |
 | ---------------------- | ------ | ---------------------------------------------------------- |
 | Firebase (MenuList)    | 14     | `src/lib/firebase/config.ts`, `firebaseAdmin.ts`           |
-| Firebase (Canonica)    | 7      | `src/lib/firebase/canonicaConfig.ts`                       |
+| Firebase (Answerlattice)    | 7      | `src/lib/firebase/answerlatticeConfig.ts`                       |
 | Auth (NextAuth)        | 3      | `src/lib/auth/index.ts`                                    |
 | AI (Gemini)            | 5      | `src/lib/google/genAi/`, `functions/src/config/secrets.ts` |
 | Payments (Razorpay)    | 4      | `src/lib/razorpay/razorpay.ts`, webhook                    |

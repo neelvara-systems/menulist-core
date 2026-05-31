@@ -29,7 +29,7 @@ Mobile users (customers visiting menus via phone) benefit from this feature auto
 - **Permanent URLs** — QR codes scanned on phone always work even after menu rename
 - **CDN caching** — Faster menu load on mobile via Vercel Edge
 - **301 redirects** — Old shared links redirect correctly on mobile browsers
-- **MyCodex install identity** — `menulist.digital` installs as MyCodex, not as MenuList or Canonica
+- **MyCodex install identity** — `menulist.digital` installs as MyCodex, not as MenuList or Answerlattice
 
 No mobile-specific UI, components, or screens needed.
 

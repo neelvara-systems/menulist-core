@@ -27,7 +27,7 @@ const S = {
     muted: 'font-size: 12px; color: #999; margin-top: 8px;',
 };
 
-function wrap(content: string, productName = 'Canonica'): string {
+function wrap(content: string, productName = 'Answerlattice'): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="${S.body}">${content}<div style="${S.foot}"><p>${productName}</p><p style="${S.muted}">This is an automated notification. Do not reply to this email.</p></div></body></html>`;
 }
 
@@ -105,21 +105,21 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
     }),
 
     /**
-     * Sent from the Canonica activation command center to verify sender config.
+     * Sent from the Answerlattice activation command center to verify sender config.
      * Recipient: workspace support email.
      */
-    CANONICA_NOTIFICATION_TEST: (m) => ({
-        subject: `Canonica notification test for ${m.productName || 'your product'}`,
+    ANSWERLATTICE_NOTIFICATION_TEST: (m) => ({
+        subject: `Answerlattice notification test for ${m.productName || 'your product'}`,
         html: wrap(
             `<h2 style="${S.h2}">Notification delivery is connected</h2>` +
             `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
-            `<p style="${S.p}">This test confirms Canonica can send ticket and support notifications for <strong>${m.productName || 'your product'}</strong>.</p>` +
+            `<p style="${S.p}">This test confirms Answerlattice can send ticket and support notifications for <strong>${m.productName || 'your product'}</strong>.</p>` +
             `<div style="${S.info}">` +
-            `<strong>Workspace:</strong> ${m.workspaceName || 'Canonica workspace'}<br>` +
+            `<strong>Workspace:</strong> ${m.workspaceName || 'Answerlattice workspace'}<br>` +
             `<strong>Sent at:</strong> ${m.sentAt || 'Now'}` +
             `</div>` +
             `<p style="${S.p}">No action is needed if this arrived in the expected inbox.</p>`,
-            m.productName || 'Canonica'
+            m.productName || 'Answerlattice'
         ),
     }),
 };

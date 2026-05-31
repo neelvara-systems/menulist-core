@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getBillingFirestoreAdminForProduct, resolveBillingScopeFromSession } from "@lib/billing/productBillingServer";
-import { getCreditPacksForProduct, isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -68,14 +68,14 @@ export const POST = withAuth(async (request, session) => {
         logTenantId = tenantId;
         logStoreId = storeId;
         // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
+        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -156,7 +156,7 @@ export const POST = withAuth(async (request, session) => {
             sId: storeId,
             uId: userId,
             packId,
-            type: isCanonicaBillingProduct(productId) ? 'canonica_credit_pack' : 'ai_enhancement_pack',
+            type: isAnswerlatticeBillingProduct(productId) ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
             packName: selectedPack.name,
             createdOn: admin.firestore.FieldValue.serverTimestamp(),
             updatedOn: admin.firestore.FieldValue.serverTimestamp(),

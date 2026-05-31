@@ -1,0 +1,711 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny. Answerlattice client access is explicitly tenant-scoped below.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /platformSummary/{document} {
+      allow read: if isAuthenticated()
+                  && (isPlatformAdmin()
+                      || (
+                        isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                        && isAnswerlatticeTenantMember(resource.data)
+                        && hasAnswerlatticePlatformSummaryReadPermission(document)
+                      ));
+      allow create: if isAuthenticated()
+                    && isAnswerlatticePlatformSummaryDoc(document)
+                    && (isPlatformAdmin() || (hasAnswerlatticePlatformSummaryWritePermission(document) && canCreateAnswerlatticePlatformSummaryDoc(document)));
+      allow update: if isAuthenticated()
+                    && isAnswerlatticePlatformSummaryDoc(document)
+                    && (isPlatformAdmin() || (hasAnswerlatticePlatformSummaryWritePermission(document) && canUpdateAnswerlatticePlatformSummaryDoc(document)));
+      allow delete: if false;
+    }
+
+    match /answerlattice_entities/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_entityRelations/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if isAnswerlatticeScopedDeleteWithKnowledgeControl();
+    }
+
+    match /answerlattice_canonicalAnswers/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_releases/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if false;
+    }
+
+    match /answerlattice_mutationProposals/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageGovernance');
+      allow delete: if false;
+    }
+
+    match /answerlattice_signalEvents/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        || isAnswerlatticeFeedbackSignalCreate();
+      allow update, delete: if false;
+    }
+
+    match /answerlattice_auditLogs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance');
+      allow update, delete: if false;
+    }
+
+    match /answerlattice_entitySearchIndex/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_entityCandidates/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageGovernance');
+      allow delete: if false;
+    }
+
+    match /answerlattice_frictionDailyStats/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithReadiness();
+      allow write: if false;
+    }
+
+    match /answerlattice_schedulerRunLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /answerlattice_aiOperations/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isAnswerlatticeTenantPath(tId, sId));
+      allow write: if false;
+    }
+
+    match /answerlattice_integrationEvents/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageIntegrations');
+      allow write: if false;
+    }
+
+    match /answerlattice_integrationDeliveryLogs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageIntegrations');
+      allow write: if false;
+    }
+
+    match /answerlattice_predictiveTriggers/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageGovernance');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageGovernance');
+    }
+
+    match /answerlattice_productSurfaces/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if false;
+    }
+
+    match /answerlattice_faqs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if false;
+    }
+
+    match /answerlattice_supportBoardCards/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl();
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_knowledgeIntakeJobs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_knowledgeSources/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_intakeReviewItems/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl();
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /answerlattice_intakeUsageLedger/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
+    match /answerlattice_cacheVersions/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithKnowledgeControl()
+        || isAnswerlatticeScopedReadWithPermission('canManageWidget');
+      allow create: if isAnswerlatticeScopedCreateWithKnowledgeControl()
+        || isAnswerlatticeScopedCreateWithPermission('canManageWidget');
+      allow update: if isAnswerlatticeScopedUpdateWithKnowledgeControl()
+        || isAnswerlatticeScopedUpdateWithPermission('canManageWidget');
+      allow delete: if false;
+    }
+
+    match /answerlattice_notificationLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /chatSessions/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl();
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl();
+      allow delete: if isAnswerlatticeScopedDeleteWithSupportControl();
+    }
+
+    match /feedback/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl()
+        || isAnswerlatticeFeedbackSelfRead();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        || isAnswerlatticeFeedbackSelfCreate();
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl();
+      allow delete: if false;
+    }
+
+    match /supportTickets/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl();
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl();
+      allow delete: if isAnswerlatticeScopedDeleteWithSupportControl();
+    }
+
+    match /stores/{storeId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            string(storeId) == string(request.auth.token.storeId)
+            && isAnswerlatticeTenantStoreMember(resource.data)
+            && hasAnyAnswerlatticePermission()
+          )
+        );
+      allow write: if false;
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantStoreMember(resource.data) && hasAnswerlatticePermission('canManageBilling')));
+      allow write: if false;
+    }
+
+    match /payment_transactions/{transactionId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantStoreMember(resource.data) && hasAnswerlatticePermission('canManageBilling')));
+      allow write: if false;
+    }
+
+    match /queryEmbeddings/{docId} {
+      allow read, write: if false;
+    }
+
+    // KB collections can live in the Answerlattice Firebase project for the
+    // founder-onboarding bootstrap. They remain tenant/store-scoped.
+    match /kb_categories/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (kbCategoriesDocMatchesCurrentStore(docId) && hasAnswerlatticePermission('canManageKnowledge')));
+      allow create, update: if isAuthenticated()
+        && (isPlatformAdmin() || (hasAnswerlatticePermission('canManageKnowledge') && kbCategoriesDocMatchesCurrentStore(docId)));
+      allow delete: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /kb_articles/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageKnowledge');
+    }
+
+    match /kb_sections/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageKnowledge');
+    }
+
+    match /kb_generation_jobs/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageKnowledge');
+    }
+
+    match /kb_staging_sections/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageKnowledge');
+    }
+
+    match /kb_staging_chunks/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
+      allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge');
+      allow update: if isAnswerlatticeScopedUpdateWithPermission('canManageKnowledge');
+      allow delete: if isAnswerlatticeScopedDeleteWithPermission('canManageKnowledge');
+    }
+
+    match /aiSearchHistory/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl();
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl();
+      allow delete: if false;
+    }
+
+    match /changelog/{tId}/{sId}/{pageId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isAnswerlatticeTenantPath(tId, sId));
+      allow write: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (hasAnswerlatticePermission('canManageKnowledge') && isAnswerlatticeTenantPath(tId, sId))
+        );
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return request.auth != null
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function isAnswerlatticeOwnerRole() {
+      return request.auth.token.role == 'OWNER'
+        || request.auth.token.role == 'owner';
+    }
+
+    function isAnswerlatticeManagerRole() {
+      return request.auth.token.role == 'MANAGER'
+        || request.auth.token.role == 'manager';
+    }
+
+    function isAnswerlatticeStaffRole() {
+      return request.auth.token.role == 'STAFF'
+        || request.auth.token.role == 'staff';
+    }
+
+    function defaultManagerHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeManagerRole()
+        && (
+          permission == 'canViewReadiness'
+          || permission == 'canManageWorkspace'
+          || permission == 'canManageTeam'
+          || permission == 'canManageKnowledge'
+          || permission == 'canManageGovernance'
+          || permission == 'canManageWidget'
+          || permission == 'canManageSupport'
+        );
+    }
+
+    function defaultStaffHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeStaffRole() && permission == 'canManageSupport';
+    }
+
+    function hasAnswerlatticePermission(permission) {
+      return isPlatformAdmin()
+        || request.auth.token.get(permission, false) == true
+        || isAnswerlatticeOwnerRole()
+        || defaultManagerHasAnswerlatticePermission(permission)
+        || defaultStaffHasAnswerlatticePermission(permission);
+    }
+
+    function hasAnyAnswerlatticePermission() {
+      return hasAnswerlatticePermission('canViewReadiness')
+        || hasAnswerlatticePermission('canManageWorkspace')
+        || hasAnswerlatticePermission('canManageTeam')
+        || hasAnswerlatticePermission('canAssignRoles')
+        || hasAnswerlatticePermission('canManageBilling')
+        || hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance')
+        || hasAnswerlatticePermission('canManageWidget')
+        || hasAnswerlatticePermission('canManageSupport')
+        || hasAnswerlatticePermission('canManageIntegrations')
+        || hasAnswerlatticePermission('canExportData')
+        || hasAnswerlatticePermission('canRebuildContext');
+    }
+
+    function hasAnswerlatticeReadinessPermission() {
+      return hasAnswerlatticePermission('canViewReadiness')
+        || hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance')
+        || hasAnswerlatticePermission('canManageWidget')
+        || hasAnswerlatticePermission('canManageIntegrations');
+    }
+
+    function hasAnswerlatticeKnowledgeControlPermission() {
+      return hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance');
+    }
+
+    function hasAnswerlatticeSupportControlPermission() {
+      return hasAnswerlatticePermission('canManageSupport')
+        || hasAnswerlatticePermission('canManageWidget');
+    }
+
+    function isAnswerlatticeSelfActor(data) {
+      return data.keys().hasAll(['uId'])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.uId)
+        );
+    }
+
+    function isAnswerlatticeSelfScopedCreate(data) {
+      return isAuthenticated()
+        && isAnswerlatticeTenantMember(data)
+        && isAnswerlatticeSelfActor(data);
+    }
+
+    function isAnswerlatticeFeedbackSelfRead() {
+      return isAuthenticated()
+        && isAnswerlatticeTenantMember(resource.data)
+        && isAnswerlatticeSelfActor(resource.data);
+    }
+
+    function isAnswerlatticeFeedbackSelfCreate() {
+      return isAnswerlatticeSelfScopedCreate(request.resource.data);
+    }
+
+    function isAnswerlatticeFeedbackSignalCreate() {
+      return isAnswerlatticeSelfScopedCreate(request.resource.data)
+        && request.resource.data.type == 'feedback'
+        && request.resource.data.entityId == 'unresolved'
+        && request.resource.data.keys().hasAll(['metadata'])
+        && request.resource.data.metadata is map
+        && request.resource.data.metadata.keys().hasAll(['source'])
+        && request.resource.data.metadata.source == 'help_center_feedback';
+    }
+
+    function kbCategoriesDocMatchesCurrentStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId == 'categories_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
+    }
+
+    function isAnswerlatticePlatformSummaryDoc(document) {
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+    }
+
+    function isAnswerlatticePlatformSummaryClientReadableDoc(document) {
+      return isAnswerlatticePlatformSummaryDoc(document)
+        && !document.matches('^(sourceVersions|bundleManifest)_.*$');
+    }
+
+    function isAnswerlatticeSourceVersionsDoc(document) {
+      return document.matches('^sourceVersions_.*$');
+    }
+
+    function isAnswerlatticeBundleManifestDoc(document) {
+      return document.matches('^bundleManifest_.*$');
+    }
+
+    function hasAnswerlatticePlatformSummaryReadPermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasAnswerlatticeReadinessPermission()
+        )
+        || (
+          document.matches('^supportBoardSummary_.*$')
+          && hasAnswerlatticeSupportControlPermission()
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent)_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^(integrationConfig|integrationHealth)_.*$')
+          && hasAnswerlatticePermission('canManageIntegrations')
+        );
+    }
+
+    function hasAnswerlatticePlatformSummaryWritePermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasAnswerlatticeReadinessPermission()
+        )
+        || (
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest)_.*$')
+          && (
+            hasAnswerlatticeKnowledgeControlPermission()
+            || hasAnswerlatticePermission('canRebuildContext')
+          )
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^(integrationConfig|integrationHealth)_.*$')
+          && hasAnswerlatticePermission('canManageIntegrations')
+        );
+    }
+
+    function answerlatticeSourceVersionClientKeys() {
+      return [
+        'schemaVersion',
+        'pId',
+        'tId',
+        'sId',
+        'workspaceProfile',
+        'widgetConfig',
+        'kb',
+        'docsNav',
+        'entities',
+        'entityRelations',
+        'canonical',
+        'surfaces',
+        'releases',
+        'branding',
+        'mcpPolicy',
+        'predictiveTriggers',
+        'updatedAt',
+        'lastReason',
+        'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function answerlatticeBundleManifestClientKeys() {
+      return [
+        'schemaVersion',
+        'pId',
+        'tId',
+        'sId',
+        'status',
+        'staleReason',
+        'updatedAt',
+        'lastReason',
+        'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function isAnswerlatticeTenantSummaryScopeStable() {
+      return isAnswerlatticeTenantMember(resource.data)
+        && isAnswerlatticeTenantMember(request.resource.data)
+        && request.resource.data.tId == resource.data.tId
+        && request.resource.data.sId == resource.data.sId;
+    }
+
+    function canCreateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantMember(request.resource.data)
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeSourceVersionClientKeys())
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+          )
+        );
+    }
+
+    function canUpdateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantSummaryScopeStable()
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeSourceVersionClientKeys())
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+          )
+        );
+    }
+
+    function isAnswerlatticeTenantMember(data) {
+      return request.auth != null
+        && data.keys().hasAll(['tId', 'sId'])
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && string(data.tId) == string(request.auth.token.tenantId)
+        && string(data.sId) == string(request.auth.token.storeId);
+    }
+
+    function isAnswerlatticeTenantStoreMember(data) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && (
+          (
+            data.keys().hasAll(['tId', 'sId'])
+            && string(data.tId) == string(request.auth.token.tenantId)
+            && string(data.sId) == string(request.auth.token.storeId)
+          )
+          || (
+            data.keys().hasAll(['tenantId', 'storeId'])
+            && string(data.tenantId) == string(request.auth.token.tenantId)
+            && string(data.storeId) == string(request.auth.token.storeId)
+          )
+        );
+    }
+
+    function isAnswerlatticeTenantPath(tId, sId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && string(tId) == string(request.auth.token.tenantId)
+        && string(sId) == string(request.auth.token.storeId);
+    }
+
+    function isAnswerlatticeScopedReadWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedReadWithReadiness() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeReadinessPermission()));
+    }
+
+    function isAnswerlatticeScopedReadWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
+    }
+
+    function isAnswerlatticeScopedReadWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission()));
+    }
+
+    function isAnswerlatticeScopedCreateWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedCreateWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
+    }
+
+    function isAnswerlatticeScopedCreateWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticeSupportControlPermission()));
+    }
+
+    function isAnswerlatticeScopedUpdateWithPermission(permission) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticePermission(permission)
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedUpdateWithKnowledgeControl() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticeKnowledgeControlPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedUpdateWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticeSupportControlPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedDeleteWithPermission(permission) {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticePermission(permission)));
+    }
+
+    function isAnswerlatticeScopedDeleteWithKnowledgeControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeKnowledgeControlPermission()));
+    }
+
+    function isAnswerlatticeScopedDeleteWithSupportControl() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission()));
+    }
+  }
+}

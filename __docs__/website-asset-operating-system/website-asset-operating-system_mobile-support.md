@@ -7,9 +7,9 @@
 
 ## Decision
 
-Website Asset Operating System does not need an owner-facing mobile UI. It is not a MenuList mobile feature and not a Canonica mobile runtime surface.
+Website Asset Operating System does not need an owner-facing mobile UI. It is not a MenuList mobile feature and not an Answerlattice mobile runtime surface.
 
-It does need mobile-aware asset slots and review checks because MenuList and Canonica websites are viewed on mobile.
+It does need mobile-aware asset slots and review checks because MenuList and Answerlattice websites are viewed on mobile.
 
 ## Feature Admission Test
 

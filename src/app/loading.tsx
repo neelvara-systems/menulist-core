@@ -6,7 +6,7 @@ export type ServerSidePageLoaderBrand = BrandedPageLoaderBrand;
 function getRequestLoaderBrand(): ServerSidePageLoaderBrand {
     try {
         const h = headers();
-        return h.get('x-product-id') === 'canonica' ? 'canonica' : 'menulist';
+        return h.get('x-product-id') === 'answerlattice' ? 'answerlattice' : 'menulist';
     } catch {
         return 'menulist';
     }

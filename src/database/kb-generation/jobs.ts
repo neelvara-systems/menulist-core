@@ -1,10 +1,10 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from "@firebase/firestore";
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
-import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
-import { canonicaFirebaseClient, canonicaStorage } from "@lib/firebase/canonicaFirebaseClient";
+import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
+import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
+import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { triggerStartGeneration } from "@lib/firebase/functions";
 import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
 import { getKnowledgeBaseCategoriesDocId } from "@database/knowledgeBase/categories";
@@ -16,7 +16,7 @@ const ALL_JOB_LIMIT = 100;
 const PREVIOUS_JOB_LIMIT = 20;
 
 const getCollectionRef = () => {
-    return collection(canonicaFirebaseClient, COLLECTION);
+    return collection(answerlatticeFirebaseClient, COLLECTION);
 };
 
 export const getIngestionJobCollectionRef = (session: any) => {
@@ -77,7 +77,7 @@ export const getPreviousIngestionJobs = async (session: any, maxResults: number 
 export const updateJob = async (jobId: string, data: Partial<IngestionJob>) => {
     return await apiCallComposer(
         async () => {
-            const dataToUpdate = await canonicaRequestBodyComposer(data);
+            const dataToUpdate = await answerlatticeRequestBodyComposer(data);
             const jobRef = doc(getCollectionRef(), jobId);
             await setDoc(jobRef, dataToUpdate, { merge: true });
             return { id: jobId, ...dataToUpdate };
@@ -90,7 +90,7 @@ export const updateJob = async (jobId: string, data: Partial<IngestionJob>) => {
 export const deleteIngestionJob = async (jobId: string) => {
     return await apiCallComposer(
         async () => {
-            const db = canonicaFirebaseClient;
+            const db = answerlatticeFirebaseClient;
             const jobRef = doc(db, DB_COLLECTIONS.KB_GENERATION_JOBS, jobId);
             const jobDoc = await getDoc(jobRef);
 
@@ -99,7 +99,7 @@ export const deleteIngestionJob = async (jobId: string) => {
             }
 
             const jobData = jobDoc.data() as IngestionJob;
-            await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.KB, Number(jobData.tId), Number(jobData.sId), {
+            await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, Number(jobData.tId), Number(jobData.sId), {
                 reason: 'ingestion_job_delete',
                 sourceId: jobId,
                 sourceType: 'kb_generation_job',
@@ -137,7 +137,7 @@ export const deleteIngestionJob = async (jobId: string) => {
 
             // 4. Delete associated files from storage after the transaction
             if (jobData.sourceFiles && jobData.sourceFiles.length > 0) {
-                const deletePromises = jobData.sourceFiles.map(file => deleteFileByUrl(file.downloadURL, canonicaStorage));
+                const deletePromises = jobData.sourceFiles.map(file => deleteFileByUrl(file.downloadURL, answerlatticeStorage));
                 await Promise.all(deletePromises);
             }
 
@@ -160,7 +160,7 @@ export const retryJob = async (jobId: string) => {
                 throw new Error(`Only failed jobs can be retried. Current status: ${job.status}`);
             }
 
-            const resetData = await canonicaRequestBodyComposer({
+            const resetData = await answerlatticeRequestBodyComposer({
                 status: INGESTION_JOB_STATUS.PENDING,
                 errorMessage: null,
                 categories: null,
@@ -187,7 +187,7 @@ export const retryJob = async (jobId: string) => {
 export const cancelJob = async (jobId: string) => {
     return await apiCallComposer(
         async () => {
-            const dataToUpdate = await canonicaRequestBodyComposer({
+            const dataToUpdate = await answerlatticeRequestBodyComposer({
                 status: INGESTION_JOB_STATUS.CANCELLED,
             });
             const jobRef = doc(getCollectionRef(), jobId);
@@ -202,7 +202,7 @@ export const cancelJob = async (jobId: string) => {
 export const addIngestionJob = async (data: Partial<IngestionJob>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await canonicaRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             // return { ...submitData, id: docRef.id };
             const newJob = { ...submitData, id: docRef.id } as IngestionJob;

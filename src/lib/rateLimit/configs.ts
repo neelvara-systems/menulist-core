@@ -130,22 +130,22 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
-     * Canonica Contact Form - anonymous public write endpoint
-     * Used by: POST /api/canonica/public/contact
+     * Answerlattice Contact Form - anonymous public write endpoint
+     * Used by: POST /api/answerlattice/public/contact
      *
      * Why 5/10min:
      * - Normal buyer/contact flow is one submission, rarely a retry.
-     * - Each accepted request creates a Canonica Firestore write.
-     * - Keeps public website spam bounded before it reaches Canonica Firebase.
+     * - Each accepted request creates an Answerlattice Firestore write.
+     * - Keeps public website spam bounded before it reaches Answerlattice Firebase.
      */
-    CANONICA_CONTACT_FORM: {
+    ANSWERLATTICE_CONTACT_FORM: {
         limit: 5,
         window: 600,
-        description: 'Canonica contact form - 5 submissions per 10 minutes per IP'
+        description: 'Answerlattice contact form - 5 submissions per 10 minutes per IP'
     },
 
     /**
-     * Canonica Hosted Help Center - anonymous read-only pages.
+     * Answerlattice Hosted Help Center - anonymous read-only pages.
      * Used by: help.example.com hosted KB/FAQ/changelog pages.
      *
      * Why 240/min:
@@ -153,10 +153,10 @@ export const RATE_LIMIT_CONFIGS = {
      * - Still creates a bot-cost brake before repeated anonymous page requests
      *   can force server rendering or cache misses.
      */
-    CANONICA_HOSTED_HELP: {
+    ANSWERLATTICE_HOSTED_HELP: {
         limit: 240,
         window: 60,
-        description: 'Canonica hosted help - 240 page/API reads per minute per IP/domain'
+        description: 'Answerlattice hosted help - 240 page/API reads per minute per IP/domain'
     },
 
     /**

@@ -1,9 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { revalidateCanonicaPublicClientCache } from '@lib/cache/canonicaPublicClientCache';
-import { canonicaFirebaseClient, canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { revalidateAnswerlatticePublicClientCache } from '@lib/cache/answerlatticePublicClientCache';
+import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChangelogPage } from '@type/changelog';
@@ -20,7 +20,7 @@ import {
     where
 } from 'firebase/firestore';
 
-const db = canonicaFirebaseClient;
+const db = answerlatticeFirebaseClient;
 const PAGE_SIZE_LIMIT = 900_000; // 900 KB safety margin
 
 const COLLECTION = DB_COLLECTIONS.CHANGELOG;
@@ -51,7 +51,7 @@ const uploadImage = async (data: UserUploadedFileType, type = 'files') => {
         uploadedUrl = await uploadBase64ToStorage({
             cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
             fileId: docId,
-            storage: canonicaStorage,
+            storage: answerlatticeStorage,
             url: data.url,
             path,
             type: data.type
@@ -73,7 +73,7 @@ async function estimateSizeBytes(obj: any): Promise<number> {
 
 
 const getCollectionRef = (session: any) => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`)
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`)
 }
 
 /**
@@ -98,7 +98,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
 
         const newEntryId = crypto.randomUUID();
 
-        const newEntryForEstimate = await canonicaRequestBodyComposer({
+        const newEntryForEstimate = await answerlatticeRequestBodyComposer({
             id: newEntryId,
             ...entryPayload,
         });
@@ -109,7 +109,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
             const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
             const newPageRef = doc(pagesCollectionRef, newPageId);
 
-            const newPageData = await canonicaRequestBodyComposer({
+            const newPageData = await answerlatticeRequestBodyComposer({
                 pageNumber: newPageNumber,
                 nextPageId: null,
                 entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
@@ -130,7 +130,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
                 // Append to the current latest page
                 const newEntries = [{ ...newEntryForEstimate, createdOn: Timestamp.now() }, ...(latestPageData.entries || [])];
                 const newEntryIds = [newEntryId, ...(latestPageData.entryIds || [])];
-                const pageUpdatePayload = await canonicaRequestBodyComposer({ isUpdate: true });
+                const pageUpdatePayload = await answerlatticeRequestBodyComposer({ isUpdate: true });
                 tx.update(latestPageRef, {
                     entries: newEntries,
                     entryIds: newEntryIds,
@@ -145,7 +145,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
                 const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
                 const newPageRef = doc(pagesCollectionRef, newPageId);
 
-                const newPageData = await canonicaRequestBodyComposer({
+                const newPageData = await answerlatticeRequestBodyComposer({
                     pageNumber: newPageNumber,
                     nextPageId: latestPageDoc.id || null,
                     entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
@@ -157,7 +157,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
             }
         }
     });
-    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'addChangelogEntry');
+    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'addChangelogEntry');
     return result;
 };
 
@@ -269,7 +269,7 @@ export const deleteChangelogEntry = async (entryId: string) => {
         const updatedEntries = pageData.entries.filter(entry => entry.id !== entryId);
         const updatedEntryIds = pageData.entryIds.filter(id => id !== entryId);
 
-        const updatePayload = await canonicaRequestBodyComposer({ isUpdate: true });
+        const updatePayload = await answerlatticeRequestBodyComposer({ isUpdate: true });
 
         tx.update(pageRef, {
             entries: updatedEntries,
@@ -280,7 +280,7 @@ export const deleteChangelogEntry = async (entryId: string) => {
 
         return { deleted: true, entryId: entryId, pageId: pageDoc.id };
     });
-    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'deleteChangelogEntry');
+    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'deleteChangelogEntry');
     return result;
 };
 
@@ -313,7 +313,7 @@ export const updateChangelogEntry = async (entryId: string, updatedPayload: any)
             throw new Error(`Entry with ID ${entryId} not found within the page.`);
         }
 
-        const updatePayloadWithTimestamp = await canonicaRequestBodyComposer({ ...updatedPayload, isUpdate: true });
+        const updatePayloadWithTimestamp = await answerlatticeRequestBodyComposer({ ...updatedPayload, isUpdate: true });
         const updatedEntries = [...pageData.entries];
         updatedEntries[entryIndex] = { ...updatedEntries[entryIndex], ...updatePayloadWithTimestamp };
 
@@ -325,6 +325,6 @@ export const updateChangelogEntry = async (entryId: string, updatedPayload: any)
 
         return { updated: true, entryId: entryId, pageId: pageDoc.id };
     });
-    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'updateChangelogEntry');
+    await revalidateAnswerlatticePublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'updateChangelogEntry');
     return result;
 };

@@ -1,16 +1,16 @@
 # MASTER EXECUTION PROMPT (for Windsurf Cascade)
 
-**Purpose:** The central brain for ALL MenuList development. Single entry point — auto-detects what needs to be done, routes workflows, validates everything, and self-improves.
+**Purpose:** The central brain for ALL MenuList and Answerlattice development. Single entry point — auto-detects what needs to be done, routes workflows, validates everything, and self-improves.
 
 **Trigger:** `/master-execution` workflow, `@IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` reference, or copy-paste.
 
-**Generated from:** Real working patterns across 36+ features, 17 workflows, 19 IDE_PROMPTS, and months of production development on MenuList.
+**Generated from:** Real working patterns across 36+ features, 17 workflows, 19 IDE_PROMPTS, and months of development across MenuList and Answerlattice.
 
 ---
 
 ## IDENTITY & AUTHORITY
 
-You are Cascade — the **primary development partner and central router** for MenuList.
+You are Cascade — the **primary development partner and central router** for MenuList and Answerlattice.
 You have FULL codebase access that no external AI (ChatGPT, Claude, etc.) has.
 Your knowledge of this system is authoritative. External AI suggestions are inputs to validate, not instructions to follow.
 
@@ -842,11 +842,11 @@ During ANY work, if you discover:
 
 ---
 
-## STEP 9B — CANONICA COMPLETION RULES (MANDATORY FOR ALL CANONICA SESSIONS)
+## STEP 9B — ANSWERLATTICE COMPLETION RULES (MANDATORY FOR ALL ANSWERLATTICE SESSIONS)
 
-**CRITICAL: Infrastructure without its operational loop is useless. Never certify Canonica infrastructure as "ready" unless ALL operational components exist.**
+**CRITICAL: Infrastructure without its operational loop is useless. Never certify Answerlattice infrastructure as "ready" unless ALL operational components exist.**
 
-### Canonica Readiness Checklist (Must ALL Pass Before ANY "Ready" Verdict)
+### Answerlattice Readiness Checklist (Must ALL Pass Before ANY "Ready" Verdict)
 
 | #   | Component                           | What It Is                                                                    | Why It's Critical                                                                                                |
 | --- | ----------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -854,26 +854,26 @@ During ANY work, if you discover:
 | 2   | **Signal Entity Resolution**        | Logic to resolve `entityId: 'unresolved'` on signal events to real entity IDs | Unresolved signals are noise — they can't cluster, can't trigger proposals, can't drive governance               |
 | 3   | **Entity Creation from Candidates** | One-click flow: approved candidate → real entity + search index entry         | Without this, the ontology bootstrap pipeline has no exit — candidates pile up with no path to production        |
 | 4   | **Mutation Proposal Review UI**     | Minimal admin UI to list pending proposals and approve/reject them            | Without this, the human-in-the-loop governance invariant is theoretical — no human can actually approve          |
-| 5   | **Canonical Coverage KPI**          | Aggregation of canonical hit/miss ratio per tenant                            | Without this, there's no measurable proof Canonica is working — the one metric that matters is invisible         |
+| 5   | **Canonical Coverage KPI**          | Aggregation of canonical hit/miss ratio per tenant                            | Without this, there's no measurable proof Answerlattice is working — the one metric that matters is invisible         |
 
 ### Enforcement Rules
 
-- **During ANY Canonica audit or certification:** Check all 5 components. If ANY is missing → verdict is **NOT READY**, not "Ready for Experiment".
-- **During ANY Canonica implementation session:** After building infrastructure (DAL, lib, types), immediately check: "Does the operational loop work end-to-end?" If not → build the missing pieces before claiming complete.
+- **During ANY Answerlattice audit or certification:** Check all 5 components. If ANY is missing → verdict is **NOT READY**, not "Ready for Experiment".
+- **During ANY Answerlattice implementation session:** After building infrastructure (DAL, lib, types), immediately check: "Does the operational loop work end-to-end?" If not → build the missing pieces before claiming complete.
 - **Never separate "infrastructure" from "activation loop":** They are ONE system. A drift engine that never runs is not a drift engine. A mutation pipeline with no approval UI is not a governance system.
 
-### Canonica Ontology Governance Rules
+### Answerlattice Ontology Governance Rules
 
-The ontology (entities, relations, canonical answers) is Canonica's competitive moat. Protect it:
+The ontology (entities, relations, canonical answers) is Answerlattice's competitive moat. Protect it:
 
-1. **Entity count guardrail:** `CANONICA_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT: 500` enforced in `addEntity()`. If exceeded → propose merge suggestions.
+1. **Entity count guardrail:** `ANSWERLATTICE_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT: 500` enforced in `addEntity()`. If exceeded → propose merge suggestions.
 2. **Entity merge exists:** `mergeEntities()` in `entities.ts` — transfers all references, combines aliases, deprecates merged entity, audit-logged. Use it proactively.
 3. **Entity hierarchy via relations:** `PART_OF` relation type enables parent-child structure. Formal `parentEntityId` field is NOT needed — relations provide hierarchy.
 4. **Entity type is IMMUTABLE** after creation — enforced in `updateEntity()`.
 5. **Deprecation only** — no hard delete of entities with active references.
 6. **Premature optimization guard:** Do NOT build ontology governance features (merge detection, hierarchy UI, signal aggregation) until real entities exist in production. Zero entities = zero entropy.
 
-### Canonica Feature Flag Activation Checklist
+### Answerlattice Feature Flag Activation Checklist
 
 Before recommending ANY flag be turned ON:
 
@@ -883,16 +883,16 @@ Before recommending ANY flag be turned ON:
 4. The governance loop is complete (can a human observe, approve, reject?)
 5. Cost envelope is documented and acceptable
 
-### Canonica Phased Activation Protocol
+### Answerlattice Phased Activation Protocol
 
-When activating Canonica for a tenant, enable flags in this order (never all at once):
+When activating Answerlattice for a tenant, enable flags in this order (never all at once):
 
-**Phase 1 — Core Retrieval:** `ENABLE_CANONICA_ONTOLOGY` → `ENABLE_CANONICA_CANONICAL_ANSWERS` → `ENABLE_CANONICA_CONTEXT_AWARE`
-**Phase 2 — Governance Loop:** `ENABLE_CANONICA_DRIFT_DETECTION` → `ENABLE_CANONICA_SIGNAL_MUTATION`
-**Phase 3 — Performance:** `ENABLE_CANONICA_INSTANT_CACHE`
-**Phase 4 — Intelligence:** `ENABLE_CANONICA_AUTO_KNOWLEDGE` → `ENABLE_CANONICA_TICKET_KNOWLEDGE` → `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
-**Phase 5 — Advanced:** `ENABLE_CANONICA_TRUST_METRICS` → `ENABLE_CANONICA_AI_ESCALATION`
-**Phase 6 — Onboarding:** `ENABLE_CANONICA_FOUNDER_ONBOARDING`
+**Phase 1 — Core Retrieval:** `ENABLE_ANSWERLATTICE_ONTOLOGY` → `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS` → `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
+**Phase 2 — Governance Loop:** `ENABLE_ANSWERLATTICE_DRIFT_DETECTION` → `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`
+**Phase 3 — Performance:** `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
+**Phase 4 — Intelligence:** `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE` → `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE` → `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
+**Phase 5 — Advanced:** `ENABLE_ANSWERLATTICE_TRUST_METRICS` → `ENABLE_ANSWERLATTICE_AI_ESCALATION`
+**Phase 6 — Onboarding:** `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
 
 Between each phase: verify nightly batch runs, check governance dashboard, confirm no errors in logs.
 
@@ -957,7 +957,7 @@ For EACH feature touched in a session, execute ALL steps A through K in order:
 - **Rate limiting:** `src/lib/rateLimit/configs.ts`
 - **SAFE_MODE:** `src/lib/ops/safeMode.ts` (blocks AI routes during cost spikes)
 - **Alerting:** `src/lib/ops/alerts.ts` (frontend) + `functions/src/monitoring/alerts.ts` (CF)
-- **MenuList store-EOD scheduler:** `functions/src/decisionBlocksScoring.ts` (hourly at :30 UTC, filters by store `timeZone` + `businessDayEndTime`). Canonica scheduled work lives in `functions-canonica/`.
+- **MenuList store-EOD scheduler:** `functions/src/decisionBlocksScoring.ts` (hourly at :30 UTC, filters by store `timeZone` + `businessDayEndTime`). Answerlattice scheduled work lives in `functions-answerlattice/`.
 - **MenuList operational maintenance scheduler:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` (every 2 minutes, static task registry with per-task Firestore leases). Add operational maintenance tasks here instead of creating new standalone scheduled functions unless the trigger has a separately documented SLA/product boundary.
 - **Secure logging:** `secureLog` / `secureError` — NEVER `console.log` / `console.error`
 - **Responsive breakpoints:** <768px = mobile, 768–1024px = tablet, ≥1024px = desktop (detected via `window.innerWidth` in `ClientMenuRenderer`).
@@ -972,63 +972,63 @@ May NEVER open desktop dashboard. Zero jargon. Large touch targets. Instant feed
 
 ## STEP 11 — MULTI-PRODUCT TENANCY RULES (MANDATORY)
 
-**Authority:** `__docs__/canonica/doctrine/07-multi-product-tenancy.md` v4.3.0
+**Authority:** `__docs__/answerlattice/doctrine/07-multi-product-tenancy.md` v4.3.0
 
 ### Identity: `pId`/`tId`/`sId` on every document. No custom identity fields. Ever.
 
-### Firebase: ecomsai = MenuList ecosystem. canonica = Canonica standalone. No cross-project queries.
+### Firebase: ecomsai = MenuList ecosystem. answerlattice = Answerlattice standalone. No cross-project queries.
 
-### CCT: Every product uses Canonica Client Token (signed JWT). Canonica never reads session directly.
+### CCT: Every product uses Answerlattice Client Token (signed JWT). Answerlattice never reads session directly.
 
-### Canonica DAL: Uses `canonicaFirebaseClient`, NOT `firebaseClient`.
+### Answerlattice DAL: Uses `answerlatticeFirebaseClient`, NOT `firebaseClient`.
 
-### Canonica Functions: `functions-canonica/` directory, deploys to canonica project.
+### Answerlattice Functions: `functions-answerlattice/` directory, deploys to answerlattice project.
 
-### sourceContext: Required on all Canonica client documents. User identity always present.
+### sourceContext: Required on all Answerlattice client documents. User identity always present.
 
-### traceId + requestId: On every CCT and every Canonica document write.
+### traceId + requestId: On every CCT and every Answerlattice document write.
 
-### Graceful degradation: Canonica failure must never crash MenuList.
+### Graceful degradation: Answerlattice failure must never crash MenuList.
 
-### Full reference: Read `__docs__/canonica/doctrine/07-multi-product-tenancy.md` + `08-product-separation-playbook.md`
+### Full reference: Read `__docs__/answerlattice/doctrine/07-multi-product-tenancy.md` + `08-product-separation-playbook.md`
 
 ### STEP 11B — MULTI-PRODUCT FILE ORGANIZATION (MANDATORY)
 
 **Rule: Each product's code lives in product-scoped subfolders. NEVER mix product files in shared/generic folders.**
 
-This applies to ALL products: MenuList (ML), Canonica (CN), SurfaceOS (SF), GrowthOS (GR), VisualMeta (VM).
+This applies to ALL products: MenuList (ML), Answerlattice (AL), SurfaceOS (SF), GrowthOS (GR), VisualMeta (VM).
 
 #### File Organization Pattern (Per Product)
 
-| Layer          | MenuList (default/root)                       | Canonica                                     | Future Products                               |
+| Layer          | MenuList (default/root)                       | Answerlattice                                     | Future Products                               |
 | -------------- | --------------------------------------------- | -------------------------------------------- | --------------------------------------------- |
-| **Components** | `src/components/templates/main-app/`          | `src/components/templates/canonica/`         | `src/components/templates/{product}/`         |
-| **Layout**     | `src/components/antdComponent/layoutWrapper/` | `src/components/canonica/`                   | `src/components/{product}/`                   |
-| **Hooks**      | `src/hooks/` (root)                           | `src/hooks/canonica/`                        | `src/hooks/{product}/`                        |
-| **DAL**        | `src/database/` (root)                        | `src/database/canonica/`                     | `src/database/{product}/`                     |
-| **Lib**        | `src/lib/` (root)                             | `src/lib/canonica/`                          | `src/lib/{product}/`                          |
-| **Types**      | `src/types/` (root)                           | `src/types/canonica/`                        | `src/types/{product}/`                        |
-| **Constants**  | `src/constants/` (root)                       | `src/constants/canonica/`                    | `src/constants/{product}/`                    |
-| **Data**       | `src/data/` (root)                            | `src/data/canonica/`                         | `src/data/{product}/`                         |
-| **Routes**     | `src/app/(main)/`                             | `src/app/(canonica)/canonica/`               | `src/app/({product})/{product}/`              |
-| **Website**    | `src/app/(website)/`                          | `src/app/sites/canonica/`                    | `src/app/sites/{product}/`                    |
-| **API**        | `src/app/api/` (root)                         | `src/app/api/canonica/`                      | `src/app/api/{product}/`                      |
-| **Firebase**   | `src/lib/firebase/firebaseClient.ts`          | `src/lib/firebase/canonicaFirebaseClient.ts` | `src/lib/firebase/{product}FirebaseClient.ts` |
-| **CF**         | `functions/`                                  | `functions-canonica/`                        | `functions-{product}/`                        |
-| **Docs**       | `__docs__/[feature]/`                         | `__docs__/canonica/`                         | `__docs__/{product}/`                         |
+| **Components** | `src/components/templates/main-app/`          | `src/components/templates/answerlattice/`         | `src/components/templates/{product}/`         |
+| **Layout**     | `src/components/antdComponent/layoutWrapper/` | `src/components/answerlattice/`                   | `src/components/{product}/`                   |
+| **Hooks**      | `src/hooks/` (root)                           | `src/hooks/answerlattice/`                        | `src/hooks/{product}/`                        |
+| **DAL**        | `src/database/` (root)                        | `src/database/answerlattice/`                     | `src/database/{product}/`                     |
+| **Lib**        | `src/lib/` (root)                             | `src/lib/answerlattice/`                          | `src/lib/{product}/`                          |
+| **Types**      | `src/types/` (root)                           | `src/types/answerlattice/`                        | `src/types/{product}/`                        |
+| **Constants**  | `src/constants/` (root)                       | `src/constants/answerlattice/`                    | `src/constants/{product}/`                    |
+| **Data**       | `src/data/` (root)                            | `src/data/answerlattice/`                         | `src/data/{product}/`                         |
+| **Routes**     | `src/app/(main)/`                             | `src/app/(answerlattice)/answerlattice/`               | `src/app/({product})/{product}/`              |
+| **Website**    | `src/app/(website)/`                          | `src/app/sites/answerlattice/`                    | `src/app/sites/{product}/`                    |
+| **API**        | `src/app/api/` (root)                         | `src/app/api/answerlattice/`                      | `src/app/api/{product}/`                      |
+| **Firebase**   | `src/lib/firebase/firebaseClient.ts`          | `src/lib/firebase/answerlatticeFirebaseClient.ts` | `src/lib/firebase/{product}FirebaseClient.ts` |
+| **CF**         | `functions/`                                  | `functions-answerlattice/`                        | `functions-{product}/`                        |
+| **Docs**       | `__docs__/[feature]/`                         | `__docs__/answerlattice/`                         | `__docs__/{product}/`                         |
 
 #### Rules
 
-1. **Product code goes in product subfolder** — NEVER put Canonica components in `main-app/helpCenter/`. Use `templates/canonica/`.
+1. **Product code goes in product subfolder** — NEVER put Answerlattice components in `main-app/helpCenter/`. Use `templates/answerlattice/`.
 2. **Shared infrastructure stays at root** — Auth, security, rate limiting, theme providers, SCSS, i18n = shared across all products. Do NOT duplicate.
-3. **Product constants in product folder** — `src/constants/canonica/navigations.ts`, NOT `src/constants/canonicaNavigations.ts`.
-4. **Product types in product folder** — `src/types/canonica/index.ts`, NOT `src/types/canonica.ts` (folder > flat file for scalability).
-5. **Cross-product imports use path aliases** — `@type/canonica`, `@database/canonica/entities`, `@constant/canonica/navigations`. Never relative paths across product boundaries.
-6. **Feature flags use product prefix** — `ENABLE_CANONICA_*`, `ENABLE_SURFACEOS_*`, `ENABLE_GROWTHOS_*` in the shared `features.ts`.
-7. **DB collections use product prefix** — `CANONICA_*`, `SURFACEOS_*` in the shared `database.ts`.
+3. **Product constants in product folder** — `src/constants/answerlattice/navigations.ts`, NOT `src/constants/answerlatticeNavigations.ts`.
+4. **Product types in product folder** — `src/types/answerlattice/index.ts`, NOT `src/types/answerlattice.ts` (folder > flat file for scalability).
+5. **Cross-product imports use path aliases** — `@type/answerlattice`, `@database/answerlattice/entities`, `@constant/answerlattice/navigations`. Never relative paths across product boundaries.
+6. **Feature flags use product prefix** — `ENABLE_ANSWERLATTICE_*`, `ENABLE_SURFACEOS_*`, `ENABLE_GROWTHOS_*` in the shared `features.ts`.
+7. **DB collections use product prefix** — `ANSWERLATTICE_*`, `SURFACEOS_*` in the shared `database.ts`.
 8. **MenuList is the default/root** — MenuList files don't need a `/menulist/` subfolder since it's the primary product. All other products get their own subfolder.
 9. **When adding a new product** — Create the subfolder structure first in ALL layers (components, hooks, DAL, lib, types, constants, data, routes). Follow this template exactly.
-10. **Each product has its own route group** — `(main)` for MenuList, `(canonica)` for Canonica. Own layout, own sidebar, own auth check. NEVER share layouts between products.
+10. **Each product has its own route group** — `(main)` for MenuList, `(answerlattice)` for Answerlattice. Own layout, own sidebar, own auth check. NEVER share layouts between products.
 
 ---
 

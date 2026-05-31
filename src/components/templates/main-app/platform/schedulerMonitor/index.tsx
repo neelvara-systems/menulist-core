@@ -52,7 +52,7 @@ const TASK_LABELS: Record<string, string> = {
     kb_quality: 'KB Quality Analysis',
     weekly_narrative: 'Weekly Narrative (AI)',
     health_signals: 'Health Signals (Trust/Loyalty/Risk)',
-    canonica_nightly: 'Legacy Canonica Nightly (moved)',
+    answerlattice_nightly: 'Legacy Answerlattice Nightly (moved)',
 };
 
 const STATUS_COLORS: Record<string, string> = {

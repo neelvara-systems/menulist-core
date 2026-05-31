@@ -167,7 +167,7 @@ Do not market VisualMeta until:
 - billing and credit scope are implemented
 - export kits work end to end
 - human approval cannot be bypassed
-- product data is separate from MenuList and Canonica
+- product data is separate from MenuList and Answerlattice
 - support/help docs match actual implementation
 - file-based adapters are described as handoff packages, not live sync
 

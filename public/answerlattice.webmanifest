@@ -1,0 +1,66 @@
+{
+  "name": "Answerlattice",
+  "short_name": "Answerlattice",
+  "description": "Page-aware support knowledge infrastructure for small SaaS teams.",
+  "start_url": "https://answerlattice.com/",
+  "scope": "https://answerlattice.com/",
+  "display": "standalone",
+  "background_color": "#0A0A1A",
+  "theme_color": "#0A0A1A",
+  "icons": [
+    {
+      "src": "/answerlattice-favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/answerlattice-icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/answerlattice-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
  *
  * Used by:
  * - /api/onboarding/create-subscription (website onboarding)
- * - /api/canonica/onboard (Canonica onboarding)
+ * - /api/answerlattice/onboard (Answerlattice onboarding)
  * - /api/msg-preview/[sessionId]/approve (messaging onboarding)
  * - /api/public/create-menu/claim (public menu entry)
  * - /api/reseller/onboard (reseller onboarding)
@@ -335,7 +335,7 @@ export async function createTenantStoreInTransaction(
 
 /**
  * Updates an existing user document with tenant/store ownership.
- * Use for flows where the user already exists (website onboarding, Canonica, public menu entry).
+ * Use for flows where the user already exists (website onboarding, Answerlattice, public menu entry).
  *
  * For flows with complex user handling (messaging onboarding, reseller),
  * handle user creation/update directly in the caller.

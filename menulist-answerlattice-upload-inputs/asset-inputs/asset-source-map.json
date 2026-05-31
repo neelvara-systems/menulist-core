@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "sourceProduct": "MenuList",
+  "targetProduct": "Answerlattice",
+  "generatedAssets": [
+    {
+      "file": "current-approved-assets/menulist-hero-official-source.webp",
+      "source": "public/images/website/menulist-hero-official-source.webp",
+      "role": "hero official-source composite",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-og-official-source.png",
+      "source": "public/images/website/menulist-og-official-source.png",
+      "role": "open graph image",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-public-menu-mobile.webp",
+      "source": "public/images/website/menulist-public-menu-mobile.webp",
+      "role": "mobile public menu visual",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-obp-browser.webp",
+      "source": "public/images/website/menulist-obp-browser.webp",
+      "role": "Official Business Page browser visual",
+      "status": "generated supporting asset"
+    },
+    {
+      "file": "current-approved-assets/menulist-setup-relief-workflow.webp",
+      "source": "public/images/website/menulist-setup-relief-workflow.webp",
+      "role": "setup relief workflow",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-public-surfaces-matrix.webp",
+      "source": "public/images/website/menulist-public-surfaces-matrix.webp",
+      "role": "public surfaces matrix",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-analytics-proof.webp",
+      "source": "public/images/website/menulist-analytics-proof.webp",
+      "role": "activity/status visual",
+      "status": "generated supporting asset"
+    },
+    {
+      "file": "current-approved-assets/menulist-launch-square.png",
+      "source": "public/images/website/menulist-launch-square.png",
+      "role": "square launch asset",
+      "status": "generated demo visual"
+    },
+    {
+      "file": "current-approved-assets/menulist-linkedin-launch.png",
+      "source": "public/images/website/menulist-linkedin-launch.png",
+      "role": "LinkedIn launch asset",
+      "status": "generated demo visual"
+    }
+  ],
+  "privateReferenceCaptures": [
+    {
+      "file": "private-reference-captures/hero-official-source.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/hero-official-source.png",
+      "status": "private reference only"
+    },
+    {
+      "file": "private-reference-captures/public-menu-mobile.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/public-menu-mobile.png",
+      "status": "private reference only"
+    },
+    {
+      "file": "private-reference-captures/official-business-page.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/official-business-page.png",
+      "status": "private reference only"
+    },
+    {
+      "file": "private-reference-captures/setup-review-workflow.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/setup-review-workflow.png",
+      "status": "private reference only"
+    },
+    {
+      "file": "private-reference-captures/public-surfaces-matrix.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/public-surfaces-matrix.png",
+      "status": "private reference only"
+    },
+    {
+      "file": "private-reference-captures/analytics-proof.png",
+      "source": "__docs__/main-website/asset-production/stage-06-2/captures/analytics-proof.png",
+      "status": "private reference only"
+    }
+  ],
+  "websiteAssetSlotMap": "answerlattice-website-asset-slots.md",
+  "productionReadinessInputs": [
+    "production-onboarding/onboarding-runbook.md",
+    "production-onboarding/dashboard-demo-data-requirements.md",
+    "production-onboarding/product-surface-map.csv",
+    "production-onboarding/production-data-safety.md"
+  ],
+  "futureCaptureFolder": "asset-inputs/future-routed-captures",
+  "publicUseRule": "Use generated assets as generated demo visuals only. Use private references for planning only. Use future routed captures only after demo tenant approval and privacy scrub."
+}

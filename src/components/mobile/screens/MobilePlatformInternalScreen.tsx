@@ -1,8 +1,8 @@
 'use client'
 
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
 import type { TenantDataType } from '@type/platform/tenant';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -27,7 +27,7 @@ export type MobilePlatformInternalScreenKey =
     | 'chatBackfill'
     | 'chatWeeklyDigest'
     | 'chatRoiCalculator'
-    | 'canonicaWidget';
+    | 'answerlatticeWidget';
 
 type MobilePlatformInternalScreenProps = {
     onBack: () => void;
@@ -39,7 +39,7 @@ type PlatformScreenConfig = {
     description: string;
     desktopPath?: string;
     minWidth?: number;
-    requiresCanonica?: boolean;
+    requiresAnswerlattice?: boolean;
     surface: string;
     title: string;
 };
@@ -70,7 +70,7 @@ const ChatInsights = dynamic(() => import('@template/platform/chatManagement/Cha
 const ChatBackfill = dynamic(() => import('@template/platform/admin/AnalyticsBackfill'), { loading: RouteLoading, ssr: false });
 const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement/WeeklyDigest'), { loading: RouteLoading, ssr: false });
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
-const CanonicaWidgetManagement = dynamic(() => import('@template/canonica/widgetManagement/CanonicaWidgetManagement'), { loading: RouteLoading, ssr: false });
+const AnswerlatticeWidgetManagement = dynamic(() => import('@template/answerlattice/widgetManagement/AnswerlatticeWidgetManagement'), { loading: RouteLoading, ssr: false });
 
 function PlatformTenantsRoute() {
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
@@ -82,8 +82,8 @@ function PlatformStoresRoute() {
     return <StoresDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />;
 }
 
-function CanonicaWidgetRoute() {
-    return <CanonicaWidgetManagement embeddedMobile />;
+function AnswerlatticeWidgetRoute() {
+    return <AnswerlatticeWidgetManagement embeddedMobile />;
 }
 
 const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformScreenConfig> = {
@@ -120,7 +120,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/support-tickets',
         description: 'Platform support queue and ticket operations.',
         minWidth: 720,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Support Tickets',
         title: 'Support Tickets',
     },
@@ -129,7 +129,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/feedback-admin',
         description: 'Internal feedback administration tools.',
         minWidth: 640,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Feedback Admin',
         title: 'Feedback Admin',
     },
@@ -138,7 +138,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/knowledge-base',
         description: 'Platform knowledge base editing and publishing.',
         minWidth: 760,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Knowledge Base',
         title: 'Knowledge Base',
     },
@@ -147,7 +147,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/kb-generation',
         description: 'Generate, review, and reconcile knowledge base content.',
         minWidth: 680,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'KB Generation',
         title: 'KB Generation',
     },
@@ -156,7 +156,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/changelog',
         description: 'Create and publish platform release notes.',
         minWidth: 680,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Changelog Management',
         title: 'Changelog',
     },
@@ -165,7 +165,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/chat-management',
         description: 'Review and manage customer chat conversations.',
         minWidth: 760,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Chat Management',
         title: 'Chat Management',
     },
@@ -174,7 +174,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/chat-insights',
         description: 'Conversation analytics and chat quality signals.',
         minWidth: 680,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Chat Insights',
         title: 'Chat Insights',
     },
@@ -183,7 +183,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         desktopPath: '/platform/chat-backfill',
         description: 'Backfill chat analytics and operational data.',
         minWidth: 640,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Chat Backfill',
         title: 'Chat Backfill',
     },
@@ -191,7 +191,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         Component: ChatWeeklyDigest,
         desktopPath: '/platform/chat-weekly-digest',
         description: 'Review weekly chat digest output.',
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Chat Weekly Digest',
         title: 'Chat Weekly Digest',
     },
@@ -199,16 +199,16 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         Component: ChatRoiCalculator,
         desktopPath: '/platform/chat-roi-calculator',
         description: 'Internal ROI calculator for chat operations.',
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Chat ROI Calculator',
         title: 'Chat ROI Calculator',
     },
-    canonicaWidget: {
-        Component: CanonicaWidgetRoute,
-        desktopPath: '/canonica/widget',
+    answerlatticeWidget: {
+        Component: AnswerlatticeWidgetRoute,
+        desktopPath: '/answerlattice/widget',
         description: 'Configure widget keys, install snippets, origins, appearance, and cache strategy.',
         minWidth: 0,
-        requiresCanonica: true,
+        requiresAnswerlattice: true,
         surface: 'Widget Management',
         title: 'Widget Management',
     },
@@ -217,7 +217,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
 export default function MobilePlatformInternalScreen({ onBack, screen }: MobilePlatformInternalScreenProps) {
     const config = PLATFORM_SCREEN_CONFIG[screen];
     const Component = config.Component;
-    const isCanonicaRoute = Boolean(config.requiresCanonica);
+    const isAnswerlatticeRoute = Boolean(config.requiresAnswerlattice);
     const router = useRouter();
 
     const openDesktopTools = () => {
@@ -244,7 +244,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                 title={config.title}
             />
             <div
-                data-mobile-canonica-admin={isCanonicaRoute ? 'true' : undefined}
+                data-mobile-answerlattice-admin={isAnswerlatticeRoute ? 'true' : undefined}
                 data-mobile-platform-route
                 data-mobile-platform-screen={screen}
                 style={{
@@ -381,7 +381,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             padding-right: 10px;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-card-body {
+                        [data-mobile-answerlattice-admin="true"] .ant-card-body {
                             padding-bottom: 12px;
                             padding-top: 12px;
                         }
@@ -395,93 +395,93 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             min-width: 0;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-row {
+                        [data-mobile-answerlattice-admin="true"] .ant-row {
                             gap: 12px 0 !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-row > .ant-col {
+                        [data-mobile-answerlattice-admin="true"] .ant-row > .ant-col {
                             flex: 0 0 100% !important;
                             max-width: 100% !important;
                             padding-left: 0 !important;
                             padding-right: 0 !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-list-item {
+                        [data-mobile-answerlattice-admin="true"] .ant-list-item {
                             align-items: flex-start;
                             min-height: 56px;
                             padding: 12px 0 !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-list-item-meta {
+                        [data-mobile-answerlattice-admin="true"] .ant-list-item-meta {
                             min-width: 0;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-avatar {
+                        [data-mobile-answerlattice-admin="true"] .ant-list-item-meta-avatar {
                             margin-inline-end: 10px !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-title > .ant-flex,
-                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-description > .ant-flex {
+                        [data-mobile-answerlattice-admin="true"] .ant-list-item-meta-title > .ant-flex,
+                        [data-mobile-answerlattice-admin="true"] .ant-list-item-meta-description > .ant-flex {
                             align-items: flex-start !important;
                             flex-wrap: wrap;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-segmented {
+                        [data-mobile-answerlattice-admin="true"] .ant-segmented {
                             width: 100%;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-segmented-group {
+                        [data-mobile-answerlattice-admin="true"] .ant-segmented-group {
                             min-width: max-content;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-form-item {
+                        [data-mobile-answerlattice-admin="true"] .ant-form-item {
                             margin-bottom: 14px;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-form-item-label,
-                        [data-mobile-canonica-admin="true"] .ant-form-item-control {
+                        [data-mobile-answerlattice-admin="true"] .ant-form-item-label,
+                        [data-mobile-answerlattice-admin="true"] .ant-form-item-control {
                             flex: 0 0 100%;
                             max-width: 100%;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-descriptions-view {
+                        [data-mobile-answerlattice-admin="true"] .ant-descriptions-view {
                             border-radius: 8px;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-descriptions-row,
-                        [data-mobile-canonica-admin="true"] .ant-descriptions-item,
-                        [data-mobile-canonica-admin="true"] .ant-descriptions-item-label,
-                        [data-mobile-canonica-admin="true"] .ant-descriptions-item-content {
+                        [data-mobile-answerlattice-admin="true"] .ant-descriptions-row,
+                        [data-mobile-answerlattice-admin="true"] .ant-descriptions-item,
+                        [data-mobile-answerlattice-admin="true"] .ant-descriptions-item-label,
+                        [data-mobile-answerlattice-admin="true"] .ant-descriptions-item-content {
                             display: block;
                             width: 100% !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-statistic-content {
+                        [data-mobile-answerlattice-admin="true"] .ant-statistic-content {
                             font-size: 22px;
                             line-height: 1.2;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-table-wrapper {
+                        [data-mobile-answerlattice-admin="true"] .ant-table-wrapper {
                             border: 1px solid rgba(15, 23, 42, 0.08);
                             border-radius: 8px;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-table-cell {
+                        [data-mobile-answerlattice-admin="true"] .ant-table-cell {
                             padding: 10px 12px !important;
                             white-space: normal;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-table-cell-fix-left,
-                        [data-mobile-canonica-admin="true"] .ant-table-cell-fix-right {
+                        [data-mobile-answerlattice-admin="true"] .ant-table-cell-fix-left,
+                        [data-mobile-answerlattice-admin="true"] .ant-table-cell-fix-right {
                             position: static !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-tabs-nav {
+                        [data-mobile-answerlattice-admin="true"] .ant-tabs-nav {
                             margin-bottom: 12px;
                             overflow-x: auto;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-splitter {
+                        [data-mobile-answerlattice-admin="true"] .ant-splitter {
                             display: flex !important;
                             flex-direction: column !important;
                             gap: 12px;
@@ -490,7 +490,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             width: 100% !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-splitter-panel {
+                        [data-mobile-answerlattice-admin="true"] .ant-splitter-panel {
                             flex: 0 0 auto !important;
                             height: auto !important;
                             max-width: 100% !important;
@@ -499,13 +499,13 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             width: 100% !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-splitter-bar {
+                        [data-mobile-answerlattice-admin="true"] .ant-splitter-bar {
                             display: none !important;
                         }
 
-                        [data-mobile-canonica-admin="true"] .ant-upload-wrapper,
-                        [data-mobile-canonica-admin="true"] .ant-upload-list,
-                        [data-mobile-canonica-admin="true"] .ant-upload-list-item {
+                        [data-mobile-answerlattice-admin="true"] .ant-upload-wrapper,
+                        [data-mobile-answerlattice-admin="true"] .ant-upload-list,
+                        [data-mobile-answerlattice-admin="true"] .ant-upload-list-item {
                             max-width: 100%;
                             min-width: 0;
                         }
@@ -519,9 +519,9 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         }
                     }
                 `}</style>
-                <div style={{ minWidth: isCanonicaRoute ? 0 : config.minWidth || 0, width: '100%' }}>
-                    {config.requiresCanonica && !isCanonicaFirebaseConfigured ? (
-                        <CanonicaConfigNotice surface={config.surface} />
+                <div style={{ minWidth: isAnswerlatticeRoute ? 0 : config.minWidth || 0, width: '100%' }}>
+                    {config.requiresAnswerlattice && !isAnswerlatticeFirebaseConfigured ? (
+                        <AnswerlatticeConfigNotice surface={config.surface} />
                     ) : (
                         <Component />
                     )}

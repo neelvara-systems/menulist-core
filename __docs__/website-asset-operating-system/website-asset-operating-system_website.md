@@ -10,9 +10,9 @@
 
 Do not create a public website, route, SEO landing page, or pricing page for Website Asset Operating System.
 
-The current need is internal: make Codex understand and maintain MenuList/Canonica website assets. The architecture is productized internally, but publishing it as a public product would create product confusion and compete with future GrowthOS/VisualMeta boundaries.
+The current need is internal: make Codex understand and maintain MenuList/Answerlattice website assets. The architecture is productized internally, but publishing it as a public product would create product confusion and compete with future GrowthOS/VisualMeta boundaries.
 
-If this is ever shown externally, the safest first context is a Canonica ecosystem or engineering case study: Canonica keeps product knowledge truthful; AssetOS keeps product media truthful. That is different from launching a fourth broad product.
+If this is ever shown externally, the safest first context is an Answerlattice ecosystem or engineering case study: Answerlattice keeps product knowledge truthful; AssetOS keeps product media truthful. That is different from launching a fourth broad product.
 
 ## Where It May Appear
 
@@ -22,13 +22,13 @@ If this is ever shown externally, the safest first context is a Canonica ecosyst
 | Internal package | Yes | `packages/asset-factory/` is the implementation boundary. |
 | Internal changelog | Yes | Mention as docs/planning only. |
 | MenuList public website | No | MenuList buyers do not need to see internal asset tooling. |
-| Canonica public website | No | Canonica buyers need support knowledge control, not our asset workflow. |
+| Answerlattice public website | No | Answerlattice buyers need governed support answers, not our asset workflow. |
 | MyCodex/internal reader | Yes | Internal docs may be readable through private MyCodex. |
-| Public blog/case study | Later only | Prefer a Canonica ecosystem or engineering case study after the system works and has no product-boundary confusion. |
+| Public blog/case study | Later only | Prefer an Answerlattice ecosystem or engineering case study after the system works and has no product-boundary confusion. |
 
 ## If A Future Public Page Is Ever Approved
 
-The public page must not present this as a fourth product. It should be a technical case study, Canonica ecosystem note, or internal workflow note only.
+The public page must not present this as a fourth product. It should be a technical case study, Answerlattice ecosystem note, or internal workflow note only.
 
 Draft public framing, if needed later:
 
@@ -58,8 +58,8 @@ No changes are required to:
 - `src/app/(website)/`;
 - `src/components/website/`;
 - `public/locales/menulist.ai/`;
-- `src/app/sites/canonica/`;
-- Canonica public copy;
+- `src/app/sites/answerlattice/`;
+- Answerlattice public copy;
 - MenuList public copy.
 
 This remains an internal tooling layer until a specific public content change is approved.

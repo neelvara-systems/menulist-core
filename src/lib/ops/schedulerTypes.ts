@@ -30,9 +30,9 @@ export type SchedulerTaskName =
   | 'kb_quality'
   | 'weekly_narrative'
   | 'health_signals'
-  // Historical MenuList run logs may contain this task. New Canonica runs
-  // are owned by functions-canonica and should not be written here.
-  | 'canonica_nightly';
+  // Historical MenuList run logs may contain this task. New Answerlattice runs
+  // are owned by functions-answerlattice and should not be written here.
+  | 'answerlattice_nightly';
 
 export type SchedulerRunStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
 export type SchedulerTrigger = 'scheduled' | 'manual';

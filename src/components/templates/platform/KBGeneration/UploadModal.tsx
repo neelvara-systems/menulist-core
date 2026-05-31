@@ -4,7 +4,7 @@ import { addIngestionJob } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
-import { canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
@@ -98,7 +98,7 @@ function getKnowledgeSourceUploadMetadata(file: File): UploadMetadata {
         ? 'source_file_may_include_image_metadata'
         : 'source_fidelity_preserved',
       sourceUse: KNOWLEDGE_SOURCE_USE,
-      uploadedVia: 'canonica_kb_generation',
+      uploadedVia: 'answerlattice_kb_generation',
     },
   };
 }
@@ -184,7 +184,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${sanitizeKnowledgeSourceFileName(file.name)}`;
       return uploadFile(storagePath, file.originFileObj, (progress) => {
         setUploadProgress((prev) => ({ ...prev, [file.uid]: progress }));
-      }, canonicaStorage, getKnowledgeSourceUploadMetadata(file.originFileObj));
+      }, answerlatticeStorage, getKnowledgeSourceUploadMetadata(file.originFileObj));
     });
 
     try {

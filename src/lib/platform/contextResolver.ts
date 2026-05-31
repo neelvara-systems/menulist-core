@@ -4,15 +4,15 @@
  * SECURITY: CCT signing MUST happen server-side only.
  * Client secretKey MUST never be exposed to browser.
  * 
- * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
+ * @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
  */
 
-import { CanonicaClientTokenPayload, CanonicaPlatformContext } from '@type/multiProduct';
+import { AnswerlatticeClientTokenPayload, AnswerlatticePlatformContext } from '@type/multiProduct';
 
 export async function resolvePlatformContext(
-    tokenPayload: CanonicaClientTokenPayload,
+    tokenPayload: AnswerlatticeClientTokenPayload,
     clientLookup: { tId: number; sId: number }
-): Promise<CanonicaPlatformContext> {
+): Promise<AnswerlatticePlatformContext> {
     return {
         traceId: tokenPayload.traceId,
         requestId: tokenPayload.requestId,

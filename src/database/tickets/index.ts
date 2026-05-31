@@ -4,16 +4,16 @@ import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where, type QueryConstraint } from "@firebase/firestore";
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
-import { emitCanonicaSignal } from "@lib/canonica/signalEmitter";
-import { canonicaFirebaseClient, canonicaStorage } from "@lib/firebase/canonicaFirebaseClient";
+import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
+import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
 import { triggerNotification } from "@lib/notifications/client";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
-import { CANONICA_SIGNAL_TYPE } from "@type/canonica";
+import { ANSWERLATTICE_SIGNAL_TYPE } from "@type/answerlattice";
 import { UserUploadedFileType } from "@type/common";
 import { SupportTicketType, TicketMessage } from "@type/supportTicket";
 import { addDoc } from "firebase/firestore";
@@ -23,11 +23,11 @@ const STORE_TICKETS_LIMIT = 100;
 const PLATFORM_TICKETS_LIMIT = 500;
 
 const getCollectionRef = () => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}`)
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
 }
 
 const getDocRef = (docId: string) => {
-    return doc(canonicaFirebaseClient, `${COLLECTION}`, docId)
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId)
 }
 
 const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
@@ -49,7 +49,7 @@ const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
     const tId = Number(session?.tId ?? session?.user?.tenantId);
     const sId = Number(session?.sId ?? session?.user?.storeId);
     if (!Number.isFinite(tId) || !Number.isFinite(sId)) {
-        throw new Error('Missing Canonica ticket scope');
+        throw new Error('Missing Answerlattice ticket scope');
     }
 
     return [
@@ -113,7 +113,7 @@ const uploadImage = async (data: UserUploadedFileType, type = 'documents') => {
         uploadedUrl = await uploadBase64ToStorage({
             cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
             fileId: docId,
-            storage: canonicaStorage,
+            storage: answerlatticeStorage,
             url: data.url,
             path,
             type: data.type
@@ -128,7 +128,7 @@ export const addTicket = async (data: SupportTicketType) => {
             const capturedLogs = getCapturedLogs();
             const clientDebugContext = getClientDebugContext();
 
-            const submitData = await canonicaRequestBodyComposer({
+            const submitData = await answerlatticeRequestBodyComposer({
                 ...data,
                 deleted: false,
                 logs: capturedLogs,
@@ -146,16 +146,16 @@ export const addTicket = async (data: SupportTicketType) => {
             clearCapturedLogs(); // Clear only after the ticket is persisted successfully.
             const displayId = getDisplayId(docRef.id);
 
-            // Canonica: emit ticket creation signal (fire-and-forget)
+            // Answerlattice: emit ticket creation signal (fire-and-forget)
             // For AI escalation tickets, emit ESCALATION signal (3x severity weight)
             // For manual tickets, emit TICKET signal (1.5x weight)
             const signalType = data.source === 'ai_escalation'
-                ? CANONICA_SIGNAL_TYPE.ESCALATION
-                : CANONICA_SIGNAL_TYPE.TICKET;
+                ? ANSWERLATTICE_SIGNAL_TYPE.ESCALATION
+                : ANSWERLATTICE_SIGNAL_TYPE.TICKET;
             const escalationMatchedEntityIds = data.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
             const signalEntityId = escalationMatchedEntityIds.find((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()));
 
-            emitCanonicaSignal({
+            emitAnswerlatticeSignal({
                 type: signalType,
                 entityId: signalEntityId,
                 tId: submitData.tId,
@@ -183,7 +183,7 @@ export const addTicket = async (data: SupportTicketType) => {
                     recipientEmail: data.clientDetails.email,
                     recipientName: data.clientDetails.storeName || undefined,
                     referenceId: `ticket-created-${docRef.id}`,
-                    productId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.ANSWERLATTICE,
                     metadata: {
                         ticketId: docRef.id,
                         ticketDisplayId: displayId,
@@ -204,7 +204,7 @@ export const addTicket = async (data: SupportTicketType) => {
 export const updateTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            const updateData = await canonicaRequestBodyComposer(data);
+            const updateData = await answerlatticeRequestBodyComposer(data);
 
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
             if (files.length) {
@@ -249,7 +249,7 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
 
             // Update ticket with new message ONLY (requestBodyComposer adds timestamps)
             // No logs - only send logs on initial ticket creation
-            const updateData = await canonicaRequestBodyComposer({
+            const updateData = await answerlatticeRequestBodyComposer({
                 messages: updatedMessages
             });
 
@@ -265,7 +265,7 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
                     recipientEmail: notifyEmail,
                     recipientName: (message as any)._notifyName || undefined,
                     referenceId: `ticket-reply-${ticketId}-${message.id}`,
-                    productId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.ANSWERLATTICE,
                     metadata: {
                         ticketId,
                         ticketSubject: (message as any)._ticketSubject || 'Support Request',
@@ -298,7 +298,7 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
 
             // Update both status field and statuses array (requestBodyComposer adds timestamps)
             // No logs - only send logs on initial ticket creation
-            const updateData = await canonicaRequestBodyComposer({
+            const updateData = await answerlatticeRequestBodyComposer({
                 status: newStatus,
                 statuses: updatedStatuses
             });
@@ -315,7 +315,7 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
                     recipientEmail: notifyEmail,
                     recipientName: (changedBy as any)._notifyName || undefined,
                     referenceId: `ticket-status-${ticketId}-${newStatus}-${Date.now()}`,
-                    productId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.ANSWERLATTICE,
                     skipDedup: true,
                     metadata: {
                         ticketId,
@@ -339,7 +339,7 @@ export const deleteTicket = async (data: any) => {
         async () => {
             if (data.documents?.length) {
                 for (let i = 0; i < data.documents.length; i++) {
-                    await deleteFileByUrl(data.documents[i].url, canonicaStorage)
+                    await deleteFileByUrl(data.documents[i].url, answerlatticeStorage)
                 }
             }
             const docRef = getDocRef(data.id);
@@ -359,7 +359,7 @@ export const submitTicketSatisfaction = async (ticketId: string, rating: number,
                 comment: comment || '',
                 submittedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
             };
-            const updateData = await canonicaRequestBodyComposer({ satisfaction });
+            const updateData = await answerlatticeRequestBodyComposer({ satisfaction });
             const ticketRef = getDocRef(ticketId);
             await setDoc(ticketRef, updateData, { merge: true });
             return satisfaction;

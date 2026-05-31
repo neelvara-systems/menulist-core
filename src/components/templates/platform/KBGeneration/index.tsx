@@ -146,7 +146,7 @@ function KBGenerationTemplate() {
                         showIcon
                         style={{ marginBottom: 16 }}
                         message="Workspace scope is not available"
-                        description="Sign in to a Canonica workspace before starting a knowledge import."
+                        description="Sign in to an Answerlattice workspace before starting a knowledge import."
                     />
                 )}
                 {renderContent()}

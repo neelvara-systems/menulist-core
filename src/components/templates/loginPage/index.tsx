@@ -3,12 +3,12 @@ import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
 import { EMPTY_ERROR } from "@constant/common";
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
-import { CANONICA_LOCAL_DEV_PATH_PREFIX, isCanonicaProductHostname } from '@constant/canonica/domains';
+import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import { useAppSelector } from "@hook/useAppSelector";
-import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
-import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
+import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -79,27 +79,27 @@ function LoginPage() {
     return CLIENT_DASHBOARD_ROUTING;
   };
 
-  const getCanonicaSubscriptionRedirect = () => {
-    if (typeof window === 'undefined') return `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`;
-    return isCanonicaProductHostname(window.location.hostname)
+  const getAnswerlatticeSubscriptionRedirect = () => {
+    if (typeof window === 'undefined') return `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;
+    return isAnswerlatticeProductHostname(window.location.hostname)
       ? '/pricing'
-      : `${CANONICA_LOCAL_DEV_PATH_PREFIX}/pricing`;
+      : `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;
   };
 
   const getSafePostLoginRedirect = () => {
     const target = getPostLoginRedirect();
     if (typeof window === 'undefined') return target;
 
-    const isCanonicaHost = isCanonicaProductHostname(window.location.hostname);
-    const isCanonicaTarget = target === '/canonica'
-      || target.startsWith('/canonica/')
-      || target === CANONICA_LOCAL_DEV_PATH_PREFIX
-      || target.startsWith(`${CANONICA_LOCAL_DEV_PATH_PREFIX}/`)
-      || (isCanonicaHost && (target === CLIENT_DASHBOARD_ROUTING || target.startsWith('/dashboard')));
-    const hasCanonicaAccess = Boolean(resolveCanonicaSessionScope(sessionData)) || canUseCanonicaManagement(sessionData);
+    const isAnswerlatticeHost = isAnswerlatticeProductHostname(window.location.hostname);
+    const isAnswerlatticeTarget = target === '/answerlattice'
+      || target.startsWith('/answerlattice/')
+      || target === ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX
+      || target.startsWith(`${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/`)
+      || (isAnswerlatticeHost && (target === CLIENT_DASHBOARD_ROUTING || target.startsWith('/dashboard')));
+    const hasAnswerlatticeAccess = Boolean(resolveAnswerlatticeSessionScope(sessionData)) || canUseAnswerlatticeManagement(sessionData);
 
-    if (isCanonicaTarget && !hasCanonicaAccess) {
-      return getCanonicaSubscriptionRedirect();
+    if (isAnswerlatticeTarget && !hasAnswerlatticeAccess) {
+      return getAnswerlatticeSubscriptionRedirect();
     }
 
     return target;
@@ -173,7 +173,7 @@ function LoginPage() {
                   // Sign in with custom token
                   const { signInWithCustomToken } = await import('firebase/auth');
                   await signInWithCustomToken(firebaseAuth, data.customToken);
-                  await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+                  await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
                   console.log('✅ Firebase Auth established with custom token');
                   console.log('✅ Custom claims:', data.claims);
                 }
@@ -198,7 +198,7 @@ function LoginPage() {
                 const data = await setClaimsResponse.json();
                 console.log('✅ Custom claims verified/set');
                 await currentUser.getIdToken(true); // Refresh token
-                await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+                await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
               }
             } catch (error) {
               console.warn('Custom claims check failed:', error);
@@ -219,7 +219,7 @@ function LoginPage() {
                 if (data.customToken) {
                   const { signInWithCustomToken } = await import('firebase/auth');
                   await signInWithCustomToken(firebaseAuth, data.customToken);
-                  await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+                  await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
                   console.log('✅ Firebase Auth switched to current account');
                 }
               } else {
@@ -392,7 +392,7 @@ function LoginPage() {
             console.log('✅ Custom claims set on Firebase Auth token');
             // Force token refresh to get new claims
             await userCredential.user.getIdToken(true);
-            await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+            await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
           } else {
             console.warn('⚠️ Failed to set custom claims');
           }

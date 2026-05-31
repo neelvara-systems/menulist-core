@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { fetchCanonicaPublicChangelogPage } from '@lib/canonica/publicContentClient';
+import { fetchAnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentClient';
 import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
 import ChangelogTagRenderer from '@template/platform/changelog/ChangelogTagRenderer';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
@@ -51,7 +51,7 @@ function WhatsNew() {
 
     const fetchInitialData = async () => {
         try {
-            const changelogData = await fetchCanonicaPublicChangelogPage();
+            const changelogData = await fetchAnswerlatticePublicChangelogPage();
             setChangelog(changelogData);
         } catch (error) {
             message.error(t('failedToLoadChangelog'));

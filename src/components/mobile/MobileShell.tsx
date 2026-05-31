@@ -71,9 +71,9 @@ const RESELLER_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/reseller/onboard': 'resellerOnboarding',
 };
 const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
-    kb: 'canonicaDocs',
-    ticket: 'canonicaSupport',
-    changelog: 'canonicaReleaseNotes',
+    kb: 'answerlatticeDocs',
+    ticket: 'answerlatticeSupport',
+    changelog: 'answerlatticeReleaseNotes',
 };
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
@@ -105,7 +105,7 @@ function getHelpCenterMoreScreen(pathname: string, search: string) {
     const segments = normalizePathname(pathname).split('/').filter(Boolean);
     const pathTab = segments[0] === 'help-center' ? segments[1] || '' : '';
     const tab = new URLSearchParams(search).get('tab') || pathTab;
-    return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'canonicaHelp';
+    return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';
 }
 
 function parseMobileRouteHash(hash: string): MobileRouteState {

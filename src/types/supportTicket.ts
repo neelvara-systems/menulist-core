@@ -52,9 +52,9 @@ export interface SupportTicketType {
     },
 
     // AI Failure Escalation (Expansion Item #8)
-    // @see __docs__/canonica/ai-failure-escalation/
+    // @see __docs__/answerlattice/ai-failure-escalation/
     /** AI escalation context (only present on tickets created via escalation) */
-    escalationContext?: import('@lib/canonica/escalationTypes').EscalationContext;
+    escalationContext?: import('@lib/answerlattice/escalationTypes').EscalationContext;
     /** Whether this ticket is a candidate for knowledge creation (System 9) */
     knowledgeCandidate?: boolean;
     /** How this ticket was created */

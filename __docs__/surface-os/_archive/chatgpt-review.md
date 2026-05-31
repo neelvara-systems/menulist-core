@@ -125,7 +125,7 @@ ChatGPT was significantly more accurate in this conversation than in most featur
 | 4 | **No existing code audit** | MISSING | ChatGPT didn't check what MenuList already has that could inform SurfaceOS (GBP sync module, schema.org, OBP, MCE). Cascade has this context |
 | 5 | **Multi-surface debate resolution was inconsistent** | INCONSISTENT | ChatGPT initially argued Google-first, then accepted user's multi-surface preference, then argued Google-first again when user gave reasoning. Flip-flopping shows ChatGPT adjusting to user mood |
 | 6 | **"ERP for Public Representation" analogy** | QUESTIONABLE | Sounds impressive but may create wrong mental model. ERP implies internal operations. SurfaceOS is external-facing governance |
-| 7 | **No Canonica awareness** | MISSING | ChatGPT doesn't know about Canonica product or its architectural patterns that could inform SurfaceOS design |
+| 7 | **No Answerlattice awareness** | MISSING | ChatGPT doesn't know about Answerlattice product or its architectural patterns that could inform SurfaceOS design |
 | 8 | **Relational DB recommendation vs MenuList's Firestore** | DIFFERENT FROM CODEBASE | MenuList uses Firebase/Firestore. ChatGPT recommends Postgres for SurfaceOS. This is actually valid (independent product, different needs) but wasn't discussed in context of existing infra expertise |
 | 9 | **No cost estimation** | MISSING | Firebase cost discipline is critical for MenuList. SurfaceOS using Postgres means different cost model, different scaling. Not discussed |
 | 10 | **Build timeline of 6 months** | UNVALIDATED | Conservative but depends entirely on team quality, founder attention, and API access timeline. Could easily be 9-12 months |

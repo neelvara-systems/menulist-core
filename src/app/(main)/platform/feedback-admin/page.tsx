@@ -1,10 +1,10 @@
 import FeedbackAdminTemplate from '@template/platform/feedbackAdmin';
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
 
 function FeedbackAdminPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Feedback Admin" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Feedback Admin" />;
     }
 
     return <FeedbackAdminTemplate />;

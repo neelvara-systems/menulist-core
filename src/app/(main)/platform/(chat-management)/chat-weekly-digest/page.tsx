@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import WeeklyDigest from '@template/platform/chatManagement/WeeklyDigest';
-import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
-import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
 
 export const metadata: Metadata = {
     title: 'Weekly Digest | Chat Management',
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function WeeklyDigestPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Chat Weekly Digest" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Chat Weekly Digest" />;
     }
 
     return <WeeklyDigest />;

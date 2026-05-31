@@ -216,7 +216,7 @@
 
 ## Layer 19: Historical Auditability — ✅ STRONG
 
-**Evidence:** MOL (15 change types, immutable), menuSnapshots (full state on publish), menuVersion (monotonic), 30-day derived metrics, schedulerRunLogs, messageLogs, canonica_auditLogs.
+**Evidence:** MOL (15 change types, immutable), menuSnapshots (full state on publish), menuVersion (monotonic), 30-day derived metrics, schedulerRunLogs, messageLogs, answerlattice_auditLogs.
 
 **Status: ✅ STRONG** — Minor: no rollback UI (data supports it).
 

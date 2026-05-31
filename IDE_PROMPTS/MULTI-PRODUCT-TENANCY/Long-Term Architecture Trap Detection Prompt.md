@@ -22,10 +22,10 @@ Your goal is to detect structural risks BEFORE they happen.
 
 Products:
 
-MenuList — canonical business truth layer  
-Canonica — support knowledge control plane  
-SurfaceOS — discovery representation layer (future)  
-GrowthOS — execution layer (future)  
+MenuList — canonical business truth layer
+Answerlattice — governed answer infrastructure
+SurfaceOS — discovery representation layer (future)
+GrowthOS — execution layer (future)
 VisualMeta — content preparation layer (future)
 
 Architecture decisions:
@@ -77,7 +77,7 @@ MenuList owns:
 • hours
 • public truth data
 
-Canonica owns:
+Answerlattice owns:
 
 • tickets
 • knowledge base
@@ -89,7 +89,7 @@ Ensure no system duplicates ownership.
 
 Example dangerous pattern:
 
-MenuList storing ticket references or Canonica storing menu data.
+MenuList storing ticket references or Answerlattice storing menu data.
 
 If boundary violations exist:
 
@@ -113,7 +113,7 @@ Coupling risks include:
 • direct database reads
 • shared data models
 
-Canonica must be usable independently.
+Answerlattice must be usable independently.
 
 Identify coupling risks.
 
@@ -144,8 +144,8 @@ Identify collections likely to become bottlenecks.
 
 Simulate adding:
 
-SurfaceOS  
-GrowthOS  
+SurfaceOS
+GrowthOS
 VisualMeta
 
 Evaluate whether the current architecture supports:
@@ -255,8 +255,8 @@ Produce a structured architecture risk report:
 
 Verdict must be:
 
-• ARCHITECTURE SOUND FOR SCALE  
-• ARCHITECTURE SOUND WITH RISKS  
+• ARCHITECTURE SOUND FOR SCALE
+• ARCHITECTURE SOUND WITH RISKS
 • ARCHITECTURE REQUIRES CHANGES
 
 Do NOT change architecture automatically.

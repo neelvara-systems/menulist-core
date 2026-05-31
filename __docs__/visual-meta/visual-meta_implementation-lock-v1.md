@@ -130,7 +130,7 @@ type VisualMetaSourceSnapshot = VisualMetaIdentity & {
   version: number;
   status: "active" | "superseded" | "locked_for_export" | "archived";
   sourceContext: {
-    sourcePId: "ML" | "CN" | "GR" | "external" | "manual" | "upload";
+    sourcePId: "ML" | "AL" | "GR" | "external" | "manual" | "upload";
     sourceTId?: number;
     sourceSId?: number;
     sourceDocId?: string;
@@ -204,7 +204,7 @@ type VisualMetaContentUnit = VisualMetaIdentity & {
   sourceSnapshotId: string;
   sourceHash: string;
   sourceContext?: {
-    sourcePId: "ML" | "CN" | "GR" | "external" | "manual" | "upload";
+    sourcePId: "ML" | "AL" | "GR" | "external" | "manual" | "upload";
     sourceDocId?: string;
     sourceLabel?: string;
     importedAt?: Timestamp;

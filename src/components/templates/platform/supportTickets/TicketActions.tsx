@@ -1,6 +1,6 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
-import { getProductSurfacesForSession } from '@database/canonica/productSurfaces';
+import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
@@ -28,7 +28,7 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
     };
 
     useEffect(() => {
-        if (from !== 'platform' || !FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return;
+        if (from !== 'platform' || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) return;
         let mounted = true;
         getProductSurfacesForSession()
             .then((surfaces = []) => {
@@ -260,7 +260,7 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                         >
                             {PLATFORM_SUPPORT_TICKET_TAG_OPTIONS.map(tag => <Option key={tag} value={tag}>{tag}</Option>)}
                         </Select>
-                        {FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && (
+                        {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES && (
                             <Select
                                 mode="multiple"
                                 allowClear

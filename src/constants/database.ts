@@ -1,4 +1,4 @@
-import { CANONICA_DB_COLLECTIONS } from './canonica/database';
+import { ANSWERLATTICE_DB_COLLECTIONS } from './answerlattice/database';
 
 export const DB_COLLECTIONS = {
     PLATFORM_SUMMARY: "platformSummary",
@@ -147,12 +147,12 @@ export const DB_COLLECTIONS = {
     RESELLER_PROFILES: "resellerProfiles",           // Reseller profile with caps, counts, status
 
     // ═══════════════════════════════════════════════════════════════
-    // CANONICA — Support Knowledge Control Plane
-    // ⚠️  These collections live in CANONICA Firestore (separate project), NOT ecomsai.
-    // DAL files use canonicaFirebaseClient, not firebaseClient.
-    // @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
+    // ANSWERLATTICE — Governed Answer Infrastructure
+    // ⚠️  These collections live in ANSWERLATTICE Firestore (separate project), NOT ecomsai.
+    // DAL files use answerlatticeFirebaseClient, not firebaseClient.
+    // @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
     // ═══════════════════════════════════════════════════════════════
-    ...CANONICA_DB_COLLECTIONS,
+    ...ANSWERLATTICE_DB_COLLECTIONS,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

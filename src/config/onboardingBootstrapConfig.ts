@@ -1,10 +1,10 @@
 /**
- * Canonica — Founder Onboarding Bootstrap Configuration
+ * Answerlattice — Founder Onboarding Bootstrap Configuration
  * 
  * Thresholds, limits, and constants for the knowledge bootstrap engine.
  * Used by both frontend (progress display) and CF (engine logic via copy).
  * 
- * @see __docs__/canonica/founder-onboarding/founder-onboarding_impl.md §5
+ * @see __docs__/answerlattice/founder-onboarding/founder-onboarding_impl.md §5
  */
 
 export const ONBOARDING_BOOTSTRAP_CONFIG = {

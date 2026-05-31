@@ -1,10 +1,10 @@
-import CanonicaConfigNotice from "@template/platform/CanonicaConfigNotice";
+import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import ChatInsightsTemplate from "@template/platform/chatManagement/ChatInsights";
-import { isCanonicaFirebaseConfigured } from "@lib/firebase/canonicaFirebaseClient";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
 
 export default function InsightsPage() {
-    if (!isCanonicaFirebaseConfigured) {
-        return <CanonicaConfigNotice surface="Chat Insights" />;
+    if (!isAnswerlatticeFirebaseConfigured) {
+        return <AnswerlatticeConfigNotice surface="Chat Insights" />;
     }
 
     return <ChatInsightsTemplate />;

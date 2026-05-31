@@ -1,11 +1,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import { arrayUnion, collection, doc, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
 
-const db = canonicaFirebaseClient;
+const db = answerlatticeFirebaseClient;
 
 type ContentType = 'changelog' | 'article';
 
@@ -15,7 +15,7 @@ const getCollectionName = (type: ContentType) => {
 
 const getCollectionRef = (session: any, type: ContentType) => {
     const COLLECTION = getCollectionName(type);
-    return collection(canonicaFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
 };
 
 /**
@@ -48,7 +48,7 @@ export const addContentFeedback = async (
 
         if (!feedbackDoc.exists()) {
             // First feedback for this entry, create the document
-            const newFeedbackDoc = await canonicaRequestBodyComposer({
+            const newFeedbackDoc = await answerlatticeRequestBodyComposer({
                 list: [feedbackPayload],
             });
             tx.set(feedbackDocRef, newFeedbackDoc);

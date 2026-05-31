@@ -1,4 +1,4 @@
-import { fetchCanonicaPublicChangelogPage } from '@lib/canonica/publicContentClient';
+import { fetchAnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentClient';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import DisplayChangelog from '@template/platform/changelog/displayChangelog';
@@ -19,7 +19,7 @@ const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     const fetchLatestPage = useCallback(async () => {
         dispatch(startLoader('Fetching Changelog...'));
         try {
-            const page = await fetchCanonicaPublicChangelogPage();
+            const page = await fetchAnswerlatticePublicChangelogPage();
             if (page) {
                 setChangelogPage(page);
             }
@@ -37,7 +37,7 @@ const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     return (
         <DisplayChangelog
             initialEntryId={initialEntryId}
-            loadOlderPage={(pageNumber) => fetchCanonicaPublicChangelogPage({ beforePageNumber: pageNumber })}
+            loadOlderPage={(pageNumber) => fetchAnswerlatticePublicChangelogPage({ beforePageNumber: pageNumber })}
             pageData={changelogPage}
             useInternalFallback={false}
         />

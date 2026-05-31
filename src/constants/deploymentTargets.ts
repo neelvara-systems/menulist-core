@@ -1,14 +1,14 @@
 /**
- * Deployment target matrix for the shared MenuList + Canonica Vercel app.
+ * Deployment target matrix for the shared MenuList + Answerlattice Vercel app.
  *
  * Domain routing and Firebase project selection must stay aligned:
- * - local development keeps MenuList at / and Canonica under /__canonica
+ * - local development keeps MenuList at / and Answerlattice under /__answerlattice
  * - Vercel preview/QA uses staging domains and QA Firebase projects
  * - Vercel production uses production domains and production Firebase projects
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'canonica' | 'mycodex';
+export type DeploymentProductId = 'menulist' | 'answerlattice' | 'mycodex';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -34,12 +34,12 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'ecomsai',
         },
-        canonica: {
-            productId: 'canonica',
-            url: 'http://localhost:3000/__canonica/',
+        answerlattice: {
+            productId: 'answerlattice',
+            url: 'http://localhost:3000/__answerlattice/',
             domains: [],
-            devPathPrefix: '/__canonica',
-            firebaseProjectId: 'canonica-qa',
+            devPathPrefix: '/__answerlattice',
+            firebaseProjectId: 'answerlattice-qa',
         },
         mycodex: {
             productId: 'mycodex',
@@ -57,12 +57,12 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'ecomsai',
         },
-        canonica: {
-            productId: 'canonica',
+        answerlattice: {
+            productId: 'answerlattice',
             url: 'https://ecomsai.com',
             domains: ['ecomsai.com', 'www.ecomsai.com'],
             devPathPrefix: '',
-            firebaseProjectId: 'canonica-qa',
+            firebaseProjectId: 'answerlattice-qa',
         },
         mycodex: {
             productId: 'mycodex',
@@ -80,12 +80,12 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'menulist',
         },
-        canonica: {
-            productId: 'canonica',
-            url: 'https://canonica.app',
-            domains: ['canonica.app', 'www.canonica.app'],
+        answerlattice: {
+            productId: 'answerlattice',
+            url: 'https://answerlattice.com',
+            domains: ['answerlattice.com', 'www.answerlattice.com'],
             devPathPrefix: '',
-            firebaseProjectId: 'canonica',
+            firebaseProjectId: 'answerlattice',
         },
         mycodex: {
             productId: 'mycodex',
@@ -139,7 +139,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'canonica', 'mycodex'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'answerlattice', 'mycodex'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

@@ -1,0 +1,13 @@
+export const ANSWERLATTICE_WIDGET_CONTRACT_VERSION = 'answerlattice-widget-v1';
+export const ANSWERLATTICE_INSTALL_CONTRACT_VERSION = ANSWERLATTICE_WIDGET_CONTRACT_VERSION;
+export const ANSWERLATTICE_CONTEXT_CONTRACT_VERSION = 'answerlattice-context-v1';
+export const ANSWERLATTICE_VERIFICATION_CONTRACT_VERSION = 'answerlattice-verification-v1';
+export const ANSWERLATTICE_AGENT_PACKET_CONTRACT_VERSION = 'answerlattice-agent-packet-v1';
+export const ANSWERLATTICE_MARKDOWN_DOCS_CONTRACT_VERSION = 'answerlattice-markdown-docs-v1';
+export const ANSWERLATTICE_WIDGET_SCRIPT_URL = 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
+export const ANSWERLATTICE_WIDGET_LATEST_SCRIPT_URL = 'https://answerlattice.com/widget/latest/answerlattice-widget.js';
+export const ANSWERLATTICE_WIDGET_GLOBAL_NAME = 'window.AnswerlatticeWidget';
+export const ANSWERLATTICE_CONTEXT_METHODS = ['setContext', 'page'] as const;
+export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
+export const ANSWERLATTICE_WIDGET_SCRIPT_VERSION = '1.0.0';
+export const ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';

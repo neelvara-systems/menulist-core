@@ -12,7 +12,7 @@ export interface ChatMessage {
     searchHistoryId?: string; // Links to aiSearchHistory for analytics
     references?: KnowledgeBaseArticleType[]; // KB articles with similarity scores
     answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string;
-    relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem;
+    relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem;
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
     image?: UserUploadedFileType;
     // Feedback stored directly in message for easy UI display
@@ -37,7 +37,7 @@ export interface ChatMessage {
         suggested: boolean;
         type: 'soft' | 'hard' | 'none';
         triggers: string[];
-        context?: import('@lib/canonica/escalationTypes').EscalationContext;
+        context?: import('@lib/answerlattice/escalationTypes').EscalationContext;
     };
     // Quality flags are calculated in real-time from similarityScore (not stored)
 }

@@ -1,10 +1,10 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
-import { CANONICA_SIGNAL_TYPE } from '@type/canonica';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
+import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { Feedback } from '@type/feedback';
 import { addDoc, collection, doc, getDocs, limit, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 
@@ -12,7 +12,7 @@ const COLLECTION = DB_COLLECTIONS.FEEDBACK;
 const MAX_FEEDBACK_RESULTS = 200;
 
 const getCollectionRef = () => {
-    return collection(canonicaFirebaseClient, COLLECTION);
+    return collection(answerlatticeFirebaseClient, COLLECTION);
 };
 
 const FEEDBACK_SIGNAL_TEXT_LIMIT = 360;
@@ -108,15 +108,15 @@ const buildFeedbackSignalMetadata = (feedback: Partial<Feedback> & Record<string
 };
 
 const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, any>, feedbackId: string) => {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) return;
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) return;
 
     const tId = Number(feedback.tId);
     const sId = Number(feedback.sId);
     if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) return;
 
-    const { emitCanonicaSignal } = await import('@lib/canonica/signalEmitter');
-    await emitCanonicaSignal({
-        type: CANONICA_SIGNAL_TYPE.FEEDBACK,
+    const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
+    await emitAnswerlatticeSignal({
+        type: ANSWERLATTICE_SIGNAL_TYPE.FEEDBACK,
         entityId: 'unresolved',
         tId,
         sId,
@@ -127,7 +127,7 @@ const emitFeedbackSignal = async (feedback: Partial<Feedback> & Record<string, a
 export const addFeedback = async (data: Partial<Feedback>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await canonicaRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             void emitFeedbackSignal(submitData as Partial<Feedback> & Record<string, any>, docRef.id);
             return { ...submitData, id: docRef.id };
@@ -162,7 +162,7 @@ export const updateFeedbackSurfaceForWorkspace = async (
                 modifiedOn: Timestamp.now(),
             };
 
-            await updateDoc(doc(canonicaFirebaseClient, COLLECTION, feedbackId), patch);
+            await updateDoc(doc(answerlatticeFirebaseClient, COLLECTION, feedbackId), patch);
             return { id: feedbackId, ...patch };
         },
         { feedbackId, input },
@@ -194,7 +194,7 @@ export const getAllFeedback = async (maxResults: number = 200) => {
 };
 
 /**
- * Get feedback for a Canonica workspace (owner/support review).
+ * Get feedback for an Answerlattice workspace (owner/support review).
  * Ordered by newest first and bounded for cost control.
  */
 export const getFeedbackForWorkspace = async (tId: number, sId: number, maxResults: number = 200) => {

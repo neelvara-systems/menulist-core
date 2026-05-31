@@ -1,5 +1,5 @@
-import { emitCanonicaSignal } from '@lib/canonica/signalEmitter';
-import { CANONICA_SIGNAL_TYPE } from '@type/canonica';
+import { emitAnswerlatticeSignal } from '@lib/answerlattice/signalEmitter';
+import { ANSWERLATTICE_SIGNAL_TYPE } from '@type/answerlattice';
 import { UserUploadedFileType } from '@type/common';
 import { Timestamp } from 'firebase/firestore';
 import { SearchAPIResponseType } from './apiTypes';
@@ -103,10 +103,10 @@ export async function submitSearchFeedback({
     // Save to chatSession message (for UI display)
     await updateMessageFeedback(sessionId, messageId, feedbackData);
 
-    // Canonica: emit chat negative feedback signal (fire-and-forget)
+    // Answerlattice: emit chat negative feedback signal (fire-and-forget)
     if (!isGood) {
-        emitCanonicaSignal({
-            type: CANONICA_SIGNAL_TYPE.CHAT_NEGATIVE,
+        emitAnswerlatticeSignal({
+            type: ANSWERLATTICE_SIGNAL_TYPE.CHAT_NEGATIVE,
             tId,
             sId,
             metadata: {

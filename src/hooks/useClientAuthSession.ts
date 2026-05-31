@@ -1,5 +1,5 @@
 import LoginUserType from "@type/loginUser";
-import { getCanonicaScopedSession, isCanonicaRuntimeRoute } from "@lib/canonica/sessionScope";
+import { getAnswerlatticeScopedSession, isAnswerlatticeRuntimeRoute } from "@lib/answerlattice/sessionScope";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
@@ -14,8 +14,8 @@ export function useClientAuthSession() {
     }
     
     const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const sessionWithType: LoginUserType = isCanonicaRuntimeRoute(pathname, hostname)
-        ? getCanonicaScopedSession(data)
+    const sessionWithType: LoginUserType = isAnswerlatticeRuntimeRoute(pathname, hostname)
+        ? getAnswerlatticeScopedSession(data)
         : data;
     return sessionWithType;
 }

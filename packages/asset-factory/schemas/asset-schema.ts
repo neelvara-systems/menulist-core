@@ -1,4 +1,4 @@
-export type AssetBrand = 'menulist' | 'canonica';
+export type AssetBrand = 'menulist' | 'answerlattice';
 
 export type AssetType =
   | 'static-image'

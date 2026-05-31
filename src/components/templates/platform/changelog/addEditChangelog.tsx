@@ -4,7 +4,7 @@ import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import TiptapEditor from '@atoms/TiptapEditor';
 import { FEATURE_FLAGS } from '@config/features';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
-import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/answerlattice/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -71,7 +71,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     }, [open]);
 
     useEffect(() => {
-        if (!open || !FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return;
+        if (!open || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES) return;
         let mounted = true;
         getProductSurfacesForSession()
             .then((surfaces = []) => {
@@ -289,7 +289,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                     <KbTreeSelect onChange={handleKbSourceChange} />
                 </Form.Item>
 
-                {FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && (
+                {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES && (
                     <Form.Item name="contextKeys" label="Product Surfaces">
                         <Select
                             mode="multiple"

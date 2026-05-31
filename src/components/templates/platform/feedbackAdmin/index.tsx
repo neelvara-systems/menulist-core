@@ -2,18 +2,18 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
-import { getProductSurfacesForSession } from '@database/canonica/productSurfaces';
-import { createCanonicaSupportBoardCard } from '@database/canonica/supportBoard';
+import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
+import { createAnswerlatticeSupportBoardCard } from '@database/answerlattice/supportBoard';
 import { getAllFeedback, getFeedbackForWorkspace, updateFeedbackSurfaceForWorkspace } from '@database/feedback';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import {
-    CanonicaProductSurface,
-    CANONICA_SUPPORT_BOARD_PRIORITY,
-    CANONICA_SUPPORT_BOARD_SOURCE_TYPE,
-    CANONICA_SUPPORT_BOARD_STATUS,
-} from '@type/canonica';
+    AnswerlatticeProductSurface,
+    ANSWERLATTICE_SUPPORT_BOARD_PRIORITY,
+    ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE,
+    ANSWERLATTICE_SUPPORT_BOARD_STATUS,
+} from '@type/answerlattice';
 import { Feedback } from '@type/feedback';
 import { Button, Card, Col, Descriptions, Empty, Flex, Layout, List, message, Modal, Rate, Row, Select, Statistic, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -52,9 +52,9 @@ const getFeedbackCardDescription = (feedback: Feedback) => {
 };
 
 const getFeedbackCardPriority = (feedback: Feedback) => {
-    if (feedback.rating && feedback.rating <= 2) return CANONICA_SUPPORT_BOARD_PRIORITY.HIGH;
-    if (feedback.rating && feedback.rating >= 4 && !feedback.featureRequest) return CANONICA_SUPPORT_BOARD_PRIORITY.LOW;
-    return CANONICA_SUPPORT_BOARD_PRIORITY.MEDIUM;
+    if (feedback.rating && feedback.rating <= 2) return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH;
+    if (feedback.rating && feedback.rating >= 4 && !feedback.featureRequest) return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.LOW;
+    return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.MEDIUM;
 };
 
 const getFeedbackCardTags = (feedback: Feedback) => ([
@@ -103,12 +103,12 @@ function FeedbackAdminTemplate({
     const dispatch = useAppDispatch();
     const session = useClientAuthSession();
     const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
-    const [surfaces, setSurfaces] = useState<CanonicaProductSurface[]>([]);
+    const [surfaces, setSurfaces] = useState<AnswerlatticeProductSurface[]>([]);
     const [surfaceFilter, setSurfaceFilter] = useState<string | undefined>();
     const [selected, setSelected] = useState<Feedback | null>(null);
     const [creatingCard, setCreatingCard] = useState(false);
     const [surfaceUpdating, setSurfaceUpdating] = useState(false);
-    const canCreateSupportCard = Boolean(scope && FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD);
+    const canCreateSupportCard = Boolean(scope && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD);
 
     useEffect(() => {
         const fetch = async () => {
@@ -194,21 +194,21 @@ function FeedbackAdminTemplate({
         if (!scope || !selected) return;
         setCreatingCard(true);
         try {
-            const createdCard = await createCanonicaSupportBoardCard({
+            const createdCard = await createAnswerlatticeSupportBoardCard({
                 tId: scope.tId,
                 sId: scope.sId,
                 title: getFeedbackCardTitle(selected),
                 description: getFeedbackCardDescription(selected),
-                status: CANONICA_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
+                status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
                 priority: getFeedbackCardPriority(selected),
-                sourceType: CANONICA_SUPPORT_BOARD_SOURCE_TYPE.FEEDBACK,
+                sourceType: ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.FEEDBACK,
                 sourceId: selected.id || null,
                 relatedSurfaceId: selected.surfaceId || null,
                 relatedContextKeys: getFeedbackContextKeys(selected),
                 tags: getFeedbackCardTags(selected),
                 statusActorId: session?.uId || session?.user?.id || 'unknown',
                 statusActorName: session?.user?.name || session?.user?.email || 'Team member',
-                statusActorEmail: session?.user?.email || 'team@canonica.internal',
+                statusActorEmail: session?.user?.email || 'team@answerlattice.internal',
                 statusRemark: 'Card created from feedback review',
             });
             if (!isCreatedSupportCard(createdCard)) {

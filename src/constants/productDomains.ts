@@ -8,12 +8,12 @@
  * Routing Flow:
  *   1. Middleware reads hostname
  *   2. resolveProductSite() matches hostname against the active deployment target
- *   3. Middleware rewrites: canonica.app/pricing → /sites/canonica/pricing
- *   4. Next.js renders sites/canonica/pricing/page.tsx
+ *   3. Middleware rewrites: answerlattice.com/pricing → /sites/answerlattice/pricing
+ *   4. Next.js renders sites/answerlattice/pricing/page.tsx
  *
  * Local Dev:
  *   - Default (localhost:3000) → MenuList website
- *   - localhost:3000/__canonica/pricing → Canonica website
+ *   - localhost:3000/__answerlattice/pricing → Answerlattice website
  *   - No /etc/hosts configuration needed
  *
  * @see src/middleware.ts — Uses this for hostname-based routing
@@ -31,7 +31,7 @@ import { FEATURE_FLAGS } from '@config/features';
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductId = 'menulist' | 'canonica' | 'surfaceos' | 'growthOS' | 'visualmeta' | 'mycodex';
+export type ProductId = 'menulist' | 'answerlattice' | 'surfaceos' | 'growthOS' | 'visualmeta' | 'mycodex';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Domain Configuration
@@ -44,7 +44,7 @@ export interface ProductDomainConfig {
     name: string;
     /** Production domains (hostname without protocol) */
     domains: string[];
-    /** Local development path prefix (e.g., '/__canonica') */
+    /** Local development path prefix (e.g., '/__answerlattice') */
     devPathPrefix: string;
     /**
      * Internal route path for middleware rewrite.
@@ -66,11 +66,11 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         enabled: true,
     },
     {
-        id: 'canonica',
-        name: 'Canonica',
-        domains: getActiveProductDomains('canonica'),
-        devPathPrefix: getProductDeploymentTarget('canonica', 'local').devPathPrefix,
-        internalBasePath: '/sites/canonica',
+        id: 'answerlattice',
+        name: 'Answerlattice',
+        domains: getActiveProductDomains('answerlattice'),
+        devPathPrefix: getProductDeploymentTarget('answerlattice', 'local').devPathPrefix,
+        internalBasePath: '/sites/answerlattice',
         enabled: true,
     },
     {
@@ -147,7 +147,7 @@ export function resolveProductSiteByHostname(hostname: string): ProductDomainCon
 
 /**
  * Resolve a dev path prefix to a product site config.
- * Used in local development: localhost:3000/__canonica/pricing → canonica site
+ * Used in local development: localhost:3000/__answerlattice/pricing → answerlattice site
  */
 export function resolveProductSiteByDevPath(pathname: string): {
     product: ProductDomainConfig;

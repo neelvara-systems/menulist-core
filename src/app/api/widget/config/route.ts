@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 /**
- * Canonica Widget Runtime Config
+ * Answerlattice Widget Runtime Config
  *
  * Public read-only endpoint used by the loader script. Returns only the public
  * widget configuration subset; no workspace details, origins, or secrets.
@@ -14,14 +14,14 @@ import {
     getWidgetRuntimeStatusFromStoreData,
     sanitizeWidgetRuntimeTelemetry,
     shouldUpdateWidgetRuntimeStatus,
-} from '@lib/canonica/widgetRuntimeStatus';
-import { getCanonicaContextBundleManifestServer } from '@lib/canonica/contextBundleBuilderServer';
-import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+} from '@lib/answerlattice/widgetRuntimeStatus';
+import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
-    CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
-    CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
+    ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
+    ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
     normalizeWidgetConfig,
-} from '@lib/canonica/widgetConfig';
+} from '@lib/answerlattice/widgetConfig';
 import {
     generateETag,
     handlePublicApiCorsPreflight,
@@ -37,7 +37,7 @@ import { secureError } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
-const CONFIG_CACHE_TTL_MS = CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS * 1000;
+const CONFIG_CACHE_TTL_MS = ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS * 1000;
 const MAX_RUNTIME_CONFIG_CACHE_ENTRIES = 500;
 
 type RuntimeConfigCacheEntry = {
@@ -62,7 +62,7 @@ const buildResponse = (
             status: 304,
             headers: {
                 ETag: etag,
-                'Cache-Control': `private, max-age=${CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS}`,
+                'Cache-Control': `private, max-age=${ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS}`,
             },
         }), request);
     }
@@ -70,7 +70,7 @@ const buildResponse = (
     return withPublicApiCors(NextResponse.json(body, {
         headers: {
             ETag: etag,
-            'Cache-Control': `private, max-age=${CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS}`,
+            'Cache-Control': `private, max-age=${ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS}`,
         },
     }), request);
 };
@@ -97,7 +97,7 @@ const hasActivePredictiveTriggers = async (
     tId: number,
     sId: number,
 ): Promise<boolean> => {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) return false;
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) return false;
     const snap = await db
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(`predictiveTriggers_${tId}_${sId}`)
@@ -120,13 +120,13 @@ const toIsoTimestamp = (value: any): string | null => {
 };
 
 const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP) {
         return null;
     }
-    const manifest = await getCanonicaContextBundleManifestServer(tId, sId);
+    const manifest = await getAnswerlatticeContextBundleManifestServer(tId, sId);
     if (!manifest) return null;
     if (manifest.status !== 'ready' || !manifest.publicBundleId || !manifest.activeVersion) return null;
-    const basePath = `/api/canonica/bundles/public/${manifest.publicBundleId}/v${manifest.activeVersion}`;
+    const basePath = `/api/answerlattice/bundles/public/${manifest.publicBundleId}/v${manifest.activeVersion}`;
     return {
         status: manifest.status,
         bundleVersion: Number(manifest.activeVersion || manifest.bundleVersion || 0),
@@ -147,13 +147,13 @@ export function OPTIONS(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return withPublicApiCors(NextResponse.json({ error: 'Widget not enabled' }, { status: 404 }), request);
     }
 
     try {
         const apiKey = request.headers.get('x-api-key')?.trim();
-        if (!apiKey || !apiKey.startsWith('cn_')) {
+        if (!apiKey || !apiKey.startsWith('al_')) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
 
@@ -188,19 +188,19 @@ export async function GET(request: NextRequest) {
         const authResult = await validatePublicApiKey(apiKey, {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
-            includeCanonicaWidgetApi: true,
+            includeAnswerlatticeWidgetApi: true,
             includePublicApi: false,
-            preferCanonicaWidgetApi: true,
+            preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
 
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'CN') {
+        if (credential.productId && credential.productId !== 'AL') {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:config')) {
@@ -225,14 +225,14 @@ export async function GET(request: NextRequest) {
 
         const runtimeStatus = getWidgetRuntimeStatusFromStoreData(storeData);
         const nextRuntimeStatus = sanitizeWidgetRuntimeTelemetry(request);
-        const db = canonicaFirestoreAdmin as any;
+        const db = answerlatticeFirestoreAdmin as any;
         if (
             db
             && typeof db.collection === 'function'
             && shouldUpdateWidgetRuntimeStatus(runtimeStatus, nextRuntimeStatus)
         ) {
             try {
-                await canonicaFirestoreAdmin
+                await answerlatticeFirestoreAdmin
                     .collection(DB_COLLECTIONS.STORES)
                     .doc(String(sId))
                     .set(buildWidgetRuntimeStatusWrite(nextRuntimeStatus), { merge: true });
@@ -249,8 +249,8 @@ export async function GET(request: NextRequest) {
             getReadyPublicBundleConfig(tId, sId).catch(() => null),
         ]);
         const body = {
-            schemaVersion: CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
-            cacheTtlSeconds: CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
+            schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
+            cacheTtlSeconds: ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
             configVersion: Number(storeData.widgetConfigVersion || 0),
             config: normalizeWidgetConfig(storeData.widgetConfig),
             capabilities: {

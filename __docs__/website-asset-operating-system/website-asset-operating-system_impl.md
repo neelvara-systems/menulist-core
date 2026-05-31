@@ -22,7 +22,7 @@ Target structure:
 __docs__/
   website-asset-operating-system/
   main-website/
-  canonica/
+  answerlattice/
 
 packages/
   asset-factory/
@@ -39,8 +39,8 @@ packages/
 
 public/
   images/website/
-  canonica-*.png
-  canonica-splash/
+  answerlattice-*.png
+  answerlattice-splash/
 ```
 
 ## Existing Source Files To Reuse
@@ -50,10 +50,10 @@ public/
 | `__docs__/main-website/main-website_image-assets.md` | MenuList current asset rules and launch asset matrix. |
 | `__docs__/main-website/README.md` | MenuList website canonical scope and stage history. |
 | `scripts/website-assets/generate-stage6-assets.mjs` | Existing MenuList generated static asset script. |
-| `__docs__/canonica/canonica-website/README.md` | Canonica public website route/component map. |
-| `scripts/website-assets/generate-canonica-splash.js` | Existing Canonica static image generation script. |
-| `src/app/sites/canonica/components/CanonicaFlowDiagram.tsx` | Canonica visual language reference. |
-| `src/app/sites/canonica/components/CanonicaProofBlocks.tsx` | Canonica proof block reference. |
+| `__docs__/answerlattice/answerlattice-website/README.md` | Answerlattice public website route/component map. |
+| `scripts/website-assets/generate-answerlattice-splash.js` | Existing Answerlattice static image generation script. |
+| `src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx` | Answerlattice visual language reference. |
+| `src/app/sites/answerlattice/components/AnswerlatticeProofBlocks.tsx` | Answerlattice proof block reference. |
 | `src/components/website/home/HeroSection.tsx` | MenuList hero asset consumption reference. |
 | `src/components/website/home/SurfacesSection.tsx` | MenuList surfaces visual reference. |
 
@@ -63,12 +63,12 @@ public/
 | --- | --- |
 | `.agents/skills/website-asset-factory/SKILL.md` | Triggered instructions for asset tasks. |
 | `.agents/skills/website-asset-factory/references/menulist-asset-rules.md` | Compact MenuList asset rules for skill context. |
-| `.agents/skills/website-asset-factory/references/canonica-asset-rules.md` | Compact Canonica asset rules for skill context. |
+| `.agents/skills/website-asset-factory/references/answerlattice-asset-rules.md` | Compact Answerlattice asset rules for skill context. |
 | `packages/asset-factory/README.md` | Internal package overview and workflow. |
 | `packages/asset-factory/brand/menulist.asset-context.md` | MenuList brand and narrative rules. |
-| `packages/asset-factory/brand/canonica.asset-context.md` | Canonica brand and narrative rules. |
+| `packages/asset-factory/brand/answerlattice.asset-context.md` | Answerlattice brand and narrative rules. |
 | `packages/asset-factory/slots/menulist.asset-slots.ts` | MenuList website asset slot declarations. |
-| `packages/asset-factory/slots/canonica.asset-slots.ts` | Canonica website asset slot declarations. |
+| `packages/asset-factory/slots/answerlattice.asset-slots.ts` | Answerlattice website asset slot declarations. |
 | `packages/asset-factory/manifest/assets.json` | Asset registry. |
 | `packages/asset-factory/schemas/asset-schema.ts` | Shared TypeScript slot/manifest types. |
 | `packages/asset-factory/scripts/audit-assets.ts` | Slot/manifest/file/fingerprint audit. |
@@ -104,7 +104,7 @@ If ESM friction appears, use `.mjs` scripts or a small Node runner instead of ad
 ```ts
 export type AssetSlot = {
   id: string;
-  brand: 'menulist' | 'canonica';
+  brand: 'menulist' | 'answerlattice';
   page: string;
   route: string;
   placement: string;
@@ -175,17 +175,17 @@ export type AssetSlot = {
 | `menulist.launch.social.linkedin` | Generated | Maps existing LinkedIn image. |
 | `menulist.home.hero.business-truth-loop` | Missing | Future video slot, founder review required. |
 
-## First Canonica Slots
+## First Answerlattice Slots
 
 | Slot | First status | Notes |
 | --- | --- | --- |
-| `canonica.home.og.main` | Generated | Maps `public/canonica-og-image.png`. |
-| `canonica.brand.logo.mark` | Generated | Maps current SVG/PNG logo mark assets. |
-| `canonica.pwa.icons` | Generated | Maps `public/canonica-icon-*.png`. |
-| `canonica.pwa.splash` | Generated | Maps `public/canonica-splash/apple-splash-*.png`. |
-| `canonica.home.hero.support-control-motion` | Missing | Future abstract motion, founder required. |
-| `canonica.home.section.authority-transfer` | Missing | Future abstract motion, founder required. |
-| `canonica.product.page-aware-widget.clip` | Missing | Future product proof clip, founder review required. |
+| `answerlattice.home.og.main` | Generated | Maps `public/answerlattice-og-image.png`. |
+| `answerlattice.brand.logo.mark` | Generated | Maps current SVG/PNG logo mark assets. |
+| `answerlattice.pwa.icons` | Generated | Maps `public/answerlattice-icon-*.png`. |
+| `answerlattice.pwa.splash` | Generated | Maps `public/answerlattice-splash/apple-splash-*.png`. |
+| `answerlattice.home.hero.support-control-motion` | Missing | Future abstract motion, founder required. |
+| `answerlattice.home.section.authority-transfer` | Missing | Future abstract motion, founder required. |
+| `answerlattice.product.page-aware-widget.clip` | Missing | Future product proof clip, founder review required. |
 
 ## Audit Algorithm
 

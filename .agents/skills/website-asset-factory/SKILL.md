@@ -1,6 +1,6 @@
 # Website Asset Factory Skill
 
-Use this skill when asked to create, audit, refresh, review, or brief MenuList or Canonica website assets.
+Use this skill when asked to create, audit, refresh, review, or brief MenuList or Answerlattice website assets.
 
 ## Required Context
 
@@ -8,10 +8,10 @@ Use this skill when asked to create, audit, refresh, review, or brief MenuList o
 2. Read `packages/asset-factory/README.md`.
 3. Read the relevant brand context:
    - `packages/asset-factory/brand/menulist.asset-context.md`
-   - `packages/asset-factory/brand/canonica.asset-context.md`
+   - `packages/asset-factory/brand/answerlattice.asset-context.md`
 4. Read the relevant slot file:
    - `packages/asset-factory/slots/menulist.asset-slots.ts`
-   - `packages/asset-factory/slots/canonica.asset-slots.ts`
+   - `packages/asset-factory/slots/answerlattice.asset-slots.ts`
 5. Run `npm run assets:audit` before proposing public asset changes.
 
 ## Workflow
@@ -28,8 +28,8 @@ Use this skill when asked to create, audit, refresh, review, or brief MenuList o
 
 - Do not publish a new public route for Website Asset Operating System.
 - Do not treat this as a MenuList owner feature.
-- Do not treat this as Canonica runtime.
-- Do not mix MenuList restaurant visuals into Canonica assets.
+- Do not treat this as Answerlattice runtime.
+- Do not mix MenuList restaurant visuals into Answerlattice assets.
 - Do not use real customer screenshots without founder approval and scrubbing.
 - Do not add heavy media dependencies without a specific implementation plan.
 

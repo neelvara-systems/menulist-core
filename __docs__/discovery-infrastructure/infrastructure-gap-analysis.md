@@ -24,7 +24,7 @@
 | Layer           | Technology                                                |
 | --------------- | --------------------------------------------------------- |
 | Frontend + API  | Next.js 14 on Vercel                                      |
-| Database        | Firestore (ecomsai + canonica projects)                   |
+| Database        | Firestore (ecomsai + answerlattice projects)                   |
 | Cloud Functions | Firebase Functions v2 (nightly batch, triggers, webhooks) |
 | Storage         | Firebase Storage (tenant-scoped paths)                    |
 | Auth            | NextAuth.js v4 + Google OAuth                             |

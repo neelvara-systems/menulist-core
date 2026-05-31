@@ -13,4 +13,4 @@ MyCodex now supports hands-free documentation review using the device/browser vo
 
 ## Boundary
 
-This is an internal reader convenience, not a public MenuList or Canonica capability.
+This is an internal reader convenience, not a public MenuList or Answerlattice capability.

@@ -1,14 +1,14 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import {
-    CANONICA_CHAT_IMAGE_MAX_BYTES,
-    isAllowedCanonicaChatImageMimeType,
-    normalizeCanonicaChatImageMimeType,
-} from '@lib/canonica/chatImagePolicy';
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
+    isAllowedAnswerlatticeChatImageMimeType,
+    normalizeAnswerlatticeChatImageMimeType,
+} from '@lib/answerlattice/chatImagePolicy';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
-import { canonicaFirebaseClient, canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChatSession } from '@type/chatSession';
@@ -19,11 +19,11 @@ const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
 const USER_CHAT_SESSION_LIMIT = 50;
 
 const getDocRef = async (docId: string) => {
-    return doc(canonicaFirebaseClient, `${COLLECTION}`, docId);
+    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId);
 };
 
 const getCollectionRef = async () => {
-    return collection(canonicaFirebaseClient, `${COLLECTION}`);
+    return collection(answerlatticeFirebaseClient, `${COLLECTION}`);
 };
 
 /**
@@ -51,15 +51,15 @@ export const uploadChatImage = async (
                 const tenantId = Number(session?.tId);
                 const storeId = Number(session?.sId);
                 if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
-                    throw new Error('Missing Canonica workspace context for chat image upload');
+                    throw new Error('Missing Answerlattice workspace context for chat image upload');
                 }
 
-                const imageType = normalizeCanonicaChatImageMimeType(image.type);
-                if (!isAllowedCanonicaChatImageMimeType(imageType)) {
+                const imageType = normalizeAnswerlatticeChatImageMimeType(image.type);
+                if (!isAllowedAnswerlatticeChatImageMimeType(imageType)) {
                     throw new Error('Unsupported chat image type');
                 }
 
-                if (Number(image.size || 0) <= 0 || Number(image.size || 0) > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                if (Number(image.size || 0) <= 0 || Number(image.size || 0) > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
                     throw new Error('Chat image size exceeds the supported limit');
                 }
 
@@ -82,13 +82,13 @@ export const uploadChatImage = async (
                 const uploadedUrl = await uploadBase64ToStorage({
                     cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
                     customMetadata: {
-                        product: 'canonica',
+                        product: 'answerlattice',
                         sourceUse: 'help_center_chat_image',
                         retentionPolicy: 'tied_to_chat_session',
                         sourceMetadataPolicy: 'source_file_may_include_image_metadata',
                     },
                     fileId: imageId,
-                    storage: canonicaStorage,
+                    storage: answerlatticeStorage,
                     url: base64String!,
                     path,
                     type: imageType as any
@@ -116,7 +116,7 @@ export const uploadChatImage = async (
 export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const submitData = await canonicaRequestBodyComposer(data);
+            const submitData = await answerlatticeRequestBodyComposer(data);
             const docRef = await addDoc(await getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -137,8 +137,8 @@ export const batchUpdateSessionMetadata = async (
         async () => {
             if (!sessionIds || sessionIds.length === 0) return;
             const { writeBatch } = await import('firebase/firestore');
-            const batch = writeBatch(canonicaFirebaseClient);
-            const composedData = await canonicaRequestBodyComposer(metadata);
+            const batch = writeBatch(answerlatticeFirebaseClient);
+            const composedData = await answerlatticeRequestBodyComposer(metadata);
             for (const id of sessionIds) {
                 const ref = await getDocRef(id);
                 batch.update(ref, composedData);
@@ -157,7 +157,7 @@ export const batchUpdateSessionMetadata = async (
 export const updateChatSession = async (sessionId: string, updates: Partial<ChatSession>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const composedData = await canonicaRequestBodyComposer(updates);
+            const composedData = await answerlatticeRequestBodyComposer(updates);
             await setDoc(await getDocRef(sessionId), composedData, { merge: true });
             return composedData;
         },
@@ -268,7 +268,7 @@ export const updateMessageFeedback = async (
             });
 
             // Update the session with modified messages
-            const composedData = await canonicaRequestBodyComposer({ messages: updatedMessages });
+            const composedData = await answerlatticeRequestBodyComposer({ messages: updatedMessages });
             await setDoc(sessionRef, composedData, { merge: true });
 
             return { sessionId, messageId, feedback };
@@ -314,7 +314,7 @@ export const updateSessionInternalNote = async (
                 internalNotes: [noteObject]
             };
 
-            const composedData = await canonicaRequestBodyComposer(updateData);
+            const composedData = await answerlatticeRequestBodyComposer(updateData);
             await setDoc(sessionRef, composedData, { merge: true });
 
             return { sessionId, note: noteObject };

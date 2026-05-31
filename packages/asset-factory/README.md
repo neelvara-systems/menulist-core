@@ -5,23 +5,23 @@
 **Public marketing:** Disabled  
 **Architecture:** Separate-product-style package inside the shared repo
 
-This package gives Codex and future operators a durable contract for MenuList and Canonica website assets.
+This package gives Codex and future operators a durable contract for MenuList and Answerlattice website assets.
 
 It does not publish a route, add Firebase reads or writes, create a customer-facing app, or expose a public product. It is built like a separate product internally so the architecture can be tested against our own products before any extraction decision.
 
-## Canonica Relationship
+## Answerlattice Relationship
 
-AssetOS is Canonica-adjacent, not Canonica runtime.
+AssetOS is Answerlattice-adjacent, not Answerlattice runtime.
 
-The package can read Canonica website files, docs, brand context, and approved source summaries when generating briefs or checking whether a visual is stale. A later adapter may read Canonica product-surface, intake, release, signal, or drift summaries as source context.
+The package can read Answerlattice website files, docs, brand context, and approved source summaries when generating briefs or checking whether a visual is stale. A later adapter may read Answerlattice product-surface, intake, release, signal, or drift summaries as source context.
 
-The package must not write Canonica KB content, canonical answers, tickets, support signals, widget configuration, product surfaces, Firebase data, or runtime state.
+The package must not write Answerlattice KB content, canonical answers, tickets, support signals, widget configuration, product surfaces, Firebase data, or runtime state.
 
 ## What Lives Here
 
 | Path | Purpose |
 | --- | --- |
-| `brand/` | Product-specific asset context for MenuList and Canonica. |
+| `brand/` | Product-specific asset context for MenuList and Answerlattice. |
 | `slots/` | Typed declarations for every website asset slot. |
 | `manifest/assets.json` | Registry of generated, draft, missing, approved, and planned assets. |
 | `schemas/asset-schema.ts` | Shared TypeScript types for slots and manifest entries. |
@@ -39,7 +39,7 @@ npm run assets:audit
 npm run assets:review
 npm run assets:brief -- --slot menulist.home.hero.official-source
 npm run assets:fingerprint
-npm run assets:generate:missing -- --slot canonica.home.hero.support-control-motion
+npm run assets:generate:missing -- --slot answerlattice.home.hero.support-control-motion
 ```
 
 ## Operating Rules
@@ -55,6 +55,6 @@ npm run assets:generate:missing -- --slot canonica.home.hero.support-control-mot
 
 ## Product Boundary
 
-Website Asset Operating System is an internal product architecture. It is separate from MenuList and Canonica runtime behavior, but it reads both product contexts to keep website assets current.
+Website Asset Operating System is an internal product architecture. It is separate from MenuList and Answerlattice runtime behavior, but it reads both product contexts to keep website assets current.
 
 It can later be evaluated as a market-facing product only after repeated internal use proves the workflow and an external buyer is validated.

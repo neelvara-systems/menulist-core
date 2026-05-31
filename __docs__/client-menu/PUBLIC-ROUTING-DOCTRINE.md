@@ -808,7 +808,7 @@ Consolidated view of customer/owner-visible effects for the implementation phase
 
 - Internal owner dashboard routing (the `/locations`, `/outlets`, `/projects` authenticated surfaces).
 - Onboarding flow URL structure.
-- Canonica and other product surfaces.
+- Answerlattice and other product surfaces.
 - Tenant-level permissions and who can rename slugs (belongs in an access-control doc).
 - Emergency disable of OBP via flag (code-only rollback mechanism).
 - Rollout/deployment tooling, feature-flag orchestration, and staging-verification checklists (belongs in the engineering runbook that consumes this doctrine, not the doctrine itself).

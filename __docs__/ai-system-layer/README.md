@@ -51,7 +51,7 @@ All 18 AI call sites (11 frontend + 7 CF) now flow through the AI Gateway with m
 | Image Editing           | `@google/genai` | `gemini-2.0-flash-preview-image-gen` | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | New Item Metadata       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Campaign Captions       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Canonica Translate      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Answerlattice Translate      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Public Create Menu      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Embeddings (Frontend)   | `@google/genai` | `text-embedding-004`                 | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 
@@ -99,7 +99,7 @@ Gemini API (via @google/genai SDK)
 | AI Extraction Monitoring | Depends on AI System Layer for metrics          |
 | Menu Correctness Engine  | Uses AI for validation (client-side)            |
 | Help Center Search       | Uses Gemini for RAG responses                   |
-| Canonica                 | Uses Gemini for various AI operations           |
+| Answerlattice                 | Uses Gemini for various AI operations           |
 
 ---
 

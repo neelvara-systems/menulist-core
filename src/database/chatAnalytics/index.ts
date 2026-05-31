@@ -1,8 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from 'firebase/firestore';
 
 /**
@@ -30,15 +30,15 @@ const normalizeAnalyticsDays = (days: number, fallback = 30) => {
 };
 
 const getDocRef = async (docId: string) => {
-    return doc(canonicaFirebaseClient, ANALYTICS_COLLECTION, docId);
+    return doc(answerlatticeFirebaseClient, ANALYTICS_COLLECTION, docId);
 };
 
 const getCollectionRef = async () => {
-    return collection(canonicaFirebaseClient, ANALYTICS_COLLECTION);
+    return collection(answerlatticeFirebaseClient, ANALYTICS_COLLECTION);
 };
 
 const getChatSessionsCollectionRef = async () => {
-    return collection(canonicaFirebaseClient, CHAT_SESSIONS_COLLECTION);
+    return collection(answerlatticeFirebaseClient, CHAT_SESSIONS_COLLECTION);
 };
 
 /**
@@ -621,7 +621,7 @@ export const getConversationsPaginated = async (
 
             // Pagination cursor
             if (filters?.lastDocId) {
-                const lastDocRef = doc(canonicaFirebaseClient, CHAT_SESSIONS_COLLECTION, filters.lastDocId);
+                const lastDocRef = doc(answerlatticeFirebaseClient, CHAT_SESSIONS_COLLECTION, filters.lastDocId);
                 const lastDocSnap = await getDoc(lastDocRef);
                 if (lastDocSnap.exists()) {
                     const { startAfter } = await import('firebase/firestore');
@@ -778,7 +778,7 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 
             // Save to chatAnalytics collection
             const docRef = await getDocRef(docId);
-            const composedData = await canonicaRequestBodyComposer(aggregatedData);
+            const composedData = await answerlatticeRequestBodyComposer(aggregatedData);
             await setDoc(docRef, composedData, { merge: true });
 
             return { success: true, date: dateStr, stats: aggregatedData };

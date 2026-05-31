@@ -1,0 +1,32 @@
+{
+  "name": "answerlattice-functions",
+  "description": "Answerlattice Cloud Functions — Governed Answer Infrastructure",
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('lib',{recursive:true,force:true})\" && tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions --config ../firebase-answerlattice.json",
+    "shell": "npm run build && firebase functions:shell --config ../firebase-answerlattice.json",
+    "deploy": "npm run deploy:prod",
+    "deploy:qa": "firebase deploy --only functions:answerlattice --project answerlattice-qa --config ../firebase-answerlattice.json",
+    "deploy:prod": "firebase deploy --only functions:answerlattice --project answerlattice --config ../firebase-answerlattice.json",
+    "logs": "npm run logs:prod",
+    "logs:qa": "firebase functions:log --project answerlattice-qa --config ../firebase-answerlattice.json",
+    "logs:prod": "firebase functions:log --project answerlattice --config ../firebase-answerlattice.json"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/vertexai": "^1.0.0",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0",
+    "nodemailer": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.11",
+    "firebase-functions-test": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "private": true
+}

@@ -4,18 +4,18 @@ export const dynamic = 'force-dynamic';
  * Widget Feedback API — Public endpoint for widget answer feedback
  *
  * Receives thumbs up/down from widget end-users.
- * Writes feedback to aiSearchHistory + emits Canonica signal for negative feedback.
+ * Writes feedback to aiSearchHistory + emits Answerlattice signal for negative feedback.
  *
  * Auth: API key via X-API-Key header (same as widget search)
- * Rate limited per API key. Feature-flagged via ENABLE_CANONICA_WIDGET.
+ * Rate limited per API key. Feature-flagged via ENABLE_ANSWERLATTICE_WIDGET.
  *
  * @see src/lib/search/searchCore.ts
- * @see __docs__/canonica/help-widget/
+ * @see __docs__/answerlattice/help-widget/
  */
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -64,7 +64,7 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
 };
 
 export async function POST(request: NextRequest) {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
     }
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         if (!apiKey) {
             return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
         }
-        if (!apiKey.startsWith('cn_')) {
+        if (!apiKey.startsWith('al_')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
 
@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
         const authResult = await validatePublicApiKey(apiKey, {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
-            includeCanonicaWidgetApi: true,
+            includeAnswerlatticeWidgetApi: true,
             includePublicApi: false,
-            preferCanonicaWidgetApi: true,
+            preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
@@ -109,10 +109,10 @@ export async function POST(request: NextRequest) {
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'CN') {
+        if (credential.productId && credential.productId !== 'AL') {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         const { searchHistoryId, isGood } = validation.data;
 
         // Write feedback only to this workspace's own search-history record.
-        const historyRef = canonicaFirestoreAdmin
+        const historyRef = answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
             .doc(searchHistoryId);
         const historyDoc = await historyRef.get();
@@ -169,16 +169,16 @@ export async function POST(request: NextRequest) {
             modifiedOn: admin.firestore.Timestamp.now(),
         }, { merge: true });
 
-        // Emit Canonica signal for negative feedback (feeds mutation pipeline)
-        if (!isGood && FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) {
+        // Emit Answerlattice signal for negative feedback (feeds mutation pipeline)
+        if (!isGood && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
             try {
-                const { emitCanonicaSignal } = await import('@lib/canonica/signalEmitter');
-                const { CANONICA_SIGNAL_TYPE } = await import('@type/canonica');
+                const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitter');
+                const { ANSWERLATTICE_SIGNAL_TYPE } = await import('@type/answerlattice');
                 const matchedEntityId = Array.isArray(historyData.matchedEntityIds)
                     ? historyData.matchedEntityIds.find((id: unknown) => typeof id === 'string' && Boolean(id.trim()))
                     : undefined;
-                await emitCanonicaSignal({
-                    type: CANONICA_SIGNAL_TYPE.CHAT_NEGATIVE,
+                await emitAnswerlatticeSignal({
+                    type: ANSWERLATTICE_SIGNAL_TYPE.CHAT_NEGATIVE,
                     entityId: matchedEntityId,
                     tId,
                     sId,

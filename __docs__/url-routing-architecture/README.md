@@ -34,7 +34,7 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
-- **Product-domain separation** (`menulist.ai` = MenuList, `canonica.app` = Canonica, `menulist.digital` = MyCodex)
+- **Product-domain separation** (`menulist.ai` = MenuList, `answerlattice.com` = Answerlattice, `menulist.digital` = MyCodex)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
 - **Permanent project slugs** (stored, not derived from names)
@@ -81,7 +81,7 @@ Tenant (account container — billing, stores list)
 
 Requests are classified before tenant routing:
 
-1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Canonica, and MyCodex by deployment stage.
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Answerlattice, and MyCodex by deployment stage.
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
@@ -90,7 +90,7 @@ Requests are classified before tenant routing:
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
 | `menulist.ai` / `www.menulist.ai`       | Platform       | MenuList website / platform routes |
-| `canonica.app` / `www.canonica.app`     | Product        | `/sites/canonica`                  |
+| `answerlattice.com` / `www.answerlattice.com`     | Product        | `/sites/answerlattice`                  |
 | `menulist.digital` / `www.menulist.digital` | Product    | `/sites/mycodex`                   |
 | `brand.menulist.ai`                    | Tenant         | `/client`                          |
 | Verified restaurant custom domain       | Tenant         | `/client`                          |
@@ -104,11 +104,11 @@ MyCodex Vercel access uses a first-party login page backed by server-side creden
 
 The browser receives only a signed `HttpOnly` `mycodex_session` cookie after login. Raw credentials are not stored in `localStorage` or exposed to client code.
 
-MyCodex also stays out of public discovery: MyCodex responses send `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate`, its layout metadata is no-index/no-follow, and its product-scoped `robots.txt` disallows all crawlers. These restrictions are applied only to MyCodex routes/domains and must not be reused for MenuList tenant menus or Canonica public surfaces.
+MyCodex also stays out of public discovery: MyCodex responses send `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate`, its layout metadata is no-index/no-follow, and its product-scoped `robots.txt` disallows all crawlers. These restrictions are applied only to MyCodex routes/domains and must not be reused for MenuList tenant menus or Answerlattice public surfaces.
 
 MyCodex PWA install identity is also product-scoped. `src/app/sites/mycodex/layout.tsx` links `/mycodex.webmanifest`, MyCodex-specific icons, and MyCodex Apple launch images. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when the resolved product host is `mycodex`; the worker caches only the offline fallback and MyCodex static logo assets, never repository documentation content.
 
-Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must include `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes. This keeps Vercel serverless packaging aligned with local filesystem behavior without exposing docs through MenuList or Canonica routing.
+Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must include `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes. This keeps Vercel serverless packaging aligned with local filesystem behavior without exposing docs through MenuList or Answerlattice routing.
 
 Localhost `/__mycodex` remains open for development.
 

@@ -36,6 +36,7 @@
 | Folder                                                       | What's Inside                                                            |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
 | **[security/](./security/)**                                 | Auth, CSP, App Check, OWASP, monitoring, input validation                |
+| **[answerlattice/](./answerlattice/)**                       | Answerlattice doctrine, feature docs, runtime runbooks, onboarding, widget, API, and governance docs |
 | **[auth/](./auth/)**                                         | Authentication flows, Firebase auth, NextAuth                            |
 | **[auth-onboarding/](./auth-onboarding/)**                   | Onboarding flow after signup                                             |
 | **[system-strengthening/](./system-strengthening/)**         | Infrastructure hardening — all audit findings, security gaps, cost bombs |
@@ -60,7 +61,7 @@
 | Folder                                     | What's Inside                                                                  |
 | ------------------------------------------ | ------------------------------------------------------------------------------ |
 | **[workflows-guide/](./workflows-guide/)** | How to use Cascade `/slash-command` workflows — maps IDE_PROMPTS to automation |
-| **[website-asset-operating-system/](./website-asset-operating-system/)** | Internal cross-product asset contract for MenuList and Canonica website media |
+| **[website-asset-operating-system/](./website-asset-operating-system/)** | Internal cross-product asset contract for MenuList and Answerlattice website media |
 
 ### Customer-Facing Surfaces
 

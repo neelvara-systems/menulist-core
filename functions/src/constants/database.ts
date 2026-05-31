@@ -128,23 +128,23 @@ export const DB_COLLECTIONS = {
     PUBLIC_MENU_DRAFTS: 'publicMenuDrafts',
 
     // ═══════════════════════════════════════════════════════════════
-    // CANONICA — Support Knowledge Control Plane
-    // @see __docs__/canonica/doctrine/05-architecture-evolution.md
+    // ANSWERLATTICE — Governed Answer Infrastructure
+    // @see __docs__/answerlattice/doctrine/05-architecture-evolution.md
     // ═══════════════════════════════════════════════════════════════
-    CANONICA_ENTITIES: 'canonica_entities',
-    CANONICA_ENTITY_RELATIONS: 'canonica_entityRelations',
-    CANONICA_CANONICAL_ANSWERS: 'canonica_canonicalAnswers',
-    CANONICA_RELEASES: 'canonica_releases',
-    CANONICA_MUTATION_PROPOSALS: 'canonica_mutationProposals',
-    CANONICA_SIGNAL_EVENTS: 'canonica_signalEvents',
-    CANONICA_AUDIT_LOGS: 'canonica_auditLogs',
-    CANONICA_ENTITY_SEARCH_INDEX: 'canonica_entitySearchIndex',
-    CANONICA_ENTITY_CANDIDATES: 'canonica_entityCandidates',
-    CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
-    CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
-    CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
-    CANONICA_INTEGRATION_RATE_LIMITS: 'canonica_integrationRateLimits',
-    CANONICA_FAQS: 'canonica_faqs',
+    ANSWERLATTICE_ENTITIES: 'answerlattice_entities',
+    ANSWERLATTICE_ENTITY_RELATIONS: 'answerlattice_entityRelations',
+    ANSWERLATTICE_CANONICAL_ANSWERS: 'answerlattice_canonicalAnswers',
+    ANSWERLATTICE_RELEASES: 'answerlattice_releases',
+    ANSWERLATTICE_MUTATION_PROPOSALS: 'answerlattice_mutationProposals',
+    ANSWERLATTICE_SIGNAL_EVENTS: 'answerlattice_signalEvents',
+    ANSWERLATTICE_AUDIT_LOGS: 'answerlattice_auditLogs',
+    ANSWERLATTICE_ENTITY_SEARCH_INDEX: 'answerlattice_entitySearchIndex',
+    ANSWERLATTICE_ENTITY_CANDIDATES: 'answerlattice_entityCandidates',
+    ANSWERLATTICE_SCHEDULER_RUN_LOGS: 'answerlattice_schedulerRunLogs',
+    ANSWERLATTICE_INTEGRATION_EVENTS: 'answerlattice_integrationEvents',
+    ANSWERLATTICE_INTEGRATION_DELIVERY_LOGS: 'answerlattice_integrationDeliveryLogs',
+    ANSWERLATTICE_INTEGRATION_RATE_LIMITS: 'answerlattice_integrationRateLimits',
+    ANSWERLATTICE_FAQS: 'answerlattice_faqs',
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

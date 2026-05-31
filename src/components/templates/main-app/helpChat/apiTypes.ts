@@ -11,16 +11,16 @@ export type SearchAPIResponseType = {
     id: string; // Search history ID from aiSearchHistory collection
     craftedAnswer: string; // AI-generated answer
     references: KnowledgeBaseArticleType[]; // Full article objects with similarityScore
-    relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem; // Product-surface contextual help links
+    relatedContent?: import('@type/answerlattice').AnswerlatticeSurfaceContentItem; // Product-surface contextual help links
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
     imageProcessed?: boolean; // Flag indicating if image was successfully processed
     answerSource?: 'canonical' | 'faq' | 'rag' | 'cache' | 'empty' | string;
 
-    // AI Failure Escalation (Item #8) — only present when ENABLE_CANONICA_AI_ESCALATION is ON
+    // AI Failure Escalation (Item #8) — only present when ENABLE_ANSWERLATTICE_AI_ESCALATION is ON
     escalation?: {
         suggested: boolean;
         type: 'soft' | 'hard' | 'none';
         triggers: string[];
-        context?: import('@lib/canonica/escalationTypes').EscalationContext;
+        context?: import('@lib/answerlattice/escalationTypes').EscalationContext;
     };
 };

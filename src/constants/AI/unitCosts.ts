@@ -29,11 +29,11 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0.0016, // Analytics summary narrative
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0.0016, // Support answer generation
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0.0002, // Article/query embedding
-    [AI_ACTIONS_TYPES.CANONICA_TRANSLATION]: 0.0020, // KB article translation
-    [AI_ACTIONS_TYPES.CANONICA_FAQ_GENERATION]: 0.0012, // Article-backed FAQ suggestion generation
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_OCR]: 0.0025, // Screenshot/UI OCR for source intake
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_TRANSCRIPTION]: 0.0060, // Short audio/video transcription for source intake
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_EMBEDDING]: 0.0002, // Intake-published article embedding
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0.0020, // KB article translation
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION]: 0.0012, // Article-backed FAQ suggestion generation
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 0.0025, // Screenshot/UI OCR for source intake
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 0.0060, // Short audio/video transcription for source intake
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0.0002, // Intake-published article embedding
 
     // Paid operations
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 0.0008, // Owner-requested review reply draft
@@ -72,11 +72,11 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0, // Internal analytics summary — absorbed by platform
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0, // Support/control-plane operation — not owner pack usage
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0, // Support/control-plane operation — not owner pack usage
-    [AI_ACTIONS_TYPES.CANONICA_TRANSLATION]: 0, // Canonica/control-plane operation — not MenuList owner pack usage
-    [AI_ACTIONS_TYPES.CANONICA_FAQ_GENERATION]: 0, // Canonica/control-plane operation — owner-triggered but not MenuList pack usage
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_OCR]: 1, // Canonica support-credit operation, charged in Canonica credit ledger
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_TRANSCRIPTION]: 2, // Canonica support-credit operation, charged in Canonica credit ledger
-    [AI_ACTIONS_TYPES.CANONICA_INTAKE_EMBEDDING]: 0, // Publishing support infrastructure — logged, not charged separately
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0, // Answerlattice/control-plane operation — not MenuList owner pack usage
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION]: 0, // Answerlattice/control-plane operation — owner-triggered but not MenuList pack usage
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 1, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 2, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0, // Publishing support infrastructure — logged, not charged separately
 
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.

@@ -124,7 +124,7 @@ export function useChatHandlers({
         // AI Failure Escalation (Item #8) — S4: Detect explicit escalation intent BEFORE calling API
         // If user types "talk to human", "create ticket", etc., skip search and offer ticket creation
         if (content) {
-            const { ESCALATION_INTENT_PATTERNS } = await import('@lib/canonica/escalationTypes');
+            const { ESCALATION_INTENT_PATTERNS } = await import('@lib/answerlattice/escalationTypes');
             const isExplicitEscalation = ESCALATION_INTENT_PATTERNS.some(p => p.test(content));
             if (isExplicitEscalation) {
                 // Build a synthetic escalation message and trigger ticket creation

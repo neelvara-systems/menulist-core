@@ -120,13 +120,13 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'platformUsers',
 ];
 
-const canonicaInternalScreens: MobilePlatformInternalScreenKey[] = [
+const answerlatticeInternalScreens: MobilePlatformInternalScreenKey[] = [
     'supportTickets',
     'feedbackAdmin',
     'knowledgeBase',
     'kbGeneration',
     'changelog',
-    'canonicaWidget',
+    'answerlatticeWidget',
     'chatManagement',
     'chatInsights',
     'chatBackfill',
@@ -175,12 +175,12 @@ export type MoreSubScreen =
     | 'todayHistory'
     | 'customerApp'
     | 'presenceMonitor'
-    | 'canonicaHelp'
-    | 'canonicaDocs'
-    | 'canonicaSupport'
-    | 'canonicaReleaseNotes'
+    | 'answerlatticeHelp'
+    | 'answerlatticeDocs'
+    | 'answerlatticeSupport'
+    | 'answerlatticeReleaseNotes'
     | 'platformHub'
-    | 'canonicaHub'
+    | 'answerlatticeHub'
     | 'resellerHub'
     | 'entityBlocks'
     | 'platformTenants'
@@ -196,7 +196,7 @@ export type MoreSubScreen =
     | 'chatBackfill'
     | 'chatWeeklyDigest'
     | 'chatRoiCalculator'
-    | 'canonicaWidget'
+    | 'answerlatticeWidget'
     | 'opsControlRoom'
     | 'extractionMonitor'
     | 'schedulerMonitor'
@@ -407,11 +407,11 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
             return 'searchDiscoveryHub';
         }
-        if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(currentScreen)) {
+        if (['answerlatticeHelp', 'answerlatticeDocs', 'answerlatticeSupport', 'answerlatticeReleaseNotes'].includes(currentScreen)) {
             return 'main';
         }
-        if (canonicaInternalScreens.includes(currentScreen as MobilePlatformInternalScreenKey)) {
-            return 'canonicaHub';
+        if (answerlatticeInternalScreens.includes(currentScreen as MobilePlatformInternalScreenKey)) {
+            return 'answerlatticeHub';
         }
         if (['resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(currentScreen)) {
             return 'resellerHub';
@@ -487,14 +487,14 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'opsControlRoom', icon: <LuActivity color="#dc2626" size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'schedulerMonitor', icon: <LuClock3 color="#ea580c" size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color="#7c3aed" size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
-        ...(FEATURE_FLAGS.ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR ? [{ key: 'canonicaIntakeMonitor', icon: <LuBookOpen color="#0f766e" size={20} />, keywords: ['canonica', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Canonica Intake', description: 'Canonica intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/canonica-intake') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color="#0f766e" size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/answerlattice-intake') }] : []),
     ] : [];
 
     const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
     ] : [];
 
-    const canonicaManagementItems: MoreListItem[] = [];
+    const answerlatticeManagementItems: MoreListItem[] = [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
@@ -514,8 +514,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
     ] : [];
 
-    const canonicaHubItems: MoreListItem[] = [];
-    const canonicaHubSections: MoreListSection[] = [];
+    const answerlatticeHubItems: MoreListItem[] = [];
+    const answerlatticeHubSections: MoreListSection[] = [];
 
     const canOpenSubScreen = useCallback((screen: MoreSubScreen) => {
         if (screen === 'main' || screen === 'accountProfile' || screen === 'accountAccess' || screen === 'help') return true;
@@ -536,7 +536,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
         if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
-        if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(screen)) return true;
+        if (['answerlatticeHelp', 'answerlatticeDocs', 'answerlatticeSupport', 'answerlatticeReleaseNotes'].includes(screen)) return true;
         return false;
     }, [
         canAccessBilling,
@@ -574,8 +574,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
         ...(resellerManagementItems.length ? [{ items: resellerManagementItems, title: 'Reseller' }] : []),
         ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
-        ...(canonicaManagementItems.length ? [{ items: canonicaManagementItems, title: 'Canonica' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerManagementItems]);
+        ...(answerlatticeManagementItems.length ? [{ items: answerlatticeManagementItems, title: 'Answerlattice' }] : []),
+    ]), [businessIdentityItems, businessPresenceItems, answerlatticeManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerManagementItems]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -624,7 +624,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
-    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, widget, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} sections={canonicaHubSections} title="Canonica" />;
+    else if (subScreen === 'answerlatticeHub') subScreenContent = <MobileMoreHubScreen description="Answerlattice support, knowledge base, widget, changelog, chat analytics, and backfill tools." items={answerlatticeHubItems} onBack={() => setSubScreen('main')} sections={answerlatticeHubSections} title="Answerlattice" />;
     else if (subScreen === 'resellerHub') subScreenContent = <MobileMoreHubScreen description="Partner onboarding, client activation, offline prepaid licenses, and reseller profile management." items={resellerHubItems} onBack={() => setSubScreen('main')} title="Reseller" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
@@ -658,10 +658,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     }
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
-    else if (subScreen === 'canonicaHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaDocs') subScreenContent = <MobileHelpScreen initialTab="kb" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaSupport') subScreenContent = <MobileHelpScreen initialTab="ticket" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaReleaseNotes') subScreenContent = <MobileHelpScreen initialTab="changelog" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'answerlatticeHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'answerlatticeDocs') subScreenContent = <MobileHelpScreen initialTab="kb" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'answerlatticeSupport') subScreenContent = <MobileHelpScreen initialTab="ticket" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'answerlatticeReleaseNotes') subScreenContent = <MobileHelpScreen initialTab="changelog" onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
@@ -728,28 +728,28 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List.Item
                     arrow
                     description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
-                    onClick={() => openSubScreen('canonicaHelp')}
+                    onClick={() => openSubScreen('answerlatticeHelp')}
                     prefix={<LuHelpCircle color="#3b82f6" size={20} />}
                     title={<Text strong>{t('helpCenter')}</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
-                    onClick={() => openSubScreen('canonicaDocs')}
+                    onClick={() => openSubScreen('answerlatticeDocs')}
                     prefix={<LuBookOpen color="#8b5cf6" size={20} />}
                     title={<Text strong>Documentation</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">Create or track support tickets.</Text>}
-                    onClick={() => openSubScreen('canonicaSupport')}
+                    onClick={() => openSubScreen('answerlatticeSupport')}
                     prefix={<LuTicket color="#f59e0b" size={20} />}
                     title={<Text strong>Support Tickets</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">See recent product changes and fixes.</Text>}
-                    onClick={() => openSubScreen('canonicaReleaseNotes')}
+                    onClick={() => openSubScreen('answerlatticeReleaseNotes')}
                     prefix={<LuReceipt color="#0ea5e9" size={20} />}
                     title={<Text strong>Release Notes</Text>}
                 />

@@ -39,12 +39,12 @@
 
 ---
 
-## May 31, 2026 — Canonica Pre-Onboarding Safety Boundary
+## May 31, 2026 — Answerlattice Pre-Onboarding Safety Boundary
 
 ### Changed
 
-- **Pre-onboarding now states source-access limits clearly** — The Canonica pre-onboarding page, guide, markdown prompt, owner guide, agent guide, feature docs, and rules now say the prompt only covers sources an AI IDE can inspect.
-- **Pre-onboarding is now directly reachable from navigation** — The Canonica footer links to the Pre-Onboarding Kit and Guide, and the mobile drawer links to the Pre-Onboarding Kit.
+- **Pre-onboarding now states source-access limits clearly** — The Answerlattice pre-onboarding page, guide, markdown prompt, owner guide, agent guide, feature docs, and rules now say the prompt only covers sources an AI IDE can inspect.
+- **Pre-onboarding is now directly reachable from navigation** — The Answerlattice footer links to the Pre-Onboarding Kit and Guide, and the mobile drawer links to the Pre-Onboarding Kit.
 - **Pre-onboarding is now a primary website route** — Desktop navigation, homepage hero, first-scroll homepage section, Resources, and Get Started now route buyers to `/pre-onboarding` before workspace setup.
 - **Prompt opens in-page** — The Pre-Onboarding page and guide now open the master prompt in a modal with copy-to-clipboard, preview, and Markdown download actions while keeping `/pre-onboarding.md` available for direct agent access.
 - **Blocked sources stay pending** — Private repos, login-only apps, restricted websites, unsupported recordings, screenshots, files, or weak agent sessions must be marked pending or unavailable instead of treated as covered.
@@ -121,14 +121,14 @@
 
 ---
 
-## May 31, 2026 — Canonica Product Pipeline Alignment Audit
+## May 31, 2026 — Answerlattice Product Pipeline Alignment Audit
 
 ### Fixed
 
 - **Owner launch checklist stays in owner routes** — Customer-facing compatibility routes remain available for support surfaces, but owner checklist actions now open Knowledge Base, Ticket Inbox, and Changelog management screens.
-- **Canonica graph and audit writes keep product scope** — Nightly graph summaries now carry `pId/tId/sId`, Firestore rules recognize the live `entityGraphIndex_*` summary document, old graph summaries get a one-time metadata backfill, and system audit logs from nightly/draft/bootstrap flows include Canonica product scope.
-- **Non-Canonica signed-in accounts leave the dashboard path** — An authenticated Google account without a Canonica workspace is routed to Canonica pricing/subscription instead of seeing a blocked dashboard state.
-- **Canonica Firestore read paths now have explicit guardrails** — Added Canonica-wide cost read-model docs, tenant-scoped the widget activity fallback query, and clamped signal, audit, and Support Board list limits.
+- **Answerlattice graph and audit writes keep product scope** — Nightly graph summaries now carry `pId/tId/sId`, Firestore rules recognize the live `entityGraphIndex_*` summary document, old graph summaries get a one-time metadata backfill, and system audit logs from nightly/draft/bootstrap flows include Answerlattice product scope.
+- **Non-Answerlattice signed-in accounts leave the dashboard path** — An authenticated Google account without an Answerlattice workspace is routed to Answerlattice pricing/subscription instead of seeing a blocked dashboard state.
+- **Answerlattice Firestore read paths now have explicit guardrails** — Added Answerlattice-wide cost read-model docs, tenant-scoped the widget activity fallback query, and clamped signal, audit, and Support Board list limits.
 
 ### Cost
 
@@ -139,8 +139,8 @@
 
 ### Added
 
-- **VisualMeta is now planned as a separate product** — Added a full VisualMeta documentation set that treats VisualMeta as product code `VM`, separate from MenuList, GrowthOS, Canonica, and the internal Website Asset Operating System.
-- **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Canonica-style doctrine.
+- **VisualMeta is now planned as a separate product** — Added a full VisualMeta documentation set that treats VisualMeta as product code `VM`, separate from MenuList, GrowthOS, Answerlattice, and the internal Website Asset Operating System.
+- **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Answerlattice-style doctrine.
 - **Product separation doctrine** — Added VisualMeta core doctrine, non-goals charter, infrastructure freeze, and product separation playbook covering routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests.
 
 ### Product Decision
@@ -190,12 +190,12 @@
 
 ---
 
-## May 31, 2026 — Canonica Website Launch-Ready Positioning
+## May 31, 2026 — Answerlattice Website Launch-Ready Positioning
 
 ### Changed
 
-- **Canonica homepage hero now leads with launch-ready support** — The first-screen copy now says founders can launch their SaaS with support already built, with setup as the primary action and the page-aware demo as proof.
-- **Canonica public claims now separate generated knowledge from managed support surfaces** — Website and docs now say Canonica prepares docs, FAQs, answer drafts, hosted help, and widget support while tickets, changelog publishing, feedback, ratings, and feature requests remain owner-managed.
+- **Answerlattice homepage hero now leads with launch-ready support** — The first-screen copy now says founders can launch their SaaS with support already built, with setup as the primary action and the page-aware demo as proof.
+- **Answerlattice public claims now separate generated knowledge from managed support surfaces** — Website and docs now say Answerlattice prepares docs, FAQs, answer drafts, hosted help, and widget support while tickets, changelog publishing, feedback, ratings, and feature requests remain owner-managed.
 
 ### Cost
 
@@ -203,25 +203,25 @@
 
 ---
 
-## May 31, 2026 — Canonica Feedback Signals And Owner Review
+## May 31, 2026 — Answerlattice Feedback Signals And Owner Review
 
 ### Added
 
-- **Feedback Review is now on the Canonica public website** — Added `/product/feedback-review` as a buyer-facing feature page and added a homepage/product preview tab showing feedback becoming support review work.
-- **Canonica owners now have a scoped feedback review route** — `/canonica/feedback` shows ratings, product-area feedback, feature requests, suggestions, workspace stats, and detail rows for the current Canonica `tId/sId`.
-- **Help Center feedback now emits support signals** — Feedback submissions still write to the Canonica `feedback` collection and now emit non-blocking `canonica_signalEvents(type='feedback')` rows when signal mutation is enabled.
+- **Feedback Review is now on the Answerlattice public website** — Added `/product/feedback-review` as a buyer-facing feature page and added a homepage/product preview tab showing feedback becoming support review work.
+- **Answerlattice owners now have a scoped feedback review route** — `/answerlattice/feedback` shows ratings, product-area feedback, feature requests, suggestions, workspace stats, and detail rows for the current Answerlattice `tId/sId`.
+- **Help Center feedback now emits support signals** — Feedback submissions still write to the Answerlattice `feedback` collection and now emit non-blocking `answerlattice_signalEvents(type='feedback')` rows when signal mutation is enabled.
 - **Feedback rows can be added directly to Support Board** — Owners can turn a selected feedback item into a private Support Board card without waiting for source sync.
 - **Support Board can import feedback signals** — The actionable signal sync path now accepts feedback signals and creates cards with rating/request-aware priority and tags.
 - **Feedback submission is now category-correct** — Users can submit general feedback, product-area issues, or feature requests directly; submissions no longer have to pass through the feature-request step.
-- **Feedback can now be sorted by Product Surface** — Owners can assign, change, clear, and filter feedback by Product Surface from `/canonica/feedback`.
+- **Feedback can now be sorted by Product Surface** — Owners can assign, change, clear, and filter feedback by Product Surface from `/answerlattice/feedback`.
 - **Widget answer feedback keeps compact surface context** — Widget search history stores only compact surface fields so negative answer feedback can feed context-aware support signals without persisting the full transient context payload.
 
 ### Changed
 
-- **Feedback options are SaaS-support generic** — Removed MenuList/menu-specific feature names from the Canonica Help Center feedback options.
+- **Feedback options are SaaS-support generic** — Removed MenuList/menu-specific feature names from the Answerlattice Help Center feedback options.
 - **Support Board cards inherit feedback surface context** — Cards created from feedback now carry `relatedSurfaceId` and `relatedContextKeys` when the feedback row is linked to a Product Surface.
-- **Unresolved signals are excluded from automatic mutation clustering** — Feedback remains a review signal until an owner links a Support Board card to a real Canonica entity.
-- **Canonica Firestore rules now support end-user feedback safely** — Authenticated tenant users can create their own feedback and read their own latest row; owner/support users can review scoped workspace feedback.
+- **Unresolved signals are excluded from automatic mutation clustering** — Feedback remains a review signal until an owner links a Support Board card to a real Answerlattice entity.
+- **Answerlattice Firestore rules now support end-user feedback safely** — Authenticated tenant users can create their own feedback and read their own latest row; owner/support users can review scoped workspace feedback.
 
 ### Cost
 
@@ -233,12 +233,12 @@
 
 ### Added
 
-- **Website Asset Operating System documentation** — Added a dedicated internal doc set for the cross-product asset contract that will let Codex audit, brief, review, and later regenerate MenuList and Canonica website assets without repeated founder context.
-- **Product-boundary decision recorded** — The ChatGPT asset-factory proposal is accepted as a separate-product-style internal architecture, not a public market-facing product now, not a MenuList owner feature, and not Canonica runtime.
+- **Website Asset Operating System documentation** — Added a dedicated internal doc set for the cross-product asset contract that will let Codex audit, brief, review, and later regenerate MenuList and Answerlattice website assets without repeated founder context.
+- **Product-boundary decision recorded** — The ChatGPT asset-factory proposal is accepted as a separate-product-style internal architecture, not a public market-facing product now, not a MenuList owner feature, and not Answerlattice runtime.
 - **Asset governance first-pass scope** — Documented asset slots, manifests, source fingerprints, quality scoring, autonomy levels, founder approval gates, storage policy, mobile output checks, and first implementation tests before any video/media generation work.
 - **Internal v1 implementation** — Added `packages/asset-factory/` with typed asset slots, brand contexts, manifest, local audit/review/brief/fingerprint scripts, internal placeholder generation, raw/working guardrails, an asset skill, and an internal review prompt. Added root npm scripts for `assets:audit`, `assets:review`, `assets:brief`, `assets:fingerprint`, and `assets:generate:missing`.
 - **Founder usage guide** — Added a practical guide explaining what the system is, why it exists, where it lives, how to run it, how to ask Codex for asset work, and which asset types require founder approval.
-- **Canonica-adjacent product thesis** — Updated AssetOS docs to position it beside Canonica's founder/operator/developer product truth layer: Canonica governs support knowledge truth, while AssetOS governs product-media truth through read-only briefs, fingerprints, audits, and founder review.
+- **Answerlattice-adjacent product thesis** — Updated AssetOS docs to position it beside Answerlattice's founder/operator/developer product truth layer: Answerlattice governs support knowledge truth, while AssetOS governs product-media truth through read-only briefs, fingerprints, audits, and founder review.
 
 ### Cost
 
@@ -259,22 +259,22 @@
 
 ---
 
-## May 31, 2026 — Canonica Intake Media And Ledger Hardening
+## May 31, 2026 — Answerlattice Intake Media And Ledger Hardening
 
 ### Added
 
-- **Canonica intake now supports screenshots and short media evidence** — Owners can upload supported screenshots/images and short audio/video files into Knowledge Intake; Canonica extracts support-relevant source text while keeping authoritative answers review-gated.
-- **Canonica intake usage ledger now protects paid media processing** — OCR/transcription reserves Canonica support credits before provider work, records the AI operation, settles successful extraction, and refunds reserved credits on extraction failure.
-- **Canonica nightly now refreshes intake analytics** — The existing Canonica scheduler writes compact intake summary data from bounded recent job docs and does not retry failed jobs, crawl URLs, call providers, or publish review items.
-- **Canonica intake now has a scoped platform monitor** — Platform admins can open `/platform/canonica-intake`, select a workspace from `canonicaTenantsSummary`, observe scoped intake jobs, credit ledger rows, media extraction usage, scheduler intake health, and run a selected-workspace nightly retry.
+- **Answerlattice intake now supports screenshots and short media evidence** — Owners can upload supported screenshots/images and short audio/video files into Knowledge Intake; Answerlattice extracts support-relevant source text while keeping authoritative answers review-gated.
+- **Answerlattice intake usage ledger now protects paid media processing** — OCR/transcription reserves Answerlattice support credits before provider work, records the AI operation, settles successful extraction, and refunds reserved credits on extraction failure.
+- **Answerlattice nightly now refreshes intake analytics** — The existing Answerlattice scheduler writes compact intake summary data from bounded recent job docs and does not retry failed jobs, crawl URLs, call providers, or publish review items.
+- **Answerlattice intake now has a scoped platform monitor** — Platform admins can open `/platform/answerlattice-intake`, select a workspace from `answerlatticeTenantsSummary`, observe scoped intake jobs, credit ledger rows, media extraction usage, scheduler intake health, and run a selected-workspace nightly retry.
 
 ### Fixed
 
-- **Canonica fallback signals now keep entity context** — FAQ/RAG/empty search paths, widget feedback, and escalation tickets preserve matched entity IDs and fallback reasons so nightly mutation can create useful proposals without extra entity-resolution reads.
-- **Canonica intake publishing is idempotent and entity-safe** — Intake-published KB articles and canonical-answer proposals use deterministic destination IDs, and canonical proposals require at least one related entity before entering governance.
-- **Canonica intake license checks tolerate stale mirrors** — Paid intake routes use the store subscription mirror first, then a direct subscription record or capped tenant/store fallback before blocking an active workspace.
-- **Canonica public signal ingestion now requires write scope** — Public read keys can still read entity/answer endpoints, but `/public/v1/signals` and MCP sessions that can write signals now require explicit `signals:write`.
-- **Canonica intake usage ledger fails closed for unknown actions** — Only known intake OCR, transcription, and embedding actions can reserve intake usage; unsupported future actions cannot silently record zero-unit paid processing.
+- **Answerlattice fallback signals now keep entity context** — FAQ/RAG/empty search paths, widget feedback, and escalation tickets preserve matched entity IDs and fallback reasons so nightly mutation can create useful proposals without extra entity-resolution reads.
+- **Answerlattice intake publishing is idempotent and entity-safe** — Intake-published KB articles and canonical-answer proposals use deterministic destination IDs, and canonical proposals require at least one related entity before entering governance.
+- **Answerlattice intake license checks tolerate stale mirrors** — Paid intake routes use the store subscription mirror first, then a direct subscription record or capped tenant/store fallback before blocking an active workspace.
+- **Answerlattice public signal ingestion now requires write scope** — Public read keys can still read entity/answer endpoints, but `/public/v1/signals` and MCP sessions that can write signals now require explicit `signals:write`.
+- **Answerlattice intake usage ledger fails closed for unknown actions** — Only known intake OCR, transcription, and embedding actions can reserve intake usage; unsupported future actions cannot silently record zero-unit paid processing.
 
 ### Cost
 
@@ -298,7 +298,7 @@
 - **MyCodex mobile sign-in now uses a first-party page** — The Vercel reader no longer depends on the browser Basic Auth prompt. The login route validates the existing MyCodex credential env vars server-side and keeps access with an `HttpOnly` session cookie.
 - **MyCodex now remembers reading continuity locally** — The settings drawer shows recent documents and previous/next document controls, while the desktop header exposes previous/next buttons for fast doc-to-doc reading.
 - **MyCodex now has its own PWA identity** — The internal reader now uses a MyCodex manifest, icon set, Apple launch images, and a private-docs service worker on `menulist.digital` instead of borrowing MenuList platform PWA assets.
-- **MyCodex crawler restrictions are explicit** — MyCodex routes now send no-index/no-follow robot metadata and headers, plus a product-scoped `robots.txt` disallow response, without changing MenuList or Canonica routes.
+- **MyCodex crawler restrictions are explicit** — MyCodex routes now send no-index/no-follow robot metadata and headers, plus a product-scoped `robots.txt` disallow response, without changing MenuList or Answerlattice routes.
 - **MyCodex folder URLs now open a document list** — Visiting a folder such as `/__mycodex/ai-enhancement-packs` shows the documents in that folder instead of a generic not-found page when no README exists.
 
 ### Cost
@@ -307,16 +307,16 @@
 
 ---
 
-## May 31, 2026 — Canonica Knowledge Intake Planning
+## May 31, 2026 — Answerlattice Knowledge Intake Planning
 
 ### Added
 
-- **Canonica Knowledge Intake Command Center documentation** — Added a complete day-one document set for the planned paid-gated, source-backed intake architecture that will sit above the current upload-first KB generation pipeline.
+- **Answerlattice Knowledge Intake Command Center documentation** — Added a complete day-one document set for the planned paid-gated, source-backed intake architecture that will sit above the current upload-first KB generation pipeline.
 - **Intake cost and safety contract** — Documented the source registry, Storage-heavy artifact model, compact Firestore summaries, source authority rules, paid entitlement gates, review queue, source lineage, topic readiness, and test matrix.
 - **Product-link intake hardening** — Added selected-page website discovery, app URL crawl boundaries, unchanged-source skip rules, bounded job orchestration, credit settlement, and pre-provider privacy filtering to the intake plan.
 - **Summary-first intake infrastructure** — Added workspace intake summaries, bucketed scheduler directory docs, source-version fields, dirty-summary repair, and write-if-changed rules so implementation can avoid growing collection scans.
 - **Runtime alignment for intake output** — Added a destination publishing matrix so approved intake output must feed existing KB articles/categories, FAQ retrieval, canonical-first search, vector embeddings, product-surface summaries, changelog/release context, public content cache, and compiled context source-version paths.
-- **KB generation successor note** — The existing KB Generation Pipeline docs now clarify that the current runtime remains the compatibility article/FAQ output path, while Knowledge Intake Command Center is the planned long-term Canonica intake layer.
+- **KB generation successor note** — The existing KB Generation Pipeline docs now clarify that the current runtime remains the compatibility article/FAQ output path, while Knowledge Intake Command Center is the planned long-term Answerlattice intake layer.
 
 ### Cost
 
@@ -330,7 +330,7 @@
 
 - **MyCodex now uses `menulist.digital` as a dedicated internal product host** — `menulist.digital` and `www.menulist.digital` are documented as product domains that rewrite to `/sites/mycodex` before tenant/custom-domain routing can treat the host as a restaurant domain.
 - **MyCodex Vercel access is protected** — The middleware now requires `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` outside localhost before serving repository documentation.
-- **URL routing docs now include product-domain guardrails** — The URL routing architecture README, spec, implementation guide, ADRs, and Firebase cost note now describe MenuList, Canonica, and MyCodex host separation.
+- **URL routing docs now include product-domain guardrails** — The URL routing architecture README, spec, implementation guide, ADRs, and Firebase cost note now describe MenuList, Answerlattice, and MyCodex host separation.
 
 ### Cost
 
@@ -338,11 +338,11 @@
 
 ---
 
-## May 28, 2026 — Canonica Section Header Alignment
+## May 28, 2026 — Answerlattice Section Header Alignment
 
 ### Changed
 
-- **Canonica website section introductions now use one centered treatment** — Homepage sections, Product sections, Integrations, Pricing, Quickstarts, Security, and shared product/SEO page templates now use the same centered eyebrow, heading, and subheading pattern instead of alternating between centered, left-aligned, and split layouts.
+- **Answerlattice website section introductions now use one centered treatment** — Homepage sections, Product sections, Integrations, Pricing, Quickstarts, Security, and shared product/SEO page templates now use the same centered eyebrow, heading, and subheading pattern instead of alternating between centered, left-aligned, and split layouts.
 
 ### Cost
 
@@ -350,11 +350,11 @@
 
 ---
 
-## May 28, 2026 — Canonica Product Menu Label Fit
+## May 28, 2026 — Answerlattice Product Menu Label Fit
 
 ### Fixed
 
-- **Canonica website Product menu feature labels stay on one line** — The desktop Product dropdown gives the feature column more room and keeps feature labels such as Knowledge Base and FAQ Management from wrapping into two rows.
+- **Answerlattice website Product menu feature labels stay on one line** — The desktop Product dropdown gives the feature column more room and keeps feature labels such as Knowledge Base and FAQ Management from wrapping into two rows.
 
 ### Cost
 
@@ -362,13 +362,13 @@
 
 ---
 
-## May 28, 2026 — Canonica Widget Mobile Suppression
+## May 28, 2026 — Answerlattice Widget Mobile Suppression
 
 ### Fixed
 
-- **MenuList owner mobile no longer gets trapped behind the Canonica widget** — The owner-layout embed suppresses the external widget on mobile viewports and force-hides any already-open widget when the route is blocked.
-- **Canonica widget runtime now exposes hide/show controls** — Client products can force-hide the launcher and open iframe during native mobile or internal admin routes, then release it when the widget should be available again.
-- **Canonica widget runtime types match the browser contract** — The web package now includes nullable context clearing plus `hide()` and `show()` on the runtime/client type surface.
+- **MenuList owner mobile no longer gets trapped behind the Answerlattice widget** — The owner-layout embed suppresses the external widget on mobile viewports and force-hides any already-open widget when the route is blocked.
+- **Answerlattice widget runtime now exposes hide/show controls** — Client products can force-hide the launcher and open iframe during native mobile or internal admin routes, then release it when the widget should be available again.
+- **Answerlattice widget runtime types match the browser contract** — The web package now includes nullable context clearing plus `hide()` and `show()` on the runtime/client type surface.
 
 ### Cost
 
@@ -376,11 +376,11 @@
 
 ---
 
-## May 27, 2026 — Canonica Product Menu Navigation Polish
+## May 27, 2026 — Answerlattice Product Menu Navigation Polish
 
 ### Changed
 
-- **Canonica website Product menu now reads like navigation** — The desktop hover menu uses route icons, compact link rows, clearer product-area and feature groups, and a stronger Product overview entry instead of paragraph-heavy cards.
+- **Answerlattice website Product menu now reads like navigation** — The desktop hover menu uses route icons, compact link rows, clearer product-area and feature groups, and a stronger Product overview entry instead of paragraph-heavy cards.
 
 ### Cost
 
@@ -388,11 +388,11 @@
 
 ---
 
-## May 27, 2026 — Canonica Mobile Drawer Icons
+## May 27, 2026 — Answerlattice Mobile Drawer Icons
 
 ### Changed
 
-- **Canonica mobile drawer links now include route icons** — Product overview, Product Areas, Product Features, Other links, and the setup CTA now use the existing Lucide icon stack so the drawer scans faster without changing its route grouping or behavior.
+- **Answerlattice mobile drawer links now include route icons** — Product overview, Product Areas, Product Features, Other links, and the setup CTA now use the existing Lucide icon stack so the drawer scans faster without changing its route grouping or behavior.
 
 ### Cost
 
@@ -400,11 +400,11 @@
 
 ---
 
-## May 27, 2026 — Canonica Mobile Drawer Animation
+## May 27, 2026 — Answerlattice Mobile Drawer Animation
 
 ### Fixed
 
-- **Canonica mobile hamburger drawer now animates open and closed** — The drawer mounts off-screen first, then applies the open state after a short browser paint delay. Closing removes the open state before unmounting, so the right-to-left slide and backdrop fade are visible.
+- **Answerlattice mobile hamburger drawer now animates open and closed** — The drawer mounts off-screen first, then applies the open state after a short browser paint delay. Closing removes the open state before unmounting, so the right-to-left slide and backdrop fade are visible.
 
 ### Cost
 
@@ -412,15 +412,15 @@
 
 ---
 
-## May 27, 2026 — Canonica Website End-to-End Audit
+## May 27, 2026 — Answerlattice Website End-to-End Audit
 
 ### Fixed
 
-- **Canonica website docs now match the live install route set** — The website documentation no longer lists removed standalone `/install/verify`, `/install/security`, `/install/contracts`, or `/install/changelog` HTML pages. It now points to the live generated install pages and Markdown contract mirrors.
+- **Answerlattice website docs now match the live install route set** — The website documentation no longer lists removed standalone `/install/verify`, `/install/security`, `/install/contracts`, or `/install/changelog` HTML pages. It now points to the live generated install pages and Markdown contract mirrors.
 
 ### Verified
 
-- **Public website route coverage passed** — Canonica homepage, product pages, feature pages, use-case pages, install pages, resources, pricing, legal pages, sitemap, robots, LLM context, and Markdown install docs all returned `200` locally.
+- **Public website route coverage passed** — Answerlattice homepage, product pages, feature pages, use-case pages, install pages, resources, pricing, legal pages, sitemap, robots, LLM context, and Markdown install docs all returned `200` locally.
 - **Rendered layout passed desktop and mobile checks** — 48 sitemap pages were checked at desktop and mobile widths with no horizontal overflow, visible runtime error state, missing header/footer, or missing H1.
 
 ### Cost
@@ -429,11 +429,11 @@
 
 ---
 
-## May 27, 2026 — Canonica Website Mobile Drawer
+## May 27, 2026 — Answerlattice Website Mobile Drawer
 
 ### Changed
 
-- **Canonica public hamburger now opens as a right-side drawer** — Mobile navigation slides in from the right with a backdrop, close action, Escape handling, body scroll lock, and link-close behavior.
+- **Answerlattice public hamburger now opens as a right-side drawer** — Mobile navigation slides in from the right with a backdrop, close action, Escape handling, body scroll lock, and link-close behavior.
 - **Mobile drawer keeps the grouped navigation structure** — Product Overview, Product Areas, Product Features, Other, and Start free setup remain grouped inside the drawer.
 
 ### Cost
@@ -442,22 +442,22 @@
 
 ---
 
-## May 27, 2026 — Canonica Agent Install Layer
+## May 27, 2026 — Answerlattice Agent Install Layer
 
 ### New
 
-- **Canonica now has a generated AI coding agent install packet** — Public install pages, Markdown mirrors, AGENTS.md, CLAUDE.md, Cursor RULE.md, Cursor .mdc, Windsurf, skill files, and agent-kit ZIP all render from one v1 widget contract source.
-- **Canonica dashboard now has a dedicated Install Center** — `/canonica/install-center` keeps the AI install packet, current widget setup, agent files, framework snippets, setup snapshot, verification checklist, and machine-readable docs in one owner route.
-- **Widget installs now have a frozen v1 URL** — New installs use `https://canonica.app/widget/v1/canonica-widget.js`; the existing `/widget/canonica-widget.js` path remains compatible.
-- **Widget v1 script uses bounded caching** — `/widget/v1/canonica-widget.js` stays stable without long immutable caching, so compatible runtime fixes can reach clients without changing their install snippet.
+- **Answerlattice now has a generated AI coding agent install packet** — Public install pages, Markdown mirrors, AGENTS.md, CLAUDE.md, Cursor RULE.md, Cursor .mdc, Windsurf, skill files, and agent-kit ZIP all render from one v1 widget contract source.
+- **Answerlattice dashboard now has a dedicated Install Center** — `/answerlattice/install-center` keeps the AI install packet, current widget setup, agent files, framework snippets, setup snapshot, verification checklist, and machine-readable docs in one owner route.
+- **Widget installs now have a frozen v1 URL** — New installs use `https://answerlattice.com/widget/v1/answerlattice-widget.js`; the existing `/widget/answerlattice-widget.js` path remains compatible.
+- **Widget v1 script uses bounded caching** — `/widget/v1/answerlattice-widget.js` stays stable without long immutable caching, so compatible runtime fixes can reach clients without changing their install snippet.
 - **Widget settings now hand off to Install Center** — The Widget Install & Embed tab points owners to Install Center for agent handoff and verification, while the widget settings tabs keep appearance, keys, origins, hosted help, and low-level snippets.
-- **SDK handoff copy was removed from Canonica install surfaces** — Dashboard snippets, public quickstarts, generated install docs, and active Canonica docs now present only the supported v1 script and `window.CanonicaWidget` browser contract.
+- **SDK handoff copy was removed from Answerlattice install surfaces** — Dashboard snippets, public quickstarts, generated install docs, and active Answerlattice docs now present only the supported v1 script and `window.AnswerlatticeWidget` browser contract.
 - **Public install navigation is now launch-safe** — Standalone Verify, Security, Changelog, and human Contract install pages were removed from the public install route set. Verification and safety guidance stay inside the dashboard packet, agent kit, and machine-readable contract.
 - **Dashboard settings own origins and blocked routes** — Generated prompts no longer ask owners to maintain separate allowed-origin or blocked-route variables in the client product.
 
 ### Cost
 
-- **Static public install docs add no Firebase cost** — The public pages and public agent files are generated/static. Opening `/canonica/install-center` reads the existing widget-config summary and optionally the activation summary; the protected ZIP endpoint reads the Canonica store document once only when the owner downloads the kit.
+- **Static public install docs add no Firebase cost** — The public pages and public agent files are generated/static. Opening `/answerlattice/install-center` reads the existing widget-config summary and optionally the activation summary; the protected ZIP endpoint reads the Answerlattice store document once only when the owner downloads the kit.
 
 ---
 
@@ -475,7 +475,7 @@
 
 ---
 
-## May 27, 2026 — Canonica Mobile Sidebar Theme Fix
+## May 27, 2026 — Answerlattice Mobile Sidebar Theme Fix
 
 ### Fixed
 
@@ -487,14 +487,14 @@
 
 ---
 
-## May 27, 2026 — Canonica Owner Navigation Cleanup
+## May 27, 2026 — Answerlattice Owner Navigation Cleanup
 
 ### Changed
 
 - **Support Control now shows owner/staff operations only** — The dashboard sidebar keeps Knowledge Base, FAQs, Changelog, Support Board, Ticket Inbox, Conversations, and Weekly Digest under Support Control.
 - **Customer support preview routes are no longer dashboard entry points** — Help Center, Documentation, Release Notes, and Submit Ticket remain direct compatibility/customer shell routes, but they are not shown in the owner sidebar or header actions.
 - **Management sessions no longer render customer shell routes by accident** — Direct owner visits to Help, Docs, Release Notes, or Submit Ticket redirect to Knowledge Base, Changelog, Ticket Inbox, or the first permitted owner route.
-- **Permission fallback stays on owner surfaces for management users** — Staff who open a route they cannot use are redirected to the first permitted owner route instead of the customer help page. Non-management Canonica client sessions still fall back to the client help route.
+- **Permission fallback stays on owner surfaces for management users** — Staff who open a route they cannot use are redirected to the first permitted owner route instead of the customer help page. Non-management Answerlattice client sessions still fall back to the client help route.
 
 ### Cost
 
@@ -517,7 +517,7 @@
 
 ---
 
-## May 27, 2026 — Canonica Website Support Board Page
+## May 27, 2026 — Answerlattice Website Support Board Page
 
 ### Added
 
@@ -547,13 +547,13 @@
 
 ---
 
-## May 27, 2026 — Canonica Support Board Cost Gate and Status History
+## May 27, 2026 — Answerlattice Support Board Cost Gate and Status History
 
 ### Changed
 
-- **Support Board source sync is now controlled rollout** — Ticket/signal sync UI is hidden unless `ENABLE_CANONICA_SUPPORT_BOARD_SOURCE_SYNC` is enabled, because tickets and signals already have their own owner dashboards.
-- **Support Board nightly prep is disabled by default** — `ENABLE_CANONICA_SUPPORT_BOARD_SYNC` now gates the scheduler path so consolidated board cards are created only for tenants that need that review mode.
-- **Support Board summary reads are disabled by default** — `ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY` keeps the UI from reading `supportBoardSummary_*` while nightly preparation is off.
+- **Support Board source sync is now controlled rollout** — Ticket/signal sync UI is hidden unless `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC` is enabled, because tickets and signals already have their own owner dashboards.
+- **Support Board nightly prep is disabled by default** — `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC` now gates the scheduler path so consolidated board cards are created only for tenants that need that review mode.
+- **Support Board summary reads are disabled by default** — `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY` keeps the UI from reading `supportBoardSummary_*` while nightly preparation is off.
 - **Support Board cards now track status activity** — Cards keep top-level `status` for filtering and capped `statuses[]` history for timestamped owner/staff activity, matching the support-ticket status-history pattern.
 
 ### Cost
@@ -563,26 +563,26 @@
 
 ---
 
-## May 27, 2026 — Canonica Website Contact and Mobile Navigation
+## May 27, 2026 — Answerlattice Website Contact and Mobile Navigation
 
 ### Added
 
-- **Canonica contact page now has a full inquiry flow** — `/contact` now includes a buyer-ready form, direct email paths, partnership/security contact paths, privacy/terms consent, and a no-secrets warning.
-- **Canonica contact submissions stay inside Canonica infrastructure** — `POST /api/canonica/public/contact` rate-limits anonymous submissions, uses a honeypot, validates input, hashes the requester IP, and writes to Canonica Firestore instead of another product's public enquiry collection.
-- **Mobile navigation now groups lower-level links** — The Canonica hamburger menu keeps Product Overview, Product Areas, and Product Features grouped, then adds an **Other** card for Use Cases, Demo, Install, Pricing, Resources, Updates, and Contact with safe-area bottom padding.
+- **Answerlattice contact page now has a full inquiry flow** — `/contact` now includes a buyer-ready form, direct email paths, partnership/security contact paths, privacy/terms consent, and a no-secrets warning.
+- **Answerlattice contact submissions stay inside Answerlattice infrastructure** — `POST /api/answerlattice/public/contact` rate-limits anonymous submissions, uses a honeypot, validates input, hashes the requester IP, and writes to Answerlattice Firestore instead of another product's public enquiry collection.
+- **Mobile navigation now groups lower-level links** — The Answerlattice hamburger menu keeps Product Overview, Product Areas, and Product Features grouped, then adds an **Other** card for Use Cases, Demo, Install, Pricing, Resources, Updates, and Contact with safe-area bottom padding.
 
 ### Cost
 
 - **Normal browsing remains static** — Page views and mobile menu opening add no Firestore reads, listeners, Cloud Functions, or scheduled work.
-- **Valid contact form submissions add one bounded Canonica Firestore write** — Spam/bot requests are filtered by rate limiting and honeypot handling before the write path.
+- **Valid contact form submissions add one bounded Answerlattice Firestore write** — Spam/bot requests are filtered by rate limiting and honeypot handling before the write path.
 
 ---
 
-## May 27, 2026 — Canonica Support Board Nightly Sync
+## May 27, 2026 — Answerlattice Support Board Nightly Sync
 
 ### Added
 
-- **Support Board now prepares owner review work nightly** — The existing Canonica scheduler creates deduped cards for repeated fallback, low-confidence answers, negative feedback, escalations, drifted canonical answers, and release impact.
+- **Support Board now prepares owner review work nightly** — The existing Answerlattice scheduler creates deduped cards for repeated fallback, low-confidence answers, negative feedback, escalations, drifted canonical answers, and release impact.
 - **Support Board summary is now compact** — `platformSummary/supportBoardSummary_{tId}_{sId}` stores open work, needs-answer count, high-priority count, source/status counts, and latest sync stats for owner UI.
 - **Manual sync remains available** — Ticket and signal sync buttons still exist for immediate review, but the scheduler does not mirror every ticket into Kanban.
 
@@ -590,13 +590,13 @@
 
 - **Adds bounded nightly Firestore usage** — Per tenant, nightly sync reads capped search history, signal, drift, release, and recent board-card windows; creates or updates at most 20 board cards; skips resolved/unchanged cards; and writes the compact summary only when changed.
 
-## May 27, 2026 — Canonica Website Product Boundary
+## May 27, 2026 — Answerlattice Website Product Boundary
 
 ### Changed
 
-- **Canonica public pages no longer mention a specific client product** — About, Footer, FAQ, Security, Security One-Pager, Proof, Product, Launch Setup, Team Access, Updates, system coverage, and LLM context now describe Canonica as an independent support knowledge control plane.
-- **Canonica streamed loader payload now uses Canonica identity** — The root server loader auto-detects Canonica product requests so rendered HTML and agent-visible payloads do not expose another product brand.
-- **Website documentation now follows the same boundary** — Canonica website README, spec, and implementation notes now use generic client/product/platform wording instead of client-specific relationship framing.
+- **Answerlattice public pages no longer mention a specific client product** — About, Footer, FAQ, Security, Security One-Pager, Proof, Product, Launch Setup, Team Access, Updates, system coverage, and LLM context now describe Answerlattice as an independent governed answer infrastructure.
+- **Answerlattice streamed loader payload now uses Answerlattice identity** — The root server loader auto-detects Answerlattice product requests so rendered HTML and agent-visible payloads do not expose another product brand.
+- **Website documentation now follows the same boundary** — Answerlattice website README, spec, and implementation notes now use generic client/product/platform wording instead of client-specific relationship framing.
 
 ### Cost
 
@@ -604,13 +604,13 @@
 
 ---
 
-## May 27, 2026 — Canonica Website Brand Color
+## May 27, 2026 — Answerlattice Website Brand Color
 
 ### Changed
 
-- **Canonica no longer uses indigo as its primary website color** — The public site now uses `Verdigris Control Plane`: deep navy background, deep teal primary controls, teal signal accents, and refreshed logo/social SVG colors.
+- **Answerlattice no longer uses indigo as its primary website color** — The public site now uses `Verdigris Answer Layer`: deep navy background, deep teal primary controls, teal signal accents, and refreshed logo/social SVG colors.
 - **Website accents are consistent end to end** — CTAs, badges, tabs, hover states, diagrams, route pages, demo panels, and onboarding form accents now use the verdigris/teal system instead of the previous indigo treatment.
-- **Canonica website docs now match the implemented palette** — The website spec, implementation log, and README describe the new dark teal direction.
+- **Answerlattice website docs now match the implemented palette** — The website spec, implementation log, and README describe the new dark teal direction.
 
 ### Cost
 
@@ -618,40 +618,40 @@
 
 ---
 
-## May 26, 2026 — Canonica Support Board
+## May 26, 2026 — Answerlattice Support Board
 
 ### Added
 
-- **Canonica now has a private Support Board** — `/canonica/support-board` gives owners, managers, and support staff a board for missed questions, unresolved tickets, support signals, answer follow-up, and internal notes.
+- **Answerlattice now has a private Support Board** — `/answerlattice/support-board` gives owners, managers, and support staff a board for missed questions, unresolved tickets, support signals, answer follow-up, and internal notes.
 - **Support Board is connected to the support loop** — Owners can create manual support cards, sync recent unresolved tickets, sync actionable support signals, and create a governed answer proposal when a card has a related entity.
 - **Support work remains governed** — Board actions do not publish answers. Answer proposals still move through Knowledge Governance before becoming canonical support truth.
-- **Support Board docs now track the roadmap** — `__docs__/canonica/support-board/` records the delivered MVP, Firebase cost model, and future plan for weekly review, release impact, saved replies, surface health, reminders, integrations, and customer timelines.
+- **Support Board docs now track the roadmap** — `__docs__/answerlattice/support-board/` records the delivered MVP, Firebase cost model, and future plan for weekly review, release impact, saved replies, surface health, reminders, integrations, and customer timelines.
 
 ### Cost
 
 - **Support Board adds bounded Firestore usage** — Board load reads up to 120 private board cards. Ticket and signal sync are explicit actions that read up to 50 source docs and create up to 20 cards. Notes are embedded and capped at 25 per card to avoid subcollection listeners.
 
-## May 26, 2026 — Canonica Website Theme Contract
+## May 26, 2026 — Answerlattice Website Theme Contract
 
 ### Changed
 
-- **Canonica public website now has a named theme contract** — `Dark Control Plane` centralizes the deep navy background, Indigo 500 primary, surface/border tokens, text colors, and success/warning/danger colors.
-- **Canonica PWA colors now match the public site** — The manifest background and browser theme color use the same deep navy as the website instead of older off-palette navy values.
-- **Inline website color usage is narrower** — The Canonica 404 page and get-started form now read primary, text, success, and danger colors from the shared website theme tokens.
+- **Answerlattice public website now has a named theme contract** — `Verdigris Answer Layer` centralizes the deep navy background, teal primary, surface/border tokens, text colors, and success/warning/danger colors.
+- **Answerlattice PWA colors now match the public site** — The manifest background and browser theme color use the same deep navy as the website instead of older off-palette navy values.
+- **Inline website color usage is narrower** — The Answerlattice 404 page and get-started form now read primary, text, success, and danger colors from the shared website theme tokens.
 
 ### Cost
 
 - **No Firebase cost change** — This is static website theme and metadata work only. It adds no Firestore reads, writes, listeners, Cloud Functions, or scheduled work.
 
-## May 26, 2026 — Canonica FAQ Custom Answers
+## May 26, 2026 — Answerlattice FAQ Custom Answers
 
 ### Changed
 
 - **Owner FAQs now act as custom answers in search** — Published active FAQs can answer matching end-user questions after canonical-answer retrieval misses and before embedding/RAG fallback.
 - **FAQ/custom answers keep source links** — Owners can continue linking answers to articles, product surfaces, entities, and tags; matched FAQ answers return the linked article as a helpful reference when available.
 - **Widget and Help Center responses show answer source** — FAQ/custom-answer hits are marked as owner answers while canonical answers remain the highest-priority verified path.
-- **FAQ management wording is clearer** — `/canonica/faqs` now presents the screen as FAQs and custom answers, not only a static FAQ page.
-- **Canonica public website now reflects custom answers** — Homepage, Product, FAQ Management, Support Control, Widget, FAQ, SEO pages, updates, and agent-readable LLM context now describe owner-written Q&A as the implemented shortcut after canonical answers and before fallback.
+- **FAQ management wording is clearer** — `/answerlattice/faqs` now presents the screen as FAQs and custom answers, not only a static FAQ page.
+- **Answerlattice public website now reflects custom answers** — Homepage, Product, FAQ Management, Support Control, Widget, FAQ, SEO pages, updates, and agent-readable LLM context now describe owner-written Q&A as the implemented shortcut after canonical answers and before fallback.
 
 ### Cost
 
@@ -671,46 +671,46 @@
 
 ---
 
-## May 26, 2026 — Canonica Staff Roles and Permissions
+## May 26, 2026 — Answerlattice Staff Roles and Permissions
 
 ### Added
 
-- **Canonica now has workspace team access** — `/canonica/team` lets workspace owners add members, assign roles, reset login details, deactivate/remove members, and manage custom roles.
-- **Canonica staff login follows the shared staff access model** — Team members can use email/password setup or owner-managed staff ID/passcode, with phone metadata, shared one-time passcode sharing, password/passcode reset, and owner force sign-out.
-- **Canonica public website now exposes Team Access** — Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context now include Canonica roles, owner reset, force sign-out, and workspace-scoped access.
-- **Canonica roles are product-specific** — Owner, Manager, and Support Staff roles use Canonica permission keys instead of restaurant staff permissions from another product domain.
-- **Canonica route and API access is permission-aware** — Dashboard navigation, route guards, and protected Canonica APIs now check the active Canonica role before exposing workspace, knowledge, widget, support, integrations, billing, and rebuild controls.
-- **Canonica Firestore rules now enforce permission claims** — Direct Canonica client reads/writes require Canonica permission claims; same-tenant membership alone is no longer enough for managed collections.
+- **Answerlattice now has workspace team access** — `/answerlattice/team` lets workspace owners add members, assign roles, reset login details, deactivate/remove members, and manage custom roles.
+- **Answerlattice staff login follows the shared staff access model** — Team members can use email/password setup or owner-managed staff ID/passcode, with phone metadata, shared one-time passcode sharing, password/passcode reset, and owner force sign-out.
+- **Answerlattice public website now exposes Team Access** — Product, Launch Setup, Pricing, Security, Security One-Pager, Get Started, FAQ, Privacy, Resources, Updates, sitemap metadata, and LLM context now include Answerlattice roles, owner reset, force sign-out, and workspace-scoped access.
+- **Answerlattice roles are product-specific** — Owner, Manager, and Support Staff roles use Answerlattice permission keys instead of restaurant staff permissions from another product domain.
+- **Answerlattice route and API access is permission-aware** — Dashboard navigation, route guards, and protected Answerlattice APIs now check the active Answerlattice role before exposing workspace, knowledge, widget, support, integrations, billing, and rebuild controls.
+- **Answerlattice Firestore rules now enforce permission claims** — Direct Answerlattice client reads/writes require Answerlattice permission claims; same-tenant membership alone is no longer enough for managed collections.
 
 ### Cost
 
-- **Team Access adds bounded reads and writes** — Opening Team Access reads the active store roles plus tenant users. Staff and role mutations write the Canonica user/store role docs and the default auth `productAccounts.CN` bridge. Reset and sign-out operations also call Firebase Auth token revocation. No scheduled functions were added.
+- **Team Access adds bounded reads and writes** — Opening Team Access reads the active store roles plus tenant users. Staff and role mutations write the Answerlattice user/store role docs and the default auth `productAccounts.AL` bridge. Reset and sign-out operations also call Firebase Auth token revocation. No scheduled functions were added.
 
-## May 26, 2026 — Shared Dashboard Shell for Canonica
+## May 26, 2026 — Shared Dashboard Shell for Answerlattice
 
 ### Changed
 
-- **Canonica now uses the shared dashboard header and sidebar chrome** — The Canonica dashboard keeps its own routes, access guards, logo, and product actions while sharing the desktop shell structure used across owner apps.
-- **Canonica desktop navigation now supports the same sidebar collapse behavior** — The shared sidebar width, hover expansion, active state, and App Appearance/Dark Mode action treatment are consistent across owner dashboards.
-- **Canonica header now carries direct Help, theme, and profile actions** — Help opens the Canonica Help route, the theme button toggles light/dark mode, and the avatar opens the shared profile modal pattern.
-- **Canonica header has a workspace-switcher slot ready for future workspaces** — No workspace UI is shown until the real workspace model is wired, but the header can accept that control without another shell refactor.
-- **Canonica mobile navigation keeps safe-area drawer handling** — Mobile continues to use Canonica route guards and drawer navigation while inheriting the shared sidebar rendering.
+- **Answerlattice now uses the shared dashboard header and sidebar chrome** — The Answerlattice dashboard keeps its own routes, access guards, logo, and product actions while sharing the desktop shell structure used across owner apps.
+- **Answerlattice desktop navigation now supports the same sidebar collapse behavior** — The shared sidebar width, hover expansion, active state, and App Appearance/Dark Mode action treatment are consistent across owner dashboards.
+- **Answerlattice header now carries direct Help, theme, and profile actions** — Help opens the Answerlattice Help route, the theme button toggles light/dark mode, and the avatar opens the shared profile modal pattern.
+- **Answerlattice header has a workspace-switcher slot ready for future workspaces** — No workspace UI is shown until the real workspace model is wired, but the header can accept that control without another shell refactor.
+- **Answerlattice mobile navigation keeps safe-area drawer handling** — Mobile continues to use Answerlattice route guards and drawer navigation while inheriting the shared sidebar rendering.
 
 ### Cost
 
 - **No Firebase cost change** — This is a UI shell refactor only. It adds no reads, writes, listeners, functions, rules, indexes, or scheduled work.
 
-## May 25, 2026 — MenuList Canonica Widget Client Embed
+## May 25, 2026 — MenuList Answerlattice Widget Client Embed
 
 ### Changed
 
-- **MenuList owner routes can now load the Canonica widget as an external client** — The owner app layout includes an env-configured Canonica widget embed for `/projects` and adjacent dashboard routes.
-- **No widget key is hardcoded** — The embed renders only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is set to a Canonica-issued `cn_` key.
-- **Script host follows the environment matrix** — Local uses localhost, QA/Preview uses `ecomsai.com`, and Production uses `canonica.app`, with an optional script source override for temporary previews.
+- **MenuList owner routes can now load the Answerlattice widget as an external client** — The owner app layout includes an env-configured Answerlattice widget embed for `/projects` and adjacent dashboard routes.
+- **No widget key is hardcoded** — The embed renders only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is set to an Answerlattice-issued `al_` key.
+- **Script host follows the environment matrix** — Local uses localhost, QA/Preview uses `ecomsai.com`, and Production uses `answerlattice.com`, with an optional script source override for temporary previews.
 
 ### Cost
 
-- **No Firebase cost unless the widget key is configured** — With no key, the component returns `null`. With a key, page load performs the existing widget config lookup against Canonica Firebase only; it does not read MenuList Firebase.
+- **No Firebase cost unless the widget key is configured** — With no key, the component returns `null`. With a key, page load performs the existing widget config lookup against Answerlattice Firebase only; it does not read MenuList Firebase.
 
 ---
 
@@ -718,20 +718,20 @@
 
 ### Fixed
 
-- **MenuList Help Center no longer shows Canonica governance work queues** — Removed Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, and the Governance tab from the Help Center landing and tab list.
-- **Governance stays in owner/admin surfaces** — Entity review, mutation proposal review, drift, and answer governance remain available through Canonica dashboard/governance routes instead of the end-user Help Center path.
+- **MenuList Help Center no longer shows Answerlattice governance work queues** — Removed Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, and the Governance tab from the Help Center landing and tab list.
+- **Governance stays in owner/admin surfaces** — Entity review, mutation proposal review, drift, and answer governance remain available through Answerlattice dashboard/governance routes instead of the end-user Help Center path.
 
 ### Cost
 
-- **Firebase reads reduced when Help Center opens** — The Help Center no longer mounts the Canonica Coverage KPI card, so it avoids that governance summary read on Help Center landing load. No new reads, writes, listeners, or scheduled work were added.
+- **Firebase reads reduced when Help Center opens** — The Help Center no longer mounts the Answerlattice Coverage KPI card, so it avoids that governance summary read on Help Center landing load. No new reads, writes, listeners, or scheduled work were added.
 
 ---
 
-## May 25, 2026 — Canonica Widget Image Support Website Refresh
+## May 25, 2026 — Answerlattice Widget Image Support Website Refresh
 
 ### Changed
 
-- **Canonica public pages now explain widget screenshot input accurately** — Homepage widget proof, In-App Help Widget, Install, Quickstarts, Security, Security One-Pager, FAQ, SEO widget pages, Updates, and LLM context now describe user-initiated screenshot upload or paste.
+- **Answerlattice public pages now explain widget screenshot input accurately** — Homepage widget proof, In-App Help Widget, Install, Quickstarts, Security, Security One-Pager, FAQ, SEO widget pages, Updates, and LLM context now describe user-initiated screenshot upload or paste.
 - **Automatic capture stays out of scope** — Public copy explicitly avoids promising host-app screenshot capture, DOM scraping, or background visual collection.
 - **No new screenshot page was added** — The image feature is presented as part of the existing page-aware widget and safety model rather than a separate product category.
 
@@ -741,25 +741,25 @@
 
 ---
 
-## May 25, 2026 — Canonica Firebase Boundary Hardening
+## May 25, 2026 — Answerlattice Firebase Boundary Hardening
 
 ### Changed
 
-- **Canonica widget/API keys now stay in Canonica Firebase** — In separated Firebase mode, `cn_` key validation reads Canonica Firestore and fails closed if Canonica Admin credentials are missing.
-- **Widget runtime no longer falls back to MenuList public API credentials** — `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback`, and predictive-help auth use Canonica widget credentials only.
+- **Answerlattice widget/API keys now stay in Answerlattice Firebase** — In separated Firebase mode, `al_` key validation reads Answerlattice Firestore and fails closed if Answerlattice Admin credentials are missing.
+- **Widget runtime no longer falls back to MenuList public API credentials** — `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback`, and predictive-help auth use Answerlattice widget credentials only.
 - **MenuList public API keys remain MenuList-only** — Menu and business public API routes reject non-`ml_` keys before credential lookup.
-- **Ticket dashboard reads are scoped** — Non-platform Canonica ticket reads/listeners require the active Canonica `tId/sId`, while platform support sessions keep the existing cross-tenant queue view.
-- **Canonica dashboard waits for Canonica Firebase Auth** — Dashboard child components mount after `ensureFirebaseAuthForSession()` resolves, and Canonica-route claim sync uses the Canonica tenant record while preserving platform/support access.
-- **Widget questions now reflect in Widget Management** — Widget search-history rows carry `mountContext`, and `/canonica/widget` shows recent widget questions from the active Canonica tenant/store.
-- **Canonica image search no longer trusts only MenuList Storage** — Help Center image-question validation now trusts configured Firebase Storage buckets for the active product, including Canonica QA/production buckets, instead of a hardcoded `ecomsai` bucket path.
-- **MenuList Help Center uses Canonica as an external client service** — When the signed-in MenuList user has a real Canonica product account, `/help-center` searches, tickets, changelog reads, and Firebase Auth sync use that Canonica `tId/sId` without a temporary client flag or hardcoded MenuList widget host.
-- **Cross-product source context is preserved** — Canonica-owned writes keep `pId: CN` while storing the originating product scope in `sourceContext`, so MenuList client activity remains auditable without routing Canonica data through MenuList Firebase.
+- **Ticket dashboard reads are scoped** — Non-platform Answerlattice ticket reads/listeners require the active Answerlattice `tId/sId`, while platform support sessions keep the existing cross-tenant queue view.
+- **Answerlattice dashboard waits for Answerlattice Firebase Auth** — Dashboard child components mount after `ensureFirebaseAuthForSession()` resolves, and Answerlattice-route claim sync uses the Answerlattice tenant record while preserving platform/support access.
+- **Widget questions now reflect in Widget Management** — Widget search-history rows carry `mountContext`, and `/answerlattice/widget` shows recent widget questions from the active Answerlattice tenant/store.
+- **Answerlattice image search no longer trusts only MenuList Storage** — Help Center image-question validation now trusts configured Firebase Storage buckets for the active product, including Answerlattice QA/production buckets, instead of a hardcoded `ecomsai` bucket path.
+- **MenuList Help Center uses Answerlattice as an external client service** — When the signed-in MenuList user has a real Answerlattice product account, `/help-center` searches, tickets, changelog reads, and Firebase Auth sync use that Answerlattice `tId/sId` without a temporary client flag or hardcoded MenuList widget host.
+- **Cross-product source context is preserved** — Answerlattice-owned writes keep `pId: AL` while storing the originating product scope in `sourceContext`, so MenuList client activity remains auditable without routing Answerlattice data through MenuList Firebase.
 
 ### Cost
 
-- **One bounded dashboard read was added** — `/canonica/widget` may read up to 12 recent `aiSearchHistory` rows when the widget activity panel loads or refreshes. Widget runtime query cost is unchanged.
+- **One bounded dashboard read was added** — `/answerlattice/widget` may read up to 12 recent `aiSearchHistory` rows when the widget activity panel loads or refreshes. Widget runtime query cost is unchanged.
 - **No extra search reads were added** — The Storage trust change only changes URL validation before an existing image fetch; it does not add Firestore reads, writes, or listeners.
-- **MenuList client scoping does not add new reads** — It reuses the session payload and existing Canonica reads/writes that the Help Center, tickets, changelog, and widget flows already perform.
+- **MenuList client scoping does not add new reads** — It reuses the session payload and existing Answerlattice reads/writes that the Help Center, tickets, changelog, and widget flows already perform.
 
 ---
 
@@ -767,9 +767,9 @@
 
 ### Changed
 
-- **MenuList and Canonica environment targets are now explicit** — Local development uses MenuList at `http://localhost:3000/` with Firebase `ecomsai` and Canonica at `http://localhost:3000/__canonica/` with Firebase `canonica-qa`.
-- **Preview and production routing are separated** — Vercel Preview uses `menulist.online` + `ecomsai` for MenuList and `ecomsai.com` + `canonica-qa` for Canonica; Vercel Production uses `menulist.ai` + `menulist` and `canonica.app` + `canonica`.
-- **Deploy and verification commands were aligned** — Canonica Functions now have explicit QA and production deploy scripts, Firebase aliases include both product targets, and `npm run verify:env-targets` checks the matrix.
+- **MenuList and Answerlattice environment targets are now explicit** — Local development uses MenuList at `http://localhost:3000/` with Firebase `ecomsai` and Answerlattice at `http://localhost:3000/__answerlattice/` with Firebase `answerlattice-qa`.
+- **Preview and production routing are separated** — Vercel Preview uses `menulist.online` + `ecomsai` for MenuList and `ecomsai.com` + `answerlattice-qa` for Answerlattice; Vercel Production uses `menulist.ai` + `menulist` and `answerlattice.com` + `answerlattice`.
+- **Deploy and verification commands were aligned** — Answerlattice Functions now have explicit QA and production deploy scripts, Firebase aliases include both product targets, and `npm run verify:env-targets` checks the matrix.
 
 ### Cost
 
@@ -777,26 +777,26 @@
 
 ---
 
-## May 25, 2026 — Canonica Website Day-One Launch Pack
+## May 25, 2026 — Answerlattice Website Day-One Launch Pack
 
 ### Changed
 
-- **Canonica homepage and Product now package the first rollout** — Added a day-one launch-pack section linking developer quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff from the main buyer path.
+- **Answerlattice homepage and Product now package the first rollout** — Added a day-one launch-pack section linking developer quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff from the main buyer path.
 - **Rollout resources are easier to find** — Resources, Pricing, Get Started, Security, and LLM context now point buyers toward the existing quickstarts, proof pack, ROI calculator, and security one-pager without adding another public route.
 
 ### Cost
 
 - **No Firebase cost change** — The new website sections and links are static public content. They do not add dashboard reads, widget calls, Firestore writes, or scheduler work.
 
-## May 25, 2026 — Canonica Developer Install Pack
+## May 25, 2026 — Answerlattice Developer Install Pack
 
 ### Added
 
-- **Canonica now has a developer install pack** — Added a typed `@canonica/web` source package, public framework quickstarts, and dashboard install snippets for HTML, SDK, route context, Next.js, React, Vue/Nuxt, and vanilla setups.
+- **Answerlattice now has a developer install pack** — Added a typed `@answerlattice/web` source package, public framework quickstarts, and dashboard install snippets for HTML, SDK, route context, Next.js, React, Vue/Nuxt, and vanilla setups.
 - **Widget install verification is clearer** — Widget Management now checks key readiness, script load, allowed-origin status, blocked-route status, and context arrival from the existing runtime status payload.
 - **Starter product surfaces are productized** — Product owners can seed Billing, Onboarding, Team Settings, Releases, Integrations, and Common Errors surfaces without creating unrelated canonical answers automatically.
 - **Knowledge import starters are available** — KB generation upload now includes Markdown docs, FAQ CSV, changelog, and ticket-macro starter templates while keeping URL crawling out of scope.
-- **Public buyer enablement pages were added** — Canonica now includes `/quickstarts`, `/roi-calculator`, `/proof`, and `/security-one-pager`, with Resources, Pricing, Install, sitemap, and LLM context updated.
+- **Public buyer enablement pages were added** — Answerlattice now includes `/quickstarts`, `/roi-calculator`, `/proof`, and `/security-one-pager`, with Resources, Pricing, Install, sitemap, and LLM context updated.
 
 ### Cost
 
@@ -815,11 +815,11 @@
 
 ---
 
-## May 25, 2026 — Canonica Website Runtime Scaling Copy
+## May 25, 2026 — Answerlattice Website Runtime Scaling Copy
 
 ### Changed
 
-- **Canonica website now explains compiled context as runtime reliability** — Homepage/product proof, Product, Security, Resources, FAQ, Updates, and LLM context now describe approved context bundles, cache-first widget/runtime paths, and owner-visible readiness without creating a standalone MCP page.
+- **Answerlattice website now explains compiled context as runtime reliability** — Homepage/product proof, Product, Security, Resources, FAQ, Updates, and LLM context now describe approved context bundles, cache-first widget/runtime paths, and owner-visible readiness without creating a standalone MCP page.
 - **Daily governance is described from the buyer point of view** — Public copy now explains workspace-local support-day timing and centralized governance repair without exposing Cloud Scheduler, Firestore document IDs, or lock internals.
 - **Agent-context claims stay rollout-gated** — Public pages and agent-readable files clarify that MCP/agent-context tools are not general public access and do not allow agent-side knowledge writes.
 
@@ -843,12 +843,12 @@
 
 ---
 
-## May 25, 2026 — Canonica Centralized Scheduler
+## May 25, 2026 — Answerlattice Centralized Scheduler
 
 ### Changed
 
-- **Canonica scheduler work now routes through one master scheduler** — The deployed `canonicaNightly` export stays in place, but it now delegates to a centralized scheduler task registry instead of directly running every workspace.
-- **Scheduler timing is now workspace-local** — Canonica Settings stores workspace timezone and support-day end time, and scheduled work runs after that local day closes plus the settlement buffer.
+- **Answerlattice scheduler work now routes through one master scheduler** — The deployed `answerlatticeNightly` export stays in place, but it now delegates to a centralized scheduler task registry instead of directly running every workspace.
+- **Scheduler timing is now workspace-local** — Answerlattice Settings stores workspace timezone and support-day end time, and scheduled work runs after that local day closes plus the settlement buffer.
 - **Duplicate scheduler runs are locked** — Scheduler state and per-workspace/date locks in `platformSummary` prevent scheduled/manual overlap from processing the same workspace date twice.
 - **MCP server code is split for maintenance** — Tool registration and compiled-bundle handlers now live outside the App Router JSON-RPC shell, with a tenant/store tool-call rate limit.
 - **Activation shows Daily Governance status** — Owners can see workspace-local scheduler status, support-day timing, last completed run, and recent workspace runs from compact summaries and capped run logs.
@@ -856,42 +856,42 @@
 
 ---
 
-## May 24, 2026 — Canonica Compiled Context Distribution
+## May 24, 2026 — Answerlattice Compiled Context Distribution
 
 ### Changed
 
-- **Canonica now has a compiled context serving layer** — Approved product, surface, entity, canonical, release, docs, and widget context can be compiled into versioned Firebase Storage bundles with `platformSummary/sourceVersions_*` and `platformSummary/bundleManifest_*` as the control plane.
+- **Answerlattice now has a compiled context serving layer** — Approved product, surface, entity, canonical, release, docs, and widget context can be compiled into versioned Firebase Storage bundles with `platformSummary/sourceVersions_*` and `platformSummary/bundleManifest_*` as the control plane.
 - **Runtime reads are bundle-first where safe** — Widget config now returns active public bundle pointers, public entities prefer the compiled server bundle, public bundle proxy reads are server-cached, and MCP has gated read-only session/token tooling backed by private compiled bundles.
 - **Activation now exposes bundle readiness** — The Activation Command Center shows compiled context status, version, size, routes, and a guarded manual rebuild action.
-- **Backend repair is source-version driven** — Canonica source changes mark bundles stale, KB/function writes update source versions, and the nightly Canonica scheduler repairs stale bundles with bounded source reads and immutable Storage writes.
+- **Backend repair is source-version driven** — Answerlattice source changes mark bundles stale, KB/function writes update source versions, and the nightly Answerlattice scheduler repairs stale bundles with bounded source reads and immutable Storage writes.
 - **Storage and rules now enforce the bundle boundary** — Public bundles use opaque `pb_*` paths, private bundles are server-only, and client writes to compiled context objects are denied.
 
 ---
 
-## May 24, 2026 — Canonica Website Workflow Notification Pages
+## May 24, 2026 — Answerlattice Website Workflow Notification Pages
 
 ### Changed
 
-- **Workflow notifications are now public product content** — Canonica website now includes a real `/integrations` page plus `/product/workflow-notifications`, covering Slack/email destinations, digest-first delivery, test notification, compact health, and bounded delivery.
+- **Workflow notifications are now public product content** — Answerlattice website now includes a real `/integrations` page plus `/product/workflow-notifications`, covering Slack/email destinations, digest-first delivery, test notification, compact health, and bounded delivery.
 - **Proactive help now has scoped buyer-facing copy** — `/product/proactive-help` explains configured page-aware prompts tied to active triggers and approved support summaries without implying always-on autonomous widget behavior.
-- **Website discovery stays aligned** — Resources, FAQ, updates, sitemap registry, LLM context, and Canonica website docs now include the new feature pages and keep broader adapters controlled rollout.
+- **Website discovery stays aligned** — Resources, FAQ, updates, sitemap registry, LLM context, and Answerlattice website docs now include the new feature pages and keep broader adapters controlled rollout.
 
 ## May 24, 2026 — Storage Cache Cost Hardening
 
 ### Changed
 
-- **Versioned public uploads now carry immutable cache metadata** — Prepared media, OBP fallback images, PWA icon overrides, static asset previews, and public Canonica changelog assets now tell browsers/CDNs to reuse unchanged files.
-- **Internal source/support uploads use private immutable caching** — Public menu draft images, Canonica knowledge-source files, support ticket attachments, and chat images now allow browser reuse without shared public CDN caching.
-- **Canonica separated Storage paths are respected** — Canonica ticket, chat, changelog, and knowledge-source cleanup paths now use Canonica Storage when the product runs in separated Firebase mode.
+- **Versioned public uploads now carry immutable cache metadata** — Prepared media, OBP fallback images, PWA icon overrides, static asset previews, and public Answerlattice changelog assets now tell browsers/CDNs to reuse unchanged files.
+- **Internal source/support uploads use private immutable caching** — Public menu draft images, Answerlattice knowledge-source files, support ticket attachments, and chat images now allow browser reuse without shared public CDN caching.
+- **Answerlattice separated Storage paths are respected** — Answerlattice ticket, chat, changelog, and knowledge-source cleanup paths now use Answerlattice Storage when the product runs in separated Firebase mode.
 
-## May 24, 2026 — Canonica Optional Expansions Restored
+## May 24, 2026 — Answerlattice Optional Expansions Restored
 
 ### Changed
 
-- **Canonica optional expansions restored and hardened** — Predictive support, external workflow integrations, and graph traversal are active code paths again because they support page-aware guidance, governance notifications, and deterministic retrieval quality.
+- **Answerlattice optional expansions restored and hardened** — Predictive support, external workflow integrations, and graph traversal are active code paths again because they support page-aware guidance, governance notifications, and deterministic retrieval quality.
 - **Workflow notifications are owner-configurable** — Product Details now includes Slack and email workflow notifications. Webhook URLs stay server-side, are never returned after save, and delivery payloads/errors are sanitized before logging.
 - **Workflow notifications now include test delivery and health** — Owners can queue one controlled Slack/email test notification, and settings show compact last delivery status without reading raw delivery logs.
-- **Workflow delivery is digest-first and TTL-backed** — Canonica emits one nightly summary plus critical coverage / repeated AI failure alerts for active tenants, uses persistent minute/day delivery caps, and lets Firestore TTL clean event/log/counter records.
+- **Workflow delivery is digest-first and TTL-backed** — Answerlattice emits one nightly summary plus critical coverage / repeated AI failure alerts for active tenants, uses persistent minute/day delivery caps, and lets Firestore TTL clean event/log/counter records.
 - **Predictive support now fails closed without cooldown storage** — The widget predictive endpoint keeps API-key scope, origin checks, rate limits, and hashed user cooldown keys; if Upstash cooldown storage is unavailable, proactive prompts are skipped instead of repeating.
 - **Predictive support is now summary-gated** — Widget config advertises predictive support only when active triggers exist, and nightly stores resolved suggestion snippets so runtime calls usually need no canonical-answer read.
 - **Graph traversal stays summary-backed** — Retrieval uses the precomputed `platformSummary/entityGraphIndex_{tId}_{sId}` document and reuses the loaded graph for suggestions to avoid duplicate reads per search.
@@ -914,8 +914,8 @@
 ### Changed
 
 - **MenuList media uploads now record privacy metadata** — Prepared public media uploads now tag Storage objects with EXIF-normalization status, source metadata policy, and the actual public-asset retention lifecycle.
-- **Canonica source uploads now show retention context** — Knowledge-source uploads now tell admins that source files stay with the generation job until deletion and warn that images or screenshots can include hidden location or device details.
-- **Privacy policy copy now matches upload behavior** — MenuList and Canonica privacy pages now describe image metadata handling and Canonica source-file retention without adding unsupported time-based retention promises.
+- **Answerlattice source uploads now show retention context** — Knowledge-source uploads now tell admins that source files stay with the generation job until deletion and warn that images or screenshots can include hidden location or device details.
+- **Privacy policy copy now matches upload behavior** — MenuList and Answerlattice privacy pages now describe image metadata handling and Answerlattice source-file retention without adding unsupported time-based retention promises.
 - **Upload security docs now separate service uploads from marketing use** — The docs now reject a bundled marketing consent toggle until a separate opt-in, withdrawal, and consent-log flow exists.
 
 ## May 23, 2026 — Agent-Readable SEO/AEO Hardening
@@ -923,16 +923,16 @@
 ### Added
 
 - **MenuList agent context hardened** — `llms.txt` and `llms-full.txt` now explain what public agents may read, which official handoff links they may open, when unknown should stay unknown, and which owner-controlled actions remain out of public scope.
-- **Canonica agent context added** — Canonica product domains now serve dedicated `llms.txt` and `llms-full.txt` routes so agents read Canonica as a support knowledge control plane, not as generic platform context or a helpdesk replacement.
+- **Answerlattice agent context added** — Answerlattice product domains now serve dedicated `llms.txt` and `llms-full.txt` routes so agents read Answerlattice as governed answer infrastructure, not as generic platform context or a helpdesk replacement.
 - **MenuList structured data expanded** — The homepage JSON-LD now renders in server HTML, and active platform marketing/legal pages emit WebPage and BreadcrumbList JSON-LD for clearer machine-readable page identity.
-- **Canonica structured data expanded** — Public Canonica pages now emit page-level WebPage and BreadcrumbList JSON-LD from the shared route registry, while homepage WebSite structured data references the active public route set.
-- **Agent-readiness verifier added** — `npm run verify:agent-readiness` checks MenuList and Canonica route registries, robots, sitemap, LLM files, redirected-route exclusions, and structured-data wrappers.
+- **Answerlattice structured data expanded** — Public Answerlattice pages now emit page-level WebPage and BreadcrumbList JSON-LD from the shared route registry, while homepage WebSite structured data references the active public route set.
+- **Agent-readiness verifier added** — `npm run verify:agent-readiness` checks MenuList and Answerlattice route registries, robots, sitemap, LLM files, redirected-route exclusions, and structured-data wrappers.
 - **Agentic web plan documented** — The WebMCP video/ChatGPT plan is recorded under Discovery Infrastructure with the accepted PAL boundary and deferred WebMCP/MCP gates.
 
 ### Changed
 
 - **MenuList platform discovery cleaned up** — Public discovery URLs now use `https://menulist.ai`, and the legacy `/product` redirect remains functional but is no longer listed in sitemap or LLM discovery files.
-- **Canonica robots policy made explicit** — Canonica `robots.txt` now enumerates the shared AI/search crawler allowlist and links product-domain LLM context files.
+- **Answerlattice robots policy made explicit** — Answerlattice `robots.txt` now enumerates the shared AI/search crawler allowlist and links product-domain LLM context files.
 
 ## May 23, 2026 — External Menu Sync Owner Clarity
 
@@ -940,8 +940,8 @@
 
 - **External Menu Sync now starts with owner-facing context** — Desktop Business Settings and mobile More now explain what the connection does, who should use it, when owners can ignore it, and how MenuList remains the source of truth before showing provider URL and verification-secret fields.
 - **External sync labels are less technical** — Owner UI now uses External Sync, Provider connection URL, Verification secret, Test connection, Updates sent, and Provider setup while preserving the internal `posSync` contract.
-- **Canonica brand assets now use the dimensional infinity mark** — Canonica website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Canonica-colored dimensional infinity logo instead of the temporary `C` mark.
-- **Canonica website header/footer keep the approved mark shape** — Public header and footer branding now render the approved dimensional mark SVG wrapper instead of the simplified path-redrawn mark.
+- **Answerlattice brand assets now use the dimensional infinity mark** — Answerlattice website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Answerlattice-colored dimensional infinity logo instead of the temporary `C` mark.
+- **Answerlattice website header/footer keep the approved mark shape** — Public header and footer branding now render the approved dimensional mark SVG wrapper instead of the simplified path-redrawn mark.
 
 ---
 
@@ -954,40 +954,40 @@
 
 ---
 
-## May 21, 2026 — Canonica Website Widget Positioning
+## May 21, 2026 — Answerlattice Website Widget Positioning
 
 ### Changed
 
-- **Canonica public website corrected to widget-first positioning** — Homepage now includes the page-aware widget section, `/install` is the public widget setup page, and `/integrations` redirects to `/install` so buyer-facing copy does not imply enabled API or workflow-adapter packages.
-- **Public API/adapters removed from package copy** — Pricing, resources, sitemap metadata, and Canonica website docs now keep rollout-only API/adapters out of the public website promise while preserving the underlying feature-gated code paths.
-- **Canonica security page expanded from the trust-page pattern** — `/security` now uses facts, controls, and disclosure, with Canonica-specific claims: widget context, tenant-scoped data, owner-reviewed answers, rate-limited runtime endpoints, summary-backed dashboards, product separation, and safe reporting guidance.
+- **Answerlattice public website corrected to widget-first positioning** — Homepage now includes the page-aware widget section, `/install` is the public widget setup page, and `/integrations` redirects to `/install` so buyer-facing copy does not imply enabled API or workflow-adapter packages.
+- **Public API/adapters removed from package copy** — Pricing, resources, sitemap metadata, and Answerlattice website docs now keep rollout-only API/adapters out of the public website promise while preserving the underlying feature-gated code paths.
+- **Answerlattice security page expanded from the trust-page pattern** — `/security` now uses facts, controls, and disclosure, with Answerlattice-specific claims: widget context, tenant-scoped data, owner-reviewed answers, rate-limited runtime endpoints, summary-backed dashboards, product separation, and safe reporting guidance.
 
-## May 21, 2026 — Canonica Activation Command Center
+## May 21, 2026 — Answerlattice Activation Command Center
 
 ### Added
 
-- **Canonica system inventory added** — Added `__docs__/canonica/system-inventory/` as the codebase-first map of Canonica routes, features, source files, Firebase collections, scheduler behavior, rollout flags, and website-safe product claims.
-- **Canonica activation home added** — Canonica client owners now land on `/canonica/activation`, with launch readiness, widget install status, allowed-origin status, content counts, next action routing, and knowledge-health status.
-- **Activation summary API added** — `/api/canonica/activation/summary` reads compact store and `platformSummary` docs instead of scanning KB, changelog, tickets, or signal collections.
-- **Widget runtime marker added** — Installed Canonica widgets now pass sanitized route/context hints during config load so owners can verify that the widget and page context are reaching Canonica.
-- **Canonica three-mode dashboard added** — Canonica navigation now separates Launch Setup, Support Control, and Knowledge Governance, with deep links into entity review, canonical answers, trust metrics, and the signal-to-knowledge queue.
+- **Answerlattice system inventory added** — Added `__docs__/answerlattice/system-inventory/` as the codebase-first map of Answerlattice routes, features, source files, Firebase collections, scheduler behavior, rollout flags, and website-safe product claims.
+- **Answerlattice activation home added** — Answerlattice client owners now land on `/answerlattice/activation`, with launch readiness, widget install status, allowed-origin status, content counts, next action routing, and knowledge-health status.
+- **Activation summary API added** — `/api/answerlattice/activation/summary` reads compact store and `platformSummary` docs instead of scanning KB, changelog, tickets, or signal collections.
+- **Widget runtime marker added** — Installed Answerlattice widgets now pass sanitized route/context hints during config load so owners can verify that the widget and page context are reaching Answerlattice.
+- **Answerlattice three-mode dashboard added** — Answerlattice navigation now separates Launch Setup, Support Control, and Knowledge Governance, with deep links into entity review, canonical answers, trust metrics, and the signal-to-knowledge queue.
 - **Draft-to-canonical publishing added** — Generated mutation proposals can now be reviewed, edited, and published as active canonical answers from the Signal Queue.
-- **Canonica self-sellable strategy logged** — Added the non-enterprise Canonica positioning, pricing direction, public messaging bank, product guardrails, and execution task list in `__docs__/canonica/self-sellable-product-strategy.md`.
-- **Canonica self-serve funnel implemented** — Updated public positioning, added an account-free static demo, replaced beta-only pricing with Starter/Growth/Studio INR packaging, extended onboarding with product context fields, seeded initial product surfaces, added editable Product Details, added a summary-backed Weekly Digest route, and added widget greeting configuration.
-- **Canonica public website completed** — Tightened `/sites/canonica` into a coherent public website across homepage, product, demo, pricing, about, contact, get-started, privacy policy, and terms of service, with footer links kept on public Canonica routes.
-- **Canonica website production SEO completed** — Added Canonica-owned sitemap/robots routes, FAQ and security pages, page canonical metadata, Canonica manifest/icons, OpenGraph image, and homepage structured data.
-- **Canonica engine pillars restored on public website** — Homepage and Product now show Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation as the implemented control-plane layers, without claiming the deferred API/integration pillar.
-- **Canonica website system map added** — Homepage now explains the implemented Launch Setup, Support Control, Knowledge Governance, and Runtime layers so public copy matches the code-backed product surface.
-- **Canonica website product preview added** — Homepage now includes a static product preview for activation, page-aware widget context, and governance queue states so visitors can understand the product shape without account access.
-- **Canonica website public pages expanded** — Added `/use-cases`, `/install`, `/resources`, and `/updates`, and wired them into navigation, footer, and sitemap coverage without using dashboard-reserved support routes. `/integrations` remains a redirect alias for older links.
-- **Canonica website metadata separation tightened** — Canonica pages now set their own dark theme color and no longer inherit a hardcoded root web-app title from the root layout head.
+- **Answerlattice self-sellable strategy logged** — Added the non-enterprise Answerlattice positioning, pricing direction, public messaging bank, product guardrails, and execution task list in `__docs__/answerlattice/self-sellable-product-strategy.md`.
+- **Answerlattice self-serve funnel implemented** — Updated public positioning, added an account-free static demo, replaced beta-only pricing with Starter/Growth/Studio INR packaging, extended onboarding with product context fields, seeded initial product surfaces, added editable Product Details, added a summary-backed Weekly Digest route, and added widget greeting configuration.
+- **Answerlattice public website completed** — Tightened `/sites/answerlattice` into a coherent public website across homepage, product, demo, pricing, about, contact, get-started, privacy policy, and terms of service, with footer links kept on public Answerlattice routes.
+- **Answerlattice website production SEO completed** — Added Answerlattice-owned sitemap/robots routes, FAQ and security pages, page canonical metadata, Answerlattice manifest/icons, OpenGraph image, and homepage structured data.
+- **Answerlattice engine pillars restored on public website** — Homepage and Product now show Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation as the implemented control-plane layers, without claiming the deferred API/integration pillar.
+- **Answerlattice website system map added** — Homepage now explains the implemented Launch Setup, Support Control, Knowledge Governance, and Runtime layers so public copy matches the code-backed product surface.
+- **Answerlattice website product preview added** — Homepage now includes a static product preview for activation, page-aware widget context, and governance queue states so visitors can understand the product shape without account access.
+- **Answerlattice website public pages expanded** — Added `/use-cases`, `/install`, `/resources`, and `/updates`, and wired them into navigation, footer, and sitemap coverage without using dashboard-reserved support routes. `/integrations` remains a redirect alias for older links.
+- **Answerlattice website metadata separation tightened** — Answerlattice pages now set their own dark theme color and no longer inherit a hardcoded root web-app title from the root layout head.
 
 ### Changed
 
-- **Onboarding routes to Activation** — Completed Canonica onboarding now sends owners to the Activation Command Center instead of the operations dashboard.
-- **Subscription status is mirrored to the store summary** — New Canonica onboarding writes a compact `stores/{sId}.canonicaSubscription` summary, avoiding normal activation-page subscription queries.
-- **Canonica API scope hardening** — Canonica management APIs now require a Canonica product scope instead of falling back to generic MenuList tenant/store session fields.
-- **Canonica core and expansion flags are ready-to-use** — Ontology, canonical answers, drift, signal mutation, governance UI, instant canonical cache, capped auto knowledge, capped founder onboarding, nightly scheduler, trust metrics, graph traversal, workflow notifications, and predictive support are enabled with caps and fail-closed guards.
+- **Onboarding routes to Activation** — Completed Answerlattice onboarding now sends owners to the Activation Command Center instead of the operations dashboard.
+- **Subscription status is mirrored to the store summary** — New Answerlattice onboarding writes a compact `stores/{sId}.answerlatticeSubscription` summary, avoiding normal activation-page subscription queries.
+- **Answerlattice API scope hardening** — Answerlattice management APIs now require an Answerlattice product scope instead of falling back to generic MenuList tenant/store session fields.
+- **Answerlattice core and expansion flags are ready-to-use** — Ontology, canonical answers, drift, signal mutation, governance UI, instant canonical cache, capped auto knowledge, capped founder onboarding, nightly scheduler, trust metrics, graph traversal, workflow notifications, and predictive support are enabled with caps and fail-closed guards.
 
 ## May 21, 2026 — Billing Pause Option Disabled
 
@@ -1057,18 +1057,18 @@
 - **Website now surfaces staff access control** — The homepage and Features page now explain staff accounts, roles, passcode reset, and owner sign-out as operations proof for teams without presenting it as HR or payroll software.
 - **Legal and security pages now reflect staff access** — Privacy Policy, Terms of Service, and Trust & Security now cover owner-managed staff identities, role-scoped access, passcode reset metadata, and owner session revocation without claiming HR, payroll, attendance, or compliance certification.
 
-## May 19, 2026 — Canonica Widget Management
+## May 19, 2026 — Answerlattice Widget Management
 
 ### Added
 
-- **Canonica widget management added** — Platform users now have `/canonica/widget` for widget keys, install snippets, appearance, behavior, origin allowlists, context snippets, and desktop/mobile preview.
+- **Answerlattice widget management added** — Platform users now have `/answerlattice/widget` for widget keys, install snippets, appearance, behavior, origin allowlists, context snippets, and desktop/mobile preview.
 - **Widget runtime config endpoint added** — Installed widget scripts can read saved dashboard settings through `/api/widget/config` without requiring script edits for every configuration change.
 
 ### Changed
 
-- **Widget keys separated from public API keys** — Canonica widget credentials now use `canonicaWidgetApi` with widget scopes. Canonica public API routes continue to use `publicApi` and reject widget-only keys.
-- **Widget key manager moved to bounded named keys** — Canonica widget keys now stay on the existing store document with `keyHashes` and `keysByHash`, support create/rename/copy/delete in the dashboard, and avoid new key collections or extra runtime store reads.
-- **Settings now points to widget management** — `/canonica/settings` stays available and routes users to the dedicated widget management surface instead of duplicating widget save logic.
+- **Widget keys separated from public API keys** — Answerlattice widget credentials now use `answerlatticeWidgetApi` with widget scopes. Answerlattice public API routes continue to use `publicApi` and reject widget-only keys.
+- **Widget key manager moved to bounded named keys** — Answerlattice widget keys now stay on the existing store document with `keyHashes` and `keysByHash`, support create/rename/copy/delete in the dashboard, and avoid new key collections or extra runtime store reads.
+- **Settings now points to widget management** — `/answerlattice/settings` stays available and routes users to the dedicated widget management surface instead of duplicating widget save logic.
 
 ## May 18, 2026 — Staff and Permissions Completion
 
@@ -1092,7 +1092,7 @@
 
 - **MenuList scheduled maintenance consolidated** — Messaging intake, extraction cleanup, alert escalation, chat stats aggregation, old extraction job cleanup, and messaging session cleanup now run through `menulistMaintenanceScheduler` with a static task registry and per-task Firestore leases.
 - **Standalone scheduler exports retired** — `cleanupStuckMenuJobs`, `cleanupOldMenuJobs`, `msgIntakeProcessor`, `msgSessionCleanup`, `alertEscalation`, and scheduled `aggregateDailyChatStats` are no longer exported as independent scheduled functions. `backfillAggregates` remains callable for manual analytics backfills.
-- **Scheduler rule persisted** — Future MenuList operational maintenance must use `menulistMaintenanceScheduler` by default; store-EOD work stays in `computeDecisionBlocksScores`; Canonica scheduled work stays in `functions-canonica/`. Standalone scheduled functions now require explicit trigger/SLA and cost justification.
+- **Scheduler rule persisted** — Future MenuList operational maintenance must use `menulistMaintenanceScheduler` by default; store-EOD work stays in `computeDecisionBlocksScores`; Answerlattice scheduled work stays in `functions-answerlattice/`. Standalone scheduled functions now require explicit trigger/SLA and cost justification.
 
 ## May 17, 2026 — Public Route Recovery
 
@@ -1147,7 +1147,7 @@
 ### Fixed
 
 - **Review reply suggestions now use enhancement accounting** — Review reply generation checks capacity, records the AI operation, deducts one enhancement unit, and syncs the remaining balance back to the app.
-- **Silent AI calls now create audit records** — Menu intake checks, public create-menu extraction, weekly analytics narratives, Help Center search/embeddings, and Canonica translation now write AI operation records for cost visibility without draining owner packs.
+- **Silent AI calls now create audit records** — Menu intake checks, public create-menu extraction, weekly analytics narratives, Help Center search/embeddings, and Answerlattice translation now write AI operation records for cost visibility without draining owner packs.
 
 ## May 12, 2026 — Billing and Enhancement Packs
 
@@ -1887,21 +1887,21 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ---
 
-## March 10, 2026 (Session 12 — Canonica Knowledge Graph Exploitation: Full Implementation)
+## March 10, 2026 (Session 12 — Answerlattice Knowledge Graph Exploitation: Full Implementation)
 
 ### Added
 
-- **Knowledge Graph Exploitation (Expansion Item #11)** — Upgrades Canonica retrieval from single-entity FAQ lookup to multi-entity product reasoning. 1-hop graph traversal expands matched entities via existing `canonica_entityRelations`, scores answers by multi-entity coverage, detects cross-feature interactions via deterministic rules, and suggests related entities post-answer. Feature flag: `ENABLE_CANONICA_KNOWLEDGE_GRAPH` (OFF).
-- New: `src/lib/canonica/graphTraversal.ts` — Core graph exploitation pipeline (~250 lines). Graph expansion, interaction detection, related suggestions. All in-memory on precomputed index.
-- Enhanced: `src/lib/canonica/canonicalRetrieval.ts` — Graph expansion injected after entity matching. `scoreBySpecificity()` gains multi-entity coverage boost (+15 per overlapping entity). Post-answer related suggestions rebuild.
+- **Knowledge Graph Exploitation (Expansion Item #11)** — Upgrades Answerlattice retrieval from single-entity FAQ lookup to multi-entity product reasoning. 1-hop graph traversal expands matched entities via existing `answerlattice_entityRelations`, scores answers by multi-entity coverage, detects cross-feature interactions via deterministic rules, and suggests related entities post-answer. Feature flag: `ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH` (OFF).
+- New: `src/lib/answerlattice/graphTraversal.ts` — Core graph exploitation pipeline (~250 lines). Graph expansion, interaction detection, related suggestions. All in-memory on precomputed index.
+- Enhanced: `src/lib/answerlattice/canonicalRetrieval.ts` — Graph expansion injected after entity matching. `scoreBySpecificity()` gains multi-entity coverage boost (+15 per overlapping entity). Post-answer related suggestions rebuild.
 - Enhanced: `src/lib/search/searchCore.ts` — `graphExpansion` wired through `CoreSearchResult`. `GRAPH_EXPANSION_HIT` performance logging. Entity-enriched RAG (Stage 6) uses expanded entities for richer fallback context.
 - Enhanced: `src/lib/search/types.ts` — `graphExpansion` field on `CoreSearchResult`.
-- Enhanced: `src/types/canonica/index.ts` — 6 additive types: `CanonicaInteractionRule`, `CanonicaEntityGraphNode`, `CanonicaEntityGraphIndex`, `CanonicaGraphExpansionResult`, `CanonicaInteractionType`, `CANONICA_INTERACTION_TYPES`.
-- Enhanced: `functions-canonica/src/canonica/canonicaNightly.ts` — Step 15: `rebuildEntityGraphIndex()` (~150 lines). Nightly precomputation of entity graph from relations. Bidirectional expansion. Orphan relation detection. Preserves manually-authored interaction rules across rebuilds.
+- Enhanced: `src/types/answerlattice/index.ts` — 6 additive types: `AnswerlatticeInteractionRule`, `AnswerlatticeEntityGraphNode`, `AnswerlatticeEntityGraphIndex`, `AnswerlatticeGraphExpansionResult`, `AnswerlatticeInteractionType`, `ANSWERLATTICE_INTERACTION_TYPES`.
+- Enhanced: `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` — Step 15: `rebuildEntityGraphIndex()` (~150 lines). Nightly precomputation of entity graph from relations. Bidirectional expansion. Orphan relation detection. Preserves manually-authored interaction rules across rebuilds.
 
 ### Documentation
 
-- Full doc set: `__docs__/canonica/knowledge-graph-exploitation/` (8 docs + 1 archive)
+- Full doc set: `__docs__/answerlattice/knowledge-graph-exploitation/` (8 docs + 1 archive)
 - ChatGPT conversation review: System #11 of ICP Coverage Index (5 capability blocks: 58-62). ~70% accuracy. 3 proposed new collections → 0 needed.
 - 7 ADRs documented. 6-area parity audit PASS. E2E simulation (5 happy, 3 error, 5 edge cases) PASS. Expansion tracker Item #11 updated to IMPLEMENTED.
 
@@ -1910,7 +1910,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 - **1-hop traversal only** (maxDepth=1) — Industry consensus (Microsoft GraphRAG, Neo4j, Elastic). Hard-coded, non-configurable.
 - **Precomputed graph index** — Single `platformSummary` doc per tenant. 1 Firestore read per query vs N live lookups.
 - **Zero new Firestore collections** — All in existing `platformSummary` pattern.
-- **Deterministic interaction rules** — Human-authored, never LLM-generated. Canonica doctrine compliance.
+- **Deterministic interaction rules** — Human-authored, never LLM-generated. Answerlattice doctrine compliance.
 - **Only expand to entities with answers** — `answerCount > 0` filter prevents dead-end expansion.
 - **`interactionRules.ts` folded into `graphTraversal.ts`** — Simpler than originally planned. Interaction rules loaded from same graph index doc.
 - **Cost: +1 Firestore read/query** (~$0.011/month at 10K queries)
@@ -1923,33 +1923,33 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 ### Technical
 
 - 1 new file + 10 modified files total (7 in initial implementation + 3 in post-impl audit)
-- Feature flags: `ENABLE_CANONICA_KNOWLEDGE_GRAPH` in `src/config/features.ts` + `functions-canonica/src/constants/features.ts` (both OFF)
+- Feature flags: `ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH` in `src/config/features.ts` + `functions-answerlattice/src/constants/features.ts` (both OFF)
 - Zero new Firestore collections, zero new indexes
 - `tsc --noEmit`: 0 errors
 
 ---
 
-## March 9, 2026 (Session 11 — Canonica Ticket → Knowledge Loop: Full Implementation)
+## March 9, 2026 (Session 11 — Answerlattice Ticket → Knowledge Loop: Full Implementation)
 
 ### Added
 
-- **Ticket → Knowledge Loop (Expansion Item #9)** — Converts resolved support ticket conversations into canonical knowledge via accumulation architecture (Intercom-validated). Nightly Step 14 extracts knowledge candidates from resolved ticket clusters (3+ per entity), generates AI draft canonical answers, routes to founder approval queue. Feature flag: `ENABLE_CANONICA_TICKET_KNOWLEDGE` (OFF).
-- New CF: `functions-canonica/src/canonica/resolutionExtractor.ts` — Core extraction pipeline (~310 lines). 3-stage deduplication, accumulation threshold, Gemini extraction, audit logging.
-- New CF: `functions-canonica/src/canonica/ticketKnowledgePrompt.ts` — Gemini prompt + response parser for ticket resolution extraction (~160 lines).
-- Enhanced: `src/lib/canonica/signalEmitter.ts` — New `emitTicketResolutionSignal()` captures last 5 non-system messages as resolution context on ticket resolve.
-- Enhanced: `src/types/canonica/index.ts` — 4 additive fields on `suggestedChange` (sourceTicketIds, sourceTicketCount, resolutionContext, extractionConfidence) + `ticket_resolution` draftSource value.
-- Enhanced: `functions-canonica/src/canonica/canonicaNightly.ts` — Step 14 + 4 result tracking fields.
+- **Ticket → Knowledge Loop (Expansion Item #9)** — Converts resolved support ticket conversations into canonical knowledge via accumulation architecture (Intercom-validated). Nightly Step 14 extracts knowledge candidates from resolved ticket clusters (3+ per entity), generates AI draft canonical answers, routes to founder approval queue. Feature flag: `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE` (OFF).
+- New CF: `functions-answerlattice/src/answerlattice/resolutionExtractor.ts` — Core extraction pipeline (~310 lines). 3-stage deduplication, accumulation threshold, Gemini extraction, audit logging.
+- New CF: `functions-answerlattice/src/answerlattice/ticketKnowledgePrompt.ts` — Gemini prompt + response parser for ticket resolution extraction (~160 lines).
+- Enhanced: `src/lib/answerlattice/signalEmitter.ts` — New `emitTicketResolutionSignal()` captures last 5 non-system messages as resolution context on ticket resolve.
+- Enhanced: `src/types/answerlattice/index.ts` — 4 additive fields on `suggestedChange` (sourceTicketIds, sourceTicketCount, resolutionContext, extractionConfidence) + `ticket_resolution` draftSource value.
+- Enhanced: `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` — Step 14 + 4 result tracking fields.
 
 ### Documentation
 
-- Full doc set: `__docs__/canonica/ticket-knowledge-loop/` (8 docs + 1 archive)
+- Full doc set: `__docs__/answerlattice/ticket-knowledge-loop/` (8 docs + 1 archive)
 - ChatGPT conversation review: System #9 of ICP Coverage Index. ~55% accuracy. 9+ proposed collections → 0 needed.
 - 5 ADRs documented. 10-area parity audit PASS. Expansion tracker Item #9 updated to IMPLEMENTED.
 
 ### Key Decisions (Cascade)
 
 - **Accumulation architecture** — Only extract when 3+ tickets cluster around same entity (Intercom proved 2x approval rate vs per-ticket extraction)
-- **Zero new collections** — Reuse `canonica_mutationProposals` with `draftSource: 'ticket_resolution'`
+- **Zero new collections** — Reuse `answerlattice_mutationProposals` with `draftSource: 'ticket_resolution'`
 - **Nightly batch IS the queue** — Step 14 in existing batch. No separate processing queue needed.
 - **Entity-based clustering** — No external vector DB. Existing signal mutation engine's entity clustering is sufficient.
 - **Read-only ticket access** — Feature never modifies ticket documents. Resolution captured at signal emission time.
@@ -1961,32 +1961,32 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Technical
 
-- `tsc --noEmit` = 0 errors (both frontend + functions-canonica)
+- `tsc --noEmit` = 0 errors (both frontend + functions-answerlattice)
 - 2 new files + 5 modified files (TicketDetailView.tsx added during deep audit)
 - Zero new Firestore collections, zero new indexes
 
 ---
 
-## March 9, 2026 (Session 10 — Canonica Founder Onboarding: Full Pipeline)
+## March 9, 2026 (Session 10 — Answerlattice Founder Onboarding: Full Pipeline)
 
 ### Added
 
-- **Founder Onboarding Bootstrap Engine** — Automatically bootstraps the Canonica canonical layer after KB articles are published. Batch entity extraction, auto-promote high-confidence entities (≥0.7 conf + ≥2 article refs), generate canonical answer drafts per promoted entity. Feature flag: `ENABLE_CANONICA_FOUNDER_ONBOARDING`.
-- New CF: `functions-canonica/src/canonica/onboardingBootstrap.ts` — Core bootstrap engine (~500 lines). Uses `firestoreAdmin` directly (admin SDK pattern, same as `draftGenerator.ts`).
+- **Founder Onboarding Bootstrap Engine** — Automatically bootstraps the Answerlattice canonical layer after KB articles are published. Batch entity extraction, auto-promote high-confidence entities (≥0.7 conf + ≥2 article refs), generate canonical answer drafts per promoted entity. Feature flag: `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`.
+- New CF: `functions-answerlattice/src/answerlattice/onboardingBootstrap.ts` — Core bootstrap engine (~500 lines). Uses `firestoreAdmin` directly (admin SDK pattern, same as `draftGenerator.ts`).
 - New config: `src/config/onboardingBootstrapConfig.ts` — Thresholds, limits, constants.
-- Nightly Step 12 in `canonicaNightly.ts` — Separate discovery loop (queries `kb_generation_jobs`, not `canonica_entities`) so new tenants with zero entities get bootstrapped.
+- Nightly Step 12 in `answerlatticeNightly.ts` — Separate discovery loop (queries `kb_generation_jobs`, not `answerlattice_entities`) so new tenants with zero entities get bootstrapped.
 
 ### Documentation
 
-- Full doc set: `__docs__/canonica/founder-onboarding/` (8 docs + 1 archive)
+- Full doc set: `__docs__/answerlattice/founder-onboarding/` (8 docs + 1 archive)
 - ChatGPT conversation review: System #6 of ICP Coverage Index. ~55% accuracy. 9 proposed collections → 0 needed.
 - Deep audit found 3 critical issues: CF/DAL incompatibility, tenant discovery gap, missing DB constants. All fixed.
 - Expansion tracker Item #6 updated to COMPLETE.
 
 ### Key Decisions (Cascade)
 
-- **Zero new collections** — all data in existing `canonica_entityCandidates`, `canonica_mutationProposals`, `canonica_entities`, `canonica_auditLogs`, `kb_generation_jobs`
-- **Separate discovery loop** — `discoverBootstrapCandidates()` queries `kb_generation_jobs` because `discoverActiveTenants()` queries `canonica_entities` (empty for new tenants)
+- **Zero new collections** — all data in existing `answerlattice_entityCandidates`, `answerlattice_mutationProposals`, `answerlattice_entities`, `answerlattice_auditLogs`, `kb_generation_jobs`
+- **Separate discovery loop** — `discoverBootstrapCandidates()` queries `kb_generation_jobs` because `discoverActiveTenants()` queries `answerlattice_entities` (empty for new tenants)
 - **CF uses firestoreAdmin directly** — Cannot import client-side DAL functions (different SDK). Mirrors DAL logic using admin SDK, same as `draftGenerator.ts`.
 - **Auto-promote with guardrails** — ≥0.7 confidence + ≥2 article refs. Audit-logged. Doctrine-compliant.
 - **Drafts ≠ Active** — `pending_review` proposals, never served as canonical until founder approves.
@@ -1994,65 +1994,65 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Fixed
 
-- **KB Articles tenant isolation** — Added `tId`/`sId` fields to `KnowledgeBaseArticleType` (frontend + CF types). Articles now inherit tenant IDs from parent `kb_generation_jobs` doc during generation. Fixes latent bug where `searchCore.ts` tId filter returned 0 results because articles lacked the field. Fixes multi-tenant data isolation for bootstrap engine. Satisfies CANONICA_RULES Rule 6.
+- **KB Articles tenant isolation** — Added `tId`/`sId` fields to `KnowledgeBaseArticleType` (frontend + CF types). Articles now inherit tenant IDs from parent `kb_generation_jobs` doc during generation. Fixes latent bug where `searchCore.ts` tId filter returned 0 results because articles lacked the field. Fixes multi-tenant data isolation for bootstrap engine. Satisfies ANSWERLATTICE_RULES Rule 6.
 - **Pre-existing TS error** — `ProcessedKBArticle` type was missing `qualityScore` property that `startGeneration.ts` writes to. Added optional field.
 
 ### Technical
 
 - 2 new files, 8 modified files (3 additional: startGeneration.ts + 2 type files for tId/sId)
-- Zero TypeScript errors (frontend + functions + functions-canonica — all 3 projects)
+- Zero TypeScript errors (frontend + functions + functions-answerlattice — all 3 projects)
 - Zero new Firestore collections
 
 ---
 
-## March 9, 2026 (Session 9 — Canonica Product Friction Intelligence: Full Pipeline)
+## March 9, 2026 (Session 9 — Answerlattice Product Friction Intelligence: Full Pipeline)
 
 ### Added
 
-- **Product Friction Intelligence** — Converts support signals into actionable product friction insights for SaaS founders. Nightly aggregation of friction metrics per entity, 7-day trend detection, emerging topic alerts, weekly AI-generated insight summary. Feature flag: `ENABLE_CANONICA_FRICTION_INTELLIGENCE`.
-- New collection: `canonica_frictionDailyStats` — daily per-entity friction metrics with 90-day retention.
+- **Product Friction Intelligence** — Converts support signals into actionable product friction insights for SaaS founders. Nightly aggregation of friction metrics per entity, 7-day trend detection, emerging topic alerts, weekly AI-generated insight summary. Feature flag: `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`.
+- New collection: `answerlattice_frictionDailyStats` — daily per-entity friction metrics with 90-day retention.
 - GovernanceHub "Friction" tab — health badge, top friction table, emerging topics, weekly AI summary.
-- Nightly Steps 10/10b/11 in `canonicaNightly.ts` — friction aggregation, stats cleanup, weekly Gemini insight (Sundays).
+- Nightly Steps 10/10b/11 in `answerlatticeNightly.ts` — friction aggregation, stats cleanup, weekly Gemini insight (Sundays).
 
 ### Documentation
 
-- Full doc set: `__docs__/canonica/product-friction-intelligence/` (8 docs + 1 archive: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review)
+- Full doc set: `__docs__/answerlattice/product-friction-intelligence/` (8 docs + 1 archive: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review)
 - ChatGPT conversation review: System #5 of ICP Coverage Index. ~45% accuracy. ~55% of proposed infrastructure already existed. BigQuery, Vector DB, embedding clustering, 6+ new collections all rejected.
 - Expansion tracker Item #5 updated to 🟢 COMPLETE.
-- Created `firestore-canonica.indexes.json` with 6 composite indexes for Canonica Firestore.
+- Created `firestore-answerlattice.indexes.json` with 6 composite indexes for Answerlattice Firestore.
 
 ### Key Decisions (Cascade)
 
-- **Entity graph IS the topic taxonomy** — no separate ML-based clustering needed (Canonica doctrine: deterministic > LLM)
+- **Entity graph IS the topic taxonomy** — no separate ML-based clustering needed (Answerlattice doctrine: deterministic > LLM)
 - **1 new collection only** — ChatGPT proposed 6+. `platformSummary` pattern handles insights.
 - **Zero external services** — no BigQuery, no Vector DB, no Pub/Sub. Firebase-only.
 - **Nightly batch** — Intercom uses weekly, we use nightly for faster signals. No real-time processing.
-- **Workflow step failure deferred** — needs `ENABLE_CANONICA_CONTEXT_AWARE` + sufficient data. Low ROI for v1.
+- **Workflow step failure deferred** — needs `ENABLE_ANSWERLATTICE_CONTEXT_AWARE` + sufficient data. Low ROI for v1.
 
 ### Technical
 
 - 6 new files, 5+ modified files
-- Zero TypeScript errors (frontend + functions-canonica)
+- Zero TypeScript errors (frontend + functions-answerlattice)
 - Estimated cost: ~$4/month at 100 tenants
 
 ---
 
-## March 9, 2026 (Session 8 — Canonica Instant Response Infrastructure: Docs + Implementation)
+## March 9, 2026 (Session 8 — Answerlattice Instant Response Infrastructure: Docs + Implementation)
 
 ### Added
 
-- **Instant Response Infrastructure** — Upstash Redis cache layer for canonical answers. Entity-based cache keys, version-based invalidation, 24h TTL, graceful degradation. Feature flag: `ENABLE_CANONICA_INSTANT_CACHE`.
+- **Instant Response Infrastructure** — Upstash Redis cache layer for canonical answers. Entity-based cache keys, version-based invalidation, 24h TTL, graceful degradation. Feature flag: `ENABLE_ANSWERLATTICE_INSTANT_CACHE`.
 - Stage 2.5 in `coreSearch()` pipeline — Redis cache lookup before Firestore, cache write after canonical hit.
 
 ### Documentation
 
-- Full doc set: `__docs__/canonica/instant-response-infrastructure/` (9 files: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review archive)
+- Full doc set: `__docs__/answerlattice/instant-response-infrastructure/` (9 files: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review archive)
 - ChatGPT conversation review: System #3 of ICP Coverage Index. ~55% accuracy. Intent Engine, pre-cache workers, semantic caching, global intent library rejected.
 - Expansion tracker Item #3 updated to 🟢 COMPLETE.
 
 ### Key Decisions (Cascade)
 
-- **Entity-based cache keys** (not ChatGPT's "Intent Engine") — Canonica's entity resolution IS intent classification
+- **Entity-based cache keys** (not ChatGPT's "Intent Engine") — Answerlattice's entity resolution IS intent classification
 - **Canonical-only caching** — RAG responses are non-deterministic, already cached in aiSearchHistory
 - **No pre-cache workers** — Cache warms naturally; premature complexity at current scale
 - **No semantic caching** — Correctness risk for authoritative knowledge systems
@@ -2060,20 +2060,20 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Technical
 
-- **New files:** `src/lib/canonica/instantCache.ts` (124 lines), `src/lib/canonica/instantCache.types.ts` (36 lines)
+- **New files:** `src/lib/answerlattice/instantCache.ts` (124 lines), `src/lib/answerlattice/instantCache.types.ts` (36 lines)
 - **Modified files:** `src/lib/search/searchCore.ts` (Stage 2.5 + cache write), `src/config/features.ts` (flag)
 - **New collections:** 0
-- **New feature flags:** 1 (`ENABLE_CANONICA_INSTANT_CACHE`, default OFF)
+- **New feature flags:** 1 (`ENABLE_ANSWERLATTICE_INSTANT_CACHE`, default OFF)
 - **Breaking changes:** 0
 - **TypeScript errors:** 0
 
 ---
 
-## March 8, 2026 (Session 7 — Canonica Entity System Enhancement: 6 Enhancements)
+## March 8, 2026 (Session 7 — Answerlattice Entity System Enhancement: 6 Enhancements)
 
 ### Added
 
-- **E1 — Entity Aliases:** `aliases?: string[]` field on `CanonicaEntity`. `syncAliasesToSearchIndex()` DAL function. `updateAliases()` hook action. Aliases are source of truth, synced to search index synonyms.
+- **E1 — Entity Aliases:** `aliases?: string[]` field on `AnswerlatticeEntity`. `syncAliasesToSearchIndex()` DAL function. `updateAliases()` hook action. Aliases are source of truth, synced to search index synonyms.
 - **E2 — Article-Entity Bridge:** `entityIds?: string[]` field on `KnowledgeBaseArticleType` and `IngestionJobArticle`. Connects KB articles to product ontology entities for entity-centric retrieval.
 - **E3 — Registry-Guided Extraction:** `extractEntitiesFromArticles()` now accepts existing entities as context. AI prompt includes existing entity list to prefer reuse. Post-extraction matching via `matchToExistingEntity()`. Reduces duplicate candidates.
 - **E4 — Auto-Extract on Article Save:** `extractEntitiesForArticle()` function with 5-minute debounce. Wired into `addArticle()` and `updateArticle()` DAL as fire-and-forget. TipTap JSON → plain text converter. Async — never blocks article save.
@@ -2082,20 +2082,20 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Documentation
 
-- Full doc set created: `__docs__/canonica/entity-system/` (9 files: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review archive)
+- Full doc set created: `__docs__/answerlattice/entity-system/` (9 files: README, spec, impl, firebase, marketing, website, helpdoc, mobile-support, chatgpt-review archive)
 - ChatGPT conversation review: 9,430-line entity discussion analyzed, 32-concept verdict table, ~40% applicable (70% already built)
 
 ### Technical
 
 - **New files:** 0 (all modifications to existing files)
 - **New collections:** 0
-- **New feature flags:** 0 (uses existing `ENABLE_CANONICA_ONTOLOGY`)
+- **New feature flags:** 0 (uses existing `ENABLE_ANSWERLATTICE_ONTOLOGY`)
 - **Breaking changes:** 0 (all additive optional fields)
 - **TypeScript:** Zero errors (`npx tsc --noEmit` clean)
 
 ---
 
-## March 7, 2026 (Session 6 — Canonica ChatGPT Review: Infrastructure Guards)
+## March 7, 2026 (Session 6 — Answerlattice ChatGPT Review: Infrastructure Guards)
 
 ### Fixed (ChatGPT Review — 2 genuine infrastructure gaps)
 
@@ -2109,12 +2109,12 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 ### Technical
 
 - **ChatGPT accuracy:** ~75%. Missed existing entity `beta` status, extraction prompt rules, and signal resolution pipeline. Found 2 genuine code gaps.
-- **Archive:** `__docs__/canonica/_archive/chatgpt-review-phase4-signal-quality.md`
+- **Archive:** `__docs__/answerlattice/_archive/chatgpt-review-phase4-signal-quality.md`
 - **TypeScript:** Zero errors (`npx tsc --noEmit` clean)
 
 ---
 
-## March 7, 2026 (Session 4+5 — Canonica Phase 4: SHARPEN — Full Production Wiring)
+## March 7, 2026 (Session 4+5 — Answerlattice Phase 4: SHARPEN — Full Production Wiring)
 
 ### Added
 
@@ -2122,10 +2122,10 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 - **Signal Time Decay (3.2):** Exponential decay with 7-day half-life. Recent signals contribute more to weighted scores than older ones within the 14-day window.
 - **Batch Signal Count Queries (3.3):** Drift engine now uses `getBatchSignalCounts()` with Firestore `in` operator — reduces N per-entity reads to ceil(N/30) reads. 10-30x read reduction.
 - **Canonical Answer Version History (3.4):** `getAnswerVersionHistory()` DAL function + `AnswerVersionHistory.tsx` governance UI tab. Full per-answer timeline of drift, mutation, and validation events.
-- **Signal TTL Auto-Archive (3.5):** `archiveExpiredSignals()` is wired in the Canonica nightly scheduler. Deletes signal events older than 12 months per doctrine mandate.
-- **White-Label / Custom Branding (4.1):** `CanonicaBrandingConfig` type + `WhiteLabelBranding.tsx` settings UI + `branding.ts` DAL (save/load via platformSummary). Fully wired end-to-end.
-- **Multi-Language KB Articles (4.2):** `CanonicaArticleTranslation` type + `MultiLanguageArticles.tsx` management UI + `/api/canonica/translate` route (Gemini 2.0 Flash). Fully wired end-to-end.
-- **3 new feature flags:** `ENABLE_CANONICA_SIGNAL_QUALITY`, `ENABLE_CANONICA_WHITE_LABEL`, `ENABLE_CANONICA_MULTI_LANGUAGE` — all OFF by default.
+- **Signal TTL Auto-Archive (3.5):** `archiveExpiredSignals()` is wired in the Answerlattice nightly scheduler. Deletes signal events older than 12 months per doctrine mandate.
+- **White-Label / Custom Branding (4.1):** `AnswerlatticeBrandingConfig` type + `WhiteLabelBranding.tsx` settings UI + `branding.ts` DAL (save/load via platformSummary). Fully wired end-to-end.
+- **Multi-Language KB Articles (4.2):** `AnswerlatticeArticleTranslation` type + `MultiLanguageArticles.tsx` management UI + `/api/answerlattice/translate` route (Gemini 2.0 Flash). Fully wired end-to-end.
+- **3 new feature flags:** `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY`, `ENABLE_ANSWERLATTICE_WHITE_LABEL`, `ENABLE_ANSWERLATTICE_MULTI_LANGUAGE` — all OFF by default.
 - **Governance Hub expanded:** 3 new tabs (Version History, Branding, Languages) added to Phase 3 governance hub.
 - **3 Firestore composite indexes** added for: batch signal counts (in + timestamp ASC), signal TTL archive (timestamp ASC), answer version history (entityType + entityId + timestamp DESC).
 
@@ -2138,7 +2138,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 ### Technical
 
 - **Files created:** `branding.ts` (DAL), `translate/route.ts` (API), 3 UI components in governance/
-- **Files modified:** `signalMutation.ts`, `driftDetection.ts`, `signalEvents.ts`, `auditLogs.ts`, `features.ts`, `types/canonica/index.ts`, governance hub `index.tsx`, `canonicaNightly.ts`, `firestore.indexes.json`
+- **Files modified:** `signalMutation.ts`, `driftDetection.ts`, `signalEvents.ts`, `auditLogs.ts`, `features.ts`, `types/answerlattice/index.ts`, governance hub `index.tsx`, `answerlatticeNightly.ts`, `firestore.indexes.json`
 - **TypeScript:** Zero errors (`npx tsc --noEmit` clean)
 - **No new Firestore collections.** All features use existing collections with additive fields only.
 - **Deploy prerequisite:** `firebase deploy --only firestore:indexes` (3 new indexes)
@@ -2149,78 +2149,78 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Refactored
 
-- **Multi-product file isolation:** All Canonica-specific files moved into product-scoped `/canonica/` subfolders across every layer (components, constants, types, data).
-- **Components:** `templates/main-app/helpCenter/governance/` (6 files) + `CanonicaCoverageKPI`, `EntityCandidateReview`, `MutationProposalReview` → `templates/canonica/`
-- **Constants:** `canonicaNavigations.ts` → `constants/canonica/navigations.ts`
-- **Data:** `CanonicaPlansList.ts` → `data/canonica/plans.ts`
-- **Types:** `types/canonica.ts` → `types/canonica/index.ts`
+- **Multi-product file isolation:** All Answerlattice-specific files moved into product-scoped `/answerlattice/` subfolders across every layer (components, constants, types, data).
+- **Components:** `templates/main-app/helpCenter/governance/` (6 files) + `AnswerlatticeCoverageKPI`, `EntityCandidateReview`, `MutationProposalReview` → `templates/answerlattice/`
+- **Constants:** `answerlatticeNavigations.ts` → `constants/answerlattice/navigations.ts`
+- **Data:** `AnswerlatticePlansList.ts` → `data/answerlattice/plans.ts`
+- **Types:** `types/answerlattice.ts` → `types/answerlattice/index.ts`
 - All import paths updated across 7 consumer files. Old files deleted. Zero TypeScript errors.
 
 ### Rules Added
 
 - **STEP 11B** added to `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` — Multi-Product File Organization pattern with 10 rules + full folder mapping table for all 5 products.
-- **Rule 11** added to `.cascade/rules/CANONICA_RULES.md` — Canonica file organization with complete folder tree.
+- **Rule 11** added to `.cascade/rules/ANSWERLATTICE_RULES.md` — Answerlattice file organization with complete folder tree.
 
 ### Architecture Decision
 
 - **MenuList = default/root** — no subfolder needed (primary product).
-- **All other products** (Canonica, SurfaceOS, GrowthOS, VisualMeta) get `/[product]/` subfolder in every layer.
+- **All other products** (Answerlattice, SurfaceOS, GrowthOS, VisualMeta) get `/[product]/` subfolder in every layer.
 - **Shared infrastructure** (auth, security, theme, i18n, Firebase config) stays at root — never duplicated per product.
 
 ---
 
-## March 7, 2026 (Session 2 — Canonica Dashboard: End-to-End Routing)
+## March 7, 2026 (Session 2 — Answerlattice Dashboard: End-to-End Routing)
 
 ### Added
 
-- **Canonica Dashboard Route Group:** Complete `(canonica)` Next.js route group with own layout, auth, sidebar, header — fully isolated from MenuList.
-- **Canonica Sidebar:** Clean antd Menu-based sidebar with 8 navigation items across 3 groups (Support, Governance, Management).
-- **Canonica Header:** Minimal header with page title derivation and user dropdown with sign-out.
-- **Canonica Navigation Constants:** `src/constants/canonicaNavigations.ts` — all routes, sidebar config, nav groups.
-- **8 Canonica Dashboard Pages:**
-  - `/canonica/dashboard` — Overview with stats (entities, answers, drifted, signals, coverage KPI, ontology summary, getting-started guide)
-  - `/canonica/knowledge-base` — KB article management (reuses platform KB component)
-  - `/canonica/kb-generation` — AI-powered article generation (reuses platform KBGeneration)
-  - `/canonica/tickets` — Support ticket management (reuses platform support tickets)
-  - `/canonica/conversations` — Chat session monitoring (reuses platform chat management)
-  - `/canonica/governance` — Governance hub from Phase 3 (answers, entities, drift, analytics, health)
-  - `/canonica/changelog` — Product changelog management (reuses platform changelog)
-  - `/canonica/settings` — Workspace info, API key status, widget embed code, feature flag status display
+- **Answerlattice Dashboard Route Group:** Complete `(answerlattice)` Next.js route group with own layout, auth, sidebar, header — fully isolated from MenuList.
+- **Answerlattice Sidebar:** Clean antd Menu-based sidebar with 8 navigation items across 3 groups (Support, Governance, Management).
+- **Answerlattice Header:** Minimal header with page title derivation and user dropdown with sign-out.
+- **Answerlattice Navigation Constants:** `src/constants/answerlatticeNavigations.ts` — all routes, sidebar config, nav groups.
+- **8 Answerlattice Dashboard Pages:**
+  - `/answerlattice/dashboard` — Overview with stats (entities, answers, drifted, signals, coverage KPI, ontology summary, getting-started guide)
+  - `/answerlattice/knowledge-base` — KB article management (reuses platform KB component)
+  - `/answerlattice/kb-generation` — AI-assisted article generation (reuses platform KBGeneration)
+  - `/answerlattice/tickets` — Support ticket management (reuses platform support tickets)
+  - `/answerlattice/conversations` — Chat session monitoring (reuses platform chat management)
+  - `/answerlattice/governance` — Governance hub from Phase 3 (answers, entities, drift, analytics, health)
+  - `/answerlattice/changelog` — Product changelog management (reuses platform changelog)
+  - `/answerlattice/settings` — Workspace info, API key status, widget embed code, feature flag status display
 
 ### Architecture Decisions
 
-- **Fully isolated route group** — `(canonica)` does NOT share layout with `(main)`. MenuList code completely untouched.
+- **Fully isolated route group** — `(answerlattice)` does NOT share layout with `(main)`. MenuList code completely untouched.
 - **Shared providers** — Session, Redux, i18n, theme providers reused (same codebase pattern).
-- **Component reuse** — Platform components (KB, tickets, chat, changelog) wrapped via dynamic imports in Canonica pages.
-- **Own layout components** — CanonicaDashboardLayout, CanonicaSidebar, CanonicaHeader — separate from MenuList's AntdLayoutWrapper + SidebarComponent.
-- **Auth flow** — Same NextAuth session. Canonica tenants identified by `productId: 'CN'` + `onboardingSource: 'CANONICA_ONBOARDING'`.
+- **Component reuse** — Platform components (KB, tickets, chat, changelog) wrapped via dynamic imports in Answerlattice pages.
+- **Own layout components** — AnswerlatticeDashboardLayout, AnswerlatticeSidebar, AnswerlatticeHeader — separate from MenuList's AntdLayoutWrapper + SidebarComponent.
+- **Auth flow** — Same NextAuth session. Answerlattice tenants identified by `productId: 'AL'` + `onboardingSource: 'ANSWERLATTICE_ONBOARDING'`.
 
 ### Files Created (14 new)
 
-- 1 navigation constant: `canonicaNavigations.ts`
-- 3 layout components: `CanonicaDashboardLayout.tsx`, `CanonicaSidebar.tsx`, `CanonicaHeader.tsx`
-- 1 route layout: `(canonica)/layout.tsx`
+- 1 navigation constant: `answerlatticeNavigations.ts`
+- 3 layout components: `AnswerlatticeDashboardLayout.tsx`, `AnswerlatticeSidebar.tsx`, `AnswerlatticeHeader.tsx`
+- 1 route layout: `(answerlattice)/layout.tsx`
 - 9 page routes: dashboard, knowledge-base, kb-generation, tickets, conversations, governance, changelog, settings, base redirect
 
 ---
 
-## March 7, 2026 (Session 1 — Canonica Phase 3: Governance UI)
+## March 7, 2026 (Session 1 — Answerlattice Phase 3: Governance UI)
 
 ### Added
 
-- **Canonica Governance Hub:** New tabbed admin interface for daily knowledge governance, accessible from Help Center → "Governance" tab.
+- **Answerlattice Governance Hub:** New tabbed admin interface for daily knowledge governance, accessible from Help Center → "Governance" tab.
 - **Canonical Answer Editor (2.1):** Full CRUD UI — create, edit, view canonical answers with entity binding, version management, content editing, governance status display, drift indicators.
 - **Entity Management Dashboard (2.2):** List, create, edit, deprecate product ontology entities. Shows relation counts, search index status, type/status filters, search.
 - **Drift Dashboard (2.3):** Visual dashboard showing drifted answers by drift class (version, signal, scope conflict, orphan). Summary stats, class breakdown cards, one-click resolve with audit logging, on-demand re-evaluation.
 - **Answer Usage Analytics (2.4):** Tracks which canonical answers served most/least/never. Content gap detection (entities without answers). Top/bottom lists, negative feedback ranking, full usage detail table.
 - **Entity Health Score (2.5):** Composite health score per entity (40% coverage, 30% drift, 20% signal, 10% indexed). Aggregate stats, worst-first sorting for quick action.
-- **Feature flag:** `ENABLE_CANONICA_GOVERNANCE_UI: false` (default OFF, enable after ontology + answers are active).
+- **Feature flag:** `ENABLE_ANSWERLATTICE_GOVERNANCE_UI: false` (default OFF, enable after ontology + answers are active).
 
 ### Technical Details
 
 - 2 new hooks: `useCanonicalAnswers`, `useEntities`
 - 6 new UI components in `src/components/templates/main-app/helpCenter/governance/`
-- Zero new Firestore collections — all reads from existing Canonica collections
+- Zero new Firestore collections — all reads from existing Answerlattice collections
 - Zero new API routes — all client-side DAL pattern
 - Initial load: 5 Firestore reads. Subsequent tab switches: 0 reads (cached).
 - Governance tab conditionally rendered based on feature flag
@@ -2259,62 +2259,62 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ---
 
-## March 6, 2026 (Session — Canonica Domain & Launch Readiness Review)
+## March 6, 2026 (Session — Answerlattice Domain & Launch Readiness Review)
 
 ### Documentation
 
-- **ChatGPT conversation reviewed:** Domain purchase (canonica.app) + support stack evaluation + launch readiness + failure modes. Overall accuracy: ~60%. Core claim (3 missing infrastructure pieces) was 0% accurate — all three already built on March 3.
-- **Activation experiment updated:** Added 10 operational failure modes (§10), MenuList entity category suggestions for ontology bootstrap (§11), and canonical answer authoring guidelines (§12) to `CANONICA-ACTIVATION-EXPERIMENT.md`.
+- **ChatGPT conversation reviewed:** Domain purchase (answerlattice.com) + support stack evaluation + launch readiness + failure modes. Overall accuracy: ~60%. Core claim (3 missing infrastructure pieces) was 0% accurate — all three already built on March 3.
+- **Activation experiment updated:** Added 10 operational failure modes (§10), MenuList entity category suggestions for ontology bootstrap (§11), and canonical answer authoring guidelines (§12) to `ANSWERLATTICE-ACTIVATION-EXPERIMENT.md`.
 - **Roadmap updated:** Session 12 added to `menulist-future-roadmap-ssot.md` with domain action items (DNS, email, trademark, social handles).
-- **Archive created:** Full conversation review at `__docs__/canonica/_archive/chatgpt-review-domain-launch-readiness.md`.
+- **Archive created:** Full conversation review at `__docs__/answerlattice/_archive/chatgpt-review-domain-launch-readiness.md`.
 
 ### Key Findings
 
-- All 3 "missing pieces" ChatGPT identified (coverage metrics, signal entity resolution, nightly scheduler) were already implemented in `canonicaNightly.ts` on March 3, 2026.
+- All 3 "missing pieces" ChatGPT identified (coverage metrics, signal entity resolution, nightly scheduler) were already implemented in `answerlatticeNightly.ts` on March 3, 2026.
 - 4 genuinely new failure mode warnings documented: Entity Ontology Collapse, Canonical Answer Overfitting, Admin Cognitive Overload, Governance Loop Breaking.
 - Weekly governance cycle recommended: Monday (proposals) → Wednesday (drift) → Friday (answers).
 - Domain infrastructure setup is business operations, not engineering work.
 
 ---
 
-## March 2, 2026 (Session — Canonica Sprint 1-6 Implementation)
+## March 2, 2026 (Session — Answerlattice Sprint 1-6 Implementation)
 
 ### Implemented
 
-Full 5-pillar infrastructure implementation for Canonica — the Support Knowledge Control Plane for SaaS. All 6 sprints executed sequentially with zero TypeScript errors.
+Full 5-pillar infrastructure implementation for Answerlattice — the Governed Answer Infrastructure for SaaS Support. All 6 sprints executed sequentially with zero TypeScript errors.
 
 ### Pre-Implementation Setup
 
-- **Product name locked:** Canonica — The Support Knowledge Control Plane for SaaS
-- **Folder renamed:** `__docs__/help-center/` → `__docs__/canonica/` (75 docs moved)
-- **Master workflow updated:** `.windsurf/workflows/master-execution.md` — Step 0 product detection (MenuList vs Canonica)
-- **Canonica rules created:** `.cascade/rules/CANONICA_RULES.md` — 10 binding rules
+- **Product name locked:** Answerlattice — The Governed Answer Infrastructure for SaaS Support
+- **Folder renamed:** `__docs__/help-center/` → `__docs__/answerlattice/` (75 docs moved)
+- **Master workflow updated:** `.windsurf/workflows/master-execution.md` — Step 0 product detection (MenuList vs Answerlattice)
+- **Answerlattice rules created:** `.cascade/rules/ANSWERLATTICE_RULES.md` — 10 binding rules
 - **Tenant/store architecture:** Keep existing tId+sId. MenuList = first client.
 
 ### Sprint 1 — Data Layer Foundation
 
 - **9 DB_COLLECTIONS** constants added (frontend `src/constants/database.ts` + functions `functions/src/constants/database.ts`)
-- **5 feature flags** added to `src/config/features.ts` (all OFF by default): `ENABLE_CANONICA_ONTOLOGY`, `ENABLE_CANONICA_CANONICAL_ANSWERS`, `ENABLE_CANONICA_DRIFT_DETECTION`, `ENABLE_CANONICA_SIGNAL_MUTATION`, `ENABLE_CANONICA_PUBLIC_API`
-- **Full type system:** `src/types/canonica.ts` — 15 interfaces, 10 const objects, 2 version normalization helpers
-- **7 DAL files** (46 functions total) in `src/database/canonica/`: entities.ts (12), canonicalAnswers.ts (8), releases.ts (6), mutationProposals.ts (7), signalEvents.ts (4), auditLogs.ts (3), entityCandidates.ts (6)
+- **5 feature flags** added to `src/config/features.ts` (all OFF by default): `ENABLE_ANSWERLATTICE_ONTOLOGY`, `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS`, `ENABLE_ANSWERLATTICE_DRIFT_DETECTION`, `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`, `ENABLE_ANSWERLATTICE_PUBLIC_API`
+- **Full type system:** `src/types/answerlattice.ts` — 15 interfaces, 10 const objects, 2 version normalization helpers
+- **7 DAL files** (46 functions total) in `src/database/answerlattice/`: entities.ts (12), canonicalAnswers.ts (8), releases.ts (6), mutationProposals.ts (7), signalEvents.ts (4), auditLogs.ts (3), entityCandidates.ts (6)
 
 ### Sprint 2 — Canonical-First Retrieval Pipeline
 
-- **`src/lib/canonica/canonicalRetrieval.ts`** — 3-layer retrieval stack: deterministic entity index (Layer 1) → intent classification (Layer 2) → LLM fallback assist (Layer 3). Rule-based specificity scoring. Version window filtering.
+- **`src/lib/answerlattice/canonicalRetrieval.ts`** — 3-layer retrieval stack: deterministic entity index (Layer 1) → intent classification (Layer 2) → LLM fallback assist (Layer 3). Rule-based specificity scoring. Version window filtering.
 - **search-kb route integration** — Canonical-first block added to `src/app/api/helpCenter/search-kb/route.ts` between cache lookup and RAG vector search. Logs CANONICAL_HIT / CANONICAL_MISS.
 - **AiSearchHistory type extended** — 4 canonical fields added to `src/types/aiSearchHistory.ts`
 
 ### Sprint 3 — Ontology Bootstrap
 
-- **`src/lib/canonica/entityExtraction.ts`** — AI entity extraction pipeline from KB articles. Strict extraction rules (no UI labels, no generic nouns, must be versionable). Validation + deduplication + search index builder. Batched processing (5 articles per Gemini call).
+- **`src/lib/answerlattice/entityExtraction.ts`** — AI entity extraction pipeline from KB articles. Strict extraction rules (no UI labels, no generic nouns, must be versionable). Validation + deduplication + search index builder. Batched processing (5 articles per Gemini call).
 
 ### Sprint 4 — Drift Detection Engine
 
-- **`src/lib/canonica/driftDetection.ts`** — 4 deterministic drift classes: version_mismatch, signal_anomaly, scope_conflict, deprecated_entity. Idempotent evaluation (running twice = identical results). Derived flags (not toggled). Audit logging on every state change.
+- **`src/lib/answerlattice/driftDetection.ts`** — 4 deterministic drift classes: version_mismatch, signal_anomaly, scope_conflict, deprecated_entity. Idempotent evaluation (running twice = identical results). Derived flags (not toggled). Audit logging on every state change.
 
 ### Sprint 5 — Signal Mutation Engine
 
-- **`src/lib/canonica/signalMutation.ts`** — Entity-based signal clustering (not embedding-based). 4 mutation types: content_refinement, scope_adjustment, version_update, new_answer_required. Auto-proposal generation from friction signal clusters. Configurable thresholds (min 3 signals, 14-day window, max 10 proposals per run).
+- **`src/lib/answerlattice/signalMutation.ts`** — Entity-based signal clustering (not embedding-based). 4 mutation types: content_refinement, scope_adjustment, version_update, new_answer_required. Auto-proposal generation from friction signal clusters. Configurable thresholds (min 3 signals, 14-day window, max 10 proposals per run).
 
 ### Sprint 6 — Final Verification
 
@@ -2333,16 +2333,16 @@ Full 5-pillar infrastructure implementation for Canonica — the Support Knowled
 
 ---
 
-## March 2, 2026 (Session — Canonica Strategic Doctrine & Governance)
+## March 2, 2026 (Session — Answerlattice Strategic Doctrine & Governance)
 
 ### Documented
 
-Full ChatGPT strategic conversation processed, validated against codebase, and documented as binding governance for Canonica — the Help Center's future as standalone Support Knowledge Control Plane for SaaS.
+Full ChatGPT strategic conversation processed, validated against codebase, and documented as binding governance for Answerlattice — the Help Center's future as standalone Governed Answer Infrastructure for SaaS Support.
 
 ### Created (`__docs__/help-center/doctrine/`)
 
 1. **README.md** — Doctrine index with document map, key decisions summary, usage guide by role
-2. **01-core-doctrine.md** — Product identity (Canonica), naming decision, 5 architectural pillars, retrieval doctrine, evolution path, current state assessment (70% SupportOS / 30% Canonica)
+2. **01-core-doctrine.md** — Product identity (Answerlattice), naming decision, 5 architectural pillars, retrieval doctrine, evolution path, current state assessment (70% SupportOS / 30% Answerlattice)
 3. **02-non-goals-charter.md** — Binding non-goals: NOT helpdesk, NOT CMS, NOT AI autopilot, NOT compliance, NOT analytics. Feature rejection filter. Sales alignment rules.
 4. **03-infrastructure-freeze-v1.md** — 3-year freeze rules: frozen collections, retrieval logic, governance engines, LLM discipline, economic guardrails. Freeze-break procedure (RFC required).
 5. **04-market-validation.md** — TAM (3,000-5,000 mid-market SaaS), ICP ($5M-$40M ARR B2B SaaS), moat analysis (7-8/10 if deep), distribution (founder-led + AI wave piggyback), monetization ($500-$3,000/mo), 5-year durability (7-8/10).
@@ -2353,16 +2353,16 @@ Full ChatGPT strategic conversation processed, validated against codebase, and d
 
 ### Created (`__docs__/help-center/_archive/`)
 
-10. **chatgpt-review-canonica-strategy.md** — Full conversation review: 28 topics with per-claim AGREE/DISAGREE/PARTIAL verdicts. 8 ChatGPT errors identified. 11 strategic decisions locked. 12 components needed vs 12 existing components that support evolution.
+10. **chatgpt-review-answerlattice-strategy.md** — Full conversation review: 28 topics with per-claim AGREE/DISAGREE/PARTIAL verdicts. 8 ChatGPT errors identified. 11 strategic decisions locked. 12 components needed vs 12 existing components that support evolution.
 
 ### Updated
 
-- `__docs__/help-center/README.md` — Added Canonica strategic governance section with doctrine folder link. Version bumped to 3.0.0.
+- `__docs__/help-center/README.md` — Added Answerlattice strategic governance section with doctrine folder link. Version bumped to 3.0.0.
 
 ### Key Decisions
 
-- **Name locked:** Canonica (not SupportOS, not TrustLayer)
-- **Category defined:** Support Knowledge Control Plane for SaaS
+- **Name locked:** Answerlattice (not SupportOS, not TrustLayer)
+- **Category defined:** Governed Answer Infrastructure for SaaS Support
 - **Current state classified:** 70% operational / 30% knowledge infrastructure — must shift to knowledge-first
 - **5 pillars locked:** Ontology → Canonical Answers → Drift Governance → Signal Mutation → API Layer
 - **Retrieval doctrine:** Canonical-first (permanent). RAG = fallback only.

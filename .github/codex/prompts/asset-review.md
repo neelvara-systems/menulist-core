@@ -1,6 +1,6 @@
 # Asset Review Prompt
 
-Use this prompt when reviewing changes under `packages/asset-factory/`, `public/images/website/`, `public/canonica-*`, or `public/canonica-splash/`.
+Use this prompt when reviewing changes under `packages/asset-factory/`, `public/images/website/`, `public/answerlattice-*`, or `public/answerlattice-splash/`.
 
 ## Review Order
 
@@ -16,6 +16,6 @@ Use this prompt when reviewing changes under `packages/asset-factory/`, `public/
 - Oversized generated/approved files.
 - Public media not connected to any slot.
 - MenuList assets using campaign/canvas/marketing-product UI.
-- Canonica assets using MenuList restaurant visuals or generic helpdesk positioning.
+- Answerlattice assets using MenuList restaurant visuals or generic helpdesk positioning.
 - Real customer or private tenant data in public paths.
 

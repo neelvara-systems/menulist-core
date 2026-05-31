@@ -23,11 +23,11 @@
   pointer-events: none;
 }
 
-.loadingWrapCanonica {
+.loadingWrapAnswerlattice {
   background: #070714;
 }
 
-.loadingWrapCanonica::before {
+.loadingWrapAnswerlattice::before {
   background:
     radial-gradient(circle at 50% 44%, rgba(194, 224, 222, 0.18), transparent 24%),
     radial-gradient(circle at 52% 52%, rgba(139, 139, 255, 0.18), transparent 34%),
@@ -43,7 +43,7 @@
   pointer-events: none;
 }
 
-.loadingWatermarkCanonica {
+.loadingWatermarkAnswerlattice {
   opacity: 0.085;
   filter: blur(0.2px);
 }
@@ -56,7 +56,7 @@
   filter: drop-shadow(0 18px 36px rgba(0, 84, 208, 0.12));
 }
 
-.loadingLogoCanonica {
+.loadingLogoAnswerlattice {
   width: clamp(210px, 20vw, 300px);
   height: clamp(121px, 11.6vw, 173px);
   filter:
@@ -70,7 +70,7 @@
     height: clamp(86px, 30vw, 132px);
   }
 
-  .loadingLogoCanonica {
+  .loadingLogoAnswerlattice {
     width: clamp(170px, 58vw, 250px);
     height: clamp(98px, 36vw, 144px);
   }

@@ -149,7 +149,7 @@ Mobile must not:
 - upload unrestricted source files
 - call generation providers directly from the client
 - bypass credit checks
-- write to MenuList or Canonica data
+- write to MenuList or Answerlattice data
 - configure file adapters
 - trigger external API push
 

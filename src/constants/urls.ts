@@ -6,11 +6,11 @@
  *
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
- *   Local: /__canonica        — Canonica website
+ *   Local: /__answerlattice        — Answerlattice website
  *   QA: menulist.online       — MenuList preview/staging
- *   QA: ecomsai.com           — Canonica preview/staging
+ *   QA: ecomsai.com           — Answerlattice preview/staging
  *   Prod: menulist.ai         — MenuList production
- *   Prod: canonica.app        — Canonica production
+ *   Prod: answerlattice.com        — Answerlattice production
  *   [future].app             — SurfaceOS / GrowthOS / VisualMeta websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.ai  — Customer-facing digital menu (public)
@@ -233,7 +233,7 @@ export const PLATFORM_DOMAINS = [
     `msg.${PLATFORM_DOMAIN}`,
     // Alias domains (staging/testing environments)
     ...PLATFORM_DOMAIN_ALIASES,
-    // All product website domains (canonica.app, surfaceos.app, etc.)
+    // All product website domains (answerlattice.com, surfaceos.app, etc.)
     ...ALL_PRODUCT_DOMAINS,
 ];
 

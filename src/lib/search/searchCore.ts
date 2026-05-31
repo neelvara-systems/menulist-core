@@ -1,7 +1,7 @@
 /**
- * Canonica Unified Search — Core Pipeline
+ * Answerlattice Unified Search — Core Pipeline
  *
- * THE single canonical search function that powers ALL Canonica search surfaces:
+ * THE single canonical search function that powers ALL Answerlattice search surfaces:
  * - Help Center top search bar (authenticated, full features)
  * - Embeddable Widget (API key auth, compact features)
  * - Future: mobile, Slack bot, API v2, etc.
@@ -15,28 +15,28 @@
  *   /api/widget/search         → API key auth   → coreSearch()
  *   /api/future/...            → custom auth    → coreSearch()
  *
- * @see __docs__/canonica/help-widget/
- * @see __docs__/canonica/help-center/
+ * @see __docs__/answerlattice/help-widget/
+ * @see __docs__/answerlattice/help-center/
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { LOG_FILES } from '@constant/logging';
 import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@database/aiSearchHistory/server';
 import { getCachedEmbedding, saveCachedEmbedding } from '@database/queryEmbeddings';
-import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeQuery } from '@lib/string';
 import { EMBEDDING_CACHE_VERSION, callGeminiChat, callGeminiEmbedding, generateSearchQueryFromImage } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
-import { getCanonicaTimestampMillis, isCachedSearchResultFresh } from '@lib/canonica/cacheFreshness';
-import { CANONICA_CACHE_SOURCES, CanonicaCacheSourceVersions } from '@lib/canonica/cacheVersionManifest';
-import { getCanonicaCacheVersionServer } from '@lib/canonica/cacheVersionServer';
+import { getAnswerlatticeTimestampMillis, isCachedSearchResultFresh } from '@lib/answerlattice/cacheFreshness';
+import { ANSWERLATTICE_CACHE_SOURCES, AnswerlatticeCacheSourceVersions } from '@lib/answerlattice/cacheVersionManifest';
+import { getAnswerlatticeCacheVersionServer } from '@lib/answerlattice/cacheVersionServer';
 import {
-    CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH,
-    CANONICA_CHAT_IMAGE_MAX_BYTES,
-    isAllowedCanonicaChatImageMimeType,
-    normalizeCanonicaChatImageMimeType,
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH,
+    ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES,
+    isAllowedAnswerlatticeChatImageMimeType,
+    normalizeAnswerlatticeChatImageMimeType,
     stripDataUrlPrefix,
-} from '@lib/canonica/chatImagePolicy';
+} from '@lib/answerlattice/chatImagePolicy';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
 
@@ -51,8 +51,8 @@ const SIMILARITY_THRESHOLD_LOW = 0.4;
 const VECTOR_SEARCH_LIMIT = 12;
 const RAG_CONTEXT_LIMIT = 6;
 const SEARCH_CACHE_VERSION = 'rag-v3';
-const CANONICA_LOOKUP_CACHE_TTL_MS = 30_000;
-const MAX_CANONICA_LOOKUP_CACHE_ENTRIES = 300;
+const ANSWERLATTICE_LOOKUP_CACHE_TTL_MS = 30_000;
+const MAX_ANSWERLATTICE_LOOKUP_CACHE_ENTRIES = 300;
 
 const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
@@ -99,9 +99,9 @@ const getTrustedStorageBucketPaths = (): string[] => {
         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
         process.env.FIREBASE_STORAGE_BUCKET,
         getDefaultBucketForProject(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID),
-        process.env.NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET,
-        process.env.CANONICA_FIREBASE_STORAGE_BUCKET,
-        getDefaultBucketForProject(process.env.NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID || process.env.CANONICA_FIREBASE_PROJECT_ID),
+        process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET,
+        process.env.ANSWERLATTICE_FIREBASE_STORAGE_BUCKET,
+        getDefaultBucketForProject(process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID || process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID),
     ]
         .map(normalizeStorageBucket)
         .filter((bucket): bucket is string => Boolean(bucket));
@@ -130,7 +130,7 @@ const getFirebaseStorageObjectPath = (url: URL): string | null => {
     }
 };
 
-const isTrustedCanonicaSearchImageUrl = (url: URL, tId: number, sId: number): boolean => {
+const isTrustedAnswerlatticeSearchImageUrl = (url: URL, tId: number, sId: number): boolean => {
     if (!isTrustedFirebaseStorageImageUrl(url)) return false;
 
     const objectPath = getFirebaseStorageObjectPath(url);
@@ -179,16 +179,16 @@ const readTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: string):
 };
 
 const rememberTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: string, value: T) => {
-    if (cache.size >= MAX_CANONICA_LOOKUP_CACHE_ENTRIES) {
+    if (cache.size >= MAX_ANSWERLATTICE_LOOKUP_CACHE_ENTRIES) {
         const oldestKey = cache.keys().next().value;
         if (oldestKey) cache.delete(oldestKey);
     }
-    cache.set(key, { value, expiresAt: Date.now() + CANONICA_LOOKUP_CACHE_TTL_MS });
+    cache.set(key, { value, expiresAt: Date.now() + ANSWERLATTICE_LOOKUP_CACHE_TTL_MS });
 };
 
 const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
     try {
-        const manifestVersion = await getCanonicaCacheVersionServer(CANONICA_CACHE_SOURCES.KB, tId, sId);
+        const manifestVersion = await getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId);
         if (manifestVersion) {
             return {
                 version: `${SEARCH_CACHE_VERSION}:kbv${manifestVersion}`,
@@ -209,7 +209,7 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
             return { version: `${SEARCH_CACHE_VERSION}:empty`, hasPublishedArticles: false };
         }
 
-        const latestModified = getCanonicaTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
+        const latestModified = getAnswerlatticeTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
         return {
             version: `${SEARCH_CACHE_VERSION}:${latestModified || 'unknown'}`,
             hasPublishedArticles: true,
@@ -221,13 +221,13 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
     }
 };
 
-const getCanonicaEntitySearchIndexServer = async (tId: number, sId: number): Promise<any[]> => {
+const getAnswerlatticeEntitySearchIndexServer = async (tId: number, sId: number): Promise<any[]> => {
     const cacheKey = `${Number(tId)}:${Number(sId)}`;
     const cached = readTimedCache(entitySearchIndexCache, cacheKey);
     if (cached) return cached;
 
     const snapshot = await firestoreAdmin
-        .collection(DB_COLLECTIONS.CANONICA_ENTITY_SEARCH_INDEX)
+        .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .limit(500)
@@ -238,13 +238,13 @@ const getCanonicaEntitySearchIndexServer = async (tId: number, sId: number): Pro
     return searchIndex;
 };
 
-const getCanonicaLatestReleaseServer = async (tId: number, sId: number): Promise<any | null> => {
+const getAnswerlatticeLatestReleaseServer = async (tId: number, sId: number): Promise<any | null> => {
     const cacheKey = `${Number(tId)}:${Number(sId)}`;
     const cached = readTimedCache(latestReleaseCache, cacheKey);
     if (cached !== undefined) return cached;
 
     const snapshot = await firestoreAdmin
-        .collection(DB_COLLECTIONS.CANONICA_RELEASES)
+        .collection(DB_COLLECTIONS.ANSWERLATTICE_RELEASES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
@@ -327,7 +327,7 @@ const buildSearchHistoryContextFields = (productContext: CoreSearchInput['produc
 };
 
 /**
- * Core search pipeline — the single source of truth for Canonica knowledge retrieval.
+ * Core search pipeline — the single source of truth for Answerlattice knowledge retrieval.
  *
  * Pipeline stages:
  * 1. SAFE_MODE check
@@ -397,7 +397,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         try {
             const db = firestoreAdmin as any;
             if (!db || typeof db.collection !== 'function') {
-                throw new Error('Canonica Firestore Admin is not configured');
+                throw new Error('Answerlattice Firestore Admin is not configured');
             }
             const doc = await db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();
             if (doc.exists && doc.data()?.SAFE_MODE === true) {
@@ -417,18 +417,18 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
         try {
             if (inlineImageBuffer) {
-                const mimeType = normalizeCanonicaChatImageMimeType(inlineImageBuffer.mimeType);
+                const mimeType = normalizeAnswerlatticeChatImageMimeType(inlineImageBuffer.mimeType);
                 const imageBase64 = stripDataUrlPrefix(String(inlineImageBuffer.imageBase64 || ''));
-                if (!isAllowedCanonicaChatImageMimeType(mimeType)) {
+                if (!isAllowedAnswerlatticeChatImageMimeType(mimeType)) {
                     throw new Error(`Unsupported image MIME type: ${mimeType || 'missing'}`);
                 }
-                if (!imageBase64 || imageBase64.length > CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH || !isLikelyBase64(imageBase64)) {
+                if (!imageBase64 || imageBase64.length > ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH || !isLikelyBase64(imageBase64)) {
                     throw new Error('Inline image payload is empty or too large');
                 }
 
                 const buffer = Buffer.from(imageBase64, 'base64');
-                if (!buffer.byteLength || buffer.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Inline image size exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                if (!buffer.byteLength || buffer.byteLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Inline image size exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
                 if (!imageMimeMatchesBuffer(buffer, mimeType)) {
                     throw new Error('Inline image content does not match declared MIME type');
@@ -439,7 +439,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             } else if (imageUrl) {
                 // Security validation
                 const url = new URL(imageUrl);
-                if (!isTrustedCanonicaSearchImageUrl(url, Number(tId), Number(sId))) {
+                if (!isTrustedAnswerlatticeSearchImageUrl(url, Number(tId), Number(sId))) {
                     throw new Error('Untrusted or invalid image URL');
                 }
 
@@ -459,20 +459,20 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 }
 
                 const contentLength = Number(response.headers.get('content-length') || 0);
-                if (contentLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Image size (${contentLength} bytes) exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                if (contentLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Image size (${contentLength} bytes) exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
 
                 const buffer = await response.arrayBuffer();
 
-                if (!buffer.byteLength || buffer.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
-                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                if (!buffer.byteLength || buffer.byteLength > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
 
                 const nodeBuffer = Buffer.from(buffer);
-                const headerMimeType = normalizeCanonicaChatImageMimeType(response.headers.get('content-type'));
+                const headerMimeType = normalizeAnswerlatticeChatImageMimeType(response.headers.get('content-type'));
                 const mimeType = headerMimeType || detectImageMimeTypeFromBuffer(nodeBuffer) || '';
-                if (!isAllowedCanonicaChatImageMimeType(mimeType)) {
+                if (!isAllowedAnswerlatticeChatImageMimeType(mimeType)) {
                     throw new Error(`Unsupported fetched image MIME type: ${mimeType || 'missing'}`);
                 }
                 if (!imageMimeMatchesBuffer(nodeBuffer, mimeType)) {
@@ -516,12 +516,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     let effectiveProductContext = productContext;
 
     if (
-        FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES &&
-        FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_AWARE &&
+        FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_SURFACES &&
+        FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_AWARE &&
         productContext
     ) {
         try {
-            const { resolveRelatedContentForSearch } = await import('@lib/canonica/productSurfaceContentServer');
+            const { resolveRelatedContentForSearch } = await import('@lib/answerlattice/productSurfaceContentServer');
             const resolved = await resolveRelatedContentForSearch({
                 tId: Number(tId),
                 sId: Number(sId),
@@ -545,18 +545,18 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // ===== STAGE 2.5: INSTANT CACHE (Upstash Redis) =====
     // Only for canonical answers — deterministic, versioned, perfect cache objects.
-    // Feature-flagged: ENABLE_CANONICA_INSTANT_CACHE
+    // Feature-flagged: ENABLE_ANSWERLATTICE_INSTANT_CACHE
     let instantCacheSearchIndex: any[] | undefined;
     let instantCacheLatestRelease: any | null | undefined;
-    if (FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE && FEATURE_FLAGS.ENABLE_CANONICA_CANONICAL_ANSWERS) {
+    if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS) {
         try {
-            const { instantCacheLookup } = await import('@lib/canonica/instantCache');
-            const { canonicaTokenize } = await import('@lib/canonica/tokenizer');
+            const { instantCacheLookup } = await import('@lib/answerlattice/instantCache');
+            const { answerlatticeTokenize } = await import('@lib/answerlattice/tokenizer');
 
-            const searchIndex = await getCanonicaEntitySearchIndexServer(tId, sId);
+            const searchIndex = await getAnswerlatticeEntitySearchIndexServer(tId, sId);
             instantCacheSearchIndex = searchIndex;
             if (searchIndex && searchIndex.length > 0) {
-                const queryTokens = canonicaTokenize(searchQuery);
+                const queryTokens = answerlatticeTokenize(searchQuery);
 
                 // Quick entity match (same logic as canonicalRetrieval Layer 1)
                 let topEntityId: string | null = null;
@@ -579,7 +579,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 }
 
                 if (topEntityId && topScore >= 2.0) {
-                    const release = await getCanonicaLatestReleaseServer(tId, sId);
+                    const release = await getAnswerlatticeLatestReleaseServer(tId, sId);
                     instantCacheLatestRelease = release;
                     const version = release?.versionNormalized || 0;
 
@@ -706,7 +706,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             fallbackReason: historyContext.fallbackReason,
             confidence: result.confidence || historyContext.confidence,
             sourceVersions: kbCacheState.sourceVersion
-                ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
             ...buildSearchHistoryContextFields(effectiveProductContext),
         });
@@ -731,9 +731,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     perfMetrics.cacheLookup = Date.now() - cacheStart;
 
     if (cachedResult) {
-        const currentSourceVersions: CanonicaCacheSourceVersions = {};
+        const currentSourceVersions: AnswerlatticeCacheSourceVersions = {};
         if (kbCacheState.sourceVersion) {
-            currentSourceVersions[CANONICA_CACHE_SOURCES.KB] = kbCacheState.sourceVersion;
+            currentSourceVersions[ANSWERLATTICE_CACHE_SOURCES.KB] = kbCacheState.sourceVersion;
         }
         const cacheFresh = await isCachedSearchResultFresh(cachedResult, tId, sId, currentSourceVersions);
         if (!cacheFresh) {
@@ -790,12 +790,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // Parse product context (feature-flagged)
     let validatedContext = effectiveProductContext;
-    if (!validatedContext && contextFlags.ENABLE_CANONICA_CONTEXT_AWARE) {
+    if (!validatedContext && contextFlags.ENABLE_ANSWERLATTICE_CONTEXT_AWARE) {
         // Context already validated by caller if provided
         validatedContext = undefined;
     }
 
-    const { attemptCanonicalRetrieval } = await import('@lib/canonica/canonicalRetrieval');
+    const { attemptCanonicalRetrieval } = await import('@lib/answerlattice/canonicalRetrieval');
     const canonicalStart = Date.now();
     const canonicalResult = await attemptCanonicalRetrieval(searchQuery, {
         tId,
@@ -808,13 +808,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (canonicalResult.found && canonicalResult.canonical && canonicalResult.answer) {
         const answer = canonicalResult.answer;
-        const canonicalCacheVersion = await getCanonicaCacheVersionServer(
-            CANONICA_CACHE_SOURCES.CANONICAL,
+        const canonicalCacheVersion = await getAnswerlatticeCacheVersionServer(
+            ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
             tId,
             sId,
         ).catch(() => undefined);
         const canonicalSourceVersions = canonicalCacheVersion
-            ? { [CANONICA_CACHE_SOURCES.CANONICAL]: canonicalCacheVersion }
+            ? { [ANSWERLATTICE_CACHE_SOURCES.CANONICAL]: canonicalCacheVersion }
             : undefined;
 
         // Save to search history for analytics
@@ -893,9 +893,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         // Write to instant cache for next time (fire-and-forget)
-        if (FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE && canonicalResult.matchedEntityIds.length > 0) {
+        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INSTANT_CACHE && canonicalResult.matchedEntityIds.length > 0) {
             try {
-                const { instantCacheWrite } = await import('@lib/canonica/instantCache');
+                const { instantCacheWrite } = await import('@lib/answerlattice/instantCache');
                 instantCacheWrite(
                     tId, sId,
                     canonicalResult.matchedEntityIds[0],
@@ -942,7 +942,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // miss and before embeddings/RAG, so custom Q&A can resolve common questions
     // without model latency or provider cost.
     try {
-        const { attemptFaqAnswerRetrieval } = await import('@lib/canonica/faqRetrieval');
+        const { attemptFaqAnswerRetrieval } = await import('@lib/answerlattice/faqRetrieval');
         const faqStart = Date.now();
         const faqResult = await attemptFaqAnswerRetrieval(queryForEmbedding, {
             tId,
@@ -1003,9 +1003,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // Helper: evaluate escalation for empty/no-result paths (avoids code duplication)
     const buildEmptyEscalation = async () => {
-        if (!FEATURE_FLAGS.ENABLE_CANONICA_AI_ESCALATION) return undefined;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION) return undefined;
         try {
-            const { evaluateEscalation } = await import('@lib/canonica/escalationEvaluator');
+            const { evaluateEscalation } = await import('@lib/answerlattice/escalationEvaluator');
             return evaluateEscalation({
                 canonicalResult,
                 ragDocuments: [],
@@ -1049,7 +1049,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const vectorSearchStart = Date.now();
     const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
 
-    // Multi-tenant KB filtering is mandatory for every Canonica mount.
+    // Multi-tenant KB filtering is mandatory for every Answerlattice mount.
     const articleQuery = articlesRef
         .where('status', '==', 'published')
         .where('tId', '==', tId)
@@ -1147,7 +1147,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         ?? canonicalResult.matchedEntityIds;
     if (!canonicalResult.found && entityIdsForRagEnrichment?.length > 0) {
         try {
-            const { getEntityDescriptions, buildEntityContextBlock } = await import('@lib/canonica/canonicalRetrieval');
+            const { getEntityDescriptions, buildEntityContextBlock } = await import('@lib/answerlattice/canonicalRetrieval');
             const entityDescs = await getEntityDescriptions(entityIdsForRagEnrichment, tId, sId);
             if (entityDescs.length > 0) {
                 const contextBlock = buildEntityContextBlock(entityDescs);
@@ -1263,7 +1263,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             fallbackReason: canonicalMissHistoryContext.fallbackReason,
             confidence: canonicalMissHistoryContext.confidence,
             sourceVersions: kbCacheState.sourceVersion
-                ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
             ...buildSearchHistoryContextFields(effectiveProductContext),
         });
@@ -1293,10 +1293,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         });
 
         // ===== STAGE 7.5: ESCALATION EVALUATION =====
-        let escalation: import('@lib/canonica/escalationTypes').EscalationMetadata | undefined;
-        if (FEATURE_FLAGS.ENABLE_CANONICA_AI_ESCALATION) {
+        let escalation: import('@lib/answerlattice/escalationTypes').EscalationMetadata | undefined;
+        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_AI_ESCALATION) {
             try {
-                const { evaluateEscalation } = await import('@lib/canonica/escalationEvaluator');
+                const { evaluateEscalation } = await import('@lib/answerlattice/escalationEvaluator');
                 escalation = evaluateEscalation({
                     canonicalResult,
                     ragDocuments: documentsMatched.slice(0, 5).map(d => ({

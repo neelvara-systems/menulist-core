@@ -1,37 +1,37 @@
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { getResellerPlanByPlanId } from '@config/resellerPricing';
 import { B2BplansList, B2CplansList, aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
-import { getCanonicaPlanById, getCanonicaPlans, type CanonicaPlan } from '@data/canonica/plans';
+import { getAnswerlatticePlanById, getAnswerlatticePlans, type AnswerlatticePlan } from '@data/answerlattice/plans';
 import type { AIEnhancementPack, Plan, PlanType } from '@data/common';
 
-export const CANONICA_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
+export const ANSWERLATTICE_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
     {
-        packId: 'canonica_support_credits',
+        packId: 'answerlattice_support_credits',
         name: 'Support Credit Pack',
-        description: 'Extra Canonica answer, widget chat, intake media, and governance credits. One-time purchase. No expiry.',
+        description: 'Extra Answerlattice answer, widget chat, intake media, and governance credits. One-time purchase. No expiry.',
         creditAmount: 500,
         priceINR: { price: 249900, monthlyCredits: null },
         priceUSD: { price: 3000, monthlyCredits: null },
     },
 ];
 
-export const CANONICA_PLAN_TIER_ORDER: Record<string, number> = {
-    canonica_beta: 0,
-    canonica_starter: 1,
-    canonica_growth: 2,
-    canonica_studio: 3,
+export const ANSWERLATTICE_PLAN_TIER_ORDER: Record<string, number> = {
+    answerlattice_beta: 0,
+    answerlattice_starter: 1,
+    answerlattice_growth: 2,
+    answerlattice_studio: 3,
 };
 
 export const normalizeBillingProductId = (value: unknown): ProductId => {
     const normalized = String(value || '').trim().toUpperCase();
-    return normalized === PRODUCT_IDS.CANONICA ? PRODUCT_IDS.CANONICA : PRODUCT_IDS.MENULIST;
+    return normalized === PRODUCT_IDS.ANSWERLATTICE ? PRODUCT_IDS.ANSWERLATTICE : PRODUCT_IDS.MENULIST;
 };
 
-export const isCanonicaBillingProduct = (productId: unknown): boolean => (
-    normalizeBillingProductId(productId) === PRODUCT_IDS.CANONICA
+export const isAnswerlatticeBillingProduct = (productId: unknown): boolean => (
+    normalizeBillingProductId(productId) === PRODUCT_IDS.ANSWERLATTICE
 );
 
-export const canonicaPlanToBillingPlan = (plan: CanonicaPlan): Plan => ({
+export const answerlatticePlanToBillingPlan = (plan: AnswerlatticePlan): Plan => ({
     planId: plan.planId,
     type: 'B2B',
     name: plan.name,
@@ -55,24 +55,24 @@ export const getBillingPlansForProduct = (
     productId: unknown,
     userType: PlanType | 'B2B' | 'B2C' = 'B2C',
 ): Plan[] => {
-    if (isCanonicaBillingProduct(productId)) {
-        return getCanonicaPlans()
+    if (isAnswerlatticeBillingProduct(productId)) {
+        return getAnswerlatticePlans()
             .filter((plan) => plan.priceINR.price > 0 || plan.priceUSD.price > 0)
-            .map(canonicaPlanToBillingPlan);
+            .map(answerlatticePlanToBillingPlan);
     }
 
     return userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
 };
 
 export const getCreditPacksForProduct = (productId: unknown): AIEnhancementPack[] => (
-    isCanonicaBillingProduct(productId) ? CANONICA_CREDIT_PACKS_LIST : aiEnhancementPacksList
+    isAnswerlatticeBillingProduct(productId) ? ANSWERLATTICE_CREDIT_PACKS_LIST : aiEnhancementPacksList
 );
 
 export const getBillingPlanDetailsFromNotes = (notes: any): any => {
     if (!notes?.planId || !notes?.interval) return null;
 
-    if (isCanonicaBillingProduct(notes.productId || notes.pId)) {
-        return getCanonicaPlanById(notes.planId, notes.interval) || null;
+    if (isAnswerlatticeBillingProduct(notes.productId || notes.pId)) {
+        return getAnswerlatticePlanById(notes.planId, notes.interval) || null;
     }
 
     if (String(notes.planId).startsWith('reseller_')) {

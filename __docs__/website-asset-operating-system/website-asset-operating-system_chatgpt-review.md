@@ -14,7 +14,7 @@ ChatGPT correctly identified the real leverage: not one recorder, but a repeatab
 The main correction is product boundary:
 
 - **Accept:** repo-native asset slots, brand context, manifest, Codex skill, audit/review scripts, deterministic capture, and file-size gates.
-- **Adjust:** place this under an internal cross-product docs folder and later internal package, not inside MenuList owner features or Canonica runtime.
+- **Adjust:** place this under an internal cross-product docs folder and later internal package, not inside MenuList owner features or Answerlattice runtime.
 - **Reject:** marketing it as a new standalone product now.
 - **Reject:** making OpenScreen/OpenVid the core automation layer.
 - **Defer:** Remotion, Playwright, OpenScreen, OpenVid, and FFmpeg dependencies until contract scripts prove the need.
@@ -23,9 +23,9 @@ The main correction is product boundary:
 
 | Theme | ChatGPT suggestion | Verdict | Repo-grounded adjustment |
 | --- | --- | --- | --- |
-| Asset factory | Build a founder-operated asset factory for Canonica and MenuList. | Agree | Name it Website Asset Operating System and make it internal. |
+| Asset factory | Build a founder-operated asset factory for Answerlattice and MenuList. | Agree | Name it Website Asset Operating System and make it internal. |
 | Product capture | Use seeded demo state and browser capture for product UI. | Agree | Must follow MenuList current asset rules and founder-approved demo business requirements. |
-| Programmatic motion | Use Remotion or Motion Canvas for Canonica/system motion. | Partial | Good later; first implementation should create slots, briefs, and audit contracts only. |
+| Programmatic motion | Use Remotion or Motion Canvas for Answerlattice/system motion. | Partial | Good later; first implementation should create slots, briefs, and audit contracts only. |
 | OpenScreen/OpenVid | Use as polish/finishing tools. | Partial | Optional finishing tools, not automation core. OpenScreen itself warns it is not production-grade. |
 | Codex skill | Create a website-asset-factory skill. | Agree | Use repo-local skill instructions, but keep active source of truth in repo docs and scripts. |
 | Asset manifest | Track assets, versions, files, stale state. | Agree | This is the core of the system. |
@@ -36,9 +36,9 @@ The main correction is product boundary:
 
 | ChatGPT claim | Ground truth | Verdict |
 | --- | --- | --- |
-| "You need two different asset pipelines." | MenuList asset rules already separate real screenshots, composites, typography visuals, and forbidden fake dashboards at `__docs__/main-website/main-website_image-assets.md:192`. Canonica has separate public website components and dark visual identity at `__docs__/canonica/canonica-website/README.md:141`. | Agree. Keep product-capture and system-motion lanes. |
+| "You need two different asset pipelines." | MenuList asset rules already separate real screenshots, composites, typography visuals, and forbidden fake dashboards at `__docs__/main-website/main-website_image-assets.md:192`. Answerlattice has separate public website components and dark visual identity at `__docs__/answerlattice/answerlattice-website/README.md:141`. | Agree. Keep product-capture and system-motion lanes. |
 | "Build `asset-factory/` with brands, capture, edit, motion, optimize, output." | Current root scripts do not include asset audit/generation commands at `package.json:5`. Existing MenuList generated asset script lives in `scripts/website-assets/generate-stage6-assets.mjs`. | Partial. Use a repo-native package later, but first document and script the contract. |
-| "Output directly into apps/menulist/public/media and apps/canonica/public/media." | This repo is a single Next.js app; MenuList website assets currently live in `public/images/website/`, and Canonica assets live under `public/canonica-*` plus `public/canonica-splash/`. | Adjust. Use current paths first; do not invent `apps/*` paths. |
+| "Output directly into apps/menulist/public/media and apps/answerlattice/public/media." | This repo is a single Next.js app; MenuList website assets currently live in `public/images/website/`, and Answerlattice assets live under `public/answerlattice-*` plus `public/answerlattice-splash/`. | Adjust. Use current paths first; do not invent `apps/*` paths. |
 | "Make Codex remember through AGENTS.md and skills." | OpenAI docs support AGENTS.md guidance for agents and skills as reusable steps/resources; repo already has a root `AGENTS.md`. | Agree. Add asset rules during implementation. |
 | "Use Playwright for deterministic capture." | Playwright official docs support screenshots and video recording. No Playwright dependency exists in this repo now. | Agree later. First docs should require dependency justification. |
 | "Use Remotion for launch video shell." | Remotion is a React video framework; it has license considerations and is not installed here. | Partial. Good candidate, not first dependency. |
@@ -62,7 +62,7 @@ The main correction is product boundary:
 
 ### Accepted Product Shape
 
-Website Asset Operating System is an internal asset-governance and generation layer for MenuList, Canonica, and later internal product sites.
+Website Asset Operating System is an internal asset-governance and generation layer for MenuList, Answerlattice, and later internal product sites.
 
 It answers:
 
@@ -75,7 +75,7 @@ It should not answer:
 - "Give an SMB owner a post or campaign now." That belongs to GrowthOS.
 - "Prepare client content for publishing." That belongs to VisualMeta.
 - "Run MenuList business truth." That belongs to MenuList.
-- "Run Canonica support knowledge." That belongs to Canonica.
+- "Run Answerlattice support knowledge." That belongs to Answerlattice.
 
 ## Final Decision Matrix
 

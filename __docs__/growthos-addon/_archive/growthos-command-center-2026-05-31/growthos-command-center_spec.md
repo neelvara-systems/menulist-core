@@ -55,7 +55,7 @@ VisualMeta boundary: do not move this wedge to VisualMeta. VisualMeta prepares d
 | Direct autonomous publishing | External platform risk and current direct posting flag is disabled. |
 | Social scheduling calendar | Creates planning and dashboard management. |
 | Ads, CRM, loyalty, POS, orders | Wrong product category. |
-| Full chatbot builder | Turns GrowthOS into support/conversation product and overlaps Canonica-style surfaces. |
+| Full chatbot builder | Turns GrowthOS into support/conversation product and overlaps Answerlattice-style surfaces. |
 | Analytics dashboard | Violates output-first GrowthOS posture. |
 | Canva-style editor | Belongs to VisualMeta-style content preparation, not GrowthOS. |
 | Full multi-location control | Needs its own approved spec and stronger truth maturity. |

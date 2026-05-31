@@ -208,7 +208,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 - MyCodex needs Vercel access from anywhere, not only local `/__mycodex`.
 - Unknown hosts are treated as tenant custom domains by the public menu router.
 - Registering `menulist.digital` as a product domain prevents MenuList tenant/custom-domain logic from attempting to resolve it as a restaurant.
-- The host is separate from MenuList (`menulist.ai`) and Canonica (`canonica.app`) production domains.
+- The host is separate from MenuList (`menulist.ai`) and Answerlattice (`answerlattice.com`) production domains.
 - MyCodex renders repository documentation, so Vercel access must fail closed if auth credentials are missing.
 
 **Runtime contract:**
@@ -218,7 +218,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 | `menulist.digital` | Product: MyCodex | `/sites/mycodex` |
 | `www.menulist.digital` | Product: MyCodex | `/sites/mycodex` |
 | `menulist.ai` | Platform/MenuList | no MyCodex rewrite |
-| `canonica.app` | Product: Canonica | `/sites/canonica` |
+| `answerlattice.com` | Product: Answerlattice | `/sites/answerlattice` |
 
 **Required Vercel env vars:**
 
@@ -229,7 +229,7 @@ The credential env var names are retained for compatibility, but runtime access 
 
 MyCodex may be installed as a PWA on `menulist.digital`, but its install identity must stay product-scoped: `/mycodex.webmanifest`, MyCodex icon assets, and `/mycodex-sw.js`. The service worker is allowed to cache the offline page and static logo assets only; it must not cache repository documentation pages, markdown, or tenant/client menu data.
 
-Because MyCodex reads `__docs__` markdown from disk at runtime, the MyCodex route must retain a Vercel file-tracing include in `next.config.js`: `/sites/mycodex` routes include `./__docs__/**/*`. This is packaging support only; it does not add MenuList tenant routing or Canonica access to the docs tree.
+Because MyCodex reads `__docs__` markdown from disk at runtime, the MyCodex route must retain a Vercel file-tracing include in `next.config.js`: `/sites/mycodex` routes include `./__docs__/**/*`. This is packaging support only; it does not add MenuList tenant routing or Answerlattice access to the docs tree.
 
 **Source files:**
 

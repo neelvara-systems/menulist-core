@@ -22,12 +22,12 @@ VisualMeta exists to answer one question:
 
 ## Product Class
 
-VisualMeta belongs beside MenuList and Canonica as a separate product.
+VisualMeta belongs beside MenuList and Answerlattice as a separate product.
 
 | Product | Product code | Center of gravity |
 | --- | --- | --- |
 | MenuList | `ML` | Public business truth |
-| Canonica | `CN` | Support knowledge truth |
+| Answerlattice | `AL` | Support knowledge truth |
 | GrowthOS | `GR` | Immediate growth execution |
 | VisualMeta | `VM` | Content readiness and handoff |
 
@@ -55,7 +55,7 @@ VisualMeta belongs beside MenuList and Canonica as a separate product.
    Notes, status, approval, and version history are product value, not overhead.
 
 8. **No Live Truth Ownership**
-   VisualMeta may import source snapshots from MenuList, Canonica, files, URLs, or external systems. It does not own or mutate live source truth.
+   VisualMeta may import source snapshots from MenuList, Answerlattice, files, URLs, or external systems. It does not own or mutate live source truth.
 
 ## Architectural Pillars
 
@@ -84,7 +84,7 @@ Content units are the core objects. A unit can contain:
 - approval metadata
 - export eligibility
 
-Units are not MenuList items, Canonica articles, or GrowthOS actions. They are VisualMeta-owned preparation objects.
+Units are not MenuList items, Answerlattice articles, or GrowthOS actions. They are VisualMeta-owned preparation objects.
 
 ### Pillar 3 - Generation And Edit Layer
 
@@ -108,7 +108,7 @@ Every final kit requires explicit approval. Approval records:
 
 The Final Content Kit is a structured export package. It includes files, text, manifests, and provenance.
 
-The kit is the handoff artifact. It should be usable by websites, marketplaces, MenuList, Canonica, GrowthOS, ad tools, or human operators.
+The kit is the handoff artifact. It should be usable by websites, marketplaces, MenuList, Answerlattice, GrowthOS, ad tools, or human operators.
 
 ## AI Posture
 

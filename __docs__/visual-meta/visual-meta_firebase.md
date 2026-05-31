@@ -27,7 +27,7 @@ This doc set adds no:
 
 ## 2. Product Firebase Rule
 
-VisualMeta must use a separate Firebase target, following the Canonica separation model.
+VisualMeta must use a separate Firebase target, following the Answerlattice separation model.
 
 Proposed files:
 
@@ -39,7 +39,7 @@ storage-visualmeta.rules
 functions-visualmeta/
 ```
 
-Do not write VisualMeta data into MenuList or Canonica Firebase projects.
+Do not write VisualMeta data into MenuList or Answerlattice Firebase projects.
 
 ## 3. Planned Collections
 
@@ -163,7 +163,7 @@ If Cloud Functions are needed, they live in:
 functions-visualmeta/
 ```
 
-No VisualMeta scheduled job may be added to MenuList or Canonica functions.
+No VisualMeta scheduled job may be added to MenuList or Answerlattice functions.
 
 ## 10. Security Rules
 
@@ -241,4 +241,4 @@ If VisualMeta cannot price safely above cost, do not enable generation.
 
 When implementation modifies VisualMeta Firestore rules, indexes, Storage rules, or `functions-visualmeta/`, deploy the matching VisualMeta Firebase target after validation.
 
-Do not deploy MenuList or Canonica Firebase targets for VisualMeta changes.
+Do not deploy MenuList or Answerlattice Firebase targets for VisualMeta changes.
