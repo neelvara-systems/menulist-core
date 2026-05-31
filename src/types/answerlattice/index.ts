@@ -553,7 +553,7 @@ export interface AnswerlatticeArticleTranslation {
  */
 export const ANSWERLATTICE_SUPPORTED_LOCALES = [
     'en-US', 'en-GB', 'hi-IN', 'ar-SA', 'es-ES',
-    'fr-FR', 'de-DE', 'pt-BR', 'ja-JP', 'zh-AL',
+    'fr-FR', 'de-DE', 'pt-BR', 'ja-JP', 'zh-CN',
     'ko-KR', 'it-IT', 'nl-NL', 'ru-RU', 'tr-TR',
 ] as const;
 

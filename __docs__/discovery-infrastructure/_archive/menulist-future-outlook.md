@@ -837,7 +837,7 @@ Not technology.
 MenuList → truth
 SurfaceOS → representation
 GrowthOS → attention
-VisualMeta → content preparation
+KitStamp → content preparation
 This is actually a complete SMB internet stack.
 
 Very few founders think at this level.

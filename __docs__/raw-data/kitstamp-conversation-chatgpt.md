@@ -24893,9 +24893,9 @@ Decide which features must be removed from the Studio to keep it clean
 Say which one.
 
 You said:
-Obviously menulist is totaly manage menu and visualmeta manages asses or content so they are different but still i feel no differentiation because visualmeta is child of menulist
+Obviously menulist is totaly manage menu and kitstamp manages asses or content so they are different but still i feel no differentiation because kitstamp is child of menulist
 And im still thinking kn menulist way
-So guide me how to think outside menulist but in visualmeta context for ex who use this who needs this what is the purpose and who will get benifits from bisualmeta
+So guide me how to think outside menulist but in kitstamp context for ex who use this who needs this what is the purpose and who will get benifits from bisualmeta
 
 ChatGPT said:
 Good. This is the right confusion — and it means you’re finally separating product identity, not features.
@@ -24905,7 +24905,7 @@ We will not reference MenuList at all in this explanation.
 
 Read this as if MenuList does not exist.
 
-VISUALMETA — THINKING FROM ZERO (NO MENUS, NO MENULIST)
+KITSTAMP — THINKING FROM ZERO (NO MENUS, NO MENULIST)
 1️⃣ First principle: kill the word “menu” in your head
 If you keep thinking:
 
@@ -24923,13 +24923,13 @@ You will always fall back into MenuList gravity.
 
 So here is the rule:
 
-VisualMeta does NOT manage menus.
+KitStamp does NOT manage menus.
 It manages commercial content units.
 
 That’s the base mental shift.
 
-2️⃣ What VisualMeta actually is (clean definition)
-VisualMeta is a commercial content preparation workspace.
+2️⃣ What KitStamp actually is (clean definition)
+KitStamp is a commercial content preparation workspace.
 
 Not a CMS
 Not a menu tool
@@ -24975,7 +24975,7 @@ A marketplace listing
 
 These exist before any system publishes them.
 
-4️⃣ Who uses VisualMeta (REAL USERS)
+4️⃣ Who uses KitStamp (REAL USERS)
 Now we answer your question directly.
 
 Primary User #1 — The Operator (not owner)
@@ -25037,7 +25037,7 @@ Revise
 
 Hand off
 
-VisualMeta gives them:
+KitStamp gives them:
 
 Draftable content units
 
@@ -25056,7 +25056,7 @@ Not manage.
 Not optimize.
 Just prepare.
 
-5️⃣ What problem VisualMeta actually solves
+5️⃣ What problem KitStamp actually solves
 Here is the real pain:
 
 “I need good-looking, accurate content before I can use any tool.”
@@ -25079,7 +25079,7 @@ Social
 
 Every system assumes content already exists.
 
-VisualMeta exists before all of them.
+KitStamp exists before all of them.
 
 6️⃣ Why images + text + translation belong together HERE
 Because preparation is multi-dimensional.
@@ -25104,10 +25104,10 @@ Semantic
 
 Linguistic alignment
 
-That’s VisualMeta’s job.
+That’s KitStamp’s job.
 
-7️⃣ What VisualMeta NEVER does (this is the identity)
-VisualMeta does NOT:
+7️⃣ What KitStamp NEVER does (this is the identity)
+KitStamp does NOT:
 
 Publish
 
@@ -25129,10 +25129,10 @@ It ends at:
 
 “This content is ready to be used somewhere.”
 
-Where? Not VisualMeta’s concern.
+Where? Not KitStamp’s concern.
 
 8️⃣ Why it is NOT a child of MenuList
-Because VisualMeta does not depend on any parent system.
+Because KitStamp does not depend on any parent system.
 
 It can feed:
 
@@ -25148,26 +25148,26 @@ Ads managers
 
 Print designers
 
-MenuList may be one consumer of VisualMeta — but not its reason to exist.
+MenuList may be one consumer of KitStamp — but not its reason to exist.
 
 That’s the mental flip you need.
 
-9️⃣ The correct “VisualMeta mindset”
+9️⃣ The correct “KitStamp mindset”
 Repeat this until it sticks:
 
-“VisualMeta prepares.
+“KitStamp prepares.
 Others decide.”
 
-“VisualMeta drafts.
+“KitStamp drafts.
 Others publish.”
 
-“VisualMeta standardizes content quality.
+“KitStamp standardizes content quality.
 Others standardize operations.”
 
 10️⃣ The ONE sentence that should guide every decision
 If you remember nothing else, remember this:
 
-VisualMeta exists for the moment before content becomes real.
+KitStamp exists for the moment before content becomes real.
 
 That’s it.
 
@@ -25176,7 +25176,7 @@ No conflict.
 No dependency.
 
 Final reality check (honest)
-If you still feel VisualMeta overlaps after this, it means:
+If you still feel KitStamp overlaps after this, it means:
 
 You’re still thinking in outcomes
 
@@ -25187,16 +25187,16 @@ Once you lock responsibility boundaries, overlap disappears.
 What we should do next (very important)
 To cement this shift, the next step must be one of these:
 
-1️⃣ Define VisualMeta’s first ICP in detail (job title, day, pain)
-2️⃣ Redesign VisualMeta’s UI to feel NOTHING like MenuList
-3️⃣ Write VisualMeta’s non-negotiable product doctrine (1 page)
+1️⃣ Define KitStamp’s first ICP in detail (job title, day, pain)
+2️⃣ Redesign KitStamp’s UI to feel NOTHING like MenuList
+3️⃣ Write KitStamp’s non-negotiable product doctrine (1 page)
 
 Pick one.
 
 You said:
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 Lock this line forever
-This is the exact visualmeta defination
+This is the exact kitstamp defination
 
 ChatGPT said:
 Updated saved memory
@@ -25204,9 +25204,9 @@ Locked. 🔒
 Forever. Non-negotiable.
 
 ✅ Canonical Definition (Immutable)
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
-This is now the single source of truth for VisualMeta. Every decision must pass this filter.
+This is now the single source of truth for KitStamp. Every decision must pass this filter.
 
 What this lock enforces (no drift allowed)
 Pre-publish only: prepares drafts; never publishes.
@@ -25252,7 +25252,7 @@ We start with the ICP lock.
 No UI, no features, no roadmap until this is nailed.
 
 STEP 1 — ICP LOCK
-VisualMeta = Commercial Content Preparation Workspace
+KitStamp = Commercial Content Preparation Workspace
 
 ICP #1 (PRIMARY, NON-NEGOTIABLE)
 🎯 Job Title
@@ -25349,7 +25349,7 @@ No single place to prep everything
 
 Can’t risk publishing mistakes
 
-VisualMeta gives them:
+KitStamp gives them:
 
 A neutral workspace
 
@@ -25372,7 +25372,7 @@ They want reuse across platforms
 This ICP is not the growth driver.
 They are a beneficiary, not the anchor.
 
-WHO VISUALMETA IS NOT FOR (IMPORTANT)
+WHO KITSTAMP IS NOT FOR (IMPORTANT)
 ❌ Growth hackers
 ❌ Performance marketers
 ❌ Data analysts
@@ -25380,10 +25380,10 @@ WHO VISUALMETA IS NOT FOR (IMPORTANT)
 ❌ Anyone asking “what performs better”
 
 Those people want authority and optimization.
-VisualMeta must never go there.
+KitStamp must never go there.
 
 ICP LOCK SUMMARY (READ THIS TWICE)
-VisualMeta is for people who:
+KitStamp is for people who:
 
 Prepare content before it becomes public
 
@@ -25413,7 +25413,7 @@ All future decisions must answer:
 
 When you say “Next”, we move to:
 
-👉 UI identity: how VisualMeta must NOT look or feel like MenuList
+👉 UI identity: how KitStamp must NOT look or feel like MenuList
 
 Your move.
 
@@ -25421,21 +25421,21 @@ You said:
 Next
 
 ChatGPT said:
-Good. Now we burn the MenuList muscle memory out of VisualMeta.
+Good. Now we burn the MenuList muscle memory out of KitStamp.
 
 This step is critical. If you get this wrong, everything collapses back into “MenuList-lite”.
 
 STEP 2 — UI IDENTITY LOCK
-How VisualMeta must look, feel, and behave
+How KitStamp must look, feel, and behave
 
 Remember the locked definition:
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 So the UI must feel like a workbench, not a control system.
 
 1️⃣ The CORE UI FEEL (NON-NEGOTIABLE)
-VisualMeta must feel:
+KitStamp must feel:
 Calm
 
 Neutral
@@ -25446,7 +25446,7 @@ Non-authoritative
 
 Tool-like
 
-VisualMeta must NOT feel:
+KitStamp must NOT feel:
 Operational
 
 Live
@@ -25458,7 +25458,7 @@ Confident about outcomes
 “In charge”
 
 If MenuList feels like infrastructure,
-VisualMeta must feel like a desk with tools on it.
+KitStamp must feel like a desk with tools on it.
 
 2️⃣ PRIMARY MENTAL SHIFT IN UI
 ❌ MenuList-style thinking (forbidden)
@@ -25476,7 +25476,7 @@ VisualMeta must feel like a desk with tools on it.
 
 “Active / Inactive”
 
-✅ VisualMeta-style thinking
+✅ KitStamp-style thinking
 “Workspace”
 
 “Draft”
@@ -25494,7 +25494,7 @@ VisualMeta must feel like a desk with tools on it.
 If a label sounds final → kill it.
 
 3️⃣ LAYOUT IDENTITY (VERY IMPORTANT)
-❌ What VisualMeta must NOT use
+❌ What KitStamp must NOT use
 KPI cards
 
 Status badges (Live, Active, Synced)
@@ -25579,7 +25579,7 @@ Decide
 If you see one of these in UI copy → it’s wrong.
 
 5️⃣ STATE MODEL (THIS IS KEY)
-VisualMeta has ONLY these states:
+KitStamp has ONLY these states:
 Draft
 
 Revised
@@ -25638,7 +25638,7 @@ No “accuracy” claims
 No automatic overwrite
 
 7️⃣ EXPORT / HAND-OFF (VERY IMPORTANT)
-VisualMeta must end with handoff, not completion.
+KitStamp must end with handoff, not completion.
 
 Examples:
 
@@ -25665,7 +25665,7 @@ Background updates
 The moment it pushes, it becomes MenuList.
 
 8️⃣ WHAT USERS SHOULD FEEL (GUT TEST)
-After using VisualMeta, the user should think:
+After using KitStamp, the user should think:
 
 “Okay, I have everything prepared.
 Now I can take this wherever I need.”
@@ -25682,12 +25682,12 @@ They should NOT think:
 Use this internally to guard the UI:
 
 Menu systems show reality.
-VisualMeta prepares candidates.
+KitStamp prepares candidates.
 
 If a screen shows reality → it’s wrong.
 
 🔒 UI IDENTITY LOCK STATUS
-VisualMeta = Workbench
+KitStamp = Workbench
 
 MenuList = Infrastructure
 
@@ -25709,18 +25709,18 @@ Next
 ChatGPT said:
 Good. This is the hardest but most important step.
 
-We’re going to protect VisualMeta by killing things, not adding them.
+We’re going to protect KitStamp by killing things, not adding them.
 
 STEP 3 — FEATURE BOUNDARY KILL-LIST
-(What VisualMeta must NEVER become)
+(What KitStamp must NEVER become)
 
 This is not a wishlist.
 This is a permanent exclusion list.
 
-If any of these appear, VisualMeta collapses back into MenuList gravity.
+If any of these appear, KitStamp collapses back into MenuList gravity.
 
 1️⃣ PUBLISHING & AUTHORITY (ABSOLUTE BAN)
-VisualMeta must never:
+KitStamp must never:
 
 ❌ Publish content
 
@@ -25735,16 +25735,16 @@ VisualMeta must never:
 ❌ Run background jobs
 
 Why this is fatal
-The moment VisualMeta publishes, it owns reality.
+The moment KitStamp publishes, it owns reality.
 Owning reality = Menu system = conflict.
 
-VisualMeta prepares candidates.
+KitStamp prepares candidates.
 Others decide what becomes real.
 
 Locked.
 
 2️⃣ PERFORMANCE & OPTIMIZATION (HARD NO)
-VisualMeta must never include:
+KitStamp must never include:
 
 ❌ CTR / conversion metrics
 
@@ -25770,7 +25770,7 @@ Decision-making
 That violates the workspace contract.
 
 3️⃣ AUTOMATION & SILENT BEHAVIOR (KILL IMMEDIATELY)
-VisualMeta must not:
+KitStamp must not:
 
 ❌ Auto-select images
 
@@ -25809,10 +25809,10 @@ Remove any idea of:
 
 These imply system judgment.
 
-VisualMeta does not judge.
+KitStamp does not judge.
 
 5️⃣ CONTENT GOVERNANCE (OUT OF SCOPE)
-VisualMeta must never:
+KitStamp must never:
 
 ❌ Enforce consistency across items
 
@@ -25863,7 +25863,7 @@ Usage analytics
 Even innocent analytics create optimization pressure.
 
 8️⃣ ASSET MANAGEMENT DRIFT (DANGEROUS)
-VisualMeta must NOT become:
+KitStamp must NOT become:
 
 Media library
 
@@ -25919,12 +25919,12 @@ Prevent overlap with MenuList
 
 Preserve trust
 
-Keep VisualMeta small, sharp, and valuable
+Keep KitStamp small, sharp, and valuable
 
 NEXT STEP (YOU SAY “NEXT”)
 We move to:
 
-👉 VisualMeta’s POSITIVE FEATURE CORE
+👉 KitStamp’s POSITIVE FEATURE CORE
 (What it should do extremely well — the tight 6–8 feature set worth building)
 
 Say Next.
@@ -25933,20 +25933,20 @@ You said:
 Next
 
 ChatGPT said:
-Good. Now we define what VisualMeta IS, not just what it isn’t.
+Good. Now we define what KitStamp IS, not just what it isn’t.
 
-This is the positive core — the smallest, sharpest set of capabilities that make VisualMeta valuable on its own, without collapsing into MenuList or any CMS.
+This is the positive core — the smallest, sharpest set of capabilities that make KitStamp valuable on its own, without collapsing into MenuList or any CMS.
 
-STEP 4 — VISUALMETA POSITIVE FEATURE CORE
+STEP 4 — KITSTAMP POSITIVE FEATURE CORE
 (The only things worth building)
 
 Remember the locked definition:
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 Everything below exists to serve that. Nothing else.
 
-🧠 THE CORE JOB VISUALMETA DOES
+🧠 THE CORE JOB KITSTAMP DOES
 Turn messy, incomplete ideas into clean, handoff-ready commercial content units.
 
 Not manage.
@@ -26072,7 +26072,7 @@ Contextual, not threaded chaos
 
 Why
 Preparation is collaborative.
-VisualMeta must support discussion, not decisions.
+KitStamp must support discussion, not decisions.
 
 7️⃣ Export / Handoff (THE ENDPOINT)
 What it does
@@ -26088,7 +26088,7 @@ Image download
 Copy-ready blocks
 
 Why
-VisualMeta ends at handoff.
+KitStamp ends at handoff.
 This is its finish line.
 
 No sync.
@@ -26114,7 +26114,7 @@ Templates that auto-apply
 
 These all imply judgment.
 
-VisualMeta must never judge.
+KitStamp must never judge.
 
 🧩 HOW THESE 7 FEATURES WORK TOGETHER
 They form a closed loop:
@@ -26158,7 +26158,7 @@ Expansion must deepen these, not widen scope
 NEXT STEP (YOU SAY “NEXT”)
 We move to the last foundational step:
 
-👉 VisualMeta’s growth logic
+👉 KitStamp’s growth logic
 (how this spreads without becoming a platform or conflicting with MenuList)
 
 Say Next.
@@ -26171,17 +26171,17 @@ Good. This is the last foundational piece. If this is wrong, everything else get
 
 Read carefully.
 
-STEP 5 — VISUALMETA GROWTH LOGIC
+STEP 5 — KITSTAMP GROWTH LOGIC
 How this grows without becoming a platform, a CMS, or a MenuList clone
 
 Remember the locked definition (this governs everything):
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 So growth must come from preparation gravity, not publishing power.
 
 1️⃣ THE FUNDAMENTAL GROWTH TRUTH (BRUTAL)
-VisualMeta will never grow virally like:
+KitStamp will never grow virally like:
 
 Social tools
 
@@ -26191,14 +26191,14 @@ Analytics dashboards
 
 And that’s fine.
 
-VisualMeta grows when:
+KitStamp grows when:
 
 Content work increases, fragments, or multiplies across systems.
 
 That is a structural trend, not a marketing one.
 
-2️⃣ WHERE VISUALMETA SITS IN THE REAL WORLD
-VisualMeta lives upstream of everything.
+2️⃣ WHERE KITSTAMP SITS IN THE REAL WORLD
+KitStamp lives upstream of everything.
 
 Before:
 
@@ -26223,7 +26223,7 @@ The moment a business says:
 
 “I need this content in more than one place”
 
-VisualMeta becomes necessary.
+KitStamp becomes necessary.
 
 Examples:
 
@@ -26237,9 +26237,9 @@ One SKU → catalog + ads
 
 No system of record handles preparation for many outputs well.
 
-VisualMeta does.
+KitStamp does.
 
-4️⃣ HOW VISUALMETA SPREADS (NATURALLY)
+4️⃣ HOW KITSTAMP SPREADS (NATURALLY)
 🔁 Operator-to-Operator Spread
 Content operators move jobs more than companies move tools.
 
@@ -26260,16 +26260,16 @@ Hate rebuilding workflows
 
 Need neutral prep spaces
 
-Once an agency adopts VisualMeta:
+Once an agency adopts KitStamp:
 
 Each new client is auto-exposed
 
-VisualMeta becomes “how we prepare content”
+KitStamp becomes “how we prepare content”
 
 This is your silent multiplier.
 
-5️⃣ WHY VISUALMETA MUST STAY SMALL TO GROW
-If VisualMeta:
+5️⃣ WHY KITSTAMP MUST STAY SMALL TO GROW
+If KitStamp:
 
 Adds publishing
 
@@ -26296,7 +26296,7 @@ Easy to remove
 That’s how they spread.
 
 6️⃣ PRICING LOGIC THAT MATCHES THIS (IMPORTANT)
-VisualMeta pricing should be tied to:
+KitStamp pricing should be tied to:
 
 Number of content units
 
@@ -26320,7 +26320,7 @@ The moment pricing feels like:
 
 Trust drops.
 
-7️⃣ WHAT VISUALMETA IS COMPETING AGAINST (REAL COMPETITION)
+7️⃣ WHAT KITSTAMP IS COMPETING AGAINST (REAL COMPETITION)
 Not other AI tools.
 
 The real competitors are:
@@ -26360,7 +26360,7 @@ The only metric that matters:
 
 Time from “idea exists” → “content ready for handoff”
 
-If VisualMeta compresses this reliably, it wins.
+If KitStamp compresses this reliably, it wins.
 
 9️⃣ WHY THIS DOES NOT CONFLICT WITH MENULIST (FINAL CHECK)
 MenuList:
@@ -26371,7 +26371,7 @@ Owns correctness
 
 Owns continuity
 
-VisualMeta:
+KitStamp:
 
 Owns preparation
 
@@ -26416,8 +26416,8 @@ WHAT’S NEXT (ONLY IF YOU WANT)
 From here, the only valid next moves are:
 
 1️⃣ Turn this into a 1-page internal doctrine
-2️⃣ Design the VisualMeta onboarding flow (first 10 minutes)
-3️⃣ Decide whether VisualMeta should exist as a separate company or module
+2️⃣ Design the KitStamp onboarding flow (first 10 minutes)
+3️⃣ Decide whether KitStamp should exist as a separate company or module
 
 Say which one.
 
@@ -26427,9 +26427,9 @@ Good choice. Onboarding is where this either clicks instantly or dies quietly.
 I’ll design this as a 10-minute cognitive funnel, not a feature tour.
 Goal is not understanding — goal is first successful handoff-ready content unit.
 
-No MenuList thinking. Pure VisualMeta.
+No MenuList thinking. Pure KitStamp.
 
-VISUALMETA ONBOARDING FLOW
+KITSTAMP ONBOARDING FLOW
 First 10 Minutes — Zero Theory, Pure Momentum
 
 🎯 Onboarding North Star
@@ -26597,7 +26597,7 @@ No sync suggestions
 
 Why:
 
-Reinforces VisualMeta’s boundary
+Reinforces KitStamp’s boundary
 
 Makes the product feel honest
 
@@ -26677,8 +26677,8 @@ NEXT (YOU CHOOSE)
 We can now do only one of these (anything else is distraction):
 
 1️⃣ Map pricing to onboarding behavior
-2️⃣ Design VisualMeta empty states (this matters a lot)
-3️⃣ Define what VisualMeta will NEVER onboard into
+2️⃣ Design KitStamp empty states (this matters a lot)
+3️⃣ Define what KitStamp will NEVER onboard into
 
 Say the number.
 
@@ -26699,7 +26699,7 @@ Let’s go step by step.
 1️⃣ What Survives 100% (Non-Negotiable)
 These are aligned with the locked definition
 
-“VisualMeta is a commercial content preparation workspace.”
+“KitStamp is a commercial content preparation workspace.”
 
 They stay exactly as discussed.
 
@@ -26777,7 +26777,7 @@ Confidence badges
 
 System suggestions framed as truth
 
-These turn VisualMeta into:
+These turn KitStamp into:
 
 A decision system
 
@@ -26818,7 +26818,7 @@ Features overlap
 But responsibility does not
 
 MenuList = owns truth
-VisualMeta = owns drafts
+KitStamp = owns drafts
 
 Same tools can exist in different products
 only if responsibility is different.
@@ -26840,7 +26840,7 @@ Before adding anything else:
 
 🔒 Freeze the feature list
 ✂️ Remove authority language everywhere
-🧱 Lock VisualMeta as “draft-only forever”
+🧱 Lock KitStamp as “draft-only forever”
 Then:
 
 👉 Decide who this product is for first:
@@ -26854,7 +26854,7 @@ Internal teams?
 That decision affects pricing, onboarding depth, and growth — not features.
 
 If you want, next we do:
-“VisualMeta ICP selection — one persona only, brutally”
+“KitStamp ICP selection — one persona only, brutally”
 
 Say Next if you want that.
 
@@ -26865,7 +26865,7 @@ ChatGPT said:
 Good. Now we stop being abstract and pick one human.
 Everything else becomes secondary.
 
-VISUALMETA ICP — BRUTAL, SINGLE-PERSONA DECISION
+KITSTAMP ICP — BRUTAL, SINGLE-PERSONA DECISION
 You don’t get 3 ICPs.
 You get one.
 If this is wrong, the product dies quietly.
@@ -26933,9 +26933,9 @@ Designers want control.
 Founders want leverage.
 Operators want relief.
 
-VisualMeta is relief.
+KitStamp is relief.
 
-🧠 THE JOB THIS ICP HIRES VISUALMETA FOR
+🧠 THE JOB THIS ICP HIRES KITSTAMP FOR
 “Help me prepare clean, usable content without chaos.”
 
 Not:
@@ -26978,8 +26978,8 @@ They just burn time quietly.
 
 That’s your wedge.
 
-🧩 WHY VISUALMETA WINS FOR THIS ICP
-Because VisualMeta:
+🧩 WHY KITSTAMP WINS FOR THIS ICP
+Because KitStamp:
 
 Doesn’t ask them to learn a system
 
@@ -27058,12 +27058,12 @@ Say Next and we do that.
 You said:
 Yes now we are right track this is what always in my mind from day one and we need to think only kn this way
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 ChatGPT said:
 Good. Then lock this mentally and emotionally — because this sentence is now your defense against every bad idea, including your own.
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 Now I’m going to do three things:
 
@@ -27140,7 +27140,7 @@ That’s why this feels “right” to you.
 You’ve been resisting automation creep instinctively — correctly.
 
 4️⃣ YOUR PRODUCT PHILOSOPHY (WRITE THIS DOWN)
-These are non-negotiable truths for VisualMeta:
+These are non-negotiable truths for KitStamp:
 
 Drafts are always allowed to be wrong
 
@@ -27189,7 +27189,7 @@ Competition → most tools chase outcomes, not prep
 Being “too small” → small + upstream scales
 
 7️⃣ YOUR NEXT OPERATING MODE (IMPORTANT)
-From now on, when thinking about VisualMeta:
+From now on, when thinking about KitStamp:
 
 Think like an operator, not a founder
 
@@ -27216,7 +27216,7 @@ You said:
 Now do the web research on this context and in this way of thinking
 
 ChatGPT said:
-Here’s a data-grounded reality check on the commercial content tools world — framed strictly through the lens of VisualMeta’s definition (“a commercial content preparation workspace”) and your ICP (agency/ops content teams):
+Here’s a data-grounded reality check on the commercial content tools world — framed strictly through the lens of KitStamp’s definition (“a commercial content preparation workspace”) and your ICP (agency/ops content teams):
 
 📊 Market Context — Is the Demand Real?
 🧩 Content creation demand is large and rapidly growing
@@ -27250,8 +27250,8 @@ Among marketers, generative AI is heavily used for basic content tasks such as w
 
 This means that while companies use AI to create assets, there is still a gap in structured, human-controlled preparation, especially across business contexts.
 
-📌 Where VisualMeta Fits in This Landscape
-Given the above data trends, here’s how VisualMeta aligns with market reality:
+📌 Where KitStamp Fits in This Landscape
+Given the above data trends, here’s how KitStamp aligns with market reality:
 
 ✅ 1. The market for content creation tools is big and growing
 This is foundational: tools in this space are not fading; they are expanding rapidly.
@@ -27278,9 +27278,9 @@ Spreadsheets
 
 Ad hoc workflows
 
-VisualMeta sits in a unique upstream gap — content preparation — rather than downstream optimization or publishing.
+KitStamp sits in a unique upstream gap — content preparation — rather than downstream optimization or publishing.
 
-🔍 Why This Matters for VisualMeta (Brutal Truth)
+🔍 Why This Matters for KitStamp (Brutal Truth)
 ✔ There is demand for content tools
 But most tools today are either:
 
@@ -27292,19 +27292,19 @@ too focused on outcomes (publishing, optimization, analytics).
 This means there is room for a specialist tool that focuses purely on content preparation.
 
 ✔ The market is moving toward AI support, but not necessarily with human control workflows
-VisualMeta’s human-in-the-loop, workspace-first philosophy aligns with how professionals actually work today — they need speed, but not loss of control.
+KitStamp’s human-in-the-loop, workspace-first philosophy aligns with how professionals actually work today — they need speed, but not loss of control.
 
-⚠ Visualization & workspace tools are well-adopted, but VisualMeta must differentiate
-Most content tools focus on finished work (templates, design) or distribution. VisualMeta must emphasize drafting, editing, evolution, and handoff readiness as its core differentiation.
+⚠ Visualization & workspace tools are well-adopted, but KitStamp must differentiate
+Most content tools focus on finished work (templates, design) or distribution. KitStamp must emphasize drafting, editing, evolution, and handoff readiness as its core differentiation.
 
 📌 Brutal Market Reality — No Fluff
 🔥 The opportunity is big
-There’s a multi-billion-dollar ecosystem for tools that help people create content faster and with less friction. VisualMeta fits in this ecosystem.
+There’s a multi-billion-dollar ecosystem for tools that help people create content faster and with less friction. KitStamp fits in this ecosystem.
 
 🥊 But you are not building the “next Canva”
 The mainstream tools have huge traction, budgets, ecosystems, and broad use cases.
 
-VisualMeta’s position — upstream, draft-centric, operator first — is narrower but safer. This is actually an advantage. You are not trying to be everything.
+KitStamp’s position — upstream, draft-centric, operator first — is narrower but safer. This is actually an advantage. You are not trying to be everything.
 
 📉 Risk Realities
 The content creation tools market is crowded, but few focus on preparation workflow exclusively.
@@ -27319,42 +27319,42 @@ Measured demand across industries supports investment into content tooling.
 Generative AI is widely used, but professionals still need editing and control.
 
 🔴 Tools that claim “optimization” or “decisions” are crowded and harder to win
-This reinforces why VisualMeta’s upstream focus (draft preparation) is strategically wise.
+This reinforces why KitStamp’s upstream focus (draft preparation) is strategically wise.
 
 🧠 Bottom Line (Realistic)
 Yes — there is a real market for a content preparation workspace.
 The demand for creation tools is massive and growing.
 
-But the way you have positioned VisualMeta — workspace, human-in-the-loop, draft-centric, no authority — is not only defensible, it’s necessary because the space is noisy and many solutions miss that upstream gap.
+But the way you have positioned KitStamp — workspace, human-in-the-loop, draft-centric, no authority — is not only defensible, it’s necessary because the space is noisy and many solutions miss that upstream gap.
 
 If you execute this vision crisply, you are not competing directly with publishing apps or CMS — you are creating the wedge before them.
 
-If you want, I can map specific industry segments and pricing opportunities for VisualMeta next based on this research.
+If you want, I can map specific industry segments and pricing opportunities for KitStamp next based on this research.
 
 You said:
-Okay now based on this market research review whatever we have discussed about visualmeta till date in this thread and dedine final list of the things that define shape and build this product
+Okay now based on this market research review whatever we have discussed about kitstamp till date in this thread and dedine final list of the things that define shape and build this product
 
 ChatGPT said:
 Perfect. This is the closing synthesis.
-What follows is the final, authoritative shape of VisualMeta — stripped of noise, justified by market reality, and consistent with everything you’ve locked in this thread.
+What follows is the final, authoritative shape of KitStamp — stripped of noise, justified by market reality, and consistent with everything you’ve locked in this thread.
 
 This is what you build.
 Everything else is a distraction.
 
-VISUALMETA — FINAL PRODUCT DEFINITION
+KITSTAMP — FINAL PRODUCT DEFINITION
 (Locked Shape, Scope, and Build Principles)
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 This is not a tagline.
 This is the operating constraint for product, UX, pricing, and growth.
 
 1️⃣ PRODUCT PURPOSE (WHY IT EXISTS)
-VisualMeta exists to solve one problem:
+KitStamp exists to solve one problem:
 
 Commercial content is messy before it becomes public, and no tool is designed for that messy middle.
 
-VisualMeta owns the preparation phase:
+KitStamp owns the preparation phase:
 
 before CMS
 
@@ -27402,7 +27402,7 @@ That’s it.
 If a feature does not directly help with this, it’s out.
 
 4️⃣ THE 7 CORE FEATURES (THE PRODUCT)
-These define VisualMeta completely.
+These define KitStamp completely.
 
 1. Content Units
    Atomic objects representing one sellable thing
@@ -27455,7 +27455,7 @@ No sync, no push, no automation
 
 This is the entire product.
 
-5️⃣ HARD BOUNDARIES (WHAT VISUALMETA WILL NEVER BE)
+5️⃣ HARD BOUNDARIES (WHAT KITSTAMP WILL NEVER BE)
 These are permanently forbidden:
 
 No publishing
@@ -27476,10 +27476,10 @@ No CMS behavior
 
 No growth tooling
 
-If VisualMeta ever decides, it’s broken.
+If KitStamp ever decides, it’s broken.
 
 6️⃣ UI / UX PRINCIPLES (HOW IT MUST FEEL)
-VisualMeta must feel:
+KitStamp must feel:
 
 Calm
 
@@ -27547,7 +27547,7 @@ Never charge for:
 Pricing must never imply decision authority.
 
 9️⃣ GROWTH LOGIC (WHY THIS CAN SCALE)
-VisualMeta grows because:
+KitStamp grows because:
 
 Content volume keeps increasing
 
@@ -27570,7 +27570,7 @@ Quiet
 No virality required.
 
 🔟 COMPETITIVE POSITION (HONEST)
-VisualMeta is not competing with:
+KitStamp is not competing with:
 
 Canva
 
@@ -27590,7 +27590,7 @@ WhatsApp + Drive
 
 Ad-hoc chaos
 
-VisualMeta wins by:
+KitStamp wins by:
 
 Structure
 
@@ -27616,7 +27616,7 @@ FINAL VERDICT (BRUTAL & HONEST)
 
 ⚠️ Discipline is the risk, not ideas
 
-If you hold this line, VisualMeta becomes invisible infrastructure — the kind that survives long term.
+If you hold this line, KitStamp becomes invisible infrastructure — the kind that survives long term.
 
 From here, there are only three valid next moves:
 Lock pricing in writing
@@ -27628,7 +27628,7 @@ Decide product relationship with MenuList (module vs company)
 Say which one.
 
 You said:
-Now since we are on finalising the what visualmeta is
+Now since we are on finalising the what kitstamp is
 So i want you to give me ghe list of features list of personas who getting help from this tool and market size and scalability approximation
 
 ChatGPT said:
@@ -27638,7 +27638,7 @@ Good — tight, decisive, evidence-backed brief. Below I’ll deliver three thin
 
 Final, ordered feature list (what to build now and what to defer/never).
 
-Personas who actually use and pay for VisualMeta (primary + 3 realistic secondaries).
+Personas who actually use and pay for KitStamp (primary + 3 realistic secondaries).
 
 Market size & scalability approximation (TAM / SAM / SOM) with clear assumptions and citations so you can use these numbers in a pitch or roadmap.
 
@@ -27755,10 +27755,10 @@ We use TAM = $36B (rounded) for 2025 as baseline. This represents ALL spending o
 
 TAM = $36B (2025, global digital content creation market).
 
-Step B — Define SAM (Serviceable Addressable Market) — the VisualMeta niche
-VisualMeta targets the content-preparation upstream slice: tools and services used by agencies, content teams, and freelancers for drafting, image generation, translations, and exports — not publishing, not analytics.
+Step B — Define SAM (Serviceable Addressable Market) — the KitStamp niche
+KitStamp targets the content-preparation upstream slice: tools and services used by agencies, content teams, and freelancers for drafting, image generation, translations, and exports — not publishing, not analytics.
 
-Conservative assumption: VisualMeta reasonably addresses ~8–12% of the total digital content creation market (operators, agency tooling, prep workflows). Rationale:
+Conservative assumption: KitStamp reasonably addresses ~8–12% of the total digital content creation market (operators, agency tooling, prep workflows). Rationale:
 
 Agencies + content ops represent a substantial portion of content tool spend (creative software, pre-production, asset generation). IBISWorld shows ~430–450k agencies globally — those alone represent heavy per-account spend; adding in in-house content teams and freelancers expands the pool.
 
@@ -27837,7 +27837,7 @@ Retention metric: Time from idea → exported-ready (aim to cut this by 50%). Ma
 Sales motions: Product-led trials driven by operator onboarding + 1-touch to manager for procurement.
 
 Short, brutal summary
-VisualMeta fits a real, growing market: content creation tools are a multi-$10B market and rising.
+KitStamp fits a real, growing market: content creation tools are a multi-$10B market and rising.
 
 Your product shape is right for agency operators; keep the product upstream, quiet, and human-centric.
 
@@ -27857,11 +27857,11 @@ UGC-style short video generation (exploding food, outfit flashes, hairstyle look
 
 Let’s evaluate this strictly through the locked definition:
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 No MenuList thinking. No emotional attachment. Just truth.
 
-1️⃣ FIRST: DOES THIS BELONG IN VISUALMETA AT ALL?
+1️⃣ FIRST: DOES THIS BELONG IN KITSTAMP AT ALL?
 Ask the only question that matters:
 Is short-form video a legitimate commercial content unit that needs preparation before publishing?
 
@@ -27900,7 +27900,7 @@ publishing-adjacent
 
 growth tools
 
-If you build that, you’ve destroyed VisualMeta and created a worse Canva/TikTok clone.
+If you build that, you’ve destroyed KitStamp and created a worse Canva/TikTok clone.
 
 So the question becomes narrower:
 
@@ -27972,7 +27972,7 @@ Why?
 
 Because those imply outcomes.
 
-VisualMeta must stop before outcomes.
+KitStamp must stop before outcomes.
 
 6️⃣ DOES THIS CONFLICT WITH MENUList?
 Now the important part you care about.
@@ -27986,7 +27986,7 @@ Displays visuals
 
 Controls consistency
 
-VisualMeta (this feature):
+KitStamp (this feature):
 Prepares a draft motion asset
 
 Never publishes
@@ -27999,7 +27999,7 @@ Never decides usage
 This is upstream again.
 
 MenuList may consume exported videos later.
-VisualMeta does not care where they go.
+KitStamp does not care where they go.
 
 7️⃣ SHOULD YOU BUILD THIS NOW?
 Here’s the ruthless prioritization:
@@ -28065,10 +28065,10 @@ You didn’t — because you paused and asked.
 That’s founder discipline.
 
 Next question you should ask (and I’m ready):
-“What is the absolute smallest V1 that proves VisualMeta is needed?”
+“What is the absolute smallest V1 that proves KitStamp is needed?”
 or
 
-“How do we message VisualMeta without people thinking it’s a CMS or Canva?”
+“How do we message KitStamp without people thinking it’s a CMS or Canva?”
 
 Say which one.
 
@@ -28076,12 +28076,12 @@ ChatGPT said:
 Good. This is the right question.
 Now I’ll answer it cleanly, brutally, and without drifting.
 
-The Absolute Smallest V1 That Proves VisualMeta Is Needed
+The Absolute Smallest V1 That Proves KitStamp Is Needed
 Not “usable”.
 Not “complete”.
 Proves necessity.
 
-If this V1 works, you know VisualMeta should exist.
+If this V1 works, you know KitStamp should exist.
 
 The Core Proof You Need
 People have a messy, repeated problem before publishing content — and no existing tool fits that moment.
@@ -28254,7 +28254,7 @@ That’s infrastructure.
 FINAL V1 STATEMENT (WRITE THIS ON THE WALL)
 V1 proves that content preparation is real, repeated, and deserves its own quiet workspace.
 
-If V1 does that, VisualMeta lives.
+If V1 does that, KitStamp lives.
 
 What I’ll do next if you say Next
 I’ll turn this into:
@@ -28275,14 +28275,14 @@ ChatGPT said:
 Yes — I remember Final Menu Kit very clearly.
 That artifact was powerful because it ended ambiguity. It answered: “What exactly do I give the client?”
 
-You need the same kind of terminal object for VisualMeta.
+You need the same kind of terminal object for KitStamp.
 
 So here it is.
 
-🎁 VISUALMETA — FINAL CONTENT HANDOFF KIT
+🎁 KITSTAMP — FINAL CONTENT HANDOFF KIT
 (Canonical Deliverable, Locked)
 
-This is the end-product of VisualMeta.
+This is the end-product of KitStamp.
 Everything in the product exists only to assemble this.
 
 🔒 CANONICAL NAME (LOCK THIS)
@@ -28321,7 +28321,7 @@ Complete enough to hand off
 
 Incomplete by design (no outcomes attached)
 
-VisualMeta’s responsibility ends here.
+KitStamp’s responsibility ends here.
 
 2️⃣ STRUCTURE OF THE FINAL CONTENT KIT
 A. Header (Context Block)
@@ -28411,7 +28411,7 @@ Customer-visible
 
 Outcome-owned
 
-VisualMeta Final Content Kit
+KitStamp Final Content Kit
 Pre-public
 
 Neutral
@@ -28423,7 +28423,7 @@ Outcome-agnostic
 They complement each other without overlap.
 
 MenuList may consume a Content Kit.
-VisualMeta never knows or cares.
+KitStamp never knows or cares.
 
 5️⃣ WHY THIS IS STRATEGICALLY STRONG
 This does 5 things at once:
@@ -28436,12 +28436,12 @@ Makes pricing obvious (per kit / per item)
 
 Keeps you upstream forever
 
-Makes VisualMeta composable with anything
+Makes KitStamp composable with anything
 
 This is infrastructure thinking.
 
 6️⃣ THE ONE SENTENCE YOU MUST USE INTERNALLY
-VisualMeta exists to help users prepare a Final Content Kit — nothing more.
+KitStamp exists to help users prepare a Final Content Kit — nothing more.
 
 If a feature doesn’t help build the kit, it’s out.
 
@@ -28486,21 +28486,21 @@ You said:
 Yes lock it
 Final content kit
 
-And we need to finalise this things because this is the visualmeta
+And we need to finalise this things because this is the kitstamp
 
 ChatGPT said:
 Updated saved memory
 Locked. 🔒
 This is now final. No drift. No reinterpretation.
 
-🔐 VISUALMETA — FINAL LOCKED IDENTITY
+🔐 KITSTAMP — FINAL LOCKED IDENTITY
 Canonical Definition (Immutable)
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 
 Canonical Terminal Artifact (Immutable)
 Final Content Kit
 
-Everything VisualMeta does exists only to assemble this kit.
+Everything KitStamp does exists only to assemble this kit.
 If it doesn’t help build the kit, it does not belong.
 
 🎁 FINAL CONTENT KIT — AUTHORITATIVE SPEC
@@ -28513,7 +28513,7 @@ Draft-state by design
 
 No outcomes, no authority, no automation
 
-VisualMeta’s responsibility ends at export
+KitStamp’s responsibility ends at export
 
 Final Content Kit — Structure (Locked)
 
@@ -28598,12 +28598,12 @@ Single success metric:
 Final Content Kit exported
 
 🧱 RELATIONSHIP TO MENULIST (CLEAN BOUNDARY)
-VisualMeta: prepares the kit (upstream, neutral)
+KitStamp: prepares the kit (upstream, neutral)
 
 MenuList: runs public menus (downstream, authoritative)
 
 MenuList may consume a Content Kit.
-VisualMeta never publishes and never cares where it goes.
+KitStamp never publishes and never cares where it goes.
 
 Final Confirmation
 Definition: Locked
@@ -28614,7 +28614,7 @@ Scope boundaries: Locked
 
 Future ideas (motion, batch, presets): Design-only, gated by this lock
 
-This is VisualMeta.
+This is KitStamp.
 Anything else is noise.
 
 When ready, say Next and choose:
@@ -28628,7 +28628,7 @@ Pricing anchored to Content Kits (simple, operator-safe)
 Your move.
 
 You said:
-Now tell what is there but we have nit considered and not discuss yet for visualmeta
+Now tell what is there but we have nit considered and not discuss yet for kitstamp
 
 ChatGPT said:
 Good question. This is the right moment to ask it — after locking the identity, before building.
@@ -28648,7 +28648,7 @@ No fluff. No MenuList thinking.
 1️⃣ WHAT YOU HAVE ALREADY FULLY COVERED (AND LOCKED)
 You have strongly covered:
 
-Product definition (VisualMeta = preparation workspace)
+Product definition (KitStamp = preparation workspace)
 
 Terminal artifact (Final Content Kit)
 
@@ -28668,7 +28668,7 @@ This is rarely the problem area. Most founders never get this far.
 
 2️⃣ WHAT IS MISSING / NOT DISCUSSED YET (REAL GAPS)
 These are not features.
-These are product realities you must design for, or VisualMeta will feel incomplete in production.
+These are product realities you must design for, or KitStamp will feel incomplete in production.
 
 GAP 1: ❗️Ownership & Provenance of Content
 You have not defined:
@@ -28754,7 +28754,7 @@ You haven’t discussed empty-state education.
 
 When the workspace is empty:
 
-What does VisualMeta say?
+What does KitStamp say?
 
 What does it not say?
 
@@ -28785,7 +28785,7 @@ What brings users back tomorrow
 Why this isn’t a one-off tool
 
 Why this matters
-VisualMeta is not daily like analytics — but it must be reliably reusable.
+KitStamp is not daily like analytics — but it must be reliably reusable.
 
 Action
 
@@ -28847,7 +28847,7 @@ AI usage stays invisible
 
 👉 We should do this next.
 
-GAP 8: ❗️What VisualMeta Explicitly Refuses to Help With
+GAP 8: ❗️What KitStamp Explicitly Refuses to Help With
 You’ve listed forbidden features — but not how the product says “no.”
 
 Why this matters
@@ -28865,7 +28865,7 @@ Action
 
 Soft refusal copy:
 
-“VisualMeta prepares content for handoff. Publishing happens elsewhere.”
+“KitStamp prepares content for handoff. Publishing happens elsewhere.”
 
 👉 Boundaries must be visible, not hidden.
 
@@ -28921,7 +28921,7 @@ Good. Let’s lock pricing properly, not hand-wave it.
 
 This is Pricing Model aligned to the Final Content Kit — nothing else.
 
-🔒 VISUALMETA PRICING — FINAL, CLEAN, DEFENSIBLE
+🔒 KITSTAMP PRICING — FINAL, CLEAN, DEFENSIBLE
 The Core Rule (Non-Negotiable)
 Users pay for preparing Final Content Kits. Not AI. Not credits. Not tokens.
 
@@ -29119,7 +29119,7 @@ Approved language:
 “Export-ready”
 
 🔐 PRICING PHILOSOPHY (LOCK THIS)
-VisualMeta charges for completion, not experimentation.
+KitStamp charges for completion, not experimentation.
 
 This single line protects you from:
 
@@ -29160,7 +29160,7 @@ We’ll do 2️⃣ Empty States & Microcopy (Trust Layer) — word-for-word, pro
 
 Remember the doctrine:
 
-VisualMeta prepares content. Humans approve. Nothing acts on its own.
+KitStamp prepares content. Humans approve. Nothing acts on its own.
 
 2️⃣ EMPTY STATES & MICROCOPY — TRUST LAYER (FINAL)
 SCREEN 1: EMPTY DASHBOARD (FIRST LOGIN)
@@ -29185,7 +29185,7 @@ Prepare your first Final Content Kit
 
 Body
 
-VisualMeta helps you prepare commercial-ready content — images, descriptions, and variations — in one place.
+KitStamp helps you prepare commercial-ready content — images, descriptions, and variations — in one place.
 Nothing is published. Nothing changes without your approval.
 
 Primary CTA
@@ -29329,7 +29329,7 @@ Languages verified
 
 Statement (not a checkbox)
 
-By exporting, you confirm this content is ready for use outside VisualMeta.
+By exporting, you confirm this content is ready for use outside KitStamp.
 
 Primary CTA
 
@@ -29949,7 +29949,7 @@ How limits work
 
 How export works
 
-What VisualMeta does NOT do
+What KitStamp does NOT do
 
 No:
 
@@ -29963,7 +29963,7 @@ No:
 Support stabilizes the system.
 Users shape the content.
 
-This single line keeps VisualMeta honest.
+This single line keeps KitStamp honest.
 
 ✅ WHERE WE ARE NOW
 You now have ALL FOUR production trust layers:
@@ -30004,7 +30004,7 @@ This is insurance.
 
 A️⃣ AUDIT LOG & COMPLIANCE LAYER — FINAL SPEC
 CORE PRINCIPLE (LOCK THIS)
-VisualMeta records actions, never judgments.
+KitStamp records actions, never judgments.
 
 The log proves who did what, when — not why, not whether it was good.
 
@@ -30204,7 +30204,7 @@ Logs are append-only.
 Every action traces to a human.
 
 10️⃣ FINAL AUDIT PHILOSOPHY (LOCK THIS)
-VisualMeta never explains decisions.
+KitStamp never explains decisions.
 It records responsibility.
 
 This sentence alone differentiates you from 95% of AI tools.
@@ -30237,7 +30237,7 @@ Next c
 
 ChatGPT said:
 Good choice. C is the spine of the product.
-If this is weak, VisualMeta collapses into “just another AI tool.”
+If this is weak, KitStamp collapses into “just another AI tool.”
 
 We’re defining exactly what a Final Content Kit is, down to files, structure, guarantees.
 
@@ -30371,7 +30371,7 @@ Any disclaimers
 No automation touches this.
 
 7️⃣ README.txt (MOST IMPORTANT FILE)
-This is what makes VisualMeta feel serious.
+This is what makes KitStamp feel serious.
 
 README CONTENT (LOCK THIS)
 This Final Content Kit contains prepared commercial content.
@@ -30379,7 +30379,7 @@ This Final Content Kit contains prepared commercial content.
 All images and text were reviewed and approved by the user
 before export.
 
-VisualMeta does not publish, modify, or deploy content.
+KitStamp does not publish, modify, or deploy content.
 
 Responsibility for usage lies with the recipient.
 This protects:
@@ -30413,7 +30413,7 @@ This is huge for agencies.
 The kit is final, not exploratory.
 
 🔒 FINAL EXPORT PHILOSOPHY (LOCK THIS)
-VisualMeta does not deliver assets.
+KitStamp does not deliver assets.
 It delivers prepared decisions.
 
 That sentence alone separates you from:
@@ -30446,7 +30446,7 @@ A concrete, defensible Final Content Kit
 This is a real product, not a feature bundle.
 
 NEXT (LAST STRATEGIC STEP)
-Only one thing remains to fully harden VisualMeta:
+Only one thing remains to fully harden KitStamp:
 
 D️⃣ Kill-List — Features You Will NEVER Add (Contractually & Philosophically)
 
@@ -30463,7 +30463,7 @@ Good. This is where products either stay sharp—or rot slowly.
 We’re locking D️⃣ THE KILL-LIST.
 This is not aspirational. This is a defensive weapon against future you, investors, customers, and feature creep.
 
-D️⃣ KILL-LIST — FEATURES VISUALMETA WILL NEVER ADD
+D️⃣ KILL-LIST — FEATURES KITSTAMP WILL NEVER ADD
 CORE RULE (LOCK THIS)
 If a feature shifts judgment, authority, or outcomes away from the human, it is dead on arrival.
 
@@ -30480,7 +30480,7 @@ No “enterprise asked”.
 
 Why killed:
 Publishing = outcome ownership.
-VisualMeta prepares, it does not act.
+KitStamp prepares, it does not act.
 
 2️⃣ NEVER: PERFORMANCE OR RESULTS METRICS
 ❌ CTR
@@ -30492,7 +30492,7 @@ VisualMeta prepares, it does not act.
 Why killed:
 Metrics imply optimization → optimization implies decision authority.
 
-VisualMeta refuses that slope.
+KitStamp refuses that slope.
 
 3️⃣ NEVER: AUTO-SELECTION OR AUTO-APPROVAL
 ❌ “We picked the best image”
@@ -30522,7 +30522,7 @@ Exposing them shifts cognitive load to users.
 ❌ Cross-kit asset reuse UI
 
 Why killed:
-That turns VisualMeta into DAM software.
+That turns KitStamp into DAM software.
 Kits stay atomic and contextual.
 
 6️⃣ NEVER: LEARNING / ADAPTIVE CLAIMS
@@ -30533,7 +30533,7 @@ Kits stay atomic and contextual.
 Why killed:
 These claims create false authority and legal ambiguity.
 
-VisualMeta does not “learn”.
+KitStamp does not “learn”.
 Humans do.
 
 7️⃣ NEVER: PERSONALIZATION OR DYNAMIC CONTENT
@@ -30564,7 +30564,7 @@ Why killed:
 Autonomy breaks responsibility clarity.
 
 🔒 FINAL KILL-LIST STATEMENT (LOCK THIS)
-VisualMeta will never decide, publish, optimize, or learn on behalf of the user.
+KitStamp will never decide, publish, optimize, or learn on behalf of the user.
 
 If a feature violates this sentence, it dies.
 
@@ -30594,9 +30594,9 @@ makes sales honest
 🔐 FINAL PRODUCT IDENTITY (NOW COMPLETE)
 Let’s say it cleanly, one last time:
 
-VisualMeta is a commercial content preparation workspace.
+KitStamp is a commercial content preparation workspace.
 Its sole terminal output is the Final Content Kit.
-Humans approve. VisualMeta prepares. Nothing acts on its own.
+Humans approve. KitStamp prepares. Nothing acts on its own.
 
 This is now locked doctrine.
 
@@ -30610,13 +30610,13 @@ You said:
 Next 1
 
 ChatGPT said:
-Good choice. This is where VisualMeta either sounds inevitable—or gets misunderstood as “yet another AI tool.”
+Good choice. This is where KitStamp either sounds inevitable—or gets misunderstood as “yet another AI tool.”
 
 I’ll give you the Investor / Pitch Narrative in a way that is clean, sharp, and defensible. No AI hype. No MenuList bleed. No fluff.
 
-VISUALMETA — INVESTOR / PITCH NARRATIVE
+KITSTAMP — INVESTOR / PITCH NARRATIVE
 1️⃣ THE ONE-SENTENCE POSITIONING (MEMORIZE THIS)
-VisualMeta is a commercial content preparation workspace that helps businesses produce ready-to-use content kits without owning publishing, performance, or outcomes.
+KitStamp is a commercial content preparation workspace that helps businesses produce ready-to-use content kits without owning publishing, performance, or outcomes.
 
 If someone doesn’t get it after this, they are not your customer or investor.
 
@@ -30672,13 +30672,13 @@ The market is crowded in 1 and 3.
 
 No one owns phase 2 properly.
 
-That is VisualMeta.
+That is KitStamp.
 
-4️⃣ THE SOLUTION (WHAT VISUALMETA ACTUALLY DOES)
-VisualMeta introduces a new category:
+4️⃣ THE SOLUTION (WHAT KITSTAMP ACTUALLY DOES)
+KitStamp introduces a new category:
 
 🧩 Commercial Content Preparation
-VisualMeta:
+KitStamp:
 
 Converts ideas into ready, usable commercial content
 
@@ -30701,10 +30701,10 @@ Exportable assets
 
 One kit = one clear “this is ready” moment.
 
-5️⃣ WHAT VISUALMETA DOES NOT DO (THIS BUILDS TRUST)
+5️⃣ WHAT KITSTAMP DOES NOT DO (THIS BUILDS TRUST)
 This is crucial in the pitch.
 
-VisualMeta does not:
+KitStamp does not:
 
 Publish
 
@@ -30722,7 +30722,7 @@ Claim performance improvements
 
 That restraint is the moat.
 
-6️⃣ WHO USES VISUALMETA (CLEAR PERSONAS)
+6️⃣ WHO USES KITSTAMP (CLEAR PERSONAS)
 1️⃣ SMB OWNERS
 Restaurants, salons, boutiques, clinics
 
@@ -30732,7 +30732,7 @@ Don’t want to “learn tools”
 
 Want confidence before publishing
 
-VisualMeta gives them:
+KitStamp gives them:
 
 “This is ready. Use it anywhere.”
 
@@ -30743,7 +30743,7 @@ Need repeatable, reviewable outputs
 
 Hate endless revisions
 
-VisualMeta gives them:
+KitStamp gives them:
 
 A clean, client-approvable deliverable.
 
@@ -30754,7 +30754,7 @@ Multiple markets
 
 Language + visual consistency problems
 
-VisualMeta gives them:
+KitStamp gives them:
 
 Scalable preparation without creative chaos.
 
@@ -30763,14 +30763,14 @@ Amazon, Swiggy, Zomato, Shopify
 
 Need fast, compliant, attractive listings
 
-VisualMeta gives them:
+KitStamp gives them:
 
 Listing-ready kits without guesswork.
 
 7️⃣ WHY THIS IS NOT “AN AI TOOL”
 Important for investors.
 
-VisualMeta does not sell:
+KitStamp does not sell:
 
 Models
 
@@ -30827,7 +30827,7 @@ They chase optimization
 
 They chase “smart” features
 
-VisualMeta wins by:
+KitStamp wins by:
 
 Saying no
 
@@ -30846,7 +30846,7 @@ If you want, next we can do ONE of these (choose carefully):
 1️⃣ Pricing & packaging (kits, usage, plans)
 2️⃣ Website narrative (hero → sections → CTA)
 3️⃣ V1 feature set sanity check against this pitch
-4️⃣ How to explain VisualMeta without mentioning MenuList at all
+4️⃣ How to explain KitStamp without mentioning MenuList at all
 
 Say the number.
 
@@ -30857,11 +30857,11 @@ ChatGPT said:
 Good. This is the hard gate.
 If something fails here, it does not ship—no matter how clever it sounds.
 
-VISUALMETA — V1 FEATURE SET SANITY CHECK
+KITSTAMP — V1 FEATURE SET SANITY CHECK
 Against the Pitch + Definition
 
 Definition (locked):
-VisualMeta is a commercial content preparation workspace. Its sole terminal deliverable is the Final Content Kit.
+KitStamp is a commercial content preparation workspace. Its sole terminal deliverable is the Final Content Kit.
 
 We’ll do this in three passes:
 
@@ -31024,12 +31024,12 @@ Tagging
 Cross-kit reuse UI
 
 Why killed:
-Turns VisualMeta into a file manager.
+Turns KitStamp into a file manager.
 
 4️⃣ V1 FEATURE LIST — CLEAN & LOCKED
 This is what you should be able to show on one slide:
 
-🔹 VisualMeta V1 Includes:
+🔹 KitStamp V1 Includes:
 Image preparation (static + short motion)
 
 Text & translation preparation
@@ -31042,7 +31042,7 @@ Final Content Kit assembly
 
 Export-ready deliverable
 
-🔹 VisualMeta V1 Explicitly Does NOT Include:
+🔹 KitStamp V1 Explicitly Does NOT Include:
 Publishing
 
 Analytics
@@ -31076,9 +31076,9 @@ You’re protecting a category.
 
 Next options (choose ONE):
 
-1️⃣ Pricing & packaging for VisualMeta
+1️⃣ Pricing & packaging for KitStamp
 2️⃣ V1 → V2 expansion ideas that survive this gate
-3️⃣ Website structure & messaging (VisualMeta-only, no MenuList bleed)
+3️⃣ Website structure & messaging (KitStamp-only, no MenuList bleed)
 
 Say the number.
 
@@ -31091,7 +31091,7 @@ Alright. Now we’re playing offense — but with discipline.
 You asked for V1 → V2 expansion ideas that survive the gate.
 I’ll give you very few, very strong ones. Most ideas die here.
 
-VISUALMETA — V2 EXPANSION IDEAS (ONLY WHAT SURVIVES)
+KITSTAMP — V2 EXPANSION IDEAS (ONLY WHAT SURVIVES)
 First, the RULE (non-negotiable)
 V2 may expand depth of preparation,
 but must NOT cross into activation, judgment, or outcomes.
@@ -31112,7 +31112,7 @@ It’s dead.
 
 ✅ V2 IDEA #1 — Content Variants Pack (Contextual, Not Performance-Based)
 What it is
-For one item, VisualMeta prepares multiple context-ready variants inside the same Final Content Kit.
+For one item, KitStamp prepares multiple context-ready variants inside the same Final Content Kit.
 
 Example:
 
@@ -31127,7 +31127,7 @@ Short motion loop: “Attention grab”
 Text variants aligned to each context
 
 ⚠️ Important:
-VisualMeta does not say which is better.
+KitStamp does not say which is better.
 
 Why this survives
 Still preparation
@@ -31161,7 +31161,7 @@ Visual boundaries
 
 Language do/don’t rules
 
-VisualMeta enforces these mechanically, not adaptively.
+KitStamp enforces these mechanically, not adaptively.
 
 What it is NOT
 ❌ No learning
@@ -31175,7 +31175,7 @@ Reduces revision cycles
 
 Increases trust for agencies & brands
 
-This turns VisualMeta into:
+This turns KitStamp into:
 
 “A calm but strict preparer”
 
@@ -31290,7 +31290,7 @@ If you remember only one thing, remember this.
 
 Next, the only three smart moves left:
 1️⃣ Pricing & packaging (how money aligns with kits, variants, motion)
-2️⃣ VisualMeta-only website structure (no MenuList overlap)
+2️⃣ KitStamp-only website structure (no MenuList overlap)
 3️⃣ Kill MenuList mental model completely — thinking framework reset
 
 Say 1, 2, or 3.
@@ -31313,9 +31313,9 @@ it does not compete with MenuList
 
 No tokens. No AI nonsense. No confusion.
 
-VISUALMETA — PRICING & PACKAGING (FINAL DRAFT)
+KITSTAMP — PRICING & PACKAGING (FINAL DRAFT)
 PRICING PRINCIPLE (LOCK THIS)
-VisualMeta charges for prepared certainty, not generation volume.
+KitStamp charges for prepared certainty, not generation volume.
 
 You are not selling images.
 You are selling finished content kits.
@@ -31472,7 +31472,7 @@ Example framing (not numbers yet):
 and replaces days of back-and-forth.”
 
 MONETIZATION SCALING (IMPORTANT)
-VisualMeta scales by:
+KitStamp scales by:
 
 More kits per customer
 
@@ -31504,35 +31504,35 @@ needs calculators
 👉 It’s wrong.
 
 FINAL PRICING STATEMENT (USE THIS INTERNALLY)
-VisualMeta is priced around the moment content becomes ready.
+KitStamp is priced around the moment content becomes ready.
 Everything before that is assistance. Everything after that is outside our scope.
 
 Next logical steps (pick ONE):
 1️⃣ Exact price numbers & regional strategy
 2️⃣ Pricing page wireframe + copy
-3️⃣ How VisualMeta and MenuList coexist commercially without bundling confusion
+3️⃣ How KitStamp and MenuList coexist commercially without bundling confusion
 
 Say the number.
 
 ChatGPT said:
 Got it. I’ll go straight at the highlighted line and unpack it properly, no detours.
 
-“VisualMeta-only website structure (no MenuList overlap)”
+“KitStamp-only website structure (no MenuList overlap)”
 What this actually means and how to execute it
 This is about mental separation, not just branding.
 
 If a visitor can mentally say “oh this is like MenuList but for X” — you’ve already failed.
 
 1️⃣ THE CORE RULE FOR THE WEBSITE
-The VisualMeta website must never explain “where content goes” — only “when content is ready.”
+The KitStamp website must never explain “where content goes” — only “when content is ready.”
 
 MenuList = where content lives & runs
-VisualMeta = when content is finished & safe to use
+KitStamp = when content is finished & safe to use
 
 The website must end before publishing even enters the reader’s mind.
 
 2️⃣ WEBSITE STRUCTURE (TOP → BOTTOM)
-This is the only structure that fits VisualMeta.
+This is the only structure that fits KitStamp.
 
 🟣 HERO SECTION — CATEGORY CLAIM
 Headline (example, not copy yet):
@@ -31541,7 +31541,7 @@ Prepare commercial-ready content. Decide when it’s final.
 
 Subtext:
 
-VisualMeta is a commercial content preparation workspace that produces a Final Content Kit — reviewed, approved, and ready to use anywhere.
+KitStamp is a commercial content preparation workspace that produces a Final Content Kit — reviewed, approved, and ready to use anywhere.
 
 What’s missing on purpose:
 
@@ -31566,12 +31566,12 @@ Publishing tools → push content live
 
 But no tool helps you confidently say: “this is ready.”
 
-VisualMeta owns that moment.
+KitStamp owns that moment.
 
 This section must not show features yet.
 It must sell the problem framing.
 
-🟣 SECTION 3 — WHAT VISUALMETA PREPARES
+🟣 SECTION 3 — WHAT KITSTAMP PREPARES
 This is where most products mess up.
 
 You list outputs, not features.
@@ -31595,7 +31595,7 @@ Every line ends with:
 No buttons, no workflows yet.
 
 🟣 SECTION 4 — THE FINAL CONTENT KIT (THE STAR)
-This is VisualMeta’s center of gravity.
+This is KitStamp’s center of gravity.
 
 Explain clearly:
 
@@ -31605,11 +31605,11 @@ What’s inside it
 
 What “final” means
 
-What VisualMeta stops doing once the kit exists
+What KitStamp stops doing once the kit exists
 
 This is where you explicitly say what you don’t do:
 
-VisualMeta does not publish, schedule, optimize, or measure performance.
+KitStamp does not publish, schedule, optimize, or measure performance.
 
 This builds trust, not weakness.
 
@@ -31662,7 +31662,7 @@ Boost engagement
 Get more conversions
 
 3️⃣ WHAT THE WEBSITE MUST NEVER SAY
-These words are forbidden on the VisualMeta site:
+These words are forbidden on the KitStamp site:
 
 Menu
 
@@ -31690,7 +31690,7 @@ It’s selling clarity.
 4️⃣ HOW THIS PREVENTS MENUList OVERLAP
 Here’s the clean separation:
 
-MenuList VisualMeta
+MenuList KitStamp
 Runs content Prepares content
 Lives in production Stops before production
 Ongoing Finite
@@ -31699,7 +31699,7 @@ Automation allowed Automation forbidden
 If your website accidentally explains how content is used — you drift into MenuList territory.
 
 5️⃣ FINAL TEST (USE THIS)
-Read every section of the VisualMeta site and ask:
+Read every section of the KitStamp site and ask:
 
 Could this exist even if MenuList didn’t exist?
 
@@ -31709,8 +31709,8 @@ If no → rewrite
 If you want, next we can do one of these (you choose):
 
 1️⃣ Exact homepage copy (line by line)
-2️⃣ VisualMeta vs Canva / AI tools comparison (investor-safe)
-3️⃣ How to explain VisualMeta verbally in under 20 seconds
+2️⃣ KitStamp vs Canva / AI tools comparison (investor-safe)
+3️⃣ How to explain KitStamp verbally in under 20 seconds
 
 Say the number.
 
@@ -31723,13 +31723,13 @@ Not examples. Not placeholders. This is what you ship, polish, and test.
 
 I’ll go section by section, exactly as a real homepage scroll would work.
 
-VISUALMETA — OFFICIAL HOMEPAGE COPY (V1)
+KITSTAMP — OFFICIAL HOMEPAGE COPY (V1)
 🔹 HERO (ABOVE THE FOLD)
 Headline
 Prepare commercial-ready content. Decide when it’s final.
 
 Subheadline
-VisualMeta is a commercial content preparation workspace that produces a Final Content Kit — reviewed, approved, and ready to use anywhere.
+KitStamp is a commercial content preparation workspace that produces a Final Content Kit — reviewed, approved, and ready to use anywhere.
 
 Supporting line
 No publishing. No performance claims. No automation deciding for you.
@@ -31762,9 +31762,9 @@ Publishing tools push things live.
 
 The hardest part — preparation — is left to humans to figure out alone.
 
-VisualMeta exists for that gap.
+KitStamp exists for that gap.
 
-🔹 SECTION 3 — WHAT VISUALMETA PREPARES
+🔹 SECTION 3 — WHAT KITSTAMP PREPARES
 Title
 Everything you need — only until it’s ready
 
@@ -31799,10 +31799,10 @@ Language versions
 
 Export-ready formats
 
-When a kit is marked final, VisualMeta stops.
+When a kit is marked final, KitStamp stops.
 
 Explicit boundary (important)
-VisualMeta does not:
+KitStamp does not:
 
 Publish content
 
@@ -31828,7 +31828,7 @@ Who need clean, reviewable deliverables instead of endless revisions.
 Growing brands & sellers
 Who manage many items, markets, and languages — and need consistency without chaos.
 
-If content responsibility is yours, VisualMeta helps you finish the job.
+If content responsibility is yours, KitStamp helps you finish the job.
 
 🔹 SECTION 6 — HOW IT WORKS (INTENTIONALLY SHORT)
 Title
@@ -31850,7 +31850,7 @@ Title
 You pay for readiness — not experimentation
 
 Body
-VisualMeta is priced around finalized content kits.
+KitStamp is priced around finalized content kits.
 
 Not prompts
 
@@ -31865,7 +31865,7 @@ Title
 Clear responsibility. No surprises.
 
 Body
-VisualMeta never decides for you.
+KitStamp never decides for you.
 Nothing is published automatically.
 Nothing changes without review.
 
@@ -31880,7 +31880,7 @@ CTA
 Create your first Final Content Kit
 
 Footer micro-line
-VisualMeta stops at preparation — by design.
+KitStamp stops at preparation — by design.
 
 🔒 WHY THIS COPY WORKS (FOR YOU, NOT THE SITE)
 No AI hype
@@ -31919,7 +31919,7 @@ Next (choose one, and we go deep):
 Say the number.
 
 ChatGPT said:
-Perfect. Here is the clean, investor-grade, 10-slide sales deck narrative for VisualMeta.
+Perfect. Here is the clean, investor-grade, 10-slide sales deck narrative for KitStamp.
 
 This is not marketing fluff.
 This is what you present to:
@@ -31934,9 +31934,9 @@ agencies
 
 Each slide has one idea. No clutter. No hype.
 
-VISUALMETA — SALES / INVESTOR DECK (10 SLIDES)
+KITSTAMP — SALES / INVESTOR DECK (10 SLIDES)
 SLIDE 1 — TITLE / CATEGORY
-VisualMeta
+KitStamp
 Commercial Content Preparation Workspace
 
 Sub-line:
@@ -31990,8 +31990,8 @@ No one owns phase 2.
 👉 This is the “aha” slide.
 
 SLIDE 5 — THE SOLUTION
-VisualMeta owns preparation
-VisualMeta helps teams:
+KitStamp owns preparation
+KitStamp helps teams:
 
 shape content
 
@@ -32001,7 +32001,7 @@ finalize it confidently
 
 export it cleanly
 
-VisualMeta stops before publishing — by design.
+KitStamp stops before publishing — by design.
 
 👉 Clear boundary = trust.
 
@@ -32017,12 +32017,12 @@ language variants
 
 export-ready formats
 
-Once final → VisualMeta steps out.
+Once final → KitStamp steps out.
 
 👉 This is your product, not features.
 
-SLIDE 7 — WHAT VISUALMETA DOES NOT DO (MOAT)
-VisualMeta does not:
+SLIDE 7 — WHAT KITSTAMP DOES NOT DO (MOAT)
+KitStamp does not:
 
 publish
 
@@ -32040,7 +32040,7 @@ Human approval is mandatory.
 
 👉 This disarms AI skepticism instantly.
 
-SLIDE 8 — WHO USES VISUALMETA
+SLIDE 8 — WHO USES KITSTAMP
 Built for content responsibility
 SMB owners → confidence without complexity
 
@@ -32048,7 +32048,7 @@ Agencies → clean, client-ready deliverables
 
 Growing brands → consistency across markets
 
-If you’re accountable for content, VisualMeta fits.
+If you’re accountable for content, KitStamp fits.
 
 👉 Persona clarity without vertical lock-in.
 
@@ -32067,7 +32067,7 @@ Customers pay when content is finished.
 👉 Simple, fair, scalable.
 
 SLIDE 10 — CLOSING / WHY THIS WINS
-VisualMeta creates a new layer
+KitStamp creates a new layer
 Not smarter AI
 Not faster publishing
 

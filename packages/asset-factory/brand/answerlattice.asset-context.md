@@ -10,6 +10,8 @@ Answerlattice assets should show governed support knowledge moving from product 
 
 Assets must feel systemic, dark, restrained, and infrastructure-grade. Use Answerlattice's existing diagrams, status boards, proof blocks, and public website visual language as the reference system.
 
+The official Answerlattice logo is design-final at `public/answerlattice-logo.svg`. Use that file as the canonical source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives. Do not redraw, recolor, reshape, simplify, or reinterpret the logo mark.
+
 ## Approved Directions
 
 - Canonical answers taking priority over generic retrieval.
@@ -33,4 +35,3 @@ Assets must feel systemic, dark, restrained, and infrastructure-grade. Use Answe
 - `__docs__/answerlattice/doctrine/01-core-doctrine.md`
 - `__docs__/answerlattice/doctrine/02-non-goals-charter.md`
 - `__docs__/answerlattice/doctrine/03-infrastructure-freeze-v1.md`
-

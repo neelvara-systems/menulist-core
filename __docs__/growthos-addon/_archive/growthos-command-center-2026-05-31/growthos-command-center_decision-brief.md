@@ -27,7 +27,7 @@ May 31 owner-value review: do not freeze or roll it out now. The feature is tech
 | GrowthOS prerequisites include MenuList stability, Control Layer daily use, primary menu-link adoption, retention, and founder unlock (`__docs__/growth-execution-strategy/README.md:34`). | The pasted conversation does not prove these gates. |
 | Product Evolution Doctrine forbids building GrowthOS before MenuList is system-of-record (`__docs__/constitution/11-product-evolution-doctrine.md:48`). | Starting code now would violate locked doctrine. |
 | Social Content already implements GrowthOS v0 (`__docs__/strategy/product-universe-ssot.md:221`). | The fastest proof path is inside current capability, not a new app. |
-| VisualMeta is Stage 3 content preparation and Final Content Kit export (`__docs__/visual-meta/README.md:3`, `__docs__/visual-meta/README.md:728`). | The paused weekly pack should not be shifted into VisualMeta. |
+| KitStamp is Stage 3 content preparation and Final Content Kit export (`__docs__/kitstamp/README.md:3`, `__docs__/kitstamp/README.md:728`). | The paused weekly pack should not be shifted into KitStamp. |
 | Product Separation Doctrine forbids GrowthOS writes to MenuList (`__docs__/constitution/12-product-separation-doctrine.md:80`). | The proposed action loop needs a write-boundary decision first. |
 
 ## Decision Options

@@ -1813,7 +1813,7 @@ To avoid conflict, preserve hierarchy, and maintain long-term clarity:
 Final Structural Decision
 SurfaceOS sits ABOVE MenuList.
 GrowthOS remains a separate execution engine.
-VisualMeta remains human-in-the-loop content prep.
+KitStamp remains human-in-the-loop content prep.
 MenuList remains canonical truth.
 Clear stack. No overlap.
 
@@ -1892,7 +1892,7 @@ It does not own truth.
 It does not control structural representation.
 It does not become infrastructure.
 
-4️⃣ VisualMeta
+4️⃣ KitStamp
 Human-Controlled Content Preparation Workspace
 
 Prepares content
@@ -1924,7 +1924,7 @@ By placing it above:
 MenuList feeds truth →
 SurfaceOS controls discovery surfaces →
 GrowthOS executes promotional actions →
-VisualMeta prepares content inputs.
+KitStamp prepares content inputs.
 
 One-way dependency only.
 
@@ -1937,7 +1937,7 @@ Layer Function Owns
 MenuList Truth Data correctness
 SurfaceOS Presence Control Surface behavior
 GrowthOS Attention Execution Promotion output
-VisualMeta Content Prep Human refinement
+KitStamp Content Prep Human refinement
 Each has a different philosophical posture:
 
 MenuList → Authority
@@ -1946,7 +1946,7 @@ SurfaceOS → Control
 
 GrowthOS → Momentum
 
-VisualMeta → Craft
+KitStamp → Craft
 
 No overlap.
 
@@ -2432,7 +2432,7 @@ Provide campaign analytics
 
 Replace GrowthOS
 
-Replace VisualMeta
+Replace KitStamp
 
 If it touches performance marketing, it’s wrong.
 
@@ -3300,7 +3300,7 @@ SurfaceOS launches after MenuList is deeply embedded.
 
 GrowthOS remains separate.
 
-VisualMeta remains separate.
+KitStamp remains separate.
 
 No architecture rewrite allowed later.
 
@@ -3723,7 +3723,7 @@ You now have:
 
 MenuList
 
-VisualMeta
+KitStamp
 
 GrowthOS
 
@@ -3908,7 +3908,7 @@ GrowthOS:
 
 Activate attention when you need growth.
 
-VisualMeta:
+KitStamp:
 
 Prepare your content before it goes live.
 
@@ -4104,7 +4104,7 @@ Core Stack Strategy:
 MenuList → Required base
 SurfaceOS → Optional control layer
 GrowthOS → Optional acceleration layer
-VisualMeta → Optional preparation layer
+KitStamp → Optional preparation layer
 
 Each layer compounds.
 
@@ -4113,7 +4113,7 @@ Example journey:
 Year 1: MenuList only
 Year 2: MenuList + SurfaceOS
 Year 3: Add GrowthOS
-VisualMeta as premium content layer anytime
+KitStamp as premium content layer anytime
 
 This keeps expansion strategic.
 
@@ -4132,7 +4132,7 @@ GrowthOS:
 
 “Activate growth when needed.”
 
-VisualMeta:
+KitStamp:
 
 “Prepare content professionally.”
 
@@ -4185,7 +4185,7 @@ Final Integration Philosophy
 MenuList defines truth.
 SurfaceOS governs representation.
 GrowthOS manufactures attention.
-VisualMeta prepares assets.
+KitStamp prepares assets.
 
 Four verbs.
 Four layers.
@@ -4433,7 +4433,7 @@ Multi-location governance
 
 It does NOT own:
 
-Content creation (VisualMeta)
+Content creation (KitStamp)
 
 Promotions (GrowthOS)
 
@@ -4617,7 +4617,7 @@ SurfaceOS → Public Discovery Infrastructure
 
 GrowthOS → Promotional Execution Infrastructure
 
-VisualMeta → Content Preparation Workspace
+KitStamp → Content Preparation Workspace
 
 Each solves a different primary pain.
 
@@ -4655,7 +4655,7 @@ Distribution state
 
 Execution history
 
-VisualMeta owns:
+KitStamp owns:
 
 Content preparation artifacts
 
@@ -4699,7 +4699,7 @@ Become presence controller.
 
 Own business identity.
 
-VisualMeta must not:
+KitStamp must not:
 
 Publish.
 
@@ -4832,7 +4832,7 @@ Tradeoff is real.
    MenuList → Vertical depth (restaurants first).
    SurfaceOS → Horizontal discovery control.
    GrowthOS → Revenue acceleration layer.
-   VisualMeta → Human content precision tool.
+   KitStamp → Human content precision tool.
 
 This is not a SaaS.
 This is an ecosystem portfolio.
@@ -4935,7 +4935,7 @@ SurfaceOS
 
 GrowthOS
 
-VisualMeta
+KitStamp
 
 That’s four mental models.
 
@@ -5235,7 +5235,7 @@ GrowthOS:
 Horizontal promotional execution.
 Launch in clinics.
 
-VisualMeta:
+KitStamp:
 Content prep for any vertical.
 
 No overlap.
@@ -6782,7 +6782,7 @@ SurfaceOS
 
 GrowthOS
 
-VisualMeta
+KitStamp
 
 All independent.
 All infrastructure-grade.
@@ -6850,7 +6850,7 @@ Structure:
 SurfaceOS — by [Parent Company]
 MenuList — by [Parent Company]
 GrowthOS — by [Parent Company]
-VisualMeta — by [Parent Company]
+KitStamp — by [Parent Company]
 
 Parent brand is infrastructure-focused.
 Each product keeps its identity.
@@ -6908,7 +6908,7 @@ Clear verb ownership.
 MenuList → Own
 SurfaceOS → Control
 GrowthOS → Activate
-VisualMeta → Prepare
+KitStamp → Prepare
 
 Each brand must feel complete by itself.
 
@@ -6956,7 +6956,7 @@ Parent Infrastructure Brand
 → MenuList
 → SurfaceOS
 → GrowthOS
-→ VisualMeta
+→ KitStamp
 
 Each independent.
 Each category-defining.
@@ -6989,7 +6989,7 @@ SurfaceOS is strategic.
 
 GrowthOS is future.
 
-VisualMeta exists in its own lane.
+KitStamp exists in its own lane.
 
 An umbrella brand only becomes powerful when:
 
@@ -7220,7 +7220,7 @@ SurfaceOS
 
 GrowthOS
 
-VisualMeta
+KitStamp
 
 Parent is quiet now.
 Visible later.
@@ -7378,7 +7378,7 @@ Structure:
 MenuList
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 
 by Strata
 
@@ -7504,7 +7504,7 @@ Endorsed Brand Model (future-facing):
 MenuList
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 
 by [Parent]
 
@@ -7578,7 +7578,7 @@ Brand Structure:
 MenuList
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 
 by Strata
 
@@ -7588,7 +7588,7 @@ Strata
 — MenuList
 — SurfaceOS
 — GrowthOS
-— VisualMeta
+— KitStamp
 
 7️⃣ Parent Brand Philosophy (Manifesto-Level)
 Strata builds the control systems behind modern small and mid-sized businesses.
@@ -7717,7 +7717,7 @@ Products:
 MenuList → Menu infrastructure (restaurants vertical first)
 SurfaceOS → Discovery surface control (horizontal)
 GrowthOS → Promotional execution layer (horizontal)
-VisualMeta → Human content preparation workspace
+KitStamp → Human content preparation workspace
 
 Each independent.
 Each category-defining.
@@ -7936,7 +7936,7 @@ it must support governance (e.g., review response tone enforcement).
 
 Content generation belongs to:
 
-VisualMeta or GrowthOS.
+KitStamp or GrowthOS.
 
 What SurfaceOS IS Allowed to Do
 To avoid confusion, here’s what remains valid:
@@ -13047,7 +13047,7 @@ GrowthOS
 
 SurfaceOS
 
-VisualMeta
+KitStamp
 
 No shared DB.
 No hidden coupling.
@@ -13177,7 +13177,7 @@ Your team must understand why this exists in your ecosystem.
 
 MenuList = Customer-facing truth
 GrowthOS = Transactional execution
-VisualMeta = Content preparation
+KitStamp = Content preparation
 SurfaceOS = Public representation governance
 
 Each has a different philosophical posture.
@@ -13371,7 +13371,7 @@ MenuList
 
 GrowthOS
 
-VisualMeta
+KitStamp
 
 Integration happens through APIs only.
 
@@ -13446,7 +13446,7 @@ When you're ready, we can now move into:
 Internal team alignment checklist before kick-off.
 
 Do one thing
-Add this in your memory menulist growthos surfaceos visualmeta related details in your memory so we will get help to categorisein other threads
+Add this in your memory menulist growthos surfaceos kitstamp related details in your memory so we will get help to categorisein other threads
 
 Updated saved memory
 Done.
@@ -13459,7 +13459,7 @@ GrowthOS → Transactional execution & promotion asset system
 
 SurfaceOS → Public discovery governance infrastructure
 
-VisualMeta → Human-in-the-loop commercial content preparation workspace
+KitStamp → Human-in-the-loop commercial content preparation workspace
 
 All four:
 
@@ -13543,7 +13543,7 @@ It does not become infrastructure.
 
 ⸻
 
-4️⃣ VisualMeta
+4️⃣ KitStamp
 
 Human-Controlled Content Preparation Workspace
 • Prepares content
@@ -14606,7 +14606,7 @@ SurfaceOS — Public representation control
 
 GrowthOS — Attention manufacturing
 
-VisualMeta — Content preparation
+KitStamp — Content preparation
 
 The order you launch determines ecosystem power.
 
@@ -14744,7 +14744,7 @@ Sequence:
 1️⃣ MenuList (Truth) — already first priority
 2️⃣ SurfaceOS (Control)
 3️⃣ GrowthOS (Execution)
-4️⃣ VisualMeta (Optional layer)
+4️⃣ KitStamp (Optional layer)
 
 This builds:
 
@@ -14966,7 +14966,7 @@ It never behaves like marketing software.
 MenuList defines truth.
 SurfaceOS defines representation.
 GrowthOS defines amplification.
-VisualMeta defines preparation.
+KitStamp defines preparation.
 
 SurfaceOS must remain neutral, strict, controlled.
 
@@ -15998,7 +15998,7 @@ growth events
 
 GrowthOS manufactures attention.
 
-VisualMeta
+KitStamp
 Prepares the content assets used in those campaigns.
 
 What SurfaceOS Actually Does
@@ -16111,7 +16111,7 @@ SurfaceOS
 GrowthOS
 = the marketing execution engine
 
-VisualMeta
+KitStamp
 = the content preparation studio
 
 One-Line Definition
@@ -16139,7 +16139,7 @@ Product Layer Responsibility
 MenuList Truth Defines what is true
 SurfaceOS Representation Controls how truth appears externally
 GrowthOS Execution Generates attention
-VisualMeta Preparation Prepares content
+KitStamp Preparation Prepares content
 If SurfaceOS is merged into MenuList:
 
 You break the separation between:
@@ -16239,7 +16239,7 @@ Wrong Path
 MenuList
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 Four products from day one.
 
 Market confusion.
@@ -16255,7 +16255,7 @@ Later:
 MenuList
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 6️⃣ Real Example From Big Companies
 This is how major systems evolved.
 
@@ -16411,7 +16411,7 @@ SurfaceOS
 GrowthOS
 (attention infrastructure)
 
-VisualMeta
+KitStamp
 (content preparation workspace)
 All four are:
 
@@ -16434,6 +16434,6 @@ GrowthOS answers:
 
 How do we create attention?
 
-VisualMeta answers:
+KitStamp answers:
 
 How do we prepare the content used for attention?

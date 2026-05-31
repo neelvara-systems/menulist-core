@@ -61,7 +61,7 @@
 | ID | Test | Expected |
 | --- | --- | --- |
 | BOUNDARY-01 | MenuList asset slot tries to describe a marketing campaign output for SMB owner. | Reject or move to GrowthOS docs. |
-| BOUNDARY-02 | VisualMeta-style content unit/workbench appears in this system. | Reject or document as future VisualMeta-only. |
+| BOUNDARY-02 | KitStamp-style content unit/workbench appears in this system. | Reject or document as future KitStamp-only. |
 | BOUNDARY-03 | Answerlattice asset slot depends on MenuList tenant data. | Reject. |
 | BOUNDARY-04 | Asset script writes Firebase data. | Reject unless a new approved Firebase cost plan exists. |
 | BOUNDARY-05 | AssetOS uses Answerlattice product-surface, intake, release, feedback, or drift context. | Allow read-only source context for briefs/audits; reject writes to Answerlattice runtime, KB, tickets, signals, widgets, product surfaces, or Firebase data. |

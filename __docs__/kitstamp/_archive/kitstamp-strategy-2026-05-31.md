@@ -1,21 +1,21 @@
-# VisualMeta — Complete Product Strategy
+# KitStamp — Complete Product Strategy
 
-> **VisualMeta is a commercial content preparation workspace.**
+> **KitStamp is a commercial content preparation workspace.**
 > Its sole terminal output is the **Final Content Kit**.
-> Humans approve. VisualMeta prepares. Nothing acts on its own.
+> Humans approve. KitStamp prepares. Nothing acts on its own.
 
 **Created:** February 19, 2026
 **Source:** ChatGPT Product Design Session (24+ topics) → Cascade Cross-Check
 **Status:** 🔒 LOCKED DEFINITION — Optional product, Stage 3 in evolution sequence
 **Priority:** #3 (after MenuList #1 and GrowthOS #2)
 **Governance:** `__docs__/constitution/12-product-separation-doctrine.md`
-**Review:** `__docs__/visual-meta/_archive/chatgpt-review.md`
+**Review:** `__docs__/kitstamp/_archive/chatgpt-review.md`
 
 ---
 
 ## Table of Contents
 
-1. [What VisualMeta Is](#1-what-visualmeta-is)
+1. [What KitStamp Is](#1-what-kitstamp-is)
 2. [Existing Codebase Reality](#2-existing-codebase-reality)
 3. [Target Users (ICP)](#3-target-users-icp)
 4. [The Problem It Solves](#4-the-problem-it-solves)
@@ -38,11 +38,11 @@
 
 ---
 
-## 1. What VisualMeta Is
+## 1. What KitStamp Is
 
 ### Canonical Definition (Immutable)
 
-**VisualMeta is a commercial content preparation workspace.**
+**KitStamp is a commercial content preparation workspace.**
 
 This is the single source of truth. Every decision must pass this filter.
 
@@ -54,19 +54,19 @@ This is the single source of truth. Every decision must pass this filter.
 - **System-agnostic** — feeds any downstream system (websites, marketplaces, POS, menus, ads)
 - **No authority claims** — no "ready", no "best", no auto-apply
 
-### What VisualMeta Is NOT
+### What KitStamp Is NOT
 
 | ❌ NOT This | Why |
 |------------|-----|
-| CMS | VisualMeta doesn't manage live content |
-| Design tool | VisualMeta doesn't compete with Canva/Adobe |
-| Publishing tool | VisualMeta stops before publishing |
-| Analytics tool | VisualMeta never measures performance |
-| Marketing tool | VisualMeta never claims outcomes |
-| Decision engine | VisualMeta never chooses for users |
+| CMS | KitStamp doesn't manage live content |
+| Design tool | KitStamp doesn't compete with Canva/Adobe |
+| Publishing tool | KitStamp stops before publishing |
+| Analytics tool | KitStamp never measures performance |
+| Marketing tool | KitStamp never claims outcomes |
+| Decision engine | KitStamp never chooses for users |
 | AI tool (marketed) | AI is internal plumbing, not the product |
 
-### The One Question VisualMeta Answers
+### The One Question KitStamp Answers
 
 > "Prepare this content perfectly before I publish it."
 
@@ -76,11 +76,11 @@ If a feature can't serve this question → it doesn't belong.
 
 ## 2. Existing Codebase Reality
 
-**Critical finding:** MenuList's AI Image Generation system already implements ~70% of VisualMeta's image preparation capability.
+**Critical finding:** MenuList's AI Image Generation system already implements ~70% of KitStamp's image preparation capability.
 
 ### What Already Exists in MenuList
 
-| Capability | MenuList Component | LOC | VisualMeta Reusability |
+| Capability | MenuList Component | LOC | KitStamp Reusability |
 |-----------|-------------------|-----|----------------------|
 | Single image generation | `AiImageGenerator/index.tsx` | 573 | **100%** reusable |
 | Batch image generation | `batchImageGeneration/` (3 components) | 1,040 | **100%** reusable |
@@ -111,7 +111,7 @@ If a feature can't serve this question → it doesn't belong.
 
 ### Extraction Strategy
 
-VisualMeta does NOT copy MenuList code. It shares infrastructure:
+KitStamp does NOT copy MenuList code. It shares infrastructure:
 
 - **Shared**: AI model APIs, image generation pipeline, safety settings, storage utilities
 - **Separate**: UI, state management, data model, auth scope, billing
@@ -152,7 +152,7 @@ VisualMeta does NOT copy MenuList code. It shares infrastructure:
 
 **This ICP is a beneficiary, not the growth driver.**
 
-### Who VisualMeta Is NOT For
+### Who KitStamp Is NOT For
 
 - ❌ Growth hackers
 - ❌ Performance marketers
@@ -184,7 +184,7 @@ The market is crowded in phases 1 and 3. **No tool owns phase 2.**
 Before: POS, Website, Menu, Marketplace, Ads, Print, Social
 **Every system assumes content already exists.**
 
-VisualMeta exists before all of them.
+KitStamp exists before all of them.
 
 ### Why Images + Text + Translation Belong Together
 
@@ -193,13 +193,13 @@ Preparation is multi-dimensional:
 - If you only generate text → visuals break trust
 - If you only translate → meaning drifts
 
-VisualMeta aligns all three in one draft workspace.
+KitStamp aligns all three in one draft workspace.
 
 ---
 
 ## 5. Core Features (7 Only)
 
-These define VisualMeta completely. Everything else is out.
+These define KitStamp completely. Everything else is out.
 
 ### 1. Content Units (Foundation)
 
@@ -248,7 +248,7 @@ A neutral workspace per sellable thing. Each unit includes:
 ### 7. Export / Handoff (The Endpoint)
 
 - JSON, CSV, image download, copy-ready blocks, ZIP package
-- **Export is the end of VisualMeta's responsibility**
+- **Export is the end of KitStamp's responsibility**
 - No sync, no push, no background jobs
 
 ### Feature Loop
@@ -308,7 +308,7 @@ This Final Content Kit contains prepared commercial content.
 All images and text were reviewed and approved by the user
 before export.
 
-VisualMeta does not publish, modify, or deploy content.
+KitStamp does not publish, modify, or deploy content.
 
 Responsibility for usage lies with the recipient.
 ```
@@ -334,9 +334,9 @@ Responsibility for usage lies with the recipient.
 
 ### Core Feel (Non-Negotiable)
 
-VisualMeta must feel like: **a desk with tools on it**
+KitStamp must feel like: **a desk with tools on it**
 
-| VisualMeta Must Feel | VisualMeta Must NOT Feel |
+| KitStamp Must Feel | KitStamp Must NOT Feel |
 |---------------------|------------------------|
 | Calm | Operational |
 | Neutral | Live |
@@ -387,10 +387,10 @@ Per Constitution 12 Rule 2:
 | Product | AI Posture | Description |
 |---------|-----------|-------------|
 | MenuList | **Authority** | Silent, decisive. System knows best. |
-| **VisualMeta** | **Assistant** | Visible, collaborative. System helps. |
+| **KitStamp** | **Assistant** | Visible, collaborative. System helps. |
 | GrowthOS | **Delegate** | Invisible, transactional. System delivers. |
 
-### What "Assistant" Means for VisualMeta
+### What "Assistant" Means for KitStamp
 
 - AI generates drafts when asked
 - AI never auto-selects or auto-applies
@@ -400,9 +400,9 @@ Per Constitution 12 Rule 2:
 
 ### Mixing Postures = Failure
 
-- If VisualMeta acts like Authority (silent, decisive) → confusion
-- If VisualMeta acts like Delegate (invisible, transactional) → no trust
-- VisualMeta must be visible, collaborative, but never confident
+- If KitStamp acts like Authority (silent, decisive) → confusion
+- If KitStamp acts like Delegate (invisible, transactional) → no trust
+- KitStamp must be visible, collaborative, but never confident
 
 ---
 
@@ -416,7 +416,7 @@ If a feature shifts judgment, authority, or outcomes away from the human → **d
 | 2 | **Performance** | CTR, engagement, "best performing", A/B testing, conversion tracking | Metrics imply optimization → decision authority |
 | 3 | **Auto-selection** | "We picked the best", auto-replace, silent updates | Final content must always be explicitly chosen |
 | 4 | **Prompt-centric UX** | Prompt libraries, prompt analytics, "improve your prompt" | Prompts are implementation detail |
-| 5 | **Asset management** | Media libraries, folders/tags, reusable asset banks | Turns VisualMeta into DAM software |
+| 5 | **Asset management** | Media libraries, folders/tags, reusable asset banks | Turns KitStamp into DAM software |
 | 6 | **Learning claims** | "Learns from edits", "gets better", "understands your brand" | Creates false authority and legal ambiguity |
 | 7 | **Personalization** | Different outputs per viewer, dynamic swapping | Preparation = single, stable artifacts |
 | 8 | **Scoring** | Star ratings, quality scores, confidence meters, heatmaps | Scoring is judgment. Judgment stays human. |
@@ -456,7 +456,7 @@ Inside a kit, these are unlimited:
 
 ### Pricing Philosophy (Locked)
 
-> **VisualMeta charges for completion, not experimentation.**
+> **KitStamp charges for completion, not experimentation.**
 
 ### Free Trial
 
@@ -487,13 +487,13 @@ Validate with first 10 agencies before locking.
 
 **Empty Dashboard (First Login):**
 > "Prepare your first Final Content Kit"
-> "VisualMeta helps you prepare commercial-ready content — images, descriptions, and variations — in one place. Nothing is published. Nothing changes without your approval."
+> "KitStamp helps you prepare commercial-ready content — images, descriptions, and variations — in one place. Nothing is published. Nothing changes without your approval."
 
 **AI Generation Disclaimer (Once per session):**
 > "Generated content is a starting point. Review, edit, and approve everything before export."
 
 **Export Confirmation:**
-> "By exporting, you confirm this content is ready for use outside VisualMeta."
+> "By exporting, you confirm this content is ready for use outside KitStamp."
 
 **Monthly Limit Reached:**
 > "You've prepared all your content kits for this month. You can still view and export existing kits."
@@ -560,7 +560,7 @@ Validate with first 10 agencies before locking.
 
 ### Principle
 
-> VisualMeta records actions, never judgments.
+> KitStamp records actions, never judgments.
 
 ### What Gets Logged
 
@@ -592,9 +592,9 @@ No filters. No analytics. No scores. **Evidence, not insight.**
 
 ## 15. Growth Logic
 
-### How VisualMeta Grows
+### How KitStamp Grows
 
-1. **Multi-destination pain** — "I need this content in more than one place" → VisualMeta becomes necessary
+1. **Multi-destination pain** — "I need this content in more than one place" → KitStamp becomes necessary
 2. **Operator-to-operator spread** — Operators carry tools across jobs
 3. **Agency gravity** — Once an agency adopts, each new client is auto-exposed
 
@@ -610,7 +610,7 @@ No filters. No analytics. No scores. **Evidence, not insight.**
 ### North Star Metric
 
 > **Time from "idea exists" → "content ready for handoff"**
-> If VisualMeta compresses this reliably, it wins.
+> If KitStamp compresses this reliably, it wins.
 
 ### Real Competitors
 
@@ -628,7 +628,7 @@ V2 makes the Final Content Kit **richer, not smarter.**
 
 | # | Idea | Status | Constraint |
 |---|------|--------|-----------|
-| 1 | **Content Variants Pack** | ✅ Keep | Context-ready variants (Menu/Delivery/Social) — VisualMeta never says which is "better" |
+| 1 | **Content Variants Pack** | ✅ Keep | Context-ready variants (Menu/Delivery/Social) — KitStamp never says which is "better" |
 | 2 | **Brand Guardrails** | ✅ Keep | Explicit constraints (allowed colors, forbidden tones) — mechanical, not adaptive |
 | 3 | **Short-Form Motion Draft** | ✅ Keep (V3+) | Food flash, outfit turn, hairstyle reveal — silent, no music, no captions, always "Draft" |
 | 4 | **Client Review Mode** | 🟡 Keep with limits | Read-only shareable link. No feedback intelligence, no "most requested change" |
@@ -662,13 +662,13 @@ V2 makes the Final Content Kit **richer, not smarter.**
 
 ### Competitive Positioning
 
-| Tool | What They Do | Where VisualMeta Differs |
+| Tool | What They Do | Where KitStamp Differs |
 |------|-------------|------------------------|
-| Canva | Design (creation) | VisualMeta = preparation, not design |
-| Adobe Express | Creative suite + publishing | VisualMeta stops before publishing |
-| Jasper | AI copy + performance optimization | VisualMeta has no performance claims |
-| Copy.ai | AI copy + workflow automation | VisualMeta has no automation |
-| Google Docs + Drive | Ad-hoc content prep | VisualMeta adds structure + AI + export |
+| Canva | Design (creation) | KitStamp = preparation, not design |
+| Adobe Express | Creative suite + publishing | KitStamp stops before publishing |
+| Jasper | AI copy + performance optimization | KitStamp has no performance claims |
+| Copy.ai | AI copy + workflow automation | KitStamp has no automation |
+| Google Docs + Drive | Ad-hoc content prep | KitStamp adds structure + AI + export |
 
 ### Cascade's Honest Assessment
 
@@ -687,13 +687,13 @@ V2 makes the Final Content Kit **richer, not smarter.**
 ### Dependency Direction (Per Constitution 12)
 
 ```
-MenuList  ──►  VisualMeta  (read-only, one-way)
+MenuList  ──►  KitStamp  (read-only, one-way)
 ```
 
-- VisualMeta may read public MenuList data (store name, business type)
-- VisualMeta NEVER writes to MenuList
+- KitStamp may read public MenuList data (store name, business type)
+- KitStamp NEVER writes to MenuList
 - MenuList may consume exported Content Kits
-- **VisualMeta never knows or cares where kits go**
+- **KitStamp never knows or cares where kits go**
 
 ### Shared Infrastructure (Allowed)
 
@@ -713,7 +713,7 @@ MenuList  ──►  VisualMeta  (read-only, one-way)
 
 ### The Key Difference
 
-| Dimension | MenuList | VisualMeta |
+| Dimension | MenuList | KitStamp |
 |-----------|----------|-----------|
 | Owns | Live reality | Drafts |
 | Time horizon | Continuous | Project-based |
@@ -725,7 +725,7 @@ MenuList  ──►  VisualMeta  (read-only, one-way)
 
 ## 19. Build Prerequisites
 
-Per Constitution 11 (Product Evolution Doctrine), VisualMeta is **Stage 3 — Optional**.
+Per Constitution 11 (Product Evolution Doctrine), KitStamp is **Stage 3 — Optional**.
 
 ### Must Be True Before Building
 
@@ -737,17 +737,17 @@ Per Constitution 11 (Product Evolution Doctrine), VisualMeta is **Stage 3 — Op
 
 ### What "Building" Means
 
-VisualMeta extraction from MenuList only happens when scale demands it. The AI Image Generation system remains inside MenuList regardless.
+KitStamp extraction from MenuList only happens when scale demands it. The AI Image Generation system remains inside MenuList regardless.
 
 ---
 
 ## 20. Kill Criteria
 
-### When to Shut Down VisualMeta
+### When to Shut Down KitStamp
 
 | Signal | Action |
 |--------|--------|
-| VisualMeta distracts from MenuList | Pause immediately |
+| KitStamp distracts from MenuList | Pause immediately |
 | No organic demand after 6 months | Re-evaluate |
 | Users ask for publishing / analytics | Product is drifting — correct or kill |
 | Canva adds "draft preparation mode" | Re-assess differentiation |
@@ -755,9 +755,9 @@ VisualMeta extraction from MenuList only happens when scale demands it. The AI I
 
 ### The Honest Truth
 
-> If VisualMeta is never built — **you still win.**
+> If KitStamp is never built — **you still win.**
 > MenuList is the OS. GrowthOS is the revenue lever.
-> VisualMeta is the optional expansion.
+> KitStamp is the optional expansion.
 
 ---
 
@@ -765,7 +765,7 @@ VisualMeta extraction from MenuList only happens when scale demands it. The AI I
 
 | Document | Relevance |
 |----------|-----------|
-| `__docs__/constitution/11-product-evolution-doctrine.md` | Product sequence: VisualMeta = Stage 3 |
+| `__docs__/constitution/11-product-evolution-doctrine.md` | Product sequence: KitStamp = Stage 3 |
 | `__docs__/constitution/12-product-separation-doctrine.md` | Separation rules, AI posture, dependency direction |
 | `__docs__/strategy/product-positioning-map.md` | 3-product stack model |
 | `__docs__/growthos-addon/README.md` | Active GrowthOS add-on plan |

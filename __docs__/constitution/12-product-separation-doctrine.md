@@ -12,7 +12,7 @@
 
 ## The Single Rule
 
-> **MenuList, GrowthOS, and VisualMeta are three independent products forming a vertical stack. They must never merge, share identity, or blur boundaries.**
+> **MenuList, GrowthOS, and KitStamp are three independent products forming a vertical stack. They must never merge, share identity, or blur boundaries.**
 
 ---
 
@@ -24,7 +24,7 @@ Each product has exactly one identity. If any product answers more than one ques
 |---------|----------|---------------------------|
 | **MenuList** | Customer-facing infrastructure | "What should my menu be doing right now?" |
 | **GrowthOS** | Transactional execution engine | "Give me something I can post or send right now." |
-| **VisualMeta** | Content preparation workspace | "Prepare this content perfectly before I publish it." |
+| **KitStamp** | Content preparation workspace | "Prepare this content perfectly before I publish it." |
 
 ### Enforcement
 
@@ -42,14 +42,14 @@ Each product uses AI differently. Mixing these collapses trust.
 |---------|-----------|----------|
 | **MenuList** | **Authority** | Silent, decisive. System knows best. Never explains. |
 | **GrowthOS** | **Delegate** | Invisible, transactional. System delivers. Never discusses. |
-| **VisualMeta** | **Assistant** | Visible, collaborative. System helps. Can explain when asked. |
+| **KitStamp** | **Assistant** | Visible, collaborative. System helps. Can explain when asked. |
 
 ### What Happens If Mixed
 
 | Mix | Result |
 |-----|--------|
 | Authority + explanation | Broken trust (MenuList fails) |
-| Assistant + silence | Confusion (VisualMeta fails) |
+| Assistant + silence | Confusion (KitStamp fails) |
 | Delegate + chat | Paralysis (GrowthOS fails) |
 
 ---
@@ -62,7 +62,7 @@ Each product operates on exactly one time horizon. If the time model shifts, the
 |---------|-----------|-----------|
 | **MenuList** | Continuous / nightly / always-on | MenuList never feels urgent |
 | **GrowthOS** | Moment-based / immediate | GrowthOS never feels thoughtful |
-| **VisualMeta** | Project-based / slow / deliberate | VisualMeta never feels rushed |
+| **KitStamp** | Project-based / slow / deliberate | KitStamp never feels rushed |
 
 ---
 
@@ -70,21 +70,21 @@ Each product operates on exactly one time horizon. If the time model shifts, the
 
 ```
 MenuList  ──►  GrowthOS   (read-only, one-way)
-MenuList  ──►  VisualMeta  (read-only, one-way)
+MenuList  ──►  KitStamp  (read-only, one-way)
 ```
 
 ### Allowed
 
 - GrowthOS reads public MenuList data (store name, hours, menu items)
-- VisualMeta reads public MenuList data (store name, menu items, images)
+- KitStamp reads public MenuList data (store name, menu items, images)
 
 ### Permanently Forbidden
 
-- GrowthOS or VisualMeta writing to MenuList
-- GrowthOS or VisualMeta triggering MenuList jobs
-- GrowthOS or VisualMeta influencing MenuList UI or behavior
-- MenuList depending on GrowthOS or VisualMeta for any function
-- GrowthOS depending on VisualMeta or vice versa
+- GrowthOS or KitStamp writing to MenuList
+- GrowthOS or KitStamp triggering MenuList jobs
+- GrowthOS or KitStamp influencing MenuList UI or behavior
+- MenuList depending on GrowthOS or KitStamp for any function
+- GrowthOS depending on KitStamp or vice versa
 
 ### Independence Test
 
@@ -100,7 +100,7 @@ No UI component, surface, or interaction pattern may cross product boundaries.
 |---------|-----------------|-----------|
 | **MenuList** | Dashboards (operational), rules, settings | ❌ Never gets "campaigns", "posts", or "canvas" |
 | **GrowthOS** | Task → Input → Output (4 surfaces only) | ❌ Never gets a canvas, dashboard, or iteration UI |
-| **VisualMeta** | Canvas, preview, versions, approval | ❌ Never gets "instant generate" or transactional flow |
+| **KitStamp** | Canvas, preview, versions, approval | ❌ Never gets "instant generate" or transactional flow |
 
 ### Shared UI Components
 
@@ -116,7 +116,7 @@ Each product has its own pricing logic. No blended pricing.
 |---------|--------------|
 | **MenuList** | Subscription (infrastructure) |
 | **GrowthOS** | Per kit / prepaid bundle |
-| **VisualMeta** | Project / deliverable-based |
+| **KitStamp** | Project / deliverable-based |
 
 ### Only Allowed Bundle
 
@@ -137,7 +137,7 @@ Each product has its own pricing logic. No blended pricing.
 |---------|--------------|
 | **MenuList** | Silent, neutral, authoritative |
 | **GrowthOS** | Short, calm, execution-focused |
-| **VisualMeta** | Explicit, professional, preparatory |
+| **KitStamp** | Explicit, professional, preparatory |
 
 ### Shared Language Bans (All Three)
 
@@ -158,8 +158,8 @@ If one product fails, the others must remain unaffected.
 - No shared failure modes
 
 If GrowthOS produces bad content → MenuList remains trustworthy.
-If VisualMeta is unavailable → MenuList runs normally.
-If MenuList has a bug → GrowthOS and VisualMeta degrade gracefully.
+If KitStamp is unavailable → MenuList runs normally.
+If MenuList has a bug → GrowthOS and KitStamp degrade gracefully.
 
 ---
 
@@ -169,17 +169,17 @@ If MenuList has a bug → GrowthOS and VisualMeta degrade gracefully.
 |----------|---------|----------------|-----------|
 | 🥇 **#1** | **MenuList** | 80-90% | Always. Non-negotiable. |
 | 🥈 **#2** | **GrowthOS** | When available | Only after MenuList stable + organic demand |
-| 🥉 **#3** | **VisualMeta** | Optional | Only if everything else stable |
+| 🥉 **#3** | **KitStamp** | Optional | Only if everything else stable |
 
 ### Kill Triggers
 
 - If GrowthOS slows MenuList → **pause GrowthOS immediately**
-- If VisualMeta distracts from core → **pause VisualMeta immediately**
+- If KitStamp distracts from core → **pause KitStamp immediately**
 - If all three feel "equally important" → **that's the danger signal**
 
 ### The Honest Truth
 
-- If VisualMeta is never built → **you still win**
+- If KitStamp is never built → **you still win**
 - GrowthOS is a monetization lever, not the OS
 - Only MenuList can become an SMB OS
 
@@ -192,7 +192,7 @@ Use this test for every feature proposal, partnership, or expansion idea:
 | Question | If Yes → |
 |----------|----------|
 | Does it run continuously? | **MenuList** |
-| Does it require review and refinement? | **VisualMeta** |
+| Does it require review and refinement? | **KitStamp** |
 | Does it deliver immediate usable output? | **GrowthOS** |
 | Is it "a bit of all three"? | **Kill it** |
 | "Can we reuse logic across products"? | **Stop and examine** |
@@ -213,7 +213,7 @@ Use this test for every feature proposal, partnership, or expansion idea:
 
 ## The Success Sentence
 
-> **"MenuList runs the business. GrowthOS gets the word out. VisualMeta makes it look right. They never step on each other."**
+> **"MenuList runs the business. GrowthOS gets the word out. KitStamp makes it look right. They never step on each other."**
 
 ---
 

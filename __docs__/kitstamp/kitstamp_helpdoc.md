@@ -1,4 +1,4 @@
-# VisualMeta - Helpdoc Candidate
+# KitStamp - Helpdoc Candidate
 
 **Status:** Draft customer help article
 **Created:** May 31, 2026
@@ -6,9 +6,9 @@
 
 ---
 
-## What Is VisualMeta?
+## What Is KitStamp?
 
-VisualMeta helps your team prepare product, menu, catalog, or listing content before it is used somewhere else.
+KitStamp helps your team prepare product, menu, catalog, or listing content before it is used somewhere else.
 
 You add source material, prepare content for each item, review the result, and export a Final Content Kit.
 
@@ -88,7 +88,7 @@ If something changes after export, create a new kit version instead of editing t
 
 ## Export Package Formats
 
-VisualMeta can use built-in package formats when export templates are enabled.
+KitStamp can use built-in package formats when export templates are enabled.
 
 Examples:
 
@@ -102,15 +102,15 @@ These formats organize approved content. They do not approve content or send it 
 
 ## Using MenuList As A Source
 
-If MenuList import is enabled, VisualMeta can copy source snapshots from MenuList.
+If MenuList import is enabled, KitStamp can copy source snapshots from MenuList.
 
-MenuList remains the live menu source. VisualMeta does not change prices, availability, hours, public menu pages, or live menu items.
+MenuList remains the live menu source. KitStamp does not change prices, availability, hours, public menu pages, or live menu items.
 
-If a MenuList source changes later, VisualMeta can create a new source snapshot and mark affected content as stale. Existing exported kits remain unchanged.
+If a MenuList source changes later, KitStamp can create a new source snapshot and mark affected content as stale. Existing exported kits remain unchanged.
 
-## What VisualMeta Does Not Do
+## What KitStamp Does Not Do
 
-VisualMeta does not:
+KitStamp does not:
 
 - publish posts
 - schedule content

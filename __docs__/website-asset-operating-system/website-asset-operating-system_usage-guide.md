@@ -27,7 +27,7 @@ Before this system, every asset task needed repeated explanation:
 - which visuals are stale;
 - which assets are missing;
 - which generated images are too large;
-- which visuals would blur MenuList, Answerlattice, GrowthOS, or VisualMeta.
+- which visuals would blur MenuList, Answerlattice, GrowthOS, or KitStamp.
 
 Now that context lives in the repo.
 
@@ -296,7 +296,7 @@ Do not use it for:
 - editing MenuList restaurant owner features;
 - editing Answerlattice support runtime;
 - creating GrowthOS customer marketing kits;
-- launching VisualMeta;
+- launching KitStamp;
 - publishing public product pages for this system.
 
 ## What A Good Run Looks Like

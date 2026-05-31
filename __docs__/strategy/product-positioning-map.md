@@ -1,4 +1,4 @@
-# Product Positioning Map — MenuList · GrowthOS · VisualMeta
+# Product Positioning Map — MenuList · GrowthOS · KitStamp
 
 > **Three separate products forming a vertical stack, not a bundle, not a suite.**
 
@@ -7,6 +7,7 @@
 **Status:** 🔒 LOCKED — Separation rules are permanent  
 **Governance:** `__docs__/constitution/12-product-separation-doctrine.md`
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
+**May 31, 2026 Growth Engine Addendum:** Growth Engine is a separate internal acquisition product documented at `__docs__/growth-engine/README.md`. It is not part of the owner-facing MenuList/GrowthOS/KitStamp stack and must not reuse GrowthOS product identity.
 
 ---
 
@@ -16,13 +17,15 @@
 ┌─────────────┐
 │  GrowthOS   │  →  Execution (immediate, transactional)
 ├─────────────┤
-│ VisualMeta  │  →  Preparation (deliberate, project-based)
+│ KitStamp  │  →  Preparation (deliberate, project-based)
 ├─────────────┤
 │  MenuList   │  →  Infrastructure (continuous, autonomous)
 └─────────────┘
 ```
 
 Each layer solves a different job, operates on a different time horizon, obeys a different doctrine, and cannot replace the other.
+
+Growth Engine sits outside this stack. It is internal acquisition infrastructure for MenuList lead generation and tracked onboarding, not an owner/customer product layer.
 
 ---
 
@@ -33,7 +36,7 @@ If two products answer the same question → conflict.
 | Product        | Question                                              | Behavior                                                                             |
 | -------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | **MenuList**   | "What should my menu be doing right now?"             | Autonomous, continuous, silent. Owner responsibility transferred.                    |
-| **VisualMeta** | "Prepare this content perfectly before I publish it." | Human-in-the-loop, deliberate, review-based. Final Content Kit is terminal artifact. |
+| **KitStamp** | "Prepare this content perfectly before I publish it." | Human-in-the-loop, deliberate, review-based. Final Content Kit is terminal artifact. |
 | **GrowthOS**   | "Give me something I can post or send right now."     | Instant, transactional, no iteration, no learning, no explanation.                   |
 
 **If a feature can't answer exactly one of these questions, it doesn't belong.**
@@ -45,7 +48,7 @@ If two products answer the same question → conflict.
 | Product        | Time Model                        | Hard Rule                       |
 | -------------- | --------------------------------- | ------------------------------- |
 | **MenuList**   | Continuous / nightly / always-on  | MenuList never feels urgent     |
-| **VisualMeta** | Project-based / slow / deliberate | VisualMeta never feels rushed   |
+| **KitStamp** | Project-based / slow / deliberate | KitStamp never feels rushed   |
 | **GrowthOS**   | Moment-based / immediate          | GrowthOS never feels thoughtful |
 
 **If that flips → identity collapse.**
@@ -57,12 +60,12 @@ If two products answer the same question → conflict.
 | Product        | Output Type                                    | Finality                        |
 | -------------- | ---------------------------------------------- | ------------------------------- |
 | **MenuList**   | Menus, screens, PDFs, official pages           | Autonomous — owner not involved |
-| **VisualMeta** | Final Content Kit (multi-asset, design + copy) | Human-approved, frozen          |
+| **KitStamp** | Final Content Kit (multi-asset, design + copy) | Human-approved, frozen          |
 | **GrowthOS**   | Text-based promotion kits                      | Immediate-use, copy-paste       |
 
 ### Collision Guardrail
 
-- **If output includes design + review** → VisualMeta
+- **If output includes design + review** → KitStamp
 - **If output is pure text, no review** → GrowthOS
 - **If output runs itself** → MenuList
 
@@ -75,7 +78,7 @@ No exceptions.
 | Product        | AI Posture    | Description                                |
 | -------------- | ------------- | ------------------------------------------ |
 | **MenuList**   | **Authority** | Silent, decisive. System knows best.       |
-| **VisualMeta** | **Assistant** | Visible, collaborative. System helps.      |
+| **KitStamp** | **Assistant** | Visible, collaborative. System helps.      |
 | **GrowthOS**   | **Delegate**  | Invisible, transactional. System delivers. |
 
 ### What Happens If Mixed
@@ -95,7 +98,7 @@ Each product trains a different habit:
 | Product        | Trained Behavior                     | Failure Signal                           |
 | -------------- | ------------------------------------ | ---------------------------------------- |
 | **MenuList**   | "I don't need to think about this."  | If users inspect MenuList → it failed    |
-| **VisualMeta** | "I'm preparing something important." | If users rush VisualMeta → it failed     |
+| **KitStamp** | "I'm preparing something important." | If users rush KitStamp → it failed     |
 | **GrowthOS**   | "I need something now."              | If users iterate in GrowthOS → it failed |
 
 ---
@@ -105,7 +108,7 @@ Each product trains a different habit:
 | Product        | Allowed Surfaces                          | Kill Rules                           |
 | -------------- | ----------------------------------------- | ------------------------------------ |
 | **MenuList**   | Dashboards (operational), rules, settings | ❌ Never gets "campaigns" or "posts" |
-| **VisualMeta** | Canvas, preview, versions, approval       | ❌ Never gets "instant generate"     |
+| **KitStamp** | Canvas, preview, versions, approval       | ❌ Never gets "instant generate"     |
 | **GrowthOS**   | Task → Input → Output (4 surfaces max)    | ❌ Never gets a canvas               |
 
 ---
@@ -115,7 +118,7 @@ Each product trains a different habit:
 | Product        | Pricing Logic                 |
 | -------------- | ----------------------------- |
 | **MenuList**   | Subscription (infrastructure) |
-| **VisualMeta** | Project / deliverable-based   |
+| **KitStamp** | Project / deliverable-based   |
 | **GrowthOS**   | Per kit / prepaid bundle      |
 
 ### Bundling Rule (Only One Allowed)
@@ -133,7 +136,7 @@ Each product trains a different habit:
 | Product        | Language Style                      |
 | -------------- | ----------------------------------- |
 | **MenuList**   | Silent, neutral, authoritative      |
-| **VisualMeta** | Explicit, professional, preparatory |
+| **KitStamp** | Explicit, professional, preparatory |
 | **GrowthOS**   | Short, calm, execution-focused      |
 
 ### Shared Bans (All Three)
@@ -151,12 +154,12 @@ Each product trains a different habit:
 | --------- | -------------- | ----------------------------- | ---------------------------------------------- |
 | 🥇 **#1** | **MenuList**   | 80-90% of time, always        | Absolute, non-negotiable                       |
 | 🥈 **#2** | **GrowthOS**   | Revenue + distribution engine | Only after MenuList stable + organic demand    |
-| 🥉 **#3** | **VisualMeta** | Optional premium layer        | Only if everything stable + higher-ticket need |
+| 🥉 **#3** | **KitStamp** | Optional premium layer        | Only if everything stable + higher-ticket need |
 
 ### Important Context
 
 - If GrowthOS ever slows MenuList → pause GrowthOS immediately
-- If VisualMeta is never built → you still win
+- If KitStamp is never built → you still win
 - If all three feel "equally important" → that's the moment you're about to lose
 
 ---
@@ -168,7 +171,7 @@ If someone proposes a feature, ask:
 | Question                                 | Answer           |
 | ---------------------------------------- | ---------------- |
 | Does it run continuously?                | → **MenuList**   |
-| Does it require review and refinement?   | → **VisualMeta** |
+| Does it require review and refinement?   | → **KitStamp** |
 | Does it deliver immediate usable output? | → **GrowthOS**   |
 | "A bit of all three"                     | → **Kill it**    |
 | "We can reuse logic"                     | → **Stop**       |
@@ -182,7 +185,7 @@ If someone proposes a feature, ask:
 | -------------- | ------------------------------- | ----------------------------------------------------------------------------------------------- |
 | **MenuList**   | ✅ Unequivocally worth doing    | Structurally inevitable. Category anchor.                                                       |
 | **GrowthOS**   | ✅ Worth doing, but conditional | Revenue engine, distribution amplifier, bridge product. Easier to copy, more quality-sensitive. |
-| **VisualMeta** | ⚠️ Maybe, only if ruthless      | Most dangerous — attracts creative expansion, power users. Not required for SMB OS dominance.   |
+| **KitStamp** | ⚠️ Maybe, only if ruthless      | Most dangerous — attracts creative expansion, power users. Not required for SMB OS dominance.   |
 
 ### The Uncomfortable Truth
 
@@ -190,7 +193,7 @@ You are not building three products. You are building:
 
 - **One OS** (MenuList)
 - **One monetization lever** (GrowthOS)
-- **One optional expansion** (VisualMeta)
+- **One optional expansion** (KitStamp)
 
 If at any point it feels like "all three are equally important" — that's the moment you're about to lose.
 
@@ -202,7 +205,7 @@ If at any point it feels like "all three are equally important" — that's the m
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **MenuList**   | ✅ BUILT — Full infrastructure, active development                                                                              |
 | **GrowthOS**   | 🟡 ~60% EXISTS as Social Content Engine inside MenuList (`src/lib/campaigns/engine.ts`, 9 campaign types, 5 execution surfaces) |
-| **VisualMeta** | 🔴 NOT STARTED — Concept only                                                                                                   |
+| **KitStamp** | 🔴 NOT STARTED — Concept only                                                                                                   |
 
 GrowthOS extraction from MenuList only happens when scale demands it.
 
@@ -288,7 +291,7 @@ Per Constitution Docs 11, 12, 15:
 | `__docs__/constitution/11-product-evolution-doctrine.md`  | Product sequence lock              |
 | `__docs__/constitution/12-product-separation-doctrine.md` | Separation rules (doctrine)        |
 | `__docs__/growthos-addon/README.md`                       | Active GrowthOS add-on plan        |
-| `__docs__/visual-meta/README.md`                          | VisualMeta complete strategy       |
+| `__docs__/kitstamp/README.md`                          | KitStamp complete strategy       |
 | `__docs__/control-layer-strategy/README.md`               | ControlOS / Control Layer strategy |
 | `__docs__/strategy/menulist-future-roadmap-ssot.md`       | Overall build sequence             |
 

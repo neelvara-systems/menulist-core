@@ -1,15 +1,15 @@
-# VisualMeta - Implementation Lock v1
+# KitStamp - Implementation Lock v1
 
 **Status:** Active planning lock for first implementation
 **Created:** May 31, 2026
-**Product code:** `VM`
-**Purpose:** Freeze the contracts that engineering should use before any VisualMeta product feature implementation starts.
+**Product code:** `KS`
+**Purpose:** Freeze the contracts that engineering should use before any KitStamp product feature implementation starts.
 
 ---
 
 ## 1. Lock Position
 
-VisualMeta implementation may begin only with foundation work.
+KitStamp implementation may begin only with foundation work.
 
 Allowed first:
 
@@ -17,7 +17,7 @@ Allowed first:
 - product constants
 - disabled route skeleton
 - Firebase config/rules/index/storage skeleton
-- VisualMeta Firebase helpers
+- KitStamp Firebase helpers
 - types and constants
 - DAL skeleton
 - emulator/rules test skeleton
@@ -36,94 +36,94 @@ Not allowed first:
 
 | Environment | Route/domain | Firebase target | Status |
 | --- | --- | --- | --- |
-| Local | `http://localhost:3000/__visualmeta` | `visualmeta-qa` | selected for planning |
-| Preview / QA | final QA domain TBD | `visualmeta-qa` | must be provisioned |
-| Production | `https://visualmeta.app` unless founder chooses another domain | `visualmeta` | must be provisioned |
+| Local | `http://localhost:3000/__kitstamp` | `kitstamp-qa` | selected for planning |
+| Preview / QA | final QA domain TBD | `kitstamp-qa` | must be provisioned |
+| Production | `https://kitstamp.com` unless founder chooses another domain | `kitstamp` | must be provisioned |
 
 Activation rule:
 
-> Keep VisualMeta product-domain routing disabled until the deployment target, Firebase target, route smoke tests, and billing scope are verified.
+> Keep KitStamp product-domain routing disabled until the deployment target, Firebase target, route smoke tests, and billing scope are verified.
 
 ## 3. Feature Flags
 
 All default off:
 
 ```ts
-ENABLE_VISUALMETA_PRODUCT: false
-ENABLE_VISUALMETA_PUBLIC_SITE: false
-ENABLE_VISUALMETA_DASHBOARD: false
-ENABLE_VISUALMETA_SOURCE_UPLOADS: false
-ENABLE_VISUALMETA_REVIEW: false
-ENABLE_VISUALMETA_EXPORT_KITS: false
-ENABLE_VISUALMETA_EXPORT_TEMPLATES: false
-ENABLE_VISUALMETA_EXPORT_ADAPTERS: false
-ENABLE_VISUALMETA_MENU_IMPORT: false
-ENABLE_VISUALMETA_GENERATION: false
-ENABLE_VISUALMETA_BATCH_JOBS: false
+ENABLE_KITSTAMP_PRODUCT: false
+ENABLE_KITSTAMP_PUBLIC_SITE: false
+ENABLE_KITSTAMP_DASHBOARD: false
+ENABLE_KITSTAMP_SOURCE_UPLOADS: false
+ENABLE_KITSTAMP_REVIEW: false
+ENABLE_KITSTAMP_EXPORT_KITS: false
+ENABLE_KITSTAMP_EXPORT_TEMPLATES: false
+ENABLE_KITSTAMP_EXPORT_ADAPTERS: false
+ENABLE_KITSTAMP_MENU_IMPORT: false
+ENABLE_KITSTAMP_GENERATION: false
+ENABLE_KITSTAMP_BATCH_JOBS: false
 ```
 
 Server/function flags:
 
 ```txt
-ENABLE_VISUALMETA_FUNCTIONS=false
-ENABLE_VISUALMETA_PROVIDER_CALLS=false
-ENABLE_VISUALMETA_EXPORT_PACKAGING=false
-VISUALMETA_FIREBASE_MODE=separate
+ENABLE_KITSTAMP_FUNCTIONS=false
+ENABLE_KITSTAMP_PROVIDER_CALLS=false
+ENABLE_KITSTAMP_EXPORT_PACKAGING=false
+KITSTAMP_FIREBASE_MODE=separate
 ```
 
 Rule:
 
-> No VisualMeta route, mutation API, provider call, Storage write, export operation, or external handoff runs unless `ENABLE_VISUALMETA_PRODUCT=true` and the specific feature flag is also true.
+> No KitStamp route, mutation API, provider call, Storage write, export operation, or external handoff runs unless `ENABLE_KITSTAMP_PRODUCT=true` and the specific feature flag is also true.
 
 ## 4. Product Identity
 
-Every VisualMeta-owned document uses:
+Every KitStamp-owned document uses:
 
 ```ts
-type VisualMetaIdentity = {
-  pId: "VM";
+type KitStampIdentity = {
+  pId: "KS";
   tId: number;
   sId: number;
 };
 ```
 
-Do not use MenuList tenant/store IDs as VisualMeta scope. MenuList IDs can appear only inside copied `sourceContext`.
+Do not use MenuList tenant/store IDs as KitStamp scope. MenuList IDs can appear only inside copied `sourceContext`.
 
 ## 5. V1 Collections
 
 First implementation collections:
 
-- `visualmetaWorkspaces`
-- `visualmetaProjects`
-- `visualmetaSourceSnapshots`
-- `visualmetaContentUnits`
-- `visualmetaAssets`
-- `visualmetaTextVariants`
-- `visualmetaGenerationJobs`
-- `visualmetaReviewEvents`
-- `visualmetaExportKits`
-- `visualmetaAuditLogs`
+- `kitstampWorkspaces`
+- `kitstampProjects`
+- `kitstampSourceSnapshots`
+- `kitstampContentUnits`
+- `kitstampAssets`
+- `kitstampTextVariants`
+- `kitstampGenerationJobs`
+- `kitstampReviewEvents`
+- `kitstampExportKits`
+- `kitstampAuditLogs`
 
 Do not create these as first implementation blockers:
 
-- `visualmetaImportRows`
-- `visualmetaImportFiles`
-- `visualmetaAnnotations`
-- `visualmetaReviewInvites`
-- `visualmetaGuestReviewSessions`
-- `visualmetaDestinationProfiles`
-- `visualmetaStyleProfiles`
-- `visualmetaLocaleGlossaries`
-- `visualmetaExportTemplates`
-- `visualmetaExportAdapters`
-- `visualmetaAdapterMappings`
+- `kitstampImportRows`
+- `kitstampImportFiles`
+- `kitstampAnnotations`
+- `kitstampReviewInvites`
+- `kitstampGuestReviewSessions`
+- `kitstampDestinationProfiles`
+- `kitstampStyleProfiles`
+- `kitstampLocaleGlossaries`
+- `kitstampExportTemplates`
+- `kitstampExportAdapters`
+- `kitstampAdapterMappings`
 
 For the first implementation, export templates and adapters should be code registries, not Firestore collections.
 
 ## 6. Source Snapshot Schema
 
 ```ts
-type VisualMetaSourceSnapshot = VisualMetaIdentity & {
+type KitStampSourceSnapshot = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId?: string;
@@ -188,7 +188,7 @@ Source hash is required for:
 ## 8. Content Unit Schema
 
 ```ts
-type VisualMetaContentUnit = VisualMetaIdentity & {
+type KitStampContentUnit = KitStampIdentity & {
   id: string;
   projectId: string;
   label: string;
@@ -260,7 +260,7 @@ type VisualMetaContentUnit = VisualMetaIdentity & {
 ## 9. Asset Schema
 
 ```ts
-type VisualMetaAsset = VisualMetaIdentity & {
+type KitStampAsset = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId: string;
@@ -318,7 +318,7 @@ Uploaded, imported, or generated assets never become approved by default.
 ## 10. Text Variant Schema
 
 ```ts
-type VisualMetaTextVariant = VisualMetaIdentity & {
+type KitStampTextVariant = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId: string;
@@ -371,7 +371,7 @@ Generated, translated, rewritten, and imported text stays candidate/draft until 
 ## 11. Review Event Schema
 
 ```ts
-type VisualMetaReviewEvent = VisualMetaIdentity & {
+type KitStampReviewEvent = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId: string;
@@ -420,11 +420,11 @@ Approval is blocked when source snapshot is missing, source is stale, source has
 ## 12. Manifest v1 Schema
 
 ```ts
-type VisualMetaManifestV1 = {
+type KitStampManifestV1 = {
   manifestVersion: "1.0";
   product: {
-    pId: "VM";
-    name: "VisualMeta";
+    pId: "KS";
+    name: "KitStamp";
   };
   kit: {
     kitId: string;
@@ -518,7 +518,7 @@ Manifest is immutable after kit reaches `ready`.
 ## 13. Export Kit Schema
 
 ```ts
-type VisualMetaExportKit = VisualMetaIdentity & {
+type KitStampExportKit = KitStampIdentity & {
   id: string;
   projectId: string;
   version: number;
@@ -627,17 +627,17 @@ Allowed:
 - preview selected MenuList items
 - verify MenuList source access server-side
 - copy selected item facts
-- copy/export source image into VisualMeta Storage when needed
+- copy/export source image into KitStamp Storage when needed
 - store `sourceContext.sourcePId = "ML"`
 - compute source hash
-- create VisualMeta source snapshot
-- create VisualMeta content unit
+- create KitStamp source snapshot
+- create KitStamp content unit
 - manual refresh creates a new source snapshot version
 
 Forbidden:
 
 - live MenuList listener
-- MenuList read during normal VisualMeta render
+- MenuList read during normal KitStamp render
 - MenuList write-back
 - MenuList price/availability/hours mutation
 - MenuList public cache invalidation
@@ -656,9 +656,9 @@ Recommended limits:
 Paths:
 
 ```txt
-visualmeta/source/{tId}/{sId}/{projectId}/...
-visualmeta/generated/{tId}/{sId}/{projectId}/...
-visualmeta/export-kits/{tId}/{sId}/{kitId}/...
+kitstamp/source/{tId}/{sId}/{projectId}/...
+kitstamp/generated/{tId}/{sId}/{projectId}/...
+kitstamp/export-kits/{tId}/{sId}/{kitId}/...
 ```
 
 Initial limits:
@@ -696,7 +696,7 @@ Provider call sequence:
 
 1. feature flag
 2. auth
-3. VM scope
+3. KS scope
 4. Zod validation
 5. Safe Mode
 6. rate limit
@@ -705,26 +705,26 @@ Provider call sequence:
 9. provider call
 10. store result as draft
 11. settle or refund credits
-12. operation log under `VM`
+12. operation log under `KS`
 
 ## 19. API Route Contract
 
 Foundation routes:
 
 ```txt
-POST /api/visualmeta/projects/create
-GET  /api/visualmeta/projects
-GET  /api/visualmeta/projects/[id]
-POST /api/visualmeta/source-snapshots/create
-POST /api/visualmeta/source/upload
-POST /api/visualmeta/content-units/create
-GET  /api/visualmeta/projects/[id]/content-units
-POST /api/visualmeta/candidates/assets/create
-POST /api/visualmeta/candidates/text/create
-POST /api/visualmeta/review/decision
-POST /api/visualmeta/export-kits/preflight
-POST /api/visualmeta/export-kits/create
-GET  /api/visualmeta/export-kits/[id]
+POST /api/kitstamp/projects/create
+GET  /api/kitstamp/projects
+GET  /api/kitstamp/projects/[id]
+POST /api/kitstamp/source-snapshots/create
+POST /api/kitstamp/source/upload
+POST /api/kitstamp/content-units/create
+GET  /api/kitstamp/projects/[id]/content-units
+POST /api/kitstamp/candidates/assets/create
+POST /api/kitstamp/candidates/text/create
+POST /api/kitstamp/review/decision
+POST /api/kitstamp/export-kits/preflight
+POST /api/kitstamp/export-kits/create
+GET  /api/kitstamp/export-kits/[id]
 ```
 
 Do not add generation routes until billing is locked.
@@ -732,16 +732,16 @@ Do not add generation routes until billing is locked.
 Later routes:
 
 ```txt
-POST /api/visualmeta/generation/candidate
-POST /api/visualmeta/generation/batch-trigger
-POST /api/visualmeta/generation/worker
-POST /api/visualmeta/source/menulist/preview
-POST /api/visualmeta/source/menulist/import
-POST /api/visualmeta/source/menulist/refresh
-GET  /api/visualmeta/export-templates
-POST /api/visualmeta/export-templates/preview
-GET  /api/visualmeta/export-adapters
-POST /api/visualmeta/export-adapters/preflight
+POST /api/kitstamp/generation/candidate
+POST /api/kitstamp/generation/batch-trigger
+POST /api/kitstamp/generation/worker
+POST /api/kitstamp/source/menulist/preview
+POST /api/kitstamp/source/menulist/import
+POST /api/kitstamp/source/menulist/refresh
+GET  /api/kitstamp/export-templates
+POST /api/kitstamp/export-templates/preview
+GET  /api/kitstamp/export-adapters
+POST /api/kitstamp/export-adapters/preflight
 ```
 
 ## 20. Implementation Order
@@ -759,16 +759,16 @@ POST /api/visualmeta/export-adapters/preflight
 
 ## 21. Activation Gates
 
-Do not enable `ENABLE_VISUALMETA_PRODUCT` until:
+Do not enable `ENABLE_KITSTAMP_PRODUCT` until:
 
 - `npx tsc --noEmit --incremental false` passes
 - Firebase rules emulator tests exist and pass
 - Storage rules tests exist and pass
-- `/__visualmeta` local route smoke passes
+- `/__kitstamp` local route smoke passes
 - product host does not fall into MenuList tenant routing
-- VisualMeta APIs reject MenuList-only sessions
-- VisualMeta writes only to VisualMeta Firebase
-- VisualMeta Storage writes only to VisualMeta prefixes
+- KitStamp APIs reject MenuList-only sessions
+- KitStamp writes only to KitStamp Firebase
+- KitStamp Storage writes only to KitStamp prefixes
 - provider calls are blocked when credits are missing
 - export manifest is immutable after ready
 - no direct publishing controls exist

@@ -30,7 +30,7 @@ The main correction is product boundary:
 | Codex skill | Create a website-asset-factory skill. | Agree | Use repo-local skill instructions, but keep active source of truth in repo docs and scripts. |
 | Asset manifest | Track assets, versions, files, stale state. | Agree | This is the core of the system. |
 | Auto-approval | Codex can handle most asset work automatically. | Partial | Use autonomy levels: audit only, safe deterministic generation, founder approval for brand-defining assets. |
-| Separate product | Could become separate product. | Reject for now | Current doctrine treats GrowthOS/VisualMeta as later extraction events; this is internal tooling. |
+| Separate product | Could become separate product. | Reject for now | Current doctrine treats GrowthOS/KitStamp as later extraction events; this is internal tooling. |
 
 ## Line-By-Line Reality Check
 
@@ -73,7 +73,7 @@ It answers:
 It should not answer:
 
 - "Give an SMB owner a post or campaign now." That belongs to GrowthOS.
-- "Prepare client content for publishing." That belongs to VisualMeta.
+- "Prepare client content for publishing." That belongs to KitStamp.
 - "Run MenuList business truth." That belongs to MenuList.
 - "Run Answerlattice support knowledge." That belongs to Answerlattice.
 
@@ -82,7 +82,7 @@ It should not answer:
 | Decision | Status | Reason | Action |
 | --- | --- | --- | --- |
 | Create docs in a separate folder | Approved | Cross-product internal tooling needs its own source of truth. | Done in `__docs__/website-asset-operating-system/`. |
-| Market as new product now | Rejected | No external ICP, no standalone runtime, conflicts with product priority and VisualMeta/GrowthOS boundaries. | Keep internal. |
+| Market as new product now | Rejected | No external ICP, no standalone runtime, conflicts with product priority and KitStamp/GrowthOS boundaries. | Keep internal. |
 | Build first version as contract only | Approved | Prevents media generation before "correct asset" is defined. | Implementation plan documents contract-first build. |
 | Add dependencies immediately | Rejected | Current package does not include Playwright/Remotion/FFmpeg wrappers; freeze discipline requires proof first. | Add only after a dependency review. |
 | Generate final videos now | Rejected | Needs asset slots, demo state, founder approval, size budgets, and review scoring first. | First audit should list missing assets. |

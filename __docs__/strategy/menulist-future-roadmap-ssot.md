@@ -871,7 +871,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 ## Session 6 Topics (February 19, 2026)
 
-- **Product Evolution Sequence (LOCKED):** MenuList → Control Layer (inside MenuList) → GrowthOS → VisualMeta (optional). Formally documented and locked for 3 years.
+- **Product Evolution Sequence (LOCKED):** MenuList → Control Layer (inside MenuList) → GrowthOS → KitStamp (optional). Formally documented and locked for 3 years.
 - **Customer-Facing Only Boundary (PERMANENT):** Never build POS/CRM/inventory/payroll/accounting/HR. MenuList exists in customer-facing layer ONLY.
 - **ControlOS Concept (18 ChatGPT docs):** "Control Layer" = MenuList evolving from menu truth to business truth infrastructure. NOT a separate product. Silent autopilot system. 5 Pillars: Business Identity Truth, Operational Public Truth, Menu & Offering Truth, Public Communication Layer, Presence Consistency Layer.
 - **"5-Minute Understanding" Rule (NEW):** Non-tech SMB must understand MenuList in 5 minutes without help. If owner needs training → too complex.
@@ -879,7 +879,7 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **Silent Autopilot Philosophy:** Owner updates once → correct everywhere. Minimal UI. No dashboards.
 - **ControlOS-GrowthOS Boundary:** Truth authority (ControlOS) vs growth execution (GrowthOS). Never merge. GrowthOS reads from truth layer, never writes.
 - **GrowthOS Framework (9 ChatGPT docs):** Revenue execution engine. Entirely DEFERRED. Only after MenuList = system-of-record.
-- **VisualMeta:** Optional forever. Never allowed to distract.
+- **KitStamp:** Optional forever. Never allowed to distract.
 - **8 Failure Scenarios Documented:** Feature creep, dashboard explosion, automation over-engineering, operational drift, premature integrations, multi-product chaos, UI complexity, reliability compromise.
 - **Strategic Moat Analysis:** Control Layer creates switching costs, trust compounds, data authority deepens, infrastructure positioning vs tool positioning.
 
@@ -896,9 +896,9 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **GrowthOS Full Product Design (10 ChatGPT docs):** Complete product strategy for GrowthOS — a transactional execution engine producing ready-to-use promotional content for SMBs. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, canonical use cases, workflow engine, content quality rules, MenuList relationship contract, monetization, kill criteria.
 - **Critical Codebase Finding:** MenuList's Social Content Engine (Today screen, 9 campaign types, 5 execution surfaces, confidence gating, silence governor) already implements ~60% of GrowthOS vision. Social Content Engine IS GrowthOS v0 — the prototype living inside MenuList.
 - **agentkits-marketing Repo Analysis:** Reviewed [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) — 18 agents, 93 commands, 28 skills. Only ~15% directly useful for SMB context (copywriting frameworks, workflow structure, brand safety rules). Enterprise/SaaS marketing content mostly irrelevant.
-- **3-Product Separation Audit:** Formal audit confirming MenuList ≠ GrowthOS ≠ VisualMeta. Different jobs, time horizons, AI postures, surfaces, monetization. Products form a vertical stack, not a suite.
-- **One-Page Positioning Map (NEW):** Stack model: Infrastructure (MenuList) → Preparation (VisualMeta) → Execution (GrowthOS). With Red-Flag Test for feature assignment.
-- **Product Priority Order (LOCKED):** MenuList #1 always (80-90% time). GrowthOS #2 conditional. VisualMeta #3 optional (may never be built — you still win).
+- **3-Product Separation Audit:** Formal audit confirming MenuList ≠ GrowthOS ≠ KitStamp. Different jobs, time horizons, AI postures, surfaces, monetization. Products form a vertical stack, not a suite.
+- **One-Page Positioning Map (NEW):** Stack model: Infrastructure (MenuList) → Preparation (KitStamp) → Execution (GrowthOS). With Red-Flag Test for feature assignment.
+- **Product Priority Order (LOCKED):** MenuList #1 always (80-90% time). GrowthOS #2 conditional. KitStamp #3 optional (may never be built — you still win).
 - **Market Research:** SMB marketing tools landscape validated GrowthOS's "output-first" positioning as genuinely differentiated. No existing tool produces ready-to-use, channel-specific content for local SMBs without requiring marketing knowledge.
 - **Kill Criteria for GrowthOS (NEW):** DOC 10 — when to shut down, banned expansions, red-flag test. Written by Cascade (ChatGPT referenced but never produced it).
 - **Monetization Model (NEW):** Pay-per-kit or prepaid bundles. No subscriptions, no unlimited, no feature tiers. Cascade note: Indian market likely needs prepaid bundles (₹199/5 kits).
@@ -915,22 +915,22 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 ## Session 8 Topics (February 19, 2026 — Night)
 
-- **VisualMeta Complete Product Design (24+ ChatGPT topics):** Comprehensive product strategy for VisualMeta — a commercial content preparation workspace producing Final Content Kits. Conversation started as AI Image Generation code review, evolved into standalone product critique, then pivoted into full VisualMeta product design. Covers: canonical definition, terminal artifact (Final Content Kit), ICP lock (content operators at agencies), UI identity (workbench not dashboard), feature kill-list (9 permanent bans), 7 core features, pricing (kit-based), trust language, error states, support model, audit layer, export spec (ZIP structure), V2 expansion, investor narrative, market research.
-- **Critical Codebase Finding:** MenuList's AI Image Generation system (single + batch + editing, Cloud Tasks pipeline, Firestore state machine, 12+ components, 10,000+ LOC) already implements ~70% of VisualMeta's image preparation capability. Same pattern as Social Content Engine being GrowthOS v0 — **AI Image Gen IS VisualMeta's image engine prototype**.
+- **KitStamp Complete Product Design (24+ ChatGPT topics):** Comprehensive product strategy for KitStamp — a commercial content preparation workspace producing Final Content Kits. Conversation started as AI Image Generation code review, evolved into standalone product critique, then pivoted into full KitStamp product design. Covers: canonical definition, terminal artifact (Final Content Kit), ICP lock (content operators at agencies), UI identity (workbench not dashboard), feature kill-list (9 permanent bans), 7 core features, pricing (kit-based), trust language, error states, support model, audit layer, export spec (ZIP structure), V2 expansion, investor narrative, market research.
+- **Critical Codebase Finding:** MenuList's AI Image Generation system (single + batch + editing, Cloud Tasks pipeline, Firestore state machine, 12+ components, 10,000+ LOC) already implements ~70% of KitStamp's image preparation capability. Same pattern as Social Content Engine being GrowthOS v0 — **AI Image Gen IS KitStamp's image engine prototype**.
 - **AI Image Generation Code Review:** ChatGPT + expert validated existing codebase. Found: debugger in production (batch-generation/route.ts:164), transaction logging disabled (route.ts:264), no batch size limit. Expert added 18-item development checklist, USP definition ("Inline Menu Image Creation"), scope freeze rules, UI language guidelines.
 - **20-Screen UI/UX Journey:** Complete screen map designed across 6 phases (Landing → Onboarding → Data Setup → Image Generation → Completion → Return Flows). Each screen with layout, copy, CTAs, failure states.
 - **"Do-Nothing Path" Design:** Strongest version of image generation = user clicks "Generate", touches nothing else, gets confident result. Defaults should be product-grade, customization collapsed behind "Customize (optional)".
 - **Final Content Kit (Terminal Artifact):** Structured ZIP package with visuals/, text/, metadata/, README.txt. Human-approved, frozen at export, no silent changes. README includes liability disclaimer.
 - **Market Research:** Content creation market ~$36B (2025), SAM ~$2.9-4.3B (upstream prep slice), practical SOM ~$14-22M ARR (3-5yr). Real competitors: Google Docs + Spreadsheets + WhatsApp, not Canva.
-- **VisualMeta Kill-List (9 Permanent Bans):** No publishing, no performance metrics, no auto-selection, no prompt-centric UX, no asset management, no learning claims, no personalization, no scoring, no autonomous flows.
+- **KitStamp Kill-List (9 Permanent Bans):** No publishing, no performance metrics, no auto-selection, no prompt-centric UX, no asset management, no learning claims, no personalization, no scoring, no autonomous flows.
 - **V2 Expansion (4 Ideas):** Content Variants Pack (✅), Brand Guardrails (✅), Short-Form Motion Draft (V3+), Client Review Mode (with limits).
 
-**Cascade Review:** 82% accuracy. Excellent strategic thinking. Key gap: ChatGPT unaware AI Image Generation system already exists (~70% of VisualMeta's image capability). Over-designed for agency market when Indian SMBs (primary MenuList market) do their own content. Strong philosophical framework, production-grade design artifacts. Full review at `__docs__/visual-meta/_archive/chatgpt-review.md`
+**Cascade Review:** 82% accuracy. Excellent strategic thinking. Key gap: ChatGPT unaware AI Image Generation system already exists (~70% of KitStamp's image capability). Over-designed for agency market when Indian SMBs (primary MenuList market) do their own content. Strong philosophical framework, production-grade design artifacts. Full review at `__docs__/kitstamp/_archive/chatgpt-review.md`
 
 **Documents Created:**
 
-- `__docs__/visual-meta/README.md` — Comprehensive VisualMeta strategy (20 sections)
-- `__docs__/visual-meta/_archive/chatgpt-review.md` — Full conversation review (28 topics analyzed)
+- `__docs__/kitstamp/README.md` — Comprehensive KitStamp strategy (20 sections)
+- `__docs__/kitstamp/_archive/chatgpt-review.md` — Full conversation review (28 topics analyzed)
 
 ## Session 9 Topics (February 21, 2026)
 

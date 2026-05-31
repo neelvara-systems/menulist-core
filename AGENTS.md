@@ -109,7 +109,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **MenuList**: Canonical public business truth infrastructure for SMB restaurants
 - **Answerlattice**: Governed Answer Infrastructure for SaaS Support (separate product)
 - **Website Asset Operating System**: Internal-only, separate-product-style asset architecture for MenuList/Answerlattice website media; never public by default
-- **3-Product Separation**: MenuList vs GrowthOS vs VisualMeta - never merge
+- **3-Product Separation**: MenuList vs GrowthOS vs KitStamp - never merge
 - **Infrastructure Identity**: MenuList is public utility, not SaaS software
 
 ### Technology Stack Decisions
@@ -269,7 +269,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Public Entity Addressability**: Customer-facing items and business entities should have stable, human-readable URLs when they are intended to be shareable/indexable.
 - **Public Cache Invalidation**: Any code path that writes public-facing `projects` or `stores` truth must invalidate the public menu/OBP cache. Client/browser DAL paths must use `src/lib/cache/publicClientCache.ts`; server/API paths must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. This applies to desktop, mobile, direct Firestore writes, API routes, special menus, PWA/customer app settings, and multi-outlet propagation/override flows.
 - **Website Auto-Sync**: If a feature changes public/customer-visible capability, check whether website copy, help docs, and output surfaces need updating.
-- **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Answerlattice website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/VisualMeta.
+- **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Answerlattice website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/KitStamp.
 
 ---
 

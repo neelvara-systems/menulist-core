@@ -9,7 +9,7 @@
 
 ## Intent
 
-Present Answerlattice as governed answer infrastructure.
+Present Answerlattice as governed answer infrastructure while using the final approved logo source.
 
 ## Placement
 
@@ -22,6 +22,12 @@ Present Answerlattice as governed answer infrastructure.
 ## Output Contract
 
 - og: png, 1200x630, max 500 KB
+
+## Approved Source
+
+- Canonical logo source: `public/answerlattice-logo.svg`
+- Design status: final
+- Handling rule: embed or rasterize the canonical SVG only; do not recolor, reshape, simplify, or redraw the logo.
 
 ## Existing Files
 

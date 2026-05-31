@@ -1,14 +1,14 @@
-# VisualMeta - Non-Goals Charter
+# KitStamp - Non-Goals Charter
 
 **Status:** Binding planning charter
 **Created:** May 31, 2026
-**Purpose:** Prevent VisualMeta from drifting into crowded or wrong product categories.
+**Purpose:** Prevent KitStamp from drifting into crowded or wrong product categories.
 
 ---
 
-## 1. VisualMeta Is Not Canva
+## 1. KitStamp Is Not Canva
 
-VisualMeta will not:
+KitStamp will not:
 
 - become a general design canvas
 - build full presentation, website, document, whiteboard, or video suites
@@ -18,11 +18,11 @@ VisualMeta will not:
 
 Rule:
 
-> VisualMeta prepares kit-ready content. It does not become the place where every creative idea is designed.
+> KitStamp prepares kit-ready content. It does not become the place where every creative idea is designed.
 
-## 2. VisualMeta Is Not Adobe
+## 2. KitStamp Is Not Adobe
 
-VisualMeta will not:
+KitStamp will not:
 
 - build enterprise creative supply-chain automation
 - expose broad creative APIs for every media type
@@ -32,11 +32,11 @@ VisualMeta will not:
 
 Rule:
 
-> VisualMeta stays practical for smaller teams and operators who need approved kits, not enterprise creative infrastructure.
+> KitStamp stays practical for smaller teams and operators who need approved kits, not enterprise creative infrastructure.
 
-## 3. VisualMeta Is Not Photoroom
+## 3. KitStamp Is Not Photoroom
 
-VisualMeta will not:
+KitStamp will not:
 
 - be only background removal
 - be only product-photo automation
@@ -45,11 +45,11 @@ VisualMeta will not:
 
 Rule:
 
-> Image preparation is one part of VisualMeta. Final Content Kits are the product.
+> Image preparation is one part of KitStamp. Final Content Kits are the product.
 
-## 4. VisualMeta Is Not A CMS
+## 4. KitStamp Is Not A CMS
 
-VisualMeta will not:
+KitStamp will not:
 
 - host live product pages
 - manage website publishing
@@ -59,11 +59,11 @@ VisualMeta will not:
 
 Rule:
 
-> VisualMeta exports content; live systems publish content.
+> KitStamp exports content; live systems publish content.
 
-## 5. VisualMeta Is Not A PIM Or DAM
+## 5. KitStamp Is Not A PIM Or DAM
 
-VisualMeta will not:
+KitStamp will not:
 
 - own all product attributes
 - become the master product catalog
@@ -73,11 +73,11 @@ VisualMeta will not:
 
 Rule:
 
-> VisualMeta works on content readiness for a project, not full enterprise master-data ownership.
+> KitStamp works on content readiness for a project, not full enterprise master-data ownership.
 
-## 6. VisualMeta Is Not GrowthOS
+## 6. KitStamp Is Not GrowthOS
 
-VisualMeta will not:
+KitStamp will not:
 
 - answer "what should I post now?"
 - create immediate sales actions
@@ -87,11 +87,11 @@ VisualMeta will not:
 
 Rule:
 
-> GrowthOS executes now. VisualMeta prepares deliberately.
+> GrowthOS executes now. KitStamp prepares deliberately.
 
-## 7. VisualMeta Is Not MenuList
+## 7. KitStamp Is Not MenuList
 
-VisualMeta will not:
+KitStamp will not:
 
 - manage live menu truth
 - change prices, availability, hours, or public links
@@ -100,11 +100,11 @@ VisualMeta will not:
 
 Rule:
 
-> MenuList can send snapshots to VisualMeta. VisualMeta does not become MenuList.
+> MenuList can send snapshots to KitStamp. KitStamp does not become MenuList.
 
-## 8. VisualMeta Is Not An Autopilot
+## 8. KitStamp Is Not An Autopilot
 
-VisualMeta will not:
+KitStamp will not:
 
 - auto-approve generated output
 - silently replace source facts
@@ -115,9 +115,9 @@ Rule:
 
 > Human approval is mandatory for every final kit.
 
-## 9. VisualMeta Is Not An Analytics Tool
+## 9. KitStamp Is Not An Analytics Tool
 
-VisualMeta will not:
+KitStamp will not:
 
 - measure ad performance
 - report ROI
@@ -129,9 +129,9 @@ Rule:
 
 > Metrics serve readiness, cost, quality, and workflow health only.
 
-## 10. VisualMeta's Only Expansion Axis
+## 10. KitStamp's Only Expansion Axis
 
-VisualMeta may expand only along:
+KitStamp may expand only along:
 
 - source snapshot quality
 - content-unit completeness

@@ -11,7 +11,7 @@
  *   QA: ecomsai.com           — Answerlattice preview/staging
  *   Prod: menulist.ai         — MenuList production
  *   Prod: answerlattice.com        — Answerlattice production
- *   [future].app             — SurfaceOS / GrowthOS / VisualMeta websites
+ *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.ai  — Customer-facing digital menu (public)
  *   help.menulist.ai         — Help center / knowledge base (future)

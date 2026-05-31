@@ -9,7 +9,7 @@
 
 ## Intent
 
-Keep Answerlattice startup images aligned with the dark infrastructure identity.
+Keep Answerlattice startup images aligned with the dark infrastructure identity and final approved logo source.
 
 ## Placement
 
@@ -22,6 +22,13 @@ Keep Answerlattice startup images aligned with the dark infrastructure identity.
 ## Output Contract
 
 - primary: png, splash, max 400 KB
+
+## Approved Source
+
+- Canonical logo source: `public/answerlattice-logo.svg`
+- Splash source PNG: `public/answerlattice-logo-mark-wide.png`
+- Design status: final
+- Handling rule: rasterize and place only; do not recolor, redraw, crop into a different mark, or simplify the logo.
 
 ## Existing Files
 

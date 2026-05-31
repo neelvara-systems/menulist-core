@@ -72,10 +72,25 @@ function verifySplashFiles() {
     assert(png.width === expectedWidth, `${relPath} width must be ${expectedWidth}`);
     assert(png.height === expectedHeight, `${relPath} height must be ${expectedHeight}`);
 
-    const center = ((png.width * Math.floor(png.height * 0.46)) + Math.floor(png.width / 2)) << 2;
-    const centerBrightness = png.data[center] + png.data[center + 1] + png.data[center + 2];
-    const cornerBrightness = png.data[0] + png.data[1] + png.data[2];
-    assert(centerBrightness > cornerBrightness + 35, `${relPath} must keep the Answerlattice mark area visibly separated from the dark background`);
+    const xStart = Math.floor(png.width * 0.2);
+    const xEnd = Math.ceil(png.width * 0.8);
+    const yStart = Math.floor(png.height * 0.38);
+    const yEnd = Math.ceil(png.height * 0.54);
+    let visibleLogoSamples = 0;
+
+    for (let y = yStart; y < yEnd; y += 4) {
+      for (let x = xStart; x < xEnd; x += 4) {
+        const index = ((png.width * y) + x) << 2;
+        const r = png.data[index];
+        const g = png.data[index + 1];
+        const b = png.data[index + 2];
+        const a = png.data[index + 3];
+        const isFinalLogoTeal = a > 220 && g > 95 && b > 75 && g > r + 18 && b > r + 8;
+        if (isFinalLogoTeal) visibleLogoSamples += 1;
+      }
+    }
+
+    assert(visibleLogoSamples > 24, `${relPath} must keep the final Answerlattice mark visibly present in the splash logo area`);
   }
 }
 

@@ -1,49 +1,49 @@
-# VisualMeta - Core Doctrine
+# KitStamp - Core Doctrine
 
 **Status:** Planning doctrine
 **Version:** 1.0.0-draft
 **Created:** May 31, 2026
-**Authority:** Binding for VisualMeta planning until implementation begins
+**Authority:** Binding for KitStamp planning until implementation begins
 
 ---
 
 ## Identity
 
-**Product name:** VisualMeta
-**Product code:** `VM`
+**Product name:** KitStamp
+**Product code:** `KS`
 **Category:** Content Readiness Workspace
-**One-sentence definition:** VisualMeta prepares product, menu, catalog, and listing content into human-approved Final Content Kits.
+**One-sentence definition:** KitStamp prepares product, menu, catalog, and listing content into human-approved Final Content Kits.
 
-VisualMeta is not a creative suite. It is not a marketing system. It is not a publisher.
+KitStamp is not a creative suite. It is not a marketing system. It is not a publisher.
 
-VisualMeta exists to answer one question:
+KitStamp exists to answer one question:
 
 > "Is this content ready to approve and hand off?"
 
 ## Product Class
 
-VisualMeta belongs beside MenuList and Answerlattice as a separate product.
+KitStamp belongs beside MenuList and Answerlattice as a separate product.
 
 | Product | Product code | Center of gravity |
 | --- | --- | --- |
 | MenuList | `ML` | Public business truth |
 | Answerlattice | `AL` | Support knowledge truth |
 | GrowthOS | `GR` | Immediate growth execution |
-| VisualMeta | `VM` | Content readiness and handoff |
+| KitStamp | `KS` | Content readiness and handoff |
 
 ## Core Doctrine
 
 1. **Final Kit Is The Product**
-   VisualMeta's terminal artifact is a Final Content Kit. If a feature does not improve kit readiness, it is suspect.
+   KitStamp's terminal artifact is a Final Content Kit. If a feature does not improve kit readiness, it is suspect.
 
 2. **Humans Approve**
-   Generated or edited content is draft until a human approves it. VisualMeta never silently marks output final.
+   Generated or edited content is draft until a human approves it. KitStamp never silently marks output final.
 
 3. **Source Facts Travel With Output**
    Every final asset keeps source snapshot, generation/edit history, and approval metadata.
 
 4. **Preparation Stops Before Publishing**
-   VisualMeta exports. Other systems publish.
+   KitStamp exports. Other systems publish.
 
 5. **Content Units Are Atomic**
    A content unit represents one item, offer, product, place, article, or asset subject. Kits are assembled from content units.
@@ -55,7 +55,7 @@ VisualMeta belongs beside MenuList and Answerlattice as a separate product.
    Notes, status, approval, and version history are product value, not overhead.
 
 8. **No Live Truth Ownership**
-   VisualMeta may import source snapshots from MenuList, Answerlattice, files, URLs, or external systems. It does not own or mutate live source truth.
+   KitStamp may import source snapshots from MenuList, Answerlattice, files, URLs, or external systems. It does not own or mutate live source truth.
 
 ## Architectural Pillars
 
@@ -84,11 +84,11 @@ Content units are the core objects. A unit can contain:
 - approval metadata
 - export eligibility
 
-Units are not MenuList items, Answerlattice articles, or GrowthOS actions. They are VisualMeta-owned preparation objects.
+Units are not MenuList items, Answerlattice articles, or GrowthOS actions. They are KitStamp-owned preparation objects.
 
 ### Pillar 3 - Generation And Edit Layer
 
-VisualMeta can use image generation, image editing, copy generation, translation, alt text generation, and format adaptation.
+KitStamp can use image generation, image editing, copy generation, translation, alt text generation, and format adaptation.
 
 Generation is assistant behavior. It produces candidates, not truth.
 
@@ -112,7 +112,7 @@ The kit is the handoff artifact. It should be usable by websites, marketplaces, 
 
 ## AI Posture
 
-VisualMeta's AI posture is **Assistant**.
+KitStamp's AI posture is **Assistant**.
 
 It can:
 
@@ -149,13 +149,13 @@ Supporting metrics:
 - generation cost per approved kit
 - reviewer correction rate
 
-Do not use revenue lift, click-through rate, follower growth, or ad performance as core VisualMeta success metrics.
+Do not use revenue lift, click-through rate, follower growth, or ad performance as core KitStamp success metrics.
 
 ## Relationship To Existing MenuList Image Pipeline
 
-MenuList's image generation pipeline proves feasibility, but it is not VisualMeta.
+MenuList's image generation pipeline proves feasibility, but it is not KitStamp.
 
-VisualMeta may reuse patterns:
+KitStamp may reuse patterns:
 
 - provider wrappers
 - image generation prompts after generalization
@@ -164,7 +164,7 @@ VisualMeta may reuse patterns:
 - AI operation accounting
 - safety guardrails
 
-VisualMeta must separate:
+KitStamp must separate:
 
 - data model
 - product Firebase project
@@ -176,7 +176,7 @@ VisualMeta must separate:
 
 ## Doctrine Test
 
-Before accepting any VisualMeta feature, ask:
+Before accepting any KitStamp feature, ask:
 
 1. Does it improve content readiness?
 2. Does it preserve source provenance?

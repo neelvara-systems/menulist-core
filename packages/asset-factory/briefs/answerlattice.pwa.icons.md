@@ -9,7 +9,7 @@
 
 ## Intent
 
-Keep installed Answerlattice app icons tied to the approved mark.
+Keep installed Answerlattice app icons tied to the final approved mark.
 
 ## Placement
 
@@ -23,6 +23,12 @@ Keep installed Answerlattice app icons tied to the approved mark.
 
 - primary: png, icon, max 140 KB
 - fallback: png, icon, max 140 KB
+
+## Approved Source
+
+- Canonical source: `public/answerlattice-logo.svg`
+- Design status: final
+- Handling rule: scale and rasterize only; do not recolor, reshape, crop into a different mark, or redraw the logo.
 
 ## Existing Files
 

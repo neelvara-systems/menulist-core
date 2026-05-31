@@ -31,7 +31,7 @@ import { FEATURE_FLAGS } from '@config/features';
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductId = 'menulist' | 'answerlattice' | 'surfaceos' | 'growthOS' | 'visualmeta' | 'mycodex';
+export type ProductId = 'menulist' | 'answerlattice' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Domain Configuration
@@ -96,14 +96,16 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         enabled: false, // placeholder — not yet built
     },
     {
-        id: 'visualmeta',
-        name: 'VisualMeta',
+        id: 'kitstamp',
+        name: 'KitStamp',
         domains: [
-            'visualmeta.app',
-            'www.visualmeta.app',
+            'kitstamp.com',
+            'www.kitstamp.com',
+            'kitstamp.app',
+            'www.kitstamp.app',
         ],
-        devPathPrefix: '/__visualmeta',
-        internalBasePath: '/sites/visualmeta',
+        devPathPrefix: '/__kitstamp',
+        internalBasePath: '/sites/kitstamp',
         enabled: false, // placeholder — not yet built
     },
     {

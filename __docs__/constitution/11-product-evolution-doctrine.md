@@ -41,7 +41,7 @@ MenuList follows **one** evolution path. No parallel products. No fragmentation.
     
     ↓ (optional, only if organic demand)
 
-4️⃣ STAGE 3: VisualMeta (Premium Content Workspace)
+4️⃣ STAGE 3: KitStamp (Premium Content Workspace)
     Optional forever. Never allowed to distract from core.
 ```
 
@@ -50,7 +50,7 @@ MenuList follows **one** evolution path. No parallel products. No fragmentation.
 - **NEVER** start a later stage before the current stage is solid
 - **NEVER** build GrowthOS before MenuList is system-of-record for SMB public presence
 - **NEVER** launch ControlOS as separate product/brand/dashboard
-- **NEVER** let VisualMeta distract from MenuList focus
+- **NEVER** let KitStamp distract from MenuList focus
 - If any idea breaks this order → **REJECT immediately**
 
 ---

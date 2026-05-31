@@ -1,4 +1,4 @@
-# VisualMeta - Infrastructure Freeze v1
+# KitStamp - Infrastructure Freeze v1
 
 **Status:** Draft freeze target
 **Created:** May 31, 2026
@@ -8,7 +8,7 @@
 
 ## 1. Frozen Product Identity
 
-VisualMeta is a separate product with product code `VM`.
+KitStamp is a separate product with product code `KS`.
 
 Its root document identity is:
 
@@ -16,30 +16,30 @@ Its root document identity is:
 pId / tId / sId / docId
 ```
 
-VisualMeta-owned documents use:
+KitStamp-owned documents use:
 
 ```txt
-pId = "VM"
+pId = "KS"
 ```
 
 Names may change. The product code must not.
 
 ## 2. Frozen Data Model
 
-Initial VisualMeta collections:
+Initial KitStamp collections:
 
 | Collection | Purpose |
 | --- | --- |
-| `visualmetaWorkspaces` | Tenant/scope workspace metadata. |
-| `visualmetaProjects` | Project shell: client, goal, source channel, due date, status. |
-| `visualmetaContentUnits` | Atomic item/content units inside a project. |
-| `visualmetaAssets` | Source and generated/edited asset metadata. |
-| `visualmetaGenerationJobs` | Image/text/translation/edit generation job state. |
-| `visualmetaReviewEvents` | Notes, approvals, rejections, stale markers. |
-| `visualmetaExportKits` | Final kit package metadata and manifest. |
-| `visualmetaAuditLogs` | Append-only security and governance events. |
+| `kitstampWorkspaces` | Tenant/scope workspace metadata. |
+| `kitstampProjects` | Project shell: client, goal, source channel, due date, status. |
+| `kitstampContentUnits` | Atomic item/content units inside a project. |
+| `kitstampAssets` | Source and generated/edited asset metadata. |
+| `kitstampGenerationJobs` | Image/text/translation/edit generation job state. |
+| `kitstampReviewEvents` | Notes, approvals, rejections, stale markers. |
+| `kitstampExportKits` | Final kit package metadata and manifest. |
+| `kitstampAuditLogs` | Append-only security and governance events. |
 
-Do not put VisualMeta projects into MenuList `projects`.
+Do not put KitStamp projects into MenuList `projects`.
 
 ## 3. Frozen Invariants
 
@@ -48,15 +48,15 @@ Do not put VisualMeta projects into MenuList `projects`.
 - final kits require explicit approval
 - export manifests are immutable after export
 - stale source facts invalidate affected output
-- `pId: "VM"` is required on VisualMeta-owned documents
+- `pId: "KS"` is required on KitStamp-owned documents
 - cross-product source data lives in `sourceContext`
-- MenuList, Answerlattice, and GrowthOS data cannot be mutated from VisualMeta
+- MenuList, Answerlattice, and GrowthOS data cannot be mutated from KitStamp
 - provider calls require cost/capacity checks before execution
 - audit logs are append-only
 
 ## 4. Frozen Runtime Separation
 
-VisualMeta must have:
+KitStamp must have:
 
 - separate Firebase client configuration
 - separate Firebase admin helper
@@ -69,11 +69,11 @@ VisualMeta must have:
 Proposed files:
 
 ```txt
-firebase-visualmeta.json
-firestore-visualmeta.rules
-firestore-visualmeta.indexes.json
-storage-visualmeta.rules
-functions-visualmeta/
+firebase-kitstamp.json
+firestore-kitstamp.rules
+firestore-kitstamp.indexes.json
+storage-kitstamp.rules
+functions-kitstamp/
 src/lib/firebase/visualMetaConfig.ts
 src/lib/firebase/visualMetaFirebaseClient.ts
 src/lib/firebase/visualMetaFirebaseAdmin.ts
@@ -86,8 +86,8 @@ All provider calls must:
 - validate input with Zod
 - check Safe Mode
 - check rate limits
-- check VisualMeta credit capacity
-- log operation cost against product `VM`
+- check KitStamp credit capacity
+- log operation cost against product `KS`
 - store provider result safely
 - avoid raw sensitive payload logs
 - return structured output only
@@ -128,7 +128,7 @@ Not allowed without doctrine review:
 - direct publishing
 - auto-approval
 - live MenuList write-back
-- turning VisualMeta into CMS/PIM/DAM
+- turning KitStamp into CMS/PIM/DAM
 - changing `pId` semantics
 - removing source snapshot requirement
 - making generation authoritative

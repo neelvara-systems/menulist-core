@@ -21,7 +21,7 @@ One-line internal position:
 | --- | --- |
 | MenuList | Runs the public business truth. |
 | GrowthOS | Turns approved truth into ready public growth moves. |
-| VisualMeta | Optional deferred content preparation workspace. |
+| KitStamp | Optional deferred content preparation workspace. |
 
 Do not sell this as "MenuList Pro AI features." If approved, sell it as GrowthOS by MenuList or another founder-approved separate product line.
 

@@ -3,7 +3,7 @@
 > **Version:** 4.3.0 — TOKEN-FIRST + FIREBASE TOPOLOGY + CLOUD FUNCTIONS SPLIT + PLATFORM CONTEXT
 > **Last Updated:** 2025-03-05
 > **Authority:** Founder decision. PERMANENT. No phases. No deferral.
-> **Scope:** All products: MenuList, Answerlattice, GrowthOS, VisualMeta, SurfaceOS
+> **Scope:** All products: MenuList, Answerlattice, GrowthOS, KitStamp, SurfaceOS
 > **Decision:** Every product integrates with Answerlattice the same way — via Answerlattice Client Token (CCT). No exceptions. MenuList included.
 
 ---
@@ -30,7 +30,7 @@ Multiple products share the same Firestore. `tId=1` in MenuList (Reddy's Restaur
 | Answerlattice   | `"AL"` | Governed Answer Infrastructure   |
 | SurfaceOS  | `"SF"` | Representation layer (future)     |
 | GrowthOS   | `"GR"` | Execution layer (future)          |
-| VisualMeta | `"VM"` | Content preparation (future)      |
+| KitStamp | `"KS"` | Content preparation (future)      |
 
 Short 2-char codes. Names may rebrand; codes never change.
 
@@ -260,7 +260,7 @@ Answerlattice collections already prefixed `answerlattice_*` (9 collections). Me
 
 ```
 Project 1: "ecomsai" (MenuList Ecosystem)
-  → MenuList, SurfaceOS, GrowthOS, VisualMeta
+  → MenuList, SurfaceOS, GrowthOS, KitStamp
   → Same user base, same tenants, tightly coupled data
 
 Project 2: "answerlattice" (Answerlattice Standalone)
@@ -279,11 +279,11 @@ Project 2: "answerlattice" (Answerlattice Standalone)
 
 ### Why MenuList Ecosystem Stays Together
 
-SurfaceOS, GrowthOS, VisualMeta are extensions of MenuList:
+SurfaceOS, GrowthOS, KitStamp are extensions of MenuList:
 
 - Same user base (SMB owners logged in via MenuList Auth)
 - Same tenant data (`tId`/`sId` from MenuList scope)
-- Tightly coupled (GrowthOS reads MenuList project data, VisualMeta reads menu data)
+- Tightly coupled (GrowthOS reads MenuList project data, KitStamp reads menu data)
 - No external client use case
 - Separating them creates cross-project complexity with zero benefit
 
@@ -515,9 +515,9 @@ Answerlattice cross-product documents (tickets, chat, feedback) are NOT built vi
 4. **`sourceContext` is required** on all Answerlattice documents from clients. User identity always present; source product scope only for cross-product.
 5. **Answerlattice never reads another product's session directly.** Always via CCT → `AnswerlatticePlatformContext`.
 6. **Client registry from day one.** MenuList is client #1. Every new product/client gets registered.
-7. **Separate Firebase projects.** Answerlattice gets its own Firebase project from day one. MenuList ecosystem (SurfaceOS, GrowthOS, VisualMeta) stays in `ecomsai`. No cross-project Firestore queries.
+7. **Separate Firebase projects.** Answerlattice gets its own Firebase project from day one. MenuList ecosystem (SurfaceOS, GrowthOS, KitStamp) stays in `ecomsai`. No cross-project Firestore queries.
 8. **`traceId` on every CCT and every Answerlattice document.** End-to-end request tracing from session → token → document → audit log.
 9. **Idempotency via `requestId`.** Cross-product write operations (ticket creation, chat, feedback) must include `requestId`. Answerlattice checks for duplicates before writing.
 10. **Graceful degradation.** If Answerlattice Firestore is unavailable, MenuList must continue working. Help center shows "temporarily unavailable". Answerlattice features wrapped in try/catch with fallback UI. Never crash MenuList due to Answerlattice failure.
-11. **Identity consistency across ALL products.** Every future product (SurfaceOS, GrowthOS, VisualMeta) MUST use `pId`/`tId`/`sId`. No custom identity fields (`accountId`, `locationId`, `orgId`). The platform identity model is universal and non-negotiable.
+11. **Identity consistency across ALL products.** Every future product (SurfaceOS, GrowthOS, KitStamp) MUST use `pId`/`tId`/`sId`. No custom identity fields (`accountId`, `locationId`, `orgId`). The platform identity model is universal and non-negotiable.
 12. **This document is the sole authority.** All tenancy, integration, and Firebase topology decisions reference this.

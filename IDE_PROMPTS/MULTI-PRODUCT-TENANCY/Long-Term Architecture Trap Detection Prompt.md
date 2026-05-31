@@ -26,7 +26,7 @@ MenuList — canonical business truth layer
 Answerlattice — governed answer infrastructure
 SurfaceOS — discovery representation layer (future)
 GrowthOS — execution layer (future)
-VisualMeta — content preparation layer (future)
+KitStamp — content preparation layer (future)
 
 Architecture decisions:
 
@@ -146,7 +146,7 @@ Simulate adding:
 
 SurfaceOS
 GrowthOS
-VisualMeta
+KitStamp
 
 Evaluate whether the current architecture supports:
 

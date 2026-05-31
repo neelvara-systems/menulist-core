@@ -10,7 +10,7 @@
 
 Every document in every product uses: `pId` / `tId` / `sId` / `docId`
 
-- `pId` = 2-char uppercase product code (ML, AL, SF, GR, VM)
+- `pId` = 2-char uppercase product code (ML, AL, SF, GR, KS)
 - `tId` = tenant ID within that product's scope
 - `sId` = store/workspace/scope ID within that tenant
 - No custom identity fields. Never `accountId`, `locationId`, `orgId`, `workspaceId`.
@@ -23,7 +23,7 @@ Every document in every product uses: `pId` / `tId` / `sId` / `docId`
 | Answerlattice   | AL  | answerlattice         |
 | SurfaceOS  | SF  | ecomsai          |
 | GrowthOS   | GR  | ecomsai          |
-| VisualMeta | VM  | ecomsai          |
+| KitStamp | KS  | ecomsai          |
 
 New product? Assign a 2-char code. Codes never change. Names may rebrand.
 

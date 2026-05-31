@@ -27,7 +27,7 @@ The current decision is not "start a separate GrowthOS implementation." The curr
 | GrowthOS strategy | Existing strategy says GrowthOS is deferred and not active development. See `__docs__/growth-execution-strategy/README.md:7`. |
 | Stage gate | Product Evolution Doctrine says GrowthOS starts only after MenuList is stable and trusted. See `__docs__/constitution/11-product-evolution-doctrine.md:20`. |
 | Existing v0 | Social Content/Today already has campaign types, confidence thresholds, surfaces, summary docs, and export-oriented flows. See `src/config/features.ts:281`, `src/lib/campaigns/engine.ts:274`, and `src/types/campaigns.ts:11`. |
-| VisualMeta boundary | VisualMeta is Stage 3 content preparation with Final Content Kit export, not weekly growth actions. See `__docs__/visual-meta/README.md:3` and `__docs__/visual-meta/README.md:728`. |
+| KitStamp boundary | KitStamp is Stage 3 content preparation with Final Content Kit export, not weekly growth actions. See `__docs__/kitstamp/README.md:3` and `__docs__/kitstamp/README.md:728`. |
 | Separate app routing | GrowthOS has a disabled placeholder in product domains, but no deployment target matrix entry. See `src/constants/productDomains.ts:88` and `src/constants/deploymentTargets.ts:11`. |
 | Boundary risk | Product Separation Doctrine forbids GrowthOS writing to MenuList or influencing MenuList behavior. See `__docs__/constitution/12-product-separation-doctrine.md:68`. |
 
@@ -49,7 +49,7 @@ After owner-value review, the wedge is paused and should not be frozen as a laun
 
 Revisit only if a small owner pilot shows real pull: owners understand it without explanation, copy/share an output, and still treat Today truth readiness as the primary value.
 
-Do not reclassify this paused wedge as VisualMeta. The VisualMeta archive says MenuList AI Image Generation is the VisualMeta image-engine prototype, while Social Content is the GrowthOS v0 pattern. The Weekly Growth Pack remains a Today/GrowthOS question, not a VisualMeta question.
+Do not reclassify this paused wedge as KitStamp. The KitStamp archive says MenuList AI Image Generation is the KitStamp image-engine prototype, while Social Content is the GrowthOS v0 pattern. The Weekly Growth Pack remains a Today/GrowthOS question, not a KitStamp question.
 
 ## Document Map
 

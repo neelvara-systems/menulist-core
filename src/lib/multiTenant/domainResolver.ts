@@ -181,7 +181,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/__mycodex',
         '/__surfaceos',
         '/__growthos',
-        '/__visualmeta',
+        '/__kitstamp',
         '/favicon.ico',
         // Keep robots.txt and sitemap.xml out of this bypass list. Tenant
         // domains must pass through middleware so they rewrite to

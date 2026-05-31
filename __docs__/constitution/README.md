@@ -38,7 +38,7 @@ Every document in this folder serves this single truth.
 | 09  | [Product Taste Doctrine](./09-product-taste-doctrine.md)                           | Daily decision filter for UI, copy, flows, micro-decisions        | Product, Engineering      |
 | 10  | [Communication & Worldbuilding](./10-communication-worldbuilding-doctrine.md)      | Persuasion framework for all MenuList messaging                   | Everyone                  |
 | 11  | [Product Evolution Doctrine](./11-product-evolution-doctrine.md)                   | Product sequence, customer-facing boundary, 5-min rule            | Everyone                  |
-| 12  | [Product Separation Doctrine](./12-product-separation-doctrine.md)                 | 3-product separation: MenuList vs GrowthOS vs VisualMeta          | Everyone                  |
+| 12  | [Product Separation Doctrine](./12-product-separation-doctrine.md)                 | 3-product separation: MenuList vs GrowthOS vs KitStamp          | Everyone                  |
 | 13  | [Operational Infrastructure Doctrine](./13-operational-infrastructure-doctrine.md) | Detection, cost protection, incident response, ops laws           | Engineering, Founder      |
 | 14  | [Feature Lifecycle Doctrine](./14-feature-lifecycle-doctrine.md)                   | Build→Freeze→Trigger→Reopen→Pilot→Production governance           | Product, Engineering      |
 | 15  | [Category Dominance Doctrine](./15-category-dominance-doctrine.md)                 | Upstream positioning, cleanest source, inevitability map          | Everyone                  |
@@ -56,7 +56,7 @@ Every document in this folder serves this single truth.
 2. **07-team-enforcement.md** — Understand your obligations
 3. **10-communication-worldbuilding-doctrine.md** — How MenuList speaks to the world
 4. **11-product-evolution-doctrine.md** — Where MenuList is going (3-year lock)
-5. **12-product-separation-doctrine.md** — Why MenuList, GrowthOS, and VisualMeta never merge
+5. **12-product-separation-doctrine.md** — Why MenuList, GrowthOS, and KitStamp never merge
 6. **15-category-dominance-doctrine.md** — Why MenuList is infrastructure, not software (LLM era)
 7. **16-automation-evolution-doctrine.md** — How MenuList evolves from control surface to autonomous truth engine
 8. **17-infrastructure-compounding-doctrine.md** — What to do when you have bandwidth (deepen, don't expand)

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This ChatGPT conversation designed GrowthOS — a separate, future product that produces ready-to-use promotional content for SMBs. The conversation started with analysis of the `agentkits-marketing` GitHub repo, then produced **10 design documents** (DOC 0–9, with DOC 10 referenced but not written), a **3-product separation audit** (MenuList vs GrowthOS vs VisualMeta), a **one-page positioning map**, and **priority order** for all three products.
+This ChatGPT conversation designed GrowthOS — a separate, future product that produces ready-to-use promotional content for SMBs. The conversation started with analysis of the `agentkits-marketing` GitHub repo, then produced **10 design documents** (DOC 0–9, with DOC 10 referenced but not written), a **3-product separation audit** (MenuList vs GrowthOS vs KitStamp), a **one-page positioning map**, and **priority order** for all three products.
 
 **Overall accuracy:** ~85%. Strong philosophical framework. Key gap: ChatGPT was unaware that MenuList's Social Content Engine ("Today" feature) already implements ~60% of GrowthOS's core use cases.
 
@@ -34,11 +34,11 @@ This ChatGPT conversation designed GrowthOS — a separate, future product that 
 | 11 | DOC 8: MenuList Relationship Contract | Architecture | One-way dependency, read-only, no shared UI, no shared failures | ✅ CORRECT separation rules |
 | 12 | DOC 9: Monetization & Packaging | Business | Pay-per-kit, no subscriptions, no unlimited, no feature tiers | 🆕 NEW — not yet considered |
 | 13 | DOC 10: Kill Criteria (referenced, not written) | Governance | When to shut down, expansion rules | 🆕 NEW — needs writing |
-| 14 | 3-Product Separation Audit | Doctrine | MenuList ≠ GrowthOS ≠ VisualMeta. Different jobs, time horizons, AI postures | 🆕 NEW — important governance |
+| 14 | 3-Product Separation Audit | Doctrine | MenuList ≠ GrowthOS ≠ KitStamp. Different jobs, time horizons, AI postures | 🆕 NEW — important governance |
 | 15 | One-Page Positioning Map | Strategy | Stack model: Infrastructure → Preparation → Execution | 🆕 NEW — valuable reference |
-| 16 | Priority Order | Doctrine | MenuList #1 always, GrowthOS #2 conditional, VisualMeta #3 optional | ✅ ALIGNS with constitution doc 11 |
+| 16 | Priority Order | Doctrine | MenuList #1 always, GrowthOS #2 conditional, KitStamp #3 optional | ✅ ALIGNS with constitution doc 11 |
 | 17 | SMB Control Layer (between MenuList & GrowthOS) | Strategy | "Single source of business truth" — the thing to build between | ✅ VALIDATES control-layer-strategy we already documented |
-| 18 | Honest market assessment | Analysis | MenuList = strong. GrowthOS = revenue engine, not core. VisualMeta = optional. | ✅ SOUND analysis |
+| 18 | Honest market assessment | Analysis | MenuList = strong. GrowthOS = revenue engine, not core. KitStamp = optional. | ✅ SOUND analysis |
 
 ---
 
@@ -153,9 +153,9 @@ From web research:
 | 7 | Content quality & brand safety rules | 🆕 NEW | **ACCEPT** | Extends Language Governance (constitution 02) |
 | 8 | MenuList relationship contract | 🆕 NEW | **ACCEPT** | Important for future separation |
 | 9 | Pay-per-kit monetization | 🆕 NEW | **ACCEPT** | Novel pricing model, untested but sound |
-| 10 | 3-product separation (ML/GO/VM) | 🆕 NEW | **ACCEPT** | Important governance framework |
+| 10 | 3-product separation (ML/GO/KS) | 🆕 NEW | **ACCEPT** | Important governance framework |
 | 11 | One-page positioning map | 🆕 NEW | **ACCEPT** | Valuable reference artifact |
-| 12 | Priority order (ML > GO > VM) | EXISTING | **AGREE** | Matches constitution doc 11 |
+| 12 | Priority order (ML > GO > KS) | EXISTING | **AGREE** | Matches constitution doc 11 |
 | 13 | agentkits-marketing repo extraction | 🆕 NEW | **PARTIAL** | Only workflow patterns + copywriting frameworks. Most content irrelevant. |
 | 14 | Kill criteria for GrowthOS | 🆕 NEW | **ACCEPT** | Needs writing (DOC 10 was referenced but never produced) |
 | 15 | SMB Control Layer between ML & GO | EXISTING | **AGREE** | Already documented as Control Layer Strategy |
@@ -171,7 +171,7 @@ Replace the brief `__docs__/growth-execution-strategy/README.md` with comprehens
 Create `__docs__/growth-execution-strategy/agentkits-repo-analysis.md` documenting what's extractable from the repo and what's not.
 
 ### Priority 3: Create 3-Product Positioning Map
-Create `__docs__/strategy/product-positioning-map.md` — the stack model (MenuList → VisualMeta → GrowthOS) with separation rules.
+Create `__docs__/strategy/product-positioning-map.md` — the stack model (MenuList → KitStamp → GrowthOS) with separation rules.
 
 ### Priority 4: Doctrine Preservation
 The 3-product separation rules + AI posture rules are doctrine-worthy. Create constitution doc 12.
@@ -188,11 +188,11 @@ The 3-product separation rules + AI posture rules are doctrine-worthy. Create co
 **YES — This conversation contains significant doctrine-worthy content.**
 
 ### Doctrine content identified:
-1. **3-Product Separation** — MenuList (infrastructure) vs GrowthOS (execution) vs VisualMeta (preparation). Permanent boundaries.
-2. **AI Posture Rules** — Authority (MenuList) vs Delegate (GrowthOS) vs Assistant (VisualMeta). If mixed → products collapse.
-3. **Time Horizon Lock** — Continuous (MenuList) vs Immediate (GrowthOS) vs Deliberate (VisualMeta).
+1. **3-Product Separation** — MenuList (infrastructure) vs GrowthOS (execution) vs KitStamp (preparation). Permanent boundaries.
+2. **AI Posture Rules** — Authority (MenuList) vs Delegate (GrowthOS) vs Assistant (KitStamp). If mixed → products collapse.
+3. **Time Horizon Lock** — Continuous (MenuList) vs Immediate (GrowthOS) vs Deliberate (KitStamp).
 4. **Output-First Design Principle** — Deliver > Discuss. Produce > Explain. Finish > Optimize. (Extends beyond just GrowthOS.)
-5. **Product Priority Order** — MenuList always #1. GrowthOS #2 conditional. VisualMeta #3 optional.
+5. **Product Priority Order** — MenuList always #1. GrowthOS #2 conditional. KitStamp #3 optional.
 6. **Red-Flag Test** — "If it's a bit of all three → kill it."
 
 **Action:** Create `__docs__/constitution/12-product-separation-doctrine.md`

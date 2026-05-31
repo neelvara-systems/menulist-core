@@ -1,27 +1,27 @@
-# VisualMeta - Implementation Plan
+# KitStamp - Implementation Plan
 
 **Status:** Planning implementation guide
 **Created:** May 31, 2026
-**Product code:** `VM`
+**Product code:** `KS`
 **Implementation status:** Not started. This document is the build plan, not runtime truth.
 
 ---
 
 ## 1. Implementation Principle
 
-Build VisualMeta with Answerlattice-grade product separation.
+Build KitStamp with Answerlattice-grade product separation.
 
-VisualMeta may reuse generalized engineering patterns from MenuList and Answerlattice, but it must own its runtime data, billing, routes, Storage paths, and functions.
+KitStamp may reuse generalized engineering patterns from MenuList and Answerlattice, but it must own its runtime data, billing, routes, Storage paths, and functions.
 
-Do not implement VisualMeta by placing records inside MenuList `projects`, MenuList AI packs, Answerlattice collections, or GrowthOS docs.
+Do not implement KitStamp by placing records inside MenuList `projects`, MenuList AI packs, Answerlattice collections, or GrowthOS docs.
 
-Use [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) as the direct bridge from planning to code. This implementation plan explains the architecture; the lock document freezes schemas, flags, storage paths, route contracts, and activation gates.
+Use [Implementation Lock v1](./kitstamp_implementation-lock-v1.md) as the direct bridge from planning to code. This implementation plan explains the architecture; the lock document freezes schemas, flags, storage paths, route contracts, and activation gates.
 
 ## 2. Existing Repo Reuse
 
 Reusable patterns:
 
-- product code already reserved as `PRODUCT_IDS.VISUAL_META`
+- product code already reserved as `PRODUCT_IDS.KITSTAMP`
 - product-domain placeholder exists but is disabled
 - Answerlattice product separation docs define a working model for shared app, separate host, and separate Firebase
 - MenuList image generation APIs prove auth, Safe Mode, rate limits, capacity checks, provider calls, Storage upload, Cloud Tasks, and AI operation logging
@@ -29,64 +29,64 @@ Reusable patterns:
 
 Must not reuse directly:
 
-- MenuList project collections as VisualMeta collections
-- MenuList owner navigation as VisualMeta navigation
-- MenuList AI enhancement packs as VisualMeta credits
-- Answerlattice Firebase helpers for VisualMeta data
-- GrowthOS action model for VisualMeta projects
+- MenuList project collections as KitStamp collections
+- MenuList owner navigation as KitStamp navigation
+- MenuList AI enhancement packs as KitStamp credits
+- Answerlattice Firebase helpers for KitStamp data
+- GrowthOS action model for KitStamp projects
 
 ## 3. Required Feature Flags
 
 Add flags to `src/config/features.ts`, all defaulting to off:
 
 ```ts
-ENABLE_VISUALMETA_PRODUCT: false
-ENABLE_VISUALMETA_PUBLIC_SITE: false
-ENABLE_VISUALMETA_DASHBOARD: false
-ENABLE_VISUALMETA_SOURCE_UPLOADS: false
-ENABLE_VISUALMETA_REVIEW: false
-ENABLE_VISUALMETA_EXPORT_KITS: false
-ENABLE_VISUALMETA_EXPORT_TEMPLATES: false
-ENABLE_VISUALMETA_EXPORT_ADAPTERS: false
-ENABLE_VISUALMETA_MENU_IMPORT: false
-ENABLE_VISUALMETA_GENERATION: false
-ENABLE_VISUALMETA_BATCH_JOBS: false
+ENABLE_KITSTAMP_PRODUCT: false
+ENABLE_KITSTAMP_PUBLIC_SITE: false
+ENABLE_KITSTAMP_DASHBOARD: false
+ENABLE_KITSTAMP_SOURCE_UPLOADS: false
+ENABLE_KITSTAMP_REVIEW: false
+ENABLE_KITSTAMP_EXPORT_KITS: false
+ENABLE_KITSTAMP_EXPORT_TEMPLATES: false
+ENABLE_KITSTAMP_EXPORT_ADAPTERS: false
+ENABLE_KITSTAMP_MENU_IMPORT: false
+ENABLE_KITSTAMP_GENERATION: false
+ENABLE_KITSTAMP_BATCH_JOBS: false
 ```
 
 Server/function flags:
 
 ```txt
-ENABLE_VISUALMETA_FUNCTIONS=false
-ENABLE_VISUALMETA_PROVIDER_CALLS=false
-ENABLE_VISUALMETA_EXPORT_PACKAGING=false
-VISUALMETA_FIREBASE_MODE=separate
+ENABLE_KITSTAMP_FUNCTIONS=false
+ENABLE_KITSTAMP_PROVIDER_CALLS=false
+ENABLE_KITSTAMP_EXPORT_PACKAGING=false
+KITSTAMP_FIREBASE_MODE=separate
 ```
 
-No VisualMeta route, API, or provider call should run when the product flag is off.
+No KitStamp route, API, or provider call should run when the product flag is off.
 
 ## 4. Routing Plan
 
-Add VisualMeta only after domain and target approval:
+Add KitStamp only after domain and target approval:
 
-- extend `src/constants/deploymentTargets.ts` with a VisualMeta target
-- keep `src/constants/productDomains.ts` VisualMeta entry disabled until ready
-- use `src/app/sites/visualmeta/` for public website routes
-- use local dev prefix `/__visualmeta`
+- extend `src/constants/deploymentTargets.ts` with a KitStamp target
+- keep `src/constants/productDomains.ts` KitStamp entry disabled until ready
+- use `src/app/sites/kitstamp/` for public website routes
+- use local dev prefix `/__kitstamp`
 - keep dashboard/product workspace routes outside MenuList owner navigation
 - verify product hosts classify before tenant/custom-domain resolution
 
 Required smoke tests before activation:
 
 ```txt
-Host: visualmeta.app
+Host: kitstamp.com
 Path: /
-Expected: VisualMeta public website
+Expected: KitStamp public website
 
 Host: localhost:3000
-Path: /__visualmeta
-Expected: VisualMeta local website or dashboard entry
+Path: /__kitstamp
+Expected: KitStamp local website or dashboard entry
 
-Host: visualmeta.app
+Host: kitstamp.com
 Path: /client/...
 Expected: not MenuList tenant route
 ```
@@ -94,34 +94,34 @@ Expected: not MenuList tenant route
 ## 5. Proposed File Map
 
 ```txt
-src/app/sites/visualmeta/
-src/app/visualmeta/
-src/app/api/visualmeta/
-src/components/visualmeta/
-src/constants/visualmeta/
-src/database/visualmeta/
-src/hooks/visualmeta/
-src/lib/visualmeta/
+src/app/sites/kitstamp/
+src/app/kitstamp/
+src/app/api/kitstamp/
+src/components/kitstamp/
+src/constants/kitstamp/
+src/database/kitstamp/
+src/hooks/kitstamp/
+src/lib/kitstamp/
 src/lib/firebase/visualMetaConfig.ts
 src/lib/firebase/visualMetaFirebaseClient.ts
 src/lib/firebase/visualMetaFirebaseAdmin.ts
-src/types/visualmeta.ts
-firebase-visualmeta.json
-firestore-visualmeta.rules
-firestore-visualmeta.indexes.json
-storage-visualmeta.rules
-functions-visualmeta/
+src/types/kitstamp.ts
+firebase-kitstamp.json
+firestore-kitstamp.rules
+firestore-kitstamp.indexes.json
+storage-kitstamp.rules
+functions-kitstamp/
 ```
 
-Do not add VisualMeta scheduled jobs to MenuList or Answerlattice functions.
+Do not add KitStamp scheduled jobs to MenuList or Answerlattice functions.
 
 ## 6. Data Model
 
 Every owned document uses:
 
 ```ts
-type VisualMetaIdentity = {
-  pId: "VM";
+type KitStampIdentity = {
+  pId: "KS";
   tId: number;
   sId: number;
 };
@@ -130,16 +130,16 @@ type VisualMetaIdentity = {
 First implementation collections:
 
 ```txt
-visualmetaWorkspaces
-visualmetaProjects
-visualmetaSourceSnapshots
-visualmetaContentUnits
-visualmetaAssets
-visualmetaTextVariants
-visualmetaGenerationJobs
-visualmetaReviewEvents
-visualmetaExportKits
-visualmetaAuditLogs
+kitstampWorkspaces
+kitstampProjects
+kitstampSourceSnapshots
+kitstampContentUnits
+kitstampAssets
+kitstampTextVariants
+kitstampGenerationJobs
+kitstampReviewEvents
+kitstampExportKits
+kitstampAuditLogs
 ```
 
 Source snapshots and text variants are first-class collections. Embedding them into content units would make review, stale-source detection, translation, provenance, and export manifests harder to keep correct.
@@ -147,7 +147,7 @@ Source snapshots and text variants are first-class collections. Embedding them i
 Core type summary:
 
 ```ts
-type VisualMetaProject = VisualMetaIdentity & {
+type KitStampProject = KitStampIdentity & {
   id: string;
   name: string;
   clientLabel?: string;
@@ -159,13 +159,13 @@ type VisualMetaProject = VisualMetaIdentity & {
   updatedAt: Timestamp;
 };
 
-type VisualMetaSourceSnapshot = VisualMetaIdentity & {
+type KitStampSourceSnapshot = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId?: string;
   version: number;
   status: "active" | "superseded" | "locked_for_export" | "archived";
-  sourceContext: VisualMetaSourceContext;
+  sourceContext: KitStampSourceContext;
   facts: Record<string, unknown>;
   lockedFacts: Array<{
     key: string;
@@ -182,7 +182,7 @@ type VisualMetaSourceSnapshot = VisualMetaIdentity & {
   createdAt: Timestamp;
 };
 
-type VisualMetaContentUnit = VisualMetaIdentity & {
+type KitStampContentUnit = KitStampIdentity & {
   id: string;
   projectId: string;
   sourceSnapshotId: string;
@@ -197,7 +197,7 @@ type VisualMetaContentUnit = VisualMetaIdentity & {
   updatedAt: Timestamp;
 };
 
-type VisualMetaTextVariant = VisualMetaIdentity & {
+type KitStampTextVariant = KitStampIdentity & {
   id: string;
   projectId: string;
   contentUnitId: string;
@@ -214,7 +214,7 @@ type VisualMetaTextVariant = VisualMetaIdentity & {
   updatedAt: Timestamp;
 };
 
-type VisualMetaExportKit = VisualMetaIdentity & {
+type KitStampExportKit = KitStampIdentity & {
   id: string;
   projectId: string;
   version: number;
@@ -234,7 +234,7 @@ type VisualMetaExportKit = VisualMetaIdentity & {
 Source imports use copied context:
 
 ```ts
-type VisualMetaSourceContext = {
+type KitStampSourceContext = {
   sourcePId: "ML" | "AL" | "GR" | "external" | "manual" | "upload";
   sourceTId?: number;
   sourceSId?: number;
@@ -252,42 +252,42 @@ All mutation APIs require:
 
 - `withAuth()`
 - product flag check
-- VisualMeta account/scope resolution
+- KitStamp account/scope resolution
 - Zod validation
 - rate limit before expensive work
 - Safe Mode check before provider calls
-- VisualMeta credit capacity check before provider calls
+- KitStamp credit capacity check before provider calls
 - secure logging without raw sensitive payloads
-- VisualMeta Firebase writes only
+- KitStamp Firebase writes only
 
 Planned APIs:
 
 | Route | Purpose |
 | --- | --- |
-| `POST /api/visualmeta/projects/create` | Create project shell. |
-| `GET /api/visualmeta/projects` | Paginated project list. |
-| `GET /api/visualmeta/projects/[id]` | Project detail. |
-| `POST /api/visualmeta/source-snapshots/create` | Create source snapshot. |
-| `POST /api/visualmeta/source/upload` | Register uploaded source files. |
-| `POST /api/visualmeta/source/import` | Copy source snapshot from MenuList, Answerlattice, GrowthOS, or external source. |
-| `POST /api/visualmeta/content-units/create` | Create content units from source snapshot. |
-| `GET /api/visualmeta/projects/[id]/content-units` | Paginated content unit list. |
-| `POST /api/visualmeta/candidates/assets/create` | Register uploaded/imported asset candidate. |
-| `POST /api/visualmeta/candidates/text/create` | Register text candidate. |
-| `POST /api/visualmeta/generation/candidate` | Generate image/text/translation candidate. |
-| `POST /api/visualmeta/generation/batch-trigger` | Enqueue bounded batch jobs. |
-| `POST /api/visualmeta/generation/worker` | Cloud Tasks worker with shared-secret validation. |
-| `POST /api/visualmeta/review/decision` | Approve, reject, comment, or request correction. |
-| `POST /api/visualmeta/export-kits/preflight` | Validate selected approved units before export. |
-| `POST /api/visualmeta/export-kits/create` | Create immutable manifest and optional ZIP. |
-| `GET /api/visualmeta/export-kits/[id]` | Return signed download metadata for approved users. |
-| `GET /api/visualmeta/export-templates` | Return built-in template registry. |
-| `POST /api/visualmeta/export-templates/preview` | Dry-run export template output. |
-| `GET /api/visualmeta/export-adapters` | Return built-in file-adapter registry. |
-| `POST /api/visualmeta/export-adapters/preflight` | Validate file-adapter output. |
-| `POST /api/visualmeta/source/menulist/preview` | Preview MenuList snapshot import. |
-| `POST /api/visualmeta/source/menulist/import` | Confirm snapshot copy. |
-| `POST /api/visualmeta/source/menulist/refresh` | Manual source refresh and stale marking. |
+| `POST /api/kitstamp/projects/create` | Create project shell. |
+| `GET /api/kitstamp/projects` | Paginated project list. |
+| `GET /api/kitstamp/projects/[id]` | Project detail. |
+| `POST /api/kitstamp/source-snapshots/create` | Create source snapshot. |
+| `POST /api/kitstamp/source/upload` | Register uploaded source files. |
+| `POST /api/kitstamp/source/import` | Copy source snapshot from MenuList, Answerlattice, GrowthOS, or external source. |
+| `POST /api/kitstamp/content-units/create` | Create content units from source snapshot. |
+| `GET /api/kitstamp/projects/[id]/content-units` | Paginated content unit list. |
+| `POST /api/kitstamp/candidates/assets/create` | Register uploaded/imported asset candidate. |
+| `POST /api/kitstamp/candidates/text/create` | Register text candidate. |
+| `POST /api/kitstamp/generation/candidate` | Generate image/text/translation candidate. |
+| `POST /api/kitstamp/generation/batch-trigger` | Enqueue bounded batch jobs. |
+| `POST /api/kitstamp/generation/worker` | Cloud Tasks worker with shared-secret validation. |
+| `POST /api/kitstamp/review/decision` | Approve, reject, comment, or request correction. |
+| `POST /api/kitstamp/export-kits/preflight` | Validate selected approved units before export. |
+| `POST /api/kitstamp/export-kits/create` | Create immutable manifest and optional ZIP. |
+| `GET /api/kitstamp/export-kits/[id]` | Return signed download metadata for approved users. |
+| `GET /api/kitstamp/export-templates` | Return built-in template registry. |
+| `POST /api/kitstamp/export-templates/preview` | Dry-run export template output. |
+| `GET /api/kitstamp/export-adapters` | Return built-in file-adapter registry. |
+| `POST /api/kitstamp/export-adapters/preflight` | Validate file-adapter output. |
+| `POST /api/kitstamp/source/menulist/preview` | Preview MenuList snapshot import. |
+| `POST /api/kitstamp/source/menulist/import` | Confirm snapshot copy. |
+| `POST /api/kitstamp/source/menulist/refresh` | Manual source refresh and stale marking. |
 
 Do not expose public write APIs in v1.
 
@@ -295,37 +295,37 @@ Do not add generation routes until billing and credit values are locked.
 
 ## 8. Firebase And Storage Plan
 
-VisualMeta must use separate Firebase files:
+KitStamp must use separate Firebase files:
 
 ```txt
-firebase-visualmeta.json
-firestore-visualmeta.rules
-firestore-visualmeta.indexes.json
-storage-visualmeta.rules
+firebase-kitstamp.json
+firestore-kitstamp.rules
+firestore-kitstamp.indexes.json
+storage-kitstamp.rules
 ```
 
 Suggested Storage prefixes:
 
 ```txt
-visualmeta/source/{tId}/{sId}/{projectId}/...
-visualmeta/generated/{tId}/{sId}/{projectId}/...
-visualmeta/export-kits/{tId}/{sId}/{kitId}/...
+kitstamp/source/{tId}/{sId}/{projectId}/...
+kitstamp/generated/{tId}/{sId}/{projectId}/...
+kitstamp/export-kits/{tId}/{sId}/{kitId}/...
 ```
 
-No VisualMeta asset may write to MenuList project image paths.
+No KitStamp asset may write to MenuList project image paths.
 
 ## 9. Billing Plan
 
 Extend product-aware billing before generation:
 
-- add VisualMeta plan definitions
-- add VisualMeta credit packs
-- resolve subscription under `productId: "VM"`
-- log AI/provider operations under VisualMeta account
+- add KitStamp plan definitions
+- add KitStamp credit packs
+- resolve subscription under `productId: "KS"`
+- log AI/provider operations under KitStamp account
 - block provider work when credits are unavailable
 - keep MenuList AI enhancement packs separate
 
-Billing code must not silently fall back to MenuList when `VM` scope is missing.
+Billing code must not silently fall back to MenuList when `KS` scope is missing.
 
 ## 10. UI Plan
 
@@ -360,10 +360,10 @@ MenuList import is snapshot-only:
 - store `sourceContext`
 - mark source product and timestamp
 
-VisualMeta must not:
+KitStamp must not:
 
 - hold live MenuList listeners
-- read MenuList data during normal VisualMeta render
+- read MenuList data during normal KitStamp render
 - mutate MenuList projects or stores
 - invalidate MenuList public cache unless a separate approved write-back feature exists
 
@@ -377,7 +377,7 @@ Export kit creation must:
 - store export metadata
 - record export template ID/version when used
 - record file-based adapter ID/version when used
-- optionally create ZIP in VisualMeta Storage
+- optionally create ZIP in KitStamp Storage
 - record audit log
 - produce signed URLs with expiration
 
@@ -422,7 +422,7 @@ Export Adapters are file-based handoff shapers:
 
 1. Confirm domain, Firebase targets, and billing packages.
 2. Add disabled flags and product target constants.
-3. Add VisualMeta Firebase config files and emulator-safe helpers.
+3. Add KitStamp Firebase config files and emulator-safe helpers.
 4. Add types, constants, and DAL skeleton.
 5. Add Firestore and Storage rules.
 6. Add workspace/project/source-snapshot/content-unit CRUD.
@@ -430,7 +430,7 @@ Export Adapters are file-based handoff shapers:
 8. Add review events and approval state.
 9. Add export preflight, manifest, immutable kit, and signed downloads.
 10. Add mobile review surface.
-11. Add provider calls only after VisualMeta billing/credits are locked.
+11. Add provider calls only after KitStamp billing/credits are locked.
 12. Add CSV/XLSX and folder intake.
 13. Add MenuList Snapshot Import as snapshot-copy only.
 14. Add built-in Export Templates.
@@ -440,7 +440,7 @@ Export Adapters are file-based handoff shapers:
 
 ## 16. Non-Activation Rule
 
-Do not enable `ENABLE_VISUALMETA_PRODUCT` until:
+Do not enable `ENABLE_KITSTAMP_PRODUCT` until:
 
 - type checks pass
 - Firebase rules and indexes validate

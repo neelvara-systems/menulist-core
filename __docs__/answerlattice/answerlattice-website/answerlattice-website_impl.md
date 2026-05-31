@@ -97,7 +97,7 @@ src/app/sites/answerlattice/
 └── components/
     ├── Header.tsx                 # Shared header with desktop nav and right-side mobile drawer
     ├── Footer.tsx                 # Shared footer
-    ├── AnswerlatticeLogoMark.tsx       # Inline vector infinity mark for crisp website header/footer branding
+    ├── AnswerlatticeLogoMark.tsx       # Shared wrapper for the design-final canonical SVG logo
     ├── AnswerlatticeFlowDiagram.tsx    # Reusable animated hub, column-sequence, and loop diagrams
     ├── AnswerlatticeProofBlocks.tsx    # Reusable before/after, status snapshot, and decision proof blocks
     ├── SectionHeader.tsx          # Shared centered eyebrow, heading, and subheading treatment for section intros
@@ -332,7 +332,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 ### Prerequisites
 1. Add `answerlattice.com` domain to Vercel project dashboard
 2. Configure DNS for answerlattice.com pointing to Vercel
-3. Keep `public/answerlattice-og-image.png`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and Answerlattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. Header, footer, diagrams, loaders, and dashboard navigation use the shared inline SVG `AnswerlatticeLogoMark` so the mark stays consistent without PNG UI usage.
+3. Keep `public/answerlattice-og-image.png`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and Answerlattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. `public/answerlattice-logo.svg` is the design-final canonical source and must not be redrawn, recolored, reshaped, or simplified. Header, footer, diagrams, loaders, and dashboard navigation use the shared `AnswerlatticeLogoMark` wrapper so UI renders the exact canonical SVG.
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)
@@ -442,3 +442,4 @@ Conversion analytics is client-side only:
 | 2026-05-28 | 1.2.43 | Adjusted the desktop Product dropdown feature column and single-line labels so product-feature headings do not wrap |
 | 2026-05-28 | 1.2.44 | Added a shared centered section-header component across homepage, product, high-intent public pages, and SEO page templates so section intros use one visual treatment |
 | 2026-05-31 | 1.2.45 | Updated the homepage hero, metadata, structured data title, final CTA, and product-area support-control copy to the corrected launch-ready support positioning from the shared Answerlattice/Crisp conversation without claiming generated tickets or generated changelogs; follow-up pass restored the implemented feedback, ratings, and feature-request surface into public claims |
+| 2026-06-01 | 1.2.46 | Replaced all Answerlattice logo surfaces with the design-final SVG source, regenerated favicon/PWA/OpenGraph/splash derivatives from that source, and documented the no-redraw/no-recolor/no-reshape handling rule |

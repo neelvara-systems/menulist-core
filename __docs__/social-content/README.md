@@ -43,7 +43,7 @@ Current decision:
 
 - Keep `FEATURE_FLAGS.ENABLE_TODAY_WEEKLY_GROWTH_PACK` set to `false`.
 - Do not add it as a main module, navigation item, website claim, or GrowthOS launch promise.
-- Do not move it into VisualMeta. VisualMeta is Stage 3 content preparation and Final Content Kit export, not weekly growth actions.
+- Do not move it into KitStamp. KitStamp is Stage 3 content preparation and Final Content Kit export, not weekly growth actions.
 - Revisit only after a small owner pilot shows owners copy/share the output without extra explanation.
 - Keep Today focused on public business truth first: hours, live menu, public link, inactive items, and store status.
 

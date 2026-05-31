@@ -13,7 +13,7 @@ export const PRODUCT_IDS = {
     ANSWERLATTICE: 'AL',
     SURFACE_OS: 'SF',
     GROWTH_OS: 'GR',
-    VISUAL_META: 'VM',
+    KITSTAMP: 'KS',
 } as const;
 
 export type ProductId = typeof PRODUCT_IDS[keyof typeof PRODUCT_IDS];

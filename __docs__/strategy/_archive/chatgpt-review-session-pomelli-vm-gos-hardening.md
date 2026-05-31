@@ -1,7 +1,7 @@
-# ChatGPT Review — Pomelli, VisualMeta vs GrowthOS, MenuList Hardening
+# ChatGPT Review — Pomelli, KitStamp vs GrowthOS, MenuList Hardening
 
 **Date:** March 1, 2026  
-**Source:** ChatGPT conversation covering Pomelli (Google Labs), VisualMeta/GrowthOS sequencing, product architecture, OBP adoption metrics, and MenuList hardening  
+**Source:** ChatGPT conversation covering Pomelli (Google Labs), KitStamp/GrowthOS sequencing, product architecture, OBP adoption metrics, and MenuList hardening  
 **Reviewer:** Cascade  
 **Overall Accuracy:** ~30% genuinely new (rest already documented more comprehensively)
 
@@ -24,7 +24,7 @@ This ChatGPT conversation covered 14 topics across product strategy, sequencing,
 **Verdict:** `AGREE` — but **ALREADY DECIDED**
 
 **Evidence:**
-- Constitution 11 Rule 1 locks product evolution: MenuList → Control Layer → GrowthOS → VisualMeta
+- Constitution 11 Rule 1 locks product evolution: MenuList → Control Layer → GrowthOS → KitStamp
 - Constitution 11 Rule 2 permanently rejects marketing tools from MenuList
 - GrowthOS README §1 already defines it as execution engine for marketing assets
 - Constitution 12 Rule 1 locks product identities — marketing belongs to GrowthOS only
@@ -35,14 +35,14 @@ This ChatGPT conversation covered 14 topics across product strategy, sequencing,
 
 ---
 
-### Topic 2: VisualMeta Top-Level Spec
+### Topic 2: KitStamp Top-Level Spec
 
 **ChatGPT provides:** 11-section product specification
 
 **Verdict:** `REDUNDANT` — **ALREADY DOCUMENTED FAR MORE COMPREHENSIVELY**
 
 **Evidence:**
-- `__docs__/visual-meta/README.md` = 781 lines, 20 sections covering:
+- `__docs__/kitstamp/README.md` = 781 lines, 20 sections covering:
   - Existing codebase reality (70% image gen already built)
   - Precise ICP definition (Content Operator, not SMB)
   - 7 core features (locked)
@@ -88,16 +88,16 @@ ChatGPT's "3 core actions" (Promote Item, Announce Offer, Update Status) map dir
 
 ---
 
-### Topic 4: VisualMeta vs GrowthOS Sequencing
+### Topic 4: KitStamp vs GrowthOS Sequencing
 
-**ChatGPT says:** Build GrowthOS first. VisualMeta is second-order leverage. Distribution compounds, content quality does not.
+**ChatGPT says:** Build GrowthOS first. KitStamp is second-order leverage. Distribution compounds, content quality does not.
 
 **Verdict:** `AGREE` — but **ALREADY DECIDED AND LOCKED**
 
 **Evidence:**
-- Constitution 11 Rule 1: Stage 0 (MenuList) → Stage 1 (Control Layer) → Stage 2 (GrowthOS) → Stage 3 (VisualMeta)
-- Constitution 12 Rule 9: Priority order locked — MenuList #1, GrowthOS #2, VisualMeta #3
-- Product Positioning Map §9: "If VisualMeta is never built → you still win"
+- Constitution 11 Rule 1: Stage 0 (MenuList) → Stage 1 (Control Layer) → Stage 2 (GrowthOS) → Stage 3 (KitStamp)
+- Constitution 12 Rule 9: Priority order locked — MenuList #1, GrowthOS #2, KitStamp #3
+- Product Positioning Map §9: "If KitStamp is never built → you still win"
 
 **Action:** None.
 
@@ -134,17 +134,17 @@ ChatGPT's "3 core actions" (Promote Item, Announce Offer, Update Status) map dir
 
 ---
 
-### Topic 7: Capital Allocation — Kill VisualMeta
+### Topic 7: Capital Allocation — Kill KitStamp
 
-**ChatGPT says:** Kill VisualMeta for 18-24 months. Focus on GrowthOS.
+**ChatGPT says:** Kill KitStamp for 18-24 months. Focus on GrowthOS.
 
 **Verdict:** `AGREE` — but **ALREADY LOCKED**
 
 **Evidence:**
-- Constitution 11 Rule 1: VisualMeta = Stage 3 (optional, after GrowthOS stable)
-- VisualMeta README §19: 5 build prerequisites, all unmet
-- VisualMeta README §20: Kill criteria defined
-- Product Positioning Map §11: "If VisualMeta is never built → you still win"
+- Constitution 11 Rule 1: KitStamp = Stage 3 (optional, after GrowthOS stable)
+- KitStamp README §19: 5 build prerequisites, all unmet
+- KitStamp README §20: Kill criteria defined
+- Product Positioning Map §11: "If KitStamp is never built → you still win"
 
 **Action:** None.
 
@@ -230,7 +230,7 @@ Also proposes adoption score model: GBP match (0.4) + Instagram confirmed (0.2) 
 **Evidence:**
 - Constitution 11 Rule 1: "STAGE 0: MenuList Dominance (NOW → ongoing) — This stage NEVER ends"
 - GrowthOS README Prerequisites: "MenuList stable and trusted by real SMBs (>200 active stores)"
-- VisualMeta README §19: 5 gates, all unmet
+- KitStamp README §19: 5 gates, all unmet
 
 **Action:** None. This is already the operating principle.
 
@@ -247,7 +247,7 @@ Also proposes adoption score model: GBP match (0.4) + Instagram confirmed (0.2) 
 
 ## What ChatGPT Got Right
 
-1. **Product sequence** — GrowthOS before VisualMeta (already locked)
+1. **Product sequence** — GrowthOS before KitStamp (already locked)
 2. **Infrastructure positioning** — MenuList must stay calm, not become marketing tool (already core doctrine)
 3. **OBP adoption as key metric** — Valid emphasis, though instrumentation is premature
 4. **Branded ecosystem model** — Separate identities under MenuList authority (already in Constitution 12)
@@ -267,7 +267,7 @@ The conversation reinforces decisions already made. This is positive validation 
 
 **Filed:** `__docs__/strategy/_archive/chatgpt-review-session-pomelli-vm-gos-hardening.md`  
 **Cross-references:**
-- `__docs__/visual-meta/README.md` — VisualMeta complete strategy (unchanged)
+- `__docs__/kitstamp/README.md` — KitStamp complete strategy (unchanged)
 - `__docs__/growth-execution-strategy/README.md` — GrowthOS complete strategy (unchanged)
 - `__docs__/constitution/11-product-evolution-doctrine.md` — Product sequence (unchanged)
 - `__docs__/constitution/12-product-separation-doctrine.md` — Separation rules (unchanged)

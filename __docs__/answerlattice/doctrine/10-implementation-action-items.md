@@ -10,7 +10,7 @@
 1. Created `src/lib/firebase/answerlatticeConfig.ts` — Answerlattice Firebase config
 2. Created `src/lib/firebase/answerlatticeFirebaseClient.ts` — Answerlattice client SDK
 3. Created `src/lib/firebase/answerlatticeFirebaseAdmin.ts` — Answerlattice admin SDK
-4. Created `src/constants/product.ts` — Product ID constants (ML, AL, SF, GR, VM)
+4. Created `src/constants/product.ts` — Product ID constants (ML, AL, SF, GR, KS)
 5. Created `src/types/multiProduct.ts` — CCT, PlatformContext, SourceContext, Client types
 6. Created `firebase-answerlattice.json` — Firebase CLI config for Answerlattice project
 7. Created `functions-answerlattice/` — Directory with package.json, tsconfig, firebaseAdmin, index.ts

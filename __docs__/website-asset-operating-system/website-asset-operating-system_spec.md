@@ -31,7 +31,7 @@ The practical product thesis is Answerlattice-adjacent: Answerlattice governs wh
 1. Preserve MenuList and Answerlattice brand/product context in durable repo files.
 2. Give Codex a repeatable workflow for asset audit, brief generation, review, and safe regeneration.
 3. Prevent asset sprawl through manifest ownership, naming rules, budgets, and stale detection.
-4. Keep MenuList, Answerlattice, GrowthOS, and VisualMeta product boundaries intact.
+4. Keep MenuList, Answerlattice, GrowthOS, and KitStamp product boundaries intact.
 5. Support deterministic asset production before optional manual finishing tools.
 6. Reuse Answerlattice product-surface, intake, release, feedback, and drift context as read-only source material for asset briefs and stale-review decisions.
 
@@ -43,7 +43,7 @@ The practical product thesis is Answerlattice-adjacent: Answerlattice governs wh
 | Owner-facing MenuList feature | The workflow is for founder/operator marketing assets, not SMB owners. |
 | Answerlattice runtime feature | It can sit beside Answerlattice's product truth layer, but it does not answer support questions, publish KB content, mutate signals, or control widgets. |
 | GrowthOS feature | It does not generate SMB promotion kits for customers. |
-| VisualMeta launch | It is not a content-preparation workspace with users, billing, or export kits. |
+| KitStamp launch | It is not a content-preparation workspace with users, billing, or export kits. |
 | First-pass final videos | Contract must exist before media generation. |
 | GUI editor dependency | OpenScreen/OpenVid are optional finishing tools, not the core. |
 

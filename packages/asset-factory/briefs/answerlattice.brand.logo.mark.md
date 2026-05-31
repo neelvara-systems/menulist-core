@@ -9,7 +9,7 @@
 
 ## Intent
 
-Keep the Answerlattice mark consistent across metadata and static previews.
+Keep the final Answerlattice mark consistent across metadata and static previews without redrawing or recoloring the design source.
 
 ## Placement
 
@@ -23,6 +23,12 @@ Keep the Answerlattice mark consistent across metadata and static previews.
 
 - primary: png, icon, max 260 KB
 - fallback: svg, icon, max 50 KB
+
+## Approved Source
+
+- Canonical source: `public/answerlattice-logo.svg`
+- Design status: final
+- Handling rule: derive raster assets from the canonical SVG only; do not alter color, shape, geometry, or effects.
 
 ## Existing Files
 

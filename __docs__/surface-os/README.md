@@ -88,7 +88,7 @@ The conversation began with analysis of an agency doing Google Business Profile 
 | Agency replacement | No manual service layer |
 | Listing management SaaS | Not a Yext clone — governance-first, not sync-first |
 | Review analytics platform | No sentiment dashboards or NPS tracking |
-| Content creation engine | Content belongs to VisualMeta |
+| Content creation engine | Content belongs to KitStamp |
 | Campaign builder | Campaigns belong to GrowthOS |
 | Website builder | Websites are owned media, not discovery surfaces |
 | Ad management tool | Ads are growth mechanics |
@@ -105,14 +105,14 @@ The conversation began with analysis of an agency doing Google Business Profile 
 | Truth | **MenuList** | Menu, hours, public info, structured data, validation, OBP, multi-outlet governance, POS sync | **Own** | Authority |
 | Representation | **SurfaceOS** | Surface configurations, presence behavior rules, review response automation, multi-platform identity alignment, surface policies | **Control** | Control |
 | Execution | **GrowthOS** | Promotion kits, campaigns, offers, discovery bursts, distribution moments | **Activate** | Momentum |
-| Preparation | **VisualMeta** | Content preparation, editing, Final Content Kit | **Prepare** | Craft |
+| Preparation | **KitStamp** | Content preparation, editing, Final Content Kit | **Prepare** | Craft |
 
 ### Hierarchy & Data Flow
 
 ```
 MenuList (truth) → SurfaceOS (representation) → Public Surfaces (Google, Apple, etc.)
                                                 → GrowthOS reads from SurfaceOS for campaigns
-VisualMeta (content prep) → feeds into GrowthOS campaigns
+KitStamp (content prep) → feeds into GrowthOS campaigns
 ```
 
 ### Critical Boundaries
@@ -120,7 +120,7 @@ VisualMeta (content prep) → feeds into GrowthOS campaigns
 - MenuList defines **what is true** — does not optimize, distribute, or analyze visibility
 - SurfaceOS defines **how truth behaves externally** — does not edit menu data, create content, or build promotional creatives
 - GrowthOS defines **how attention is manufactured** — does not own truth or control representation
-- VisualMeta defines **how content is prepared** — no publishing, no automation, no outcomes
+- KitStamp defines **how content is prepared** — no publishing, no automation, no outcomes
 
 ### Independence Rules (Non-Negotiable)
 
@@ -253,7 +253,7 @@ For a multi-location SMB: when something changes, SurfaceOS guarantees it propag
 - Competitor analysis
 - Content suggestions
 - Campaign analytics
-- Anything that replaces GrowthOS or VisualMeta
+- Anything that replaces GrowthOS or KitStamp
 
 ---
 
@@ -627,7 +627,7 @@ Fully productized — no service layer, no manual audits, no white-glove onboard
 ├── MenuList
 ├── SurfaceOS
 ├── GrowthOS
-└── VisualMeta
+└── KitStamp
 ```
 
 ### Key Decisions
@@ -792,7 +792,7 @@ SurfaceOS still has: full governance core, adapter framework, sync engine, revie
 1. **MenuList** (Truth) — already first priority
 2. **SurfaceOS** (Control) — parallel quiet build, launch in clinics
 3. **GrowthOS** (Execution) — after SurfaceOS has footing
-4. **VisualMeta** (Preparation) — optional layer anytime
+4. **KitStamp** (Preparation) — optional layer anytime
 
 ### Rationale: Truth → Control → Execution
 
@@ -887,7 +887,7 @@ MenuList does not require high founder intervention. SurfaceOS adds API complexi
 - `__docs__/constitution/11-product-evolution-doctrine.md` — Evolution sequence
 - `__docs__/constitution/12-product-separation-doctrine.md` — Separation rules
 - `__docs__/growthos-addon/README.md` — Active GrowthOS add-on plan
-- `__docs__/visual-meta/README.md` — VisualMeta strategy
+- `__docs__/kitstamp/README.md` — KitStamp strategy
 - `__docs__/surface-os/_archive/chatgpt-review.md` — ChatGPT conversation review
 
 ---

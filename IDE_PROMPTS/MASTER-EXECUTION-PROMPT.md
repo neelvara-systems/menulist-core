@@ -996,7 +996,7 @@ May NEVER open desktop dashboard. Zero jargon. Large touch targets. Instant feed
 
 **Rule: Each product's code lives in product-scoped subfolders. NEVER mix product files in shared/generic folders.**
 
-This applies to ALL products: MenuList (ML), Answerlattice (AL), SurfaceOS (SF), GrowthOS (GR), VisualMeta (VM).
+This applies to ALL products: MenuList (ML), Answerlattice (AL), SurfaceOS (SF), GrowthOS (GR), KitStamp (KS).
 
 #### File Organization Pattern (Per Product)
 

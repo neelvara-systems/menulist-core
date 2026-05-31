@@ -17,7 +17,7 @@ It should live in this repo because it depends on:
 
 - the current MenuList website implementation and asset requirements;
 - the current Answerlattice website implementation and dark infrastructure visual system;
-- product separation rules that prevent GrowthOS, VisualMeta, MenuList, and Answerlattice from blurring;
+- product separation rules that prevent GrowthOS, KitStamp, MenuList, and Answerlattice from blurring;
 - existing docs, generated website assets, source screenshots, brand marks, and current code.
 
 ## Answerlattice Relationship
@@ -44,7 +44,7 @@ The boundary stays strict:
 | External buyer | Not proven yet. The first user is the founder/operator. |
 | Product identity | Passes internally and becomes strongest when tied to Answerlattice's founder/operator/developer ICP. The product question is: what product media should exist, is it truthful, and how can Codex refresh it safely? |
 | Current repo doctrine | Passes only as internal architecture. Public extraction remains blocked until a buyer and product boundary are proven. |
-| VisualMeta overlap | Lower when scoped to source-grounded product-media governance. It becomes high again if it turns into broad content creation or campaign tooling. |
+| KitStamp overlap | Lower when scoped to source-grounded product-media governance. It becomes high again if it turns into broad content creation or campaign tooling. |
 | GrowthOS overlap | Medium. Promotional outputs for SMBs belong to GrowthOS, but this system prepares MenuList/Answerlattice assets for our own sites. |
 | Day-one revenue | Weak. It saves founder time before it creates sellable value. |
 | Operational value | Strong. It gives Codex a durable asset contract, audit loop, brief generator, review script, and rejection rules. |
@@ -71,7 +71,7 @@ The boundary stays strict:
 | --- | --- |
 | `__docs__/strategy/product-universe-ssot.md:57` | Product universe already separates truth running, growth output, and content preparation. |
 | `__docs__/strategy/product-universe-ssot.md:330` | Separate products are future extraction events, not current engineering requirements. |
-| `__docs__/constitution/12-product-separation-doctrine.md:14` | MenuList, GrowthOS, and VisualMeta must not blur identities. |
+| `__docs__/constitution/12-product-separation-doctrine.md:14` | MenuList, GrowthOS, and KitStamp must not blur identities. |
 | `__docs__/constitution/12-product-separation-doctrine.md:100` | MenuList must not gain campaign/post/canvas UI. |
 | `__docs__/constitution/11-product-evolution-doctrine.md:50` | Later-stage products must not start before MenuList is stable. |
 | `__docs__/main-website/main-website_image-assets.md:12` | MenuList already has controlled website demo visuals and launch-safe asset rules. |

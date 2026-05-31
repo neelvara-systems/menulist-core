@@ -1,15 +1,15 @@
-# VisualMeta - Product Specification
+# KitStamp - Product Specification
 
 **Status:** Stage 1 planning specification
 **Created:** May 31, 2026
-**Product code:** `VM`
+**Product code:** `KS`
 **Runtime status:** Not implemented. No routes, Firebase targets, functions, or billing plans are active.
 
 ---
 
 ## 1. Product Decision
 
-VisualMeta is planned as a separate product, not a MenuList feature and not a GrowthOS module.
+KitStamp is planned as a separate product, not a MenuList feature and not a GrowthOS module.
 
 The product is:
 
@@ -26,10 +26,10 @@ The market is already strong in broad creation and image automation:
 | Market signal | Product implication |
 | --- | --- |
 | Canva is moving into conversational, layered, editable, on-brand, multi-channel creative work. | Do not compete as a general creative suite. |
-| Canva Visual Suite joins many work formats into one broad workspace. | VisualMeta must stay narrower than all-format design. |
+| Canva Visual Suite joins many work formats into one broad workspace. | KitStamp must stay narrower than all-format design. |
 | Adobe Firefly Services focuses on enterprise content production, APIs, custom models, and batch creative workflows. | Do not chase enterprise creative supply-chain automation. |
 | Photoroom focuses on product-photo APIs, background workflows, and e-commerce image automation. | Do not become only an image API. |
-| Product/menu/catalog content still needs human validation when accuracy matters. | VisualMeta should make review and source provenance central, not optional. |
+| Product/menu/catalog content still needs human validation when accuracy matters. | KitStamp should make review and source provenance central, not optional. |
 
 The gap is operational readiness:
 
@@ -75,7 +75,7 @@ Source material is scattered:
 
 Without a dedicated readiness workspace, operators lose accuracy and approval context during handoff.
 
-VisualMeta solves this by binding source facts, generated candidates, review decisions, and exports into a single auditable kit.
+KitStamp solves this by binding source facts, generated candidates, review decisions, and exports into a single auditable kit.
 
 ## 5. Core Objects
 
@@ -93,16 +93,16 @@ VisualMeta solves this by binding source facts, generated candidates, review dec
 ## 6. Required Workflow
 
 1. **Create project**
-   User creates a VisualMeta project with client/team, goal, source type, due date, locale, and output needs.
+   User creates a KitStamp project with client/team, goal, source type, due date, locale, and output needs.
 
 2. **Import source**
-   User uploads files or imports copied snapshots from approved sources. MenuList can be a source, but VisualMeta does not read live MenuList truth at render time.
+   User uploads files or imports copied snapshots from approved sources. MenuList can be a source, but KitStamp does not read live MenuList truth at render time.
 
 3. **Create content units**
-   Each item/product/listing becomes a VisualMeta content unit with its own facts, files, and readiness state.
+   Each item/product/listing becomes a KitStamp content unit with its own facts, files, and readiness state.
 
 4. **Generate or edit candidates**
-   VisualMeta prepares image, copy, translation, alt text, and format candidates after validation and cost checks.
+   KitStamp prepares image, copy, translation, alt text, and format candidates after validation and cost checks.
 
 5. **Review**
    Human reviewer accepts, rejects, comments, or requests correction. Generated output remains draft until approved.
@@ -111,23 +111,23 @@ VisualMeta solves this by binding source facts, generated candidates, review dec
    Approved content units become a Final Content Kit with files, text blocks, manifest, source summary, and approval metadata.
 
 7. **Export**
-   User downloads or sends the kit to another tool. VisualMeta stops before publishing.
+   User downloads or sends the kit to another tool. KitStamp stops before publishing.
 
 ## 7. V1 Scope
 
 Required scope for first implementation:
 
-- VisualMeta product flag and disabled product-domain gate
-- VisualMeta public website candidate behind flag
-- VisualMeta workspace and project shell
+- KitStamp product flag and disabled product-domain gate
+- KitStamp public website candidate behind flag
+- KitStamp workspace and project shell
 - source snapshot and copied-source import contract
 - content unit creation and status tracking
 - first-class asset and text variant candidates
 - human review events
 - approved Final Content Kit export
 - immutable export manifest
-- VisualMeta Firebase rules, indexes, Storage rules, and cost docs
-- product-aware billing for `VM`
+- KitStamp Firebase rules, indexes, Storage rules, and cost docs
+- product-aware billing for `KS`
 - product-scoped AI operation ledger
 - desktop workspace
 - mobile review and approval surface
@@ -136,11 +136,11 @@ Provider generation, MenuList import, guest review, export templates, and export
 
 ## 8. Deep Feature Decisions
 
-The May 31, 2026 deep ChatGPT conversation was reviewed as proposal material. Final VisualMeta decisions:
+The May 31, 2026 deep ChatGPT conversation was reviewed as proposal material. Final KitStamp decisions:
 
 | Capability | Decision | Reason |
 | --- | --- | --- |
-| Export Templates | Accept, built-in first | Repeatable package structure makes Final Content Kits useful without turning VisualMeta into a marketplace. |
+| Export Templates | Accept, built-in first | Repeatable package structure makes Final Content Kits useful without turning KitStamp into a marketplace. |
 | Custom Template Builder | Reject for first implementation | Too complex for SMB owners and high support risk. |
 | MenuList Snapshot Import | Accept after core workspace | Strongest internal wedge, but snapshot-only and manual refresh only. |
 | MenuList Write-back | Reject | Violates separate product boundary and live menu truth. |
@@ -148,7 +148,7 @@ The May 31, 2026 deep ChatGPT conversation was reviewed as proposal material. Fi
 | Google Merchant/Akeneo/Salsify specific adapters | Defer | Too schema-specific and support-heavy for first implementation. |
 | Mobile Review | Accept | SMB owners can approve/reject from phone. |
 | Mobile Import/Adapter Configuration | Reject | Too dense for phone workflow. |
-| Generating Missing Facts | Reject | VisualMeta must not invent price, SKU, GTIN, allergens, availability, brand, or category. |
+| Generating Missing Facts | Reject | KitStamp must not invent price, SKU, GTIN, allergens, availability, brand, or category. |
 
 ## 9. Accepted Capability Map
 
@@ -184,7 +184,7 @@ Deferred until proven:
 
 ## 10. Explicitly Out Of Scope
 
-VisualMeta does not include:
+KitStamp does not include:
 
 - direct publishing
 - social scheduling
@@ -239,11 +239,11 @@ Supporting metrics:
 - percent of content units approved without external rework
 - review cycle count per kit
 
-Do not use follower growth, clicks, ad performance, or revenue lift as VisualMeta product metrics.
+Do not use follower growth, clicks, ad performance, or revenue lift as KitStamp product metrics.
 
 ## 13. Pricing And Packaging Assumptions
 
-VisualMeta should be priced around prepared kits and generation usage, not MenuList AI enhancement packs.
+KitStamp should be priced around prepared kits and generation usage, not MenuList AI enhancement packs.
 
 Candidate packaging:
 
@@ -258,12 +258,12 @@ Exact pricing is not frozen in this doc. Implementation must prove margin above 
 
 ## 14. Acceptance Criteria
 
-VisualMeta is ready to enter implementation only when:
+KitStamp is ready to enter implementation only when:
 
-- [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) is accepted as the direct build contract
+- [Implementation Lock v1](./kitstamp_implementation-lock-v1.md) is accepted as the direct build contract
 - product domain is confirmed
 - Firebase QA and production targets are confirmed
-- billing scope for `VM` is defined
+- billing scope for `KS` is defined
 - feature flags are named and default off
 - source snapshot and text variant schemas are frozen
 - source import rules are approved

@@ -1,4 +1,4 @@
-# VisualMeta - Decision Brief
+# KitStamp - Decision Brief
 
 **Status:** Active planning decision
 **Decision date:** May 31, 2026
@@ -8,7 +8,17 @@
 
 ## Recommendation
 
-Proceed with VisualMeta as a separate product, but do not build it as a generic design tool.
+Proceed with KitStamp as a separate product, but do not build it as a generic design tool.
+
+The name is locked permanently for active product planning:
+
+- Brand: KitStamp
+- Slug: `kitstamp`
+- Product code: `KS`
+- Primary domain: `kitstamp.com`
+- Preferred India legal-name candidate: `KitStamp Technologies Private Limited`
+
+See [Naming Lock](./kitstamp_naming-lock.md) for domain, MCA, trademark, and rejected-name decisions.
 
 The product should be:
 
@@ -20,7 +30,7 @@ The product should not be:
 
 ## Why It Is Different From GrowthOS
 
-| Dimension | GrowthOS | VisualMeta |
+| Dimension | GrowthOS | KitStamp |
 | --- | --- | --- |
 | Time horizon | Immediate | Deliberate |
 | Owner question | "What can I post or send now?" | "Is this content ready to approve and hand off?" |
@@ -29,7 +39,7 @@ The product should not be:
 | Publishing | Manual copy/download | Export only |
 | User | SMB owner/operator | Content operator, agency, brand team, catalog owner |
 
-GrowthOS can be an add-on for MenuList. VisualMeta should be its own product because it has a different buyer, workflow, data model, billing model, and UI identity.
+GrowthOS can be an add-on for MenuList. KitStamp should be its own product because it has a different buyer, workflow, data model, billing model, and UI identity.
 
 ## Why The Market Still Has A Gap
 
@@ -45,7 +55,7 @@ The gap is narrower:
 - agencies and operators still hand off files through Drive, WhatsApp, docs, and ad hoc folders
 - broad creative suites are powerful but can be too wide for repeated catalog/menu/listing readiness work
 
-VisualMeta should own this narrower job:
+KitStamp should own this narrower job:
 
 > turn source material into a controlled, approved content kit.
 
@@ -83,19 +93,19 @@ Each content unit starts from one item and can produce:
 - review notes
 - final approved export
 
-This maps well to the existing MenuList image generation pipeline, but must be separated into VisualMeta-owned data and billing.
+This maps well to the existing MenuList image generation pipeline, but must be separated into KitStamp-owned data and billing.
 
 ## Architecture Decision
 
 Use Answerlattice as the separation model:
 
-- product code `VM`
+- product code `KS`
 - separate Firebase project
 - separate Cloud Functions package
 - separate product route group
 - separate public website
 - product-aware billing scope
-- optional login bridge through `productAccounts.VM`
+- optional login bridge through `productAccounts.KS`
 - copied source snapshots, not shared MenuList writes
 
 ## Build Decision
@@ -103,7 +113,7 @@ Use Answerlattice as the separation model:
 Docs can be prepared now. Code should start only after:
 
 - product domain is confirmed
-- VisualMeta Firebase QA/production targets are created
+- KitStamp Firebase QA/production targets are created
 - billing packages are approved
 - initial ICP is selected
 - export kit schema is frozen
@@ -123,6 +133,6 @@ Pause or redesign if:
 
 ## Final Decision
 
-Build VisualMeta only as:
+Build KitStamp only as:
 
 > separate product, content readiness layer, Final Content Kit output, human approval required.

@@ -8,6 +8,17 @@
 
 ---
 
+## Boundary Note - GrowthOS vs Growth Engine
+
+GrowthOS/Growth Kits is not the new Growth Engine acquisition product.
+
+| Product | Active meaning |
+| --- | --- |
+| GrowthOS / Growth Kits | MenuList paid add-on for existing higher-tier clients. It turns current MenuList truth into copy/share/print kits. |
+| Growth Engine | Separate internal acquisition product for MenuList lead generation, outreach safety, tracked onboarding, and attribution. Active docs: `__docs__/growth-engine/README.md`. |
+
+Do not reuse GrowthOS routes, `GR` product identity, entitlement model, owner UI, or docs for Growth Engine implementation.
+
 ## May 31, 2026 Deep Review Update
 
 The large ChatGPT GrowthOS conversation was reviewed line by line and archived here:
@@ -79,7 +90,7 @@ Current decision:
 | Standalone app/domain | Not approved |
 | Direct posting | Disabled |
 | Weekly Growth Pack | Still paused as-is; may inform GrowthOS kit templates |
-| VisualMeta | Separate product decision; not part of GrowthOS |
+| KitStamp | Separate product decision; not part of GrowthOS |
 
 Old docs remain historical direction and are now archived under this folder:
 
@@ -116,7 +127,7 @@ This folder is now the active GrowthOS implementation-planning source.
 | The Today Weekly Growth Pack is paused and flag-off | `src/config/features.ts:401-420` |
 | GBP Sync remains feature-flagged and blocked on API access | `__docs__/gbp-sync/README.md:1-24`, `src/config/features.ts:656-673` |
 | Reviews and reputation docs remain API-blocked for ingestion | `__docs__/reviews-reputation/README.md:1-23`, `__docs__/reviews-reputation/README.md:75-90` |
-| VisualMeta is content preparation, not immediate growth execution | `__docs__/visual-meta/README.md:1-12`, `__docs__/strategy/product-positioning-map.md:28-68` |
+| KitStamp is content preparation, not immediate growth execution | `__docs__/kitstamp/README.md:1-12`, `__docs__/strategy/product-positioning-map.md:28-68` |
 
 ## Active Scope
 
@@ -138,7 +149,7 @@ The first approved implementation should be a paid add-on module inside MenuList
 | MenuList truth | GrowthOS reads it but does not change it. If facts are wrong, send the owner to the approved MenuList edit flow. |
 | Today | Today remains the quiet daily operational surface. GrowthOS can be entered from Today for paid users but should not replace Today. |
 | Social Content | Reuse its campaign engine and export patterns where possible. Do not duplicate before auditing existing code. |
-| VisualMeta | Excluded. VisualMeta prepares deliberate multi-asset content kits. GrowthOS produces immediate local action kits. |
+| KitStamp | Excluded. KitStamp prepares deliberate multi-asset content kits. GrowthOS produces immediate local action kits. |
 | GBP | Draft only until API access and policy handling are approved. |
 | Reviews | Manual paste reply assist can be part of GrowthOS; review ingestion depends on GBP access. |
 | Direct posting | Disabled. Manual copy/download/export only. |

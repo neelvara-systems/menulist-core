@@ -1,4 +1,4 @@
-# The Complete Product Universe — MenuList · Control Layer · GrowthOS · VisualMeta
+# The Complete Product Universe — MenuList · Control Layer · GrowthOS · KitStamp
 
 > **This is the single document that explains everything.**  
 > What each product is. Why it exists. Who uses it. Whether it should exist at all.  
@@ -9,6 +9,7 @@
 **Purpose:** Permanent founder reference — the honest top-view of everything we're building and why  
 **Updates:** Only when a product's fundamental nature changes
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
+**May 31, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal acquisition infrastructure for MenuList lead generation. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
 
 ---
 
@@ -18,7 +19,7 @@
 2. [MenuList — The Foundation](#2-menulist)
 3. [Control Layer — The Silent Expansion](#3-control-layer)
 4. [GrowthOS — The Revenue Lever](#4-growthos)
-5. [VisualMeta — The Optional Expansion](#5-visualmeta)
+5. [KitStamp — The Optional Expansion](#5-kitstamp)
 6. [How They Relate](#6-how-they-relate)
 7. [Do We Really Need Separate Products?](#7-do-we-really-need-separate-products)
 8. [The Build Sequence](#8-the-build-sequence)
@@ -35,7 +36,9 @@
 
 At its core, we are building **one thing**: a system that makes small business owners stop worrying about their public-facing presence. That's it.
 
-Everything else — GrowthOS, VisualMeta, Control Layer — are either natural extensions of that mission or optional revenue opportunities that emerged from deep thinking.
+Everything else — GrowthOS, KitStamp, Control Layer — are either natural extensions of that mission or optional revenue opportunities that emerged from deep thinking.
+
+Growth Engine is different from those product layers: it is internal acquisition infrastructure used to grow MenuList, not something SMB owners buy or use.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -46,7 +49,7 @@ Everything else — GrowthOS, VisualMeta, Control Layer — are either natural e
 │  └────────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌─────────────────────┐  ┌──────────────────────────┐      │
-│  │ GrowthOS            │  │ VisualMeta               │      │
+│  │ GrowthOS            │  │ KitStamp               │      │
 │  │ = Revenue lever     │  │ = Optional, maybe never  │      │
 │  │   (conditional)     │  │   (nice to have)         │      │
 │  └─────────────────────┘  └──────────────────────────┘      │
@@ -59,7 +62,7 @@ When you think deeply about SMB public-facing infrastructure, you discover three
 
 1. **Running the truth** (what's correct right now) → MenuList + Control Layer
 2. **Getting the word out** (what should people know) → GrowthOS
-3. **Making content ready** (what looks professional before publishing) → VisualMeta
+3. **Making content ready** (what looks professional before publishing) → KitStamp
 
 These are genuinely different jobs with different users, time horizons, and AI behaviors. Mixing them creates confusion. But — **they don't all need to be separate products.**
 
@@ -262,7 +265,7 @@ Everything else permanently rejected.
 
 ---
 
-## 5. VisualMeta — The Optional Expansion
+## 5. KitStamp — The Optional Expansion
 
 ### What Is It? (Plain Language)
 
@@ -286,13 +289,13 @@ Every publishing system assumes content already exists. Preparing that content i
 
 ### What Already Exists? (~70% of image capability)
 
-MenuList's AI Image Generation system IS VisualMeta's image engine prototype: single generation (573 LOC), batch generation (Cloud Tasks + Firestore), image editing (507 LOC), style presets (207+ configs), safety settings — all 100% reusable.
+MenuList's AI Image Generation system IS KitStamp's image engine prototype: single generation (573 LOC), batch generation (Cloud Tasks + Firestore), image editing (507 LOC), style presets (207+ configs), safety settings — all 100% reusable.
 
 **What must be built fresh:** Content Units workspace, draft descriptions, language variants, ZIP export, version history, notes/review, workbench UI.
 
 ### Core Philosophy
 
-> **Humans approve. VisualMeta prepares. Nothing acts on its own.**
+> **Humans approve. KitStamp prepares. Nothing acts on its own.**
 
 AI posture = **Assistant** (visible, collaborative, never decides). Different from MenuList (Authority) and GrowthOS (Delegate).
 
@@ -330,15 +333,17 @@ TODAY: One product, multiple features
 
 The "separate products" are future extraction events, not current reality. Separation is a **design principle** (keep thinking clean), not an engineering requirement (must build separately now).
 
+Growth Engine is an exception to the owner-facing stack discussion because it handles internal acquisition, lead PII, outreach, suppressions, and attribution. It should be built as a separate product boundary in the same repo, not as a MenuList owner feature and not as GrowthOS.
+
 ### Dependency Rule
 
 ```
 MenuList  ──►  GrowthOS   (one-way, read-only)
-MenuList  ──►  VisualMeta  (one-way, read-only)
-GrowthOS  ✖  VisualMeta  (no dependency)
+MenuList  ──►  KitStamp  (one-way, read-only)
+GrowthOS  ✖  KitStamp  (no dependency)
 ```
 
-MenuList never depends on anything else. If both GrowthOS and VisualMeta disappeared, MenuList runs perfectly.
+MenuList never depends on anything else. If both GrowthOS and KitStamp disappeared, MenuList runs perfectly.
 
 ---
 
@@ -357,7 +362,8 @@ MenuList never depends on anything else. If both GrowthOS and VisualMeta disappe
 | **MenuList** | Build. This is the business. |
 | **Control Layer** | Not a decision — just MenuList getting better. |
 | **GrowthOS** | Keep inside MenuList. Extract ONLY if identity confusion at 200+ stores. |
-| **VisualMeta** | Document the idea. Don't build. Revisit in 2-3 years. |
+| **KitStamp** | Document the idea. Don't build. Revisit in 2-3 years. |
+| **Growth Engine** | Keep in the same repo as separate internal acquisition infrastructure with separate Firebase/functions/data. Do not expose as owner product. |
 
 **Your only job right now: Make MenuList indispensable for 200+ SMBs. Everything else follows.**
 
@@ -381,7 +387,7 @@ MenuList never depends on anything else. If both GrowthOS and VisualMeta disappe
     
     ↓ (optional, only if organic agency demand, 500+ stores)
 
-4️⃣ STAGE 3: VisualMeta (OPTIONAL FOREVER)
+4️⃣ STAGE 3: KitStamp (OPTIONAL FOREVER)
 ```
 
 | Stage | Earliest Estimate |
@@ -389,7 +395,7 @@ MenuList never depends on anything else. If both GrowthOS and VisualMeta disappe
 | Stage 0 (MenuList) | NOW |
 | Stage 1 (Control Layer activation) | Q3-Q4 2026 |
 | Stage 2 (GrowthOS extraction) | 2027-2028 |
-| Stage 3 (VisualMeta) | 2028-2029 (if ever) |
+| Stage 3 (KitStamp) | 2028-2029 (if ever) |
 
 ---
 
@@ -414,7 +420,7 @@ MenuList never depends on anything else. If both GrowthOS and VisualMeta disappe
 | Cost of freelancer for 1 WhatsApp promo | ₹300-500 | Indian market |
 | Canva revenue | ~$2.5B ARR | Forbes |
 
-### Market 3: Content Preparation (VisualMeta)
+### Market 3: Content Preparation (KitStamp)
 
 | Metric | Value | Source |
 |--------|-------|--------|
@@ -437,13 +443,13 @@ MenuList's real advantage is **positioning**, not technology. Anyone can build a
 | **MenuList** | 95% | ✅ Unequivocally worth building. Only question is distribution. |
 | **Control Layer** | 90% | ✅ Not a decision. Just keep improving MenuList. |
 | **GrowthOS** | 70% | ⚠️ Worth doing inside MenuList. Don't extract yet. |
-| **VisualMeta** | 40% | ⚠️ Interesting idea. Probably don't build. |
+| **KitStamp** | 40% | ⚠️ Interesting idea. Probably don't build. |
 
 ### The Meta-Question: Are We Over-Planning?
 
 **Honestly? A bit.** Four ChatGPT sessions in one day produced four product strategies, two constitution documents, a positioning map, and thousands of lines of governance. This is excellent strategic thinking — but also a form of productive procrastination.
 
-The most important question isn't "what should VisualMeta's pricing model be?" It's:
+The most important question isn't "what should KitStamp's pricing model be?" It's:
 
 > **"Do 200 real SMBs depend on MenuList daily?"**
 
@@ -456,7 +462,7 @@ Until the answer is yes, everything else is theoretical.
 3. **This quarter:** Get to 50 active daily users
 4. **This year:** Get to 200 active stores, prove infrastructure dependency
 5. **Next year:** Evaluate GrowthOS extraction based on real data
-6. **Year after:** Maybe VisualMeta, if agencies organically ask
+6. **Year after:** Maybe KitStamp, if agencies organically ask
 
 **The strategy documents are the map. Now walk the territory.**
 
@@ -493,7 +499,7 @@ PRIORITY: 🥈 #2 Conditional | SEPARATE: Not yet
 REVENUE:  Per kit (₹199/5 kits)
 ```
 
-### VisualMeta
+### KitStamp
 ```
 WHAT:     Content preparation workspace
 WHO:      Agency operators, hands-on SMB owners
@@ -512,11 +518,11 @@ REVENUE:  Per kit (₹999-2,999/mo)
 | Question | Answer |
 |----------|--------|
 | Does it run continuously? | → MenuList |
-| Does it require review/refinement? | → VisualMeta (future) |
+| Does it require review/refinement? | → KitStamp (future) |
 | Does it deliver immediate output? | → GrowthOS (Social Content Engine) |
 | "A bit of all three"? | → Kill it |
 
-### "Should we build GrowthOS/VisualMeta now?"
+### "Should we build GrowthOS/KitStamp now?"
 
 If you have to ask → **No.** Build when the signal is unmistakable.
 
@@ -541,7 +547,7 @@ If you have to ask → **No.** Build when the signal is unmistakable.
 | `__docs__/strategy/product-positioning-map.md` | 3-product stack |
 | `__docs__/control-layer-strategy/README.md` | Control Layer strategy |
 | `__docs__/growthos-addon/README.md` | Active GrowthOS add-on plan |
-| `__docs__/visual-meta/README.md` | VisualMeta strategy |
+| `__docs__/kitstamp/README.md` | KitStamp strategy |
 | `__docs__/strategy/product-strategy-2026.md` | 2026 roadmap |
 
 ---

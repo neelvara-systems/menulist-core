@@ -1,4 +1,4 @@
-# VisualMeta - Test Cases
+# KitStamp - Test Cases
 
 **Status:** Planning QA matrix
 **Created:** May 31, 2026
@@ -10,33 +10,33 @@
 
 | Test | Expected |
 | --- | --- |
-| `ENABLE_VISUALMETA_PRODUCT=false` | No VisualMeta dashboard route, API mutation, or provider call is available. |
-| `ENABLE_VISUALMETA_PUBLIC_SITE=false` | Public VisualMeta site is not served. |
-| `ENABLE_VISUALMETA_GENERATION=false` | Generation APIs reject before provider work. |
-| `ENABLE_VISUALMETA_EXPORT_KITS=false` | Export kit creation is blocked. |
-| `ENABLE_VISUALMETA_EXPORT_TEMPLATES=false` | Template preview/selection is blocked or omitted. |
-| `ENABLE_VISUALMETA_EXPORT_ADAPTERS=false` | Adapter preflight/selection is blocked or omitted. |
-| `ENABLE_VISUALMETA_MENU_IMPORT=false` | MenuList import preview and confirm routes reject. |
+| `ENABLE_KITSTAMP_PRODUCT=false` | No KitStamp dashboard route, API mutation, or provider call is available. |
+| `ENABLE_KITSTAMP_PUBLIC_SITE=false` | Public KitStamp site is not served. |
+| `ENABLE_KITSTAMP_GENERATION=false` | Generation APIs reject before provider work. |
+| `ENABLE_KITSTAMP_EXPORT_KITS=false` | Export kit creation is blocked. |
+| `ENABLE_KITSTAMP_EXPORT_TEMPLATES=false` | Template preview/selection is blocked or omitted. |
+| `ENABLE_KITSTAMP_EXPORT_ADAPTERS=false` | Adapter preflight/selection is blocked or omitted. |
+| `ENABLE_KITSTAMP_MENU_IMPORT=false` | MenuList import preview and confirm routes reject. |
 | Provider flag off | No provider call or credit reservation occurs. |
 
 ## 2. Routing Tests
 
 | Test | Expected |
 | --- | --- |
-| `/__visualmeta` local route when enabled | Renders VisualMeta local surface. |
-| VisualMeta host route | Resolves as product route before tenant/custom-domain routing. |
-| VisualMeta host with MenuList client path | Does not resolve MenuList tenant route. |
-| MenuList host | Does not expose VisualMeta dashboard. |
-| Answerlattice host | Does not expose VisualMeta dashboard. |
+| `/__kitstamp` local route when enabled | Renders KitStamp local surface. |
+| KitStamp host route | Resolves as product route before tenant/custom-domain routing. |
+| KitStamp host with MenuList client path | Does not resolve MenuList tenant route. |
+| MenuList host | Does not expose KitStamp dashboard. |
+| Answerlattice host | Does not expose KitStamp dashboard. |
 
 ## 3. Auth And Scope Tests
 
 | Test | Expected |
 | --- | --- |
 | unauthenticated API call | rejected |
-| MenuList-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
-| Answerlattice-only session calls VisualMeta API | rejected unless `productAccounts.VM` exists |
-| VisualMeta reviewer approves allowed unit | accepted |
+| MenuList-only session calls KitStamp API | rejected unless `productAccounts.KS` exists |
+| Answerlattice-only session calls KitStamp API | rejected unless `productAccounts.KS` exists |
+| KitStamp reviewer approves allowed unit | accepted |
 | reviewer writes outside scope | rejected |
 | client tries to write billing ledger | rejected |
 
@@ -45,11 +45,11 @@
 | Test | Expected |
 | --- | --- |
 | document missing `pId` | rejected |
-| document has `pId != "VM"` | rejected |
+| document has `pId != "KS"` | rejected |
 | wrong `tId/sId` | rejected |
 | write to immutable export manifest | rejected |
 | append review event in scope | accepted |
-| source upload outside VisualMeta Storage prefix | rejected |
+| source upload outside KitStamp Storage prefix | rejected |
 | public bucket read without signed URL | rejected |
 
 ## 5. Source Import Tests
@@ -59,10 +59,10 @@
 | import MenuList item snapshot | copied with `sourceContext.sourcePId="ML"` |
 | import external file | source hash created |
 | source facts change after import | existing content unit can be marked stale |
-| VisualMeta render after import | no live MenuList read required |
+| KitStamp render after import | no live MenuList read required |
 | import attempts MenuList write-back | blocked |
-| MenuList-only session calls import API | rejected unless `productAccounts.VM` exists |
-| VisualMeta user without MenuList source permission | rejected |
+| MenuList-only session calls import API | rejected unless `productAccounts.KS` exists |
+| KitStamp user without MenuList source permission | rejected |
 | import writes `pId: "ML"` document | rejected |
 | import image writes to MenuList Storage path | rejected |
 | import batch over 250 selected items | rejected |
@@ -123,7 +123,7 @@
 | generic handoff adapter selected | adapter ID/version recorded in manifest |
 | adapter requires missing source fact | preflight blocks or warns based on rule |
 | adapter tries to generate missing SKU/GTIN/price | rejected |
-| adapter writes outside VisualMeta export path | rejected |
+| adapter writes outside KitStamp export path | rejected |
 | adapter attempts Shopify/Akeneo/Cloudinary API push in first implementation | rejected |
 | adapter output includes stale unit | rejected |
 | downstream acceptance guarantee appears in copy | fail |
@@ -149,7 +149,7 @@
 | project list has many projects | paginated, no broad scan |
 | content units exceed page size | paginated |
 | batch job limit exceeded | rejected before enqueue |
-| rejected candidates retention window passes | cleanup eligible under VisualMeta function only |
+| rejected candidates retention window passes | cleanup eligible under KitStamp function only |
 | credit reservation interrupted | ledger stays balanced |
 | billing scope missing | no MenuList fallback |
 
@@ -157,13 +157,13 @@
 
 | Test | Expected |
 | --- | --- |
-| VisualMeta project created | stored in VisualMeta collections only |
-| VisualMeta asset uploaded | stored in VisualMeta Storage only |
-| MenuList cache invalidation triggered by VisualMeta prep | no, because no MenuList write occurs |
-| Answerlattice functions touched by VisualMeta job | never |
-| GrowthOS action created by VisualMeta export | never without explicit future integration |
+| KitStamp project created | stored in KitStamp collections only |
+| KitStamp asset uploaded | stored in KitStamp Storage only |
+| MenuList cache invalidation triggered by KitStamp prep | no, because no MenuList write occurs |
+| Answerlattice functions touched by KitStamp job | never |
+| GrowthOS action created by KitStamp export | never without explicit future integration |
 | Export adapter mutates Shopify/PIM/DAM/Cloudinary/Google | never in first implementation |
-| VisualMeta export adapter stores external credential | never in first implementation |
+| KitStamp export adapter stores external credential | never in first implementation |
 
 ## 12. Public Copy Tests
 
@@ -171,7 +171,7 @@
 | --- | --- |
 | website claims direct publishing | fail |
 | website claims guaranteed growth | fail |
-| website says VisualMeta changes MenuList truth | fail |
+| website says KitStamp changes MenuList truth | fail |
 | website describes Final Content Kits | pass |
 | website claims direct Shopify/PIM/DAM sync | fail |
 | helpdoc requires human approval | pass |
@@ -180,7 +180,7 @@
 
 ```bash
 npx tsc --noEmit --incremental false
-firebase --config firebase-visualmeta.json emulators:exec "npm run test:visualmeta:rules"
+firebase --config firebase-kitstamp.json emulators:exec "npm run test:kitstamp:rules"
 ```
 
 Add product route smoke tests after the actual host and route implementation exists.

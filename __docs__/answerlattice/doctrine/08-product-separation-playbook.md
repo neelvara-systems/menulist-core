@@ -329,7 +329,7 @@ App Check is per-Firebase project. When Answerlattice project is created, it nee
 - [x] `answerlatticeConfig.ts` — Answerlattice Firebase config
 - [x] `answerlatticeFirebaseClient.ts` — Answerlattice client SDK (Firestore, Auth, Storage, Functions)
 - [x] `answerlatticeFirebaseAdmin.ts` — Answerlattice server admin SDK
-- [x] `product.ts` — Product ID constants (ML, AL, SF, GR, VM)
+- [x] `product.ts` — Product ID constants (ML, AL, SF, GR, KS)
 - [x] `multiProduct.ts` — CCT, PlatformContext, SourceContext, Client types
 - [x] `firebase-answerlattice.json` — Firebase CLI config
 - [x] `functions-answerlattice/` — Directory structure (package.json, tsconfig, firebaseAdmin, index.ts)

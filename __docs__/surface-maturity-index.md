@@ -62,7 +62,7 @@ Menu Correctness Engine (MCE) validates on every save:
 
 | Governance Area | Document |
 |----------------|----------|
-| Product separation (MenuList vs GrowthOS vs VisualMeta) | `__docs__/constitution/12-product-separation-doctrine.md` |
+| Product separation (MenuList vs GrowthOS vs KitStamp) | `__docs__/constitution/12-product-separation-doctrine.md` |
 | Category dominance (upstream positioning) | `__docs__/constitution/15-category-dominance-doctrine.md` |
 | Feature rejection gate | `__docs__/constitution/08-feature-rejection-gate.md` |
 | Language governance (public-facing copy) | `__docs__/constitution/02-language-governance.md` |

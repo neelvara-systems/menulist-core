@@ -10,7 +10,7 @@
 
 Do not create a public website, route, SEO landing page, or pricing page for Website Asset Operating System.
 
-The current need is internal: make Codex understand and maintain MenuList/Answerlattice website assets. The architecture is productized internally, but publishing it as a public product would create product confusion and compete with future GrowthOS/VisualMeta boundaries.
+The current need is internal: make Codex understand and maintain MenuList/Answerlattice website assets. The architecture is productized internally, but publishing it as a public product would create product confusion and compete with future GrowthOS/KitStamp boundaries.
 
 If this is ever shown externally, the safest first context is an Answerlattice ecosystem or engineering case study: Answerlattice keeps product knowledge truthful; AssetOS keeps product media truthful. That is different from launching a fourth broad product.
 

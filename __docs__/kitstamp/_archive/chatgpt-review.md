@@ -1,6 +1,6 @@
-# ChatGPT Conversation Review — VisualMeta Product Design
+# ChatGPT Conversation Review — KitStamp Product Design
 
-**Conversation:** VisualMeta Complete Product Strategy (branched from AI Image Generation review)  
+**Conversation:** KitStamp Complete Product Strategy (branched from AI Image Generation review)  
 **Date:** February 19, 2026  
 **Reviewed by:** Cascade (codebase cross-check + web research + doctrine validation)  
 **Conversation Length:** ~32,000 lines, 24+ design topics  
@@ -10,9 +10,9 @@
 
 ## Executive Summary
 
-This conversation started as an AI Image Generation code review (where the user shared spec/impl/marketing docs with ChatGPT), evolved into a standalone product critique, and then pivoted into a complete product design for **VisualMeta** — a separate product defined as "a commercial content preparation workspace."
+This conversation started as an AI Image Generation code review (where the user shared spec/impl/marketing docs with ChatGPT), evolved into a standalone product critique, and then pivoted into a complete product design for **KitStamp** — a separate product defined as "a commercial content preparation workspace."
 
-ChatGPT produced strong philosophical and strategic thinking. The product definition, kill-lists, and boundary rules are genuinely valuable. However, ChatGPT was **unaware** that MenuList's existing AI Image Generation system already implements ~70% of VisualMeta's image preparation capability, including production-grade batch architecture.
+ChatGPT produced strong philosophical and strategic thinking. The product definition, kill-lists, and boundary rules are genuinely valuable. However, ChatGPT was **unaware** that MenuList's existing AI Image Generation system already implements ~70% of KitStamp's image preparation capability, including production-grade batch architecture.
 
 ---
 
@@ -22,7 +22,7 @@ ChatGPT produced strong philosophical and strategic thinking. The product defini
 |-------|-------|---------|-------|
 | **Phase 1** | 1-3770 | Context setup: MenuList prod cert + logic verification + AI Image Gen spec/impl/marketing shared | Context-only |
 | **Phase 2** | 3770-24800 | AI Image Gen standalone review → UI/UX journey (20 screens, 6 phases) → "do-nothing path" design | High (technical) |
-| **Phase 3** | 24800-32098 | VisualMeta product identity pivot → full product design (15+ locked decisions) | Very High (strategic) |
+| **Phase 3** | 24800-32098 | KitStamp product identity pivot → full product design (15+ locked decisions) | Very High (strategic) |
 
 ---
 
@@ -43,14 +43,14 @@ ChatGPT produced strong philosophical and strategic thinking. The product defini
 | 9 | **Full UI/UX journey (20 screens, 6 phases)** | Designed complete screen map from landing to return flows | N/A — design artifact, not code | USEFUL REFERENCE |
 | 10 | **Cost not visible before generation** | SMBs need pre-generation cost estimation | ✅ Valid — no cost preview UI exists | AGREE |
 
-### PHASE 3 TOPICS (VisualMeta Product Design)
+### PHASE 3 TOPICS (KitStamp Product Design)
 
 | # | Topic | ChatGPT Position | Existing Doctrine/Code | Verdict |
 |---|-------|-----------------|----------------------|---------|
-| 11 | **VisualMeta = "commercial content preparation workspace"** | Canonical definition, locked | ✅ Aligns with constitution doc 12 positioning map: "Prepare this content perfectly before I publish it" | AGREE |
+| 11 | **KitStamp = "commercial content preparation workspace"** | Canonical definition, locked | ✅ Aligns with constitution doc 12 positioning map: "Prepare this content perfectly before I publish it" | AGREE |
 | 12 | **Final Content Kit as terminal artifact** | ZIP package with visuals/text/metadata/README | ✅ No equivalent in MenuList — genuinely new concept | AGREE |
 | 13 | **ICP: Content Operator at agencies** | Primary user is "the person who prepares content for others" | ⚠️ Potentially too narrow — Indian market SMBs do their own content | PARTIAL |
-| 14 | **UI Identity Lock (workbench, not dashboard)** | VisualMeta must feel like Figma/Notion, not admin panel | ✅ Correct separation from MenuList's operational dashboard | AGREE |
+| 14 | **UI Identity Lock (workbench, not dashboard)** | KitStamp must feel like Figma/Notion, not admin panel | ✅ Correct separation from MenuList's operational dashboard | AGREE |
 | 15 | **Feature Kill-List (9 categories)** | No publishing, no analytics, no automation, no "best", no asset management | ✅ Aligns with constitution 12 Rule 2 (AI posture = Assistant) | AGREE |
 | 16 | **7 Core Features** | Content Units, Draft Image, Draft Description, Language Variants, Versioning, Notes, Export | ✅ Image generation already built in MenuList. Text/translation/export are new | PARTIAL |
 | 17 | **Growth Logic (upstream necessity)** | Grows via multi-destination pain, operator-to-operator spread, agency gravity | ✅ Reasonable — but unproven | AGREE (theoretical) |
@@ -72,11 +72,11 @@ ChatGPT produced strong philosophical and strategic thinking. The product defini
 
 ### What ChatGPT Missed (Significant)
 
-**1. AI Image Generation Already Built (~70% of VisualMeta's image capability)**
+**1. AI Image Generation Already Built (~70% of KitStamp's image capability)**
 
-ChatGPT designed VisualMeta as if starting from zero. In reality, MenuList already has:
+ChatGPT designed KitStamp as if starting from zero. In reality, MenuList already has:
 
-| Capability | MenuList Status | VisualMeta Need | Overlap |
+| Capability | MenuList Status | KitStamp Need | Overlap |
 |-----------|----------------|-----------------|---------|
 | Single image generation | ✅ `AiImageGenerator/index.tsx` (573 lines) | ✅ Core feature | **100%** |
 | Batch image generation | ✅ `batchImageGeneration/` (3 components, Cloud Tasks) | ✅ Core feature | **100%** |
@@ -90,7 +90,7 @@ ChatGPT designed VisualMeta as if starting from zero. In reality, MenuList alrea
 | Quality guard | ✅ `imageQualityGuard.ts` (not yet integrated) | ✅ Required | **100%** |
 | Image optimization | ✅ `optimizeImage.ts` (not yet integrated) | ✅ Required | **100%** |
 
-**Cascade verdict:** VisualMeta's image preparation capability is already ~70% built inside MenuList. The AI Image Generation feature IS VisualMeta's image engine prototype — same pattern as Social Content Engine being GrowthOS v0.
+**Cascade verdict:** KitStamp's image preparation capability is already ~70% built inside MenuList. The AI Image Generation feature IS KitStamp's image engine prototype — same pattern as Social Content Engine being GrowthOS v0.
 
 **2. Text Generation Already Partially Built**
 
@@ -101,14 +101,14 @@ MenuList's AI description generation (used in campaigns, staff prompts) provides
 
 **3. Translation Infrastructure Exists**
 
-`next-intl` + the translation system already handles 50+ languages. VisualMeta's "Language Variants" feature can reuse this infrastructure.
+`next-intl` + the translation system already handles 50+ languages. KitStamp's "Language Variants" feature can reuse this infrastructure.
 
 ### What ChatGPT Got Right (that the codebase confirms)
 
-1. **Export is genuinely new** — MenuList has no "export content kit" concept. This is the true VisualMeta differentiator.
-2. **Draft-state paradigm is new** — MenuList's image gen goes straight to menu items. VisualMeta's "draft-first, export-later" workflow is a genuine paradigm shift.
+1. **Export is genuinely new** — MenuList has no "export content kit" concept. This is the true KitStamp differentiator.
+2. **Draft-state paradigm is new** — MenuList's image gen goes straight to menu items. KitStamp's "draft-first, export-later" workflow is a genuine paradigm shift.
 3. **Content Units concept is new** — The atomic "one sellable thing" workspace doesn't exist in MenuList.
-4. **The AI posture difference is real** — MenuList's AI is Authority (silent, decisive). VisualMeta's AI is Assistant (visible, collaborative). This is correctly identified.
+4. **The AI posture difference is real** — MenuList's AI is Authority (silent, decisive). KitStamp's AI is Assistant (visible, collaborative). This is correctly identified.
 
 ---
 
@@ -121,15 +121,15 @@ MenuList's AI description generation (used in campaigns, staff prompts) provides
 
 ### Competitive Landscape Analysis (Cascade's Original Research)
 
-| Competitor | What They Do | Where VisualMeta Differs |
+| Competitor | What They Do | Where KitStamp Differs |
 |-----------|-------------|------------------------|
-| **Canva** | Design tool → creation-focused, huge template library | VisualMeta is preparation, not design. No templates, no "make it beautiful" |
-| **Adobe Express** | Creative suite, publishing-enabled | VisualMeta stops before publishing |
-| **Jasper** | AI copywriting + image gen, performance-optimized | VisualMeta has no performance claims |
-| **Copy.ai** | AI copy generation, workflow automation | VisualMeta has no automation |
-| **Placeit** | Mockup/template-based asset creation | VisualMeta generates from scratch, no templates |
-| **Google Docs + Drive** | Ad-hoc content prep (VisualMeta's real competitor) | VisualMeta adds structure, AI generation, and clear export |
-| **Notion** | Flexible workspace, content management | VisualMeta is specialized for commercial content units |
+| **Canva** | Design tool → creation-focused, huge template library | KitStamp is preparation, not design. No templates, no "make it beautiful" |
+| **Adobe Express** | Creative suite, publishing-enabled | KitStamp stops before publishing |
+| **Jasper** | AI copywriting + image gen, performance-optimized | KitStamp has no performance claims |
+| **Copy.ai** | AI copy generation, workflow automation | KitStamp has no automation |
+| **Placeit** | Mockup/template-based asset creation | KitStamp generates from scratch, no templates |
+| **Google Docs + Drive** | Ad-hoc content prep (KitStamp's real competitor) | KitStamp adds structure, AI generation, and clear export |
+| **Notion** | Flexible workspace, content management | KitStamp is specialized for commercial content units |
 
 ### Cascade's Market Assessment
 
@@ -146,7 +146,7 @@ MenuList's AI description generation (used in campaigns, staff prompts) provides
 
 ## Stage 4 — Doctrine Alignment Check
 
-| Doctrine | VisualMeta Alignment | Notes |
+| Doctrine | KitStamp Alignment | Notes |
 |----------|---------------------|-------|
 | Constitution 11 (Product Evolution) | ✅ Stage 3 — Optional premium layer | Correctly positioned as last in sequence |
 | Constitution 12 (Product Separation) | ✅ Separate identity, AI posture, time horizon | Clean separation maintained throughout |
@@ -168,9 +168,9 @@ This tension should be explicitly resolved in the strategy doc.
 
 **Does this conversation contain doctrine-worthy content?**
 
-**YES** — but it's already captured in Constitution 12 (Product Separation Doctrine), which was created during the GrowthOS session. VisualMeta's specific governance rules (kill-list, AI posture, UI identity) should be documented in the VisualMeta strategy doc, not as a separate constitution document.
+**YES** — but it's already captured in Constitution 12 (Product Separation Doctrine), which was created during the GrowthOS session. KitStamp's specific governance rules (kill-list, AI posture, UI identity) should be documented in the KitStamp strategy doc, not as a separate constitution document.
 
-**Rationale**: The conversation reinforces existing doctrine rather than introducing new governance principles. The "VisualMeta prepares, others decide" philosophy is an application of Constitution 12's AI posture rules (Assistant posture), not a new constitutional principle.
+**Rationale**: The conversation reinforces existing doctrine rather than introducing new governance principles. The "KitStamp prepares, others decide" philosophy is an application of Constitution 12's AI posture rules (Assistant posture), not a new constitutional principle.
 
 ---
 
@@ -193,7 +193,7 @@ This tension should be explicitly resolved in the strategy doc.
 | # | Decision | Issue | Recommendation |
 |---|----------|-------|---------------|
 | 1 | ICP = Agency operators only | Too narrow for Indian market | **Add SMB operators as secondary ICP** — Indian SMB owners prepare their own content |
-| 2 | "VisualMeta has nothing to do with MenuList" | Contradicts reality — 70% of image capability exists in MenuList | **Acknowledge shared infrastructure**, enforce product-level separation |
+| 2 | "KitStamp has nothing to do with MenuList" | Contradicts reality — 70% of image capability exists in MenuList | **Acknowledge shared infrastructure**, enforce product-level separation |
 | 3 | No audit trails | Later contradicted by Audit Log spec | **Resolve**: Simple action timeline YES, complex compliance NO |
 | 4 | UGC video as V2+ | ChatGPT correctly deferred but kept bringing it back | **Hard defer**: Not V2, maybe V3. Focus on text+image+export first |
 | 5 | Market size claims | TAM/SAM numbers from industry reports, not independently verified | **Treat as directional**, not precise |
@@ -202,7 +202,7 @@ This tension should be explicitly resolved in the strategy doc.
 
 | Gap | Impact | Action |
 |-----|--------|--------|
-| **How VisualMeta extracts from MenuList** | Critical technical question | Document extraction strategy |
+| **How KitStamp extracts from MenuList** | Critical technical question | Document extraction strategy |
 | **Shared infrastructure (auth, billing, AI models)** | Cost and architecture impact | Define shared vs separate services |
 | **Indian market pricing reality** | $150/mo agency pricing may not work in India | Research Indian agency pricing |
 | **Content description generation** | Text generation not designed in detail | Needs its own design pass |
@@ -224,10 +224,10 @@ This tension should be explicitly resolved in the strategy doc.
 
 ## Documents to Create
 
-1. `__docs__/visual-meta/README.md` — Comprehensive VisualMeta strategy (consolidated from 24+ topics)
-2. Update `__docs__/strategy/product-positioning-map.md` — Add VisualMeta deep details
+1. `__docs__/kitstamp/README.md` — Comprehensive KitStamp strategy (consolidated from 24+ topics)
+2. Update `__docs__/strategy/product-positioning-map.md` — Add KitStamp deep details
 3. Update `__docs__/strategy/menulist-future-roadmap-ssot.md` — Add Session 8
-4. Update `__docs__/changelog.md` — Add VisualMeta entries
+4. Update `__docs__/changelog.md` — Add KitStamp entries
 
 ---
 

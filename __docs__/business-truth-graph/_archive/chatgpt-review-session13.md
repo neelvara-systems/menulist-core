@@ -34,20 +34,20 @@ ChatGPT independently arrived at a graph model that closely mirrors what MenuLis
 - MenuList → canonical business truth infrastructure
 - SurfaceOS → external surface behavior control
 - GrowthOS → transactional attention engine
-- VisualMeta → content preparation workspace
+- KitStamp → content preparation workspace
 
 **Codebase Reality:**
 
 - MenuList is the core product with full infrastructure
 - Answerlattice exists as a separate product (governed answer infrastructure for SaaS)
-- SurfaceOS, GrowthOS, VisualMeta **do not exist** — they are ChatGPT abstractions
+- SurfaceOS, GrowthOS, KitStamp **do not exist** — they are ChatGPT abstractions
 - Multi-product file organization is LOCKED (`.cascade/rules/ANSWERLATTICE_RULES.md`)
 
 **VERDICT: PARTIAL AGREE — Strategic framing only**
 
 The parent entity concept is valid for future corporate structure, but:
 
-- ❌ SurfaceOS, GrowthOS, VisualMeta don't exist and aren't planned
+- ❌ SurfaceOS, GrowthOS, KitStamp don't exist and aren't planned
 - ✅ MenuList as gravity center aligns with Constitution #15 (Category Dominance)
 - ✅ "Surface intelligence" already lives inside MenuList (GBP sync, OBP, screens, QR)
 - ✅ Multi-product architecture already designed (MenuList + Answerlattice pattern)
@@ -489,7 +489,7 @@ MenuList as the gravity center is already the locked strategic position. The con
 | MenuList as parent company     | ALIGN             | **VALIDATE**              | Matches Constitution #15, #17                 |
 | SurfaceOS internal to MenuList | ALIGN             | **VALIDATE**              | Already implemented this way                  |
 | GrowthOS as separate product   | NO BASIS          | **IGNORE**                | Product doesn't exist                         |
-| VisualMeta as separate product | NO BASIS          | **IGNORE**                | Product doesn't exist                         |
+| KitStamp as separate product | NO BASIS          | **IGNORE**                | Product doesn't exist                         |
 | Business Truth Graph concept   | ALIGN             | **VALIDATE**              | Strategic framing matches architecture        |
 | 15 graph layers                | MOSTLY EXISTS     | **VALIDATE** (conceptual) | 10 of 15 layers already built                 |
 | Collection-per-layer Firestore | CONFLICT          | **REJECT**                | 12x cost increase vs embedded-doc approach    |
@@ -558,7 +558,7 @@ MenuList as the gravity center is already the locked strategic position. The con
 
 - **Unaware of ~75% of existing infrastructure** — hours engine, temp status, identity/contact/location all exist
 - **Collection-per-layer storage** — would 12x Firebase costs
-- **GrowthOS / VisualMeta as products** — don't exist, no plans
+- **GrowthOS / KitStamp as products** — don't exist, no plans
 - **"Missing" layers from web research** — 4 of 8 "missing" layers already exist
 - **Stage assessment** — Rated us at "Stage 2-3" but we're closer to Stage 3 completion
 

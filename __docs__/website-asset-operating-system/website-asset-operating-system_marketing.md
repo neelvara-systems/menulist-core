@@ -33,7 +33,7 @@ Website Asset Operating System lets Codex audit, brief, generate, and review pro
 - Not a MenuList owner feature.
 - Not an Answerlattice support feature.
 - Not GrowthOS.
-- Not VisualMeta.
+- Not KitStamp.
 - Not a generic screen recorder.
 - Not an agency content tool.
 
@@ -48,7 +48,7 @@ Website Asset Operating System declares which assets should exist, why they exis
 | Concern | Response |
 | --- | --- |
 | "Can this be a new product?" | Not now. It has practical product shape for founders/operators/developers, especially beside Answerlattice, but no external buyer or independent public runtime is proven. |
-| "Is this VisualMeta?" | No. VisualMeta prepares customer/client content. This governs our own website assets. |
+| "Is this KitStamp?" | No. KitStamp prepares customer/client content. This governs our own website assets. |
 | "Is this GrowthOS?" | No. GrowthOS produces ready-to-use promotional output for SMBs. This produces and audits MenuList/Answerlattice website media. |
 | "Is this part of MenuList?" | It supports MenuList marketing, but it is not a MenuList product feature. |
 | "Is this part of Answerlattice?" | It is Answerlattice-adjacent internal tooling. It may read Answerlattice truth for media briefs, but it is not Answerlattice support knowledge runtime. |
@@ -96,5 +96,5 @@ Only reconsider a public product if all are true:
 1. MenuList has stable public presence adoption.
 2. Answerlattice website/runtime assets are maintained through this system for months.
 3. External teams ask for the same repo-native asset contract.
-4. It can be separated without blurring VisualMeta or GrowthOS.
+4. It can be separated without blurring KitStamp or GrowthOS.
 5. There is a clear buyer, pricing model, support model, and data boundary.

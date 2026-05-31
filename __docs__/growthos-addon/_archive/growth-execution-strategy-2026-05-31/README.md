@@ -704,7 +704,7 @@ Expansion is allowed only if:
 If someone proposes a feature, ask:
 
 - Does it run continuously? → **MenuList**
-- Does it require review and refinement? → **VisualMeta**
+- Does it require review and refinement? → **KitStamp**
 - Does it deliver immediate usable output? → **GrowthOS**
 
 If the answer is "a bit of all three" → **kill it.**
@@ -749,7 +749,7 @@ GrowthOS's "output-first" positioning is genuinely differentiated. The closest c
 | `__docs__/constitution/11-product-evolution-doctrine.md`     | Stage 2 = GrowthOS timing                     |
 | `__docs__/constitution/12-product-separation-doctrine.md`    | 3-product separation rules                    |
 | `__docs__/control-layer-strategy/README.md`                  | What must be built BEFORE GrowthOS            |
-| `__docs__/strategy/product-positioning-map.md`               | Stack model: MenuList → VisualMeta → GrowthOS |
+| `__docs__/strategy/product-positioning-map.md`               | Stack model: MenuList → KitStamp → GrowthOS |
 | `__docs__/strategy/menulist-future-roadmap-ssot.md`          | Overall build sequence                        |
 | `__docs__/social-content/social-content-product-strategy.md` | GrowthOS v0 strategy                          |
 | `src/config/features.ts` — `SOCIAL_CONTENT_ENABLED`          | Existing prototype flags                      |

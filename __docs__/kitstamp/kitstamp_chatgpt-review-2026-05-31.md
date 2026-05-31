@@ -1,9 +1,9 @@
-# VisualMeta - ChatGPT Conversation Review
+# KitStamp - ChatGPT Conversation Review
 
 **Status:** Accepted decision record
 **Created:** May 31, 2026
 **Source:** `/Users/danny/.codex/attachments/f254ab83-af04-4c45-ab95-85d4dc669de8/pasted-text.txt`
-**Reviewer decision:** ChatGPT suggestions were treated as proposals. This document records the VisualMeta decisions after SMB-owner, architecture, cost, and separation review.
+**Reviewer decision:** ChatGPT suggestions were treated as proposals. This document records the KitStamp decisions after SMB-owner, architecture, cost, and separation review.
 
 ---
 
@@ -13,7 +13,7 @@ The conversation is useful, but it is too expansive if copied directly into impl
 
 Final direction:
 
-> VisualMeta should keep the Final Content Kit as the product. The new features are accepted only when they strengthen export readiness, source provenance, and human approval without turning VisualMeta into a publisher, PIM, DAM, MenuList module, or integration marketplace.
+> KitStamp should keep the Final Content Kit as the product. The new features are accepted only when they strengthen export readiness, source provenance, and human approval without turning KitStamp into a publisher, PIM, DAM, MenuList module, or integration marketplace.
 
 The strongest near-term SMB-owner wedge is not broad adapters. It is:
 
@@ -34,11 +34,11 @@ The strongest near-term SMB-owner wedge is not broad adapters. It is:
 
 ## 3. Full Flow Cross-Check
 
-The pasted conversation explicitly lists 18 VisualMeta layers. Lines 1-25 and 3959-3976 name the full layer map; lines 3910-4337 ask whether the product is ready for implementation. This table is the final cross-check for every listed flow.
+The pasted conversation explicitly lists 18 KitStamp layers. Lines 1-25 and 3959-3976 name the full layer map; lines 3910-4337 ask whether the product is ready for implementation. This table is the final cross-check for every listed flow.
 
 | # | ChatGPT flow | Final decision | Implementation placement | Reason |
 | --- | --- | --- | --- | --- |
-| 1 | Content Unit | Accept | Foundation/core workspace | This is the atomic VisualMeta object. Without it, review, export, and source provenance have no stable unit. |
+| 1 | Content Unit | Accept | Foundation/core workspace | This is the atomic KitStamp object. Without it, review, export, and source provenance have no stable unit. |
 | 2 | Source Snapshot | Accept | Foundation/core workspace | This is required for source truth, stale detection, approval safety, and manifest provenance. It is first-class in the lock. |
 | 3 | Candidate Output / Generation & Edit Layer | Modify | Candidate records early; provider calls later | Candidate assets/text are needed early, but provider generation waits until billing/credits and Safe Mode are locked. |
 | 4 | Review & Approval Layer | Accept | Core workspace before export | Human approval is mandatory. Generated/imported/edited output never becomes final without review. |
@@ -78,11 +78,11 @@ Owner-risky value:
 - managing credentials
 - understanding Shopify/PIM/DAM schema details
 - approving generated content without seeing source facts
-- thinking VisualMeta will publish or sync automatically
+- thinking KitStamp will publish or sync automatically
 
 Decision:
 
-> VisualMeta must hide complexity behind defaults. Advanced export/adapters are operator or agency controls, not daily SMB-owner controls.
+> KitStamp must hide complexity behind defaults. Advanced export/adapters are operator or agency controls, not daily SMB-owner controls.
 
 ## 5. Decision Matrix
 
@@ -95,9 +95,9 @@ Decision:
 | Template preflight | Accept | Required before export. | Prevents broken kits and owner confusion. |
 | Filename collision handling | Accept | Detect and resolve/block server-side. | Handoff fails when files are ambiguous. |
 | MenuList Snapshot Import | Accept | First source adapter after core workspace is stable. | Strongest internal wedge and clear MenuList-client value. |
-| MenuList live sync | Reject | Manual refresh only. | Live sync would make VisualMeta depend on MenuList runtime truth. |
+| MenuList live sync | Reject | Manual refresh only. | Live sync would make KitStamp depend on MenuList runtime truth. |
 | MenuList write-back | Reject | No write-back path in first implementation. | Violates separate product boundary and owner trust. |
-| MenuList image reference only | Modify | Prefer copying/exporting source image into VisualMeta Storage when needed. | Review/export should not depend on live MenuList reads. |
+| MenuList image reference only | Modify | Prefer copying/exporting source image into KitStamp Storage when needed. | Review/export should not depend on live MenuList reads. |
 | Export Adapters | Accept with limits | File-based handoff packages only. | Useful without becoming downstream system owner. |
 | Shopify CSV adapter | Modify | Keep as later file-only adapter behind flag after schema check. | Official CSV rules are real but store-specific behavior varies. |
 | Google Merchant adapter | Defer | Do not include in first implementation. | Attribute rules vary by country/category and are high-risk for SMB support. |
@@ -106,13 +106,13 @@ Decision:
 | External API push | Reject for first implementation | No credentials or API write. | Credential, liability, retry, and support burden. |
 | Mobile export configuration | Reject | Mobile can view/download kit status only. | Configuration is not phone-friendly. |
 | Mobile review | Accept | Required. | SMB owners can approve from phone. |
-| Generating missing facts | Reject | Missing source facts block or warn. | VisualMeta must not invent SKU, price, GTIN, allergens, availability, or brand truth. |
+| Generating missing facts | Reject | Missing source facts block or warn. | KitStamp must not invent SKU, price, GTIN, allergens, availability, or brand truth. |
 
 ## 6. External Adapter Source Check
 
 Official docs confirm that downstream adapters are not stable enough to treat as simple universal exports:
 
-| Source | Relevant finding | VisualMeta decision |
+| Source | Relevant finding | KitStamp decision |
 | --- | --- | --- |
 | Shopify CSV docs: https://help.shopify.com/en/manual/products/import-export/using-csv?locale=en-US | Shopify supports product CSV import/export and has required-column behavior that depends on import use. | Shopify support must be file-only and versioned, with no guarantee of acceptance. |
 | Google Merchant product data spec: https://support.google.com/merchants/answer/15216925 | Product data requirements vary by attribute, product type, country, destination, and policy context. | Defer Merchant feed support; never invent source facts. |
@@ -177,7 +177,7 @@ Start with:
 1. flags
 2. product constants
 3. disabled route skeleton
-4. VisualMeta Firebase config/rules skeleton
+4. KitStamp Firebase config/rules skeleton
 5. types
 6. DAL skeleton
 7. rules tests
@@ -185,7 +185,7 @@ Start with:
 
 The first real product milestone is:
 
-> A separated VisualMeta workspace where a user can create a project, create content units from source snapshots, review candidate assets/text, approve them, and export an immutable Final Content Kit.
+> A separated KitStamp workspace where a user can create a project, create content units from source snapshots, review candidate assets/text, approve them, and export an immutable Final Content Kit.
 
 ## 9. Readiness Answer From The Conversation
 
@@ -200,10 +200,10 @@ The conversation itself asks whether everything is complete before implementatio
 Ready for implementation foundation:
 
 - flags
-- `VM` product constants
+- `KS` product constants
 - disabled route skeleton
 - Firebase config/rules/storage skeleton
-- VisualMeta Firebase helpers
+- KitStamp Firebase helpers
 - types and DAL
 - source snapshots
 - content units
@@ -224,14 +224,14 @@ Not ready for first implementation:
 
 This review requires updates to:
 
-- `visual-meta_spec.md`
-- `visual-meta_impl.md`
-- `visual-meta_firebase.md`
-- `visual-meta_mobile-support.md`
-- `visual-meta_marketing.md`
-- `visual-meta_website.md`
-- `visual-meta_helpdoc.md`
-- `visual-meta_test-cases.md`
+- `kitstamp_spec.md`
+- `kitstamp_impl.md`
+- `kitstamp_firebase.md`
+- `kitstamp_mobile-support.md`
+- `kitstamp_marketing.md`
+- `kitstamp_website.md`
+- `kitstamp_helpdoc.md`
+- `kitstamp_test-cases.md`
 - `README.md`
 
 Doctrine docs are intentionally not updated in this pass because the current request asked to skip old doctrine and decide from scratch.

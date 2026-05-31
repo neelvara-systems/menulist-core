@@ -21,7 +21,7 @@ This ChatGPT conversation covered the full strategic arc of MenuList's product e
 
 | # | Topic | Type | ChatGPT's Position | Codebase Alignment |
 |---|-------|------|-------------------|-------------------|
-| 1 | Product sequence (MenuList → ControlOS → GrowthOS → VisualMeta) | Doctrine | MenuList always first. ControlOS inside MenuList. GrowthOS only after system-of-record. VisualMeta optional. | ✅ ALIGNS — matches `product-strategy-2026.md` and roadmap |
+| 1 | Product sequence (MenuList → ControlOS → GrowthOS → KitStamp) | Doctrine | MenuList always first. ControlOS inside MenuList. GrowthOS only after system-of-record. KitStamp optional. | ✅ ALIGNS — matches `product-strategy-2026.md` and roadmap |
 | 2 | Customer-facing only boundary | Doctrine | Never build POS/CRM/inventory/payroll/accounting/HR | ✅ ALIGNS — matches `01-core-doctrine.md`, kill list |
 | 3 | ControlOS = NOT separate product | Strategic | Control layer is MenuList's internal evolution, not new brand | ✅ CORRECT — avoids multi-product chaos |
 | 4 | Silent autopilot system | Design | Owner updates once → correct everywhere. Minimal UI. | ✅ ALIGNS — matches Laws 1-3 (Default Authority, Silence, No Explanations) |
@@ -120,7 +120,7 @@ No specific market claims made in this conversation that weren't already validat
 | 10 | ControlOS-GrowthOS boundary | 🆕 NEW | **ACCEPT** | Important separation. Not yet formalized. | Include in strategy doc |
 | 11 | GrowthOS framework (9 docs) | 🆕 NEW | **ACCEPT (deferred)** | Entirely future. Log for reference only. | Create brief strategy doc, marked FUTURE |
 | 12 | 8 failure scenarios | 🆕 NEW | **ACCEPT** | Valuable risk thinking. Include in strategy doc. | Include in control layer strategy |
-| 13 | VisualMeta as "optional forever" | EXISTING | **AGREE** | Already in roadmap as optional | Reference existing |
+| 13 | KitStamp as "optional forever" | EXISTING | **AGREE** | Already in roadmap as optional | Reference existing |
 | 14 | Feature freeze until adoption proven | EXISTING | **AGREE** | Already locked in Session 5 (>70% adoption required) | Reference existing |
 
 ---

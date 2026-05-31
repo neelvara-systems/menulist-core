@@ -1,14 +1,14 @@
-# VisualMeta - Mobile Support Plan
+# KitStamp - Mobile Support Plan
 
 **Status:** Planning mobile support document
 **Created:** May 31, 2026
-**Product code:** `VM`
+**Product code:** `KS`
 
 ---
 
 ## 1. Mobile Admission Decision
 
-VisualMeta needs mobile support, but mobile should not be the primary production workspace.
+KitStamp needs mobile support, but mobile should not be the primary production workspace.
 
 Mobile is valuable for:
 
@@ -140,7 +140,7 @@ Mobile should not support:
 
 ## 8. Data And Cost Rules
 
-Mobile must use the same VisualMeta DAL and APIs as desktop.
+Mobile must use the same KitStamp DAL and APIs as desktop.
 
 Mobile must not:
 

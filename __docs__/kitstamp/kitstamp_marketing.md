@@ -1,4 +1,4 @@
-# VisualMeta - Marketing And Positioning Notes
+# KitStamp - Marketing And Positioning Notes
 
 **Status:** Internal planning notes
 **Created:** May 31, 2026
@@ -8,13 +8,13 @@
 
 ## 1. Positioning
 
-VisualMeta is a content readiness workspace for teams that need product, menu, catalog, and listing content approved before handoff.
+KitStamp is a content readiness workspace for teams that need product, menu, catalog, and listing content approved before handoff.
 
 Short position:
 
-> VisualMeta turns scattered source material into approved Final Content Kits.
+> KitStamp turns scattered source material into approved Final Content Kits.
 
-Do not position VisualMeta as:
+Do not position KitStamp as:
 
 - a design suite
 - a social scheduler
@@ -27,7 +27,7 @@ Do not position VisualMeta as:
 
 ## 2. Market Landscape
 
-| Segment | Strong players | What they own | VisualMeta stance |
+| Segment | Strong players | What they own | KitStamp stance |
 | --- | --- | --- | --- |
 | General creation | Canva | canvas, brand, multi-format creation, team workflows | Do not compete. Integrate/export when useful. |
 | Enterprise creative production | Adobe | enterprise APIs, custom models, batch production, professional creative ops | Do not compete. Stay practical and operator-led. |
@@ -56,13 +56,13 @@ Problem:
 
 > Content work gets created in many tools, then the final handoff loses source facts, approval notes, filenames, translations, and usage context.
 
-VisualMeta answer:
+KitStamp answer:
 
 > Keep each item in a review-ready workspace until its image, copy, translations, alt text, notes, and approval metadata are ready as one kit.
 
 Founder-safe claim:
 
-> VisualMeta helps teams prepare approved content packages before they publish elsewhere.
+> KitStamp helps teams prepare approved content packages before they publish elsewhere.
 
 Avoid claims:
 
@@ -128,9 +128,9 @@ Weak fit if buyer says:
 
 ## 8. Relationship To MenuList
 
-MenuList can be a source and customer of VisualMeta, not the owner of VisualMeta.
+MenuList can be a source and customer of KitStamp, not the owner of KitStamp.
 
-For MenuList clients, VisualMeta can package approved menu item content. The import path must copy snapshots and must not mutate MenuList menu truth.
+For MenuList clients, KitStamp can package approved menu item content. The import path must copy snapshots and must not mutate MenuList menu truth.
 
 Safe buyer language:
 
@@ -160,7 +160,7 @@ Avoid:
 
 ## 10. Launch Readiness
 
-Do not market VisualMeta until:
+Do not market KitStamp until:
 
 - product domain is confirmed
 - public website exists behind product host

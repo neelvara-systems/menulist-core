@@ -32,7 +32,7 @@ The approved current implementation is smaller than this spec:
 
 Product decision: do not freeze or roll out this wedge yet. Owner usability and need are not proven. Revisit only after a small pilot shows owners understand it, copy/share it, and still see Today truth readiness as the primary value.
 
-VisualMeta boundary: do not move this wedge to VisualMeta. VisualMeta prepares draft content units and Final Content Kits; this wedge is a weekly owner action/export question and belongs only to Today/GrowthOS if revived.
+KitStamp boundary: do not move this wedge to KitStamp. KitStamp prepares draft content units and Final Content Kits; this wedge is a weekly owner action/export question and belongs only to Today/GrowthOS if revived.
 
 ## Scope
 
@@ -57,7 +57,7 @@ VisualMeta boundary: do not move this wedge to VisualMeta. VisualMeta prepares d
 | Ads, CRM, loyalty, POS, orders | Wrong product category. |
 | Full chatbot builder | Turns GrowthOS into support/conversation product and overlaps Answerlattice-style surfaces. |
 | Analytics dashboard | Violates output-first GrowthOS posture. |
-| Canva-style editor | Belongs to VisualMeta-style content preparation, not GrowthOS. |
+| Canva-style editor | Belongs to KitStamp-style content preparation, not GrowthOS. |
 | Full multi-location control | Needs its own approved spec and stronger truth maturity. |
 
 ## Owner-Facing Flow

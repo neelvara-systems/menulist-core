@@ -25,7 +25,7 @@
 | ------------------------------------------------ | ------------------------------------------- |
 | **[social-content/](./social-content/)**         | Social media content generation (campaigns) |
 | **[growthos-addon/](./growthos-addon/)**         | GrowthOS add-on planning for MenuList higher-tier clients |
-| **[visual-meta/](./visual-meta/)**               | VisualMeta separate-product planning for approved Final Content Kits |
+| **[kitstamp/](./kitstamp/)**                 | KitStamp separate-product planning for approved Final Content Kits |
 | **[staff-prompt/](./staff-prompt/)**             | Staff prompt system                         |
 | **[gbp-sync/](./gbp-sync/)**                     | Google Business Profile sync                |
 | **[reviews-reputation/](./reviews-reputation/)** | Reviews and reputation management           |

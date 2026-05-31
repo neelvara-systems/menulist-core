@@ -6,6 +6,57 @@
 
 ---
 
+## June 1, 2026 — Answerlattice Final Logo Source
+
+### Changed
+
+- **Answerlattice logo source finalized** — `public/answerlattice-logo.svg` now matches the approved design-team SVG exactly and is the canonical source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives.
+- **Answerlattice logo derivatives refreshed** — Regenerated the Answerlattice logo PNGs, favicon files, PWA icons, OpenGraph image, and iOS splash images from the final SVG source without redrawing, recoloring, reshaping, or simplifying the mark.
+- **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, loaders, and dashboard navigation now render the canonical SVG through the shared `AnswerlatticeLogoMark` wrapper instead of the old inline-redrawn mark.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is a static Answerlattice asset and documentation update only. It adds no Firestore reads, writes, listeners, Cloud Functions, Storage operations, provider calls, schedulers, external credentials, or deploys.
+
+---
+
+## May 31, 2026 — KitStamp Permanent Naming Lock
+
+### Changed
+
+- **KitStamp name locked** - Retired the previous VisualMeta planning name and made KitStamp the permanent product brand, slug, product code, and documentation namespace.
+- **Docs renamed** - Moved the active documentation set from `__docs__/visual-meta/` to `__docs__/kitstamp/` and renamed active files to the `kitstamp_*` convention.
+- **Product constants aligned** - Updated the disabled product-domain placeholder to use `kitstamp`, `/__kitstamp`, `/sites/kitstamp`, and `kitstamp.com` as the primary host.
+- **Product code aligned** - Updated product identity references from `VM` to `KS` for KitStamp planning and multi-product doctrine.
+- **Naming lock added** - Added `__docs__/kitstamp/kitstamp_naming-lock.md` covering the permanent brand, rejected names, legal-name candidate, MCA/trademark caveats, and implementation naming rules.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and disabled product-registry alignment only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
+## May 31, 2026 - Growth Engine Separate Product Planning
+
+### Added
+
+- **Growth Engine planning docs** - Added a new `__docs__/growth-engine/` documentation set for MenuList lead acquisition, outreach safety, campaign dry-runs, tracked onboarding, Firebase cost controls, mobile emergency controls, and product doctrine.
+- **Growth Engine operator gap audit** - Added a second-pass web-researched gap audit covering source policy, sender readiness, consent/suppression, artifact QA, provider costs, AI evals, incident handling, and market-positioning gaps.
+- **Repo strategy decision** - Documented the recommended path: same repo, separate product boundary, separate Firebase/functions/data, and no MenuList clone.
+- **GrowthOS boundary clarified** - Updated GrowthOS and strategy docs so Growth Engine is not confused with GrowthOS/Growth Kits.
+
+### Product Decision
+
+- **Separate internal acquisition product** - Growth Engine is internal lead-generation infrastructure for MenuList, not a customer-facing MenuList feature, not GrowthOS, not a CRM, and not a website-demo factory.
+- **Safety-first outbound posture** - Campaign dry-run, suppression, DNC handling, budget caps, channel kill switches, and tracked onboarding routes are required before sending.
+- **Readiness before sending** - Source policy registry, jurisdiction/channel policy, sender-domain readiness, global consent/suppression ledger, onboarding flow inventory, artifact takedown, provider register, AI eval thresholds, and incident runbook are now first-slice gates.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
 ## May 31, 2026 — Public Menu Link Import
 
 ### Added
@@ -20,17 +71,17 @@
 
 ---
 
-## May 31, 2026 — VisualMeta Deep Review And Implementation Lock
+## May 31, 2026 — KitStamp Deep Review And Implementation Lock
 
 ### Added
 
-- **VisualMeta deep ChatGPT review** — Added a line-range review for the new VisualMeta discussion, treating ChatGPT proposals as suggestions and recording final accept, modify, reject, and defer decisions.
-- **VisualMeta implementation lock** — Added `visual-meta_implementation-lock-v1.md` with first-implementation flags, collections, source snapshot schema, content unit schema, asset/text/review schemas, manifest schema, export kit schema, storage paths, API route contracts, MenuList snapshot rules, export template rules, adapter rules, and activation gates.
+- **KitStamp deep ChatGPT review** — Added a line-range review for the new KitStamp discussion, treating ChatGPT proposals as suggestions and recording final accept, modify, reject, and defer decisions.
+- **KitStamp implementation lock** — Added `kitstamp_implementation-lock-v1.md` with first-implementation flags, collections, source snapshot schema, content unit schema, asset/text/review schemas, manifest schema, export kit schema, storage paths, API route contracts, MenuList snapshot rules, export template rules, adapter rules, and activation gates.
 
 ### Product Decision
 
 - **Export Templates accepted with limits** — Built-in, versioned packaging presets are accepted. Custom template builders, arbitrary scripting, and template marketplaces are rejected for the first implementation.
-- **MenuList Snapshot Import accepted with strict separation** — VisualMeta can copy selected MenuList item snapshots after preview, but cannot live-sync, write back, consume MenuList AI packs, write to MenuList Storage, or invalidate MenuList public cache.
+- **MenuList Snapshot Import accepted with strict separation** — KitStamp can copy selected MenuList item snapshots after preview, but cannot live-sync, write back, consume MenuList AI packs, write to MenuList Storage, or invalidate MenuList public cache.
 - **Export Adapters narrowed to file-based handoff** — Generic handoff packages are accepted. Direct Shopify/PIM/DAM/Cloudinary/Google API push, credential storage, live sync, and downstream acceptance guarantees are rejected for the first implementation.
 
 ### Cost
@@ -135,18 +186,18 @@
 - **Low one-time metadata cost** — Existing graph summary documents may receive one merge write to add `pId/tId/sId`; unchanged summaries still skip normal graph rewrites.
 - **No new listeners or unbounded scans** — The audit changes add no public reads, no realtime listeners, no new collections, and no scheduler fan-out. Widget activity fallback reads are now tenant-scoped, and caller-provided list limits are clamped.
 
-## May 31, 2026 — VisualMeta Separate Product Planning
+## May 31, 2026 — KitStamp Separate Product Planning
 
 ### Added
 
-- **VisualMeta is now planned as a separate product** — Added a full VisualMeta documentation set that treats VisualMeta as product code `VM`, separate from MenuList, GrowthOS, Answerlattice, and the internal Website Asset Operating System.
+- **KitStamp is now planned as a separate product** — Added a full KitStamp documentation set that treats KitStamp as product code `KS`, separate from MenuList, GrowthOS, Answerlattice, and the internal Website Asset Operating System.
 - **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Answerlattice-style doctrine.
-- **Product separation doctrine** — Added VisualMeta core doctrine, non-goals charter, infrastructure freeze, and product separation playbook covering routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests.
+- **Product separation doctrine** — Added KitStamp core doctrine, non-goals charter, infrastructure freeze, and product separation playbook covering routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests.
 
 ### Product Decision
 
-- **Separate product, export-only** — VisualMeta prepares source-backed, human-approved Final Content Kits. It does not publish, schedule, manage live MenuList truth, run ads, replace Canva/Adobe/Photoroom, or auto-approve generated output.
-- **Old VisualMeta strategy archived** — Moved the previous single-file VisualMeta strategy to `__docs__/visual-meta/_archive/visual-meta-strategy-2026-05-31.md` so the new doc set is the active planning source.
+- **Separate product, export-only** — KitStamp prepares source-backed, human-approved Final Content Kits. It does not publish, schedule, manage live MenuList truth, run ads, replace Canva/Adobe/Photoroom, or auto-approve generated output.
+- **Old KitStamp strategy archived** — Moved the previous single-file KitStamp strategy to `__docs__/kitstamp/_archive/kitstamp-strategy-2026-05-31.md` so the new doc set is the active planning source.
 
 ### Cost
 
@@ -2164,7 +2215,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 ### Architecture Decision
 
 - **MenuList = default/root** — no subfolder needed (primary product).
-- **All other products** (Answerlattice, SurfaceOS, GrowthOS, VisualMeta) get `/[product]/` subfolder in every layer.
+- **All other products** (Answerlattice, SurfaceOS, GrowthOS, KitStamp) get `/[product]/` subfolder in every layer.
 - **Shared infrastructure** (auth, security, theme, i18n, Firebase config) stays at root — never duplicated per product.
 
 ---
@@ -2243,7 +2294,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 - **10 permanent exclusions**: No ranking tracking, backlinks, keyword research, social scheduling, ads, campaigns, website builder, performance analytics, competitor intelligence, content creation
 - **Target ICP:** Mid-market chains (5-75 locations), clinics/dental as launch vertical
 - **Architecture:** Modular monolith, Postgres, adapter-based surface abstraction, 3-year freeze
-- **Launch order:** MenuList → SurfaceOS → GrowthOS → VisualMeta
+- **Launch order:** MenuList → SurfaceOS → GrowthOS → KitStamp
 - **Google-first** adapter strategy (not multi-surface from day one)
 - **Parent brand** ("Strata" suggested) — separate from MenuList, quiet until 2+ products have PMF
 - **Full System Design Document (SDD)** with 10 frozen components defined
@@ -2255,7 +2306,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 | MenuList   | Truth          | Own      | Authority |
 | SurfaceOS  | Representation | Control  | Control   |
 | GrowthOS   | Execution      | Activate | Momentum  |
-| VisualMeta | Preparation    | Prepare  | Craft     |
+| KitStamp | Preparation    | Prepare  | Craft     |
 
 ---
 
@@ -2534,15 +2585,15 @@ ChatGPT conversation analyzing Mau Baron's "$25k/month mobile app" article (cons
 
 ---
 
-## March 1, 2026 (Session — Pomelli / VM / GOS / Hardening Review)
+## March 1, 2026 (Session — Pomelli / KS / GOS / Hardening Review)
 
 ### Analysis Summary
 
-ChatGPT conversation covering Google Pomelli (AI marketing tool), VisualMeta vs GrowthOS sequencing, product architecture, OBP adoption metrics, and MenuList hardening layers. **~90% already documented** in existing strategy and constitution docs. Our docs are more comprehensive — ChatGPT was unaware of existing Social Content Engine (GrowthOS v0), MCE, menu snapshots, OBP analytics, adoption pulse, and security rules. All strategic conclusions converge with already-locked decisions in Constitution 11/12 and product positioning map.
+ChatGPT conversation covering Google Pomelli (AI marketing tool), KitStamp vs GrowthOS sequencing, product architecture, OBP adoption metrics, and MenuList hardening layers. **~90% already documented** in existing strategy and constitution docs. Our docs are more comprehensive — ChatGPT was unaware of existing Social Content Engine (GrowthOS v0), MCE, menu snapshots, OBP analytics, adoption pulse, and security rules. All strategic conclusions converge with already-locked decisions in Constitution 11/12 and product positioning map.
 
 ### Documented
 
-1. **ChatGPT Review Archive** (`__docs__/strategy/_archive/chatgpt-review-session-pomelli-vm-gos-hardening.md`) — Full 14-topic validation. Topics: Pomelli integration (rejected — already locked), VisualMeta spec (redundant — 781-line doc exists), GrowthOS spec (redundant — 776-line doc exists), product sequencing (already in Constitution 11), product connection model (already in Constitution 12), brand architecture (already in positioning map), capital allocation (already locked), GrowthOS build/launch (already implied by existing framing), OBP adoption scoring (premature — no GBP API), MenuList hardening (8/10 already built). No code or doc changes warranted.
+1. **ChatGPT Review Archive** (`__docs__/strategy/_archive/chatgpt-review-session-pomelli-vm-gos-hardening.md`) — Full 14-topic validation. Topics: Pomelli integration (rejected — already locked), KitStamp spec (redundant — 781-line doc exists), GrowthOS spec (redundant — 776-line doc exists), product sequencing (already in Constitution 11), product connection model (already in Constitution 12), brand architecture (already in positioning map), capital allocation (already locked), GrowthOS build/launch (already implied by existing framing), OBP adoption scoring (premature — no GBP API), MenuList hardening (8/10 already built). No code or doc changes warranted.
 
 ### Key Finding
 
@@ -3157,7 +3208,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 - **Launch Infrastructure Hardening (8 Documentation Sets)** — Comprehensive review of ChatGPT launch readiness conversation. Created 8 new documentation sets covering operational infrastructure for production launch. Systems documented: Menu Health Monitor (post-publish verification), Ops Alert Delivery (Telegram integration for existing alert framework), Cost Self-Protection (SAFE_MODE circuit breaker), Ops Control Room (/ops dashboard), Incident Response Protocol (P0/P1/P2 runbook), Production Readiness Checklist (pre-launch verification), Ownership Transfer (DEFERRED — architecture documented), Support Automation (DEFERRED — assessment only). 12 ChatGPT suggestions rejected as over-engineering (LKG, auto-retry, ops_runtime_events, ops_daily_cost, ops_baselines, write burst protection, 11 alert types, organization entity, self-healing, 6-hour cron, WRITE_LOCK, separate staging Firebase). 6 existing systems ChatGPT didn't know about validated (Upstash rate limiting, Sentry, alert framework, health checks, master scheduler, feedback protection). See [ChatGPT review](./__docs__/system-strengthening/_archive/chatgpt-review-launch-infra.md).
 - **Operational Infrastructure Doctrine (Constitution §13)** — New constitution-level governance document establishing 7 laws for operational infrastructure: (1) Detection Before Discovery, (2) Cost Containment Non-Negotiable, (3) Alert on Patterns Not Instances, (4) Restore First Debug Later, (5) Support Volume = Product Clarity Metric, (6) Automation Amplifies Quality, (7) Stale but Visible > Broken. Defines P0/P1/P2 severity levels, cost protection hierarchy, and decision test for operational features. See [doctrine](./constitution/13-operational-infrastructure-doctrine.md).
 
-- **Product Universe SSOT** — Single comprehensive document explaining the entire product universe: MenuList, Control Layer, GrowthOS, and VisualMeta. Covers what each is, why it exists, who uses it, what's already built, market validation with industry statistics, competitive landscape, honest viability assessment, build sequence, and decision framework for future questions. Synthesized from 6 strategy docs, 3 constitution docs, and 4 ChatGPT review archives. Includes Cascade's honest take: MenuList (95% confidence, unequivocally build), Control Layer (90%, just keep improving MenuList), GrowthOS (70%, keep inside MenuList for now), VisualMeta (40%, probably don't build). See [product universe](./strategy/product-universe-ssot.md).
+- **Product Universe SSOT** — Single comprehensive document explaining the entire product universe: MenuList, Control Layer, GrowthOS, and KitStamp. Covers what each is, why it exists, who uses it, what's already built, market validation with industry statistics, competitive landscape, honest viability assessment, build sequence, and decision framework for future questions. Synthesized from 6 strategy docs, 3 constitution docs, and 4 ChatGPT review archives. Includes Cascade's honest take: MenuList (95% confidence, unequivocally build), Control Layer (90%, just keep improving MenuList), GrowthOS (70%, keep inside MenuList for now), KitStamp (40%, probably don't build). See [product universe](./strategy/product-universe-ssot.md).
 
 ---
 
@@ -3182,8 +3233,8 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 ### New
 
-- **VisualMeta Complete Product Strategy** — Comprehensive strategy document for VisualMeta — a future commercial content preparation workspace producing Final Content Kits. Consolidates 24+ ChatGPT design topics into one master doc. Covers: canonical definition ("commercial content preparation workspace"), terminal artifact (Final Content Kit with ZIP structure), ICP lock (content operators at agencies), UI identity (workbench, not dashboard), 7 core features (Content Units, Draft Image/Text/Language, Versioning, Notes, Export), 9-category permanent kill-list, kit-based pricing, trust language (10 production-ready screens), error states, support model, audit layer, V2 expansion path, market research (TAM $36B, SAM $2.9-4.3B). Cross-checked against codebase: MenuList's existing AI Image Generation already implements ~70% of VisualMeta's image capability. See [strategy](./visual-meta/README.md).
-- **AI Image Generation Code Review (via ChatGPT + Expert)** — Validated existing AI Image Gen codebase. Found: debugger in production (batch-generation/route.ts:164), transaction logging disabled (route.ts:264), no batch size limit. Expert added 18-item development checklist to impl.md, defined USP ("Inline Menu Image Creation" with 3 pillars), scope freeze rules, UI language guidelines. ChatGPT's "too many choices" claim partially validated (count wrong, cognitive concern valid). See [review](./visual-meta/_archive/chatgpt-review.md).
+- **KitStamp Complete Product Strategy** — Comprehensive strategy document for KitStamp — a future commercial content preparation workspace producing Final Content Kits. Consolidates 24+ ChatGPT design topics into one master doc. Covers: canonical definition ("commercial content preparation workspace"), terminal artifact (Final Content Kit with ZIP structure), ICP lock (content operators at agencies), UI identity (workbench, not dashboard), 7 core features (Content Units, Draft Image/Text/Language, Versioning, Notes, Export), 9-category permanent kill-list, kit-based pricing, trust language (10 production-ready screens), error states, support model, audit layer, V2 expansion path, market research (TAM $36B, SAM $2.9-4.3B). Cross-checked against codebase: MenuList's existing AI Image Generation already implements ~70% of KitStamp's image capability. See [strategy](./kitstamp/README.md).
+- **AI Image Generation Code Review (via ChatGPT + Expert)** — Validated existing AI Image Gen codebase. Found: debugger in production (batch-generation/route.ts:164), transaction logging disabled (route.ts:264), no batch size limit. Expert added 18-item development checklist to impl.md, defined USP ("Inline Menu Image Creation" with 3 pillars), scope freeze rules, UI language guidelines. ChatGPT's "too many choices" claim partially validated (count wrong, cognitive concern valid). See [review](./kitstamp/_archive/chatgpt-review.md).
 
 ---
 
@@ -3192,8 +3243,8 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 ### New
 
 - **GrowthOS Complete Product Strategy** — Comprehensive strategy document for GrowthOS — a future transactional execution engine that produces ready-to-use promotional content for SMBs. Consolidates 10 ChatGPT design documents into one master doc. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, 6 canonical use cases, workflow engine design, content quality rules, MenuList relationship contract, monetization (pay-per-kit), and kill criteria. Cross-checked against codebase: MenuList's existing Social Content Engine already implements ~60% of GrowthOS vision. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
-- **Product Separation Doctrine (Constitution 12)** — New governance document permanently locking the separation between MenuList, GrowthOS, and VisualMeta. Ten rules: (1) Product identity lock — each answers exactly one question. (2) AI posture rules — Authority (MenuList), Delegate (GrowthOS), Assistant (VisualMeta). (3) Time horizon lock — Continuous/Immediate/Deliberate. (4) Dependency direction — one-way read-only from MenuList outward. (5) Surface & UI firewall — no shared components. (6) Monetization separation — subscription/per-kit/per-project. (7) Language separation. (8) Failure isolation. (9) Priority order locked: MenuList #1, GrowthOS #2, VisualMeta #3. (10) Red-Flag Test for feature assignment. See [doctrine](./constitution/12-product-separation-doctrine.md).
-- **Product Positioning Map** — One-page strategic reference showing how MenuList (infrastructure), GrowthOS (execution), and VisualMeta (preparation) form a vertical stack with separate jobs, time horizons, AI postures, surfaces, and monetization. Includes Red-Flag Test: "If it's a bit of all three → kill it." See [positioning map](./strategy/product-positioning-map.md).
+- **Product Separation Doctrine (Constitution 12)** — New governance document permanently locking the separation between MenuList, GrowthOS, and KitStamp. Ten rules: (1) Product identity lock — each answers exactly one question. (2) AI posture rules — Authority (MenuList), Delegate (GrowthOS), Assistant (KitStamp). (3) Time horizon lock — Continuous/Immediate/Deliberate. (4) Dependency direction — one-way read-only from MenuList outward. (5) Surface & UI firewall — no shared components. (6) Monetization separation — subscription/per-kit/per-project. (7) Language separation. (8) Failure isolation. (9) Priority order locked: MenuList #1, GrowthOS #2, KitStamp #3. (10) Red-Flag Test for feature assignment. See [doctrine](./constitution/12-product-separation-doctrine.md).
+- **Product Positioning Map** — One-page strategic reference showing how MenuList (infrastructure), GrowthOS (execution), and KitStamp (preparation) form a vertical stack with separate jobs, time horizons, AI postures, surfaces, and monetization. Includes Red-Flag Test: "If it's a bit of all three → kill it." See [positioning map](./strategy/product-positioning-map.md).
 - **AgentKits Marketing Repo Analysis** — Assessment of [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) (18 agents, 93 commands, 28 skills). Only ~15% relevant to SMB context. Extractable: copywriting frameworks, workflow structure patterns, brand safety rules. Not useful: enterprise marketing (lead scoring, CRO, email funnels, programmatic SEO). Archived at [analysis](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/agentkits-repo-analysis.md).
 
 ---
@@ -3202,7 +3253,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 ### New
 
-- **Product Evolution Doctrine (Constitution 11)** — New governance document locking MenuList's 3-year product direction. Six rules: (1) Product sequence lock: MenuList → Control Layer inside → GrowthOS → VisualMeta optional. (2) Customer-facing only boundary — PERMANENT: never POS/CRM/inventory/payroll. (3) "5-Minute Understanding" rule — non-tech SMB must understand purpose in 5 minutes without training. (4) "Calm, elite infrastructure" identity — simple surface, deep underneath, locked 3 years. (5) Silent autopilot design principle — owner updates once, correct everywhere. (6) Kill-switch philosophy for anything that adds complexity. See [doctrine](./constitution/11-product-evolution-doctrine.md).
+- **Product Evolution Doctrine (Constitution 11)** — New governance document locking MenuList's 3-year product direction. Six rules: (1) Product sequence lock: MenuList → Control Layer inside → GrowthOS → KitStamp optional. (2) Customer-facing only boundary — PERMANENT: never POS/CRM/inventory/payroll. (3) "5-Minute Understanding" rule — non-tech SMB must understand purpose in 5 minutes without training. (4) "Calm, elite infrastructure" identity — simple surface, deep underneath, locked 3 years. (5) Silent autopilot design principle — owner updates once, correct everywhere. (6) Kill-switch philosophy for anything that adds complexity. See [doctrine](./constitution/11-product-evolution-doctrine.md).
 - **Control Layer Strategy** — Comprehensive strategic framework documenting how MenuList evolves from "menu infrastructure" to "business truth infrastructure." Consolidates 18 ChatGPT design documents into single master doc. Maps 5 Control Layer Pillars (Business Identity Truth, Operational Public Truth, Menu & Offering Truth, Public Communication Layer, Presence Consistency Layer) to existing 6-Pillar CFI framework. Includes data model, authority hierarchy, surface control map, conflict resolution rules, rollout phases, failure scenarios, and strategic moat analysis. Cross-checked: 60-70% of vision already exists in codebase. See [strategy](./control-layer-strategy/README.md).
 - **Growth Execution Strategy (DEFERRED)** — Future reference document for GrowthOS — the revenue execution engine that would sit on top of MenuList's truth infrastructure. Consolidates 9 ChatGPT design documents. Clearly marked as DEFERRED with explicit prerequisites (200+ active stores, >70% link adoption, founder unlock). Documents boundary rules: GrowthOS reads from truth layer, never writes. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
 

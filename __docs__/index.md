@@ -38,7 +38,7 @@
 | 13  | **Reviews & Reputation**          | `reviews-reputation/`                        |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 14  | **Social Content**                | `social-content/`                            |  ➖  |  ➖  |    ➖     |   ➖    |   ➖    |    ➖    |   ✅   |
 | 14a | **GrowthOS Add-on**               | `growthos-addon/`                            |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
-| 14b | **VisualMeta**                    | `visual-meta/`                               |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| 14b | **KitStamp**                      | `kitstamp/`                                 |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 15  | **Staff Prompt**                  | `staff-prompt/`                              |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 16  | **Stores Management**             | `stores-management/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17  | **Roles & Permissions**           | `roles-permissions/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
