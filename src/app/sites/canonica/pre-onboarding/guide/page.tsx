@@ -15,6 +15,7 @@ import CanonicaHeader from '../../components/Header';
 import CanonicaLink from '../../components/CanonicaLink';
 import CanonicaPageStructuredData from '../../components/PageStructuredData';
 import SectionHeader from '../../components/SectionHeader';
+import CanonicaPreOnboardingPromptModal from '../PromptModal';
 
 export const metadata: Metadata = {
     title: 'Pre-Onboarding Guide | Canonica',
@@ -168,9 +169,11 @@ export default function CanonicaPreOnboardingGuidePage() {
                         This guide is for product owners and the AI agents helping them. It explains what to prepare, how to run the prompt, what the agent should inspect, and what must be checked before live support.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                        <CanonicaLink basePath={basePath} href="/pre-onboarding.md" className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800">
-                            Copy the master prompt
-                        </CanonicaLink>
+                        <CanonicaPreOnboardingPromptModal
+                            basePath={basePath}
+                            buttonClassName="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                            buttonLabel="Copy the master prompt"
+                        />
                         <CanonicaLink basePath={basePath} href="/pre-onboarding/agent-guide.md" className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
                             Open agent guide
                         </CanonicaLink>

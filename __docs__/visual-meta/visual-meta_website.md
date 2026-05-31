@@ -50,8 +50,15 @@ A Final Content Kit can include:
 - source summary
 - approval metadata
 - export manifest
+- optional CSV/JSON handoff files
 
 The kit is ready for another system or team to use. VisualMeta does not publish it for you.
+
+## Section: Repeatable Handoff Packages
+
+Use built-in package formats so every approved kit arrives with predictable filenames, folders, notes, and manifests.
+
+VisualMeta can prepare structured handoff files for operators, agencies, developers, or catalog teams. It does not connect to those systems or update them directly.
 
 ## Section: Built For Review
 
@@ -82,6 +89,8 @@ MenuList customers can use VisualMeta as a preparation workspace for menu-item c
 
 MenuList remains the live menu truth. VisualMeta works from copied source snapshots and exports approved kits.
 
+VisualMeta does not change MenuList prices, availability, hours, public menu pages, or live item data.
+
 ## CTA
 
 Request early access to VisualMeta.
@@ -93,6 +102,10 @@ Bring source material, prepare item-level content, review it, and export a clean
 ### Does VisualMeta publish posts or update my website?
 
 No. VisualMeta prepares approved kits for handoff. Publishing happens in the tools you choose.
+
+### Does VisualMeta sync directly to Shopify, PIM, DAM, or catalog systems?
+
+No. VisualMeta prepares structured handoff packages. Direct sync is not part of the current product plan.
 
 ### Is VisualMeta a design tool?
 

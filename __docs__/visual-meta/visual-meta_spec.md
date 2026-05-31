@@ -120,10 +120,9 @@ Required scope for first implementation:
 - VisualMeta product flag and disabled product-domain gate
 - VisualMeta public website candidate behind flag
 - VisualMeta workspace and project shell
-- source upload and copied-source import contract
+- source snapshot and copied-source import contract
 - content unit creation and status tracking
-- image generation/editing candidates using VisualMeta billing scope
-- description, caption, translation, and alt text candidate generation
+- first-class asset and text variant candidates
 - human review events
 - approved Final Content Kit export
 - immutable export manifest
@@ -133,7 +132,57 @@ Required scope for first implementation:
 - desktop workspace
 - mobile review and approval surface
 
-## 8. Explicitly Out Of Scope
+Provider generation, MenuList import, guest review, export templates, and export adapters are not the first engineering gate. They become safe only after the separated workspace, source snapshots, review events, and export manifest work end to end.
+
+## 8. Deep Feature Decisions
+
+The May 31, 2026 deep ChatGPT conversation was reviewed as proposal material. Final VisualMeta decisions:
+
+| Capability | Decision | Reason |
+| --- | --- | --- |
+| Export Templates | Accept, built-in first | Repeatable package structure makes Final Content Kits useful without turning VisualMeta into a marketplace. |
+| Custom Template Builder | Reject for first implementation | Too complex for SMB owners and high support risk. |
+| MenuList Snapshot Import | Accept after core workspace | Strongest internal wedge, but snapshot-only and manual refresh only. |
+| MenuList Write-back | Reject | Violates separate product boundary and live menu truth. |
+| Shopify/PIM/DAM Adapters | Accept only as file-based handoff packages | Useful for operators, but no API push, no credentials, no live sync. |
+| Google Merchant/Akeneo/Salsify specific adapters | Defer | Too schema-specific and support-heavy for first implementation. |
+| Mobile Review | Accept | SMB owners can approve/reject from phone. |
+| Mobile Import/Adapter Configuration | Reject | Too dense for phone workflow. |
+| Generating Missing Facts | Reject | VisualMeta must not invent price, SKU, GTIN, allergens, availability, brand, or category. |
+
+## 9. Accepted Capability Map
+
+Core:
+
+- Content Unit
+- Source Snapshot
+- Candidate Asset
+- Text Variant
+- Review Event
+- Final Content Kit
+- Project Readiness Board
+- Source hash and stale-source blocking
+- Mobile review
+
+After core is stable:
+
+- CSV/XLSX intake
+- folder import and matching
+- MenuList Snapshot Import
+- built-in Export Templates
+- generic file-based Export Adapters
+
+Deferred until proven:
+
+- guest reviewer links
+- annotations and pinpoint feedback
+- destination readiness profiles
+- brand/style rules
+- translation review workflows
+- advanced PIM/DAM field mappings
+- external API push
+
+## 10. Explicitly Out Of Scope
 
 VisualMeta does not include:
 
@@ -149,8 +198,13 @@ VisualMeta does not include:
 - full canvas editor
 - auto-approval
 - unreviewed public output
+- live sync
+- downstream API push
+- arbitrary export scripting
+- connector marketplace
+- generated missing product/menu facts
 
-## 9. Final Content Kit Contract
+## 11. Final Content Kit Contract
 
 A Final Content Kit must include:
 
@@ -164,10 +218,12 @@ A Final Content Kit must include:
 - approval metadata
 - export timestamp
 - version number
+- export template ID/version when used
+- file-based adapter ID/version when used
 
 The manifest must be immutable after export. A correction creates a new kit version.
 
-## 10. Product Metrics
+## 12. Product Metrics
 
 Primary metric:
 
@@ -185,7 +241,7 @@ Supporting metrics:
 
 Do not use follower growth, clicks, ad performance, or revenue lift as VisualMeta product metrics.
 
-## 11. Pricing And Packaging Assumptions
+## 13. Pricing And Packaging Assumptions
 
 VisualMeta should be priced around prepared kits and generation usage, not MenuList AI enhancement packs.
 
@@ -200,23 +256,26 @@ Candidate packaging:
 
 Exact pricing is not frozen in this doc. Implementation must prove margin above provider, Storage, function, and support cost.
 
-## 12. Acceptance Criteria
+## 14. Acceptance Criteria
 
 VisualMeta is ready to enter implementation only when:
 
+- [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) is accepted as the direct build contract
 - product domain is confirmed
 - Firebase QA and production targets are confirmed
 - billing scope for `VM` is defined
 - feature flags are named and default off
+- source snapshot and text variant schemas are frozen
 - source import rules are approved
 - export manifest schema is frozen
+- export template and adapter boundaries are accepted
 - direct publishing remains absent
 - MenuList write-back remains absent
 - public website copy is approved
 - Firebase cost model is reviewed
 - mobile review scope is approved
 
-## 13. Failure Criteria
+## 15. Failure Criteria
 
 Pause or redesign if:
 
@@ -227,7 +286,9 @@ Pause or redesign if:
 - source facts are frequently changed by generated output
 - MenuList becomes the hidden required runtime
 - exports cannot be made clear enough for handoff
+- adapters require live credentials before the core product is proven
+- SMB owners need to understand platform schemas to get value
 
-## 14. Documentation Cost
+## 16. Documentation Cost
 
 This specification creates no runtime cost. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, or deploys.

@@ -4,6 +4,8 @@
 
 Route: `/pre-onboarding`
 
+Primary human route: `/pre-onboarding`
+
 Companion routes:
 
 - `/pre-onboarding/guide`
@@ -16,7 +18,7 @@ Companion routes:
 - **Eyebrow:** Pre-Onboarding Kit
 - **Headline:** Prepare Canonica before setup starts.
 - **Subheadline:** Use your AI coding agent to turn your available product sources - repo, docs, website pages, API specs, support exports, owner notes, policies, recordings, screenshots, and support flows - into a Canonica-ready upload package.
-- **Primary CTA:** Open the agent prompt
+- **Primary CTA:** Open the agent prompt modal
 - **Secondary CTA:** Start Canonica setup
 
 ## Problem
@@ -41,6 +43,8 @@ The Pre-Onboarding Kit gives the client's AI IDE a strict preparation workflow. 
    - screenshot, demo walkthrough, FAQ, and website asset plans.
 
 2. **How it works**
+   - open the prompt modal;
+   - copy the prompt or download it as a Markdown file;
    - paste the prompt into the AI IDE;
    - let it inspect the repo, docs, site, owner notes, or screenshots you provide;
    - if the repo has multiple products, target the named product and exclude sister products;
@@ -81,6 +85,20 @@ The Pre-Onboarding Kit gives the client's AI IDE a strict preparation workflow. 
    - AI agent source-first operating rules;
    - owner review checklist;
    - live-support activation gates.
+
+## Website Placement
+
+Because pre-onboarding is the easiest path into Canonica, public placement should treat `/pre-onboarding` as the main human route:
+
+- desktop header includes `Pre-Onboarding`;
+- mobile drawer includes `Pre-Onboarding`;
+- homepage includes a first-scroll pre-onboarding section immediately after the hero;
+- homepage hero includes a secondary pre-onboarding source-preparation link;
+- resources page highlights pre-onboarding before rollout planning links;
+- get-started page offers pre-onboarding before workspace creation;
+- footer links to the kit and guide.
+
+The markdown prompt and guide routes remain direct-access utilities for AI agents, downloads, and deep linking. They should not replace `/pre-onboarding` as the primary public entry.
 
 ## SEO
 

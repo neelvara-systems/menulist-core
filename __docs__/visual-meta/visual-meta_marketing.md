@@ -82,6 +82,19 @@ Avoid claims:
 | Marketplace Listing Kit | Listing operators and agencies |
 | Agency Client Kit | Agencies preparing repeated client deliverables |
 
+## 5a. First Wedge Decision
+
+The first wedge should not be broad Shopify/PIM/DAM integration.
+
+Preferred first wedges:
+
+- Menu Item Content Kit for MenuList clients and food agencies
+- Generic Client Handoff Kit for agencies
+- Product Content Kit for small catalog teams
+- Developer JSON Kit for technical handoff
+
+Advanced adapters are sales qualifiers, not first-position marketing. The public promise should stay around approved handoff packages, not direct platform sync.
+
 ## 6. Packaging Direction
 
 Candidate packages:
@@ -119,6 +132,10 @@ MenuList can be a source and customer of VisualMeta, not the owner of VisualMeta
 
 For MenuList clients, VisualMeta can package approved menu item content. The import path must copy snapshots and must not mutate MenuList menu truth.
 
+Safe buyer language:
+
+> Start from selected MenuList items, prepare approved item content, and export a source-backed kit without changing the live menu.
+
 ## 9. Public Language Guardrails
 
 Use:
@@ -152,7 +169,19 @@ Do not market VisualMeta until:
 - human approval cannot be bypassed
 - product data is separate from MenuList and Canonica
 - support/help docs match actual implementation
+- file-based adapters are described as handoff packages, not live sync
 
-## 11. Documentation Cost
+## 11. Rejected Market Claims
+
+Do not claim:
+
+- direct Shopify sync
+- direct PIM/DAM sync
+- guaranteed import acceptance
+- automatic MenuList updates
+- source fact correction without review
+- external platform publishing
+
+## 12. Documentation Cost
 
 This marketing doc creates no runtime cost.

@@ -47,8 +47,10 @@ Do not write VisualMeta data into MenuList or Canonica Firebase projects.
 | --- | --- | --- | --- |
 | `visualmetaWorkspaces` | one scoped workspace read on entry | create/update workspace metadata | low |
 | `visualmetaProjects` | paginated project list, project detail | create/update/archive project | medium if unbounded list |
+| `visualmetaSourceSnapshots` | by project/unit/version | create new immutable source versions | high if mutated or over-read |
 | `visualmetaContentUnits` | paginated by `projectId`, status filters | create/update status, stale markers | high if realtime or unpaginated |
 | `visualmetaAssets` | by project/unit, bounded | source/generated asset metadata writes | medium |
+| `visualmetaTextVariants` | by project/unit/kind/status | create/update text candidates and approvals | medium |
 | `visualmetaGenerationJobs` | recent jobs by project/status | one job write plus status updates | high for batch jobs |
 | `visualmetaReviewEvents` | by unit/project, newest first | append-only comments/decisions | medium |
 | `visualmetaExportKits` | by project, latest first | one export write plus immutable metadata | medium |
@@ -63,8 +65,10 @@ Planned composite indexes:
 | Collection | Query |
 | --- | --- |
 | `visualmetaProjects` | `pId + tId + sId + status + updatedAt desc` |
+| `visualmetaSourceSnapshots` | `pId + tId + sId + projectId + contentUnitId + version desc` |
 | `visualmetaContentUnits` | `pId + tId + sId + projectId + status + updatedAt desc` |
 | `visualmetaAssets` | `pId + tId + sId + projectId + contentUnitId + createdAt desc` |
+| `visualmetaTextVariants` | `pId + tId + sId + projectId + contentUnitId + kind + status + updatedAt desc` |
 | `visualmetaGenerationJobs` | `pId + tId + sId + projectId + status + updatedAt desc` |
 | `visualmetaReviewEvents` | `pId + tId + sId + projectId + contentUnitId + createdAt desc` |
 | `visualmetaExportKits` | `pId + tId + sId + projectId + version desc` |
@@ -81,7 +85,9 @@ Target read budget per workspace open:
 | Workspace shell | 1 workspace read |
 | Project list | 20 to 50 project docs, paginated |
 | Project detail | 1 project doc |
+| Source snapshots | latest active snapshot per selected unit, bounded |
 | Content units | 25 to 100 docs, paginated |
+| Text variants | by selected content unit, not whole project by default |
 | Review panel | latest 20 review events per selected unit |
 | Export kits | latest 10 kits |
 
@@ -97,9 +103,10 @@ Expected write costs:
 | Upload source asset | 1 Storage object, 1 asset metadata write, 1 audit write |
 | Import source snapshot | 1 source metadata write per imported unit or batch summary, 1 audit write |
 | Create content unit | 1 content unit write |
+| Create text candidate | 1 text variant write |
 | Generate candidate | 1 job write, 1 job update, 1 asset/text write, 1 operation ledger write, possible credit write |
 | Review decision | 1 review event write, 1 content unit status update, 1 audit write |
-| Create export kit | 1 export kit write, 1 Storage manifest object, optional ZIP object, 1 audit write |
+| Create export kit | 1 export kit write, 1 Storage manifest object, optional template/adapter files, optional ZIP object, 1 audit write |
 
 Batch operations must group writes where possible and avoid per-item audit fanout unless required for security.
 
@@ -193,8 +200,30 @@ Required guardrails:
 - no broad collection scans
 - no realtime listener on content units by default
 - no retained rejected candidates forever
+- no external adapter API push in first implementation
+- no template marketplace
+- no arbitrary export scripting
+- no MenuList live sync
+- no MenuList write-back
 
-## 12. Billing Break-Even Check
+## 12. Export Template And Adapter Cost
+
+First implementation should keep export templates and adapters as code registries, not Firestore collections.
+
+Cost rules:
+
+- preflight selected units before generating files
+- cap export units per kit at 500
+- cap output files per kit at 2,000
+- generate ZIP once per kit version
+- do not regenerate ready manifests
+- do not copy draft/rejected/stale candidates into exports
+- write adapter files only inside VisualMeta export-kit paths
+- use signed URLs for downloads
+
+Do not store downstream credentials for Shopify, Akeneo, Salsify, Bynder, Cloudinary, Google, or other systems in first implementation.
+
+## 13. Billing Break-Even Check
 
 Before launch, calculate:
 
@@ -208,7 +237,7 @@ Before launch, calculate:
 
 If VisualMeta cannot price safely above cost, do not enable generation.
 
-## 13. Deploy Rule
+## 14. Deploy Rule
 
 When implementation modifies VisualMeta Firestore rules, indexes, Storage rules, or `functions-visualmeta/`, deploy the matching VisualMeta Firebase target after validation.
 

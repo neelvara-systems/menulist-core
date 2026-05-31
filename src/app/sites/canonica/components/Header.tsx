@@ -34,16 +34,18 @@ import useIsMobile from '../../../../hooks/useIsMobile';
 
 const NAV_LINKS = [
     { label: 'Product', href: '/product' },
+    { label: 'Pre-Onboarding', href: '/pre-onboarding' },
     { label: 'Use Cases', href: '/use-cases' },
     { label: 'Demo', href: '/demo' },
-    { label: 'Install', href: '/install' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Resources', href: '/resources' },
     { label: 'Updates', href: '/updates' },
 ];
 
 const MOBILE_OTHER_LINKS = [
-    ...NAV_LINKS.filter((link) => link.href !== '/product'),
+    ...NAV_LINKS.filter((link) => link.href !== '/product' && link.href !== '/updates'),
+    { label: 'Install', href: '/install' },
+    { label: 'Updates', href: '/updates' },
     { label: 'Contact', href: '/contact' },
 ];
 
@@ -67,6 +69,7 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/install': LuDownload,
     '/pricing': LuCreditCard,
     '/resources': LuBookOpen,
+    '/pre-onboarding': LuFileInput,
     '/updates': LuBell,
     '/contact': LuMail,
     '/get-started': LuRocket,

@@ -29,7 +29,7 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Launch-ready support hero for SaaS founders + first-screen page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
+| `/` | Homepage | Launch-ready support hero for SaaS founders + first-scroll Pre-Onboarding Kit route + page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
 | `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, app pages, widget key, and readiness |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, and owner FAQ answers |
@@ -68,13 +68,13 @@
 | `/agents/canonica/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
-| `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, feedback review, widget install, governance, and safety |
+| `/resources` | Resources | Canonica learning hub for pre-onboarding, AI-built SaaS evaluation, setup, feedback review, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline for product and website changes without using dashboard-owned changelog routes |
 | `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, Canonica role permissions, owner-approved answers, runtime limits, and responsible disclosure |
 | `/faq` | FAQ | Founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + Canonica operating principles |
 | `/contact` | Contact | Canonica-owned inquiry form plus direct contact paths for setup, demos, pricing, security, and partnerships |
-| `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace, first team members, app pages, and widget key |
+| `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace, with a pre-onboarding prompt for owners who have source material before signup |
 | `/privacy-policy` | Privacy Policy | Public privacy summary for account, team access, workspace, support, and widget data |
 | `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
 | `/llms.txt` | Agent Context | Short agent-readable Canonica product, route, and non-goal context |
@@ -166,6 +166,7 @@
 | `src/app/sites/canonica/components/CanonicaScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across Canonica public pages |
 | `src/constants/canonica/routes.ts` | Lightweight Canonica dashboard route constants used by public client islands without importing sidebar icon metadata |
 | `src/app/sites/canonica/components/HeroSection.tsx` | Launch-ready support hero with setup-first CTAs |
+| `src/app/sites/canonica/components/PreOnboardingHomeSection.tsx` | Homepage pre-onboarding placement that sends buyers to the main preparation route before setup |
 | `src/app/sites/canonica/components/SupportKnowledgeMapSection.tsx` | Homepage and product-page visual map showing support knowledge inputs, Canonica control plane, and output surfaces |
 | `src/app/sites/canonica/components/HomePageAwareDemoSection.tsx` | Homepage tabbed static page-aware demo section |
 | `src/app/sites/canonica/components/ClosedLoopSection.tsx` | Homepage animated missed-question loop from page question to reviewed support fix |

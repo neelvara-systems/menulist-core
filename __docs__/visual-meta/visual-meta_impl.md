@@ -15,6 +15,8 @@ VisualMeta may reuse generalized engineering patterns from MenuList and Canonica
 
 Do not implement VisualMeta by placing records inside MenuList `projects`, MenuList AI packs, Canonica collections, or GrowthOS docs.
 
+Use [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) as the direct bridge from planning to code. This implementation plan explains the architecture; the lock document freezes schemas, flags, storage paths, route contracts, and activation gates.
+
 ## 2. Existing Repo Reuse
 
 Reusable patterns:
@@ -41,12 +43,14 @@ Add flags to `src/config/features.ts`, all defaulting to off:
 ENABLE_VISUALMETA_PRODUCT: false
 ENABLE_VISUALMETA_PUBLIC_SITE: false
 ENABLE_VISUALMETA_DASHBOARD: false
-ENABLE_VISUALMETA_MENU_IMPORT: false
 ENABLE_VISUALMETA_SOURCE_UPLOADS: false
-ENABLE_VISUALMETA_GENERATION: false
-ENABLE_VISUALMETA_BATCH_JOBS: false
 ENABLE_VISUALMETA_REVIEW: false
 ENABLE_VISUALMETA_EXPORT_KITS: false
+ENABLE_VISUALMETA_EXPORT_TEMPLATES: false
+ENABLE_VISUALMETA_EXPORT_ADAPTERS: false
+ENABLE_VISUALMETA_MENU_IMPORT: false
+ENABLE_VISUALMETA_GENERATION: false
+ENABLE_VISUALMETA_BATCH_JOBS: false
 ```
 
 Server/function flags:
@@ -123,7 +127,24 @@ type VisualMetaIdentity = {
 };
 ```
 
-Core types:
+First implementation collections:
+
+```txt
+visualmetaWorkspaces
+visualmetaProjects
+visualmetaSourceSnapshots
+visualmetaContentUnits
+visualmetaAssets
+visualmetaTextVariants
+visualmetaGenerationJobs
+visualmetaReviewEvents
+visualmetaExportKits
+visualmetaAuditLogs
+```
+
+Source snapshots and text variants are first-class collections. Embedding them into content units would make review, stale-source detection, translation, provenance, and export manifests harder to keep correct.
+
+Core type summary:
 
 ```ts
 type VisualMetaProject = VisualMetaIdentity & {
@@ -136,6 +157,29 @@ type VisualMetaProject = VisualMetaIdentity & {
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+};
+
+type VisualMetaSourceSnapshot = VisualMetaIdentity & {
+  id: string;
+  projectId: string;
+  contentUnitId?: string;
+  version: number;
+  status: "active" | "superseded" | "locked_for_export" | "archived";
+  sourceContext: VisualMetaSourceContext;
+  facts: Record<string, unknown>;
+  lockedFacts: Array<{
+    key: string;
+    label: string;
+    value: unknown;
+    mode: "hard_lock" | "soft_lock" | "display_only" | "review_required";
+    riskLevel: "low" | "medium" | "high" | "critical";
+    requiredForApproval: boolean;
+  }>;
+  sourceAssetIds: string[];
+  sourceHash: string;
+  hashInputVersion: "source-snapshot-v1";
+  createdBy: string;
+  createdAt: Timestamp;
 };
 
 type VisualMetaContentUnit = VisualMetaIdentity & {
@@ -153,6 +197,23 @@ type VisualMetaContentUnit = VisualMetaIdentity & {
   updatedAt: Timestamp;
 };
 
+type VisualMetaTextVariant = VisualMetaIdentity & {
+  id: string;
+  projectId: string;
+  contentUnitId: string;
+  sourceSnapshotId: string;
+  sourceHash: string;
+  kind: "description_short" | "description_long" | "caption" | "alt_text" | "translation" | "usage_note" | "marketplace_title" | "seo_description" | "menu_description" | "social_caption" | "other";
+  locale: string;
+  body: string;
+  status: "draft" | "ready_for_review" | "in_review" | "changes_requested" | "approved" | "rejected" | "stale" | "superseded" | "archived";
+  approvedBy?: string;
+  approvedAt?: Timestamp;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
 type VisualMetaExportKit = VisualMetaIdentity & {
   id: string;
   projectId: string;
@@ -161,6 +222,9 @@ type VisualMetaExportKit = VisualMetaIdentity & {
   contentUnitIds: string[];
   manifestPath: string;
   zipPath?: string;
+  exportTemplateId?: string;
+  exportTemplateVersion?: string;
+  exportAdapterIds?: string[];
   approvedBy: string;
   approvedAt: Timestamp;
   exportedAt?: Timestamp;
@@ -171,7 +235,7 @@ Source imports use copied context:
 
 ```ts
 type VisualMetaSourceContext = {
-  sourcePId: "ML" | "CN" | "GR" | "external";
+  sourcePId: "ML" | "CN" | "GR" | "external" | "manual" | "upload";
   sourceTId?: number;
   sourceSId?: number;
   sourceDocId?: string;
@@ -201,17 +265,33 @@ Planned APIs:
 | Route | Purpose |
 | --- | --- |
 | `POST /api/visualmeta/projects/create` | Create project shell. |
+| `GET /api/visualmeta/projects` | Paginated project list. |
+| `GET /api/visualmeta/projects/[id]` | Project detail. |
+| `POST /api/visualmeta/source-snapshots/create` | Create source snapshot. |
 | `POST /api/visualmeta/source/upload` | Register uploaded source files. |
 | `POST /api/visualmeta/source/import` | Copy source snapshot from MenuList, Canonica, GrowthOS, or external source. |
 | `POST /api/visualmeta/content-units/create` | Create content units from source snapshot. |
+| `GET /api/visualmeta/projects/[id]/content-units` | Paginated content unit list. |
+| `POST /api/visualmeta/candidates/assets/create` | Register uploaded/imported asset candidate. |
+| `POST /api/visualmeta/candidates/text/create` | Register text candidate. |
 | `POST /api/visualmeta/generation/candidate` | Generate image/text/translation candidate. |
 | `POST /api/visualmeta/generation/batch-trigger` | Enqueue bounded batch jobs. |
 | `POST /api/visualmeta/generation/worker` | Cloud Tasks worker with shared-secret validation. |
 | `POST /api/visualmeta/review/decision` | Approve, reject, comment, or request correction. |
+| `POST /api/visualmeta/export-kits/preflight` | Validate selected approved units before export. |
 | `POST /api/visualmeta/export-kits/create` | Create immutable manifest and optional ZIP. |
 | `GET /api/visualmeta/export-kits/[id]` | Return signed download metadata for approved users. |
+| `GET /api/visualmeta/export-templates` | Return built-in template registry. |
+| `POST /api/visualmeta/export-templates/preview` | Dry-run export template output. |
+| `GET /api/visualmeta/export-adapters` | Return built-in file-adapter registry. |
+| `POST /api/visualmeta/export-adapters/preflight` | Validate file-adapter output. |
+| `POST /api/visualmeta/source/menulist/preview` | Preview MenuList snapshot import. |
+| `POST /api/visualmeta/source/menulist/import` | Confirm snapshot copy. |
+| `POST /api/visualmeta/source/menulist/refresh` | Manual source refresh and stale marking. |
 
 Do not expose public write APIs in v1.
+
+Do not add generation routes until billing and credit values are locked.
 
 ## 8. Firebase And Storage Plan
 
@@ -292,8 +372,11 @@ VisualMeta must not:
 Export kit creation must:
 
 - require all included units to be approved
+- run preflight first
 - create immutable manifest
 - store export metadata
+- record export template ID/version when used
+- record file-based adapter ID/version when used
 - optionally create ZIP in VisualMeta Storage
 - record audit log
 - produce signed URLs with expiration
@@ -314,22 +397,48 @@ Track:
 
 Avoid raw prompts, source images, customer notes, or sensitive payloads in logs.
 
-## 14. Implementation Sequence
+## 14. Export Template And Adapter Rules
+
+Export Templates are packaging presets:
+
+- built-in registry first
+- versioned IDs
+- declarative field mappings only
+- no arbitrary scripting
+- no template marketplace
+- no custom builder in first implementation
+
+Export Adapters are file-based handoff shapers:
+
+- generic handoff first
+- Shopify CSV only behind separate flag after demand and schema validation
+- no Google Merchant/Akeneo/Salsify-specific work in first implementation
+- no downstream credentials
+- no API push
+- no live sync
+- no acceptance guarantee
+
+## 15. Implementation Sequence
 
 1. Confirm domain, Firebase targets, and billing packages.
 2. Add disabled flags and product target constants.
 3. Add VisualMeta Firebase config files and emulator-safe helpers.
 4. Add types, constants, and DAL skeleton.
 5. Add Firestore and Storage rules.
-6. Add project/source/content-unit CRUD.
-7. Add review events and approval state.
-8. Add provider calls behind VisualMeta credits.
-9. Add export kit manifest and Storage packaging.
+6. Add workspace/project/source-snapshot/content-unit CRUD.
+7. Add asset and text candidate registration without provider calls.
+8. Add review events and approval state.
+9. Add export preflight, manifest, immutable kit, and signed downloads.
 10. Add mobile review surface.
-11. Add public website behind disabled flag.
-12. Run routing, rules, cost, mobile, and product-boundary tests.
+11. Add provider calls only after VisualMeta billing/credits are locked.
+12. Add CSV/XLSX and folder intake.
+13. Add MenuList Snapshot Import as snapshot-copy only.
+14. Add built-in Export Templates.
+15. Add file-based Export Adapters.
+16. Add public website behind disabled flag.
+17. Run routing, rules, cost, mobile, and product-boundary tests.
 
-## 15. Non-Activation Rule
+## 16. Non-Activation Rule
 
 Do not enable `ENABLE_VISUALMETA_PRODUCT` until:
 
@@ -341,7 +450,9 @@ Do not enable `ENABLE_VISUALMETA_PRODUCT` until:
 - provider costs are blocked when credits are absent
 - export manifests are immutable
 - no direct publishing or auto-approval control exists
+- no MenuList write-back path exists
+- export adapters are file-only when enabled
 
-## 16. Documentation Cost
+## 17. Documentation Cost
 
 This implementation plan creates no runtime cost. It is a planning document only.

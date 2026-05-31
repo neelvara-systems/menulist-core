@@ -90,14 +90,18 @@ If a source cannot be inspected, the agent must mark it as pending or unavailabl
 
 ## Public Surfaces
 
+Primary human route: `/pre-onboarding`
+
 | Surface | Purpose |
 | --- | --- |
-| `/pre-onboarding` | Buyer-facing page explaining the pre-onboarding workflow. |
+| `/pre-onboarding` | Buyer-facing page explaining the pre-onboarding workflow, with a prompt modal for copy and Markdown download. |
 | `/pre-onboarding.md` | Machine-readable master prompt for AI coding agents. |
-| `/pre-onboarding/guide` | Detailed owner and AI-agent runbook. |
+| `/pre-onboarding/guide` | Detailed owner and AI-agent runbook, with prompt modal access. |
 | `/pre-onboarding/owner-guide.md` | Machine-readable owner checklist. |
 | `/pre-onboarding/agent-guide.md` | Machine-readable agent operating guide. |
 | `/resources` | Links to pre-onboarding as part of rollout planning. |
+
+The main website should send owners to `/pre-onboarding` first. The guide and markdown routes stay available for deep reading, direct AI-agent access, and downloadable instructions.
 
 ## Internal Files
 
@@ -150,3 +154,6 @@ Expected flow:
 | 2026-05-31 | Generalized source modes and explicit copy/paste placeholders for non-MenuList product shapes. |
 | 2026-05-31 | Added multi-product repo targeting, shared-infra handling, and sister-product exclusion rules. |
 | 2026-05-31 | Added market-informed handling for repo-to-docs, URL sync, OpenAPI, support exports, demo walkthroughs, FAQs, and website asset briefs. |
+| 2026-05-31 | Added explicit source-access, AI IDE capability, and no-guarantee safety boundaries. |
+| 2026-05-31 | Added in-page prompt modal with copy-to-clipboard and Markdown download actions. |
+| 2026-05-31 | Promoted `/pre-onboarding` as the main public entry across header, homepage, resources, get-started, mobile navigation, and footer. |

@@ -10,7 +10,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -47,9 +47,9 @@ const RESOURCE_GROUPS = [
         title: 'Plan the rollout',
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
-            ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
             ['Pre-Onboarding Kit', '/pre-onboarding', 'Use your AI coding agent to prepare Canonica-ready source inputs before setup.'],
             ['Pre-Onboarding Guide', '/pre-onboarding/guide', 'Follow the owner and agent runbook before uploading prepared sources.'],
+            ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
             ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
             ['Knowledge Intake', '/product/knowledge-intake', 'Teach Canonica from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.'],
             ['Knowledge Base', '/product/knowledge-base', 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.'],
@@ -88,11 +88,30 @@ export default function CanonicaResourcesPage() {
                         Start here if you are launching support for an AI-built app.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use the demo first, then check fit, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
+                        Start with pre-onboarding, then use the demo, fit checks, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
                     </p>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
+                    <div className="mx-auto mb-12 max-w-6xl rounded-[1.75rem] border border-teal-300/20 bg-teal-400/[0.055] p-6">
+                        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Start before setup</p>
+                                <h2 className="text-2xl font-bold text-white">Run the Pre-Onboarding Kit before the first intake job.</h2>
+                                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#d6d6ef]">
+                                    The kit is the main route for the prompt, owner guidance, agent rules, source-mode handling, and safety boundaries.
+                                </p>
+                            </div>
+                            <CanonicaLink
+                                basePath={basePath}
+                                href="/pre-onboarding"
+                                className="inline-flex justify-center rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 transition hover:bg-teal-800"
+                            >
+                                Open Pre-Onboarding Kit
+                            </CanonicaLink>
+                        </div>
+                    </div>
+
                     <div className="mx-auto mb-12 max-w-6xl rounded-[1.75rem] border border-teal-500/20 bg-teal-500/[0.055] p-6">
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>

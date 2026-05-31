@@ -18,6 +18,13 @@ The active definition is:
 
 VisualMeta prepares content before it is published elsewhere. It does not publish, schedule, manage live pages, or claim marketing outcomes.
 
+The May 31, 2026 deep ChatGPT review is accepted only with limits:
+
+- Export Templates are accepted as built-in, versioned packaging presets first.
+- MenuList Snapshot Import is accepted as copied snapshots only, with manual refresh and no write-back.
+- Export Adapters are accepted as file-based handoff packages only, not live integrations.
+- Implementation starts with foundation and core workspace, not generation or integrations.
+
 ## Why It Should Exist
 
 The market is moving fast in broad creative tools:
@@ -115,9 +122,13 @@ Do not activate the existing VisualMeta product-domain placeholder until deploym
 
 ## Document Map
 
+The active implementation contract is the Implementation Lock plus current spec/impl/cost/test docs. Doctrine files remain reference material and were intentionally not changed during the deep ChatGPT review pass.
+
 | Document | Purpose |
 | --- | --- |
 | [Decision Brief](./visual-meta_decision-brief.md) | Founder-level why/where/who/how decision. |
+| [ChatGPT Review](./visual-meta_chatgpt-review-2026-05-31.md) | Line-range review of the deep VisualMeta conversation and final accept/modify/reject decisions. |
+| [Implementation Lock](./visual-meta_implementation-lock-v1.md) | Frozen first-implementation contracts, schemas, flags, storage paths, routes, and activation gates. |
 | [Specification](./visual-meta_spec.md) | Product requirements, ICP, scope, workflows, acceptance criteria. |
 | [Implementation Plan](./visual-meta_impl.md) | Architecture, files, flags, APIs, routing, billing, and separation plan. |
 | [Firebase Cost](./visual-meta_firebase.md) | Firestore, Storage, provider, functions, and billing cost plan. |
@@ -149,14 +160,15 @@ __docs__/visual-meta/_archive/chatgpt-review.md
 
 Before implementation:
 
-- confirm domain strategy
-- confirm separate Firebase target names
-- confirm billing plan names and credit accounting
-- confirm whether VisualMeta uses Google models only or abstracts provider choice
-- confirm source import rules from MenuList and external clients
-- confirm public website copy
-- confirm no direct publishing or scheduling
-- confirm no MenuList write-back path
+- use [Implementation Lock v1](./visual-meta_implementation-lock-v1.md) as the bridge from planning to code
+- provision or confirm the selected VisualMeta Firebase targets
+- keep all VisualMeta flags default off
+- build foundation and core workspace before generation or integrations
+- keep provider calls blocked until credit values and margins are approved
+- keep MenuList import snapshot-only
+- keep export adapters file-only
+- confirm public website copy against implemented capability
+- confirm no direct publishing, scheduling, auto-approval, or MenuList write-back path
 
 ## Cost Impact Of This Documentation
 

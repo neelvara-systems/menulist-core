@@ -22,7 +22,7 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | Auth flow (Google + email)            | ✅      | `src/app/(global-pages)/signin/page.tsx`                   | Redirect with `callbackUrl` param               |
 | Store + project creation              | ✅      | `src/database/stores/`, `src/database/projects/`           | Used in claim/publish flow                      |
 | Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New page in website route group                 |
-| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST public + rate-limited; GET token-based preview |
+| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST public + rate-limited for photo or menu link; GET token-based preview |
 | Preview page                          | ❌ NEW  | `src/app/(website)/create-menu/preview/[draftId]/page.tsx` | New page — reads draft, renders preview         |
 | Draft Firestore collection            | ❌ NEW  | `publicMenuDrafts`                                         | New collection — 24h TTL                        |
 | Claim/convert flow                    | ❌ NEW  | `src/app/api/public/create-menu/claim/route.ts`            | New API — withAuth, converts draft → project    |
@@ -40,12 +40,19 @@ interface PublicMenuDraft {
   id: string; // Auto-generated Firestore doc ID
   token: string; // Crypto-random URL token (not doc ID — prevents enumeration)
 
-  // Upload
+  // Upload / source
   imageUrl: string; // Firebase Storage URL
   imagePath: string; // Storage path for cleanup
   originalFileName: string;
   fileType: string; // Original MIME type for permanent project file record
   fileSize: number;
+  sourceType?: "image_upload" | "menu_link_import";
+  sourceMetadata?: {
+    sourceUrl?: string;
+    finalUrl?: string;
+    sourceKind?: string;
+    permissionConfirmed?: boolean;
+  };
 
   // Extraction Result
   extractedData: {
@@ -144,7 +151,7 @@ src/app/(website)/create-menu/
     └── page.tsx                      // Post-publish success page (auth required)
 
 src/app/api/public/create-menu/
-├── route.ts                          // POST: upload image + trigger extraction (public/rate-limited); GET: token preview status
+├── route.ts                          // POST: upload image or import link + trigger extraction (public/rate-limited); GET: token preview status
 └── claim/
     └── route.ts                      // POST: claim draft → create store + project (withAuth)
 
@@ -169,10 +176,10 @@ firestore.indexes.json                // +2 composite indexes
 ### 4.1 POST `/api/public/create-menu`
 
 **Auth:** None (public)
-**Rate Limit:** 3 per IP per 24 hours (using `PUBLIC_ENTRY` rate limit config)
+**Rate Limit:** 3 per IP per 24 hours (using `PUBLIC_MENU_ENTRY` rate limit config)
 **Feature Gate:** `ENABLE_PUBLIC_MENU_ENTRY` must be true (returns 404 if false)
 
-**Request:**
+**Request — photo upload:**
 
 ```typescript
 // multipart/form-data
@@ -181,11 +188,24 @@ firestore.indexes.json                // +2 composite indexes
 }
 ```
 
+**Request — menu link import:**
+
+```typescript
+// application/json
+{
+  sourceType: "menu_link";
+  url: string; // public http/https menu page, PDF, image, or readable offering source
+  permissionConfirmed: true; // required
+}
+```
+
 **Validation (Zod):**
 
 ```typescript
-const schema = z.object({
-  image: z.any().refine(/* file type + size validation */),
+const linkSchema = z.object({
+  sourceType: z.literal("menu_link"),
+  url: z.string().min(8).max(4000),
+  permissionConfirmed: z.literal(true),
 });
 ```
 
@@ -202,20 +222,22 @@ const schema = z.object({
 **Error Responses:**
 
 - `429` — Rate limit exceeded
-- `400` — Invalid file type/size
+- `400` — Invalid file type/size or missing link permission confirmation
 - `404` — Feature disabled
+- `404` — Link input disabled by `ENABLE_MENU_LINK_IMPORT`
 - `500` — Upload/extraction failure
 
 **Flow:**
 
 1. Validate feature flag
 2. Check IP rate limit
-3. Validate file (type, size)
-4. Upload client-optimized image to Storage: `publicMenuDrafts/{draftId}/{filename}`
-5. Store a stable Firebase download-token URL for preview and source-file continuity after claim
-6. Create Firestore draft doc with `extractionStatus: 'pending'`
-7. Trigger inline extraction helper (fire-and-forget inside the API route)
-8. Return draftId immediately
+3. Validate source: image file type/size or permission-confirmed public menu link
+4. For links, acquire the source through the same SSRF-safe helper used by authenticated Menu Link Import
+5. Upload client-optimized image or acquired link artifact to Storage: `publicMenuDrafts/{draftId}/{filename}`
+6. Store a stable Firebase download-token URL for preview and source-file continuity after claim
+7. Create Firestore draft doc with `extractionStatus: 'pending'`
+8. Trigger inline extraction helper (fire-and-forget inside the API route)
+9. Return draftId immediately
 
 ### 4.2 GET `/api/public/create-menu?draftId={token}`
 
@@ -234,6 +256,7 @@ const schema = z.object({
     };
     detectedBusinessName?: string;
     detectedBusinessType?: string;
+    sourceType?: "image_upload" | "menu_link_import";
     error?: string;
 }
 ```
@@ -300,7 +323,7 @@ const schema = z.object({
 
 **Location:** `src/app/api/public/create-menu/route.ts` (`triggerExtraction`)
 **Type:** Fire-and-forget server helper inside the Next.js API route
-**Purpose:** Run AI extraction on the uploaded image without exposing the Gemini key to the client
+**Purpose:** Run AI extraction on the uploaded image or acquired public menu-link artifact without exposing the Gemini key to the client
 
 **Reuses:**
 
@@ -316,8 +339,8 @@ const schema = z.object({
 **Flow:**
 
 1. Mark draft as `processing`
-2. Download image from Storage
-3. Call configured Gemini model with menu extraction prompt
+2. Download source artifact from Storage
+3. Call configured Gemini model with menu extraction prompt; image/PDF sources are sent as inline data, text/HTML-derived artifacts are sent as bounded source text
 4. Parse and validate JSON response shape
 5. Attempt business name/type detection from content
 6. Update draft doc: `extractionStatus: 'completed'`, `extractedData: {...}`
@@ -343,13 +366,11 @@ const schema = z.object({
 │  Turn your current menu     │
 │  into a review preview      │
 │                             │
+│  [Upload photo] [Paste link]│
 │  ┌───────────────────────┐  │
-│  │                       │  │
 │  │   📷 Upload menu      │  │
-│  │      photo            │  │
-│  │                       │  │
-│  │   Tap to take photo   │  │
-│  │   or choose file      │  │
+│  │   or paste public     │  │
+│  │   menu link           │  │
 │  └───────────────────────┘  │
 │                             │
 │  ✓ Free preview first      │
@@ -363,10 +384,11 @@ const schema = z.object({
 **Components:**
 
 - File input with drag-drop + camera capture (`accept="image/*"`)
+- Menu link input with owner permission confirmation
 - Client-side image optimization (Compressor.js — max 1920px, 80% quality)
 - Upload progress indicator
 - Processing state with animation
-- Error states (file too large, wrong format, rate limited)
+- Error states (file too large, wrong format, invalid/unsafe/unreadable link, rate limited)
 
 ### 6.2 Preview Page (`/create-menu/preview/{draftId}`)
 

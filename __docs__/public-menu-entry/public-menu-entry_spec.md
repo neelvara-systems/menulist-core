@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Active funnel
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** May 20, 2026
+**Last Updated:** May 31, 2026
 
 ---
 
@@ -11,14 +11,14 @@
 
 ### Goal
 
-Allow any business owner to reach a public upload entry point, upload a menu image before account creation, and see a structured preview. After previewing the result, the owner signs in, confirms business basics, and publishes a 7-day starter activation on the permanent public URL.
+Allow any business owner to reach a public upload entry point, upload a menu image or paste a permission-confirmed public menu link before account creation, and see a structured preview. After previewing the result, the owner signs in, confirms business basics, and publishes a 7-day starter activation on the permanent public URL.
 
 ### Scope
 
 | In Scope | Out of Scope |
 |----------|-------------|
-| Public upload page at `/create-menu` | PDF upload (Phase 2 — image only for v1) |
-| AI menu extraction from image | Multi-image upload (single image v1) |
+| Public upload/link page at `/create-menu` | Public multi-image upload |
+| Menu extraction from image or owner-provided public menu link | Delivery marketplace scraping or login-required links |
 | Live preview of extracted menu | Editor/editing capability on public page |
 | Confirm business basics + publish starter activation | Payment/billing during upload/extraction |
 | QR code + share link generation post-publish | Public directory/listing pages |
@@ -41,7 +41,7 @@ Allow any business owner to reach a public upload entry point, upload a menu ima
 **Flow:**
 1. Owner lands on `/create-menu` (from Google, social media, or referral)
 2. Sees a simple page: "Start with your current menu"
-3. Uploads one menu image (photo from phone or file from desktop)
+3. Uploads one menu image or pastes a public menu link they have permission to import
 4. Waits a short moment for AI extraction
 5. Sees a structured preview and CTA to save and continue setup
 6. Signs in only when ready to claim/publish
@@ -86,23 +86,24 @@ Allow any business owner to reach a public upload entry point, upload a menu ima
 |----|-------------|----------|
 | FR-1 | Public page accessible without authentication | P0 |
 | FR-2 | Single image upload before account creation (JPEG, PNG, WebP, max 10MB) | P0 |
-| FR-3 | AI extraction using the configured public-route model and existing extraction patterns | P0 |
-| FR-4 | Live preview using existing menu renderer components | P0 |
-| FR-5 | Draft stored with unique token URL (not guessable) | P0 |
-| FR-6 | Draft expires after 24 hours (auto-cleanup) | P0 |
-| FR-7 | Rate limit: 3 extractions per IP per 24 hours | P0 |
-| FR-8 | Authenticated claim converts draft to real project + store with `onboardingSource: 'PUBLIC_MENU_ENTRY'` | P0 |
-| FR-9 | Published starter page gets permanent subdomain via shared URL helper | P0 |
-| FR-10 | QR code + share link shown after publish | P1 |
-| FR-11 | "Add to Google Maps" guidance shown after publish | P1 |
-| FR-12 | Business name + type detected from menu image (AI) | P1 |
-| FR-13 | Mobile-first responsive design | P0 |
+| FR-3 | Permission-confirmed public menu link import before account creation, gated by `ENABLE_MENU_LINK_IMPORT` | P0 |
+| FR-4 | AI extraction using the configured public-route model and existing extraction patterns | P0 |
+| FR-5 | Live preview using existing menu renderer components | P0 |
+| FR-6 | Draft stored with unique token URL (not guessable) | P0 |
+| FR-7 | Draft expires after 24 hours (auto-cleanup) | P0 |
+| FR-8 | Rate limit: 3 extractions per IP per 24 hours | P0 |
+| FR-9 | Authenticated claim converts draft to real project + store with `onboardingSource: 'PUBLIC_MENU_ENTRY'` | P0 |
+| FR-10 | Published starter page gets permanent subdomain via shared URL helper | P0 |
+| FR-11 | QR code + share link shown after publish | P1 |
+| FR-12 | "Add to Google Maps" guidance shown after publish | P1 |
+| FR-13 | Business name + type detected from menu source (AI) | P1 |
+| FR-14 | Mobile-first responsive design | P0 |
 
 ### 3.2 Non-Functional Requirements
 
 | ID | Requirement | Target |
 |----|-------------|--------|
-| NFR-1 | Upload to preview time | < 30 seconds |
+| NFR-1 | Source submission to preview time | < 30 seconds for typical image/text sources |
 | NFR-2 | Draft storage cost per unclaimed draft | < ₹0.01 |
 | NFR-3 | Max concurrent drafts in system | 10,000 |
 | NFR-4 | Page load time (create-menu page) | < 2 seconds |
@@ -117,10 +118,11 @@ Allow any business owner to reach a public upload entry point, upload a menu ima
 /create-menu (public page)
       ↓
 Upload image → Client-side optimization
+or paste public menu link → permission confirmation + SSRF-safe acquisition
       ↓
 POST /api/public/create-menu (public, SAFE_MODE + IP rate-limited)
       ↓
-Upload to Firebase Storage (temp path)
+Upload source artifact to Firebase Storage (temp path)
       ↓
 Gemini extraction (server-side, public-route model/cost tracked)
       ↓
@@ -149,12 +151,13 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 
 | # | Risk/Question | Mitigation/Decision |
 |---|---|---|
-| R1 | Abuse: bots uploading garbage images | Rate limit 3/IP/day + image validation (min dimensions, file type) |
+| R1 | Abuse: bots uploading garbage images or URLs | Rate limit 3/IP/day + image validation + permission checkbox + SSRF-safe URL acquisition |
 | R2 | Cost: Gemini API calls for non-converting users | SAFE_MODE + IP rate limiting + 24h TTL cleanup |
-| R3 | Quality: poor extraction from phone photos | Show "Best results with clear, well-lit photos" guidance |
-| R4 | Privacy: menu images uploaded by non-owners | 24h draft TTL, no raw IP storage, sign-in before public claim/publish |
-| R5 | Storage: unclaimed images accumulate | 24h TTL auto-cleanup via nightly scheduler |
-| OQ1 | Should we support PDF upload in v1? | DECISION: No. Image-only for v1. PDF adds complexity. |
+| R3 | Quality: poor extraction from phone photos or unreadable links | Show clear fallback: upload a photo or try another public menu link |
+| R4 | Privacy: menu sources submitted by non-owners | Permission confirmation, 24h draft TTL, no raw IP storage, sign-in before public claim/publish |
+| R5 | Storage: unclaimed source artifacts accumulate | 24h TTL auto-cleanup via nightly scheduler |
+| R6 | SSRF/crawler abuse from public URLs | Same bounded acquisition helper as authenticated Menu Link Import; blocks unsafe protocols, private IPs, unsafe redirects, and unbounded crawling |
+| OQ1 | Should we support PDF file upload in v1? | DECISION: Direct public file upload remains image-only; public links may resolve to readable PDFs through Menu Link Import. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |
 | OQ3 | Should we require account before extraction? | DECISION: No. The first proof moment happens before auth; account/identity is required before public claim/publish. |
 
@@ -167,7 +170,7 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 | Removes a decision? | Yes — removes "how do I get my menu online?" | ✅ PASS |
 | Would anyone notice absence? | Yes — primary acquisition funnel | ✅ PASS |
 | Strengthens core moment? | Yes — creates canonical public page | ✅ PASS |
-| One sentence without "and"? | "Upload your menu photo, get a live page." | ✅ PASS |
+| One sentence without "and"? | "Start from your current menu source." | ✅ PASS |
 | Still matters in 3 years? | Yes — page creation is foundational | ✅ PASS |
 
 **Result: 5/5 — APPROVED**

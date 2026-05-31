@@ -3,7 +3,7 @@
 /**
  * Public Menu Entry — Upload Client Component
  * 
- * Handles image upload, optimization, API call, and redirect to preview.
+ * Handles image upload, menu-link import, API call, and redirect to preview.
  * Mobile-first design with camera capture support.
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md §6.1
@@ -12,11 +12,12 @@
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuAlertCircle, LuCamera, LuCheck, LuLoader, LuUpload } from 'react-icons/lu';
+import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
+type InputMode = 'photo' | 'link';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -28,6 +29,9 @@ export default function CreateMenuClient() {
     const [state, setState] = useState<UploadState>('idle');
     const [error, setError] = useState<string | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
+    const [inputMode, setInputMode] = useState<InputMode>('photo');
+    const [menuLink, setMenuLink] = useState('');
+    const [permissionConfirmed, setPermissionConfirmed] = useState(false);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {
@@ -114,6 +118,59 @@ export default function CreateMenuClient() {
         fileInputRef.current?.click();
     };
 
+    const selectInputMode = (mode: InputMode) => {
+        if (isProcessing) return;
+        setInputMode(mode);
+        setState('idle');
+        setError(null);
+        setPreview(null);
+    };
+
+    const handleLinkSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmedLink = menuLink.trim();
+
+        if (!trimmedLink || !permissionConfirmed) {
+            setError(t('CreateMenu.invalidLink'));
+            setState('error');
+            return;
+        }
+
+        try {
+            setError(null);
+            setState('uploading');
+            const response = await fetch('/api/public/create-menu', {
+                body: JSON.stringify({
+                    permissionConfirmed,
+                    sourceType: 'menu_link',
+                    url: trimmedLink,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+
+            if (response.status === 429) {
+                setError(t('CreateMenu.uploadLimit'));
+                setState('error');
+                return;
+            }
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setError(data.error || t('CreateMenu.linkFailed'));
+                setState('error');
+                return;
+            }
+
+            const data = await response.json();
+            setState('success');
+            router.push(`/create-menu/preview/${data.draftId}`);
+        } catch {
+            setError(t('CreateMenu.genericError'));
+            setState('error');
+        }
+    }, [menuLink, permissionConfirmed, router, t]);
+
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
 
     return (
@@ -153,115 +210,207 @@ export default function CreateMenuClient() {
                 </p>
             </AnimateOnScroll>
 
-            {/* Upload Area */}
-            <AnimateOnScroll delay={0.1}>
+            {/* Input mode */}
+            <AnimateOnScroll delay={0.08}>
                 <div
-                    onClick={!isProcessing ? triggerFileInput : undefined}
-                    onDrop={!isProcessing ? handleDrop : undefined}
-                    onDragOver={handleDragOver}
+                    role="tablist"
+                    aria-label={t('CreateMenu.inputModeLabel')}
                     style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '8px',
                         width: '100%',
-                        minHeight: '240px',
-                        border: `2px dashed ${error ? 'var(--ws-error)' : state === 'success' ? 'var(--ws-success)' : 'var(--ws-border-default)'}`,
+                        marginBottom: '16px',
+                        padding: '6px',
+                        border: '1px solid var(--ws-border-default)',
                         borderRadius: 'var(--ws-radius-xl)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '16px',
-                        padding: '32px 24px',
-                        cursor: isProcessing ? 'default' : 'pointer',
-                        backgroundColor: isProcessing ? 'var(--ws-bg-subtle)' : 'var(--ws-bg-primary)',
-                        transition: 'all var(--ws-transition-normal)',
-                        position: 'relative',
-                        overflow: 'hidden',
+                        backgroundColor: 'var(--ws-bg-subtle)',
                     }}
                 >
-                    {/* Hidden file input */}
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={handleInputChange}
-                        style={{ display: 'none' }}
-                    />
+                    {([
+                        { icon: LuCamera, label: t('CreateMenu.inputPhotoTab'), mode: 'photo' as const },
+                        { icon: LuLink, label: t('CreateMenu.inputLinkTab'), mode: 'link' as const },
+                    ]).map((item) => {
+                        const Icon = item.icon;
+                        const isActive = inputMode === item.mode;
+                        return (
+                            <button
+                                aria-selected={isActive}
+                                disabled={isProcessing}
+                                key={item.mode}
+                                onClick={() => selectInputMode(item.mode)}
+                                role="tab"
+                                style={{
+                                    alignItems: 'center',
+                                    backgroundColor: isActive ? 'var(--ws-bg-primary)' : 'transparent',
+                                    border: 'none',
+                                    borderRadius: 'var(--ws-radius-lg)',
+                                    boxShadow: isActive ? 'var(--ws-shadow-xs)' : 'none',
+                                    color: isActive ? 'var(--ws-text-primary)' : 'var(--ws-text-secondary)',
+                                    cursor: isProcessing ? 'default' : 'pointer',
+                                    display: 'inline-flex',
+                                    fontSize: '14px',
+                                    fontWeight: 700,
+                                    gap: '8px',
+                                    justifyContent: 'center',
+                                    minHeight: '44px',
+                                    padding: '10px 14px',
+                                    transition: 'all var(--ws-transition-normal)',
+                                }}
+                                type="button"
+                            >
+                                <Icon color={isActive ? 'var(--ws-brand-secondary)' : 'currentColor'} size={17} />
+                                {item.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </AnimateOnScroll>
 
-                    {/* Preview image background */}
-                    {preview && (
-                        <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundImage: `url(${preview})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            opacity: 0.15,
-                            borderRadius: '14px',
-                        }} />
-                    )}
+            {/* Upload Area */}
+            <AnimateOnScroll delay={0.1}>
+                {inputMode === 'photo' ? (
+                    <div
+                        onClick={!isProcessing ? triggerFileInput : undefined}
+                        onDrop={!isProcessing ? handleDrop : undefined}
+                        onDragOver={handleDragOver}
+                        style={dropZoneStyle({ error: Boolean(error), isProcessing, state })}
+                    >
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleInputChange}
+                            style={{ display: 'none' }}
+                        />
 
-                    {/* State-based content */}
-                    <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                        {/* Preview image background */}
+                        {preview && (
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundImage: `url(${preview})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                opacity: 0.15,
+                                borderRadius: '14px',
+                            }} />
+                        )}
+
+                        <UploadStateContent
+                            error={error}
+                            isLinkMode={false}
+                            reset={() => {
+                                setState('idle');
+                                setError(null);
+                                setPreview(null);
+                            }}
+                            state={state}
+                            t={t}
+                        />
+                    </div>
+                ) : (
+                    <form
+                        onSubmit={handleLinkSubmit}
+                        style={{
+                            ...dropZoneStyle({ error: Boolean(error), isProcessing, state }),
+                            alignItems: 'stretch',
+                            cursor: 'default',
+                            minHeight: '260px',
+                            textAlign: 'left',
+                        }}
+                    >
+                        <UploadStateContent
+                            error={error}
+                            isLinkMode
+                            reset={() => {
+                                setState('idle');
+                                setError(null);
+                            }}
+                            state={state}
+                            t={t}
+                        />
+
                         {state === 'idle' && (
-                            <>
-                                <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
-                                <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
-                                    {t('CreateMenu.uploadTitle')}
-                                </p>
-                                <p style={{ fontSize: '14px', color: 'var(--ws-text-muted)' }}>
-                                    {t('CreateMenu.uploadHint')}
-                                </p>
-                            </>
-                        )}
-
-                        {state === 'optimizing' && (
-                            <>
-                                <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
-                                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.preparing')}</p>
-                            </>
-                        )}
-
-                        {state === 'uploading' && (
-                            <>
-                                <LuUpload size={40} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
-                                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.uploading')}</p>
-                            </>
-                        )}
-
-                        {state === 'success' && (
-                            <>
-                                <LuCheck size={40} color="var(--ws-success)" style={{ marginBottom: '12px' }} />
-                                <p style={{ fontSize: '15px', color: 'var(--ws-success)' }}>{t('CreateMenu.redirecting')}</p>
-                            </>
-                        )}
-
-                        {state === 'error' && (
-                            <>
-                                <LuAlertCircle size={40} color="var(--ws-error)" style={{ marginBottom: '12px' }} />
-                                <p style={{ fontSize: '15px', color: 'var(--ws-error)', marginBottom: '12px' }}>{error}</p>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setState('idle');
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                marginTop: '6px',
+                                width: '100%',
+                            }}>
+                                <input
+                                    aria-label={t('CreateMenu.linkInputLabel')}
+                                    disabled={isProcessing}
+                                    onChange={(e) => {
+                                        setMenuLink(e.target.value);
                                         setError(null);
-                                        setPreview(null);
                                     }}
+                                    placeholder={t('CreateMenu.linkPlaceholder')}
                                     style={{
-                                        padding: '10px 24px',
+                                        backgroundColor: 'var(--ws-bg-primary)',
+                                        border: '1px solid var(--ws-border-default)',
+                                        borderRadius: 'var(--ws-radius-lg)',
+                                        boxSizing: 'border-box',
+                                        color: 'var(--ws-text-primary)',
+                                        fontSize: '15px',
+                                        minHeight: '48px',
+                                        outline: 'none',
+                                        padding: '12px 14px',
+                                        width: '100%',
+                                    }}
+                                    type="url"
+                                    value={menuLink}
+                                />
+                                <label style={{
+                                    alignItems: 'flex-start',
+                                    color: 'var(--ws-text-secondary)',
+                                    display: 'flex',
+                                    fontSize: '13px',
+                                    gap: '10px',
+                                    lineHeight: 1.45,
+                                }}>
+                                    <input
+                                        checked={permissionConfirmed}
+                                        disabled={isProcessing}
+                                        onChange={(e) => {
+                                            setPermissionConfirmed(e.target.checked);
+                                            setError(null);
+                                        }}
+                                        style={{ marginTop: '3px' }}
+                                        type="checkbox"
+                                    />
+                                    <span>{t('CreateMenu.linkPermission')}</span>
+                                </label>
+                                <button
+                                    disabled={isProcessing}
+                                    style={{
+                                        alignItems: 'center',
                                         backgroundColor: 'var(--ws-cta-default)',
-                                        color: '#fff',
                                         border: 'none',
                                         borderRadius: 'var(--ws-radius-lg)',
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
+                                        color: '#fff',
+                                        cursor: isProcessing ? 'default' : 'pointer',
+                                        display: 'inline-flex',
+                                        fontSize: '15px',
+                                        fontWeight: 700,
+                                        gap: '8px',
+                                        justifyContent: 'center',
+                                        minHeight: '48px',
+                                        opacity: isProcessing ? 0.7 : 1,
+                                        padding: '12px 18px',
+                                        width: '100%',
                                     }}
+                                    type="submit"
                                 >
-                                    {t('CreateMenu.tryAgain')}
+                                    <LuLink size={17} />
+                                    {t('CreateMenu.linkSubmit')}
                                 </button>
-                            </>
+                            </div>
                         )}
-                    </div>
-                </div>
+                    </form>
+                )}
             </AnimateOnScroll>
 
             {/* Value props */}
@@ -353,6 +502,115 @@ export default function CreateMenuClient() {
             `}</style>
         </div>
     );
+}
+
+function UploadStateContent({
+    error,
+    isLinkMode,
+    reset,
+    state,
+    t,
+}: {
+    error: string | null;
+    isLinkMode: boolean;
+    reset: () => void;
+    state: UploadState;
+    t: ReturnType<typeof useTranslations>;
+}) {
+    return (
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+            {state === 'idle' && (
+                <>
+                    {isLinkMode
+                        ? <LuLink size={42} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                        : <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
+                    <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
+                        {isLinkMode ? t('CreateMenu.linkTitle') : t('CreateMenu.uploadTitle')}
+                    </p>
+                    <p style={{ fontSize: '14px', color: 'var(--ws-text-muted)', lineHeight: 1.5, margin: 0 }}>
+                        {isLinkMode ? t('CreateMenu.linkHint') : t('CreateMenu.uploadHint')}
+                    </p>
+                </>
+            )}
+
+            {state === 'optimizing' && (
+                <>
+                    <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+                    <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.preparing')}</p>
+                </>
+            )}
+
+            {state === 'uploading' && (
+                <>
+                    <LuUpload size={40} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                    <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>
+                        {isLinkMode ? t('CreateMenu.readingLink') : t('CreateMenu.uploading')}
+                    </p>
+                </>
+            )}
+
+            {state === 'success' && (
+                <>
+                    <LuCheck size={40} color="var(--ws-success)" style={{ marginBottom: '12px' }} />
+                    <p style={{ fontSize: '15px', color: 'var(--ws-success)' }}>{t('CreateMenu.redirecting')}</p>
+                </>
+            )}
+
+            {state === 'error' && (
+                <>
+                    <LuAlertCircle size={40} color="var(--ws-error)" style={{ marginBottom: '12px' }} />
+                    <p style={{ fontSize: '15px', color: 'var(--ws-error)', marginBottom: '12px' }}>{error}</p>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            reset();
+                        }}
+                        style={{
+                            padding: '10px 24px',
+                            backgroundColor: 'var(--ws-cta-default)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 'var(--ws-radius-lg)',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                        }}
+                        type="button"
+                    >
+                        {t('CreateMenu.tryAgain')}
+                    </button>
+                </>
+            )}
+        </div>
+    );
+}
+
+function dropZoneStyle({
+    error,
+    isProcessing,
+    state,
+}: {
+    error: boolean;
+    isProcessing: boolean;
+    state: UploadState;
+}): React.CSSProperties {
+    return {
+        width: '100%',
+        minHeight: '240px',
+        border: `2px dashed ${error ? 'var(--ws-error)' : state === 'success' ? 'var(--ws-success)' : 'var(--ws-border-default)'}`,
+        borderRadius: 'var(--ws-radius-xl)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        padding: '32px 24px',
+        cursor: isProcessing ? 'default' : 'pointer',
+        backgroundColor: isProcessing ? 'var(--ws-bg-subtle)' : 'var(--ws-bg-primary)',
+        transition: 'all var(--ws-transition-normal)',
+        position: 'relative',
+        overflow: 'hidden',
+    };
 }
 
 /**

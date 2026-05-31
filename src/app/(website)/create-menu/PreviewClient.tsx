@@ -34,11 +34,12 @@ interface DraftData {
     extractedData: {
         categories: ExtractedCategory[];
         items: ExtractedItem[];
-        languages: string[];
+        languages: Array<string | { code: string; name?: string; isPrimary?: boolean }>;
     } | null;
     detectedBusinessName: string | null;
     detectedBusinessType: string | null;
     imageUrl: string | null;
+    sourceType?: string;
     error: string | null;
 }
 
@@ -70,19 +71,19 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             const res = await fetch(`/api/public/create-menu?draftId=${draftId}`);
 
             if (res.status === 410) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, error: 'Draft expired.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Draft expired.' });
                 setLoading(false);
                 return 'expired';
             }
 
             if (res.status === 404) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, error: 'Draft not found.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Draft not found.' });
                 setLoading(false);
                 return 'not_found';
             }
 
             if (!res.ok) {
-                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, error: 'Failed to load preview.' });
+                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Failed to load preview.' });
                 setLoading(false);
                 return 'error';
             }
@@ -92,7 +93,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setLoading(false);
             return data.status;
         } catch {
-            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, error: 'Connection error.' });
+            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Connection error.' });
             setLoading(false);
             return 'error';
         }
@@ -286,7 +287,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const { extractedData, detectedBusinessName, detectedBusinessType } = draft || {};
     const categories = extractedData?.categories || [];
     const items = extractedData?.items || [];
-    const lang = extractedData?.languages?.[0] || 'en';
+    const firstLanguage = extractedData?.languages?.[0];
+    const lang = typeof firstLanguage === 'string'
+        ? firstLanguage
+        : firstLanguage?.code || 'en';
 
     return (
         <div style={{

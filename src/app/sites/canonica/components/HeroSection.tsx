@@ -1,4 +1,5 @@
 import CanonicaLink from './CanonicaLink';
+import { LuArrowRight, LuFileInput } from 'react-icons/lu';
 
 export default function HeroSection({ basePath = '' }: { basePath?: string }) {
     return (
@@ -43,6 +44,16 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     Try the page-aware demo
                 </CanonicaLink>
             </div>
+
+            <CanonicaLink
+                basePath={basePath}
+                href="/pre-onboarding"
+                className="relative mt-4 inline-flex max-w-[17rem] items-center justify-center gap-2 rounded-full border border-teal-300/15 bg-teal-400/[0.055] px-4 py-2 text-center text-xs font-semibold text-teal-100 transition hover:border-teal-200/30 hover:text-white sm:max-w-none"
+            >
+                <LuFileInput aria-hidden size={14} />
+                Prepare your product sources first
+                <LuArrowRight aria-hidden size={14} />
+            </CanonicaLink>
 
             <div className="relative mt-8 flex w-full max-w-[17rem] flex-wrap justify-center gap-2 border-y border-white/[0.06] py-4 sm:max-w-4xl">
                 {[

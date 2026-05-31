@@ -13,6 +13,12 @@
 | POI-WEB-007 | Open sitemap. | `/pre-onboarding` and `/pre-onboarding/guide` appear through `CANONICA_PUBLIC_PAGES`. |
 | POI-WEB-008 | Inspect public copy. | It does not claim auto-publishing, helpdesk replacement, or private data import. |
 | POI-WEB-009 | Inspect safety and guide copy. | It states that coverage depends on what the AI IDE can inspect and does not guarantee perfect output for every agent, private source, or product shape. |
+| POI-WEB-010 | Use the prompt CTA on `/pre-onboarding`. | Prompt opens in an in-page modal with copy, Markdown download, and preview. |
+| POI-WEB-011 | Use the prompt CTA on `/pre-onboarding/guide`. | Prompt opens in the same modal flow without navigating away from the guide. |
+| POI-WEB-012 | Visit Canonica homepage. | Hero includes a pre-onboarding source-preparation link and the first-scroll page flow includes the Pre-Onboarding Kit section. |
+| POI-WEB-013 | Inspect desktop and mobile navigation. | Desktop header and mobile drawer include a direct Pre-Onboarding link. |
+| POI-WEB-014 | Visit `/get-started`. | Page offers pre-onboarding before workspace creation for owners with source material. |
+| POI-WEB-015 | Visit `/resources`. | Pre-Onboarding Kit is highlighted before rollout planning links. |
 
 ## Prompt Output
 

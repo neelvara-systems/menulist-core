@@ -138,6 +138,11 @@ The Canonica Pre-Onboarding Input Kit is a first-class onboarding surface. When 
 - `src/app/sites/canonica/pre-onboarding.md/route.ts`
 - `src/app/sites/canonica/pre-onboarding/owner-guide.md/route.ts`
 - `src/app/sites/canonica/pre-onboarding/agent-guide.md/route.ts`
+- `src/app/sites/canonica/page.tsx`
+- `src/app/sites/canonica/components/Header.tsx`
+- `src/app/sites/canonica/components/Footer.tsx`
+- `src/app/sites/canonica/components/PreOnboardingHomeSection.tsx`
+- `src/app/sites/canonica/get-started/page.tsx`
 - `__docs__/canonica/pre-onboarding-input-kit/`
 - Canonica resources, sitemap/site config, and LLM context links
 
@@ -152,6 +157,8 @@ When a Canonica pre-onboarding client repo contains multiple products, apps, bra
 When market-adjacent expectations appear (repo-to-docs, URL sync, OpenAPI docs, support-export FAQ generation, demo walkthroughs, screenshots, or website copy briefs), Canonica pre-onboarding may prepare review-ready briefs, source maps, scripts, FAQ seeds, and capture plans. It must not claim final public assets, legal answers, demo videos, or website copy are approved until the owner signs off.
 
 Canonica pre-onboarding must state source-access and AI IDE capability limits plainly. It may say a package is complete for accessible source coverage only after validation. It must not guarantee perfect output across every AI IDE, private repo, login-only app, restricted website, recording, file, product shape, or model. Blocked or unavailable sources must be marked pending instead of treated as covered.
+
+Treat `/pre-onboarding` as the primary human route for this feature. Keep the markdown prompt, owner guide, agent guide, and `/pre-onboarding/guide` as companion utility routes, but the main website journey should route buyers to `/pre-onboarding` from header navigation, mobile navigation, homepage, resources, get-started, and footer.
 
 ---
 

@@ -10,7 +10,7 @@
 
 | Collection | Type | Purpose |
 |-----------|------|---------|
-| `publicMenuDrafts` | NEW | Temporary drafts from public upload-before-auth previews (24h TTL) |
+| `publicMenuDrafts` | NEW | Temporary drafts from public upload/link-before-auth previews (24h TTL) |
 | `projects/{tId}/{sId}/{projectId}` | EXISTING | Final project after claim |
 | `stores` | EXISTING | Store created on claim; starter activation and distribution signal fields live here |
 | `tenants` | EXISTING | Tenant created on claim for new users; starter activation deadline mirrored for new tenants |
@@ -19,15 +19,17 @@
 
 ## 2. Operations Per User Journey
 
-### 2.1 Upload + Extraction (Public, IP Rate-Limited)
+### 2.1 Upload/Link + Extraction (Public, IP Rate-Limited)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
 | Create draft doc | `publicMenuDrafts` | WRITE | 1 | POST /api/public/create-menu |
-| Upload image | Firebase Storage | WRITE | 1 | Same API route |
-| Read draft/image | Storage + `publicMenuDrafts` | READ | 1 | Public API route downloads temp image for extraction |
+| Upload image or link artifact | Firebase Storage | WRITE | 1 | Same API route |
+| Read source artifact | Storage + `publicMenuDrafts` | READ | 1 | Public API route downloads temp source for extraction |
 | Update draft (extraction result) | `publicMenuDrafts` | WRITE | 1 | Public API route writes extraction result |
 | **Subtotal** | | | **2R + 2W + 1 Storage** | |
+
+For public menu links, the route performs one bounded outbound source acquisition before the Storage write. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. The public source shares the same 3-per-IP-per-day `PUBLIC_MENU_ENTRY` limiter as image upload and is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
 
 ### 2.2 Preview (Token-Based Polling)
 
@@ -126,7 +128,7 @@ Presence confirmations still use `menuPresence`. For starter stores, Presence Mo
 | Gemini 2.5 Flash | $0.15 / 1M tokens | $0.60 / 1M tokens |
 | Image input | ~258 tokens per image | — |
 
-**Estimated cost per extraction:** ~₹0.50–₹1.00 (depending on menu complexity)
+**Estimated cost per extraction:** ~₹0.50–₹1.00 for typical image/text sources, with variance for longer text/PDF link artifacts depending on menu complexity.
 
 ### 3.3 Firebase Storage
 
@@ -208,6 +210,7 @@ match /publicMenuDrafts/{draftId}/{fileName} {
 5. **TTL cleanup:** 24h auto-delete prevents storage accumulation.
 6. **Batch cleanup limit:** Max 100 expired drafts per daily scheduler run.
 7. **Max image size:** 10MB — prevents storage abuse.
+8. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
 
 ---
 

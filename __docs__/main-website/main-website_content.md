@@ -21,7 +21,7 @@
 
 ### Canonical Implementation Scope
 
-The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
+The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. The public `/create-menu` funnel now supports both a menu photo and an owner-provided public menu link before sign-in. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
 
 Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, safer pricing/setup claims, and a unified website palette. Pricing payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
 
@@ -40,7 +40,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
-**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
+**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination accepts a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
 ---
 
@@ -67,6 +67,7 @@ Supporting pages now share the same official-source discipline through shared he
 - Direction A: Current-menu owner action first, official-source proof second.
 - Hero must communicate upload → review → publish one trusted customer version in under 5 seconds.
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
+- Existing menu link copy is allowed as a source-intake proof only. Do not call it scraping, marketplace import, automatic cloning, or automatic publishing.
 - Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
 
 ---
@@ -484,7 +485,7 @@ Key FAQ topics:
 - Search/AI placement caveat.
 - Staff access without owner access.
 - Pricing entry point.
-- Existing menu link import as an authenticated owner setup path, not a public scraper.
+- Existing menu link import as a public setup input guarded by owner permission confirmation, not a generic scraper.
 - Imported content remains review-first and never publishes automatically.
 
 ---

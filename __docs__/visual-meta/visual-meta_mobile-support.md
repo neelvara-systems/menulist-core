@@ -28,6 +28,9 @@ Mobile is not the right surface for:
 - full image editing
 - workspace administration
 - billing setup
+- export template setup
+- external adapter mapping
+- MenuList bulk import setup
 
 ## 2. Required Mobile Workflows
 
@@ -41,8 +44,12 @@ Mobile is not the right surface for:
 | Add reviewer note | Required |
 | Copy approved text | Required |
 | Download final kit metadata | Required |
+| View export template/adapter used by a ready kit | Required |
 | Upload/capture simple source image | Allowed after Storage guardrails |
 | Create large batch job | Desktop only |
+| Configure export template | Desktop only |
+| Configure external adapter | Desktop only |
+| Run MenuList bulk import | Desktop only |
 | Configure billing | Desktop only |
 | Manage workspace permissions | Desktop only |
 
@@ -73,7 +80,28 @@ Suggested mobile tabs:
 
 Avoid adding a full dashboard sidebar on mobile.
 
-## 5. Review Detail Screen
+## 5. MenuList-Imported Unit Behavior
+
+Mobile can review content units that were imported from MenuList, but it must not run the bulk import workflow.
+
+Mobile should show:
+
+- source label
+- source product `MenuList`
+- imported date
+- source facts summary
+- stale-source warning
+- approve/request changes actions
+
+Mobile should not show:
+
+- MenuList item selector
+- field mapping
+- bulk import preview
+- source refresh for many items
+- conflict resolution
+
+## 6. Review Detail Screen
 
 The mobile review detail screen should include:
 
@@ -91,7 +119,26 @@ The mobile review detail screen should include:
 
 Do not hide source facts behind extra taps when approval is requested.
 
-## 6. Data And Cost Rules
+## 7. Export And Adapter Mobile Behavior
+
+Mobile should support:
+
+- view kit status
+- view selected export template label
+- view file-based adapter label when included
+- download ready package where allowed
+- request fresh signed URL
+- copy approved text
+
+Mobile should not support:
+
+- edit folder structure
+- map CSV columns
+- configure Shopify/PIM/DAM fields
+- set external credentials
+- push to downstream systems
+
+## 8. Data And Cost Rules
 
 Mobile must use the same VisualMeta DAL and APIs as desktop.
 
@@ -103,10 +150,12 @@ Mobile must not:
 - call generation providers directly from the client
 - bypass credit checks
 - write to MenuList or Canonica data
+- configure file adapters
+- trigger external API push
 
 Use paginated reads and server-mediated provider calls.
 
-## 7. Offline And Poor Network Behavior
+## 9. Offline And Poor Network Behavior
 
 Minimum behavior:
 
@@ -118,7 +167,7 @@ Minimum behavior:
 
 Do not queue approval decisions silently offline.
 
-## 8. Accessibility
+## 10. Accessibility
 
 Mobile review must support:
 
@@ -128,7 +177,7 @@ Mobile review must support:
 - screen-reader labels for image comparison controls
 - visible focus states where applicable
 
-## 9. Acceptance Criteria
+## 11. Acceptance Criteria
 
 Mobile support is acceptable when:
 
@@ -140,7 +189,9 @@ Mobile support is acceptable when:
 - no mobile provider call bypass exists
 - no mobile route appears inside MenuList owner navigation
 - no mobile UI requires desktop-style table interaction
+- mobile can view but not configure export templates/adapters
+- mobile can review MenuList-imported units but not run bulk import
 
-## 10. Documentation Cost
+## 12. Documentation Cost
 
 This mobile support plan creates no runtime cost.

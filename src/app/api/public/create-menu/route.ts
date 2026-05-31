@@ -1,16 +1,19 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 /**
  * Public Menu Entry API
- * 
- * POST /api/public/create-menu — Upload image + trigger extraction (no account required)
+ *
+ * POST /api/public/create-menu — Upload image or owner-provided menu link + trigger extraction (no account required)
  * GET  /api/public/create-menu?draftId={token} — Poll extraction status (no auth)
- * 
+ *
  * POST is public by design so owners can see the first proof moment before auth.
  * Cost leakage is controlled by SAFE_MODE, IP rate limiting, file validation, and TTL cleanup.
+ * Public link import additionally requires owner permission confirmation and uses the
+ * same SSRF-safe acquisition helper as the authenticated owner flow.
  * GET remains token-based so owners can review an existing draft.
  * Rate limited by IP address using Upstash.
- * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
- * 
+ * Feature gated: ENABLE_PUBLIC_MENU_ENTRY; link input also requires ENABLE_MENU_LINK_IMPORT.
+ *
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md
  */
 
@@ -24,6 +27,7 @@ import { recordAiOperation } from '@lib/ai/operationLog';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
+import { acquireMenuLinkSource, MenuLinkImportError } from '@lib/menu-link-import/sourceAcquisition';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
@@ -31,11 +35,26 @@ import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPublicRateLimit, getClientIp } from 'src/middleware/publicApi';
+import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_TEXT_SOURCE_CHARS = 80_000;
+
+const PublicMenuLinkSchema = z.object({
+    permissionConfirmed: z.literal(true),
+    sourceType: z.literal('menu_link'),
+    url: z.string().min(8).max(4000),
+});
+
+type PublicDraftSource = {
+    contentType: string;
+    kind: 'image_upload' | 'menu_link_import';
+    sourceKind?: string;
+    storagePath: string;
+};
 
 const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string; name: string; isPrimary?: boolean }> => {
     const normalized = Array.isArray(languages)
@@ -69,10 +88,220 @@ const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string
     ];
 };
 
+function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
+    return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+}
+
+function hashClientIp(req: NextRequest): string {
+    const ip = getClientIp(req);
+    return crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16);
+}
+
+async function createImageDraft(req: NextRequest, imageFile: File) {
+    // Validate file type
+    if (!ALLOWED_TYPES.includes(imageFile.type)) {
+        return NextResponse.json(
+            { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
+            { status: 400 }
+        );
+    }
+
+    // Validate file size
+    if (imageFile.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+            { success: false, error: 'File too large. Maximum size is 10MB.' },
+            { status: 400 }
+        );
+    }
+
+    const draftToken = crypto.randomUUID();
+    const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
+    const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
+    const downloadToken = crypto.randomUUID();
+
+    const bucket = storageAdmin.bucket();
+    const file = bucket.file(storagePath);
+    await file.save(buffer, {
+        metadata: {
+            cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
+            contentType: imageFile.type,
+            metadata: {
+                draftToken,
+                firebaseStorageDownloadTokens: downloadToken,
+                uploadedAt: new Date().toISOString(),
+            },
+        },
+    });
+
+    // Use a stable Firebase download-token URL because claimed project files
+    // keep this source image reference after the preview becomes a workspace.
+    const imageUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
+    const now = Timestamp.now();
+    const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
+    const ipHash = hashClientIp(req);
+
+    await firestoreAdmin.collection(COLLECTION).doc(draftToken).set({
+        token: draftToken,
+        imageUrl,
+        imagePath: storagePath,
+        originalFileName: imageFile.name || 'menu.jpg',
+        fileType: imageFile.type,
+        fileSize: imageFile.size,
+        sourceType: 'image_upload',
+        extractedData: null,
+        extractionStatus: 'pending' as const,
+        detectedBusinessName: null,
+        detectedBusinessType: null,
+        ipHash,
+        createdByUId: null,
+        createdAt: now,
+        expiresAt,
+        claimed: false,
+    });
+
+    secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size, sourceType: 'image_upload' });
+
+    triggerExtraction(draftToken, {
+        contentType: imageFile.type,
+        kind: 'image_upload',
+        storagePath,
+    }).catch((err) => {
+        secureError('[PublicMenuEntry] Extraction trigger failed', err instanceof Error ? err : new Error(String(err)), { draftToken });
+    });
+
+    return NextResponse.json({
+        success: true,
+        draftId: draftToken,
+        previewUrl: `/create-menu/preview/${draftToken}`,
+        status: 'processing',
+    });
+}
+
+async function createMenuLinkDraft(req: NextRequest, body: unknown) {
+    if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) {
+        return NextResponse.json(
+            { success: false, error: 'Menu link import is not available.' },
+            { status: 404 },
+        );
+    }
+
+    const validation = PublicMenuLinkSchema.safeParse(body);
+    if (!validation.success) {
+        return NextResponse.json(
+            { success: false, error: 'Enter a public menu link and confirm you have permission to import it.' },
+            { status: 400 },
+        );
+    }
+
+    const draftToken = crypto.randomUUID();
+    const createdStoragePaths: string[] = [];
+
+    try {
+        const acquisition = await acquireMenuLinkSource(validation.data.url);
+        const bucket = storageAdmin.bucket();
+        const storagePath = `publicMenuDrafts/${draftToken}/source.${acquisition.artifactExtension}`;
+        const downloadToken = crypto.randomUUID();
+
+        await bucket.file(storagePath).save(acquisition.artifactBuffer, {
+            metadata: {
+                cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
+                contentType: acquisition.artifactContentType,
+                metadata: {
+                    draftToken,
+                    firebaseStorageDownloadTokens: downloadToken,
+                    importedAt: new Date().toISOString(),
+                    sourceKind: acquisition.sourceKind,
+                },
+            },
+        });
+        createdStoragePaths.push(storagePath);
+
+        const sourceUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
+        const now = Timestamp.now();
+        const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
+        const ipHash = hashClientIp(req);
+        const fileName = `Imported menu link.${acquisition.artifactExtension}`;
+
+        await firestoreAdmin.collection(COLLECTION).doc(draftToken).set({
+            token: draftToken,
+            imageUrl: sourceUrl,
+            imagePath: storagePath,
+            originalFileName: fileName,
+            fileType: acquisition.artifactContentType,
+            fileSize: acquisition.size,
+            sourceType: 'menu_link_import',
+            sourceMetadata: {
+                acquisitionProvider: 'direct-http',
+                contentHash: acquisition.contentHash,
+                finalUrl: acquisition.finalUrl,
+                permissionConfirmed: true,
+                redirectCount: acquisition.redirectCount,
+                sourceContentType: acquisition.sourceContentType,
+                sourceKind: acquisition.sourceKind,
+                sourceTextPreview: acquisition.sourceTextPreview || null,
+                sourceUrl: validation.data.url.trim(),
+                storagePath,
+            },
+            extractedData: null,
+            extractionStatus: 'pending' as const,
+            detectedBusinessName: null,
+            detectedBusinessType: null,
+            ipHash,
+            createdByUId: null,
+            createdAt: now,
+            expiresAt,
+            claimed: false,
+        });
+
+        secureLog('[PublicMenuEntry] Link draft created', {
+            draftToken,
+            ipHash,
+            sourceKind: acquisition.sourceKind,
+            fileSize: acquisition.size,
+        });
+
+        triggerExtraction(draftToken, {
+            contentType: acquisition.artifactContentType,
+            kind: 'menu_link_import',
+            sourceKind: acquisition.sourceKind,
+            storagePath,
+        }).catch((err) => {
+            secureError('[PublicMenuEntry] Link extraction trigger failed', err instanceof Error ? err : new Error(String(err)), { draftToken });
+        });
+
+        return NextResponse.json({
+            success: true,
+            draftId: draftToken,
+            previewUrl: `/create-menu/preview/${draftToken}`,
+            status: 'processing',
+        });
+    } catch (error) {
+        await Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete({ ignoreNotFound: true })));
+
+        if (error instanceof MenuLinkImportError) {
+            secureLog('[PublicMenuEntry] Link source rejected', {
+                code: error.code,
+                status: error.status,
+            });
+            return NextResponse.json(
+                { success: false, error: error.message, code: error.code },
+                { status: error.status },
+            );
+        }
+
+        secureError('[PublicMenuEntry] Link import failed', error instanceof Error ? error : new Error(String(error)));
+        return NextResponse.json(
+            { success: false, error: 'We could not read this menu link. Upload a photo or try another public menu link.' },
+            { status: 500 },
+        );
+    }
+}
+
 /**
  * POST /api/public/create-menu
- * 
- * Upload a menu image and trigger AI extraction.
+ *
+ * Upload a menu image or owner-provided menu link and trigger AI extraction.
  * Returns a draftId (token) for polling and preview.
  */
 export async function POST(req: NextRequest) {
@@ -93,6 +322,13 @@ export async function POST(req: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     try {
+        const contentType = req.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const body = await req.json().catch(() => null);
+            return createMenuLinkDraft(req, body);
+        }
+
         // 3. Parse multipart form data
         const formData = await req.formData();
         const imageFile = formData.get('image') as File | null;
@@ -104,92 +340,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 4. Validate file type
-        if (!ALLOWED_TYPES.includes(imageFile.type)) {
-            return NextResponse.json(
-                { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
-                { status: 400 }
-            );
-        }
-
-        // 5. Validate file size
-        if (imageFile.size > MAX_FILE_SIZE) {
-            return NextResponse.json(
-                { success: false, error: 'File too large. Maximum size is 10MB.' },
-                { status: 400 }
-            );
-        }
-
-        // 6. Generate draft token (crypto-random, not guessable)
-        const draftToken = crypto.randomUUID();
-
-        // 7. Upload image to Firebase Storage (temp path)
-        const buffer = Buffer.from(await imageFile.arrayBuffer());
-        const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
-        const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
-        const downloadToken = crypto.randomUUID();
-
-        const bucket = storageAdmin.bucket();
-        const file = bucket.file(storagePath);
-        await file.save(buffer, {
-            metadata: {
-                cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
-                contentType: imageFile.type,
-                metadata: {
-                    draftToken,
-                    firebaseStorageDownloadTokens: downloadToken,
-                    uploadedAt: new Date().toISOString(),
-                },
-            },
-        });
-
-        // Use a stable Firebase download-token URL because claimed project files
-        // keep this source image reference after the preview becomes a workspace.
-        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
-
-        // 8. Hash IP for storage (privacy — don't store raw IP)
-        const ip = getClientIp(req);
-        const ipHash = crypto.createHash('sha256').update(ip).digest('hex').substring(0, 16);
-
-        // 9. Create draft document in Firestore
-        const now = Timestamp.now();
-        const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
-
-        const draftData = {
-            token: draftToken,
-            imageUrl,
-            imagePath: storagePath,
-            originalFileName: imageFile.name || 'menu.jpg',
-            fileType: imageFile.type,
-            fileSize: imageFile.size,
-            extractedData: null,
-            extractionStatus: 'pending' as const,
-            detectedBusinessName: null,
-            detectedBusinessType: null,
-            ipHash,
-            createdByUId: null,
-            createdAt: now,
-            expiresAt,
-            claimed: false,
-        };
-
-        await firestoreAdmin.collection(COLLECTION).doc(draftToken).set(draftData);
-
-        secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size });
-
-        // 10. Trigger extraction via Cloud Function (fire-and-forget)
-        // We'll call the extraction inline here since it's simpler than a separate CF for v1
-        triggerExtraction(draftToken, storagePath).catch((err) => {
-            secureError('[PublicMenuEntry] Extraction trigger failed', err instanceof Error ? err : new Error(String(err)), { draftToken });
-        });
-
-        // 11. Return draft info
-        return NextResponse.json({
-            success: true,
-            draftId: draftToken,
-            previewUrl: `/create-menu/preview/${draftToken}`,
-            status: 'processing',
-        });
+        return createImageDraft(req, imageFile);
 
     } catch (error) {
         secureError('[PublicMenuEntry] Upload failed', error instanceof Error ? error : new Error(String(error)));
@@ -251,6 +402,7 @@ export async function GET(req: NextRequest) {
             detectedBusinessName: draft.detectedBusinessName || null,
             detectedBusinessType: draft.detectedBusinessType || null,
             imageUrl: draft.imageUrl,
+            sourceType: draft.sourceType || 'image_upload',
             error: draft.extractionError || null,
         });
 
@@ -268,21 +420,22 @@ export async function GET(req: NextRequest) {
  * Runs server-side using Gemini 2.5 Flash.
  * Updates the draft document with extraction results.
  */
-async function triggerExtraction(draftToken: string, storagePath: string): Promise<void> {
+async function triggerExtraction(draftToken: string, source: PublicDraftSource): Promise<void> {
     const draftRef = firestoreAdmin.collection(COLLECTION).doc(draftToken);
 
     try {
         // Mark as processing
         await draftRef.update({ extractionStatus: 'processing' });
 
-        // Download image from Storage for Gemini
+        // Download the submitted source from Storage for Gemini.
         const bucket = storageAdmin.bucket();
-        const file = bucket.file(storagePath);
-        const [imageBuffer] = await file.download();
-        const base64Image = imageBuffer.toString('base64');
-        const mimeType = storagePath.endsWith('.png') ? 'image/png' : storagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+        const file = bucket.file(source.storagePath);
+        const [sourceBuffer] = await file.download();
+        const mimeType = source.contentType || (
+            source.storagePath.endsWith('.png') ? 'image/png' : source.storagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg'
+        );
 
-        const prompt = `You are a menu data extraction expert. Analyze this menu image and extract ALL items into a structured JSON format.
+        const prompt = `You are a menu data extraction expert. Analyze this menu source and extract ALL items into a structured JSON format.
 
 Return a JSON object with this exact structure:
 {
@@ -325,20 +478,26 @@ Rules:
 - Detect business name if visible on the menu
 - Detect business type from the content (restaurant, cafe, bakery, salon, etc.)
 - Return ONLY valid JSON, no markdown, no explanation`;
+        const isTextSource = mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('xml');
+        const sourceContents = isTextSource
+            ? [{
+                text: `${prompt}\n\nMENU SOURCE TEXT:\n${sourceBuffer.toString('utf8').slice(0, MAX_TEXT_SOURCE_CHARS)}`,
+            }]
+            : [
+                { text: prompt },
+                {
+                    inlineData: {
+                        data: sourceBuffer.toString('base64'),
+                        mimeType,
+                    },
+                },
+            ];
 
         // Use genAIClient (shared Gemini client) — same pattern as all other AI routes
         const operationStart = Date.now();
         const response = await genAIClient.models.generateContent({
             model: 'gemini-2.0-flash',
-            contents: [
-                { text: prompt },
-                {
-                    inlineData: {
-                        data: base64Image,
-                        mimeType,
-                    },
-                },
-            ],
+            contents: sourceContents,
         });
 
         const responseText = response.text || '';
@@ -404,7 +563,7 @@ Rules:
             processingTime: Date.now() - operationStart,
             sId: ECOMSAI_PLATFORM_STORE_ID,
             source: 'public_create_menu',
-            storagePath,
+            storagePath: source.storagePath,
             tId: ECOMSAI_PLATFORM_TENANT_ID,
             uId: String(ECOMSAI_PLATFORM_USER_ID),
         }).catch((error) => {
@@ -415,6 +574,7 @@ Rules:
             draftToken,
             categories: (parsed.categories || []).length,
             items: (parsed.items || []).length,
+            sourceType: source.kind,
         });
 
     } catch (error) {
@@ -423,7 +583,9 @@ Rules:
         // Mark as failed
         await draftRef.update({
             extractionStatus: 'failed',
-            extractionError: 'Extraction failed. Please try again with a clearer photo.',
+            extractionError: source.kind === 'menu_link_import'
+                ? 'We could not read this menu link. Upload a photo or try another public menu link.'
+                : 'Extraction failed. Please try again with a clearer photo.',
         }).catch(() => { /* ignore update failure */ });
     }
 }

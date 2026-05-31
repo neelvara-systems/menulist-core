@@ -13,6 +13,7 @@ import HomeTrustSection from './components/HomeTrustSection';
 import HowItWorksSection from './components/HowItWorksSection';
 import ObjectionsSection from './components/ObjectionsSection';
 import PillarsSection from './components/PillarsSection';
+import PreOnboardingHomeSection from './components/PreOnboardingHomeSection';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import ProductAreasSection from './components/ProductAreasSection';
 import ProductPreviewSection from './components/ProductPreviewSection';
@@ -58,6 +59,7 @@ export default function CanonicaHomePage() {
             <CanonicaStructuredData />
             <main className="cn-home-flow">
                 <HeroSection basePath={basePath} />
+                <PreOnboardingHomeSection basePath={basePath} />
                 <HomePageAwareDemoSection basePath={basePath} />
                 <SupportKnowledgeMapSection />
                 <ClosedLoopSection />

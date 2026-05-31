@@ -6,6 +6,56 @@
 
 ---
 
+## May 31, 2026 — Public Menu Link Import
+
+### Added
+
+- **Public create-menu link input** — `/create-menu` now supports a permission-confirmed public menu link beside menu photo upload.
+- **Review-first public link drafts** — Public link import creates a temporary preview draft only. Imported content is not published until an authenticated owner claims the setup.
+- **Link import safety reuse** — The public route reuses the existing Menu Link Import source-acquisition guardrails for unsafe protocols, private IPs, unsafe redirects, unsupported sources, and bounded acquisition.
+
+### Cost
+
+- **Controlled public processing cost** — Public photo and link submissions share the existing `PUBLIC_MENU_ENTRY` 3-per-IP-per-day limiter, SAFE_MODE guard, 24-hour draft TTL, and source-size limits. Link input is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
+
+---
+
+## May 31, 2026 — VisualMeta Deep Review And Implementation Lock
+
+### Added
+
+- **VisualMeta deep ChatGPT review** — Added a line-range review for the new VisualMeta discussion, treating ChatGPT proposals as suggestions and recording final accept, modify, reject, and defer decisions.
+- **VisualMeta implementation lock** — Added `visual-meta_implementation-lock-v1.md` with first-implementation flags, collections, source snapshot schema, content unit schema, asset/text/review schemas, manifest schema, export kit schema, storage paths, API route contracts, MenuList snapshot rules, export template rules, adapter rules, and activation gates.
+
+### Product Decision
+
+- **Export Templates accepted with limits** — Built-in, versioned packaging presets are accepted. Custom template builders, arbitrary scripting, and template marketplaces are rejected for the first implementation.
+- **MenuList Snapshot Import accepted with strict separation** — VisualMeta can copy selected MenuList item snapshots after preview, but cannot live-sync, write back, consume MenuList AI packs, write to MenuList Storage, or invalidate MenuList public cache.
+- **Export Adapters narrowed to file-based handoff** — Generic handoff packages are accepted. Direct Shopify/PIM/DAM/Cloudinary/Google API push, credential storage, live sync, and downstream acceptance guarantees are rejected for the first implementation.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
+## May 31, 2026 — Canonica Pre-Onboarding Safety Boundary
+
+### Changed
+
+- **Pre-onboarding now states source-access limits clearly** — The Canonica pre-onboarding page, guide, markdown prompt, owner guide, agent guide, feature docs, and rules now say the prompt only covers sources an AI IDE can inspect.
+- **Pre-onboarding is now directly reachable from navigation** — The Canonica footer links to the Pre-Onboarding Kit and Guide, and the mobile drawer links to the Pre-Onboarding Kit.
+- **Pre-onboarding is now a primary website route** — Desktop navigation, homepage hero, first-scroll homepage section, Resources, and Get Started now route buyers to `/pre-onboarding` before workspace setup.
+- **Prompt opens in-page** — The Pre-Onboarding page and guide now open the master prompt in a modal with copy-to-clipboard, preview, and Markdown download actions while keeping `/pre-onboarding.md` available for direct agent access.
+- **Blocked sources stay pending** — Private repos, login-only apps, restricted websites, unsupported recordings, screenshots, files, or weak agent sessions must be marked pending or unavailable instead of treated as covered.
+- **Confidence language is bounded** — The approved standard is available-source coverage after validation, not guaranteed perfect output across every AI IDE, model, private app, source bundle, or product shape.
+
+### Cost
+
+- **No runtime cost change** — This is public copy, prompt, docs, and rule maintenance only. It adds no Firestore reads, writes, listeners, Cloud Functions, Storage operations, provider calls, schedulers, or deploys.
+
+---
+
 ## May 31, 2026 — GrowthOS Deep Conversation Review
 
 ### Changed

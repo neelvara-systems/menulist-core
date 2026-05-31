@@ -11,10 +11,16 @@ No new database collections, background jobs, provider calls, or ingestion APIs 
 | File | Purpose |
 | --- | --- |
 | `src/app/sites/canonica/pre-onboarding/page.tsx` | Public page explaining the pre-onboarding workflow. |
+| `src/app/sites/canonica/pre-onboarding/PromptModal.tsx` | Client modal that previews the master prompt, copies it to clipboard, and downloads it as Markdown. |
 | `src/app/sites/canonica/pre-onboarding.md/route.ts` | Machine-readable master prompt route. |
 | `src/app/sites/canonica/pre-onboarding/guide/page.tsx` | Detailed human guide for owners and agents. |
 | `src/app/sites/canonica/pre-onboarding/owner-guide.md/route.ts` | Machine-readable owner guide. |
 | `src/app/sites/canonica/pre-onboarding/agent-guide.md/route.ts` | Machine-readable agent guide. |
+| `src/app/sites/canonica/components/PreOnboardingHomeSection.tsx` | Homepage placement that routes buyers to the kit before setup. |
+| `src/app/sites/canonica/components/HeroSection.tsx` | Homepage hero source-preparation link. |
+| `src/app/sites/canonica/components/Header.tsx` | Desktop and mobile navigation entry for `/pre-onboarding`. |
+| `src/app/sites/canonica/components/Footer.tsx` | Footer entries for the kit and guide. |
+| `src/app/sites/canonica/get-started/page.tsx` | Pre-signup prompt to prepare sources before workspace creation. |
 | `src/lib/canonica/preOnboardingPrompt.ts` | Shared prompt text and output contract. |
 | `src/app/sites/canonica/siteConfig.ts` | Sitemap/structured-data registration. |
 | `src/app/sites/canonica/resources/page.tsx` | Resource hub link. |
@@ -103,12 +109,28 @@ If the client needs account-specific onboarding, that happens inside authenticat
 
 The public page should present pre-onboarding as a preparation aid, not a replacement for Canonica. The page should:
 
-- send users to the markdown prompt;
+- remain the primary human route for all pre-onboarding content;
+- open the master prompt in a modal with copy and `.md` download actions;
+- keep the raw markdown route available for AI agents and direct access;
 - explain expected output;
 - explain privacy review;
 - explain source-access and AI IDE capability limits;
 - link back to Knowledge Intake and Get Started;
 - avoid claiming that AI-generated inputs are automatically correct or guaranteed across every product and AI IDE.
+
+## Website Placement Contract
+
+Pre-onboarding must stay visible at the start of the Canonica buyer journey:
+
+- main desktop navigation;
+- mobile drawer;
+- homepage hero support link;
+- homepage first-scroll section after the hero;
+- resources rollout path;
+- get-started pre-signup context;
+- footer resources column.
+
+The `/pre-onboarding/guide`, `/pre-onboarding.md`, `/pre-onboarding/owner-guide.md`, and `/pre-onboarding/agent-guide.md` routes remain supporting routes for deep reading and AI-agent access. They should not fragment the main owner journey away from `/pre-onboarding`.
 
 ## Deployment Notes
 

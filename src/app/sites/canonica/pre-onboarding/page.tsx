@@ -14,6 +14,7 @@ import CanonicaLink from '../components/CanonicaLink';
 import { CanonicaSequenceDiagram } from '../components/CanonicaFlowDiagram';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 import SectionHeader from '../components/SectionHeader';
+import CanonicaPreOnboardingPromptModal from './PromptModal';
 
 export const metadata: Metadata = {
     title: 'Pre-Onboarding Kit | Canonica',
@@ -99,13 +100,11 @@ export default function CanonicaPreOnboardingPage() {
                                 >
                                     Read the full guide
                                 </CanonicaLink>
-                                <CanonicaLink
+                                <CanonicaPreOnboardingPromptModal
                                     basePath={basePath}
-                                    href="/pre-onboarding.md"
-                                    className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
-                                >
-                                    Open the agent prompt
-                                </CanonicaLink>
+                                    buttonClassName="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                                    buttonLabel="Open the agent prompt"
+                                />
                                 <CanonicaLink
                                     basePath={basePath}
                                     href="/get-started"
@@ -259,13 +258,11 @@ export default function CanonicaPreOnboardingPage() {
                             Use the prompt first, review the output, then upload the selected sources into Canonica Knowledge Intake.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                            <CanonicaLink
+                            <CanonicaPreOnboardingPromptModal
                                 basePath={basePath}
-                                href="/pre-onboarding.md"
-                                className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
-                            >
-                                Open prompt
-                            </CanonicaLink>
+                                buttonClassName="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                                buttonLabel="Open prompt"
+                            />
                             <CanonicaLink
                                 basePath={basePath}
                                 href="/product/knowledge-intake"

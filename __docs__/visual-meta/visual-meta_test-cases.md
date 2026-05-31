@@ -14,6 +14,9 @@
 | `ENABLE_VISUALMETA_PUBLIC_SITE=false` | Public VisualMeta site is not served. |
 | `ENABLE_VISUALMETA_GENERATION=false` | Generation APIs reject before provider work. |
 | `ENABLE_VISUALMETA_EXPORT_KITS=false` | Export kit creation is blocked. |
+| `ENABLE_VISUALMETA_EXPORT_TEMPLATES=false` | Template preview/selection is blocked or omitted. |
+| `ENABLE_VISUALMETA_EXPORT_ADAPTERS=false` | Adapter preflight/selection is blocked or omitted. |
+| `ENABLE_VISUALMETA_MENU_IMPORT=false` | MenuList import preview and confirm routes reject. |
 | Provider flag off | No provider call or credit reservation occurs. |
 
 ## 2. Routing Tests
@@ -58,6 +61,13 @@
 | source facts change after import | existing content unit can be marked stale |
 | VisualMeta render after import | no live MenuList read required |
 | import attempts MenuList write-back | blocked |
+| MenuList-only session calls import API | rejected unless `productAccounts.VM` exists |
+| VisualMeta user without MenuList source permission | rejected |
+| import writes `pId: "ML"` document | rejected |
+| import image writes to MenuList Storage path | rejected |
+| import batch over 250 selected items | rejected |
+| refresh source creates a new source snapshot | old snapshot unchanged |
+| export after source refresh with stale unit | blocked |
 
 ## 6. Generation Tests
 
@@ -92,6 +102,32 @@
 | signed download expired | fresh signed URL required |
 | ZIP packaging failure | kit marked failed and audit logged |
 
+## 8a. Export Template Tests
+
+| Test | Expected |
+| --- | --- |
+| choose built-in template | template ID/version recorded on export kit |
+| template requires missing field | preflight blocks export |
+| filename collision | resolved by configured policy or blocks export |
+| path contains `../` | rejected |
+| template tries to include draft candidate | rejected |
+| template changes after old kit ready | old kit unchanged |
+| custom template builder visible in first implementation | fail |
+| arbitrary script in template | rejected |
+
+## 8b. Export Adapter Tests
+
+| Test | Expected |
+| --- | --- |
+| adapter flag off | adapter routes reject or omit adapter choices |
+| generic handoff adapter selected | adapter ID/version recorded in manifest |
+| adapter requires missing source fact | preflight blocks or warns based on rule |
+| adapter tries to generate missing SKU/GTIN/price | rejected |
+| adapter writes outside VisualMeta export path | rejected |
+| adapter attempts Shopify/Akeneo/Cloudinary API push in first implementation | rejected |
+| adapter output includes stale unit | rejected |
+| downstream acceptance guarantee appears in copy | fail |
+
 ## 9. Mobile Tests
 
 | Test | Expected |
@@ -102,6 +138,9 @@
 | reject from mobile | requires note or reason when configured |
 | mobile generation provider call directly | impossible |
 | mobile large batch setup | not shown |
+| mobile export-template configuration | not shown |
+| mobile adapter mapping | not shown |
+| mobile MenuList bulk import setup | not shown |
 
 ## 10. Cost Tests
 
@@ -123,6 +162,8 @@
 | MenuList cache invalidation triggered by VisualMeta prep | no, because no MenuList write occurs |
 | Canonica functions touched by VisualMeta job | never |
 | GrowthOS action created by VisualMeta export | never without explicit future integration |
+| Export adapter mutates Shopify/PIM/DAM/Cloudinary/Google | never in first implementation |
+| VisualMeta export adapter stores external credential | never in first implementation |
 
 ## 12. Public Copy Tests
 
@@ -132,6 +173,7 @@
 | website claims guaranteed growth | fail |
 | website says VisualMeta changes MenuList truth | fail |
 | website describes Final Content Kits | pass |
+| website claims direct Shopify/PIM/DAM sync | fail |
 | helpdoc requires human approval | pass |
 
 ## 13. Required Verification Commands After Implementation

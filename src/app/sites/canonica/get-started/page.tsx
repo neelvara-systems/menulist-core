@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { LuArrowRight, LuFileInput } from 'react-icons/lu';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
@@ -59,6 +60,30 @@ export default function CanonicaGetStartedPage() {
                             </p>
                         </div>
 
+                        <div className="mb-10 rounded-[1.5rem] border border-teal-300/20 bg-teal-400/[0.055] p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex gap-3">
+                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-100">
+                                        <LuFileInput aria-hidden size={20} />
+                                    </span>
+                                    <div>
+                                        <h2 className="text-base font-semibold text-white">Have a repo, docs, website, screenshots, or owner notes?</h2>
+                                        <p className="mt-1 text-sm leading-relaxed text-[#d6d6ef]">
+                                            Run pre-onboarding first so Canonica starts with cleaner source truth.
+                                        </p>
+                                    </div>
+                                </div>
+                                <CanonicaLink
+                                    basePath={basePath}
+                                    href="/pre-onboarding"
+                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800"
+                                >
+                                    Prepare inputs
+                                    <LuArrowRight aria-hidden size={15} />
+                                </CanonicaLink>
+                            </div>
+                        </div>
+
                         <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}
                             <div>
@@ -88,7 +113,7 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
                         <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
-                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, release updates, screenshots, or short support recordings.
+                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, release updates, screenshots, or short support recordings. The Pre-Onboarding Kit can organize those sources before you upload them.
                         </p>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                             <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">First session checklist</div>

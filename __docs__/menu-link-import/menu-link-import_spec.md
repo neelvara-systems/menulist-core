@@ -12,6 +12,11 @@ Add link import as an owner-controlled migration path:
 
 This is aligned with MenuList because it moves scattered public menu sources into reviewed MenuList truth. It is not positioned as broad scraping.
 
+The feature is now available in two entry points:
+
+- Public `/create-menu` starter funnel before sign-in, guarded by permission confirmation, public IP rate limits, SAFE_MODE, and temporary draft TTL.
+- Authenticated owner app upload flow for existing projects, guarded by tenant access, owner/store rate limits, and the same permission confirmation.
+
 ## Research Basis
 
 - Schema.org `hasMenu` allows a business menu to be represented as structured `Menu`, plain text, or a URL: https://schema.org/hasMenu
@@ -24,7 +29,7 @@ Product implication: MenuList should handle owner-provided public menu pages, ho
 
 ### In Scope
 
-- Authenticated owner pastes a public URL.
+- Public visitor or authenticated owner pastes a public URL.
 - Owner confirms the source is their business menu or they have permission to import it.
 - Public HTML, text, JSON, direct PDF, and direct JPEG/PNG/WebP sources.
 - Shallow same-origin discovery when the pasted URL is a homepage and the page has likely menu/catalog/offering links.
@@ -33,10 +38,10 @@ Product implication: MenuList should handle owner-provided public menu pages, ho
 - Bounded same-origin PDF/image fallback when a low-confidence HTML page links to a likely menu/catalog/offering asset.
 - Bounded rendered-page fallback for safe client-routed menu pages such as `/#/menu`.
 - Private source artifact storage.
-- Existing AI extraction job queue.
+- Existing public draft preview flow or authenticated AI extraction job queue.
 - Forced review before write.
 - Existing review and approval path.
-- Desktop and mobile entry points.
+- Public create-menu, desktop owner, and mobile owner entry points.
 
 ### Out of Scope
 
@@ -79,14 +84,16 @@ Product implication: MenuList should handle owner-provided public menu pages, ho
 | ID | Requirement | Status |
 | --- | --- | --- |
 | MLINK-01 | Feature hidden unless `ENABLE_MENU_LINK_IMPORT` is true | Implemented |
-| MLINK-02 | API protected by `withAuth` and tenant access check | Implemented |
+| MLINK-02 | Authenticated owner API protected by `withAuth` and tenant access check | Implemented |
 | MLINK-03 | Owner permission confirmation required | Implemented |
 | MLINK-04 | SSRF guard blocks unsafe protocols, hostnames, IPs, and redirects | Implemented |
-| MLINK-05 | Link import creates a processing job, not a direct project write | Implemented |
+| MLINK-05 | Authenticated link import creates a processing job, not a direct project write | Implemented |
 | MLINK-06 | Link jobs always require review, even for blank projects | Implemented |
 | MLINK-07 | Approved review writes use existing project/cache path | Implemented |
 | MLINK-08 | Desktop and mobile upload flows keep existing file upload unchanged | Implemented |
 | MLINK-09 | Desktop blocks link import while local selected files are waiting to be uploaded, and blocks image upload while a link job is active | Implemented |
+| MLINK-10 | Public `/create-menu` accepts permission-confirmed menu links before sign-in | Implemented |
+| MLINK-11 | Public link import creates a temporary draft preview and does not publish before authenticated claim | Implemented |
 
 ## Owner-Facing Copy
 
@@ -108,11 +115,14 @@ Avoid:
 
 The route stores source artifacts under tenant/store/project/job-scoped Storage paths and writes metadata to `menuLinkImportArtifacts`. The artifact URL passed to extraction is a Firebase download-token URL for the private artifact. The importer does not write `projects` until review is approved.
 
+For public `/create-menu`, the route stores source artifacts under `publicMenuDrafts/{draftId}/` and writes metadata into the temporary `publicMenuDrafts` document. The draft has a 24-hour TTL, is rate-limited by IP through `PUBLIC_MENU_ENTRY`, and is only converted into a tenant/store/project after authenticated claim.
+
 ## Success Criteria
 
-- Existing photo/PDF upload flow still behaves the same.
+- Existing public photo upload and authenticated photo/PDF upload flows still behave the same.
 - Link import job appears in the same processing and review UI.
 - Link import and image upload cannot create overlapping jobs for the same project.
 - Discarding a link import leaves no project menu mutation.
 - Approving a link import creates the source file and menu data in the project.
 - Unsafe URLs are blocked before outbound fetch.
+- Public link import creates only a review preview before sign-in and cannot publish without authenticated claim.

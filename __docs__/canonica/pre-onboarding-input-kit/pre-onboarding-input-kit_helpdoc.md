@@ -20,16 +20,18 @@ You need:
 
 ## How To Use It
 
-1. Open `/pre-onboarding.md`.
-2. Copy the full prompt.
-3. Paste it into Codex, Cursor, Windsurf, Antigravity, Claude Code, or your preferred AI coding agent.
-4. Fill in the copy/paste intake fields at the top of the prompt.
-5. Let the agent inspect the source bundle you have: repo, docs, website links, owner notes, support exports, or screenshots.
-6. Review the generated `*-canonica-pre-onboarding-inputs/` folder.
-7. Remove anything private or inaccurate.
-8. Upload selected source files into Canonica Knowledge Intake.
-9. Review the drafts Canonica creates.
-10. Enable live support only after the test questions pass.
+1. Open `/pre-onboarding`.
+2. Select the prompt action.
+3. Copy the prompt from the modal or download the Markdown file.
+4. Paste it into Codex, Cursor, Windsurf, Antigravity, Claude Code, or your preferred AI coding agent.
+5. Direct AI-agent access remains available at `/pre-onboarding.md`.
+6. Fill in the copy/paste intake fields at the top of the prompt.
+7. Let the agent inspect the source bundle you have: repo, docs, website links, owner notes, support exports, or screenshots.
+8. Review the generated `*-canonica-pre-onboarding-inputs/` folder.
+9. Remove anything private or inaccurate.
+10. Upload selected source files into Canonica Knowledge Intake.
+11. Review the drafts Canonica creates.
+12. Enable live support only after the test questions pass.
 
 ## What The Prompt Should Create
 
