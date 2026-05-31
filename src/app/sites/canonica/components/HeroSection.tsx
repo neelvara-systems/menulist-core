@@ -6,51 +6,52 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
             {/* Badge */}
             <div className="relative mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
-                <span className="text-xs font-medium text-[#a0a0c0]">For AI-built SaaS apps shipping fast</span>
+                <span className="text-xs font-medium text-[#a0a0c0]">For SaaS founders before a support team</span>
             </div>
 
             {/* Headline */}
             <h1 className="relative w-full max-w-[18rem] break-words text-center text-[1.9rem] font-bold leading-[1.12] tracking-tight sm:max-w-5xl sm:text-5xl lg:text-6xl">
-                <span className="block">You shipped the app.</span>
+                <span className="block">Launch your SaaS</span>
                 <span className="canonica-hero-gradient mt-1 block">
-                    Now users need correct answers.
+                    with support already built.
                 </span>
             </h1>
 
             {/* Subheadline */}
             <p className="relative mt-6 w-full max-w-[17rem] text-center text-base leading-relaxed text-[#a0a0c0] sm:max-w-3xl sm:text-lg">
-                Canonica adds page-aware support to your SaaS: an in-app help widget, hosted help center, ticket fallback, and owner-approved answers or FAQs that improve when users get stuck.
+                Add your specs, docs, screenshots, recordings, release notes, and common answers. Canonica prepares docs, FAQs, answer drafts, hosted help, and a page-aware widget for owner review, while tickets, changelogs, feedback, ratings, and feature requests stay owner-managed.
             </p>
 
             {/* CTAs */}
             <div className="relative mt-8 flex w-full max-w-[17rem] flex-col items-stretch justify-center gap-4 sm:max-w-none sm:flex-row sm:items-center">
                 <CanonicaLink
                     basePath={basePath}
-                    href="/demo"
+                    href="/get-started"
                     data-canonica-event="hero_cta_clicked"
-                    data-canonica-label="try_page_aware_demo"
+                    data-canonica-label="start_support_setup"
                     className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800 hover:shadow-teal-500/40"
                 >
-                    Try the page-aware demo
+                    Start support setup
                 </CanonicaLink>
                 <CanonicaLink
                     basePath={basePath}
-                    href="/get-started"
+                    href="/demo"
                     data-canonica-event="hero_cta_clicked"
-                    data-canonica-label="start_free_setup"
+                    data-canonica-label="try_page_aware_demo"
                     className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-medium text-[#a0a0c0] transition-all hover:border-white/[0.2] hover:text-white"
                 >
-                    Start free setup
+                    Try the page-aware demo
                 </CanonicaLink>
             </div>
 
             <div className="relative mt-8 flex w-full max-w-[17rem] flex-wrap justify-center gap-2 border-y border-white/[0.06] py-4 sm:max-w-4xl">
                 {[
-                    'One script',
-                    'Page-aware answers',
+                    'Docs + FAQs',
+                    'Answer drafts',
+                    'Page-aware widget',
                     'Hosted help',
                     'Ticket fallback',
-                    'Human approval',
+                    'Feedback signals',
                 ].map((label) => (
                     <span key={label} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-[#a0a0c0]">
                         {label}
@@ -60,7 +61,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
 
             {/* Trust line */}
             <p className="relative mt-6 w-full max-w-[17rem] text-center text-xs leading-relaxed text-[#505070] sm:max-w-none">
-                Built for solo founders, small SaaS teams, and studios launching AI-built products.
+                Built for solo founders, small SaaS teams, and studios closing the support layer before users arrive.
             </p>
         </section>
     );

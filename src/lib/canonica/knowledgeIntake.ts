@@ -715,6 +715,10 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
     }
 
     const patch = sanitizeReviewItemPatch(input);
+    const nextTarget = (patch.target || current.target) as CanonicaIntakeReviewItem['target'];
+    if (nextTarget === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG && patch.status === CANONICA_INTAKE_REVIEW_STATUS.ACCEPTED) {
+        throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
+    }
     await ref.set({
         ...patch,
         modifiedOn: now(),
@@ -894,7 +898,7 @@ async function publishReviewItem(
         return publishCanonicalProposal(scope, item, actor);
     }
     if (item.target === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG) {
-        return publishChangelog(scope, item, actor);
+        throw new Error('Changelog entries are owner-managed. Use the Changelog screen to publish release notes.');
     }
     return null;
 }
@@ -1152,62 +1156,6 @@ async function publishCanonicalProposal(scope: IntakeScope, item: CanonicaIntake
     return { id: proposalRef.id, segments: [] };
 }
 
-async function publishChangelog(scope: IntakeScope, item: CanonicaIntakeReviewItem, actor?: IntakeActor) {
-    const pagesRef = db.collection(`${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`);
-    const latest = await pagesRef.orderBy('pageNumber', 'desc').limit(1).get();
-    const pageRef = latest.empty ? pagesRef.doc('page_000001') : latest.docs[0].ref;
-    const entryId = crypto.randomUUID();
-    const entry = {
-        id: entryId,
-        pId: PRODUCT_IDS.CANONICA,
-        tId: scope.tId,
-        sId: scope.sId,
-        title: cleanText(item.title, 180),
-        description: cleanLongText(item.body || item.answer, 5000),
-        version: cleanText(item.versionLabel, 40) || null,
-        tags: cleanList(item.tags, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
-        contextKeys: cleanList(item.contextKeys, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_CONTEXT_KEYS),
-        entityIds: cleanIdList(item.entityIds, CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS),
-        createdOn: now(),
-        ...actorFields(actor),
-    };
-    await db.runTransaction(async (tx) => {
-        const pageSnap = await tx.get(pageRef);
-        if (!pageSnap.exists) {
-            tx.set(pageRef, {
-                pId: PRODUCT_IDS.CANONICA,
-                tId: scope.tId,
-                sId: scope.sId,
-                pageNumber: 1,
-                nextPageId: null,
-                entries: [entry],
-                entryIds: [entryId],
-                createdOn: now(),
-                modifiedOn: now(),
-            });
-        } else {
-            const data = pageSnap.data() || {};
-            tx.update(pageRef, {
-                entries: [entry, ...(data.entries || [])].slice(0, 100),
-                entryIds: [entryId, ...(data.entryIds || [])].slice(0, 100),
-                modifiedOn: now(),
-            });
-        }
-        tx.set(reviewItemRef(item.id), {
-            status: CANONICA_INTAKE_REVIEW_STATUS.PUBLISHED,
-            publishTargetId: entryId,
-            publishedOn: now(),
-            modifiedOn: now(),
-        }, { merge: true });
-    });
-    await markCanonicaCompiledContextSourceChangedAdmin('releases', scope.tId, scope.sId, {
-        reason: 'knowledge_intake_changelog_publish',
-        sourceId: entryId,
-        sourceType: 'changelog',
-    });
-    return { id: entryId, segments: ['changelog', 'context'] as CanonicaPublicCacheSegment[] };
-}
-
 async function maybeEmbedArticle(articleData: Record<string, any>, actor?: IntakeActor) {
     const text = cleanLongText(`${articleData.title}\n${articleData.plainText}`, 8000);
     if (!text || text.length < 40) return;
@@ -1330,19 +1278,6 @@ function buildReviewItemsFromSource(
         }
     }
 
-    if (looksLikeReleaseNote(source.type, source.title, text)) {
-        items.push({
-            ...base,
-            id: '',
-            target: CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG,
-            title: articleTitle,
-            body: text,
-            versionLabel: extractVersion(text),
-            sortOrder: sourceIndex * 10 + 95,
-            confidenceScore: 0.68,
-        });
-    }
-
     return items;
 }
 
@@ -1399,18 +1334,6 @@ function extractFaqPairs(text: string) {
     return pairs;
 }
 
-function looksLikeReleaseNote(type: string, title: string, text: string) {
-    const source = `${type} ${title} ${text.slice(0, 500)}`.toLowerCase();
-    return source.includes('changelog')
-        || source.includes('release note')
-        || /\bv?\d+\.\d+(\.\d+)?\b/.test(source)
-        || source.includes('released');
-}
-
-function extractVersion(text: string) {
-    return text.match(/\bv?\d+\.\d+(?:\.\d+)?\b/i)?.[0] || null;
-}
-
 function sanitizeReviewItemPatch(input: UpdateReviewItemInput) {
     const patch: Record<string, any> = {};
     if (input.status !== undefined) {
@@ -1425,6 +1348,9 @@ function sanitizeReviewItemPatch(input: UpdateReviewItemInput) {
     if (input.target !== undefined) {
         if (!Object.values(CANONICA_INTAKE_REVIEW_TARGET).includes(input.target as any)) {
             throw new Error('Use a valid review item target.');
+        }
+        if (input.target === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG) {
+            throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
         }
         patch.target = input.target;
     }

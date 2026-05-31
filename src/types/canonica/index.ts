@@ -310,6 +310,7 @@ export const CANONICA_SIGNAL_TYPE = {
     TICKET: 'ticket',
     CHAT_NEGATIVE: 'chat_negative',
     ESCALATION: 'escalation',
+    FEEDBACK: 'feedback',
     // Predictive Support (Expansion Item #12) — suggestion interaction signals
     SUGGESTION_SHOWN: 'suggestion_shown',
     SUGGESTION_CLICKED: 'suggestion_clicked',
@@ -1451,6 +1452,7 @@ export type CanonicaSupportBoardStatus = typeof CANONICA_SUPPORT_BOARD_STATUS[ke
 export const CANONICA_SUPPORT_BOARD_SOURCE_TYPE = {
     MANUAL: 'manual',
     TICKET: 'ticket',
+    FEEDBACK: 'feedback',
     CONVERSATION: 'conversation',
     SIGNAL: 'signal',
     MUTATION_PROPOSAL: 'mutation_proposal',
@@ -1616,6 +1618,7 @@ export const CANONICA_INTAKE_REVIEW_TARGET = {
     FAQ: 'faq',
     CANONICAL_PROPOSAL: 'canonical_proposal',
     PRODUCT_SURFACE: 'product_surface',
+    // Legacy read guard only. Intake must not create or publish changelog review targets.
     CHANGELOG: 'changelog',
 } as const;
 

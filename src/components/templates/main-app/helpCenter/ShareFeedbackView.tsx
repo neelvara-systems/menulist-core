@@ -20,6 +20,30 @@ const ShareFeedbackView = () => {
     const [latestFeedback, setLatestFeedback] = useState<Feedback | null>(null);
     const dispatch = useAppDispatch();
 
+    const steps = [
+        {
+            title: t('generalFeedback'),
+            content: <GeneralFeedback />,
+            icon: <LuStar />,
+            fields: ['rating', 'comment'],
+            key: "general"
+        },
+        {
+            title: t('featureUsage'),
+            content: <FeatureUsage />,
+            icon: <LuInbox />,
+            fields: ['featureIssues', 'featureComment'],
+            key: "feature_usage"
+        },
+        {
+            title: t('featureRequests'),
+            content: <FeatureRequests />,
+            icon: <LuLightbulb />,
+            fields: ['featureRequest', 'votedPopularRequests'],
+            key: "feature_requests"
+        },
+    ];
+
     useEffect(() => {
         const fetchLatestFeedback = async () => {
             dispatch(startLoader('fetch-latest-feedback'));
@@ -61,33 +85,18 @@ const ShareFeedbackView = () => {
         }
     };
 
-    const steps = [
-        {
-            title: t('generalFeedback'),
-            content: <GeneralFeedback />,
-            icon: <LuStar />,
-            fields: ['rating', 'comment'],
-            key: "general"
-        },
-        {
-            title: t('featureUsage'),
-            content: <FeatureUsage />,
-            icon: <LuInbox />,
-            fields: ['featureIssues', 'featureComment'],
-            key: "feature_usage"
-        },
-        {
-            title: t('featureRequests'),
-            content: <FeatureRequests />,
-            icon: <LuLightbulb />,
-            fields: ['featureRequest', 'votedPopularRequests'],
-            key: "feature_requests"
-        },
-    ];
+    const handleSubmitCurrentFeedback = async () => {
+        try {
+            const values = await form.validateFields(steps[currentStep].fields);
+            await handleSendFeedback(values);
+        } catch {
+            // Form validation shows inline errors
+        }
+    };
 
     return (
         <>
-            <Form form={form} onFinish={handleSendFeedback} layout="vertical" style={{ marginTop: 24 }}>
+            <Form form={form} layout="vertical" style={{ marginTop: 24 }}>
                 <Steps
                     current={currentStep}
                     items={steps.map(item => ({ key: item.key, title: item.title, icon: item.icon }))}
@@ -106,36 +115,27 @@ const ShareFeedbackView = () => {
                     )}
                     {currentStep < steps.length - 1 && (
                         <Col>
-                            <Button type="primary" onClick={async () => {
-                                try {
-                                    await form.validateFields(steps[currentStep].fields);
-                                    setCurrentStep(currentStep + 1);
-                                } catch {
-                                    // Form validation shows inline errors
-                                }
-                            }} icon={<LuArrowRight />}>{t('next')}</Button>
+                            <Button onClick={() => setCurrentStep(currentStep + 1)} icon={<LuArrowRight />}>{t('next')}</Button>
                         </Col>
                     )}
-                    {currentStep === steps.length - 1 && (
-                        <Col>
-                            <Button type="primary" htmlType="submit" icon={<LuHeartHandshake />}>{t('submitFeedback')}</Button>
-                        </Col>
-                    )}
+                    <Col>
+                        <Button type="primary" onClick={handleSubmitCurrentFeedback} icon={<LuHeartHandshake />}>{t('submitFeedback')}</Button>
+                    </Col>
                 </Row>
             </Form>
 
-            {Boolean(latestFeedback?.comment || latestFeedback?.featureRequest) && (
+            {Boolean(latestFeedback?.createdOn) && (
                 <Alert
                     style={{ marginTop: 44 }}
                     message={<>
                         Last submitted on <DateTimeDisplay value={latestFeedback.createdOn} />
                     </>}
                     description={<Flex vertical justify='flex-start' align='flex-start' gap="small">
-                        <Text type="secondary">Rating: <Rate disabled style={{ margin: "unset" }} value={latestFeedback.rating} /></Text>
-                        <Text type="secondary">General Feedback: <Text>{latestFeedback.comment}</Text></Text>
-                        <Text type="secondary">Feature Feedback: <Text>{latestFeedback.featureComment}</Text></Text>
-                        <Text type="secondary">Feature Issues: <Text>{latestFeedback.featureIssues?.join(', ')}</Text></Text>
-                        <Text type="secondary">Feature Request: <Text>{latestFeedback.featureRequest}</Text></Text>
+                        {latestFeedback.rating ? <Text type="secondary">Rating: <Rate disabled style={{ margin: "unset" }} value={latestFeedback.rating} /></Text> : null}
+                        {latestFeedback.comment ? <Text type="secondary">General Feedback: <Text>{latestFeedback.comment}</Text></Text> : null}
+                        {latestFeedback.featureComment ? <Text type="secondary">Feature Feedback: <Text>{latestFeedback.featureComment}</Text></Text> : null}
+                        {latestFeedback.featureIssues?.length ? <Text type="secondary">Feature Issues: <Text>{latestFeedback.featureIssues.join(', ')}</Text></Text> : null}
+                        {latestFeedback.featureRequest ? <Text type="secondary">Feature Request: <Text>{latestFeedback.featureRequest}</Text></Text> : null}
                         {latestFeedback.votedPopularRequests && latestFeedback.votedPopularRequests.length > 0 && (
                             <Text type="secondary">Voted On Features:
                                 <List

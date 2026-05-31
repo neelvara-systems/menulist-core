@@ -66,8 +66,14 @@ const TARGET_LABELS: Record<string, { label: string; color: string; icon: any }>
     [CANONICA_INTAKE_REVIEW_TARGET.FAQ]: { label: 'FAQ', color: 'cyan', icon: LuHelpCircle },
     [CANONICA_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL]: { label: 'Answer Proposal', color: 'purple', icon: LuShieldCheck },
     [CANONICA_INTAKE_REVIEW_TARGET.PRODUCT_SURFACE]: { label: 'Product Surface', color: 'geekblue', icon: LuLayers },
-    [CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG]: { label: 'Changelog', color: 'orange', icon: LuRocket },
+    [CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG]: { label: 'Changelog (source only)', color: 'orange', icon: LuRocket },
 };
+
+const PUBLISH_TARGET_OPTIONS = Object.entries(TARGET_LABELS).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+    disabled: value === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG,
+}));
 
 const SOURCE_TYPE_OPTIONS = [
     { label: 'Product note', value: CANONICA_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE },
@@ -173,6 +179,7 @@ function ReviewItemCard({
     const isAccepted = item.status === CANONICA_INTAKE_REVIEW_STATUS.ACCEPTED;
     const isRejected = item.status === CANONICA_INTAKE_REVIEW_STATUS.REJECTED;
     const isPublished = item.status === CANONICA_INTAKE_REVIEW_STATUS.PUBLISHED;
+    const isLegacyChangelog = item.target === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG;
 
     return (
         <Card size="small" style={{ borderRadius: 8, borderColor: isAccepted ? token.colorSuccessBorder : token.colorBorderSecondary }}>
@@ -209,7 +216,7 @@ function ReviewItemCard({
                             type="primary"
                             size="small"
                             icon={<LuCheck />}
-                            disabled={saving || isPublished || isAccepted}
+                            disabled={saving || isPublished || isAccepted || isLegacyChangelog}
                             onClick={() => onAccept(item)}
                         >
                             Accept
@@ -369,6 +376,9 @@ export default function CanonicaKnowledgeIntake() {
     const handleEditSave = async () => {
         if (!editingItem || !activeJobId) return;
         const values = await editForm.validateFields();
+        if (editingItem.target === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG && values.target === CANONICA_INTAKE_REVIEW_TARGET.CHANGELOG) {
+            delete values.target;
+        }
         const ok = await updateReviewItem(activeJobId, editingItem.id, {
             ...values,
             tags: splitTags(values.tags),
@@ -650,7 +660,7 @@ export default function CanonicaKnowledgeIntake() {
                 <Form form={editForm} layout="vertical">
                     <Form.Item name="target" label="Publish as">
                         <Select
-                            options={Object.entries(TARGET_LABELS).map(([value, meta]) => ({ value, label: meta.label }))}
+                            options={PUBLISH_TARGET_OPTIONS}
                         />
                     </Form.Item>
                     <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Title is required.' }]}>

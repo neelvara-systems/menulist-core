@@ -23,8 +23,12 @@ This feature strengthens:
 - Canonical Answer Engine: context narrows retrieval scope.
 - FAQ Management: route/page context can surface short published answers before the user opens a full article.
 - Release Binding: changelogs can be attached to affected product surfaces.
-- Signal Mutation: tickets and failed searches carry the same context key as articles and changelogs.
+- Signal Mutation: tickets, failed searches, and reviewed feedback can carry the same context key as articles and changelogs.
 - API and Integration Layer: widget runtime can pass page context without leaking tenant or user identifiers.
+
+## Feedback Review Alignment
+
+Feedback Review can optionally link submitted feedback to a Product Surface after the user sends it. This keeps feedback sorted by the product area it belongs to while preserving the rule that end users are never required to understand or choose internal surface keys. Support Board cards created from feedback carry `relatedSurfaceId` and `relatedContextKeys` when present.
 
 ## Knowledge Intake Alignment
 

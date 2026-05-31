@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import SectionHeader from './SectionHeader';
 
-type PreviewTab = 'Product setup' | 'Key app pages' | 'Widget install' | 'Answer review';
+type PreviewTab = 'Product setup' | 'Key app pages' | 'Widget install' | 'Feedback review' | 'Answer review';
 
 type CardItem = {
     title: string;
@@ -38,7 +38,7 @@ type PreviewConfig = {
     queueRows: RowItem[];
 };
 
-const TABS: PreviewTab[] = ['Product setup', 'Key app pages', 'Widget install', 'Answer review'];
+const TABS: PreviewTab[] = ['Product setup', 'Key app pages', 'Widget install', 'Feedback review', 'Answer review'];
 
 const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
     emerald: 'bg-emerald-500/10 text-emerald-300',
@@ -138,6 +138,36 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Bundle path', meta: 'Versioned JSON', result: 'Cached' },
         ],
     },
+    'Feedback review': {
+        tab: 'Feedback review',
+        route: 'app.canonica.app/workspace/feedback',
+        sidebarActive: 'Feedback',
+        badge: 'Owner review',
+        badgeTone: 'sky',
+        leftEyebrow: 'Feedback review',
+        leftTitle: 'End-user signals stay visible',
+        leftStatus: 'Signal-ready',
+        leftItems: [
+            { title: 'Overall rating', state: '2 stars', detail: 'User says billing setup is unclear' },
+            { title: 'Product area', state: 'Billing', detail: 'Attached to invoices and upgrade flow context' },
+            { title: 'Feature request', state: 'Requested', detail: 'Ask for clearer failed-payment guidance' },
+            { title: 'Suggestion', state: 'Captured', detail: 'Owner can decide whether it needs follow-up' },
+            { title: 'Support Board', state: 'Optional', detail: 'Selected feedback can become a private board card' },
+        ],
+        rightEyebrow: 'Owner action',
+        rightTitle: 'Turn feedback into support work',
+        context: 'feedback signal',
+        question: 'Should this become reusable support knowledge?',
+        answer: 'The owner reviews the feedback, links it to the right product surface, and moves only useful items into Support Board or answer proposal review.',
+        answerTags: ['Owner-reviewed', 'Surface-linked', 'No auto-publish'],
+        queueEyebrow: 'Feedback signals',
+        queueTitle: 'What users are telling support',
+        queueRows: [
+            { title: 'Billing setup confusion', meta: 'Low rating', result: 'Board card' },
+            { title: 'Export request', meta: 'Feature request', result: 'Review later' },
+            { title: 'Onboarding wording', meta: 'Suggestion', result: 'Draft FAQ' },
+        ],
+    },
     'Answer review': {
         tab: 'Answer review',
         route: 'app.canonica.app/workspace/governance',
@@ -170,7 +200,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
     },
 };
 
-const SIDEBAR_ITEMS = ['Activation', 'Product surfaces', 'Knowledge Base', 'Widget', 'Tickets', 'Governance', 'Metrics'];
+const SIDEBAR_ITEMS = ['Activation', 'Product surfaces', 'Knowledge Base', 'Widget', 'Tickets', 'Feedback', 'Governance', 'Metrics'];
 
 function PreviewCards({ items }: { items: CardItem[] }) {
     return (

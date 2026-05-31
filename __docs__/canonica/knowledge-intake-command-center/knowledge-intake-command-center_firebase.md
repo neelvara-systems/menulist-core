@@ -376,7 +376,7 @@ Approved output must pay the small deterministic write cost needed to make the o
 | FAQ/custom Q&A | Bump KB cache version, invalidate `faqs`/`kb`/`context`, mark surface summary stale. | Use existing FAQ cache pattern instead of adding a FAQ cache source; batch FAQ writes by publish selection. |
 | Canonical answer | Bump canonical cache version, mark `canonical`. | Only owner-approved active answers bump canonical runtime; drafts/proposals do not. |
 | Product surface | Mark `surfaces`, rebuild or mark stale `contextContent_{tId}_{sId}`. | Rebuild summary once per publish batch, not once per surface. |
-| Changelog/release | Invalidate `changelog`/`context`, mark `releases` when release context changes, run release activation only after approval. | Keep recent changelog pages bounded; do not scan old pages on publish. |
+| Release-note source context | No changelog or release-timeline writes from intake. Use release notes only to prepare support drafts. | Owner-managed changelog writes own the `changelog`/`context` invalidation and release activation path. |
 | Entity/relation | Mark `entities`/`entityRelations`, update search index and graph summaries only when relevant flags are enabled. | Write entity candidates first; only approved ontology changes touch runtime indexes. |
 
 Product-surface summary rebuild is intentionally bounded by the existing caps for active surfaces, published articles, published FAQs, recent changelog pages, and recent tickets. The intake publisher should call it once after a publish batch that affects related content, or mark it stale for scheduler repair when immediate rebuild is not needed.

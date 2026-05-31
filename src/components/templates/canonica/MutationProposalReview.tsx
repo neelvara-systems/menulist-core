@@ -276,7 +276,7 @@ export default function MutationProposalReview() {
                 showIcon
                 style={{ marginBottom: 16 }}
                 message="Review repeated support gaps before they become answers"
-                description="Canonica can draft from ticket and chat signals, but owners approve the final canonical answer."
+                description="Canonica can draft from ticket, chat, and feedback signals, but owners approve the final canonical answer."
             />
 
             <List

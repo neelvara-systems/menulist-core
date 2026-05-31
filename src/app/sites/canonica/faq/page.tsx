@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, knowledge intake, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, knowledge intake, team access, AI-built apps, page-aware support, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, knowledge intake, team access, AI-built apps, widget context, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, knowledge intake, team access, AI-built apps, widget context, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -133,6 +133,10 @@ const FAQS = [
     {
         question: 'What is the Support Board?',
         answer: 'Support Board is a private owner/staff workboard for selected support gaps, internal notes, status history, and answer-proposal handoff. It helps owners track follow-up without turning Canonica into a project-management tool.',
+    },
+    {
+        question: 'What happens to feedback and feature requests?',
+        answer: 'Users can submit ratings, product-area feedback, feature requests, and suggestions from the Help Center. Owners review those items privately in Canonica and can move useful feedback into Support Board or answer-proposal review. It is not a public voting board and does not publish answers automatically.',
     },
     {
         question: 'Does Support Board sync every ticket or signal?',

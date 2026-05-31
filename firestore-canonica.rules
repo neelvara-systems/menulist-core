@@ -61,7 +61,8 @@ service cloud.firestore {
 
     match /canonica_signalEvents/{docId} {
       allow read: if isCanonicaScopedReadWithSupportControl();
-      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow create: if isCanonicaScopedCreateWithSupportControl()
+        || isCanonicaFeedbackSignalCreate();
       allow update: if isCanonicaScopedUpdateWithSupportControl();
       allow delete: if isCanonicaScopedDeleteWithSupportControl();
     }
@@ -189,8 +190,10 @@ service cloud.firestore {
     }
 
     match /feedback/{docId} {
-      allow read: if isCanonicaScopedReadWithSupportControl();
-      allow create: if isCanonicaScopedCreateWithSupportControl();
+      allow read: if isCanonicaScopedReadWithSupportControl()
+        || isCanonicaFeedbackSelfRead();
+      allow create: if isCanonicaScopedCreateWithSupportControl()
+        || isCanonicaFeedbackSelfCreate();
       allow update: if isCanonicaScopedUpdateWithSupportControl();
       allow delete: if false;
     }
@@ -373,6 +376,40 @@ service cloud.firestore {
     function hasCanonicaSupportControlPermission() {
       return hasCanonicaPermission('canManageSupport')
         || hasCanonicaPermission('canManageWidget');
+    }
+
+    function isCanonicaSelfActor(data) {
+      return data.keys().hasAll(['uId'])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.uId)
+        );
+    }
+
+    function isCanonicaSelfScopedCreate(data) {
+      return isAuthenticated()
+        && isCanonicaTenantMember(data)
+        && isCanonicaSelfActor(data);
+    }
+
+    function isCanonicaFeedbackSelfRead() {
+      return isAuthenticated()
+        && isCanonicaTenantMember(resource.data)
+        && isCanonicaSelfActor(resource.data);
+    }
+
+    function isCanonicaFeedbackSelfCreate() {
+      return isCanonicaSelfScopedCreate(request.resource.data);
+    }
+
+    function isCanonicaFeedbackSignalCreate() {
+      return isCanonicaSelfScopedCreate(request.resource.data)
+        && request.resource.data.type == 'feedback'
+        && request.resource.data.entityId == 'unresolved'
+        && request.resource.data.keys().hasAll(['metadata'])
+        && request.resource.data.metadata is map
+        && request.resource.data.metadata.keys().hasAll(['source'])
+        && request.resource.data.metadata.source == 'help_center_feedback';
     }
 
     function kbCategoriesDocMatchesCurrentStore(docId) {

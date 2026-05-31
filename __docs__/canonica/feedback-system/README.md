@@ -1,7 +1,7 @@
 # Feedback System — Feature Documentation
 
-> **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Status:** IMPLEMENTED
+> **Last Updated:** 2026-05-31
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -9,7 +9,9 @@
 
 ## What Is This
 
-The Feedback System is MenuList's **multi-step owner feedback collection infrastructure** — a 3-step wizard where SMB owners submit general platform feedback (star rating + comment), feature-specific usage feedback (issue checklist + comment), and feature requests (free-text + vote on popular requests). It also includes a **generic content feedback system** that handles likes/dislikes for articles, changelog entries, and future content types through a unified API.
+The Feedback System is Canonica-scoped **customer support feedback collection infrastructure**. Users submit general feedback or ratings, product-area usage feedback, feature requests, and suggestions from the Help Center. Owners review those items under the Canonica workspace, optionally link each item to a Product Surface, and move important submissions into Support Board or an owner-approved answer proposal.
+
+It also includes a generic content feedback system that handles likes/dislikes for articles, changelog entries, and future content types through a unified API.
 
 ---
 
@@ -30,19 +32,28 @@ The Feedback System is MenuList's **multi-step owner feedback collection infrast
 
 ## Key Files
 
-### Owner-Side Components
-- `src/components/templates/main-app/helpCenter/ShareFeedbackView.tsx` — 3-step wizard (164 lines)
+### Feedback Submission Components
+- `src/components/templates/main-app/helpCenter/ShareFeedbackView.tsx` — selectable feedback-category flow with direct submit
 - `src/components/templates/main-app/helpCenter/GeneralFeedback.tsx` — Step 1: Star rating + comment (30 lines)
-- `src/components/templates/main-app/helpCenter/FeatureUsage.tsx` — Step 2: Feature issues checklist (52 lines)
-- `src/components/templates/main-app/helpCenter/FeatureRequests.tsx` — Step 3: Feature request + voting (88 lines)
+- `src/components/templates/main-app/helpCenter/FeatureUsage.tsx` — Product-area issues checklist
+- `src/components/templates/main-app/helpCenter/FeatureRequests.tsx` — Feature request and support-improvement votes
+- `src/app/(canonica)/canonica/help/page.tsx` — authenticated Canonica Help Center route with Share Feedback tab
+
+### Owner Review Components
+- `src/app/(canonica)/canonica/feedback/page.tsx` — Canonica owner feedback route
+- `src/components/templates/canonica/feedback/CanonicaFeedbackReview.tsx` — owner-scoped feedback review wrapper
+- `src/components/templates/platform/feedbackAdmin/index.tsx` — reusable platform/owner feedback review template with Product Surface filtering and assignment
+- `src/hooks/canonica/useSupportBoard.ts` — imports actionable `feedback` signals into Support Board when source sync is enabled
 
 ### Database Layer
-- `src/database/feedback/index.ts` — 2 DAL functions (54 lines)
+- `src/database/feedback/index.ts` — Help Center feedback DAL, owner-scoped queries, Product Surface assignment, and feedback signal emission
 - `src/database/feedback/genericFeedback.ts` — Unified content feedback router (131 lines)
 - `src/database/contentFeedback/index.ts` — Article/changelog feedback with comments (68 lines)
+- `src/lib/canonica/signalEmitter.ts` — non-blocking Canonica signal emission
 
 ### Types
 - `src/types/feedback.ts` — Feedback interface (17 lines)
+- `src/types/canonica/index.ts` — `CANONICA_SIGNAL_TYPE.FEEDBACK`
 
 ### Hooks
 - `src/hooks/useFeedback.ts` — Feedback state management
@@ -51,10 +62,14 @@ The Feedback System is MenuList's **multi-step owner feedback collection infrast
 
 ## Two Feedback Systems
 
-### 1. Owner Feedback (3-Step Wizard)
+### 1. Help Center Feedback (3-Step Wizard)
 **Collection:** `feedback`
-**Purpose:** Collect general platform experience, feature usage issues, and feature requests
-**Data:** Rating, comments, feature issues, feature requests, popular request votes
+**Purpose:** Collect product/support experience, product-area usage issues, ratings, feature requests, and suggestions
+**Data:** Rating, comments, feature issues, feature requests, popular request votes, optional Product Surface assignment
+**Owner path:** `/canonica/feedback`
+**Public website path:** `/product/feedback-review`
+**Support path:** owner reviews at `/canonica/feedback` -> optional Product Surface assignment -> optional **Add to Support Board** -> owner links entity -> answer proposal if needed
+**Signal path:** `feedback` submission -> `canonica_signalEvents(type='feedback')` -> Support Board signal sync / Signal Queue context
 
 ### 2. Content Feedback (Unified API)
 **Collections:** `article_feedback/{tId}/{sId}`, `changelog_feedback/{tId}/{sId}`
@@ -67,4 +82,8 @@ The Feedback System is MenuList's **multi-step owner feedback collection infrast
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-31 | 1.4.0 | Added optional Product Surface sorting/assignment for feedback review, Support Board surface carry-through, and compact widget-feedback context metadata |
+| 2026-05-31 | 1.3.0 | Added public `/product/feedback-review` page and homepage/product preview treatment for Feedback Review |
+| 2026-05-31 | 1.2.0 | Added owner-scoped `/canonica/feedback`, feedback signal emission, Support Board signal import, end-user create/self-read rules, and Canonica feedback indexes |
+| 2026-05-31 | 1.1.0 | Reclassified feedback as Canonica-scoped Help Center feedback: `addFeedback()` writes through `canonicaRequestBodyComposer` and Canonica Firebase, with `/canonica/help` exposing the Share Feedback tab and `/platform/feedback-admin` reviewing submitted rows |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 4 UI files, 3 DAL files, 1 type file |

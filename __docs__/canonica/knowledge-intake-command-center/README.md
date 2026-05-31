@@ -17,7 +17,7 @@ Owner-facing name:
 
 Product definition:
 
-Canonica intake lets a solo founder or product owner add product links, docs, files, policies, screenshots, transcripts, changelog entries, support exports, and starter answers. Canonica turns those inputs into source-backed product understanding, approved support drafts, page-aware support suggestions, and launch readiness without auto-publishing authoritative answers.
+Canonica intake lets a solo founder or product owner add product links, docs, files, policies, screenshots, transcripts, release notes or existing changelog entries, support exports, and starter answers. Canonica turns those inputs into source-backed product understanding, approved support drafts, page-aware support suggestions, and launch readiness without auto-publishing authoritative answers.
 
 This is not a generic upload widget. It is the entry point into Canonica's Support Knowledge Control Plane:
 
@@ -28,7 +28,7 @@ This is not a generic upload widget. It is the entry point into Canonica's Suppo
 - source authority
 - conflict and gap review
 - article, FAQ, canonical answer, workflow, and widget suggestions
-- safe publishing into KB, FAQ, ontology, product surfaces, canonical answers, and readiness summaries
+- safe publishing into KB, FAQ, ontology, product surfaces, canonical answer proposals, and readiness summaries
 
 ---
 
@@ -43,7 +43,7 @@ This is not a generic upload widget. It is the entry point into Canonica's Suppo
 | Entitlement | Mutating and expensive actions require an active Canonica beta/subscription summary on the workspace store document. |
 | Processing | Text-friendly files are extracted in the browser. Screenshots/images and short media use gated Gemini extraction with support-credit reservation, AI operation logging, and refund-on-failure. No background crawler, native connector, or scheduler import fanout is enabled. |
 | Review | Drafts become review items. Owners accept, reject, or edit before publish. |
-| Publishing | Accepted items publish into existing Canonica runtime collections: KB articles/categories, FAQs, product surfaces, changelog pages, and canonical mutation proposals. |
+| Publishing | Accepted items publish into existing Canonica runtime collections: KB articles/categories, FAQs, product surfaces, and canonical mutation proposals. Changelog pages remain owner-managed release content. |
 | Canonical answers | Intake creates canonical mutation proposals only. It does not auto-publish authoritative canonical answers. |
 | Runtime freshness | Publish bumps existing cache/source-version paths and rebuilds the compact context-content summary for page-aware widget/search alignment. |
 | Cost posture | No realtime listeners, no unbounded scans, no hidden retry workers, and no raw-file Storage retention were added. The nightly scheduler only refreshes a compact intake summary from the latest bounded job docs when enabled. |
@@ -167,13 +167,13 @@ Knowledge Intake must publish into Canonica's existing runtime paths. It must no
 
 | Runtime path | Intake alignment requirement |
 | --- | --- |
-| Help center / hosted KB | Approved article output writes `kb_articles` and `kb_categories`; public content cache is invalidated for `kb`, `faqs`, `changelog`, and `context` as applicable. |
+| Help center / hosted KB | Approved article output writes `kb_articles` and `kb_categories`; public content cache is invalidated for `kb`, `faqs`, and `context` as applicable. |
 | Help center and widget search | Published articles must have embeddings before a topic is marked search-ready. Runtime search remains canonical-first, FAQ/custom-answer second, and vector/RAG fallback last. |
 | FAQ/custom Q&A | Approved short answers write `canonica_faqs` with `status: published`, `active: true`, `articleId`, `contextKeys`, `entityIds`, and `tags` when available. |
 | Canonical answer engine | Intake creates reviewable drafts/proposals first. Active canonical answers are written only after approval and must bump the canonical cache/source version. |
-| Product surface related content | Article, FAQ, changelog, and surface changes must rebuild or mark stale `platformSummary/contextContent_{tId}_{sId}` so page-aware widget suggestions can see the new output. |
-| Compiled context bundles | Published output must mark the existing destination source keys stale: `kb`, `docsNav`, `canonical`, `surfaces`, `releases`, `entities`, or `entityRelations`. Intake-only readiness changes must not force public bundle rebuilds. |
-| Changelog and release drift | Changelog output writes existing changelog pages; release-aware output writes `canonica_releases` only when entity changes are known and owner-approved. Activation remains the drift trigger. |
+| Product surface related content | Article, FAQ, and surface changes must rebuild or mark stale `platformSummary/contextContent_{tId}_{sId}` so page-aware widget suggestions can see the new output. |
+| Compiled context bundles | Published output must mark the existing destination source keys stale: `kb`, `docsNav`, `canonical`, `surfaces`, `entities`, or `entityRelations`. Intake-only readiness changes and release-note source context must not force public bundle rebuilds. |
+| Changelog and release drift | Intake can use release notes or existing changelog entries as source context for support drafts, but it does not write changelog pages or release timeline records. Owners publish changelog entries through the Changelog workflow, which remains the release-drift trigger. |
 | Support Board | Intake may create selected support-gap cards only when the Support Board feature is enabled. It must not mirror every source fact, ticket, or raw signal. |
 
 ---

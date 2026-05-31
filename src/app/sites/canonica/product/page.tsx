@@ -14,7 +14,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -89,9 +89,10 @@ const FEATURES = [
         id: 'support-gap-loop',
         badge: 'Support Gap Loop',
         title: 'Use missed questions to create better answers',
-        description: 'Tickets, low-confidence answers, and negative feedback become signals. Canonica clusters those signals and routes the useful ones into owner-reviewed improvements.',
+        description: 'Tickets, low-confidence answers, ratings, feature requests, suggestions, and negative feedback become signals. Canonica clusters those signals and routes the useful ones into owner-reviewed improvements.',
         capabilities: [
             'Fire-and-forget signal writes with bounded payloads',
+            'Canonica-scoped feedback review for ratings, product-area issues, feature requests, and suggestions',
             'Signal-to-knowledge queue for recurring gaps',
             'Private Support Board cards for selected owner follow-up and internal notes',
             'Draft approved answers for owner review',
@@ -123,7 +124,7 @@ export default function CanonicaProductPage() {
                         The support layer for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica connects your app pages, help content, custom owner answers, widget, tickets, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
+                        Canonica connects your app pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
                 </section>
 
@@ -145,7 +146,7 @@ export default function CanonicaProductPage() {
                         <SectionHeader
                             eyebrow="Product areas"
                             title="Each part of Canonica has its own job."
-                            description="Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, Support Board follow-up, and answer review."
+                            description="Canonica is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, feedback review, Support Board follow-up, and answer review."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {CANONICA_PRODUCT_AREAS.map((area) => (
@@ -305,10 +306,10 @@ export default function CanonicaProductPage() {
                         basePath={basePath}
                         href="/get-started"
                         data-canonica-event="product_cta_clicked"
-                        data-canonica-label="start_free_setup"
+                        data-canonica-label="start_support_setup"
                         className="inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
-                        Start free setup
+                        Start support setup
                     </CanonicaLink>
                 </section>
             </main>

@@ -18,6 +18,7 @@ Shared existing surfaces receive additive fields only:
 - KB article modal: `contextKeys`
 - Changelog drawer: `contextKeys`
 - Ticket detail: `contextKeys`
+- Feedback Review: `contextKey`, `surfaceId`, `surfaceLabel` assignment
 - Search/widget response: `relatedContent`
 
 ## Data Model
@@ -67,6 +68,12 @@ Matching order:
 3. overlap with entity hints and tags
 
 The winning surface can add trusted surface hints to retrieval. Unknown context fields are stripped by validation.
+
+## Feedback Review Integration
+
+`/canonica/feedback` loads the same surface list as the Product Surface manager. Owners can assign or clear a surface on each feedback row. This writes only compact fields to `feedback` and preserves the original submitter fields. When the owner creates a Support Board card from feedback, `relatedSurfaceId` and `relatedContextKeys` are copied into the card.
+
+Widget search history stores only compact surface fields (`contextKey`, `surfaceFeature`, `surfacePage`, `surfaceWorkflow`) so negative widget feedback can emit context-aware support signals without persisting the full transient `CanonicaContextPayload`.
 
 ## Cost Pattern
 

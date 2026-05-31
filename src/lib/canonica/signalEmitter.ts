@@ -5,6 +5,7 @@
  * - Ticket creation → TICKET signal
  * - Chat negative feedback → CHAT_NEGATIVE signal
  * - Escalation events → ESCALATION signal
+ * - Help Center feedback → FEEDBACK signal
  * 
  * RULES:
  * - Gated by ENABLE_CANONICA_SIGNAL_MUTATION feature flag
@@ -88,11 +89,17 @@ function getDeduplicationKey(params: EmitSignalParams): string | null {
     if (params.type === 'chat_negative' && meta.sessionId && meta.messageId) {
         return `chat_${meta.sessionId}_${meta.messageId}`;
     }
+    if (params.type === 'chat_negative' && meta.searchHistoryId) {
+        return `chat_history_${meta.searchHistoryId}`;
+    }
     if (params.type === 'ticket' && meta.ticketId) {
         if (meta.signalPurpose === 'ticket_resolution' || Array.isArray(meta.resolutionMessages)) {
             return `ticket_resolution_${meta.ticketId}`;
         }
         return `ticket_${meta.ticketId}`;
+    }
+    if (params.type === 'feedback' && meta.feedbackId) {
+        return `feedback_${meta.feedbackId}`;
     }
     return null;
 }

@@ -6,6 +6,92 @@
 
 ---
 
+## May 31, 2026 — Today Weekly Growth Pack
+
+### Added
+
+- **Today now has a gated Weekly Growth Pack** — Added a disabled-by-default `ENABLE_TODAY_WEEKLY_GROWTH_PACK` flag that can show copy-ready WhatsApp, Google Business Profile, Instagram, and staff-line drafts inside the existing Today module.
+- **Desktop and mobile use the same pack builder** — Desktop `/today` and the real owner mobile Today tab now share `src/lib/today/weeklyGrowthPack.ts`, so the pack stays deterministic and uses current MenuList truth only.
+
+### Product Decision
+
+- **Weekly Growth Pack remains paused** — Do not freeze or roll it out as a main feature yet. Owner usability and need are not proven, so the flag stays off and the feature can return only through a small owner pilot.
+
+### Cost
+
+- **No Firebase cost change** — The pack is client-side only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, schedulers, provider calls, external posting, routing changes, or deploys.
+
+---
+
+## May 31, 2026 — Canonica Website Launch-Ready Positioning
+
+### Changed
+
+- **Canonica homepage hero now leads with launch-ready support** — The first-screen copy now says founders can launch their SaaS with support already built, with setup as the primary action and the page-aware demo as proof.
+- **Canonica public claims now separate generated knowledge from managed support surfaces** — Website and docs now say Canonica prepares docs, FAQs, answer drafts, hosted help, and widget support while tickets, changelog publishing, feedback, ratings, and feature requests remain owner-managed.
+
+### Cost
+
+- **No Firebase cost change** — This is static website copy, metadata, and documentation only. It adds no Firestore reads, writes, Cloud Functions, indexes, Storage operations, provider calls, routing changes, or deploys.
+
+---
+
+## May 31, 2026 — Canonica Feedback Signals And Owner Review
+
+### Added
+
+- **Feedback Review is now on the Canonica public website** — Added `/product/feedback-review` as a buyer-facing feature page and added a homepage/product preview tab showing feedback becoming support review work.
+- **Canonica owners now have a scoped feedback review route** — `/canonica/feedback` shows ratings, product-area feedback, feature requests, suggestions, workspace stats, and detail rows for the current Canonica `tId/sId`.
+- **Help Center feedback now emits support signals** — Feedback submissions still write to the Canonica `feedback` collection and now emit non-blocking `canonica_signalEvents(type='feedback')` rows when signal mutation is enabled.
+- **Feedback rows can be added directly to Support Board** — Owners can turn a selected feedback item into a private Support Board card without waiting for source sync.
+- **Support Board can import feedback signals** — The actionable signal sync path now accepts feedback signals and creates cards with rating/request-aware priority and tags.
+- **Feedback submission is now category-correct** — Users can submit general feedback, product-area issues, or feature requests directly; submissions no longer have to pass through the feature-request step.
+- **Feedback can now be sorted by Product Surface** — Owners can assign, change, clear, and filter feedback by Product Surface from `/canonica/feedback`.
+- **Widget answer feedback keeps compact surface context** — Widget search history stores only compact surface fields so negative answer feedback can feed context-aware support signals without persisting the full transient context payload.
+
+### Changed
+
+- **Feedback options are SaaS-support generic** — Removed MenuList/menu-specific feature names from the Canonica Help Center feedback options.
+- **Support Board cards inherit feedback surface context** — Cards created from feedback now carry `relatedSurfaceId` and `relatedContextKeys` when the feedback row is linked to a Product Surface.
+- **Unresolved signals are excluded from automatic mutation clustering** — Feedback remains a review signal until an owner links a Support Board card to a real Canonica entity.
+- **Canonica Firestore rules now support end-user feedback safely** — Authenticated tenant users can create their own feedback and read their own latest row; owner/support users can review scoped workspace feedback.
+
+### Cost
+
+- **Firebase cost is explicit and bounded** — Each feedback submission adds one feedback write and, when signal mutation is enabled, one signal write. Owner review adds one bounded `tId+sId` feedback query plus one Product Surface option query. Assigning a Product Surface updates one feedback document. Adding selected feedback to Support Board adds one card write.
+
+---
+
+## May 31, 2026 — Website Asset Operating System Planning
+
+### Added
+
+- **Website Asset Operating System documentation** — Added a dedicated internal doc set for the cross-product asset contract that will let Codex audit, brief, review, and later regenerate MenuList and Canonica website assets without repeated founder context.
+- **Product-boundary decision recorded** — The ChatGPT asset-factory proposal is accepted as a separate-product-style internal architecture, not a public market-facing product now, not a MenuList owner feature, and not Canonica runtime.
+- **Asset governance first-pass scope** — Documented asset slots, manifests, source fingerprints, quality scoring, autonomy levels, founder approval gates, storage policy, mobile output checks, and first implementation tests before any video/media generation work.
+- **Internal v1 implementation** — Added `packages/asset-factory/` with typed asset slots, brand contexts, manifest, local audit/review/brief/fingerprint scripts, internal placeholder generation, raw/working guardrails, an asset skill, and an internal review prompt. Added root npm scripts for `assets:audit`, `assets:review`, `assets:brief`, `assets:fingerprint`, and `assets:generate:missing`.
+- **Founder usage guide** — Added a practical guide explaining what the system is, why it exists, where it lives, how to run it, how to ask Codex for asset work, and which asset types require founder approval.
+- **Canonica-adjacent product thesis** — Updated AssetOS docs to position it beside Canonica's founder/operator/developer product truth layer: Canonica governs support knowledge truth, while AssetOS governs product-media truth through read-only briefs, fingerprints, audits, and founder review.
+
+### Cost
+
+- **No Firebase cost change** — This is local docs and tooling only. It adds no Firestore reads, writes, listeners, Cloud Functions, Firebase Storage operations, indexes, schedulers, public routes, website runtime media, or deploys.
+
+---
+
+## May 31, 2026 — GrowthOS Command Center Planning
+
+### Added
+
+- **GrowthOS Command Center planning docs** — Added a candidate planning set for the pasted GrowthOS conversation, including a grounded ChatGPT review, decision brief, product spec, implementation plan, Firebase cost contract, mobile assessment, marketing notes, website copy candidate, helpdoc candidate, and test matrix.
+- **GrowthAction decision guardrails** — Documented `GrowthAction` as a planning abstraction while preserving the current Stage 2 gate, Social Content/Today as GrowthOS v0, export-only first scope, and the rule that GrowthOS must not write MenuList truth unless the founder changes the product-separation boundary.
+
+### Cost
+
+- **No runtime Firebase cost change** — This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routing changes, or deploys.
+
+---
+
 ## May 31, 2026 — Canonica Intake Media And Ledger Hardening
 
 ### Added

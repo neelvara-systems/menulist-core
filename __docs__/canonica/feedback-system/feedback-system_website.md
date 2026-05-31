@@ -1,7 +1,7 @@
 # Feedback System — Website Content
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.4.0
+> **Last Updated:** 2026-05-31
 > **Audience:** Public website visitors
 
 ---
@@ -9,32 +9,44 @@
 ## SEO Meta
 
 ```
-Title: Share Feedback | MenuList
-Description: Share your experience, report feature issues, and request new features through a guided 3-step wizard.
-Keywords: feedback, feature requests, user feedback, product feedback
-OG Title: Your Feedback Shapes the Product
-OG Description: Rate your experience, report issues, and vote on feature requests.
+Title: Feedback Review | Canonica
+Description: Collect product feedback, ratings, feature issues, requests, and suggestions through the Canonica Help Center, then sort them by product surface and review them as support signals.
+Keywords: customer feedback, feature requests, support signals, SaaS feedback
+OG Title: Feedback Becomes Support Signals
+OG Description: Collect ratings, issues, requests, and suggestions without turning support into a roadmap board.
 ```
 
 ---
 
 ## Feature Block
 
+### Website Placement
+
+- Homepage and Product preview: `Feedback review` tab in the Canonica product scene
+- Product feature page: `/product/feedback-review`
+- Support Control page: `/product/support-control`
+- Product grids, header, footer, resources, sitemap, and metadata inherit the feature from `CANONICA_SUPPORT_FEATURES`
+
 ### Headline
-**Your input, structured.**
+**Customer feedback, routed into support control.**
 
 ### Subheadline
-Rate your experience, flag feature issues, and request what you need — all in one guided form.
+Users can rate their experience, flag product-area issues, and suggest improvements from the Help Center. Owners review the feedback under their Canonica workspace, group it by Product Surface, and turn real support gaps into Support Board cards or answer proposals.
 
 ### How It Works
 
-**Step 1 — Rate your experience** — Star rating and general comments about the platform.
+**Step 1 — Collect ratings** — Star rating and general comments about the product experience.
 
-**Step 2 — Flag feature issues** — Select any features you've had trouble with and describe what happened.
+**Step 2 — Capture product-area issues** — Users select account, billing, onboarding, settings, integration, export, notification, reporting, or reliability issues and describe what happened.
 
-**Step 3 — Request features** — Describe what you'd like to see and vote on popular requests from other users.
+**Step 3 — Capture requests and suggestions** — Users describe what they need or vote on common support-improvement suggestions.
+
+**Step 4 — Review as support work** — Owners open `/canonica/feedback`, assign Product Surfaces when useful, and move important rows into Support Board when needed.
 
 ### Trust Indicators
-- Guided 3-step form reduces friction
+- Direct submit per feedback category
 - Previous feedback visible after submission
-- Feature request voting enables crowdsourced prioritization
+- Owner-scoped review under Canonica `pId/tId/sId`
+- Optional Product Surface sorting for owner triage
+- Feedback signal path into Support Board and owner-approved knowledge proposals
+- No public roadmap, no auto-publishing, no ticket spam

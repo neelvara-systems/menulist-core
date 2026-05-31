@@ -2,9 +2,10 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 import { CANONICA_INSTALL_DOCS } from '@lib/canonica/installContract/contract';
 
 export const CANONICA_SITE_URL = 'https://canonica.app';
+export const CANONICA_SITE_TITLE = 'Canonica — Launch-Ready Support for SaaS Founders';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps AI-built SaaS apps launch support without chaos: knowledge intake, team access, page-aware widget, hosted help, custom owner Q&A, Support Board, approved answers, and reviewable fixes for missed questions.';
+    'Canonica helps SaaS founders launch support-ready: turn product material into docs, FAQs, answer drafts, hosted help, and a page-aware widget while tickets, changelogs, feedback, and feature requests stay owner-managed.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -15,7 +16,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
 }> = [
     {
         path: '/',
-        title: 'Canonica — Support for AI-Built SaaS Apps',
+        title: CANONICA_SITE_TITLE,
         description: CANONICA_SITE_DESCRIPTION,
         priority: 1,
         changeFrequency: 'weekly',
@@ -23,7 +24,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Support layer for AI-built SaaS apps: knowledge intake, team access, widget, hosted help, Support Board, custom owner Q&A, approved answers, and support-gap review.',
+        description: 'Support layer for AI-built SaaS apps: knowledge intake, team access, widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -44,7 +45,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | Canonica',
-        description: 'Operate Canonica help center, docs, FAQ, custom owner Q&A, changelog, tickets, Support Board, conversations, and weekly support review from one support control layer.',
+        description: 'Operate Canonica help center, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one support control layer.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -165,14 +166,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/resources',
         title: 'Resources | Canonica',
-        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, install, Support Board, runtime safety, pricing, and setup.',
+        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, feedback review, install, Support Board, runtime safety, pricing, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
     {
         path: '/updates',
         title: 'Updates | Canonica',
-        description: 'Recent Canonica product updates across knowledge intake, launch setup, team access, widget runtime, Support Board, compiled context, governance, and public website work.',
+        description: 'Recent Canonica product updates across knowledge intake, launch setup, team access, widget runtime, feedback review, Support Board, compiled context, governance, and public website work.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -221,7 +222,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions founders ask about Canonica setup, knowledge intake, team access, AI-built apps, page-aware support, Support Board, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about Canonica setup, knowledge intake, team access, AI-built apps, page-aware support, feedback review, Support Board, screenshots, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },

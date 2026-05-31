@@ -77,7 +77,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Signal queue',
-                detail: 'Tickets, negative feedback, fallback, and escalations become reviewable mutation proposals.',
+                detail: 'Tickets, feedback, ratings, feature requests, fallback, and escalations become reviewable support signals and mutation proposals.',
             },
             {
                 title: 'Trust and readiness metrics',

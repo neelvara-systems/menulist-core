@@ -1,7 +1,7 @@
 # Feedback System — Mobile Support Assessment
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.4.0
+> **Last Updated:** 2026-05-31
 > **Audience:** Mobile team, Product
 
 ---
@@ -11,13 +11,13 @@
 | Gate | Question | Answer | Pass? |
 |------|----------|--------|:-----:|
 | **Frequency** | Used daily/multiple times per day? | No — feedback submitted occasionally (monthly at best) | ❌ |
-| **Speed** | Completes in <5 seconds? | No — 3-step form takes 1-3 minutes to complete | ❌ |
-| **Touch** | Works with thumb-only? | Partially — star rating and checkboxes are touch-friendly, but multi-step form navigation is not ideal | ⚠️ Partial |
+| **Speed** | Completes in <5 seconds? | Partial — one selected category can be submitted directly, but thoughtful text feedback takes longer | ⚠️ Partial |
+| **Touch** | Works with thumb-only? | Partially — star rating, checkboxes, and buttons are touch-friendly; long text entry remains deliberate | ⚠️ Partial |
 | **Value** | Needed away from desk? | No — feedback is a deliberate task, not urgent | ❌ |
 
-**Result: 0 FULL PASS + 1 PARTIAL + 3 FAIL → Mobile UI is NOT required**
+**Result: 0 FULL PASS + 2 PARTIAL + 2 FAIL -> dedicated mobile UI is NOT required**
 
-Feedback collection is an infrequent, deliberate task that benefits from desktop screen space. The 3-step wizard with checkboxes, text areas, and voting is better suited for desktop.
+Feedback collection is an infrequent, deliberate task that benefits from desktop screen space. The shared responsive form is acceptable because users can now submit the selected category directly without completing unrelated categories.
 
 Content feedback (likes/dislikes) on articles and changelog is already simple enough to work on mobile without dedicated components (single tap on icon).
 
@@ -32,3 +32,7 @@ Article and changelog likes/dislikes are **single-tap actions** that work on any
 **Updated 2026-05-19:** Feedback Admin is available to `PLATFORM` users from MenuList Mobile More -> Canonica -> Feedback Admin.
 
 This route mounts the existing platform Feedback Admin template through `MobilePlatformInternalScreen`. It is a real operator screen with feedback stats, feedback list, and detail modal. The mobile wrapper must keep cards, descriptions, and modals within the viewport; it must not create a duplicate MenuList-only feedback admin screen.
+
+## 4. Canonica Owner Feedback Review On Mobile
+
+`/canonica/feedback` uses the same responsive dashboard shell as other Canonica management routes. It is acceptable on mobile for urgent review, but it remains a low-frequency owner task. Product Surface filtering and assignment use the same Ant Design select controls as the desktop route and remain optional. The route must keep buttons at 44px touch targets through the existing Canonica dashboard mobile CSS and must not introduce a separate mobile-only feedback module.

@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for Canonica product
 > **Status:** ✅ IMPLEMENTED — refreshed for AI-built SaaS founders, self-service Canonica, and agent-readable public discovery
-> **Date:** 2026-05-28
+> **Date:** 2026-05-31
 > **Domain:** canonica.app (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
@@ -29,11 +29,11 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | AI-built SaaS hero + first-screen page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
+| `/` | Homepage | Launch-ready support hero for SaaS founders + first-screen page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
 | `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, app pages, widget key, and readiness |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, and owner FAQ answers |
-| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, Support Board, conversations, and weekly support review |
+| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, and weekly support review |
 | `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, and trust metrics |
 | `/product/team-access` | Product Feature | Standalone feature page for workspace members, Canonica roles, owner-passcode sharing, owner reset, force sign-out, and workspace-scoped access |
 | `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
@@ -41,6 +41,7 @@
 | `/product/changelog` | Product Feature | Standalone feature page for release notes connected to product surfaces, affected support answers, and drift review |
 | `/product/tickets` | Product Feature | Standalone feature page for fallback tickets, safe debugging context, and ticket-to-knowledge signal loops |
 | `/product/support-board` | Product Feature | Standalone feature page for private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff |
+| `/product/feedback-review` | Product Feature | Standalone feature page for private feedback review, ratings, feature requests, suggestions, Support Board handoff, and answer-proposal governance |
 | `/product/workflow-notifications` | Product Feature | Standalone feature page for Slack/email workflow notifications, digest-first governance alerts, test delivery, health summaries, and bounded delivery |
 | `/product/proactive-help` | Product Feature | Standalone feature page for configured page-aware proactive prompts backed by active triggers and approved support summaries |
 | `/use-cases` | Use Cases | AI-built SaaS and founder/operator scenarios by support problem |
@@ -62,10 +63,10 @@
 | `/agents/canonica/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
-| `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, widget install, governance, and safety |
-| `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
+| `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, feedback review, widget install, governance, and safety |
+| `/updates` | Updates | Public product update timeline for product and website changes without using dashboard-owned changelog routes |
 | `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, Canonica role permissions, owner-approved answers, runtime limits, and responsible disclosure |
-| `/faq` | FAQ | Founder questions about setup, team access, widget context, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
+| `/faq` | FAQ | Founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + Canonica operating principles |
 | `/contact` | Contact | Canonica-owned inquiry form plus direct contact paths for setup, demos, pricing, security, and partnerships |
 | `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace, first team members, app pages, and widget key |
@@ -95,6 +96,7 @@
 | `src/app/sites/canonica/product/changelog/page.tsx` | Product feature page for Changelog |
 | `src/app/sites/canonica/product/tickets/page.tsx` | Product feature page for Tickets |
 | `src/app/sites/canonica/product/support-board/page.tsx` | Product feature page for Support Board |
+| `src/app/sites/canonica/product/feedback-review/page.tsx` | Product feature page for Feedback Review |
 | `src/app/sites/canonica/product/workflow-notifications/page.tsx` | Product feature page for Workflow Notifications |
 | `src/app/sites/canonica/product/proactive-help/page.tsx` | Product feature page for Proactive Help |
 | `src/app/sites/canonica/productFeatures.ts` | Shared product-feature route data, copy, and sitemap source |
@@ -152,7 +154,7 @@
 | `src/app/sites/canonica/components/CanonicaAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
 | `src/app/sites/canonica/components/CanonicaScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across Canonica public pages |
 | `src/constants/canonica/routes.ts` | Lightweight Canonica dashboard route constants used by public client islands without importing sidebar icon metadata |
-| `src/app/sites/canonica/components/HeroSection.tsx` | AI-built SaaS hero with demo-first CTAs |
+| `src/app/sites/canonica/components/HeroSection.tsx` | Launch-ready support hero with setup-first CTAs |
 | `src/app/sites/canonica/components/SupportKnowledgeMapSection.tsx` | Homepage and product-page visual map showing support knowledge inputs, Canonica control plane, and output surfaces |
 | `src/app/sites/canonica/components/HomePageAwareDemoSection.tsx` | Homepage tabbed static page-aware demo section |
 | `src/app/sites/canonica/components/ClosedLoopSection.tsx` | Homepage animated missed-question loop from page question to reviewed support fix |
@@ -251,7 +253,9 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs use Canonica splash screens and loader identity |
 | 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as generic platform context, a helpdesk replacement, or an AI autopilot |
 | 2026-05-23 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, route-registry Website graph references, explicit AI/search crawler robots rules, and `verify:agent-readiness` checks |
-| 2026-05-24 | Reframed the public website for AI-built SaaS founders: homepage now opens with "You shipped the app. Now users need correct answers.", demo is the first proof, public copy teaches approved answers before advanced Canonica vocabulary, `/use-cases/ai-built-saas` was added, and `/use-cases/vibe-coded-saas` remains only a canonicalized campaign/search alias |
+| 2026-05-31 | Reframed the homepage hero around the founder-readable launch promise "Launch your SaaS with support already built", made setup the primary CTA, and clarified that Canonica prepares docs/FAQs/answer drafts/widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed surfaces |
+| 2026-05-31 | Added Feedback Review as a buyer-facing product-feature page and added a homepage/product preview tab showing ratings, requests, suggestions, Support Board handoff, and answer-governance boundaries |
+| 2026-05-24 | Reframed the public website for AI-built SaaS founders: homepage opened with "You shipped the app. Now users need correct answers.", demo became the first proof, public copy teaches approved answers before advanced Canonica vocabulary, `/use-cases/ai-built-saas` was added, and `/use-cases/vibe-coded-saas` remains only a canonicalized campaign/search alias |
 | 2026-05-24 | Refined the shared homepage/Product support knowledge map diagram with a Canonica-colored logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | 2026-05-24 | Added a reusable animated Canonica diagram system and applied it to closed-loop, setup, how-it-works, product-area workflow, product-feature workflow/connected surfaces, SEO/use-case, install, security, resources, engine pillar, and system coverage sections |
 | 2026-05-24 | Aligned reusable Canonica sequence-diagram endpoints and output-highlight timing with the shared source-map reference while keeping the Canonica logo, ripple, and color treatment unchanged |

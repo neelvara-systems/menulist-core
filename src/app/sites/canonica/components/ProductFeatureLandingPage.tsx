@@ -178,7 +178,7 @@ export default function ProductFeatureLandingPage({
                                 data-canonica-label={`${feature.slug}_start_setup`}
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                             >
-                                Start free setup
+                                Start support setup
                             </CanonicaLink>
                             <CanonicaLink
                                 basePath={basePath}
@@ -306,7 +306,7 @@ export default function ProductFeatureLandingPage({
                         href="/get-started"
                         className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
-                        Start free setup
+                        Start support setup
                     </CanonicaLink>
                     <CanonicaLink
                         basePath={basePath}

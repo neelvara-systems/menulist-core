@@ -294,10 +294,10 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                         <L
                             href="/get-started"
                             data-canonica-event="header_cta_clicked"
-                            data-canonica-label="start_setup"
+                            data-canonica-label="start_support_setup"
                             className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
-                            Start free setup
+                            Start support setup
                         </L>
                     </div>
 
@@ -418,12 +418,12 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                             <L
                                 href="/get-started"
                                 data-canonica-event="mobile_header_cta_clicked"
-                                data-canonica-label="start_setup"
+                                data-canonica-label="start_support_setup"
                                 className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                                 onClick={closeDrawer}
                             >
                                 <LuRocket size={16} aria-hidden />
-                                Start free setup
+                                Start support setup
                             </L>
                         </div>
                     </aside>

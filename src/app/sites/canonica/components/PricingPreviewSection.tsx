@@ -66,7 +66,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         data-canonica-label="start_beta_from_pricing_preview"
                         className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
-                        Start free setup
+                        Start support setup
                     </CanonicaLink>
                 </div>
             </div>

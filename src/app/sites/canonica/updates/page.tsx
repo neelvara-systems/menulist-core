@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Canonica product updates that affect knowledge intake, setup, team access, page-aware support, owner Q&A, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'Canonica product updates that affect knowledge intake, setup, team access, page-aware support, owner Q&A, feedback review, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 31, 2026',
+        title: 'Feedback Review added to the public product story',
+        items: [
+            'Canonica now has a dedicated Feedback Review product page for ratings, product-area feedback, feature requests, suggestions, Product Surface sorting, owner review, and Support Board handoff.',
+            'The homepage and Product preview now include a Feedback review tab so visitors can see how raw user feedback becomes private support work.',
+            'The public story keeps feedback private and governed: feature requests are support signals, not a public voting board or automatic roadmap commitment.',
+        ],
+    },
     {
         date: 'May 31, 2026',
         title: 'Knowledge Intake added to the public product story',

@@ -5,12 +5,21 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-3xl text-center">
                 <h2 className="text-3xl font-bold sm:text-4xl">
-                    Launch support before repeated questions become your job.
+                    Get your SaaS support-ready before users arrive.
                 </h2>
                 <p className="mt-4 text-lg text-[#a0a0c0]">
-                    Start with your existing docs, notes, FAQs, and release updates. Canonica turns them into page-aware support your users can trust.
+                    Start with your existing docs, notes, FAQs, and release updates. Canonica prepares help content, answer drafts, and page-aware support while tickets, changelogs, feedback, ratings, and feature requests stay owner-managed.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+                    <CanonicaLink
+                        basePath={basePath}
+                        href="/get-started"
+                        data-canonica-event="final_cta_clicked"
+                        data-canonica-label="start_support_setup"
+                        className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800 hover:shadow-teal-500/40"
+                    >
+                        Start support setup
+                    </CanonicaLink>
                     <CanonicaLink
                         basePath={basePath}
                         href="/demo"
@@ -19,15 +28,6 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-medium text-[#a0a0c0] transition-all hover:border-white/[0.2] hover:text-white"
                     >
                         Try page-aware demo
-                    </CanonicaLink>
-                    <CanonicaLink
-                        basePath={basePath}
-                        href="/get-started"
-                        data-canonica-event="final_cta_clicked"
-                        data-canonica-label="start_free_setup"
-                        className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800 hover:shadow-teal-500/40"
-                    >
-                        Start free setup
                     </CanonicaLink>
                 </div>
                 <p className="mt-6 text-xs text-[#505070]">

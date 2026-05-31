@@ -114,7 +114,7 @@ export default function CanonicaIntegrationsPage() {
                                     data-canonica-label="start_setup"
                                     className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                                 >
-                                    Start free setup
+                                    Start support setup
                                 </CanonicaLink>
                             </div>
                         </div>

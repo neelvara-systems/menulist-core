@@ -48,6 +48,7 @@ const ACTIONABLE_SIGNAL_TYPES = new Set<string>([
     CANONICA_SIGNAL_TYPE.TICKET,
     CANONICA_SIGNAL_TYPE.CHAT_NEGATIVE,
     CANONICA_SIGNAL_TYPE.ESCALATION,
+    CANONICA_SIGNAL_TYPE.FEEDBACK,
 ]);
 
 const isOpenTicket = (ticket: SupportTicketType) => {
@@ -72,13 +73,62 @@ const getTicketEntityId = (ticket: SupportTicketType) => (
 const getSignalText = (signal: CanonicaSignalEvent) => {
     const metadata = signal.metadata || {};
     return String(
-        metadata.query
+        metadata.summary
+        || metadata.featureRequest
+        || metadata.commentPreview
+        || metadata.featureCommentPreview
+        || metadata.query
         || metadata.subject
         || metadata.message
         || metadata.reason
         || `Support signal: ${signal.type}`
     ).slice(0, 900);
 };
+
+const getSignalTitle = (signal: CanonicaSignalEvent) => {
+    const metadata = signal.metadata || {};
+    if (signal.type === CANONICA_SIGNAL_TYPE.FEEDBACK) {
+        const label = String(metadata.feedbackLabel || metadata.feedbackType || 'Feedback');
+        const rating = Number(metadata.rating);
+        const suffix = Number.isFinite(rating) && rating > 0 ? ` (${rating}/5)` : '';
+        return `${label}${suffix}`.slice(0, 140);
+    }
+
+    return String(metadata.subject || metadata.query || `${signal.type.replace(/_/g, ' ')} signal`).slice(0, 140);
+};
+
+const getSignalPriority = (signal: CanonicaSignalEvent): CanonicaSupportBoardPriority => {
+    const metadata = signal.metadata || {};
+    if (signal.type === CANONICA_SIGNAL_TYPE.ESCALATION) return CANONICA_SUPPORT_BOARD_PRIORITY.HIGH;
+    if (signal.type !== CANONICA_SIGNAL_TYPE.FEEDBACK) return CANONICA_SUPPORT_BOARD_PRIORITY.MEDIUM;
+
+    const rating = Number(metadata.rating);
+    if (Number.isFinite(rating) && rating > 0 && rating <= 2) return CANONICA_SUPPORT_BOARD_PRIORITY.HIGH;
+    if (Number.isFinite(rating) && rating >= 4 && !metadata.hasFeatureRequest) return CANONICA_SUPPORT_BOARD_PRIORITY.LOW;
+    return CANONICA_SUPPORT_BOARD_PRIORITY.MEDIUM;
+};
+
+const getSignalTags = (signal: CanonicaSignalEvent, contextKeys: string[]) => {
+    const metadata = signal.metadata || {};
+    const tags = [signal.type, ...contextKeys];
+    if (signal.type === CANONICA_SIGNAL_TYPE.FEEDBACK) {
+        if (metadata.feedbackType) tags.push(String(metadata.feedbackType));
+        if (metadata.rating) tags.push(`rating:${metadata.rating}`);
+        if (metadata.hasFeatureRequest) tags.push('feature-request');
+    }
+    return tags.filter(Boolean);
+};
+
+const getSignalContextKeys = (metadata: Record<string, any>) => (
+    Array.from(new Set([
+        ...(Array.isArray(metadata.contextKeys) ? metadata.contextKeys : []),
+        ...(Array.isArray(metadata.relatedContextKeys) ? metadata.relatedContextKeys : []),
+        metadata.contextKey,
+    ]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)))
+        .slice(0, 10)
+);
 
 const sourceKeyForCard = (sourceType?: string | null, sourceId?: string | null) => (
     sourceType && sourceId ? `${sourceType}:${sourceId}` : null
@@ -104,27 +154,27 @@ const cardInputFromSignal = (signal: CanonicaSignalEvent, tId: number, sId: numb
     const metadata = signal.metadata || {};
     const ticketId = typeof metadata.ticketId === 'string' ? metadata.ticketId : null;
     const conversationId = typeof metadata.conversationId === 'string' ? metadata.conversationId : null;
-    const contextKeys = Array.isArray(metadata.contextKeys) ? metadata.contextKeys.map(String) : [];
+    const contextKeys = getSignalContextKeys(metadata);
+    const surfaceId = typeof metadata.surfaceId === 'string' ? metadata.surfaceId : null;
     const entityId = signal.entityId && signal.entityId !== 'unresolved' ? signal.entityId : null;
 
     return {
         tId,
         sId,
-        title: String(metadata.subject || metadata.query || `${signal.type.replace(/_/g, ' ')} signal`).slice(0, 140),
+        title: getSignalTitle(signal),
         description: getSignalText(signal),
         status: signal.type === CANONICA_SIGNAL_TYPE.ESCALATION
             ? CANONICA_SUPPORT_BOARD_STATUS.NEW_SIGNALS
             : CANONICA_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
-        priority: signal.type === CANONICA_SIGNAL_TYPE.ESCALATION
-            ? CANONICA_SUPPORT_BOARD_PRIORITY.HIGH
-            : CANONICA_SUPPORT_BOARD_PRIORITY.MEDIUM,
+        priority: getSignalPriority(signal),
         sourceType: CANONICA_SUPPORT_BOARD_SOURCE_TYPE.SIGNAL,
         sourceId: signal.id,
         relatedTicketId: ticketId,
         relatedConversationId: conversationId,
+        relatedSurfaceId: surfaceId,
         relatedEntityId: entityId,
         relatedContextKeys: contextKeys,
-        tags: [signal.type, ...(contextKeys || [])].filter(Boolean),
+        tags: getSignalTags(signal, contextKeys),
     };
 };
 

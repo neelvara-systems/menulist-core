@@ -106,7 +106,7 @@ function clusterSignalsByEntity(signals: CanonicaSignalEvent[]): SignalCluster[]
     const clusterMap = new Map<string, CanonicaSignalEvent[]>();
 
     for (const signal of signals) {
-        if (!signal.entityId) continue;
+        if (!signal.entityId || signal.entityId === 'unresolved') continue;
         const existing = clusterMap.get(signal.entityId) || [];
         existing.push(signal);
         clusterMap.set(signal.entityId, existing);

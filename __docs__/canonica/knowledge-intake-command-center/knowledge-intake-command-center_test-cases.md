@@ -20,14 +20,15 @@
 | KICC-D1-007 | Owner accepts and publishes a KB item | Writes `kb_articles`, updates `kb_categories`, bumps KB freshness, and triggers context summary rebuild/cache invalidation. |
 | KICC-D1-008 | Owner publishes an FAQ item | Writes `canonica_faqs`; runtime search can use FAQ/custom-answer retrieval before vector fallback. |
 | KICC-D1-009 | Owner publishes a canonical-answer draft | Creates `canonica_mutationProposals`; no active canonical answer is auto-published and compiled `canonical` runtime context is not marked stale. |
-| KICC-D1-010 | Owner publishes product surface/changelog items | Writes existing product-surface/changelog paths and marks related compiled-context sources stale. |
+| KICC-D1-010 | Owner publishes a product surface item | Writes the existing product-surface path and marks related compiled-context sources stale. Changelog entries are not an intake publish target. |
 | KICC-D1-011 | User loads jobs/review lists | Reads are bounded and API-driven; no realtime Firestore listener is used. |
 | KICC-D1-012 | Owner uploads a supported screenshot | API reserves 1 support credit, validates signature, extracts support text, writes a source, logs AI operation, settles ledger, and does not retain raw media. |
 | KICC-D1-013 | Owner uploads a short supported audio/video file | API reserves 2 support credits, validates signature, extracts support transcript/summary, writes a source, logs AI operation, and settles ledger. |
 | KICC-D1-014 | Media extraction fails after credit reservation | Ledger marks `failed_refunded` and monthly/top-up credits are returned. |
 | KICC-D1-015 | Canonica nightly runs with intake scheduler flag on | It refreshes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` from latest bounded job docs only; it does not retry failed jobs, crawl, call AI, or publish. |
 | KICC-D1-016 | Platform admin opens `/platform/canonica-intake` | Screen loads `canonicaTenantsSummary` and recent scheduler logs first; intake jobs and ledger rows are not read until one workspace is selected. Non-platform users are denied. |
-| KICC-D1-017 | TypeScript validation | `npx tsc --noEmit --incremental false` passes. |
+| KICC-D1-017 | Owner tries to accept or select a changelog review target | UI keeps legacy changelog drafts display-only, disables acceptance, and the API rejects crafted changelog publish-target updates because changelog entries are owner-managed release content. |
+| KICC-D1-018 | TypeScript validation | `npx tsc --noEmit --incremental false` passes. |
 
 The sections below preserve the broader long-term matrix. Native helpdesk/OAuth connectors, retained raw-media Storage artifacts, and scheduler directory repair remain future-extension tests. Screenshot OCR, short media transcription, support-credit ledger charging, and summary-only scheduler analytics are implemented runtime claims.
 
@@ -108,7 +109,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-PUB-002 | Publish canonical answer draft | Creates/updates canonical answer only after approval and lineage is attached. |
 | KICC-PUB-003 | Publish product surface suggestion | Creates/updates `canonica_productSurfaces` with source lineage and summary rebuild. |
 | KICC-PUB-004 | Partial publish failure | Publish manifest records successful/failed writes; retry is idempotent. |
-| KICC-PUB-005 | Publish approved changelog/release output | Existing changelog page updates, public changelog/context cache invalidates, `releases` source version changes only when release context changed. |
+| KICC-PUB-005 | Attempt to publish approved changelog/release output through intake | API blocks changelog/release publication from intake and directs the owner to the Changelog workflow. |
 | KICC-PUB-006 | Publish entity candidates and one approved entity | Candidate stays review-only; approved entity updates entity search index and marks `entities`/`entityRelations` only after approval. |
 
 ---
@@ -121,7 +122,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-RUN-002 | No canonical match, but approved FAQ matches the question | Runtime returns the published `canonica_faqs` result before vector/RAG fallback. |
 | KICC-RUN-003 | Article is published but embedding has not completed | Hosted help can show the article, but topic search readiness is `partial` and RAG does not claim ready coverage. |
 | KICC-RUN-004 | Article embedding completes after publish | Vector/RAG fallback can retrieve the article and readiness updates without reprocessing the source. |
-| KICC-RUN-005 | Product surface, article, FAQ, and changelog are published in one batch | `contextContent_{tId}_{sId}` is rebuilt or marked stale once, and widget related content shows the new surface links after refresh. |
+| KICC-RUN-005 | Product surface, article, and FAQ are published in one batch | `contextContent_{tId}_{sId}` is rebuilt or marked stale once, and widget related content shows the new surface links after refresh. |
 | KICC-RUN-006 | Published output changes only intake readiness counters | Public context bundle is not rebuilt unless an approved runtime destination source key also changed. |
 | KICC-RUN-007 | Runtime image/search question is submitted after screenshot intake source was approved into content | Image-assisted query still uses the normal canonical/FAQ/RAG path; screenshot evidence is searchable only through approved outputs. |
 | KICC-RUN-008 | Owner tries to PATCH a review item directly to `published` | API rejects the patch; only the publish action can mark review items published and write runtime destinations. |
@@ -172,7 +173,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-REG-005 | Large multi-source import retries after worker failure | Retry resumes from saved manifests and idempotency keys without duplicate source docs or provider calls. |
 | KICC-REG-006 | Existing manual FAQ create/update/archive | Existing FAQ DAL still bumps KB cache version and public cache tags after intake is added. |
 | KICC-REG-007 | Existing article embedding API | Intake-published articles can use the same embedding readiness path without a duplicate embedding collection. |
-| KICC-REG-008 | Existing product-surface summary API | Intake-published articles/FAQs/changelog/surfaces are reflected in the same compact surface summary. |
+| KICC-REG-008 | Existing product-surface summary API | Intake-published articles/FAQs/surfaces are reflected in the same compact surface summary. Owner-managed changelog entries remain available through the existing changelog summary path. |
 
 ---
 

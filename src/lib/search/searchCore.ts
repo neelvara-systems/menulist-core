@@ -304,6 +304,28 @@ const buildProductContextCacheToken = (productContext: CoreSearchInput['productC
     return hashString(JSON.stringify(stableContext));
 };
 
+const cleanSearchContextText = (value: unknown, maxLength = 140): string | undefined => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return undefined;
+    return text.length > maxLength ? text.slice(0, maxLength) : text;
+};
+
+const buildSearchHistoryContextFields = (productContext: CoreSearchInput['productContext']) => {
+    if (!productContext) return {};
+
+    const contextKey = cleanSearchContextText((productContext as any).contextKey, 140);
+    const surfaceFeature = cleanSearchContextText(productContext.feature, 120);
+    const surfacePage = cleanSearchContextText(productContext.page, 120);
+    const surfaceWorkflow = cleanSearchContextText(productContext.workflow, 120);
+
+    return {
+        ...(contextKey ? { contextKey } : {}),
+        ...(surfaceFeature ? { surfaceFeature } : {}),
+        ...(surfacePage ? { surfacePage } : {}),
+        ...(surfaceWorkflow ? { surfaceWorkflow } : {}),
+    };
+};
+
 /**
  * Core search pipeline — the single source of truth for Canonica knowledge retrieval.
  *
@@ -595,6 +617,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             matchedEntityIds: cached.matchedEntityIds,
                             confidence: cached.confidence,
                             sourceVersions: cached.sourceVersions,
+                            ...buildSearchHistoryContextFields(effectiveProductContext),
                         });
 
                         await writeLogEntry({
@@ -673,6 +696,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
+            ...buildSearchHistoryContextFields(effectiveProductContext),
         });
 
         return withAiProviderUsage({
@@ -797,6 +821,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             matchedEntityIds: canonicalResult.matchedEntityIds,
             confidence: canonicalResult.confidence,
             sourceVersions: canonicalSourceVersions,
+            ...buildSearchHistoryContextFields(effectiveProductContext),
         });
 
         perfMetrics.total = Date.now() - perfStart;
@@ -1217,6 +1242,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             sourceVersions: kbCacheState.sourceVersion
                 ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
+            ...buildSearchHistoryContextFields(effectiveProductContext),
         });
 
         perfMetrics.total = Date.now() - perfStart;

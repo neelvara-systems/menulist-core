@@ -21,7 +21,18 @@ const getDocRef = (docId: string) => doc(canonicaFirebaseClient, COLLECTION, doc
 const getSummaryDocRef = (tId: number, sId: number) =>
     doc(canonicaFirebaseClient, SUMMARY_COLLECTION, getContextContentSummaryDocId(tId, sId));
 
-const requireScope = async () => {
+type ProductSurfaceScopeInput = {
+    tId?: number;
+    sId?: number;
+};
+
+const requireScope = async (scopeOverride?: ProductSurfaceScopeInput) => {
+    const overrideTId = Number(scopeOverride?.tId);
+    const overrideSId = Number(scopeOverride?.sId);
+    if (Number.isFinite(overrideTId) && Number.isFinite(overrideSId) && overrideTId > 0 && overrideSId > 0) {
+        return { tId: overrideTId, sId: overrideSId };
+    }
+
     const session = await getActiveSession();
     const tId = Number(session?.tId);
     const sId = Number(session?.sId);
@@ -34,25 +45,26 @@ const requireScope = async () => {
 const buildProductSurfaceDocId = (tId: number, sId: number, key: string) =>
     `${tId}_${sId}_${normalizeSurfaceKey(key)}`;
 
-export const getProductSurfacesForSession = async () => {
-    return await apiCallComposer(
-        async () => {
-            const scope = await requireScope();
-            const q = query(
-                getCollectionRef(),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId),
-                limit(CANONICA_PRODUCT_SURFACE_LIMIT),
-            );
-            const snapshot = await getDocs(q);
-            const surfaces = snapshot.docs.map(item => ({ ...item.data(), id: item.id } as CanonicaProductSurface));
-            return surfaces.sort((a, b) => {
-                if (a.active !== b.active) return a.active ? -1 : 1;
-                return Number(b.priority || 0) - Number(a.priority || 0) || a.label.localeCompare(b.label);
-            });
-        },
-        'getProductSurfacesForSession',
-    );
+export const getProductSurfacesForSession = async (scopeOverride?: ProductSurfaceScopeInput) => {
+    const loadSurfaces = async () => {
+        const scope = await requireScope(scopeOverride);
+        const q = query(
+            getCollectionRef(),
+            where('tId', '==', scope.tId),
+            where('sId', '==', scope.sId),
+            limit(CANONICA_PRODUCT_SURFACE_LIMIT),
+        );
+        const snapshot = await getDocs(q);
+        const surfaces = snapshot.docs.map(item => ({ ...item.data(), id: item.id } as CanonicaProductSurface));
+        return surfaces.sort((a, b) => {
+            if (a.active !== b.active) return a.active ? -1 : 1;
+            return Number(b.priority || 0) - Number(a.priority || 0) || a.label.localeCompare(b.label);
+        });
+    };
+
+    return scopeOverride
+        ? await apiCallComposer(loadSurfaces, scopeOverride, 'getProductSurfacesForSession')
+        : await apiCallComposer(loadSurfaces, 'getProductSurfacesForSession');
 };
 
 export const saveProductSurface = async (input: unknown) => {

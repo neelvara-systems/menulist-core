@@ -13,6 +13,7 @@ import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
 import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrioritizer';
+import { buildTodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -30,6 +31,7 @@ import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_OPTIONS,
     getDefaultTempStatusDateTime,
 } from '../components/MobileTempStatusConfigurator';
+import TodayWeeklyGrowthPackCard from '../components/TodayWeeklyGrowthPackCard';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
@@ -166,6 +168,13 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             true
         );
     }, [storeDetails?.customDomain, storeDetails?.subdomain]);
+    const todayMenuLink = useMemo(() => (
+        buildTodayMenuLink(
+            storeDetails?.subdomain,
+            storeDetails?.customDomain,
+            selectedProjectSummary?.name,
+        ) || menuUrl
+    ), [menuUrl, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
 
     useEffect(() => {
         if (!storeDetails?.storeId) return;
@@ -311,6 +320,50 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         }
     };
 
+    const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
+    const todayTimingsLabel = todayRange.isClosed
+        ? t('closedToday')
+        : `${todayRange.openTime} - ${todayRange.closeTime}`;
+    const primaryCampaign = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading
+        ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
+        : undefined;
+    const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
+    const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
+    const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
+    const hasMaintenanceCards = Boolean(
+        (physicalSurfaces?.tentCard?.eligible || false)
+        || (physicalSurfaces?.counterSticker?.eligible || false)
+        || (staffPrompt?.eligible || false)
+    );
+    const weeklyGrowthPack = useMemo(() => {
+        if (!FEATURE_FLAGS.ENABLE_TODAY_WEEKLY_GROWTH_PACK || !storeDetails) return null;
+
+        return buildTodayWeeklyGrowthPack({
+            businessName: getStoreContextName(storeDetails as any, 'Business'),
+            hasActiveTempStatus: Boolean(isTempActive),
+            inactiveItemCount: inactiveItemsReminder?.count || 0,
+            inactiveItemNames: inactiveItemsReminder?.names || [],
+            menuUrl: todayMenuLink,
+            operationalCampaigns: sortedOperationalCampaigns,
+            primaryCampaign,
+            projectName: selectedProjectSummary?.name || 'your menu',
+            staffPromptText: staffPrompt?.text,
+            tempStatusMessage: currentTempStatus?.message,
+            todayTimingsLabel,
+        });
+    }, [
+        currentTempStatus?.message,
+        inactiveItemsReminder,
+        isTempActive,
+        primaryCampaign,
+        selectedProjectSummary?.name,
+        sortedOperationalCampaigns,
+        staffPrompt?.text,
+        storeDetails,
+        todayMenuLink,
+        todayTimingsLabel,
+    ]);
+
     if (!storeDetails) {
         return (
             <Flex align="center" justify="center" style={{ minHeight: '100%' }}>
@@ -324,10 +377,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         : todayStatus === 'closed_after_hours'
             ? { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
         : { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
-    const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
-    const todayTimingsLabel = todayRange.isClosed
-        ? t('closedToday')
-        : `${todayRange.openTime} - ${todayRange.closeTime}`;
     const closeTodayCtaLabel = 'Mark Closed for Today';
     const reopenTodayCtaLabel = 'Mark Open for Today';
 
@@ -356,17 +405,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         localStorage.setItem(dismissKey, Date.now().toString());
     };
 
-    const primaryCampaign = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading
-        ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
-        : undefined;
-    const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
-    const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
-    const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
-    const hasMaintenanceCards = Boolean(
-        (physicalSurfaces?.tentCard?.eligible || false)
-        || (physicalSurfaces?.counterSticker?.eligible || false)
-        || (staffPrompt?.eligible || false)
-    );
     const todayDigest = buildTodayDigest(
         Boolean(primaryCampaign),
         sortedOperationalCampaigns.length,
@@ -862,6 +900,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     </Flex>
                 </Card>
             ) : null}
+
+            {weeklyGrowthPack ? <TodayWeeklyGrowthPackCard pack={weeklyGrowthPack} /> : null}
 
             <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text>
 

@@ -934,7 +934,7 @@ export function renderCanonicaLlmsFullTxt() {
 
 ## Product boundary
 
-- Canonica keeps support knowledge, page-aware answers, hosted help, tickets, Support Board follow-up, releases, and support-gap review under owner-approved control.
+- Canonica keeps support knowledge, page-aware answers, hosted help, tickets, feedback review, Support Board follow-up, releases, and support-gap review under owner-approved control.
 - Canonica is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, autonomous publisher, or client-product code owner.
 - Public agents may read these docs, route users to official Canonica pages, and install the widget from the v1 contract.
 - Public agents must not mutate customer workspaces, canonical answers, tickets, widget settings, billing, private knowledge, or account data.

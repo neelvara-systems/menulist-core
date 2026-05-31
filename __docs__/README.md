@@ -24,6 +24,7 @@
 | Folder                                           | What's Inside                               |
 | ------------------------------------------------ | ------------------------------------------- |
 | **[social-content/](./social-content/)**         | Social media content generation (campaigns) |
+| **[growthos-command-center/](./growthos-command-center/)** | GrowthOS action-queue planning, review, cost, mobile, and decision docs |
 | **[staff-prompt/](./staff-prompt/)**             | Staff prompt system                         |
 | **[gbp-sync/](./gbp-sync/)**                     | Google Business Profile sync                |
 | **[reviews-reputation/](./reviews-reputation/)** | Reviews and reputation management           |
@@ -58,6 +59,7 @@
 | Folder                                     | What's Inside                                                                  |
 | ------------------------------------------ | ------------------------------------------------------------------------------ |
 | **[workflows-guide/](./workflows-guide/)** | How to use Cascade `/slash-command` workflows — maps IDE_PROMPTS to automation |
+| **[website-asset-operating-system/](./website-asset-operating-system/)** | Internal cross-product asset contract for MenuList and Canonica website media |
 
 ### Customer-Facing Surfaces
 

@@ -21,10 +21,10 @@ import CanonicaStructuredData from './components/StructuredData';
 import SupportKnowledgeMapSection from './components/SupportKnowledgeMapSection';
 import SystemCoverageSection from './components/SystemCoverageSection';
 import WidgetSection from './components/WidgetSection';
-import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
+import { CANONICA_SITE_DESCRIPTION, CANONICA_SITE_TITLE } from './siteConfig';
 
 export const metadata: Metadata = {
-    title: 'Canonica — Support for AI-Built SaaS Apps',
+    title: CANONICA_SITE_TITLE,
     description: CANONICA_SITE_DESCRIPTION,
     alternates: { canonical: '/' },
 };

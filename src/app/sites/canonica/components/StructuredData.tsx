@@ -3,6 +3,7 @@ import {
     buildCanonicaUrl,
     CANONICA_PUBLIC_PAGES,
     CANONICA_SITE_DESCRIPTION,
+    CANONICA_SITE_TITLE,
     CANONICA_SITE_URL,
 } from '../siteConfig';
 
@@ -59,7 +60,7 @@ export default function CanonicaStructuredData() {
                 '@type': 'WebPage',
                 '@id': `${CANONICA_SITE_URL}/#webpage`,
                 url: CANONICA_SITE_URL,
-                name: 'Canonica - Support for AI-Built SaaS Apps',
+                name: CANONICA_SITE_TITLE,
                 description: CANONICA_SITE_DESCRIPTION,
                 isPartOf: { '@id': `${CANONICA_SITE_URL}/#website` },
                 about: { '@id': `${CANONICA_SITE_URL}/#software` },

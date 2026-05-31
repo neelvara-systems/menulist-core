@@ -10,7 +10,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -51,6 +51,7 @@ const RESOURCE_GROUPS = [
             ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
             ['Knowledge Intake', '/product/knowledge-intake', 'Teach Canonica from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.'],
             ['Knowledge Base', '/product/knowledge-base', 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.'],
+            ['Feedback Review', '/product/feedback-review', 'Plan how ratings, feature requests, and suggestions are sorted by Product Surface before becoming private support signals.'],
             ['Support Board', '/product/support-board', 'Plan private support cards, internal notes, status history, and answer proposal handoff.'],
             ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, or vanilla script examples.'],
@@ -122,7 +123,7 @@ export default function CanonicaResourcesPage() {
                                 <h2 className="text-2xl font-bold text-white">Evaluate the individual product features.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Support Board, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
+                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback Review, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
                             </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

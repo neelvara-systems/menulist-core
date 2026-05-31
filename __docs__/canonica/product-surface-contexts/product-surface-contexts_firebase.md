@@ -36,6 +36,26 @@ Contents:
 
 Public runtime must not expose ticket subjects, messages, requester data, or internal notes.
 
+### `feedback`
+
+Purpose: owner-reviewed feedback rows that can be sorted by Product Surface.
+
+Operations:
+
+- owner review reads feedback through one bounded `tId+sId` query
+- assigning or clearing a surface updates one feedback document
+- Support Board card creation copies surface context into the card without additional reads
+
+Surface fields:
+
+- `contextKey`
+- `surfaceId`
+- `surfaceLabel`
+- `surfaceAssignedBy`
+- `surfaceAssignedAt`
+
+Security stays on the existing support-control update rule for `feedback`; no separate public write path is added for surface assignment.
+
 ## Rebuild Reads
 
 The summary rebuild endpoint uses bounded reads:
@@ -45,6 +65,8 @@ The summary rebuild endpoint uses bounded reads:
 - published FAQs: max 500
 - latest changelog pages: max 3 pages
 - recent support tickets: max 300, ordered by `createdOn desc` before the limit so ticket counts reflect the newest fallback activity
+
+Feedback surface assignment does not rebuild the summary because feedback is owner-triage input, not public related-content output.
 
 The rebuild happens on explicit management operations, not every customer page load.
 

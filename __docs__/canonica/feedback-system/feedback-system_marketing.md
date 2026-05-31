@@ -1,16 +1,16 @@
 # Feedback System — Marketing & Sales Collateral
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.4.0
+> **Last Updated:** 2026-05-31
 > **Audience:** Sales, Marketing (Internal)
 
 ---
 
 ## 1. Elevator Pitch
 
-**One-liner:** "Structured feedback collection — general experience, feature issues, and feature requests in one guided wizard."
+**One-liner:** "Customer feedback becomes owner-reviewed support signals."
 
-**30 seconds:** MenuList's Feedback System collects owner input through a guided 3-step wizard: general satisfaction (star rating), feature-specific issues (checklist), and feature requests (free-text + vote on popular requests). Plus a unified content feedback system for likes/dislikes on articles and changelog entries. All data stored per-tenant for analysis.
+**30 seconds:** Canonica's Feedback System collects support feedback through the Help Center: general satisfaction, product-area issues, and feature requests or suggestions. Owners review the items inside Canonica under their tenant/workspace, group them by Product Surface, and turn important rows into Support Board cards or answer proposals. It also includes unified content feedback for likes/dislikes on articles and changelog entries.
 
 ---
 
@@ -18,11 +18,14 @@
 
 | Point | Evidence |
 |-------|---------|
-| **Guided wizard** | 3-step form with per-step validation — reduces friction |
+| **Guided feedback flow** | Users can submit one selected category without completing unrelated categories |
 | **Star rating** | Quick satisfaction metric (1-5 stars) |
-| **Feature issue tracking** | Checkbox list for specific feature problems |
-| **Feature request voting** | Popular requests with thumbs up/down — crowdsourced prioritization |
+| **Product-area issue tracking** | Checkbox list for account, billing, onboarding, settings, integrations, reporting, and reliability issues |
+| **Feature request capture** | Free-text requests and support-improvement votes without creating a public roadmap |
+| **Owner review** | `/canonica/feedback` shows tenant-scoped feedback stats, list, and details |
+| **Product Surface sorting** | Owners can assign, change, clear, and filter feedback by Product Surface without asking users to classify it |
+| **Signal path** | Help Center feedback emits `feedback` support signals for Support Board review |
 | **Content feedback** | Unified likes/dislikes for articles and changelog entries |
 | **Detailed comments** | Sanitized feedback comments with sentiment tracking |
 | **Per-user tracking** | Latest feedback displayed after submission |
-| **Cost** | ~$0.0001/month — essentially free |
+| **Cost** | One feedback write plus one optional signal write per submission |

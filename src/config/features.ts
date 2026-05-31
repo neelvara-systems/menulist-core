@@ -14,6 +14,15 @@ export const FEATURE_FLAGS = {
     ENABLE_MYCODEX_READER: true,
 
     /**
+     * Enable the internal Website Asset Operating System package.
+     *
+     * This is a separate-product-style internal architecture used only by
+     * repo scripts under packages/asset-factory. It must not expose a public
+     * route, owner-facing MenuList UI, or Canonica runtime behavior.
+     */
+    ENABLE_WEBSITE_ASSET_OPERATING_SYSTEM: true,
+
+    /**
      * Enable Upstash rate limiting
      *
      * true: Use Upstash for rate limiting (production)
@@ -388,6 +397,27 @@ export const FEATURE_FLAGS = {
         | "disabled"
         | "whatsapp_only"
         | "full",
+
+    /**
+     * Today Weekly Growth Pack
+     *
+     * Adds a gated "Ready this week" pack inside the existing Today module.
+     * Product status: paused after May 31, 2026 owner-value review.
+     * Do not enable for rollout/freeze until a small owner pilot proves
+     * that owners copy/share the pack without extra explanation.
+     *
+     * When enabled:
+     * - Desktop Today shows copy-ready WhatsApp, Google post, Instagram caption, and staff line drafts
+     * - Mobile Today shows the same pack from the real owner Today tab
+     * - Copy is deterministic and built only from current MenuList truth
+     * - No direct publishing, no scheduler, no new Firestore write path
+     *
+     * When disabled:
+     * - Existing Today behavior is unchanged
+     *
+     * Firebase cost: $0.00 (client-side only)
+     */
+    ENABLE_TODAY_WEEKLY_GROWTH_PACK: false,
 
     // ═══════════════════════════════════════════════════════════════
     // DIGITAL SCREENS
@@ -2042,6 +2072,22 @@ export const FEATURE_FLAGS = {
      * @see __docs__/canonica/self-sellable-product-strategy.md
      */
     ENABLE_CANONICA_WEEKLY_DIGEST: true,
+
+    /**
+     * Canonica Feedback Review
+     *
+     * true: Canonica support-control users can review Help Center feedback,
+     *       ratings, feature requests, and suggestions inside the Canonica
+     *       dashboard.
+     * false: Feedback review route/nav item is hidden.
+     *
+     * Cost model: one bounded tenant/store feedback query on load. Feedback
+     * submission writes one feedback doc and, when signal mutation is enabled,
+     * one non-blocking feedback signal event.
+     *
+     * @see __docs__/canonica/feedback-system/
+     */
+    ENABLE_CANONICA_FEEDBACK_REVIEW: true,
 
     /**
      * Canonica Support Board

@@ -117,10 +117,12 @@ The simplest competitive sentence:
 
 Use these messages as website and sales input. They must be checked against the live product before publishing.
 
+- Launch your SaaS with support already built.
+- Canonica prepares docs, FAQs, answer drafts, hosted help, and page-aware widget support from the product material you already have.
+- Tickets, changelogs, feedback, ratings, and feature requests stay owner-managed, but Canonica connects them to the support review loop.
 - Your product changes. Your support answers should not drift.
-- Turn docs, changelogs, and tickets into approved answers.
+- Turn docs, release notes, and ticket patterns into approved answer drafts.
 - A support system for AI-built SaaS teams before they hire support.
-- You shipped the app. Now users need correct answers.
 - AI helped you build the app. Canonica helps you support it correctly.
 - Support for apps built fast with AI.
 - Stop shipping support answers from stale docs.
@@ -131,6 +133,8 @@ Use these messages as website and sales input. They must be checked against the 
 
 Avoid overclaiming:
 
+- do not say Canonica generates tickets
+- do not say Canonica generates changelogs
 - do not say Canonica fully replaces human support
 - do not say it resolves every user issue automatically
 - do not present it as a full helpdesk replacement

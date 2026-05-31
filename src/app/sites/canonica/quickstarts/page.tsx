@@ -149,7 +149,7 @@ export default function CanonicaQuickstartsPage() {
                             View install guide
                         </CanonicaLink>
                         <CanonicaLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
-                            Start free setup
+                            Start support setup
                         </CanonicaLink>
                     </div>
                 </section>

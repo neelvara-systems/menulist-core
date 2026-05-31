@@ -1,0 +1,140 @@
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import type {
+  AssetManifest,
+  AssetManifestEntry,
+  AssetOutputRole,
+  AssetSlot,
+} from '../../schemas/asset-schema';
+import { menuListAssetSlots } from '../../slots/menulist.asset-slots';
+import { canonicaAssetSlots } from '../../slots/canonica.asset-slots';
+
+export const REPO_ROOT = path.resolve(__dirname, '../../../..');
+export const ASSET_FACTORY_ROOT = path.join(REPO_ROOT, 'packages/asset-factory');
+export const MANIFEST_PATH = 'packages/asset-factory/manifest/assets.json';
+
+export function toRepoPath(fullPath: string): string {
+  return path.relative(REPO_ROOT, fullPath).split(path.sep).join('/');
+}
+
+export function fromRepoPath(repoPath: string): string {
+  return path.join(REPO_ROOT, repoPath);
+}
+
+export function fileExists(repoPath: string): boolean {
+  return fs.existsSync(fromRepoPath(repoPath));
+}
+
+export function readText(repoPath: string): string {
+  return fs.readFileSync(fromRepoPath(repoPath), 'utf8');
+}
+
+export function readTextIfExists(repoPath: string): string | null {
+  if (!fileExists(repoPath)) return null;
+  return readText(repoPath);
+}
+
+export function ensureDir(repoPath: string): void {
+  fs.mkdirSync(fromRepoPath(repoPath), { recursive: true });
+}
+
+export function writeText(repoPath: string, content: string): void {
+  ensureDir(path.posix.dirname(repoPath));
+  fs.writeFileSync(fromRepoPath(repoPath), content);
+}
+
+export function allAssetSlots(): AssetSlot[] {
+  return [...menuListAssetSlots, ...canonicaAssetSlots];
+}
+
+export function loadManifest(): AssetManifest {
+  const manifest = JSON.parse(readText(MANIFEST_PATH)) as AssetManifest;
+  if (!manifest.productBoundary?.internalOnly || manifest.productBoundary.publicRuntime !== false) {
+    throw new Error('Asset manifest must remain internal-only with publicRuntime=false.');
+  }
+  return manifest;
+}
+
+export function getSlot(slotId: string): AssetSlot | undefined {
+  return allAssetSlots().find((slot) => slot.id === slotId);
+}
+
+export function getManifestEntry(slotId: string): AssetManifestEntry | undefined {
+  return loadManifest().assets[slotId];
+}
+
+export function formatKb(bytes: number): string {
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+export function getFileSizeBytes(repoPath: string): number {
+  return fs.statSync(fromRepoPath(repoPath)).size;
+}
+
+export function getOutputBudgetKb(slot: AssetSlot, role: AssetOutputRole): number | undefined {
+  return slot.outputs.find((output) => output.role === role)?.maxKb;
+}
+
+export function getBrandContextPath(brand: AssetSlot['brand']): string {
+  return `packages/asset-factory/brand/${brand}.asset-context.md`;
+}
+
+export function getSlotDeclarationPath(brand: AssetSlot['brand']): string {
+  return `packages/asset-factory/slots/${brand}.asset-slots.ts`;
+}
+
+export function hashFile(repoPath: string): string | null {
+  if (!fileExists(repoPath)) return null;
+  const hash = crypto.createHash('sha256');
+  hash.update(fs.readFileSync(fromRepoPath(repoPath)));
+  return hash.digest('hex');
+}
+
+export function getWatchedSourceHashes(slot: AssetSlot): Record<string, string> {
+  const sources = [getSlotDeclarationPath(slot.brand), getBrandContextPath(slot.brand), ...slot.sources];
+  return sources.reduce<Record<string, string>>((acc, source) => {
+    const hash = hashFile(source);
+    if (hash) acc[source] = hash;
+    return acc;
+  }, {});
+}
+
+export function walkFiles(repoPath: string): string[] {
+  const fullPath = fromRepoPath(repoPath);
+  if (!fs.existsSync(fullPath)) return [];
+
+  const stat = fs.statSync(fullPath);
+  if (stat.isFile()) return [repoPath];
+
+  const results: string[] = [];
+  for (const item of fs.readdirSync(fullPath)) {
+    const childRepoPath = path.posix.join(repoPath, item);
+    const childFullPath = fromRepoPath(childRepoPath);
+    const childStat = fs.statSync(childFullPath);
+    if (childStat.isDirectory()) {
+      results.push(...walkFiles(childRepoPath));
+    } else {
+      results.push(childRepoPath);
+    }
+  }
+  return results;
+}
+
+export function findTrackedPublicAssetFiles(): string[] {
+  const websiteAssets = walkFiles('public/images/website');
+  const canonicaTopLevel = fs
+    .readdirSync(fromRepoPath('public'))
+    .filter((file) => file.startsWith('canonica-'))
+    .map((file) => `public/${file}`)
+    .filter((repoPath) => fs.statSync(fromRepoPath(repoPath)).isFile());
+  const canonicaSplash = walkFiles('public/canonica-splash');
+
+  return [...websiteAssets, ...canonicaTopLevel, ...canonicaSplash]
+    .filter((file) => !file.endsWith('.map'))
+    .sort();
+}
+
+export function listKnownSlotIds(): string[] {
+  return allAssetSlots().map((slot) => slot.id).sort();
+}

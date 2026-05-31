@@ -185,6 +185,7 @@ export const CANONICA_SUPPORT_CONTROL_SUB_NAV: CanonicaNavItem[] = [
     { key: 'support-board', label: 'Support Board', route: CANONICA_ROUTES.SUPPORT_BOARD, icon: LuKanbanSquare, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_CANONICA_SUPPORT_BOARD' },
     { key: 'support-tickets', label: 'Ticket Inbox', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT },
     { key: 'support-conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT },
+    { key: 'support-feedback', label: 'Feedback', route: CANONICA_ROUTES.FEEDBACK, icon: LuHeart, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT, featureFlag: 'ENABLE_CANONICA_FEEDBACK_REVIEW' },
     { key: 'support-weekly-digest', label: 'Weekly Digest', route: CANONICA_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, managementOnly: true, requiredPermission: CANONICA_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_CANONICA_WEEKLY_DIGEST' },
 ];
 

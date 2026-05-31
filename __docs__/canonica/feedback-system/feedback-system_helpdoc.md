@@ -1,15 +1,15 @@
 # Feedback System — Customer Help Documentation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** SMB Owners (MenuList dashboard users)
+> **Version:** 1.4.0
+> **Last Updated:** 2026-05-31
+> **Audience:** Canonica Help Center users
 > **Tone:** Zero jargon, step-by-step, calm
 
 ---
 
 ## Sharing Your Feedback
 
-The feedback form helps you share your experience, report issues with specific features, and suggest new features you'd like to see.
+The feedback form helps you share your experience, report issues with product areas, and suggest improvements. Your product team can review this feedback inside Canonica.
 
 ---
 
@@ -17,28 +17,33 @@ The feedback form helps you share your experience, report issues with specific f
 
 1. Open the **Help Center** from your dashboard menu
 2. Click **Share Feedback**
-3. Complete 3 steps:
+3. Choose the feedback category you want to send
+4. Click **Submit Feedback**
 
 ### Step 1 — Rate Your Experience
 - Give a star rating (1 to 5)
 - Write any general comments about the platform
-- Click **Next** to continue
+- Click **Submit Feedback** to send this category, or **Next** to move to another category
 
 ### Step 2 — Feature Issues
-- Check any features you've had trouble with
+- Check any product areas you've had trouble with
 - Add more details about what happened (optional)
-- Click **Next** to continue
+- Click **Submit Feedback** to send this category, or **Next** to move to another category
 
 ### Step 3 — Feature Requests
 - Describe a feature you'd like to see
-- Vote on popular feature requests from other users (thumbs up = interested, thumbs down = not interested)
+- Or vote on common improvement ideas from other users (thumbs up = interested, thumbs down = not interested)
 - Click **Submit Feedback**
 
 ---
 
 ## Viewing Your Previous Feedback
 
-After submitting, your most recent feedback appears at the bottom of the page showing your rating, comments, feature issues, and votes.
+After submitting, your most recent feedback appears at the bottom of the page showing the rating, comments, product-area issues, request, or votes you sent.
+
+## What Your Team Can Do With Feedback
+
+Your product team can review feedback in Canonica, group it by product area, add important items to the Support Board, and create answer proposals when feedback shows that help content is missing or unclear. Feedback does not publish answers automatically.
 
 ---
 
@@ -53,5 +58,5 @@ You can also give quick feedback on individual items:
 ## Tips
 
 - **Be specific** — The more detail you provide, the more useful your feedback is
-- **Vote on requests** — Popular requests help the team prioritize what to build next
+- **Vote on requests** — Common requests help the team spot repeated support needs
 - **Check back** — Your previous feedback is always visible so you can see what you shared

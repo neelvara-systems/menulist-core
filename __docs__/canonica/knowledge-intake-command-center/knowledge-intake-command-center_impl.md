@@ -9,7 +9,7 @@
 
 ## 1. Implementation Objective
 
-Replace the current upload-first KB-generation experience with a Canonica-owned intake command center while preserving Canonica's existing KB, FAQ, product-surface, changelog, and canonical-governance runtime paths.
+Replace the current upload-first KB-generation experience with a Canonica-owned intake command center while preserving Canonica's existing KB, FAQ, product-surface, and canonical-governance runtime paths. Changelog remains an owner-managed release-note workflow that intake can read as source context but cannot publish into.
 
 The legacy `/canonica/kb-generation` route redirects for compatibility, while `/canonica/knowledge-intake` is the Canonica-owned naming and contract:
 
@@ -53,7 +53,7 @@ Implemented day one:
 - AI operation logging for OCR, transcription, and article embedding
 - summary-only nightly intake analytics through the existing Canonica master scheduler
 - platform-admin intake monitor that reads `canonicaTenantsSummary`, loads job/ledger details only for a selected workspace, and can trigger a selected-workspace Canonica nightly retry
-- source-backed draft review items for KB, FAQ, product surfaces, changelog, and canonical mutation proposals
+- source-backed draft review items for KB, FAQ, product surfaces, and canonical mutation proposals
 - publish into existing runtime collections with cache/source-version freshness updates
 
 Not implemented day one:
@@ -730,8 +730,8 @@ Knowledge Intake must reuse Canonica's existing destination collections and runt
 | Entity candidate | `canonica_entityCandidates` | Candidate concept, evidence, source ids, risk/authority, owner decision state | No runtime search activation until approved. Keep owner review-gated. |
 | Approved entity/relation | `canonica_entities`, `canonica_entityRelations`, `canonica_entity_search_index` | Approved entity fields, relationships, aliases/synonyms/search tokens, `knowledgeLineage` where useful | Mark compiled `entities`/`entityRelations`; rebuild deterministic entity search index; refresh graph/coverage summaries only if the relevant flags are enabled. |
 | Product surface | `canonica_productSurfaces` | `key`, `label`, `routePatterns`, `feature`, `page`, `workflow`, `entityHints`, `entityIds`, `tags`, `visibility`, `active`, `priority`, `knowledgeLineage` | Mark compiled `surfaces`; rebuild or mark stale `contextContent_{tId}_{sId}` because widget related content depends on it. |
-| Changelog entry | `changelog/{tId}/{sId}/page_*` | Existing changelog entry fields, `tags`, `kbSources`/source references where available, `knowledgeLineage` | Invalidate public content cache for `changelog`/`context`; mark compiled `releases` only when release context changed; rebuild or mark stale surface content summary. |
-| Release timeline | `canonica_releases` | `versionLabel`, `versionNormalized`, `releasedAt`, owner-approved `entityChanges`, status lifecycle | Mark compiled `releases`; activation remains the drift trigger. Intake should not activate a release until entity changes are owner-approved. |
+| Release-note source context | Existing changelog entries, release notes, GitHub release export, release email text | Source evidence only. Intake can use this context to draft KB, FAQ, product-surface, and canonical proposal output. | No changelog page writes, no release-timeline writes, and no `releases` source-version mark from intake. Owner-managed changelog writes own public cache invalidation and release activation. |
+| Release timeline | `canonica_releases` | `versionLabel`, `versionNormalized`, `releasedAt`, owner-approved `entityChanges`, status lifecycle | Mark compiled `releases`; activation remains the drift trigger. Intake must not write or activate a release timeline. |
 | Support Board card | `canonica_supportBoardCards` | Selected gap/task only, linked source/review item, private notes metadata | Feature-flag gated. Do not mirror every raw source, fact, ticket, or signal into the board. |
 
 ### 17.2 Search Runtime Contract
@@ -763,10 +763,10 @@ Intake implementation must handle both:
 - Article and FAQ output bumps KB cache and marks `kb`/`docsNav` where applicable.
 - Canonical answer output bumps canonical cache and marks `canonical`.
 - Surface output marks `surfaces`.
-- Changelog/release output marks `releases`.
+- Release-note source context does not mark `releases`; owner-managed changelog/release publishing owns that source-version path.
 - Entity and relation output marks `entities` and `entityRelations`.
 - Public/hosted help output invalidates the Canonica public content cache tags for the affected content type.
-- Product-surface related content rebuilds or marks stale `contextContent_{tId}_{sId}` after article, FAQ, changelog, ticket, or surface changes that should affect page-aware suggestions.
+- Product-surface related content rebuilds or marks stale `contextContent_{tId}_{sId}` after article, FAQ, ticket, or surface changes that should affect page-aware suggestions. Owner-managed changelog changes use their own publish path.
 
 Intake-only freshness fields are allowed, but they must not accidentally rebuild public bundles:
 
@@ -786,7 +786,7 @@ Expected live path after implementation:
 4. Owner approves destinations.
 5. Publisher writes existing runtime destination records with `knowledgeLineage`.
 6. Publisher runs destination-specific post-write actions from the matrix above.
-7. Hosted help renders approved KB/FAQ/changelog output through existing public content paths.
+7. Hosted help renders approved KB/FAQ output through existing public content paths. Owner-published changelog entries continue to render through the Changelog workflow.
 8. Widget/help search answers through canonical-first retrieval, FAQ retrieval, and embedded article fallback.
 9. Page-aware related content uses the refreshed product-surface summary.
 10. Misses, negative feedback, and low confidence remain signal/governance input, not auto-published truth.
@@ -833,7 +833,7 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 - URL fetch adapter has SSRF/private-network protection and size/time caps.
 - Review queue keeps canonical answer drafts as mutation proposals; no authoritative answer is auto-published.
 - Published outputs include source metadata/lineage where the destination supports it.
-- Runtime destination post-write actions are implemented for KB articles, FAQs, product surfaces, changelog output, public content cache, compiled context source versions, article embeddings, and product-surface summaries. Canonical mutation proposals remain governance-only until approved through the canonical-answer workflow.
+- Runtime destination post-write actions are implemented for KB articles, FAQs, product surfaces, public content cache, compiled context source versions, article embeddings, and product-surface summaries. Canonical mutation proposals remain governance-only until approved through the canonical-answer workflow, and changelog publishing remains owner-managed outside intake.
 - No intake-only source/readiness counters are written day one.
 - Published article embeddings are attempted during publish; failures leave `embeddingStatus: failed` without blocking help-center publication.
 - Workspace summary doc updates from owner-triggered server transitions and from summary-only Canonica nightly analytics.

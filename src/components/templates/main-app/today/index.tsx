@@ -6,9 +6,11 @@ import { getProjectsListWithoutLoader } from "@database/projects";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
+import { getStoreContextName } from "@lib/businessIdentity/names";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from "@lib/today/inactiveItemsReminder";
+import { buildTodayWeeklyGrowthPack } from "@lib/today/weeklyGrowthPack";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
@@ -27,6 +29,7 @@ import PrimaryCard from "./components/PrimaryCard";
 import StaffPromptSection from "./components/StaffPromptSection";
 import StickerSection from "./components/StickerSection";
 import TentCardSection from "./components/TentCardSection";
+import WeeklyGrowthPack from "./components/WeeklyGrowthPack";
 import { useCampaignActions } from "./hooks/useCampaignActions";
 import styles from "./styles.module.scss";
 import { sortOperationalCampaignsByPriority } from "@lib/today/todayCampaignPrioritizer";
@@ -203,6 +206,44 @@ const TodayScreen = () => {
     };
 
     const shouldShowInactiveReminder = Boolean(inactiveItemsReminder && !isInactiveReminderDismissed);
+    const selectedProjectDisplayName = useMemo(() => (
+        resolveProjectName((activeProject as any)?.name || selectedProject?.name, '')
+    ), [activeProject, selectedProject?.name]);
+    const todayMenuLink = useMemo(() => (
+        buildTodayMenuLink(
+            storeDetails?.subdomain,
+            storeDetails?.customDomain,
+            selectedProjectDisplayName || undefined,
+        )
+    ), [selectedProjectDisplayName, storeDetails?.customDomain, storeDetails?.subdomain]);
+    const activeTempStatus = (storeDetails as any)?.tempStatus;
+    const hasActiveTempStatus = Boolean(activeTempStatus?.expiresAt && new Date(activeTempStatus.expiresAt).getTime() > Date.now());
+    const weeklyGrowthPack = useMemo(() => {
+        if (!FEATURE_FLAGS.ENABLE_TODAY_WEEKLY_GROWTH_PACK || !storeDetails) return null;
+
+        return buildTodayWeeklyGrowthPack({
+            businessName: getStoreContextName(storeDetails as any, 'Business'),
+            hasActiveTempStatus,
+            inactiveItemCount: inactiveItemsReminder?.count || 0,
+            inactiveItemNames: inactiveItemsReminder?.names || [],
+            menuUrl: todayMenuLink,
+            operationalCampaigns: sortedOperationalCampaigns,
+            primaryCampaign: todayCampaigns?.primary,
+            projectName: selectedProjectDisplayName || 'your menu',
+            staffPromptText: staffPrompt?.text,
+            tempStatusMessage: activeTempStatus?.message,
+        });
+    }, [
+        activeTempStatus?.message,
+        hasActiveTempStatus,
+        inactiveItemsReminder,
+        selectedProjectDisplayName,
+        sortedOperationalCampaigns,
+        staffPrompt?.text,
+        storeDetails,
+        todayCampaigns?.primary,
+        todayMenuLink,
+    ]);
 
     const handleComplete = async (
         campaignId: string,
@@ -429,6 +470,7 @@ const TodayScreen = () => {
                         </div>
                     ) : null}
                 />
+                {weeklyGrowthPack ? <WeeklyGrowthPack pack={weeklyGrowthPack} /> : null}
                 {renderGuideDrawer()}
             </div>
         );
@@ -466,6 +508,8 @@ const TodayScreen = () => {
             )}
 
             {renderInactiveItemsReminder()}
+
+            {weeklyGrowthPack ? <WeeklyGrowthPack pack={weeklyGrowthPack} /> : null}
 
             {/* Staff Prompt Section - Read-only, appears after action section */}
             <StaffPromptSection staffPrompt={staffPrompt} />

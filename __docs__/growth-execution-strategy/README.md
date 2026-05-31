@@ -8,6 +8,7 @@
 **Governance:** `__docs__/constitution/11-product-evolution-doctrine.md` (Rule 1 — Stage 2)  
 **Separation:** `__docs__/constitution/12-product-separation-doctrine.md`  
 **Review:** `./_archive/chatgpt-review.md`
+**Planning Addendum:** `__docs__/growthos-command-center/README.md` captures the May 31, 2026 GrowthOS Command Center / GrowthAction conversation as planning only. It does not unlock implementation or change the Stage 2 gate.
 
 ---
 
@@ -28,6 +29,7 @@
 | [Monetization & Packaging](#11-monetization--packaging)                              | How this makes money                       |
 | [Kill Criteria & Expansion Rules](#12-kill-criteria--expansion-rules)                | Discipline governance                      |
 | [Market Landscape](#13-market-landscape--competitive-analysis)                       | Why this is differentiated                 |
+| [Command Center Planning Addendum](../growthos-command-center/README.md)             | May 31, 2026 GrowthAction planning review  |
 
 ---
 
@@ -768,8 +770,19 @@ GrowthOS's "output-first" positioning is genuinely differentiated. The closest c
 >
 > If ANY answer is "no" → **STOP. The existing Social Content Engine inside MenuList IS GrowthOS v0. Use it.**
 
+### May 31, 2026 Command Center Addendum
+
+The latest GrowthOS Command Center conversation is preserved under `__docs__/growthos-command-center/`.
+
+Decision status:
+
+- `GrowthAction` is accepted as a planning abstraction.
+- Freshness Check plus Weekly Growth Pack is accepted as the narrow candidate product kernel.
+- Separate GrowthOS app implementation remains blocked until the Stage 2 gates above are explicitly satisfied or overridden.
+- GrowthOS writing back to MenuList truth remains blocked by Product Separation Doctrine unless the founder changes that boundary.
+
 ---
 
-**Last Updated:** February 19, 2026  
+**Last Updated:** May 31, 2026
 **Next Review:** Only when prerequisites met  
 **Authority:** Founder reference document — strategic planning only

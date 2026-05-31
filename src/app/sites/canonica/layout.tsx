@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { getStaticCanonicaAppleStartupImages } from '@lib/canonica/pwaAssets';
 import CanonicaAnalytics from './components/CanonicaAnalytics';
 import CanonicaScrollReveal from './components/CanonicaScrollReveal';
-import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
+import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_TITLE, CANONICA_SITE_URL } from './siteConfig';
 import { CANONICA_THEME_COLOR } from './theme';
 import './styles.css';
 import './scroll-reveal.css';
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     publisher: 'Canonica',
     category: 'customer support software',
     title: {
-        default: 'Canonica — Support for AI-Built SaaS Apps',
+        default: CANONICA_SITE_TITLE,
         template: '%s | Canonica',
     },
     description: CANONICA_SITE_DESCRIPTION,
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
         telephone: false,
     },
     openGraph: {
-        title: 'Canonica — Support for AI-Built SaaS Apps',
+        title: CANONICA_SITE_TITLE,
         description: CANONICA_SITE_DESCRIPTION,
         url: CANONICA_SITE_URL,
         siteName: 'Canonica',
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
                 url: buildCanonicaUrl('/canonica-og-image.png'),
                 width: 1200,
                 height: 630,
-                alt: 'Canonica — Support for AI-Built SaaS Apps',
+                alt: CANONICA_SITE_TITLE,
             },
         ],
         locale: 'en_US',
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Canonica — Support for AI-Built SaaS Apps',
+        title: CANONICA_SITE_TITLE,
         description: CANONICA_SITE_DESCRIPTION,
         images: [buildCanonicaUrl('/canonica-og-image.png')],
     },

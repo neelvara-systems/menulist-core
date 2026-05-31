@@ -4,7 +4,46 @@
 > **Created:** Jan 3, 2026  
 > **Strategy Doc:** [social-content-product-strategy.md](../social-content-product-strategy.md) (FROZEN)  
 > **3-Year Architecture Freeze:** YES - No re-architecture for 3+ years after launch  
-> **Implementation Status:** Jan 4, 2026 - All features complete, pre-launch fixes applied
+> **Implementation Status:** May 31, 2026 - Today live. Weekly Growth Pack code exists but is paused behind a disabled flag.
+
+## May 31, 2026 - Weekly Growth Pack Wedge
+
+The GrowthOS planning review was implemented only as a MenuList Today enhancement. It does not create GrowthOS as a separate product.
+
+### Product Pause
+
+Do not freeze or roll out this wedge as a main feature yet.
+
+The owner-value review found that the idea is directionally useful but not proven enough to become a launch feature. It may help owners only if it behaves as a small optional action after Today confirms the business truth is ready. As a standalone weekly pack, it risks feeling like a side marketing feature.
+
+Revisit gate:
+
+- A pilot group of real owners uses it without explanation.
+- Owners copy/share at least one output during the session.
+- The feature remains secondary to Today truth readiness.
+- Critical fixes still outrank growth copy.
+- The feature stays inside Today unless GrowthOS Stage 2 is explicitly unlocked.
+
+| Layer | File | Decision |
+| --- | --- | --- |
+| Feature flag | `src/config/features.ts` | `ENABLE_TODAY_WEEKLY_GROWTH_PACK` defaults to `false` and remains paused. |
+| Shared builder | `src/lib/today/weeklyGrowthPack.ts` | Deterministic copy from current MenuList truth. |
+| Desktop UI | `src/components/templates/main-app/today/components/WeeklyGrowthPack/` | Shows ready actions plus copy-ready outputs inside `/today`. |
+| Mobile UI | `src/components/mobile/components/TodayWeeklyGrowthPackCard.tsx` | Same pack in the real mobile Today tab. |
+| Mobile host | `src/components/mobile/screens/MobileHoursScreen.tsx` | Current mobile Today tab surface. |
+
+### Boundaries
+
+- No new route or product shell.
+- No direct publishing.
+- No provider call.
+- No scheduler.
+- No new Firestore write path.
+- No public truth changes outside existing MenuList-owned flows.
+
+### Cost Impact
+
+Firebase cost impact: `$0.00`. The pack uses already-loaded Today/store/project data and browser clipboard copy only.
 
 ## Pre-Launch Fixes Applied (Jan 4, 2026)
 

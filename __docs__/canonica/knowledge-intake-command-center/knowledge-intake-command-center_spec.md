@@ -335,15 +335,15 @@ Runtime requirements:
 - FAQ/custom Q&A output is written to `canonica_faqs` as `published` and `active`, linked to articles, entities, tags, and context keys when available.
 - Canonical answers remain the first retrieval path. Intake can create drafts and mutation proposals, but an answer becomes `active` only after owner/admin approval and destination validation.
 - Product surface suggestions write existing `canonica_productSurfaces` records with route patterns, feature/page/workflow labels, visibility, entity ids, tags, and lineage.
-- Article, FAQ, changelog, ticket, and surface changes refresh or mark stale the compact product-surface content summary used for page-aware related content.
-- Changelog output writes existing changelog pages. Release timeline output writes `canonica_releases` only when entity changes and release version are known enough for owner-approved drift review.
-- Published outputs mark existing runtime source versions stale: `kb`, `docsNav`, `canonical`, `surfaces`, `releases`, `entities`, and `entityRelations` as applicable.
+- Article, FAQ, ticket, and surface changes refresh or mark stale the compact product-surface content summary used for page-aware related content.
+- Intake can use release notes or existing changelog entries as source context for support drafts, but it does not write changelog pages or `canonica_releases`. Owners publish release notes through the Changelog workflow.
+- Published outputs mark existing runtime source versions stale: `kb`, `docsNav`, `canonical`, `surfaces`, `entities`, and `entityRelations` as applicable.
 - Intake-only source/readiness counters do not by themselves rebuild public context bundles. Runtime bundles rebuild only when approved runtime destinations changed.
 
 End-user result:
 
 1. Owner imports sources and approves output.
-2. Hosted help shows approved articles, FAQs, and changelog entries.
+2. Hosted help shows approved articles and FAQs. Changelog entries are shown only when owners publish them through the Changelog workflow.
 3. Widget/help search serves active canonical answers first.
 4. If no canonical answer matches, published FAQs/custom Q&A can answer repeated questions.
 5. If FAQ does not match, vector/RAG fallback can use embedded published articles.
@@ -372,7 +372,7 @@ Readiness rules:
 - high-risk topics reviewed
 - at least one approved answer or article exists for the surface
 - embeddings are ready for published article content that should power search
-- product-surface content summary includes the latest approved articles, FAQs, changelog entries, and surfaces where applicable
+- product-surface content summary includes the latest approved articles, FAQs, owner-managed changelog entries, and surfaces where applicable
 - widget install and context verified where applicable
 - compact readiness summary updated so dashboards do not scan articles, answers, sources, or review items
 

@@ -2,16 +2,16 @@ import { Checkbox, Col, Form, Input, Row } from 'antd';
 import { useTranslations } from 'next-intl';
 
 const features = [
-  'Menu Creation & Editing',
-  'Automatic Data Extraction (OCR)',
-  'Multi-language Translation',
-  'Photo Generation',
-  'Digital Menu Display',
-  'QR Code Menu Sharing',
-  'Knowledge Base & Help Articles',
-  'Help Assistant Support',
-  'Billing & Subscriptions',
-  'Analytics Dashboard',
+  'Account access',
+  'Billing and invoices',
+  'Onboarding and setup',
+  'Team roles and permissions',
+  'Settings and configuration',
+  'Integrations',
+  'Data import or export',
+  'Notifications and email',
+  'Reports and analytics',
+  'Performance or reliability',
 ];
 
 const FeatureUsage = () => {

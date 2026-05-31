@@ -30,4 +30,8 @@ export interface AiSearchHistory {
     confidence?: string;              // 'high' | 'medium' | 'low' | 'none'
     sourceVersions?: CanonicaCacheSourceVersions; // Source freshness manifest captured when cached
     mountContext?: 'help_center' | 'widget' | 'api' | string; // Surface that initiated the search
+    contextKey?: string; // Compact Canonica product surface key, not the full transient context payload
+    surfaceFeature?: string;
+    surfacePage?: string;
+    surfaceWorkflow?: string;
 }

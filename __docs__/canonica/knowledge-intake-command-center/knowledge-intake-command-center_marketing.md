@@ -19,7 +19,7 @@ Short line:
 
 Long description:
 
-Canonica intake helps first-time founders and solo SaaS builders turn product links, selected website pages, docs, files, FAQs, release notes, setup notes, and support macros into source-backed support knowledge. Canonica prepares help articles, FAQs, product-surface suggestions, changelog drafts, and canonical answer proposals, then asks the owner to approve what should publish.
+Canonica intake helps first-time founders and solo SaaS builders turn product links, selected website pages, docs, files, FAQs, release notes, setup notes, and support macros into source-backed support knowledge. Canonica prepares help articles, FAQs, product-surface suggestions, and canonical answer proposals, then asks the owner to approve what should publish.
 
 ---
 
@@ -32,7 +32,7 @@ Canonica intake helps first-time founders and solo SaaS builders turn product li
 | I only have a marketing site. | Canonica finds candidate pricing, docs, FAQ, legal, security, changelog, and API pages, then processes only what you select. |
 | I do not want AI guessing. | Canonica shows sources, conflicts, and owner approval before answers become official. |
 | I cannot review 100 drafts. | Canonica groups drafts by destination so the owner can accept, edit, reject, and publish intentionally. |
-| My product changes quickly. | Intake publishes through the same KB, FAQ, changelog, surface, and canonical-proposal paths that the runtime already reads. |
+| My product changes quickly. | Intake uses release notes as source context and publishes through the same KB, FAQ, surface, and canonical-proposal paths that the runtime already reads. Changelog entries stay owner-managed. |
 | I worry about cost. | Mutating and processing actions require an active Canonica beta or subscription and stay bounded by source/review caps. |
 
 ---
@@ -101,7 +101,7 @@ Headline:
 
 Subheadline:
 
-Add your product link, choose the support-worthy pages Canonica finds, add docs, files, policies, changelog entries, screenshots, transcripts, or short support recordings, and confirm only the launch decisions that matter.
+Add your product link, choose the support-worthy pages Canonica finds, add docs, files, policies, release notes or existing changelog entries, screenshots, transcripts, or short support recordings, and confirm only the launch decisions that matter.
 
 Proof strip:
 

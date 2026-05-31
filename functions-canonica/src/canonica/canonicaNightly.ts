@@ -475,7 +475,7 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
     for (const doc of signalsSnap.docs) {
         const data = doc.data();
         const entityId = data.entityId;
-        if (!entityId) continue;
+        if (!entityId || entityId === 'unresolved') continue;
 
         const c = clusters.get(entityId) || { ticket: 0, chat_negative: 0, escalation: 0, total: 0, refs: [] };
         if (data.type === 'ticket') c.ticket++;

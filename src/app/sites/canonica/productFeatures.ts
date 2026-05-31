@@ -119,7 +119,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             'Start from selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings. Canonica prepares source-backed drafts for owner review before anything becomes support knowledge.',
         heroBullets: [
             'Selected public links, files, screenshots, and short media',
-            'KB, FAQ, surface, changelog, and answer-proposal drafts',
+            'KB, FAQ, surface, and answer-proposal drafts',
             'Owner approval before publish',
         ],
         proofTitle: 'Start with product truth, not a blank help center.',
@@ -149,7 +149,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Prepare review drafts',
                 description:
-                    'Generate grouped drafts for articles, FAQs, product surfaces, changelog entries, and canonical answer proposals.',
+                    'Generate grouped drafts for articles, FAQs, product surfaces, and canonical answer proposals.',
             },
             {
                 title: 'Keep answers governed',
@@ -169,7 +169,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             { title: 'Create intake', description: 'Name the intake and add product/app URLs for context.' },
             { title: 'Add sources', description: 'Import selected pages, pasted content, support macros, release notes, supported files, screenshots, or short support recordings.' },
             { title: 'Review drafts', description: 'Edit, accept, or reject drafts before they become customer-facing support.' },
-            { title: 'Publish accepted items', description: 'Write approved content into KB, FAQ, product surface, changelog, or canonical proposal paths.' },
+            { title: 'Publish accepted items', description: 'Write approved content into KB, FAQ, product surface, or canonical proposal paths.' },
         ],
         connectedTitle: 'Intake feeds Canonica without creating a second knowledge system.',
         connectedDescription:
@@ -194,7 +194,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Does this replace the Knowledge Base?',
                 description:
-                    'No. It feeds the Knowledge Base, FAQ, changelog, product-surface, and answer-proposal workflows.',
+                    'No. It feeds the Knowledge Base, FAQ, product-surface, and answer-proposal workflows. Release notes can be added as source context, while changelog publishing stays in the changelog workflow.',
             },
         ],
     },
@@ -613,6 +613,102 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                 title: 'Does creating a card publish an answer?',
                 description:
                     'No. Cards can create answer proposals, but Knowledge Governance and owner approval decide what becomes authoritative support knowledge.',
+            },
+        ],
+    },
+    {
+        slug: 'feedback-review',
+        label: 'Feedback Review',
+        href: '/product/feedback-review',
+        eyebrow: 'Feedback Review',
+        title: 'Turn product feedback into support signals.',
+        description:
+            'Collect ratings, product-area feedback, feature requests, and suggestions from end users, then sort the useful items by Product Surface before they become board follow-up or answer proposals.',
+        heroBullets: [
+            'Ratings, product feedback, requests, and suggestions',
+            'Owner review with optional Product Surface sorting',
+            'Support Board and answer-proposal handoff',
+        ],
+        proofTitle: 'Feedback should improve support knowledge, not become a noisy public roadmap.',
+        proofDescription:
+            'Canonica keeps feedback private to the workspace, scoped to the right tenant and product surface, and useful for support improvement only after owner review.',
+        cards: [
+            {
+                title: 'Collect multiple feedback types',
+                description:
+                    'End users can send general feedback, rate their experience, report product-area confusion, request a feature, or leave a suggestion from the Help Center.',
+            },
+            {
+                title: 'Review feedback in Canonica',
+                description:
+                    'Owners and support staff can inspect feedback inside the Canonica workspace without mixing it into MenuList or another product surface.',
+            },
+            {
+                title: 'Group by product surface',
+                description:
+                    'Owners can assign, change, clear, and filter feedback by the product area it belongs to without asking users to classify it.',
+            },
+            {
+                title: 'Use ratings as support pressure',
+                description:
+                    'Low ratings and repeated complaints become support signals, so owners can see where help content is failing users.',
+            },
+            {
+                title: 'Move selected items to Support Board',
+                description:
+                    'Useful feedback can become a private Support Board card with source context, priority, tags, and follow-up notes.',
+            },
+            {
+                title: 'Keep answer updates governed',
+                description:
+                    'Feedback can inform answer proposals, but it does not auto-publish knowledge or rewrite customer-facing support.',
+            },
+            {
+                title: 'Stay scoped and cost-aware',
+                description:
+                    'Feedback rows and signal events are written with Canonica product, tenant, and workspace scope, while owner review uses bounded reads and indexed queries.',
+            },
+        ],
+        workflowTitle: 'From user feedback to reviewed support improvement.',
+        workflowDescription:
+            'Feedback Review gives SaaS owners a clean path from raw end-user input to support follow-up without adding public voting, roadmap management, or helpdesk workflow bloat.',
+        workflowSteps: [
+            { title: 'User submits feedback', description: 'The Help Center captures the selected feedback type, rating, product area, request, or suggestion.' },
+            { title: 'Canonica logs the signal', description: 'The feedback row stays scoped to pId, tId, and sId, and a lightweight signal event is emitted when enabled.' },
+            { title: 'Owner reviews the item', description: 'The dashboard shows recent feedback with type, rating, user context, submitted details, and optional Product Surface assignment.' },
+            { title: 'Select useful follow-up', description: 'The owner can leave the row as feedback, move it to Support Board, or use it as evidence for answer proposal review.' },
+            { title: 'Approve knowledge separately', description: 'Any reusable answer still goes through governance before it becomes official support knowledge.' },
+        ],
+        connectedTitle: 'Feedback belongs inside the support knowledge loop.',
+        connectedDescription:
+            'Feedback Review is useful because it connects end-user sentiment to Support Board, signal mutation, product surfaces, and governed answers without becoming a separate feedback product.',
+        connectedItems: [
+            { title: 'Help Center', description: 'End users submit feedback from the same support surface where they ask for help.' },
+            { title: 'Product Surfaces', description: 'Owners keep feedback grouped by the product area where the confusion belongs.' },
+            { title: 'Signal Queue', description: 'Feedback can join fallback, ticket, and conversation signals for repeated-gap review.' },
+            { title: 'Support Board', description: 'Owners can promote selected feedback into private follow-up cards.' },
+            { title: 'Governance', description: 'Answer proposals stay human-reviewed before any support knowledge becomes authoritative.' },
+        ],
+        faq: [
+            {
+                title: 'Is this a public roadmap or voting board?',
+                description:
+                    'No. Feedback Review is private owner review. Feature requests are captured as support signals, not public votes or roadmap commitments.',
+            },
+            {
+                title: 'Does feedback automatically change answers?',
+                description:
+                    'No. Feedback can create evidence for a support gap, but answers still require owner review and governance approval.',
+            },
+            {
+                title: 'Can owners move feedback into Support Board?',
+                description:
+                    'Yes. Selected feedback can become a private Support Board card when it needs follow-up, notes, status tracking, or answer-proposal handoff.',
+            },
+            {
+                title: 'Why keep this inside Canonica?',
+                description:
+                    'SaaS feedback often exposes missing support content. Keeping it in Canonica lets owners turn user confusion into better help without building a separate feedback platform.',
             },
         ],
     },

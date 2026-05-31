@@ -336,6 +336,146 @@
   }
 }
 
+.weeklyGrowthPackCard {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+  margin-bottom: 24px;
+
+  :global(.ant-card-body) {
+    padding: 20px;
+  }
+}
+
+.weeklyGrowthPackHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+  }
+}
+
+.weeklyGrowthPackTitle {
+  color: var(--ant-color-text);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.weeklyGrowthPackSummary {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.readyActionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.readyActionRow {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ant-color-bg-layout) 65%, var(--ant-color-bg-container));
+}
+
+.readyActionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  flex: 0 0 auto;
+}
+
+.readyActionBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.readyActionTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.readyActionBadge {
+  border-radius: 999px;
+  border: 1px solid var(--ant-color-border);
+  color: var(--ant-color-text-secondary);
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+}
+
+.weeklyAssetList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weeklyAssetRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+
+  @media (max-width: 560px) {
+    flex-direction: column;
+  }
+}
+
+.weeklyAssetContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.weeklyAssetTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+
+  @media (max-width: 560px) {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.weeklyAssetCopy {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ant-color-bg-layout);
+  color: var(--ant-color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
 // Past Activity Screen
 .pastActivityContainer {
   max-width: 640px;

@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.44
-> **Last Updated:** 2026-05-28
+> **Version:** 1.2.45
+> **Last Updated:** 2026-05-31
 > **Audience:** Developers
 
 ---
@@ -50,6 +50,7 @@ src/app/sites/canonica/
 ├── product/changelog/page.tsx     # Changelog feature page
 ├── product/tickets/page.tsx       # Tickets feature page
 ├── product/support-board/page.tsx # Support Board feature page
+├── product/feedback-review/page.tsx # Feedback Review feature page
 ├── product/workflow-notifications/page.tsx # Workflow Notifications feature page
 ├── product/proactive-help/page.tsx # Proactive Help feature page
 ├── productFeatures.ts             # Shared product-feature route data and sitemap source
@@ -163,6 +164,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Ticket debugging context is now presented as capped, sanitized support context in product, security, FAQ, and privacy copy; public copy avoids raw "console log" wording except where implementation docs need it.
 - `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from Canonica Billing using product-scoped Razorpay requests.
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
+- May 31 shared-conversation pass changed the homepage hero to "Launch your SaaS with support already built.", made support setup the primary CTA, and clarified that Canonica prepares docs, FAQs, answer drafts, hosted help, and page-aware widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed.
+- May 31 feedback website pass added `/product/feedback-review`, registered it through `CANONICA_SUPPORT_FEATURES`, exposed it in header/footer/resources/product grids through shared feature data, and added a homepage/Product preview tab for ratings, feature requests, suggestions, Support Board handoff, and answer-governance boundaries.
 - May 24 AI-built SaaS pass changed the homepage hero to "You shipped the app. Now users need correct answers.", moved the page-aware demo directly after the hero, and teaches approved answers before advanced Canonica vocabulary.
 - May 24 AI-built SaaS pass added `/use-cases/ai-built-saas` and `/use-cases/vibe-coded-saas` as a canonicalized alias for campaign/search traffic.
 - May 22 conversion pass changed the homepage hero to outcome-first buyer language while keeping "support knowledge control plane" as secondary category language.
@@ -438,3 +441,4 @@ Conversion analytics is client-side only:
 | 2026-05-27 | 1.2.42 | Added route icons to every Canonica mobile drawer row and the setup CTA using the existing Lucide icon stack |
 | 2026-05-28 | 1.2.43 | Adjusted the desktop Product dropdown feature column and single-line labels so product-feature headings do not wrap |
 | 2026-05-28 | 1.2.44 | Added a shared centered section-header component across homepage, product, high-intent public pages, and SEO page templates so section intros use one visual treatment |
+| 2026-05-31 | 1.2.45 | Updated the homepage hero, metadata, structured data title, final CTA, and product-area support-control copy to the corrected launch-ready support positioning from the shared Canonica/Crisp conversation without claiming generated tickets or generated changelogs; follow-up pass restored the implemented feedback, ratings, and feature-request surface into public claims |

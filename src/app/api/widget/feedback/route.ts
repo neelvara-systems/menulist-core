@@ -30,6 +30,32 @@ const FeedbackRequestSchema = z.object({
 });
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
+const cleanSignalContextText = (value: unknown, maxLength = 140): string | null => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return null;
+    return text.length > maxLength ? text.slice(0, maxLength) : text;
+};
+
+const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) => {
+    const contextKey = cleanSignalContextText(historyData.contextKey, 140);
+    const productContext = {
+        contextKey,
+        feature: cleanSignalContextText(historyData.surfaceFeature, 120),
+        page: cleanSignalContextText(historyData.surfacePage, 120),
+        workflow: cleanSignalContextText(historyData.surfaceWorkflow, 120),
+    };
+    const hasProductContext = Object.values(productContext).some(Boolean);
+
+    return {
+        query: cleanSignalContextText(historyData.query, 220),
+        answerSource: cleanSignalContextText(historyData.answerSource, 80),
+        confidence: cleanSignalContextText(historyData.confidence, 40),
+        contextKey,
+        productContext: hasProductContext ? productContext : null,
+        relatedContextKeys: contextKey ? [contextKey] : [],
+    };
+};
+
 export async function POST(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
@@ -148,6 +174,7 @@ export async function POST(request: NextRequest) {
                     metadata: {
                         searchHistoryId,
                         source: 'widget',
+                        ...buildWidgetFeedbackContextMetadata(historyData),
                     },
                 });
             } catch {

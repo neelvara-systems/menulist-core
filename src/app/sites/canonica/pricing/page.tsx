@@ -104,7 +104,7 @@ export default function CanonicaPricingPage() {
                                 data-canonica-label="beta_setup_banner"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                             >
-                                Start free setup
+                                Start support setup
                             </CanonicaLink>
                         </div>
                     </div>
@@ -149,7 +149,7 @@ export default function CanonicaPricingPage() {
                                             : 'border border-white/[0.12] bg-white/[0.03] text-[#d6d6ef] hover:border-white/[0.24]'
                                     }`}
                                 >
-                                    Start free setup
+                                    Start support setup
                                 </CanonicaLink>
 
                                 <ul className="space-y-3">
@@ -219,10 +219,10 @@ export default function CanonicaPricingPage() {
                         basePath={basePath}
                         href="/get-started"
                         data-canonica-event="pricing_final_cta_clicked"
-                        data-canonica-label="start_free_setup"
+                        data-canonica-label="start_support_setup"
                         className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
-                        Start free setup
+                        Start support setup
                     </CanonicaLink>
                 </section>
             </main>

@@ -72,10 +72,10 @@ export default function CanonicaAboutPage() {
                             basePath={basePath}
                             href="/get-started"
                             data-canonica-event="about_cta_clicked"
-                            data-canonica-label="start_free_setup"
+                            data-canonica-label="start_support_setup"
                             className="inline-block rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
-                            Start free setup
+                            Start support setup
                         </CanonicaLink>
                     </div>
                 </section>

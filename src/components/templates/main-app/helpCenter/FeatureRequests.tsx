@@ -6,12 +6,18 @@ import { LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
 const { Text } = Typography;
 
 const popularRequests = [
-  'Multi-location menu management from one dashboard',
-  'Automated menu price updates across all platforms',
-  'Customer ordering directly from digital menu',
-  'Menu performance analytics and popular items tracking',
-  'WhatsApp integration for menu sharing and orders',
+  'Clearer setup guides',
+  'More integration options',
+  'Better billing controls',
+  'Easier data export and reports',
+  'Faster issue status updates',
 ];
+
+const toVotedRequests = (nextVotes: { [key: string]: boolean | null }) => (
+  Object.entries(nextVotes)
+    .filter(([, interested]) => interested !== null)
+    .map(([feature, interested]) => ({ feature, interested: interested as boolean }))
+);
 
 const FeatureRequests = () => {
   const t = useTranslations('HelpCenter');
@@ -19,17 +25,18 @@ const FeatureRequests = () => {
   const form = Form.useFormInstance();
 
   const handleVote = (feature: string, interested: boolean | null) => {
-    setVotes(prev => ({
-      ...prev,
-      [feature]: prev[feature] === interested ? null : interested,
-    }));
+    setVotes(prev => {
+      const next = {
+        ...prev,
+        [feature]: prev[feature] === interested ? null : interested,
+      };
+      form.setFieldsValue({ votedPopularRequests: toVotedRequests(next) });
+      return next;
+    });
   };
 
   useEffect(() => {
-    const votedRequests = Object.entries(votes)
-      .filter(([, interested]) => interested !== null)
-      .map(([feature, interested]) => ({ feature, interested: interested as boolean }));
-    form.setFieldsValue({ votedPopularRequests: votedRequests });
+    form.setFieldsValue({ votedPopularRequests: toVotedRequests(votes) });
   }, [votes, form]);
 
   return (
@@ -37,7 +44,14 @@ const FeatureRequests = () => {
       <Form.Item
         label={t('featureRequestLabel')}
         name="featureRequest"
-        rules={[{ required: true, message: t('featureRequestRequired') }]}
+        rules={[{
+          validator: async (_, value) => {
+            const hasRequest = String(value || '').trim().length > 0;
+            const hasVote = (form.getFieldValue('votedPopularRequests') || []).length > 0;
+            if (hasRequest || hasVote) return;
+            throw new Error(t('featureRequestRequired'));
+          },
+        }]}
       >
         <Input.TextArea
           rows={4}
