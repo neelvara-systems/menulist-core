@@ -11,6 +11,19 @@
 
 The KB Generation Pipeline is Canonica's article and FAQ generation system — product owners upload raw source files (PDFs, documents, videos, images, websites, copied text), and the system generates structured knowledge base articles with optional source-backed FAQ suggestions. Generated articles and FAQs go through review → reconciliation → publish → embed workflow before becoming searchable and visible in the Help Center.
 
+## Successor Architecture Note
+
+This folder documents the **current runtime**. The planned long-term Canonica intake architecture is documented in [`../knowledge-intake-command-center/README.md`](../knowledge-intake-command-center/README.md).
+
+The key distinction:
+
+- **Current KB Generation Pipeline:** upload/source-file-first article and FAQ generation.
+- **Knowledge Intake Command Center:** paid-gated product understanding layer that starts from product context, selected-page website discovery, source registry, source authority, product map, launch decisions, source-backed drafts, and topic readiness before publishing into the existing KB, FAQ, canonical answer, product-surface, changelog/release, widget/search, public cache, and compiled-context paths.
+
+Do not implement the long-term intake work by adding more source cards to this upload modal alone. This pipeline should remain a compatibility article/FAQ output path until the Canonica-owned intake command center replaces the owner workflow.
+
+When intake implementation begins, the current publish/embedding behavior remains an integration dependency: approved article output must still produce searchable `kb_articles`, `kb_categories`, generated/published FAQs, cache-version bumps, public cache invalidation, and embedding readiness. Do not fork a second article/search runtime for intake.
+
 ---
 
 ## Document Index
@@ -72,4 +85,6 @@ Upload Files → Create Job (pending)
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-31 | 1.1.0 | Added successor architecture note pointing to Knowledge Intake Command Center docs |
+| 2026-05-31 | 1.2.0 | Clarified that Knowledge Intake must publish through existing KB/FAQ/search/cache/embedding runtime paths rather than a parallel intake runtime. |
 | 2026-03-02 | 1.0.0 | Initial forensic documentation — 21 UI files, 5 DAL functions, 2 Cloud Functions |

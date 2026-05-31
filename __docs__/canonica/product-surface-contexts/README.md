@@ -25,3 +25,7 @@ This feature strengthens:
 - Release Binding: changelogs can be attached to affected product surfaces.
 - Signal Mutation: tickets and failed searches carry the same context key as articles and changelogs.
 - API and Integration Layer: widget runtime can pass page context without leaking tenant or user identifiers.
+
+## Knowledge Intake Alignment
+
+Knowledge Intake can suggest product surfaces from product links, app URLs, docs, screenshots, and owner-selected routes, but approved output must write the existing `canonica_productSurfaces` model. Intake publishing must mark the `surfaces` source stale and rebuild or mark stale `platformSummary/contextContent_{tId}_{sId}` after article, FAQ, changelog, ticket, or surface changes that should affect page-aware related content. This keeps the widget and help-center related-content flow on one compact summary instead of adding an intake-specific route map.

@@ -13,6 +13,8 @@ No new high-volume read collections are introduced. Source-version writes happen
 
 The centralized Canonica scheduler compares `sourceVersions_*` with `bundleManifest_*` through the `runCanonicaNightly()` governance batch and rebuilds only stale due workspaces. Manual rebuilds use the same manifest and Storage path contract.
 
+Knowledge Intake counters should not increase bundle churn. Intake-only counters can be stored in summary/source-version docs for owner UI and scheduler repair, but they are excluded from compiled context equality. Bundle rebuilds happen when approved destination content changes existing bundle inputs: KB/docs navigation, canonical answers, surfaces, releases, entities, entity relations, widget config, branding, MCP policy, or predictive triggers.
+
 ## Storage
 
 Allowed public bundle path:

@@ -19,6 +19,8 @@
 
 `platformSummary/bundleManifest_{tId}_{sId}` stores the current active bundle pointer, status, source snapshot, file refs, stats, limits, and public opaque bundle ID. It must not store raw exception text; owner-visible failures use a generic status and detailed diagnostics stay in platform logs / server-only build locks.
 
+Knowledge Intake may store intake-only freshness counters on adjacent summary/source-version documents, such as `knowledgeIntakeSources`, `knowledgeIntakeOutputs`, and `knowledgeIntakeReadiness`. These counters are not bundle inputs by themselves. They must stay outside compiled context source equality unless approved runtime destination content also changed. Intake publishers still bump the real runtime source keys above (`kb`, `docsNav`, `canonical`, `surfaces`, `releases`, `entities`, `entityRelations`) when they publish approved output.
+
 ## Storage Paths
 
 Public:

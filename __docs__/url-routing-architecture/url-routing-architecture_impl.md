@@ -246,6 +246,13 @@ Source of truth: `src/constants/deploymentTargets.ts`.
 
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
+MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires HTTP Basic Auth before rewriting to `/sites/mycodex`. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Canonica public-site discovery.
+
+| Env var | Required on Vercel | Purpose |
+| ------- | ------------------ | ------- |
+| `MYCODEX_BASIC_AUTH_USER` | Yes | Username for `menulist.digital` / `www.menulist.digital` |
+| `MYCODEX_BASIC_AUTH_PASSWORD` | Yes | Password for `menulist.digital` / `www.menulist.digital` |
+
 ### Key Env Var: `NEXT_PUBLIC_APP_URL`
 
 Set per environment on Vercel:
@@ -262,6 +269,7 @@ Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`scree
 - **`src/constants/deploymentTargets.ts`** — stage-specific product domain matrix
 - **`src/constants/productDomains.ts`** — enabled product site registry and internal route groups
 - **`src/constants/urls.ts`** — derives `PLATFORM_DOMAINS` from MenuList domains plus `ALL_PRODUCT_DOMAINS`
+- **`src/app/sites/mycodex/robots.txt/route.ts`** — MyCodex-only crawler disallow response
 - **`corsValidation.ts`** — `ALLOWED_ORIGINS` includes `...VERCEL_URLS`
 - **`csp-allowlist.ts`** — `frameSources` includes `https://vercel.live`
 - **`middleware.ts`** — CSP allows `'unsafe-inline'` for styles/scripts (Ant Design + Next.js require it)

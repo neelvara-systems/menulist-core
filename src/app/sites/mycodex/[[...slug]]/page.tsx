@@ -17,6 +17,12 @@ interface Heading {
     id: string;
 }
 
+const createHeadingId = (text: string) => text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
 // Disable Next.js routing cache so filesystem modifications show up in real-time
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -83,6 +89,13 @@ function isInsideDocsDir(docsDir: string, targetPath: string): boolean {
     return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
+function formatTitle(name: string): string {
+    return name
+        .replace(/\.md$/, '')
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 async function getReadableMarkdownFile(targetPath: string, docsDir: string): Promise<string | null> {
     const resolvedPath = path.resolve(targetPath);
 
@@ -114,6 +127,61 @@ async function getReadableMarkdownFile(targetPath: string, docsDir: string): Pro
     return null;
 }
 
+async function getDirectoryIndexMarkdown(directoryPath: string, docsDir: string, slug: string[]): Promise<string | null> {
+    const resolvedPath = path.resolve(directoryPath);
+
+    if (!isInsideDocsDir(docsDir, resolvedPath)) {
+        return null;
+    }
+
+    try {
+        const stat = await fs.stat(resolvedPath);
+        if (!stat.isDirectory()) {
+            return null;
+        }
+
+        const items = await fs.readdir(resolvedPath, { withFileTypes: true });
+        const visibleItems = items
+            .filter(item => (
+                !item.name.startsWith('.')
+                && !item.name.startsWith('_')
+                && item.name !== 'node_modules'
+                && item.name !== 'archive'
+                && item.name !== 'raw-data'
+                && (item.isDirectory() || item.name.endsWith('.md'))
+            ))
+            .sort((a, b) => {
+                if (a.isDirectory() && !b.isDirectory()) return -1;
+                if (!a.isDirectory() && b.isDirectory()) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+        const folderTitle = slug.length > 0 ? formatTitle(slug[slug.length - 1]) : 'Documentation';
+
+        if (visibleItems.length === 0) {
+            return `# ${folderTitle}\n\nThis folder does not contain readable Markdown documents.`;
+        }
+
+        const lines = visibleItems.map(item => {
+            const itemTitle = formatTitle(item.name);
+            const href = item.isDirectory()
+                ? `./${item.name}`
+                : `./${item.name}`;
+            return `- [${itemTitle}](${href})`;
+        });
+
+        return [
+            `# ${folderTitle}`,
+            '',
+            'Documents in this folder:',
+            '',
+            ...lines,
+        ].join('\n');
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Extract headers to build the Table of Contents outline
  */
@@ -130,9 +198,7 @@ function extractHeadings(markdown: string): Heading[] {
                 .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // strip links
                 .replace(/`([^`]+)`/g, '$1')            // strip inline code
                 .trim();
-            const id = text.toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '')
-                .replace(/\s+/g, '-');
+            const id = createHeadingId(text);
             headings.push({ text, level, id });
         }
     }
@@ -164,8 +230,10 @@ export default async function MyCodexPage({ params }: PageProps) {
         if (slug.length === 0) {
             // Serve master index file by default at root slug
             const rootIndex = path.join(docsDir, 'index.md');
-            resolvedFilePath = rootIndex;
-            markdownContent = await fs.readFile(rootIndex, 'utf8');
+            resolvedFilePath = await getReadableMarkdownFile(rootIndex, docsDir) || '';
+            markdownContent = resolvedFilePath
+                ? await fs.readFile(resolvedFilePath, 'utf8')
+                : '# Document Not Found\n\nWe could not find the documentation index.';
         } else {
             // Resolve requested path
             const baseTarget = path.join(docsDir, ...slug);
@@ -177,12 +245,12 @@ export default async function MyCodexPage({ params }: PageProps) {
             if (resolvedFilePath) {
                 markdownContent = await fs.readFile(resolvedFilePath, 'utf8');
             } else {
-                // Return markdown 404 message
-                markdownContent = `# 🔍 Document Not Found\n\nWe couldn't find the requested document at **${slug.join('/')}**.\n\nPlease check the navigation tree in the sidebar to browse available documentation.`;
+                markdownContent = await getDirectoryIndexMarkdown(baseTarget, docsDir, slug)
+                    || `# Document Not Found\n\nWe could not find the requested document at **${slug.join('/')}**.\n\nPlease check the navigation tree in the sidebar to browse available documentation.`;
             }
         }
-    } catch (error) {
-        markdownContent = `# 💥 Error Loading Document\n\nThere was a problem reading the requested file. Please check if the file is correctly structured.\n\n**Details:** ${String(error)}`;
+    } catch {
+        markdownContent = '# Error Loading Document\n\nThere was a problem reading the requested file.';
     }
 
     // Extract outline headings for Table of Contents
@@ -195,6 +263,7 @@ export default async function MyCodexPage({ params }: PageProps) {
             currentSlug={slug}
             headings={headings}
             isLocalDev={isLocalDev}
+            sourceFilePath={resolvedFilePath ? path.relative(process.cwd(), resolvedFilePath) : null}
         />
     );
 }

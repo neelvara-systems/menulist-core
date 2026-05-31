@@ -20,3 +20,7 @@ Primary files:
 - Validation: `src/lib/canonica/faqContent.ts`
 - Publish pipeline: `functions-canonica/src/logic/publishApprovedJob.ts`
 - Context summary: `src/lib/canonica/productSurfaceContentServer.ts`
+
+## Knowledge Intake Alignment
+
+Knowledge Intake must use this FAQ layer for approved short answers and custom Q&A. It should not create a separate intake FAQ collection. Intake-published FAQs must keep the same runtime fields used here: `status: published`, `active: true`, article links, tags, `contextKeys`, and `entityIds`. Cache/public-content invalidation and product-surface summary refresh must follow the existing FAQ DAL/publish behavior so widget/help search can reuse the same retrieval path.

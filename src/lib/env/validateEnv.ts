@@ -78,6 +78,10 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
 } as const;
 
 const PLATFORM_ALIAS_VAR = 'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES';
+const MYCODEX_AUTH_VARS = [
+    'MYCODEX_BASIC_AUTH_USER',
+    'MYCODEX_BASIC_AUTH_PASSWORD',
+] as const;
 
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
@@ -177,6 +181,13 @@ export function validateEnvironment(): EnvValidationResult {
             const message = `${PLATFORM_ALIAS_VAR} contains non-${stage} MenuList domains: ${unexpectedAliases.join(', ')}`;
             if (isVercel) missing.push(message);
             else warnings.push(message);
+        }
+    }
+
+    if (isVercel && stage !== 'local') {
+        const missingMyCodexAuth = MYCODEX_AUTH_VARS.filter((varName) => !getEnvValue(varName));
+        if (missingMyCodexAuth.length > 0) {
+            missing.push(`${missingMyCodexAuth.join(' and ')} required for MyCodex access protection on Vercel`);
         }
     }
 

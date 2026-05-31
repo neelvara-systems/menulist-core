@@ -6,11 +6,49 @@
 
 ---
 
+## May 31, 2026 — MyCodex Reader Controls
+
+### Changed
+
+- **MyCodex reader now has persistent reading controls** — Font size, reading width, desktop navigation visibility, and quick search focus can be adjusted from the reader toolbar and keyboard.
+- **MyCodex presentation is calmer and easier to scan** — The document surface now uses neutral typography, clearer code/table styling, a reading progress bar, and a less decorative chrome treatment.
+- **MyCodex mobile navigation is easier to use** — The header/reader toolbar now share stable sticky heights, the drawer locks background scroll while open, folder rows stay left-aligned, and matched folder searches expand all documents under that folder.
+- **MyCodex mobile toolbar now avoids desktop-only controls** — Reading width and sidebar pin controls are desktop-only; mobile keeps font sizing, reset, and hamburger navigation.
+- **MyCodex documents are easier to reuse from mobile** — Each opened document now shows its resolved source file path and provides copy path, copy link, share, copy page, and screenshot capture actions.
+- **MyCodex reader utilities moved out of the document flow** — Document actions, text sizing, theme, search, and desktop layout controls now live in a settings drawer so mobile reading starts with the document content.
+- **MyCodex font sizing has a wider lower range** — Reader text can now be reduced down to `10px` for dense reference reading.
+- **MyCodex crawler restrictions are explicit** — MyCodex routes now send no-index/no-follow robot metadata and headers, plus a product-scoped `robots.txt` disallow response, without changing MenuList or Canonica routes.
+- **MyCodex folder URLs now open a document list** — Visiting a folder such as `/__mycodex/ai-enhancement-packs` shows the documents in that folder instead of a generic not-found page when no README exists.
+
+### Cost
+
+- **No Firebase cost change** — These are client-only reader UI changes over local repository markdown. They add no Firestore reads, writes, listeners, Cloud Functions, indexes, or scheduled work.
+
+---
+
+## May 31, 2026 — Canonica Knowledge Intake Planning
+
+### Added
+
+- **Canonica Knowledge Intake Command Center documentation** — Added a complete day-one document set for the planned paid-gated, source-backed intake architecture that will sit above the current upload-first KB generation pipeline.
+- **Intake cost and safety contract** — Documented the source registry, Storage-heavy artifact model, compact Firestore summaries, source authority rules, paid entitlement gates, review queue, source lineage, topic readiness, and test matrix.
+- **Product-link intake hardening** — Added selected-page website discovery, app URL crawl boundaries, unchanged-source skip rules, bounded job orchestration, credit settlement, and pre-provider privacy filtering to the intake plan.
+- **Summary-first intake infrastructure** — Added workspace intake summaries, bucketed scheduler directory docs, source-version fields, dirty-summary repair, and write-if-changed rules so implementation can avoid growing collection scans.
+- **Runtime alignment for intake output** — Added a destination publishing matrix so approved intake output must feed existing KB articles/categories, FAQ retrieval, canonical-first search, vector embeddings, product-surface summaries, changelog/release context, public content cache, and compiled context source-version paths.
+- **KB generation successor note** — The existing KB Generation Pipeline docs now clarify that the current runtime remains the compatibility article/FAQ output path, while Knowledge Intake Command Center is the planned long-term Canonica intake layer.
+
+### Cost
+
+- **No runtime Firebase cost change yet** — This is documentation/planning work only. The planned implementation is explicitly paid-gated and Storage-heavy: it avoids per-fact/per-section Firestore materialization, broad crawls, realtime intake lists, scheduler collection scans, per-source provider fanout, Firestore docs for skipped website URLs, and AI/provider calls when selected links are unchanged. The runtime alignment update also avoids duplicate retrieval collections by reusing existing cache/version, embedding, surface-summary, public-cache, and compiled-context paths.
+
+---
+
 ## May 30, 2026 — MyCodex Product Domain Routing
 
 ### Changed
 
 - **MyCodex now uses `menulist.digital` as a dedicated internal product host** — `menulist.digital` and `www.menulist.digital` are documented as product domains that rewrite to `/sites/mycodex` before tenant/custom-domain routing can treat the host as a restaurant domain.
+- **MyCodex Vercel access is protected** — The middleware now requires `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` outside localhost before serving repository documentation.
 - **URL routing docs now include product-domain guardrails** — The URL routing architecture README, spec, implementation guide, ADRs, and Firebase cost note now describe MenuList, Canonica, and MyCodex host separation.
 
 ### Cost

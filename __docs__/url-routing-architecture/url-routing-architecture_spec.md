@@ -75,6 +75,7 @@
 - Dedicated MyCodex internal reader host: `menulist.digital` / `www.menulist.digital`
 - MyCodex local path prefix: `/__mycodex`
 - Product-domain classification before tenant/custom-domain routing
+- Basic Auth protection for MyCodex outside localhost
 - Feature flag: `ENABLE_MYCODEX_READER`
 - No MenuList tenant/store/project routing for `menulist.digital`
 
@@ -118,6 +119,8 @@
 | **Single-store behavior** | Zero visible difference for single-store brands (95% of users)                 |
 | **Backward compat**       | Projects without stored slugs fall back to `slugify(name)` matching            |
 | **Product host isolation** | Internal product hosts are registered before tenant routing and never treated as restaurant custom domains |
+| **Internal reader access** | MyCodex Vercel access requires `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` |
+| **Internal reader discovery** | MyCodex routes must be no-index/no-follow and must serve disallow-all `robots.txt` without affecting MenuList or Canonica discovery |
 
 ---
 

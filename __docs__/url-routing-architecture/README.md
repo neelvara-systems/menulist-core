@@ -85,6 +85,7 @@ Requests are classified before tenant routing:
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
+5. MyCodex product routes require Basic Auth outside localhost so internal docs are not publicly readable.
 
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
@@ -95,6 +96,15 @@ Requests are classified before tenant routing:
 | Verified restaurant custom domain       | Tenant         | `/client`                          |
 
 `menulist.digital` is reserved for the internal MyCodex documentation reader. It must stay in the product-domain registry so it is not mistaken for a restaurant custom domain.
+
+MyCodex Vercel access requires:
+
+- `MYCODEX_BASIC_AUTH_USER`
+- `MYCODEX_BASIC_AUTH_PASSWORD`
+
+MyCodex also stays out of public discovery: MyCodex responses send `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate`, its layout metadata is no-index/no-follow, and its product-scoped `robots.txt` disallows all crawlers. These restrictions are applied only to MyCodex routes/domains and must not be reused for MenuList tenant menus or Canonica public surfaces.
+
+Localhost `/__mycodex` remains open for development.
 
 #### Tenant Route Flow
 
@@ -189,6 +199,7 @@ Customer opens: storypizza.menulist.ai/pune/menu
 | No subdomain→custom domain redirect       | Page-level 301 redirect when store has verified custom domain    | ADR-5         |
 | No trailing slash/lowercase normalization | Edge middleware 301 redirect                                     | ADR-6         |
 | Internal docs host could be mistaken for tenant/custom domain | `menulist.digital` registered as MyCodex product domain | ADR-12 |
+| MyCodex docs could be indexed or crawled | MyCodex-only robot metadata, `X-Robots-Tag`, and disallow-all `robots.txt` | ADR-12 |
 
 ---
 

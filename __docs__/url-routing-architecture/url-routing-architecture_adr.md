@@ -201,7 +201,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 ## ADR-12: Internal Product Hosts Must Be Registered Before Tenant Routing
 
-**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`.
+**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`. Outside localhost, middleware must require Basic Auth before serving MyCodex.
 
 **Why:**
 
@@ -209,6 +209,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 - Unknown hosts are treated as tenant custom domains by the public menu router.
 - Registering `menulist.digital` as a product domain prevents MenuList tenant/custom-domain logic from attempting to resolve it as a restaurant.
 - The host is separate from MenuList (`menulist.ai`) and Canonica (`canonica.app`) production domains.
+- MyCodex renders repository documentation, so Vercel access must fail closed if auth credentials are missing.
 
 **Runtime contract:**
 
@@ -218,6 +219,11 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 | `www.menulist.digital` | Product: MyCodex | `/sites/mycodex` |
 | `menulist.ai` | Platform/MenuList | no MyCodex rewrite |
 | `canonica.app` | Product: Canonica | `/sites/canonica` |
+
+**Required Vercel env vars:**
+
+- `MYCODEX_BASIC_AUTH_USER`
+- `MYCODEX_BASIC_AUTH_PASSWORD`
 
 **Source files:**
 

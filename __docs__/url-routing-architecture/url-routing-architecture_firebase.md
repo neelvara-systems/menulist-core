@@ -10,7 +10,7 @@
 
 URL Routing Architecture **reduces** total Firebase reads across all public surfaces through 6 targeted optimizations. The feature itself adds zero additional writes.
 
-The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware and serves local repository markdown from `__docs__`.
+The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware, requires Basic Auth outside localhost, serves local repository markdown from `__docs__`, and emits product-scoped no-index/no-follow crawler controls.
 
 ### Cost Optimization Summary (Implemented Feb 19, 2026)
 
@@ -47,6 +47,7 @@ The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital
 | Brand OBP outlet list               | `stores` (WHERE tenantId + active)     | Brand OBP store selector (multi-store)       | **N reads** — cached 60s, only multi-store brands                  |
 | Custom domain verify                | Vercel API (not Firestore)             | Owner clicks "Check Verification"            | **0 Firestore reads** — Vercel API only                            |
 | MyCodex host classification         | None                                   | Requests to `menulist.digital`               | **0 Firestore reads** — product-domain registry + local markdown   |
+| MyCodex crawler restriction         | None                                   | MyCodex pages and `robots.txt`               | **0 Firestore reads** — metadata, headers, and static text only    |
 
 **Net public page read impact:** Same as before for single-store (cached). Multi-store adds 0-1 conditional read (cached 60s).
 

@@ -64,6 +64,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 16  | `developer-install-pack/`                        | Product/Sales/Dev | Agent install packet, v1 script quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Canonica team members, workspace roles, permission claims, and rule-level access control |
 | 18  | `support-board/`                                 | Product/Ops/Dev | Private owner/staff Support Board, Needs Answer queue, internal notes, and future support-work roadmap |
+| 19  | `knowledge-intake-command-center/`               | Product/Ops/Dev | Planned founder-first, paid-gated source intake architecture that sits above the current KB generation pipeline |
 
 ---
 
@@ -377,8 +378,9 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 6   | **[Feedback System](./feedback-system/README.md)**               | `feedback-system/`        | 8 docs | 9 files, 5 DAL functions                      |
 | 7   | **[Chat Monitoring](./chat-monitoring/README.md)**               | `chat-monitoring/`        | 8 docs | 35 items, 13 DAL functions, 4 Cloud Functions |
 | 8   | **[FAQ Management](./faq-management/README.md)**                 | `faq-management/`         | 7 docs | Bounded FAQ DAL, import generation, public FAQ tab |
+| 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
 
-**Total:** 8 deep-dive feature folders, including FAQ Management.
+**Total:** 9 deep-dive feature folders, including FAQ Management and planned Knowledge Intake Command Center.
 
 Each sub-feature folder contains:
 
@@ -397,6 +399,10 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-31 | 3.4.0   | Added Knowledge Intake Command Center documentation for the planned founder-first, paid-gated, source-backed intake architecture that supersedes upload-first KB generation.            |
+| 2026-05-31 | 3.4.1   | Expanded Knowledge Intake docs with selected-page website discovery, app URL crawl boundaries, unchanged-source skip, bounded execution, and provider-safe evidence rules.            |
+| 2026-05-31 | 3.4.2   | Added summary-first intake read model, bucketed scheduler directory, source-version fields, and dirty-summary repair requirements.            |
+| 2026-05-31 | 3.4.3   | Aligned Knowledge Intake docs with existing Canonica runtime paths: article embeddings, FAQ retrieval, canonical-first search, product-surface summaries, public cache, releases, and compiled context source versions. |
 | 2026-05-22 | 3.3.0   | Added FAQ Management as a first-class Canonica owner/public feature with import generation, article links, product-surface context, and cost-bounded Firebase reads.                   |
 | 2026-05-21 | 3.2.0   | Updated Canonica separate-product auth/Firebase notes: `productAccounts.CN`, dedicated widget credentials, Canonica AI operation logs, and enabled core widget flag.                   |
 | 2026-03-06 | 3.1.0   | ChatGPT domain/launch review — 10 failure modes, entity categories, authoring guidelines added to activation experiment. Archive: `_archive/chatgpt-review-domain-launch-readiness.md` |

@@ -3,7 +3,8 @@
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * Routing Priority:
- * 1. Active product website domains (QA ecomsai.com / prod canonica.app → /sites/canonica)
+ * 1. Active product website domains (QA ecomsai.com / prod canonica.app → /sites/canonica,
+ *    menulist.digital → /sites/mycodex)
  * 2. Dev path prefixes (/__canonica → /sites/canonica) — local dev only
  * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
@@ -38,6 +39,10 @@ import {
 import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import { NextRequest, NextResponse } from 'next/server';
+
+const MYCODEX_PRODUCT_ID = 'mycodex';
+const MYCODEX_BASIC_AUTH_REALM = 'MyCodex';
+const MYCODEX_ROBOTS_TAG = 'noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate';
 
 // ═══════════════════════════════════════════════════════════════
 // Security Headers (shared across all routing paths)
@@ -153,6 +158,83 @@ function shouldPassThroughCanonicaProductPath(pathname: string): boolean {
     return shouldBypassDomainRouting(pathname);
 }
 
+function normalizeHostname(hostname: string | null): string {
+    return hostname?.split(':')[0].toLowerCase() || '';
+}
+
+function isLocalDevelopmentHost(hostname: string | null): boolean {
+    const normalizedHost = normalizeHostname(hostname);
+    return normalizedHost === 'localhost'
+        || normalizedHost === '127.0.0.1'
+        || normalizedHost.startsWith('192.168.');
+}
+
+function decodeBasicAuthCredentials(authHeader: string | null): { username: string; password: string } | null {
+    if (!authHeader) return null;
+
+    const [scheme, encoded] = authHeader.split(/\s+/, 2);
+    if (scheme?.toLowerCase() !== 'basic' || !encoded) return null;
+
+    try {
+        const decoded = atob(encoded);
+        const separatorIndex = decoded.indexOf(':');
+        if (separatorIndex === -1) return null;
+
+        return {
+            username: decoded.slice(0, separatorIndex),
+            password: decoded.slice(separatorIndex + 1),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function buildMyCodexAuthChallenge(): NextResponse {
+    return setMyCodexResponseHeaders(new NextResponse('Authentication required.', {
+        status: 401,
+        headers: {
+            'WWW-Authenticate': `Basic realm="${MYCODEX_BASIC_AUTH_REALM}", charset="UTF-8"`,
+            'Cache-Control': 'private, no-store',
+        },
+    }));
+}
+
+function authorizeMyCodexRequest(request: NextRequest): NextResponse | null {
+    if (!process.env.VERCEL && isLocalDevelopmentHost(request.headers.get('host'))) {
+        return null;
+    }
+
+    const expectedUsername = process.env.MYCODEX_BASIC_AUTH_USER?.trim();
+    const expectedPassword = process.env.MYCODEX_BASIC_AUTH_PASSWORD?.trim();
+
+    if (!expectedUsername || !expectedPassword) {
+        return setMyCodexResponseHeaders(new NextResponse('MyCodex access is not configured.', {
+            status: 503,
+            headers: {
+                'Cache-Control': 'private, no-store',
+            },
+        }));
+    }
+
+    const credentials = decodeBasicAuthCredentials(request.headers.get('authorization'));
+    if (
+        !credentials
+        || credentials.username !== expectedUsername
+        || credentials.password !== expectedPassword
+    ) {
+        return buildMyCodexAuthChallenge();
+    }
+
+    return null;
+}
+
+function setMyCodexResponseHeaders(response: NextResponse): NextResponse {
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('X-Robots-Tag', MYCODEX_ROBOTS_TAG);
+    response.headers.set('Vary', 'Authorization');
+    return response;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Main Middleware
 // ═══════════════════════════════════════════════════════════════
@@ -236,6 +318,13 @@ export function middleware(request: NextRequest) {
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
 
+        if (productConfig.id === MYCODEX_PRODUCT_ID) {
+            const authResponse = authorizeMyCodexRequest(request);
+            if (authResponse) {
+                return applySecurityHeaders(request, authResponse);
+            }
+        }
+
         if (productConfig.id === 'canonica') {
             if (pathname === '/canonica' || pathname.startsWith('/canonica/')) {
                 const url = request.nextUrl.clone();
@@ -265,7 +354,10 @@ export function middleware(request: NextRequest) {
         const response = NextResponse.rewrite(url);
         response.headers.set('x-product-id', productConfig.id);
         response.headers.set('x-product-name', productConfig.name);
-        return applySecurityHeaders(request, response);
+        return applySecurityHeaders(
+            request,
+            productConfig.id === MYCODEX_PRODUCT_ID ? setMyCodexResponseHeaders(response) : response,
+        );
     }
 
     // 1b. Local dev: path-prefix product routing (/__canonica/pricing → /sites/canonica/pricing)
@@ -282,6 +374,13 @@ export function middleware(request: NextRequest) {
         const devProductMatch = resolveProductSiteByDevPath(pathname);
         if (devProductMatch) {
             const { product, strippedPath } = devProductMatch;
+            if (product.id === MYCODEX_PRODUCT_ID) {
+                const authResponse = authorizeMyCodexRequest(request);
+                if (authResponse) {
+                    return applySecurityHeaders(request, authResponse);
+                }
+            }
+
             const url = request.nextUrl.clone();
             const canonicaDashboardPath = product.id === 'canonica'
                 ? getCanonicaDashboardRewritePath(strippedPath)
@@ -291,7 +390,10 @@ export function middleware(request: NextRequest) {
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);
             response.headers.set('x-product-name', product.name);
-            return applySecurityHeaders(request, response);
+            return applySecurityHeaders(
+                request,
+                product.id === MYCODEX_PRODUCT_ID ? setMyCodexResponseHeaders(response) : response,
+            );
         }
 
     }
