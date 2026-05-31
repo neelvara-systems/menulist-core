@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Website Content Plan
 
-> **Status:** PLANNED — update public website only after implementation
+> **Status:** IMPLEMENTED — public website copy includes day-one intake
 > **Version:** 1.0.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Product / SEO
@@ -9,25 +9,25 @@
 
 ## Claim Boundary
 
-Until this feature is implemented, the public website must not claim live support for the full intake engine.
+The public website can now mention the implemented day-one intake flow:
 
-Current website can mention:
+- Teach Canonica / knowledge intake command center
+- selected public product/docs URLs
+- pasted docs, FAQs, release notes, setup notes, and support macros
+- browser-extracted TXT, Markdown, CSV, JSON, DOCX, and text-based PDF content
+- owner-triggered screenshot OCR and short media transcription with caps
+- support-credit logging for paid OCR/transcription work
+- owner review before publishing
+- publishing into KB, FAQ, product surfaces, changelog, and canonical answer proposals
+- no auto-publishing of authoritative canonical answers
 
-- starter knowledge import
-- KB generation
-- article-backed FAQ generation
-- product surface templates
-- owner-approved answers
-- no auto-publishing
-- current upload/import screen where already true
-
-After implementation, add the intake story across homepage, product, pricing, get-started, install, FAQ, security, and a dedicated product/feature page.
+Do not claim native private connectors, unlimited crawling, retained raw media, hidden background retries, or automatic canonical-answer publishing. Website copy can mention screenshot OCR and short media transcription only with limits, support-credit charging, and owner-review wording.
 
 ---
 
 ## Dedicated Page
 
-Create:
+Created:
 
 ```text
 /product/knowledge-intake
@@ -39,7 +39,7 @@ Page title:
 
 Meta description:
 
-Teach Canonica your product from links, docs, files, policies, changelog entries, screenshots, transcripts, and support exports. Generate source-backed support drafts with owner approval.
+Teach Canonica your product from selected links, docs, files, screenshots, short recordings, FAQs, release notes, setup notes, and support macros. Generate source-backed support drafts with owner approval.
 
 Hero:
 
@@ -47,11 +47,11 @@ Hero:
 
 Body:
 
-Paste your product link, choose the support-worthy pages Canonica finds, add any docs or files you already have, and answer a few launch policy questions. Canonica builds a source-backed product map, flags conflicts, drafts help content and approved answers, then shows what is ready before your widget goes live.
+Paste your product link, choose the support-worthy pages Canonica finds, and add any docs, files, screenshots, or short recordings you already have. Canonica prepares source-backed help articles, FAQs, product-surface suggestions, changelog drafts, and canonical answer proposals for owner review.
 
 CTA:
 
-Create paid workspace
+Start free setup
 
 Secondary CTA:
 
@@ -61,7 +61,7 @@ See sample intake
 
 ## Homepage Placement
 
-Add a section after the product loop/demo:
+Implemented through the homepage support-knowledge map, first-session setup, day-one launch pack, trust section, and product feature grid.
 
 Title:
 
@@ -69,14 +69,14 @@ Title:
 
 Cards:
 
-1. **Add sources** — Product website, selected public pages, app URL, docs, files, policies, changelog, screenshots, transcripts, and support exports.
-2. **Review what Canonica found** — Source trust, duplicates, conflicts, and missing launch information.
-3. **Approve launch decisions** — Pricing, refunds, billing, roles, permissions, and other high-risk answers require owner approval.
-4. **Publish support** — Help articles, FAQs, approved answers, product-page help, and readiness summaries become available to the support layer.
+1. **Add sources** — Product website, selected public pages, docs, supported files, screenshots, short recordings, FAQs, release notes, setup notes, and support macros.
+2. **Review drafts** — Canonica groups KB, FAQ, product-surface, changelog, and answer-proposal drafts.
+3. **Approve before publish** — Nothing becomes authoritative until the owner accepts and publishes it.
+4. **Publish support** — Help articles, FAQs, product-page help, changelog content, and reviewable answer proposals feed the support layer.
 
 Small note:
 
-Real intake processing starts after paid workspace activation so AI and Firebase usage stay bounded.
+Real intake processing requires an active Canonica beta or subscription so Firebase usage stays bounded.
 
 Claim boundary:
 
@@ -86,19 +86,19 @@ Do not say imported content is instantly "live in AI support" until implementati
 
 ## Pricing Page
 
-Add once entitlement/limits are implemented:
+Current public pricing copy should say:
 
 Section title:
 
-**Processing is included, but never unlimited.**
+**Credits keep support capacity predictable.**
 
 Copy:
 
-Each plan includes a bounded intake allowance for pages scanned, files processed, drafts generated, and approved support content. Public help page views and normal widget loading are separate from intake processing.
+Support credits cover AI-assisted answers, fallback handling, governance work, and paid knowledge-intake media extraction such as screenshot OCR or short recording transcription. Public help pages, selected text import, and normal widget loading do not use credits.
 
 Avoid:
 
-- "Start free"
+- "Unlimited processing"
 - "Unlimited documents"
 - "Unlimited scan"
 
@@ -106,22 +106,21 @@ Avoid:
 
 ## Get Started Page
 
-Replace free-beta language after onboarding is updated:
+Current public onboarding remains self-service beta/subscription setup:
 
 Headline:
 
-**Create your paid Canonica workspace.**
+**Create your Canonica workspace.**
 
 Copy:
 
-Canonica runs AI and Firebase processing for your product, so real workspaces start with a paid plan. After payment, you can teach Canonica your product with a website, app URL, starter policy answers, docs, files, and support exports.
+Sign in, add the app, invite the right team members, pick the pages where users get stuck, and teach Canonica from selected links, docs, supported files, screenshots, short recordings, starter policy answers, and support exports.
 
 First-session checklist:
 
-- choose plan
 - create workspace
 - add product website and app URL
-- add docs/files if available
+- add docs/files/screenshots/recordings if available
 - answer launch policy questions
 - review first decisions
 - publish approved support
@@ -132,7 +131,7 @@ First-session checklist:
 
 **Can Canonica import my website?**
 
-Yes, after paid workspace activation and within plan limits. Canonica discovers candidate public pages, lets you choose support-relevant pages, and processes only the selected pages instead of crawling your entire site by default.
+Yes, after active Canonica beta/subscription setup and within plan limits. Canonica discovers candidate public pages, lets you choose support-relevant pages, and processes only the selected pages instead of crawling your entire site by default.
 
 **Does Canonica crawl my app after I paste the app URL?**
 
@@ -148,11 +147,11 @@ No. Canonica can draft help articles, FAQs, and approved-answer candidates, but 
 
 **Can I upload video or screenshots?**
 
-Yes, with limits. Screenshots are treated as evidence and should not contain secrets. Video/audio works best through transcripts; raw media transcription is paid and capped.
+Yes, with limits. Screenshots are treated as evidence and should not contain secrets. Canonica extracts support text from screenshots and short recordings, records support-credit usage, and stores the extracted source text for owner review instead of retaining raw media.
 
 **Why do I need to pay before import?**
 
-Real import uses AI processing, file storage, parsing, and Firebase infrastructure. Paid activation prevents surprise cost and keeps the product sustainable.
+Real import can use AI processing, parsing, and Firebase infrastructure. Active beta/subscription gating plus support-credit logging prevents surprise cost and keeps the product sustainable.
 
 ---
 
@@ -165,7 +164,7 @@ Section:
 Bullets:
 
 - Source files are private workspace data.
-- Raw/heavy artifacts live in Storage, not public Firestore documents.
+- Raw media is not retained by default in the day-one flow; extracted support text and metadata are stored for review.
 - URL import blocks private/internal addresses and uses capped fetches.
 - Discovered-but-skipped website URLs are stored as a manifest, not Firestore source documents.
 - Unchanged selected website pages skip expensive reprocessing.
@@ -204,3 +203,4 @@ Do not say:
 | 2026-05-31 | 1.0.0 | Initial website content plan for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added selected-page website import and app URL crawl boundary for public messaging. |
 | 2026-05-31 | 1.2.0 | Added runtime claim boundary for search, widget, hosted help, FAQ, canonical, surface-summary, and compiled-context readiness. |
+| 2026-05-31 | 1.3.0 | Synced public-site copy plan with implemented dedicated page, pricing credit wording, get-started checklist, FAQ, resources, updates, and security/source-intake boundaries. |

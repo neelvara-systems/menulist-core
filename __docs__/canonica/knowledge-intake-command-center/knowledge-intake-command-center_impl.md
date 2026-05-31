@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Technical Implementation Contract
 
-> **Status:** PLANNED — Day-one implementation contract
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — day-one owner-triggered implementation
+> **Version:** 2.0.0
 > **Created:** 2026-05-31
 > **Audience:** Engineering / QA / Product
 
@@ -9,18 +9,60 @@
 
 ## 1. Implementation Objective
 
-Replace the current upload-first KB-generation experience with a Canonica-owned intake command center while preserving the existing KB generation and publishing pipeline as a compatibility output path.
+Replace the current upload-first KB-generation experience with a Canonica-owned intake command center while preserving Canonica's existing KB, FAQ, product-surface, changelog, and canonical-governance runtime paths.
 
-Current route may remain `/canonica/kb-generation` for compatibility, but the implementation should introduce Canonica-owned naming and contracts:
+The legacy `/canonica/kb-generation` route redirects for compatibility, while `/canonica/knowledge-intake` is the Canonica-owned naming and contract:
 
 - UI title: **Teach Canonica your product**
 - Feature folder: `src/components/templates/canonica/knowledgeIntake/`
-- DAL folder: `src/database/canonica/knowledgeIntake/`
-- Types: `src/types/canonica/knowledgeIntake.ts`
+- Server implementation: `src/lib/canonica/knowledgeIntake.ts`
+- API guard: `src/lib/canonica/knowledgeIntakeApi.ts`
+- Types: `src/types/canonica/index.ts`
 - APIs: `/api/canonica/knowledge-intake/*`
-- Cloud Functions: `functions-canonica/src/canonica/knowledgeIntake/*`
+- Legacy route: `/canonica/kb-generation` redirects to `/canonica/knowledge-intake`
 
 No MenuList-owned screen should become the long-term Canonica intake authority.
+
+### 1.1 Implemented Route And API Map
+
+| Surface | Path |
+| --- | --- |
+| Owner page | `src/app/(canonica)/canonica/knowledge-intake/page.tsx` |
+| Legacy redirect | `src/app/(canonica)/canonica/kb-generation/page.tsx` |
+| Jobs | `src/app/api/canonica/knowledge-intake/jobs/route.ts` |
+| Job bundle | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/route.ts` |
+| Sources | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/sources/route.ts` |
+| Analyze | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/analyze/route.ts` |
+| Review item update | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/review-items/[itemId]/route.ts` |
+| Publish | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/publish/route.ts` |
+| URL discovery/fetch | `src/app/api/canonica/knowledge-intake/discover/route.ts` |
+| Screenshot/media extraction | `src/app/api/canonica/knowledge-intake/jobs/[jobId]/media/route.ts` |
+| Platform intake monitor | `src/app/(main)/platform/canonica-intake/page.tsx` |
+| Platform intake monitor API | `src/app/api/platform/canonica-intake/route.ts` |
+
+### 1.2 Day-One Scope Boundary
+
+Implemented day one:
+
+- owner-triggered job creation, source import, draft analysis, review, and publish
+- browser-side text extraction for common text-friendly file types
+- OCR extraction for screenshots/images and support-focused transcription/summary for short audio/video
+- bounded public URL discovery and selected-page fetch
+- active Canonica beta/subscription check on mutating and expensive actions
+- Canonica support-credit reservation, settlement, refund-on-failure, and intake usage ledger rows for paid media extraction
+- AI operation logging for OCR, transcription, and article embedding
+- summary-only nightly intake analytics through the existing Canonica master scheduler
+- platform-admin intake monitor that reads `canonicaTenantsSummary`, loads job/ledger details only for a selected workspace, and can trigger a selected-workspace Canonica nightly retry
+- source-backed draft review items for KB, FAQ, product surfaces, changelog, and canonical mutation proposals
+- publish into existing runtime collections with cache/source-version freshness updates
+
+Not implemented day one:
+
+- native helpdesk/OAuth connectors
+- background crawler, hidden failed-job retry, or scheduler import
+- raw file retention in Storage
+- automatic canonical answer publishing
+- direct entity writes without existing governance review
 
 ---
 
@@ -47,25 +89,22 @@ Add client flags in `src/config/features.ts`:
 
 ```ts
 ENABLE_CANONICA_KNOWLEDGE_INTAKE: true,
-ENABLE_CANONICA_INTAKE_URL_IMPORT: true,
-ENABLE_CANONICA_INTAKE_OCR: true,
-ENABLE_CANONICA_INTAKE_MEDIA_TRANSCRIPTION: true,
-ENABLE_CANONICA_INTAKE_EXPORT_IMPORTS: true,
+ENABLE_CANONICA_INTAKE_URL_DISCOVERY: true,
 ENABLE_CANONICA_INTAKE_NATIVE_CONNECTORS: false,
+ENABLE_CANONICA_INTAKE_MEDIA_EXTRACTION: true,
+ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR: true,
 ```
 
 Add server flags in `functions-canonica/src/constants/features.ts`:
 
 ```ts
-ENABLE_CANONICA_KNOWLEDGE_INTAKE: true,
-ENABLE_CANONICA_INTAKE_URL_IMPORT: true,
-ENABLE_CANONICA_INTAKE_OCR: true,
-ENABLE_CANONICA_INTAKE_MEDIA_TRANSCRIPTION: true,
-ENABLE_CANONICA_INTAKE_EXPORT_IMPORTS: true,
+ENABLE_CANONICA_KNOWLEDGE_INTAKE_SCHEDULER: true,
 ENABLE_CANONICA_INTAKE_NATIVE_CONNECTORS: false,
 ```
 
-Native connectors stay false until their credential, retention, and provider-rate contracts exist. Export imports cover helpdesk history day-one.
+Native connectors stay false because Canonica does not need private helpdesk/OAuth credentials for this stage. The scheduler flag is true for summary-only analytics: it reads the latest bounded intake job docs and writes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when changed. It does not retry failed jobs, crawl URLs, call AI providers, or publish review items.
+
+`ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR` controls the internal `/platform/canonica-intake` screen and `/api/platform/canonica-intake` API. The monitor is platformRole-only. Initial load reads only `platformSummary/canonicaTenantsSummary` and recent scheduler logs. Job and ledger details are loaded only after a platform admin selects one `tId/sId` workspace. The retry action is explicit and posts that selected workspace to `triggerCanonicaNightly`; it does not run all tenants by default, add realtime listeners, or create tenant-facing controls.
 
 ---
 
@@ -73,7 +112,7 @@ Native connectors stay false until their credential, retention, and provider-rat
 
 ### 4.1 CanonicaKnowledgeSource
 
-Compact Firestore metadata only. Raw and parsed bodies live in Storage.
+Day-one Firestore source docs keep capped extracted text because browser extraction avoids raw-file upload and Storage retention. The original long-term contract below remains the retained-artifact contract if native uploads/transcripts are added later.
 
 ```ts
 export interface CanonicaKnowledgeSource {
@@ -265,30 +304,31 @@ export interface CanonicaIntakeReviewItem {
 
 ```ts
 export interface CanonicaKnowledgeIntakeSummary {
+  schemaVersion: 1;
   pId: 'CN';
   tId: number;
   sId: number;
-  activeJobId?: string;
-  activeJobStatus?: CanonicaKnowledgeIntakeJob['status'];
-  activeJobStep?: CanonicaKnowledgeIntakeJob['execution']['currentStep'];
-  lastPublishedJobId?: string;
-  sourceCounts: { total: number; ready: number; failed: number; highRisk: number };
-  linkDiscovery: { discovered: number; eligible: number; selected: number; skipped: number };
-  reviewCounts: { open: number; critical: number; highRisk: number; safeBulk: number };
-  readiness: Record<string, 'ready' | 'partial' | 'not_ready' | 'needs_review'>;
-  urgentReviewPreview: Array<{ id: string; type: string; title: string; riskLevel: string }>;
-  allowance: { planId: string; creditsRemaining: number; sourcePageRemaining: number; fileRemaining: number };
-  sourceVersion: number;
-  outputVersion: number;
-  summaryHash: string;
-  dirty: boolean;
-  updatedAt: unknown;
+  activeJobId?: string | null;
+  activeJobTitle?: string | null;
+  activeJobs?: number;
+  recentJobs?: number;
+  readySources?: number;
+  reviewItems?: number;
+  acceptedItems?: number;
+  publishedItems?: number;
+  usageUnitsConsumed?: number;
+  latestJobStatus?: string | null;
+  summaryHash?: string;
+  lastPublishedAt?: unknown;
+  lastUpdated: unknown;
 }
 ```
 
 ### 4.6 CanonicaKnowledgeIntakeDirectoryEntry
 
-`platformSummary/knowledgeIntakeDirectory_{bucket}` is the scheduler/ops discovery read model.
+Reserved for future background repair. Current runtime does not need this because the intake flow is owner-triggered and the scheduler performs only summary refresh from known tenant scope.
+
+If background import/repair processing is enabled later, `platformSummary/knowledgeIntakeDirectory_{bucket}` must be the scheduler/ops discovery read model.
 
 ```ts
 export interface CanonicaKnowledgeIntakeDirectoryEntry {
@@ -348,8 +388,8 @@ Add to Canonica constants:
 Add platform summary document helpers:
 
 - `knowledgeIntakeSummary_{tId}_{sId}`
-- `knowledgeIntakeDirectory_{bucket}`
-- `sourceVersions_{tId}_{sId}` with `knowledgeIntakeSources`, `knowledgeIntakeOutputs`, and `knowledgeIntakeReadiness`
+- `knowledgeIntakeDirectory_{bucket}` reserved only for future scheduler repair
+- existing compiled source-version helpers for destination runtime keys (`kb`, `docsNav`, `canonical`, `surfaces`, `releases`)
 
 Use existing destination collections:
 
@@ -395,23 +435,21 @@ Firestore must not store:
 
 ## 7. APIs
 
-All routes require authenticated Canonica access and paid entitlement where expensive.
+All routes require authenticated Canonica access. Mutating and expensive routes also require an active Canonica beta/subscription.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
-| `/api/canonica/knowledge-intake/preflight` | POST | Validate sources, estimate credits, enforce plan caps before upload/scan. |
-| `/api/canonica/knowledge-intake/link-discovery` | POST | Paid, bounded product website discovery that writes candidate manifests, not source docs. |
-| `/api/canonica/knowledge-intake/signed-upload` | POST | Return scoped upload targets for approved files. |
 | `/api/canonica/knowledge-intake/jobs` | GET/POST | Paginated job list and create job metadata. |
-| `/api/canonica/knowledge-intake/jobs/[id]` | GET/PATCH | Read job summary, cancel, retry safe steps. |
-| `/api/canonica/knowledge-intake/summary` | GET | Read the compact workspace summary for dashboard/activation. |
-| `/api/canonica/knowledge-intake/jobs/[id]/sources` | GET/POST | Paginated source list and add source metadata. |
-| `/api/canonica/knowledge-intake/jobs/[id]/review-items` | GET/PATCH | Paginated review queue and decisions. |
-| `/api/canonica/knowledge-intake/jobs/[id]/generate-drafts` | POST | Start draft generation after audit/product map acceptance. |
+| `/api/canonica/knowledge-intake/jobs/[id]` | GET | Read job bundle with bounded sources and review items. |
+| `/api/canonica/knowledge-intake/jobs/[id]/sources` | POST | Add selected URL, pasted text, or browser-extracted file text as a capped source. |
+| `/api/canonica/knowledge-intake/jobs/[id]/analyze` | POST | Generate deterministic source-backed review drafts. |
+| `/api/canonica/knowledge-intake/jobs/[id]/review-items/[itemId]` | PATCH | Update review item status/content before publish. |
 | `/api/canonica/knowledge-intake/jobs/[id]/publish` | POST | Publish approved selected outputs. |
-| `/api/canonica/knowledge-intake/jobs/[id]/delete-source` | POST | Delete source, artifacts, and dependent unapproved drafts. |
+| `/api/canonica/knowledge-intake/discover` | POST | Bounded public URL discovery or selected page text fetch. |
 
 Do not allow direct client Firestore writes for expensive state transitions.
+
+Implemented now: media extraction preflight caps, support-credit reservation, ledger settlement, AI operation logging, and refund-on-failure for paid OCR/transcription. Still reserved for later: signed native uploads, raw artifact retention, source deletion, cancellation APIs, native connectors, and background import workers.
 
 ---
 
@@ -428,11 +466,11 @@ The pipeline is one engine with adapters:
 
 2. **Website link discovery**
    - validate root URL and domain
-   - resolve DNS and redirects with private-network blocking
-   - inspect robots, sitemap, canonical links, llms.txt, and owner-selected paths
+   - resolve DNS before the first fetch and before every redirected fetch
+   - reject localhost, private/link-local/metadata hosts, unsafe redirects, non-text responses, oversized responses, and redirect chains beyond the cap
+   - inspect the starting page and sitemap links with bounded same-origin discovery
    - classify candidate pages by source role
-   - write `website-discovery/candidates.json` and `fetch-log.jsonl` to Storage
-   - update job counters only; do not create source docs for skipped URLs
+   - keep candidates in the browser response; do not create source docs for skipped URLs
 
 3. **Owner source selection**
    - owner chooses support-worthy website/docs pages
@@ -441,24 +479,27 @@ The pipeline is one engine with adapters:
 
 4. **Source registration**
    - creates `canonica_knowledgeSources`
-   - stores authority defaults, risk defaults, hash/idempotency key
+   - stores capped source text, tags/context/entity hints, deterministic content hash, and deterministic source id
+   - computes URL source hashes from the normalized URL, not raw tracking-param variants, so duplicate imports do not bypass dedupe
+   - uses the deterministic source id for duplicate detection instead of scanning the full source list
 
 5. **Upload/fetch**
-   - direct upload for files
+   - browser extraction for text-friendly files with local file-size guard and source-text cap before API submission
    - server-side bounded URL fetch for selected pages/docs only
-   - transcript extraction or owner-supplied transcript for media
+   - server-side OCR/transcription for supported media with raw-media hash dedupe before credit reservation
+   - owner-supplied transcript path for unsupported/large media
 
 6. **Normalization**
-   - parse file/HTML/CSV/XLSX/PPTX/JSON/ZIP/transcript
-   - OCR images when enabled
-   - write normalized chunks to Storage JSONL
+   - parse TXT/Markdown/CSV/JSON/DOCX/text-PDF/transcript
+   - extract OCR/transcription text for supported images/audio/video
+   - store capped source text in Firestore for current implementation
    - update source metadata only
 
 7. **Privacy filter**
-   - detect secrets, tokens, credentials, payment data, private customer records, and obvious PII
-   - write redacted evidence manifests for provider prompts
-   - create review items when high-risk private content cannot be safely redacted
-   - block draft generation for unsafe sources until owner action
+   - deterministically redacts obvious emails, payment-card-like numbers, API keys, tokens, JWTs, and password/secret assignments before source text is stored
+   - records `privacyRedactionCount` in source metadata when redaction occurs
+   - media extraction prompts instruct the model to redact private data, and the extracted text still passes through the deterministic redaction step before storage
+   - unsupported high-risk workflows remain owner/manual; Canonica does not make raw source text authoritative
 
 8. **Source audit**
    - classify source type
@@ -473,10 +514,9 @@ The pipeline is one engine with adapters:
    - create review items for owner decisions
 
 10. **Draft generation**
-   - selected evidence only
-   - bounded prompts
+   - deterministic draft review items from selected ready source text
+   - no LLM prompt for text-source draft generation in the day-one implementation
    - no raw corpus prompt
-   - write draft bodies to Storage
    - create review items and destination proposals
 
 11. **Publish**
@@ -487,11 +527,11 @@ The pipeline is one engine with adapters:
    - bump cache/source version manifests
    - update compact intake/readiness summaries
 
-12. **Summary/directory update**
-   - compute summary hash from counters, readiness, active job, and preview
-   - write `knowledgeIntakeSummary_{tId}_{sId}` only when changed
-   - update `knowledgeIntakeDirectory_{bucket}` in the same server transition
-   - bump source-version fields for selected-source or output changes
+12. **Summary update**
+   - write `knowledgeIntakeSummary_{tId}_{sId}` with compact counters
+   - rebuild existing context-content summary after publish
+   - mark existing destination source-version fields stale only for the outputs that changed
+   - Canonica nightly can refresh the summary from the latest bounded job docs without touching sources, review items, providers, or publish state
 
 ---
 
@@ -503,8 +543,8 @@ The pipeline is one engine with adapters:
 | Website link pack | Discover candidate public pages from sitemap, robots, llms.txt, canonical links, and bounded HTML links. Store candidates in Storage. Create Firestore source docs only for selected pages. |
 | URL/docs | SSRF-safe fetch, max redirects, private IP block, robots/sitemap-aware, page caps, unchanged-source skip by hash/ETag/Last-Modified. |
 | File upload | MIME + extension + size validation, ZIP path traversal protection, dedupe hash. |
-| Image/OCR | Extract text/labels only after owner warning; store evidence, not final truth. |
-| Media/transcript | Transcript-first; raw media duration cap and paid confirmation. |
+| Image/OCR | Extract support-relevant text/labels after owner warning; store extracted support text as source evidence, not final truth. Costs 1 Canonica support credit. |
+| Media/transcript | Transcript-first where available; raw short audio/video extraction is owner-triggered, capped, paid, and stores extracted support text only. Costs 2 Canonica support credits. |
 | Helpdesk export | CSV/JSON/txt exports only; PII warning and redaction pass. |
 | Changelog | Links changes to surfaces/entities and drift review. |
 | Product surfaces | Seeds route/page/workflow mappings from starter templates or app URL context. |
@@ -538,12 +578,12 @@ Rules:
 - one active expensive intake job per workspace by default
 - per-job lease stored on the job document with `leaseId` and `leaseExpiresAt`
 - every processing step is idempotent and can restart from Storage manifests
-- credit allowance is reserved before processing and settled after completion
-- unused reserved credits are released when the job is cancelled, fails before provider work, or skips unchanged sources
+- Canonica support credits are reserved before paid OCR/transcription and settled after completion
+- reserved credits are refunded when media extraction fails before a source is created
 - source batches are processed in capped chunks
 - no per-source `onWrite` trigger starts provider calls
 - cancellation sets job status and prevents new steps from starting
-- retry uses step state and manifests, not fresh upload/fetch unless required
+- failed jobs are retried only when the owner explicitly runs the action again; there is no hidden failed-job retry loop
 
 This protects Canonica from cost spikes when one owner uploads many files or adds a large website.
 
@@ -555,21 +595,19 @@ The implementation should mirror Canonica's existing tenant summary and compiled
 
 Rules:
 
-- owner dashboard and activation load `knowledgeIntakeSummary_{tId}_{sId}` first
-- full source/review/job lists are opened only through paginated tabs
-- urgent launch decisions preview is embedded in the summary so the first screen does not need a review-list query
-- scheduler and ops discovery read bucketed `knowledgeIntakeDirectory_{bucket}` docs, not `canonica_knowledgeIntakeJobs`
-- summary repair runs only for directory entries marked `dirty` or active
-- source-version fields let bundle/context rebuilds skip work when intake sources/outputs/readiness are unchanged
-- direct client writes are never allowed for summary, directory, lease, or version fields
+- owner dashboard and activation can read `knowledgeIntakeSummary_{tId}_{sId}` for compact status
+- full source/review/job lists are opened through bounded API reads
+- no realtime listener is used for source/review/job lists
+- scheduler work is summary-only: it reads the latest bounded intake job docs and writes one compact summary if the summary hash changed
+- source-version fields let bundle/context rebuilds skip work when published outputs are unchanged
+- direct client writes are never required for summary or version fields
 
 Implementation helpers:
 
 - `getKnowledgeIntakeSummaryDocId(tId, sId)`
-- `getKnowledgeIntakeDirectoryBucket(tId, sId)`
-- `getKnowledgeIntakeDirectoryDocId(bucket)`
-- `updateKnowledgeIntakeSummaryFromTransition(db, scope, patch)`
-- `markKnowledgeIntakeSourceChanged(db, scope, metadata)`
+- `buildSummaryPatch(scope, patch)`
+- `refreshJobCounters(scope, jobId)`
+- existing compiled-source-version helpers for destination runtime freshness
 - `markKnowledgeIntakeOutputChanged(db, scope, metadata)`
 - `repairKnowledgeIntakeSummary(db, scope)`
 
@@ -601,8 +639,8 @@ Approval rules:
 Route layout:
 
 ```text
-/canonica/kb-generation      compatibility redirect or wrapper
-/canonica/knowledge-intake   command center route, if route migration is accepted
+/canonica/kb-generation      compatibility redirect
+/canonica/knowledge-intake   command center route
 ```
 
 Tabs:
@@ -643,7 +681,7 @@ Avoid owner-facing:
 
 ## 15. Error And Retry Contract
 
-Each major step must be retryable from saved artifacts:
+Each major step must be owner-retryable from saved artifacts where artifacts exist. Canonica must not run hidden failed-job retries for intake.
 
 | Failure | Required behavior |
 | --- | --- |
@@ -651,14 +689,14 @@ Each major step must be retryable from saved artifacts:
 | Link discovery finds too many pages | Store candidate manifest, show top support-worthy pages, require owner selection before processing. |
 | Selected URL is unchanged | Update freshness metadata only; no extraction, draft, embedding, or AI call. |
 | File parse fails | Preserve original if retention allows, show file-level failure. |
-| OCR/transcription fails | Keep source, allow transcript upload fallback. |
+| OCR/transcription fails | Refund reserved support credits, keep no raw media artifact, and let the owner upload a transcript or retry manually. |
 | Privacy filter detects secrets/private data | Block provider prompts for that source and create owner review item. |
 | AI classification fails | Allow manual classification; no blocking publish if source excluded. |
-| Product map generation fails | Retry from normalized artifacts. |
-| Draft generation fails | Retry selected drafts without re-upload. |
-| Publish partially fails | Publish manifest records succeeded/failed writes; retry idempotently. |
+| Product map generation fails | Let the owner rerun analysis from saved sources. |
+| Draft generation fails | Let the owner rerun selected draft analysis without re-upload. |
+| Publish partially fails | Keep published item ids where available and let the owner rerun publish idempotently. |
 | Limit reached | Pause job with `paused_limit`, no hidden processing continues. |
-| Summary repair fails | Mark directory entry dirty and retry through Canonica scheduler with capped attempts. |
+| Summary refresh fails | Record the scheduler task failure; next nightly/manual scheduler run can refresh the compact summary. No source extraction or publish retry is attempted. |
 
 ---
 
@@ -688,6 +726,7 @@ Knowledge Intake must reuse Canonica's existing destination collections and runt
 | KB navigation | `kb_categories` | Tenant/store-scoped category and section references to approved articles | Mark compiled source `docsNav`; invalidate public content cache for `kb`/`context`. |
 | FAQ/custom Q&A | `canonica_faqs` | `status: published`, `active: true`, `source`, `question`, `answer`, `articleId`, `articleTitle`, `canonicalAnswerId`, `entityIds`, `contextKeys`, `tags`, `knowledgeLineage` | Follow the existing FAQ DAL behavior: bump KB cache version, mark compiled `kb`, invalidate `faqs`/`kb`/`context`, and rebuild or mark stale surface content summary. |
 | Canonical answer | `canonica_canonicalAnswers` | `status: active` only after approval, `scope.entityIds`, product binding, content, validation, signal metrics, governance, `knowledgeLineage` | Bump `CANONICA_CACHE_SOURCES.CANONICAL`; mark compiled `canonical`; never bypass approval/mutation rules for high-risk or authoritative answers. |
+| Canonical answer proposal | `canonica_mutationProposals` | Intake draft title, structured summary, explanation, entity hints, source evidence, pending-review status | Governance-only. Do not mark compiled `canonical`, invalidate public runtime context, or make the answer authoritative until the normal canonical-answer approval path publishes it. |
 | Entity candidate | `canonica_entityCandidates` | Candidate concept, evidence, source ids, risk/authority, owner decision state | No runtime search activation until approved. Keep owner review-gated. |
 | Approved entity/relation | `canonica_entities`, `canonica_entityRelations`, `canonica_entity_search_index` | Approved entity fields, relationships, aliases/synonyms/search tokens, `knowledgeLineage` where useful | Mark compiled `entities`/`entityRelations`; rebuild deterministic entity search index; refresh graph/coverage summaries only if the relevant flags are enabled. |
 | Product surface | `canonica_productSurfaces` | `key`, `label`, `routePatterns`, `feature`, `page`, `workflow`, `entityHints`, `entityIds`, `tags`, `visibility`, `active`, `priority`, `knowledgeLineage` | Mark compiled `surfaces`; rebuild or mark stale `contextContent_{tId}_{sId}` because widget related content depends on it. |
@@ -742,7 +781,7 @@ If these fields are stored on `platformSummary/sourceVersions_{tId}_{sId}`, they
 Expected live path after implementation:
 
 1. Owner adds product link/files/policies and approves selected sources.
-2. Intake stores raw/heavy artifacts in Storage and compact selected-source metadata in Firestore.
+2. Intake stores capped selected-source text/metadata in Firestore; raw file retention is reserved for a future native-upload path.
 3. Intake creates review items and source-backed drafts.
 4. Owner approves destinations.
 5. Publisher writes existing runtime destination records with `knowledgeLineage`.
@@ -771,8 +810,8 @@ Create QA workspaces and fixtures:
 - transcript import
 - helpdesk CSV export
 - source containing API keys/private customer records
-- many-source job that tests lease, cancellation, retry, and credit release
-- dirty summary repair through bucketed platformSummary directory
+- many-source job that tests source caps, bounded review generation, manual retry, and credit refund
+- summary-only scheduler refresh through bounded latest-job reads
 - runtime publish fixture that proves approved intake output appears in hosted help, FAQ retrieval, canonical-first search, vector/RAG fallback, widget related content, and compiled context bundle rebuilds without duplicate retrieval collections
 
 Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
@@ -784,24 +823,21 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 - Feature flags added client/server.
 - Constants added to app/functions Canonica DB constants.
 - Firestore rules deny by default and scope by `pId/tId/sId`.
-- Storage rules restrict `canonica_intake/CN/{tId}/{sId}/...`.
-- Entitlement check blocks all expensive APIs/functions.
-- Intake worker enforces one active expensive job per workspace, lease, idempotency, cancellation, and credit settlement.
-- Source preflight estimates cost and caps.
+- Storage retained-artifact path is reserved; day-one browser extraction and media extraction avoid raw upload/retention.
+- Entitlement check blocks mutating and expensive APIs.
+- Day-one processing is owner-triggered and bounded; no intake worker, lease, cancellation, or credit settlement is enabled.
+- API and type constraints enforce source/review/publish caps.
 - Source registry and job models implemented.
-- No full source bodies in Firestore.
-- Website link discovery creates Storage candidate manifests and no Firestore docs for skipped URLs.
-- URL fetch adapter has SSRF protection, tracking-param stripping, canonical URL normalization, and unchanged-source skip.
-- Privacy filter blocks secrets/private data before provider prompts.
-- ZIP adapter has zip-slip protection.
-- Review queue enforces high-risk approval.
-- Published outputs include `knowledgeLineage`.
-- Cache/source version manifests update after selected-source and publish changes.
-- Runtime destination post-write actions are implemented for KB articles, FAQs, canonical answers, entities, product surfaces, changelog/release output, public content cache, compiled context source versions, article embeddings, and product-surface summaries.
-- Intake-only source/readiness counters do not force public context bundle rebuilds unless approved runtime destination content also changed.
-- Published article topics are not marked search-ready until embeddings are current, or readiness explicitly reports partial search coverage.
-- Workspace summary doc and bucketed intake directory update from server transitions.
-- Scheduler repair reads bucketed directory docs and never scans all intake collections.
+- Full source bodies are capped in Firestore; no raw original files are retained day one.
+- Website link discovery returns bounded candidates and creates Firestore source docs only for owner-selected pages.
+- URL fetch adapter has SSRF/private-network protection and size/time caps.
+- Review queue keeps canonical answer drafts as mutation proposals; no authoritative answer is auto-published.
+- Published outputs include source metadata/lineage where the destination supports it.
+- Runtime destination post-write actions are implemented for KB articles, FAQs, product surfaces, changelog output, public content cache, compiled context source versions, article embeddings, and product-surface summaries. Canonical mutation proposals remain governance-only until approved through the canonical-answer workflow.
+- No intake-only source/readiness counters are written day one.
+- Published article embeddings are attempted during publish; failures leave `embeddingStatus: failed` without blocking help-center publication.
+- Workspace summary doc updates from owner-triggered server transitions and from summary-only Canonica nightly analytics.
+- No intake scheduler crawls, failed-job retries, provider calls, or publish retries are added.
 - Existing KB generation still works or redirects safely.
 - Docs, website, help docs, and changelog updated from code truth before launch.
 

@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Mobile Support
 
-> **Status:** PLANNED — mobile admission and responsive contract
+> **Status:** IMPLEMENTED — responsive owner-screen contract
 > **Version:** 1.0.0
 > **Created:** 2026-05-31
 > **Audience:** Mobile / Frontend / QA
@@ -49,7 +49,7 @@ Rationale:
 ## Desktop-Preferred Actions
 
 - selecting many website pages
-- uploading multiple files or ZIP docs
+- uploading multiple supported files
 - uploading media/video/audio
 - mapping many product surfaces
 - reviewing large draft batches

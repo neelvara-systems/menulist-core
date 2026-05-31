@@ -51,7 +51,7 @@ export default function CanonicaContentWorkbench({
             key: 'import-knowledge',
             title: 'Import Knowledge',
             description: 'Upload docs, FAQs, or starter answers, then review generated content before it goes live.',
-            route: CANONICA_ROUTES.KB_GENERATION,
+            route: CANONICA_ROUTES.KNOWLEDGE_INTAKE,
             action: 'Import',
             icon: LuFileText,
             tag: `${summary.content.articleCount} articles · ${summary.content.faqCount || 0} FAQs`,

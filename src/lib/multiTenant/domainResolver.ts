@@ -190,6 +190,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/manifest.json',
         '/sw.js',
         '/sw-customer.js',
+        '/mycodex-sw.js',
         '/workbox-',
     ];
 

@@ -10,7 +10,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, beta setup, and paid Canonica plans for small SaaS teams.',
+    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Canonica plans for small SaaS teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -26,12 +26,14 @@ const PLAN_BULLETS: Record<string, string[]> = {
     canonica_starter: [
         'One SaaS product workspace',
         'Team access and role permissions',
+        'Knowledge intake from selected links, docs, and supported files',
         'Widget and help center',
         'Basic canonical coverage tracking',
         'Product surfaces for page-aware support',
     ],
     canonica_growth: [
         'Expanded team and custom role controls',
+        'Higher intake, answer, and support-gap capacity',
         'Signal-to-knowledge queue',
         'Release-aware answer review',
         'Weekly governance digest',
@@ -40,6 +42,7 @@ const PLAN_BULLETS: Record<string, string[]> = {
     canonica_studio: [
         'Up to 5 client workspaces',
         'Reusable install and setup patterns',
+        'Intake-ready launch workflow for multiple products',
         'Higher signal and content limits',
         'Built for agencies and dev studios',
     ],
@@ -167,10 +170,10 @@ export default function CanonicaPricingPage() {
                         <SectionHeader
                             eyebrow="Support credits"
                             title="Credits keep support capacity predictable."
-                            description="Support credits cover AI-assisted answers, fallback handling, and governance work. Public help pages and normal widget loading do not use credits."
+                            description="Support credits cover AI-assisted answers, fallback handling, governance work, and paid knowledge-intake media extraction such as screenshot OCR or short recording transcription. Public help pages, selected text import, and normal widget loading do not use credits."
                         >
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
-                                Top-ups are for launch spikes, large imports, or heavy review periods without forcing a plan change.
+                                Top-ups are for launch spikes, media-heavy intake, or heavy review periods without forcing a plan change.
                             </p>
                             <div className="mt-5 flex flex-wrap justify-center gap-3">
                                 <CanonicaLink

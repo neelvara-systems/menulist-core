@@ -48,6 +48,7 @@ interface CanonicaSchedulerTask {
         triggeredBy: string;
         runId: string;
         forceAllTenants?: boolean;
+        tenantScope?: CanonicaTenantStore[];
     }) => Promise<CanonicaSchedulerTaskResult>;
 }
 
@@ -257,16 +258,25 @@ async function runGovernanceNightlyTask(context: {
     triggeredBy: string;
     runId: string;
     forceAllTenants?: boolean;
+    tenantScope?: CanonicaTenantStore[];
 }): Promise<CanonicaSchedulerTaskResult> {
     if (!FUNCTION_FLAGS.ENABLE_CANONICA_NIGHTLY) {
         return { activity: false, details: { enabled: false, reason: 'feature_flag_off' } };
     }
 
     const now = new Date();
-    const discovery = await discoverActiveTenants();
+    const hasManualScope = Array.isArray(context.tenantScope) && context.tenantScope.length > 0;
+    const discovery = hasManualScope
+        ? {
+            tenants: context.tenantScope || [],
+            scannedDocs: context.tenantScope?.length || 0,
+            truncated: false,
+            source: 'manual_scope' as const,
+        }
+        : await discoverActiveTenants();
     const candidates = discovery.tenants
         .map(tenant => buildTenantCandidate(tenant, now))
-        .filter(candidate => context.forceAllTenants || isCanonicaSettlementDue(now, candidate.timeZone, candidate.businessDayEndTime));
+        .filter(candidate => hasManualScope || context.forceAllTenants || isCanonicaSettlementDue(now, candidate.timeZone, candidate.businessDayEndTime));
 
     if (candidates.length === 0) {
         return {
@@ -282,7 +292,7 @@ async function runGovernanceNightlyTask(context: {
 
     const leases: CanonicaTenantSettlementLease[] = [];
     for (const candidate of candidates) {
-        const lease = await acquireTenantSettlementLease(candidate, context.runId, now, context.forceAllTenants === true);
+        const lease = await acquireTenantSettlementLease(candidate, context.runId, now, hasManualScope || context.forceAllTenants === true);
         if (lease) leases.push(lease);
     }
 
@@ -380,6 +390,7 @@ async function runTask(
         trigger: CanonicaMasterSchedulerTrigger;
         triggeredBy: string;
         forceAllTenants?: boolean;
+        tenantScope?: CanonicaTenantStore[];
     },
 ): Promise<CanonicaSchedulerTaskSummary> {
     const dueAt = new Date();
@@ -438,6 +449,7 @@ export async function runCanonicaMasterScheduler(options: {
     trigger?: CanonicaMasterSchedulerTrigger;
     triggeredBy?: string;
     forceAllTenants?: boolean;
+    tenantScope?: CanonicaTenantStore[];
 } = {}): Promise<CanonicaMasterSchedulerResult> {
     const trigger = options.trigger || 'scheduled';
     const triggeredBy = options.triggeredBy || (trigger === 'scheduled' ? 'system' : 'manual');
@@ -450,6 +462,7 @@ export async function runCanonicaMasterScheduler(options: {
             trigger,
             triggeredBy,
             forceAllTenants: options.forceAllTenants,
+            tenantScope: options.tenantScope,
         }));
     }
 

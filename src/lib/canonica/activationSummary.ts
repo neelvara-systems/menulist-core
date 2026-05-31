@@ -241,7 +241,7 @@ export function buildCanonicaActivationSummary(params: {
             title: 'Knowledge imported',
             description: `${content?.articleCount || 0} published article${(content?.articleCount || 0) === 1 ? '' : 's'} and ${content?.faqCount || 0} FAQ${(content?.faqCount || 0) === 1 ? '' : 's'} available in the compact content summary.`,
             status: ((content?.articleCount || 0) + (content?.faqCount || 0)) > 0 ? 'complete' : 'pending',
-            route: CANONICA_ROUTES.KB_GENERATION,
+            route: CANONICA_ROUTES.KNOWLEDGE_INTAKE,
             actionLabel: 'Import Content',
             costNote: 'Reads platformSummary context content; no article collection scan on this page.',
         }),

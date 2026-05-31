@@ -140,6 +140,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /canonica_knowledgeIntakeJobs/{docId} {
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /canonica_knowledgeSources/{docId} {
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /canonica_intakeReviewItems/{docId} {
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow create: if isCanonicaScopedCreateWithKnowledgeControl();
+      allow update: if isCanonicaScopedUpdateWithKnowledgeControl();
+      allow delete: if false;
+    }
+
+    match /canonica_intakeUsageLedger/{docId} {
+      allow read: if isCanonicaScopedReadWithKnowledgeControl();
+      allow write: if false;
+    }
+
     match /canonica_cacheVersions/{docId} {
       allow read: if isCanonicaScopedReadWithKnowledgeControl()
         || isCanonicaScopedReadWithPermission('canManageWidget');
@@ -357,7 +383,7 @@ service cloud.firestore {
     }
 
     function isCanonicaPlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
     }
 
     function isCanonicaPlatformSummaryClientReadableDoc(document) {
@@ -381,6 +407,10 @@ service cloud.firestore {
         || (
           document.matches('^supportBoardSummary_.*$')
           && hasCanonicaSupportControlPermission()
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasCanonicaKnowledgeControlPermission()
         )
         || (
           document.matches('^(entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$')
@@ -411,6 +441,10 @@ service cloud.firestore {
             hasCanonicaKnowledgeControlPermission()
             || hasCanonicaPermission('canRebuildContext')
           )
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasCanonicaKnowledgeControlPermission()
         )
         || (
           document.matches('^branding_.*$')

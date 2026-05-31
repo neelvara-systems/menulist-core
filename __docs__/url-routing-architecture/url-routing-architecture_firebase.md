@@ -1,8 +1,8 @@
 # URL Routing Architecture — Firebase Cost Tracking
 
 > **Audience:** Founder / Cost Control
-> **Last Updated:** May 30, 2026
-> **Version:** 3.1 (Phase 1 + Phase 2 + Product-Domain Guardrails)
+> **Last Updated:** May 31, 2026
+> **Version:** 3.2 (Phase 1 + Phase 2 + Product-Domain Guardrails)
 
 ---
 
@@ -10,7 +10,7 @@
 
 URL Routing Architecture **reduces** total Firebase reads across all public surfaces through 6 targeted optimizations. The feature itself adds zero additional writes.
 
-The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware, requires Basic Auth outside localhost, serves local repository markdown from `__docs__`, and emits product-scoped no-index/no-follow crawler controls.
+The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware, requires a first-party MyCodex login/session cookie outside localhost, serves local repository markdown from `__docs__`, emits product-scoped no-index/no-follow crawler controls, and serves MyCodex PWA assets from static files.
 
 ### Cost Optimization Summary (Implemented Feb 19, 2026)
 
@@ -48,6 +48,7 @@ The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital
 | Custom domain verify                | Vercel API (not Firestore)             | Owner clicks "Check Verification"            | **0 Firestore reads** — Vercel API only                            |
 | MyCodex host classification         | None                                   | Requests to `menulist.digital`               | **0 Firestore reads** — product-domain registry + local markdown   |
 | MyCodex crawler restriction         | None                                   | MyCodex pages and `robots.txt`               | **0 Firestore reads** — metadata, headers, and static text only    |
+| MyCodex PWA manifest/assets         | None                                   | Install metadata and app icons               | **0 Firestore reads** — static manifest, icons, splash files, and service worker only |
 
 **Net public page read impact:** Same as before for single-store (cached). Multi-store adds 0-1 conditional read (cached 60s).
 
@@ -63,6 +64,7 @@ CDN cache headers (`s-maxage=60, stale-while-revalidate=300`) will **reduce** to
 | Update slug on rename               | `platformSummary/projects_{sId}` | Every `updateProjectMetadata()` with name change | **0 additional** — slug update part of existing summary sync             |
 | Store outletSlug on outlet creation | `stores/{sId}`                   | Every outlet creation                            | **0 additional** — outletSlug added to existing store doc creation       |
 | MyCodex domain registration         | None                             | Static deployment-domain configuration           | **0 writes** — no Firestore document mutation                            |
+| MyCodex PWA registration/assets     | None                             | Static install metadata and offline shell        | **0 writes** — no Firestore document mutation                            |
 
 **Net write impact: ZERO additional writes.**
 

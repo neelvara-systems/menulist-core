@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, knowledge intake, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, team access, AI-built apps, widget context, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, knowledge intake, team access, AI-built apps, widget context, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -37,6 +37,22 @@ const FAQS = [
     {
         question: 'What if I do not have documentation yet?',
         answer: 'Start with FAQs, setup notes, release notes, and recurring support questions. Canonica helps turn that material into reviewed support knowledge.',
+    },
+    {
+        question: 'Can Canonica import my website or docs?',
+        answer: 'Yes. Knowledge Intake can discover bounded public page candidates, import only the pages you select, and accept supported files or pasted source material. It does not crawl your whole site or log into private app areas.',
+    },
+    {
+        question: 'Can I upload screenshots or recordings during intake?',
+        answer: 'Yes. Owners can add screenshots/images or short support recordings when visual walkthroughs help. OCR and transcription are capped, support-credit logged, and stored as extracted support text for review rather than raw media files.',
+    },
+    {
+        question: 'Do imports use support credits?',
+        answer: 'Selected text sources, public help pages, and normal widget loading do not consume credits. Paid intake media extraction, AI-assisted answers, fallback handling, and governance work can use support credits so processing remains bounded.',
+    },
+    {
+        question: 'Does Knowledge Intake publish answers automatically?',
+        answer: 'No. Intake creates review drafts for KB articles, FAQs, surfaces, changelog entries, or canonical answer proposals. Owners accept and publish selected items; authoritative canonical answers still require governance approval.',
     },
     {
         question: 'Will Canonica make up answers?',
@@ -182,7 +198,7 @@ export default function CanonicaFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, knowledge intake, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>

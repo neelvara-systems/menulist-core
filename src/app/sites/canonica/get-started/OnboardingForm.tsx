@@ -369,7 +369,7 @@ function OnboardingFormInner() {
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
                             <li>Check your activation dashboard</li>
-                            <li>Upload docs or starter answers</li>
+                            <li>Teach Canonica from selected links, docs, screenshots, recordings, or starter answers</li>
                             <li>Review generated product topics and answer drafts</li>
                             <li>Add the widget to your product and configure hosted help if needed</li>
                         </ol>

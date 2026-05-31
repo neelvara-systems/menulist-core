@@ -36,12 +36,12 @@ const PACK_ITEMS: LaunchPackItem[] = [
         cta: 'See setup',
     },
     {
-        label: 'Starter knowledge',
-        title: 'Import docs, FAQs, changelog, and support macros',
+        label: 'Knowledge intake',
+        title: 'Teach Canonica from links, docs, files, and media',
         description:
-            'Use current Markdown docs, FAQ CSV content, release notes, and ticket macros as source material instead of starting from a blank help center.',
-        href: '/product/knowledge-base',
-        cta: 'Open knowledge base',
+            'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, and support macros, then review drafts before publishing.',
+        href: '/product/knowledge-intake',
+        cta: 'See intake',
     },
     {
         label: 'Install proof',

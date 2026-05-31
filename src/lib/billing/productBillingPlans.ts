@@ -8,7 +8,7 @@ export const CANONICA_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
     {
         packId: 'canonica_support_credits',
         name: 'Support Credit Pack',
-        description: 'Extra Canonica answer, chat, and governance credits. One-time purchase. No expiry.',
+        description: 'Extra Canonica answer, widget chat, intake media, and governance credits. One-time purchase. No expiry.',
         creditAmount: 500,
         priceINR: { price: 249900, monthlyCredits: null },
         priceUSD: { price: 3000, monthlyCredits: null },

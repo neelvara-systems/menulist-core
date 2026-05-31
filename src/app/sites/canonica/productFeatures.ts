@@ -110,6 +110,95 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         ],
     },
     {
+        slug: 'knowledge-intake',
+        label: 'Knowledge Intake',
+        href: '/product/knowledge-intake',
+        eyebrow: 'Knowledge Intake',
+        title: 'Teach Canonica your product before users need support.',
+        description:
+            'Start from selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings. Canonica prepares source-backed drafts for owner review before anything becomes support knowledge.',
+        heroBullets: [
+            'Selected public links, files, screenshots, and short media',
+            'KB, FAQ, surface, changelog, and answer-proposal drafts',
+            'Owner approval before publish',
+        ],
+        proofTitle: 'Start with product truth, not a blank help center.',
+        proofDescription:
+            'Knowledge Intake gives founders a first-session path from existing product material to reviewed support content without creating an unbounded crawler or auto-publishing AI answers.',
+        cards: [
+            {
+                title: 'Inspect selected public pages',
+                description:
+                    'Paste a product or docs URL, review the support-worthy pages Canonica finds, and import only the pages you choose.',
+            },
+            {
+                title: 'Bring existing files',
+                description:
+                    'Use TXT, Markdown, CSV, JSON, DOCX, and text-based PDF content as source material without retaining raw files by default.',
+            },
+            {
+                title: 'Extract support context from screenshots',
+                description:
+                    'Upload screenshots/images when UI evidence matters. Canonica extracts support-relevant text, charges one support credit, and keeps only extracted source text for review.',
+            },
+            {
+                title: 'Transcribe short support recordings',
+                description:
+                    'Use short audio/video clips when founders have walkthroughs or customer explanations. Transcription is capped, credit-charged, and never becomes official without review.',
+            },
+            {
+                title: 'Prepare review drafts',
+                description:
+                    'Generate grouped drafts for articles, FAQs, product surfaces, changelog entries, and canonical answer proposals.',
+            },
+            {
+                title: 'Keep answers governed',
+                description:
+                    'Accepted drafts publish into the existing support layer; canonical answers still go through mutation proposal review.',
+            },
+            {
+                title: 'Stay cost bounded',
+                description:
+                    'Intake is owner-triggered, capped per job, license-gated, ledger-backed for paid media extraction, and avoids realtime listeners or hidden scheduler processing.',
+            },
+        ],
+        workflowTitle: 'From product material to reviewed support content.',
+        workflowDescription:
+            'Teach Canonica is built for first setup: add sources, generate drafts, approve what is right, and publish into the same runtime the widget and hosted help already use.',
+        workflowSteps: [
+            { title: 'Create intake', description: 'Name the intake and add product/app URLs for context.' },
+            { title: 'Add sources', description: 'Import selected pages, pasted content, support macros, release notes, supported files, screenshots, or short support recordings.' },
+            { title: 'Review drafts', description: 'Edit, accept, or reject drafts before they become customer-facing support.' },
+            { title: 'Publish accepted items', description: 'Write approved content into KB, FAQ, product surface, changelog, or canonical proposal paths.' },
+        ],
+        connectedTitle: 'Intake feeds Canonica without creating a second knowledge system.',
+        connectedDescription:
+            'Published intake output lands in the same collections and freshness paths used by hosted help, widget search, page-aware suggestions, and governance.',
+        connectedItems: [
+            { title: 'Knowledge Base', description: 'Accepted article drafts become reviewed KB content with embeddings attempted at publish time.' },
+            { title: 'FAQ Management', description: 'Short answers can publish as owner-reviewed FAQs tied to source material and context keys.' },
+            { title: 'Product Surfaces', description: 'Selected page context can become support-aware route and workflow mappings.' },
+            { title: 'Governance', description: 'Canonical answer output stays reviewable through mutation proposals instead of auto-publishing authority.' },
+        ],
+        faq: [
+            {
+                title: 'Does intake crawl my whole site?',
+                description:
+                    'No. Canonica discovers bounded candidates and imports only the pages the owner selects.',
+            },
+            {
+                title: 'Does imported content go live automatically?',
+                description:
+                    'No. Intake creates review drafts. Owners accept and publish selected items before users see them.',
+            },
+            {
+                title: 'Does this replace the Knowledge Base?',
+                description:
+                    'No. It feeds the Knowledge Base, FAQ, changelog, product-surface, and answer-proposal workflows.',
+            },
+        ],
+    },
+    {
         slug: 'knowledge-base',
         label: 'Knowledge Base',
         href: '/product/knowledge-base',

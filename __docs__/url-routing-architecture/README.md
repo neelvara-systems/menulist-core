@@ -85,7 +85,7 @@ Requests are classified before tenant routing:
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
-5. MyCodex product routes require Basic Auth outside localhost so internal docs are not publicly readable.
+5. MyCodex product routes require the MyCodex login/session cookie outside localhost so internal docs are not publicly readable.
 
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
@@ -97,12 +97,18 @@ Requests are classified before tenant routing:
 
 `menulist.digital` is reserved for the internal MyCodex documentation reader. It must stay in the product-domain registry so it is not mistaken for a restaurant custom domain.
 
-MyCodex Vercel access requires:
+MyCodex Vercel access uses a first-party login page backed by server-side credentials:
 
 - `MYCODEX_BASIC_AUTH_USER`
 - `MYCODEX_BASIC_AUTH_PASSWORD`
 
+The browser receives only a signed `HttpOnly` `mycodex_session` cookie after login. Raw credentials are not stored in `localStorage` or exposed to client code.
+
 MyCodex also stays out of public discovery: MyCodex responses send `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate`, its layout metadata is no-index/no-follow, and its product-scoped `robots.txt` disallows all crawlers. These restrictions are applied only to MyCodex routes/domains and must not be reused for MenuList tenant menus or Canonica public surfaces.
+
+MyCodex PWA install identity is also product-scoped. `src/app/sites/mycodex/layout.tsx` links `/mycodex.webmanifest`, MyCodex-specific icons, and MyCodex Apple launch images. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when the resolved product host is `mycodex`; the worker caches only the offline fallback and MyCodex static logo assets, never repository documentation content.
+
+Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must include `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes. This keeps Vercel serverless packaging aligned with local filesystem behavior without exposing docs through MenuList or Canonica routing.
 
 Localhost `/__mycodex` remains open for development.
 

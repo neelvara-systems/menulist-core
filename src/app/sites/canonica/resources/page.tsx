@@ -10,7 +10,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -31,7 +31,7 @@ const RESOURCE_GROUPS = [
             ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
             ['ROI calculator', '/roi-calculator', 'Estimate repeated-question time saved and plan fit.'],
             ['Proof pack', '/proof', 'Review example workloads for launch, release, and studio use.'],
-            ['FAQ', '/faq', 'Answers for setup, widget context, screenshots, fallback, pricing, and data handling.'],
+            ['FAQ', '/faq', 'Answers for setup, knowledge intake, widget context, screenshots, fallback, pricing, and data handling.'],
         ],
     },
     {
@@ -49,7 +49,8 @@ const RESOURCE_GROUPS = [
         items: [
             ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
             ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
-            ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
+            ['Knowledge Intake', '/product/knowledge-intake', 'Teach Canonica from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.'],
+            ['Knowledge Base', '/product/knowledge-base', 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.'],
             ['Support Board', '/product/support-board', 'Plan private support cards, internal notes, status history, and answer proposal handoff.'],
             ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, or vanilla script examples.'],
@@ -84,7 +85,7 @@ export default function CanonicaResourcesPage() {
                         Start here if you are launching support for an AI-built app.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use the demo first, then check fit, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
+                        Use the demo first, then check fit, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
                     </p>
                 </section>
 

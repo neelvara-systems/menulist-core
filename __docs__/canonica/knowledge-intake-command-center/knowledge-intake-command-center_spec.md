@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Product Specification
 
-> **Status:** PLANNED — Day-one implementation contract
+> **Status:** IMPLEMENTED — day-one owner-triggered product contract
 > **Version:** 1.0.0
 > **Created:** 2026-05-31
 > **Audience:** CEO / PM / Product / Clients
@@ -94,9 +94,9 @@ Day-one means one permanent intake contract supports these inputs. Individual ad
 | --- | --- | --- |
 | Product context | product name, website, app URL, support email, product category, billing model, launch policy answers | Highest-value starting point. Required before expensive processing. |
 | Website link pack | product website, pricing, feature pages, FAQ, docs/help URL, changelog URL, API docs URL, sitemap.xml, robots.txt, llms.txt when present | Capped source discovery first. Only owner-selected pages become knowledge sources. No full crawl by default. |
-| Uploaded docs | PDF, DOCX, TXT, Markdown, HTML, CSV, FAQ CSV, XLSX, PPTX, JSON/YAML, ZIP of docs | Client preflight + server validation. Normalize to source evidence before drafts. |
-| Images/screenshots | PNG, JPG/JPEG, WebP, screenshots inside ZIP/PDF | OCR/visual evidence only. Warn about secrets/metadata. No automatic authoritative answers. |
-| Video/audio/transcripts | MP4, MOV, WebM, M4A, MP3, uploaded transcript, VTT/SRT, Loom/YouTube transcript text | Transcript-first. Raw media transcription is paid, capped by duration, and explicitly confirmed. |
+| Uploaded docs | Text-based PDF, DOCX, TXT, Markdown, CSV, FAQ CSV, JSON | Client preflight + server validation. Normalize to source evidence before drafts. XLSX, PPTX, YAML, HTML files, and ZIP docs are not public claims until implemented. |
+| Images/screenshots | PNG, JPG/JPEG, WebP, GIF | OCR/visual evidence only. Warn about secrets. Costs support credits and never creates automatic authoritative answers. |
+| Video/audio/transcripts | MP4, MOV, WebM, M4A, MP3, WAV, OGG, uploaded transcript text | Transcript-first. Raw media transcription is owner-triggered, support-credit charged, byte-capped, and explicitly visible. |
 | Changelog/releases | changelog entries, release notes, GitHub release export, release email text | Connects to product surfaces, affected answers, and stale-answer review. |
 | Helpdesk history | Zendesk/Intercom/Freshdesk/Help Scout exports, ticket CSV/JSON, support email exports, macros, canned replies, chat transcripts | Export upload path only for day-one. Native OAuth connectors are not required for launch because of credential and privacy risk. |
 | Product surfaces | app routes, page names, workflows, roles, plans, error states, starter surface templates | Feeds page-aware widget support and product readiness. |
@@ -403,7 +403,7 @@ Detailed lists open only when the owner clicks a tab:
 - publish manifest
 - usage ledger
 
-Scheduler/ops should discover work from bucketed `platformSummary/knowledgeIntakeDirectory_*` docs. It should not scan intake jobs, sources, or review items to find active work.
+Intake processing is owner-triggered. Scheduler/ops do not discover active intake work for retries or imports. The existing Canonica nightly scheduler may refresh compact intake analytics from the latest bounded job docs and must skip provider calls, failed-job retry, crawling, and publishing.
 
 ---
 
@@ -440,7 +440,7 @@ Scheduler/ops should discover work from bucketed `platformSummary/knowledgeIntak
 - No full project-management board.
 - No unbounded nightly crawl.
 - No per-section/per-fact Firestore materialization.
-- No scheduler collection scan to discover intake work.
+- No scheduler collection scan to discover retry/import work. Summary-only analytics may read bounded recent jobs for known tenant/store scope.
 
 ---
 

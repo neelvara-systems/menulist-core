@@ -8,7 +8,7 @@ type SupportKnowledgeMapSectionProps = {
 const SOURCE_INPUTS = [
     {
         label: 'What you add',
-        detail: 'Docs, FAQs, custom Q&A, changelogs, tickets, setup notes, and common answers.',
+        detail: 'Selected product links, docs, files, FAQs, custom Q&A, changelogs, screenshots, short recordings, and common answers.',
     },
     {
         label: 'Where users ask',
@@ -52,7 +52,7 @@ export default function SupportKnowledgeMapSection({
                     title={isProduct
                         ? 'One governed source behind every support surface.'
                         : 'Turn your existing notes into support users can trust.'}
-                    description="Add docs, FAQs, custom Q&A, release notes, setup guides, and common answers. Canonica connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback."
+                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. Canonica connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback."
                 />
 
                 <div className="cn-support-map" data-canonica-reveal>

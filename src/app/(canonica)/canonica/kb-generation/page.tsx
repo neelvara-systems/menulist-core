@@ -1,17 +1,6 @@
-'use client'
-
-/**
- * Canonica Dashboard — KB Generation (AI-powered article creation)
- * Reuses existing platform KBGeneration component.
- */
-
-import dynamic from 'next/dynamic';
-
-const KBGeneration = dynamic(
-    () => import('@/components/templates/platform/KBGeneration'),
-    { ssr: false }
-);
+import { redirect } from 'next/navigation';
+import { CANONICA_ROUTES } from '@constant/canonica/routes';
 
 export default function CanonicaKBGenerationPage() {
-    return <KBGeneration />;
+    redirect(CANONICA_ROUTES.KNOWLEDGE_INTAKE);
 }

@@ -201,7 +201,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 ## ADR-12: Internal Product Hosts Must Be Registered Before Tenant Routing
 
-**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`. Outside localhost, middleware must require Basic Auth before serving MyCodex.
+**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`. Outside localhost, middleware must require a signed MyCodex session cookie before serving protected MyCodex routes.
 
 **Why:**
 
@@ -225,12 +225,21 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 - `MYCODEX_BASIC_AUTH_USER`
 - `MYCODEX_BASIC_AUTH_PASSWORD`
 
+The credential env var names are retained for compatibility, but runtime access is now first-party form login plus an `HttpOnly` `mycodex_session` cookie. Credentials must stay server-side and must not be stored in browser `localStorage`.
+
+MyCodex may be installed as a PWA on `menulist.digital`, but its install identity must stay product-scoped: `/mycodex.webmanifest`, MyCodex icon assets, and `/mycodex-sw.js`. The service worker is allowed to cache the offline page and static logo assets only; it must not cache repository documentation pages, markdown, or tenant/client menu data.
+
+Because MyCodex reads `__docs__` markdown from disk at runtime, the MyCodex route must retain a Vercel file-tracing include in `next.config.js`: `/sites/mycodex` routes include `./__docs__/**/*`. This is packaging support only; it does not add MenuList tenant routing or Canonica access to the docs tree.
+
 **Source files:**
 
 - `src/constants/deploymentTargets.ts` — `mycodex` preview/production domains
 - `src/constants/productDomains.ts` — MyCodex product site entry guarded by `ENABLE_MYCODEX_READER`
 - `src/lib/multiTenant/domainResolver.ts` — product-domain check runs before platform/subdomain/custom classification
 - `src/middleware.ts` — product domains rewrite before tenant routing
+- `next.config.js` — MyCodex route file tracing includes `__docs__`
+- `src/components/ServiceWorkerRegister.tsx` — product-scoped service worker registration
+- `public/mycodex.webmanifest` — MyCodex install manifest
 
 ---
 

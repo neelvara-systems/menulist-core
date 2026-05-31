@@ -31,6 +31,13 @@ const TRUST_CONTROLS = [
         rows: [['official answer', 'owner approved']] as Array<[string, string]>,
     },
     {
+        status: 'bounded intake',
+        title: 'Teach from sources without open-ended processing',
+        detail: 'Knowledge intake is owner-triggered, capped, and keeps screenshots or media as extracted support text for review.',
+        tone: 'neutral' as const,
+        rows: [['media work', 'credit logged']] as Array<[string, string]>,
+    },
+    {
         status: 'compiled',
         title: 'Serve approved context from bundles',
         detail: 'Ready widget context can load from versioned, public-safe bundles instead of repeated database scans.',

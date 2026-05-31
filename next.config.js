@@ -84,6 +84,10 @@ const nextConfig = {
                 'node_modules/terser/**',
             ],
         },
+        outputFileTracingIncludes: {
+            '/sites/mycodex': ['./__docs__/**/*'],
+            '/sites/mycodex/**/*': ['./__docs__/**/*'],
+        },
         // Optimize for memory usage in builds
         // optimizeCss: true, // Disabled — causes silent page drops on Vercel OOM builds
         optimizePackageImports: ['antd', 'antd-mobile', 'react-icons'],
@@ -198,7 +202,7 @@ const nextConfig = {
 // ═══════════════════════════════════════════════════════════════
 // Service Worker Strategy (Customer App Architecture Decision)
 // ═══════════════════════════════════════════════════════════════
-// MenuList runs TWO PWAs from one Next.js build:
+// MenuList runs multiple isolated PWAs from one Next.js build:
 //
 //   1. Owner Dashboard PWA   → app.menulist.ai, menulist.ai
 //      Uses next-pwa generated `sw.js` with runtime caching for
@@ -209,6 +213,10 @@ const nextConfig = {
 //      NO content caching. NO Firestore cache. NO menu page cache.
 //      Server-side freshness is guaranteed by unstable_cache +
 //      revalidateTag('menu-store-{id}') on every owner save.
+//
+//   3. MyCodex PWA           → menulist.digital
+//      Uses hand-rolled `mycodex-sw.js` — private docs offline shell only.
+//      NO document content caching.
 //
 // Registration is handled manually in ServiceWorkerRegister.tsx
 // based on the origin's tenant type (from domainResolver).

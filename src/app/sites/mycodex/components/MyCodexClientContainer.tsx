@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import MyCodexLogoMark from './MyCodexLogoMark';
 import { 
     LuMenu, 
     LuX, 
     LuSearch, 
-    LuBookOpen, 
     LuChevronRight, 
     LuChevronDown,
     LuFileText,
@@ -28,7 +28,11 @@ import {
     LuShare2,
     LuClipboard,
     LuCamera,
-    LuSettings
+    LuSettings,
+    LuLogOut,
+    LuArrowLeft,
+    LuArrowRight,
+    LuHistory
 } from 'react-icons/lu';
 
 interface DocNode {
@@ -42,6 +46,13 @@ interface Heading {
     text: string;
     level: number;
     id: string;
+}
+
+interface ReaderHistoryEntry {
+    path: string;
+    title: string;
+    sourcePath: string;
+    visitedAt: number;
 }
 
 interface MyCodexClientContainerProps {
@@ -83,11 +94,14 @@ const normalizeMarkdownDocPath = (value: string) => {
 const READER_FONT_SIZE_STORAGE_KEY = 'mycodex:reader-font-size';
 const READER_WIDTH_STORAGE_KEY = 'mycodex:reader-width';
 const READER_NAV_STORAGE_KEY = 'mycodex:sidebar-pinned';
+const READER_RECENT_DOCS_STORAGE_KEY = 'mycodex:recent-docs';
 const DEFAULT_READER_FONT_SIZE = 16;
 const MIN_READER_FONT_SIZE = 10;
 const MAX_READER_FONT_SIZE = 22;
 const MAX_TREE_INDENT_DEPTH = 4;
 const MAX_SCREENSHOT_HEIGHT = 14000;
+const MAX_RECENT_DOCS = 8;
+const SETTINGS_DRAWER_TRANSITION_MS = 300;
 
 type ReaderWidth = 'focus' | 'standard' | 'wide';
 
@@ -101,6 +115,100 @@ const READER_WIDTH_LABELS: Record<ReaderWidth, string> = {
     focus: 'Focus width',
     standard: 'Standard width',
     wide: 'Wide width',
+};
+
+const DOC_TYPE_TITLE_SUFFIXES = [
+    'chatgpt-ui-ux-review-progress',
+    'public-draft-strategy-review',
+    'doc-feedback-audit',
+    'code-feedback-audit',
+    'logic-verification',
+    'localization-contract',
+    'mobile-support',
+    'testing-guide',
+    'test-cases',
+    'site-architecture',
+    'existing-site-audit',
+    'decoupling-analysis',
+    'release-validation',
+    'phase0-verification',
+    'hardening-spec',
+    'audit-decisions',
+    'chatgpt-review-v4',
+    'chatgpt-review-v3',
+    'chatgpt-review-v2',
+    'chatgpt-review',
+    'chatgpt-analysis',
+    'cascade-approach',
+    'code-review',
+    'feedback-audit',
+    'final-approach',
+    'web-research',
+    'image-assets',
+    'design-system',
+    'seo-aeo',
+    'ai-extraction',
+    'firebase',
+    'marketing',
+    'website',
+    'helpdoc',
+    'content',
+    'runbook',
+    'checklist',
+    'roadmap',
+    'validation',
+    'verification',
+    'improvements',
+    'audit',
+    'test',
+    'spec',
+    'impl',
+    'adr',
+    'old',
+] as const;
+
+const DOC_TYPE_TITLE_LABELS: Partial<Record<(typeof DOC_TYPE_TITLE_SUFFIXES)[number], string>> = {
+    adr: 'ADR',
+    'ai-extraction': 'AI Extraction',
+    'chatgpt-analysis': 'ChatGPT Analysis',
+    'chatgpt-review': 'ChatGPT Review',
+    'chatgpt-review-v2': 'ChatGPT Review V2',
+    'chatgpt-review-v3': 'ChatGPT Review V3',
+    'chatgpt-review-v4': 'ChatGPT Review V4',
+    'chatgpt-ui-ux-review-progress': 'ChatGPT UI/UX Review Progress',
+    firebase: 'Firebase',
+    impl: 'Impl',
+    'seo-aeo': 'SEO/AEO',
+    spec: 'Spec',
+};
+
+const toTitleCase = (value: string) => value
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, character => character.toUpperCase());
+
+const formatDocumentTitle = (name: string) => {
+    const baseName = name.replace(/\.md$/, '');
+    const lowerBaseName = baseName.toLowerCase();
+
+    for (const suffix of DOC_TYPE_TITLE_SUFFIXES) {
+        const normalizedSuffix = `_${suffix}`;
+        if (lowerBaseName.endsWith(normalizedSuffix)) {
+            const nameWithoutSuffix = baseName.slice(0, -normalizedSuffix.length);
+            const label = DOC_TYPE_TITLE_LABELS[suffix] || toTitleCase(suffix);
+            return `${label} - ${toTitleCase(nameWithoutSuffix)}`;
+        }
+    }
+
+    return toTitleCase(baseName);
+};
+
+const isReaderHistoryEntry = (value: unknown): value is ReaderHistoryEntry => {
+    if (!value || typeof value !== 'object') return false;
+    const entry = value as Partial<ReaderHistoryEntry>;
+    return typeof entry.path === 'string'
+        && typeof entry.title === 'string'
+        && typeof entry.sourcePath === 'string'
+        && typeof entry.visitedAt === 'number';
 };
 
 const clampReaderFontSize = (value: number) => Math.min(MAX_READER_FONT_SIZE, Math.max(MIN_READER_FONT_SIZE, value));
@@ -129,9 +237,43 @@ export default function MyCodexClientContainer({
     const [actionStatus, setActionStatus] = useState<{ message: string; tone: 'success' | 'error' | 'info' } | null>(null);
     const [isCopyingScreenshot, setIsCopyingScreenshot] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [settingsMounted, setSettingsMounted] = useState(false);
+    const [recentDocs, setRecentDocs] = useState<ReaderHistoryEntry[]>([]);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     const readerCaptureRef = useRef<HTMLDivElement | null>(null);
     const actionStatusTimerRef = useRef<number | null>(null);
+    const settingsCloseTimerRef = useRef<number | null>(null);
+    const settingsOpenFrameRef = useRef<number | null>(null);
+
+    const clearSettingsAnimationHandles = useCallback(() => {
+        if (settingsCloseTimerRef.current !== null) {
+            window.clearTimeout(settingsCloseTimerRef.current);
+            settingsCloseTimerRef.current = null;
+        }
+
+        if (settingsOpenFrameRef.current !== null) {
+            window.cancelAnimationFrame(settingsOpenFrameRef.current);
+            settingsOpenFrameRef.current = null;
+        }
+    }, []);
+
+    const openSettingsDrawer = useCallback(() => {
+        clearSettingsAnimationHandles();
+        setSettingsMounted(true);
+        settingsOpenFrameRef.current = window.requestAnimationFrame(() => {
+            settingsOpenFrameRef.current = null;
+            setSettingsOpen(true);
+        });
+    }, [clearSettingsAnimationHandles]);
+
+    const closeSettingsDrawer = useCallback(() => {
+        clearSettingsAnimationHandles();
+        setSettingsOpen(false);
+        settingsCloseTimerRef.current = window.setTimeout(() => {
+            settingsCloseTimerRef.current = null;
+            setSettingsMounted(false);
+        }, SETTINGS_DRAWER_TRANSITION_MS);
+    }, [clearSettingsAnimationHandles]);
 
     // Read theme from localStorage / system pref on mount
     useEffect(() => {
@@ -152,6 +294,15 @@ export default function MyCodexClientContainer({
         const storedSidebarPinned = localStorage.getItem(READER_NAV_STORAGE_KEY);
         if (storedSidebarPinned === 'false') {
             setSidebarPinned(false);
+        }
+
+        try {
+            const storedRecentDocs = JSON.parse(localStorage.getItem(READER_RECENT_DOCS_STORAGE_KEY) || '[]');
+            if (Array.isArray(storedRecentDocs)) {
+                setRecentDocs(storedRecentDocs.filter(isReaderHistoryEntry).slice(0, MAX_RECENT_DOCS));
+            }
+        } catch {
+            localStorage.removeItem(READER_RECENT_DOCS_STORAGE_KEY);
         }
     }, []);
 
@@ -184,7 +335,7 @@ export default function MyCodexClientContainer({
 
     useEffect(() => {
         const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
-        const shouldLockScroll = settingsOpen || (sidebarOpen && isMobileViewport);
+        const shouldLockScroll = settingsMounted || (sidebarOpen && isMobileViewport);
         if (!shouldLockScroll) return;
 
         const previousOverflow = document.body.style.overflow;
@@ -193,15 +344,17 @@ export default function MyCodexClientContainer({
         return () => {
             document.body.style.overflow = previousOverflow;
         };
-    }, [sidebarOpen, settingsOpen]);
+    }, [sidebarOpen, settingsMounted]);
 
     useEffect(() => {
         return () => {
             if (actionStatusTimerRef.current) {
                 window.clearTimeout(actionStatusTimerRef.current);
             }
+
+            clearSettingsAnimationHandles();
         };
-    }, []);
+    }, [clearSettingsAnimationHandles]);
 
     const decreaseReaderFontSize = () => {
         setReaderFontSize((previous) => clampReaderFontSize(previous - 1));
@@ -252,7 +405,7 @@ export default function MyCodexClientContainer({
 
             if (event.key === 'Escape') {
                 setSidebarOpen(false);
-                setSettingsOpen(false);
+                closeSettingsDrawer();
                 return;
             }
 
@@ -282,7 +435,7 @@ export default function MyCodexClientContainer({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [closeSettingsDrawer]);
 
     const currentPath = '/' + currentSlug.join('/');
 
@@ -344,13 +497,7 @@ export default function MyCodexClientContainer({
         return filterNodes(docsTree);
     }, [docsTree, searchQuery]);
 
-    // Format human-readable title from path/filename
-    const formatTitle = (name: string) => {
-        return name
-            .replace(/\.md$/, '')
-            .replace(/[-_]/g, ' ')
-            .replace(/\b\w/g, c => c.toUpperCase());
-    };
+    const formatTitle = formatDocumentTitle;
 
     // Build standard URL based on current routing prefix
     const buildUrl = (targetPath: string) => {
@@ -358,10 +505,36 @@ export default function MyCodexClientContainer({
         return isLocalDev ? `/__mycodex${cleanPath === '/' ? '' : cleanPath}` : cleanPath;
     };
 
+    const documentEntries = useMemo(() => {
+        const entries: Array<Pick<ReaderHistoryEntry, 'path' | 'title' | 'sourcePath'>> = [{
+            path: '/',
+            title: 'Master Index',
+            sourcePath: '__docs__/index.md',
+        }];
+
+        const visitNodes = (nodes: DocNode[]) => {
+            nodes.forEach((node) => {
+                if (node.isDir) {
+                    visitNodes(node.children || []);
+                    return;
+                }
+
+                entries.push({
+                    path: `/${node.path}`,
+                    title: formatTitle(node.name),
+                    sourcePath: `__docs__/${node.path}.md`,
+                });
+            });
+        };
+
+        visitNodes(docsTree);
+        return entries;
+    }, [docsTree, formatTitle]);
+
     const openNavigationSearch = () => {
         setSidebarPinned(true);
         setSidebarOpen(true);
-        setSettingsOpen(false);
+        closeSettingsDrawer();
         window.setTimeout(() => searchInputRef.current?.focus(), 0);
     };
 
@@ -374,6 +547,38 @@ export default function MyCodexClientContainer({
         : '__docs__/index.md';
     const documentSourcePath = sourceFilePath || fallbackSourcePath;
     const documentSourceLabel = sourceFilePath ? 'Source file' : 'Document route';
+    const currentDocumentIndex = documentEntries.findIndex((entry) => entry.path === currentPath);
+    const previousDocument = currentDocumentIndex > 0 ? documentEntries[currentDocumentIndex - 1] : null;
+    const nextDocument = currentDocumentIndex >= 0 && currentDocumentIndex < documentEntries.length - 1
+        ? documentEntries[currentDocumentIndex + 1]
+        : null;
+    const visibleRecentDocs = recentDocs.filter((entry) => entry.path !== currentPath).slice(0, 5);
+    const goToDocument = (targetPath: string | undefined) => {
+        if (!targetPath) return;
+        window.location.href = buildUrl(targetPath);
+    };
+
+    useEffect(() => {
+        const currentEntry: ReaderHistoryEntry = {
+            path: currentPath || '/',
+            title: currentDocumentTitle,
+            sourcePath: documentSourcePath,
+            visitedAt: Date.now(),
+        };
+
+        setRecentDocs((previous) => {
+            const next = [
+                currentEntry,
+                ...previous.filter((entry) => entry.path !== currentEntry.path),
+            ].slice(0, MAX_RECENT_DOCS);
+            try {
+                localStorage.setItem(READER_RECENT_DOCS_STORAGE_KEY, JSON.stringify(next));
+            } catch {
+                // Recent docs are a convenience only; never block reading.
+            }
+            return next;
+        });
+    }, [currentDocumentTitle, currentPath, documentSourcePath]);
 
     const showActionStatus = (message: string, tone: 'success' | 'error' | 'info' = 'success') => {
         setActionStatus({ message, tone });
@@ -898,7 +1103,7 @@ export default function MyCodexClientContainer({
     };
 
     return (
-        <div className="flex-1 flex flex-col md:flex-row relative overflow-x-hidden">
+        <div className="flex-1 flex flex-col md:flex-row relative overflow-x-clip">
             <div
                 aria-hidden="true"
                 className="fixed left-0 top-0 z-[60] h-0.5 bg-sky-500 transition-[width] duration-150 dark:bg-sky-400"
@@ -908,7 +1113,7 @@ export default function MyCodexClientContainer({
             {/* Header / Mobile Action Bar */}
             <header className="fixed inset-x-0 top-0 z-50 h-16 w-full flex items-center justify-between px-4 md:hidden bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2">
-                    <LuBookOpen className="w-5 h-5 text-sky-600 dark:text-sky-300" />
+                    <MyCodexLogoMark className="h-7 w-[17px] shrink-0" />
                     <span className="font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
                         MyCodex
                     </span>
@@ -916,7 +1121,7 @@ export default function MyCodexClientContainer({
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => setSettingsOpen(true)}
+                        onClick={openSettingsDrawer}
                         aria-label="Open reader settings"
                         className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 active:scale-95"
                         style={{ minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -943,16 +1148,25 @@ export default function MyCodexClientContainer({
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
                 {/* Brand identity on desktop */}
-                <div className="hidden h-20 md:flex items-center gap-2 px-4 border-b border-zinc-200 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20">
-                    <LuBookOpen className="w-5 h-5 text-sky-600 dark:text-sky-300 shrink-0" />
+                <div className="hidden h-16 md:flex items-center gap-2 px-4 border-b border-zinc-200 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/20">
+                    <MyCodexLogoMark className="h-7 w-[17px] shrink-0" />
                     <h1 className="text-base font-extrabold tracking-tight text-zinc-900 dark:text-white flex-1">
                         MyCodex
                     </h1>
                     <button
                         type="button"
-                        onClick={() => setSettingsOpen(true)}
+                        onClick={() => setSidebarPinned(false)}
+                        aria-label="Collapse navigation"
+                        title="Collapse navigation"
+                        className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-all hover:border-sky-300 hover:text-sky-700 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-sky-700 dark:hover:text-sky-300"
+                    >
+                        <LuPanelLeftClose className="w-4 h-4" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={openSettingsDrawer}
                         aria-label="Open reader settings"
-                        className="ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-100 text-zinc-500 transition-all hover:bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-all hover:border-sky-300 hover:text-sky-700 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-sky-700 dark:hover:text-sky-300"
                     >
                         <LuSettings className="w-4 h-4" />
                     </button>
@@ -1040,18 +1254,23 @@ export default function MyCodexClientContainer({
                 />
             )}
 
-            {settingsOpen && (
+            {settingsMounted && (
                 <>
                     <div
                         aria-hidden="true"
-                        onClick={() => setSettingsOpen(false)}
-                        className="fixed inset-0 z-[65] bg-black/35 backdrop-blur-sm dark:bg-black/60"
+                        onClick={closeSettingsDrawer}
+                        className={`fixed inset-0 z-[65] bg-black/35 backdrop-blur-sm transition-opacity duration-300 ease-in-out dark:bg-black/60 ${
+                            settingsOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+                        }`}
                     />
                     <aside
                         role="dialog"
-                        aria-modal="true"
+                        aria-modal={settingsOpen}
+                        aria-hidden={!settingsOpen}
                         aria-label="Reader settings"
-                        className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950"
+                        className={`fixed inset-y-0 right-0 z-[70] flex w-full max-w-md transform flex-col border-l border-zinc-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out will-change-transform dark:border-zinc-800 dark:bg-zinc-950 ${
+                            settingsOpen ? 'translate-x-0' : 'translate-x-full'
+                        }`}
                     >
                         <div className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 px-4 dark:border-zinc-800">
                             <div>
@@ -1060,7 +1279,7 @@ export default function MyCodexClientContainer({
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setSettingsOpen(false)}
+                                onClick={closeSettingsDrawer}
                                 aria-label="Close settings"
                                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-600 active:scale-95 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
                             >
@@ -1175,6 +1394,26 @@ export default function MyCodexClientContainer({
                                 <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
                                     Navigation
                                 </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => goToDocument(previousDocument?.path)}
+                                        disabled={!previousDocument}
+                                        className={`${documentActionButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+                                    >
+                                        <LuArrowLeft className="h-4 w-4" />
+                                        <span>Previous</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => goToDocument(nextDocument?.path)}
+                                        disabled={!nextDocument}
+                                        className={`${documentActionButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+                                    >
+                                        <span>Next</span>
+                                        <LuArrowRight className="h-4 w-4" />
+                                    </button>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={openNavigationSearch}
@@ -1183,33 +1422,99 @@ export default function MyCodexClientContainer({
                                     <LuSearch className="h-4 w-4" />
                                     <span>Search documents</span>
                                 </button>
+                                <form method="post" action={buildUrl('/api/logout')}>
+                                    <button
+                                        type="submit"
+                                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300"
+                                    >
+                                        <LuLogOut className="h-4 w-4" />
+                                        <span>Sign out</span>
+                                    </button>
+                                </form>
                             </section>
+
+                            {visibleRecentDocs.length > 0 && (
+                                <section className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">
+                                        <LuHistory className="h-4 w-4" />
+                                        <span>Recent</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {visibleRecentDocs.map((entry) => (
+                                            <a
+                                                key={`${entry.path}:${entry.visitedAt}`}
+                                                href={buildUrl(entry.path)}
+                                                title={entry.sourcePath}
+                                                className="flex min-h-11 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300"
+                                            >
+                                                <LuFileText className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" />
+                                                <span className="min-w-0 flex-1 truncate">{entry.title}</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                         </div>
                     </aside>
                 </>
             )}
 
             {/* Main Content Area */}
-            <main className="flex-1 min-w-0 overflow-x-hidden bg-zinc-50 pt-16 dark:bg-zinc-950 md:pt-0">
-                <div className="sticky top-0 z-30 hidden h-16 items-center border-b border-zinc-200/80 bg-zinc-50/95 px-8 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/95 md:flex">
+            <main className="flex-1 min-w-0 overflow-x-clip bg-zinc-50 pt-16 dark:bg-zinc-950 md:pt-0">
+                <div className="sticky top-0 z-40 hidden h-16 items-center border-b border-zinc-200/80 bg-zinc-50/95 px-8 backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/95 md:flex">
                     <div className="flex w-full items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                {currentDocumentTitle}
-                            </div>
-                            <div className="text-xs text-zinc-500 dark:text-zinc-500">
-                                {documentSourcePath}
+                        <div className="flex min-w-0 items-center gap-3">
+                            {!sidebarPinned && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSidebarPinned(true)}
+                                    className={readerControlButtonClass}
+                                    aria-label="Expand navigation"
+                                    title="Expand navigation"
+                                >
+                                    <LuPanelLeftOpen className="h-4 w-4" />
+                                </button>
+                            )}
+                            <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {currentDocumentTitle}
+                                </div>
+                                <div className="truncate text-xs text-zinc-500 dark:text-zinc-500">
+                                    {documentSourcePath}
+                                </div>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setSettingsOpen(true)}
-                            className={readerControlButtonClass}
-                            aria-label="Open reader settings"
-                            title="Open reader settings"
-                        >
-                            <LuSettings className="h-4 w-4" />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => goToDocument(previousDocument?.path)}
+                                disabled={!previousDocument}
+                                className={`${readerControlButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+                                aria-label="Previous document"
+                                title={previousDocument?.title || 'Previous document'}
+                            >
+                                <LuArrowLeft className="h-4 w-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => goToDocument(nextDocument?.path)}
+                                disabled={!nextDocument}
+                                className={`${readerControlButtonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+                                aria-label="Next document"
+                                title={nextDocument?.title || 'Next document'}
+                            >
+                                <LuArrowRight className="h-4 w-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={openSettingsDrawer}
+                                className={readerControlButtonClass}
+                                aria-label="Open reader settings"
+                                title="Open reader settings"
+                            >
+                                <LuSettings className="h-4 w-4" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1228,11 +1533,11 @@ export default function MyCodexClientContainer({
                                                 <LuChevronRight className="w-3 h-3 text-zinc-400 dark:text-zinc-600" />
                                                 {isLast ? (
                                                     <span className="max-w-[120px] truncate font-medium text-sky-700 dark:text-sky-300 sm:max-w-[220px]">
-                                                        {seg.replace(/[-_]/g, ' ')}
+                                                        {formatTitle(seg)}
                                                     </span>
                                                 ) : (
                                                     <a href={buildUrl(segmentPath)} className="max-w-[110px] truncate hover:text-sky-600 dark:hover:text-sky-300 transition-colors">
-                                                        {seg.replace(/[-_]/g, ' ')}
+                                                        {toTitleCase(seg)}
                                                     </a>
                                                 )}
                                             </React.Fragment>

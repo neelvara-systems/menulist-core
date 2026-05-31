@@ -6,6 +6,21 @@
 
 ---
 
+## May 31, 2026 — Canonica Intake Media And Ledger Hardening
+
+### Added
+
+- **Canonica intake now supports screenshots and short media evidence** — Owners can upload supported screenshots/images and short audio/video files into Knowledge Intake; Canonica extracts support-relevant source text while keeping authoritative answers review-gated.
+- **Canonica intake usage ledger now protects paid media processing** — OCR/transcription reserves Canonica support credits before provider work, records the AI operation, settles successful extraction, and refunds reserved credits on extraction failure.
+- **Canonica nightly now refreshes intake analytics** — The existing Canonica scheduler writes compact intake summary data from bounded recent job docs and does not retry failed jobs, crawl URLs, call providers, or publish review items.
+- **Canonica intake now has a scoped platform monitor** — Platform admins can open `/platform/canonica-intake`, select a workspace from `canonicaTenantsSummary`, observe scoped intake jobs, credit ledger rows, media extraction usage, scheduler intake health, and run a selected-workspace nightly retry.
+
+### Cost
+
+- **Firebase cost is bounded and explicit** — Paid media extraction adds one ledger write plus subscription/store credit updates per reservation, one source write on success, one AI operation log, and one job counter update. The scheduler adds up to 20 job reads plus one summary read per tenant run and writes only when the summary hash changes. The platform monitor first reads one tenant summary and recent scheduler logs; selected-workspace detail refresh adds up to 10 intake jobs and 10 ledger rows. No raw media Storage retention, realtime listener, hidden retry worker, or unbounded intake scan was added.
+
+---
+
 ## May 31, 2026 — MyCodex Reader Controls
 
 ### Changed
@@ -17,6 +32,11 @@
 - **MyCodex documents are easier to reuse from mobile** — Each opened document now shows its resolved source file path and provides copy path, copy link, share, copy page, and screenshot capture actions.
 - **MyCodex reader utilities moved out of the document flow** — Document actions, text sizing, theme, search, and desktop layout controls now live in a settings drawer so mobile reading starts with the document content.
 - **MyCodex font sizing has a wider lower range** — Reader text can now be reduced down to `10px` for dense reference reading.
+- **MyCodex desktop navigation is easier to manage** — The sidebar header now matches the reader header height, the reader header remains sticky, and desktop navigation can be collapsed and restored from the header.
+- **MyCodex document file labels now lead with document type** — Generic doc suffixes such as `_spec`, `_impl`, `_firebase`, `_website`, and review/audit patterns now display as `Spec - Feature Name`, `Impl - Feature Name`, and similar reader labels.
+- **MyCodex mobile sign-in now uses a first-party page** — The Vercel reader no longer depends on the browser Basic Auth prompt. The login route validates the existing MyCodex credential env vars server-side and keeps access with an `HttpOnly` session cookie.
+- **MyCodex now remembers reading continuity locally** — The settings drawer shows recent documents and previous/next document controls, while the desktop header exposes previous/next buttons for fast doc-to-doc reading.
+- **MyCodex now has its own PWA identity** — The internal reader now uses a MyCodex manifest, icon set, Apple launch images, and a private-docs service worker on `menulist.digital` instead of borrowing MenuList platform PWA assets.
 - **MyCodex crawler restrictions are explicit** — MyCodex routes now send no-index/no-follow robot metadata and headers, plus a product-scoped `robots.txt` disallow response, without changing MenuList or Canonica routes.
 - **MyCodex folder URLs now open a document list** — Visiting a folder such as `/__mycodex/ai-enhancement-packs` shows the documents in that folder instead of a generic not-found page when no README exists.
 

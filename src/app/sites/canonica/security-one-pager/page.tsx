@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Security and Ops One-Pager',
-    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, team roles, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
+    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, safe source intake, team roles, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
     alternates: { canonical: '/security-one-pager' },
 };
 
@@ -23,6 +23,7 @@ const ONE_PAGER = [
     ['Allowed origins', 'Restrict widget runtime config to the product and staging domains where Canonica should run.'],
     ['Blocked routes', 'Hide the widget from auth, payment, admin, internal help, or other sensitive paths.'],
     ['Safe page context', 'Send path, title, feature, workflow, role, and locale. Legacy fields are public-label compatibility only. Do not send secrets or raw customer records.'],
+    ['Safe source intake', 'Import only owner-selected public pages, supported files, screenshots, or short recordings. Raw media is not retained by default, and generated output requires owner review.'],
     ['Screenshot attachments', 'Screenshots are user-initiated upload or paste only. The widget does not automatically capture the host app screen or scrape the DOM.'],
     ['Widget key handling', 'Canonica validates widget keys by hash and can copy recoverable widget keys only from encrypted server-side key material.'],
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
@@ -46,7 +47,7 @@ export default function CanonicaSecurityOnePagerPage() {
                         The short version for founders, developers, and reviewers.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica can be page-aware without collecting secrets. Use this one-page summary for install reviews, developer handoff, and buyer security checks.
+                        Canonica can be page-aware and source-backed without collecting secrets. Use this one-page summary for install reviews, developer handoff, intake reviews, and buyer security checks.
                     </p>
                 </section>
 
@@ -72,7 +73,7 @@ export default function CanonicaSecurityOnePagerPage() {
                         <article className="rounded-[1.5rem] border border-amber-300/20 bg-amber-300/[0.04] p-6">
                             <h2 className="text-2xl font-bold text-white">What not to send</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
-                                Do not send passwords, auth tokens, card data, private customer records, raw database IDs, emails, phone numbers, unrelated personal information, or screenshots of screens that reveal secrets.
+                                Do not send passwords, auth tokens, card data, private customer records, raw database IDs, emails, phone numbers, unrelated personal information, screenshots of screens that reveal secrets, or recordings that include private customer data.
                             </p>
                         </article>
                     </div>

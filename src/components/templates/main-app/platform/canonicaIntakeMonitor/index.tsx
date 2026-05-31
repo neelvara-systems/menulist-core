@@ -1,0 +1,637 @@
+'use client';
+
+import { FEATURE_FLAGS } from '@config/features';
+import type { TableColumnsType } from 'antd';
+import { Alert, Button, Card, Empty, Modal, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
+import { useSession } from 'next-auth/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { LuActivity, LuAlertTriangle, LuBookOpen, LuCheckCircle, LuClock3, LuCreditCard, LuPlay, LuRefreshCw, LuXCircle } from 'react-icons/lu';
+
+const { Title, Text } = Typography;
+
+type IntakeMonitorJob = {
+    id: string;
+    tId: number;
+    sId: number;
+    title: string;
+    status: string;
+    sourceCount: number;
+    readySourceCount: number;
+    reviewItemCount: number;
+    acceptedItemCount: number;
+    publishedItemCount: number;
+    rejectedItemCount: number;
+    usageUnitsConsumed: number;
+    modifiedOn: string | null;
+    errorMessage: string | null;
+};
+
+type IntakeMonitorLedgerRow = {
+    id: string;
+    tId: number;
+    sId: number;
+    jobId: string | null;
+    action: string;
+    status: string;
+    provider: string | null;
+    model: string | null;
+    fileName: string | null;
+    mimeType: string | null;
+    byteSize: number;
+    unitsReserved: number;
+    unitsCharged: number;
+    createdOn: string | null;
+    settledOn: string | null;
+    refundedOn: string | null;
+    errorMessage: string | null;
+};
+
+type IntakeMonitorSchedulerRun = {
+    id: string;
+    runLogId: string;
+    status: string;
+    trigger: string;
+    tenantsProcessed: number;
+    durationMs: number;
+    startedAt: string | null;
+    updatedAt: string | null;
+    knowledgeIntakeJobsScanned: number;
+    knowledgeIntakeSummaryWritten: number;
+    knowledgeIntakeUsageUnits: number;
+    knowledgeIntakeSchedulerEnabled: boolean;
+    selectedTenantRun: {
+        tId: number;
+        sId: number;
+        status: string;
+        durationMs: number;
+        taskCount: number;
+        errorCount: number;
+        driftDetected: number;
+        proposalsCreated: number;
+        coverageRate: number;
+    } | null;
+    errorCount: number;
+    errorMessages: string[];
+};
+
+type IntakeMonitorTenant = {
+    key: string;
+    tId: number;
+    sId: number;
+    active: boolean;
+    hasEntities?: boolean;
+    source?: string | null;
+    timeZone?: string | null;
+    businessDayEndTime?: string | null;
+    schedulerHour?: number | null;
+    lastSeenAt?: string | null;
+    updatedAt?: string | null;
+};
+
+type IntakeMonitorSnapshot = {
+    tenants: IntakeMonitorTenant[];
+    tenantSummaryUpdatedAt: string | null;
+    selectedTenant: IntakeMonitorTenant | null;
+    stats: {
+        recentJobs: number;
+        activeJobs: number;
+        failedJobs: number;
+        readySources: number;
+        reviewItems: number;
+        acceptedItems: number;
+        publishedItems: number;
+        usageUnitsConsumed: number;
+        ledgerRows: number;
+        ledgerReservedUnits: number;
+        ledgerChargedUnits: number;
+        ledgerRefundedUnits: number;
+        mediaExtractions: number;
+        latestSchedulerRun: IntakeMonitorSchedulerRun | null;
+    };
+    jobs: IntakeMonitorJob[];
+    ledger: IntakeMonitorLedgerRow[];
+    schedulerRuns: IntakeMonitorSchedulerRun[];
+    warnings: string[];
+    costModel: {
+        readPattern: string;
+        realtime: boolean;
+        writes: boolean;
+    };
+};
+
+type SelectedScope = { tId: number; sId: number };
+
+const STATUS_COLORS: Record<string, string> = {
+    draft: 'default',
+    collecting: 'blue',
+    reviewing: 'cyan',
+    publishing: 'gold',
+    published: 'green',
+    failed: 'red',
+    cancelled: 'default',
+    reserved: 'blue',
+    succeeded: 'green',
+    settled: 'green',
+    refunded: 'orange',
+    failed_refunded: 'orange',
+    success: 'green',
+    partial: 'orange',
+    running: 'blue',
+};
+
+function StatusTag({ status }: { status: string }) {
+    return <Tag color={STATUS_COLORS[status] || 'default'}>{status || 'unknown'}</Tag>;
+}
+
+function formatDate(value: string | null) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+    });
+}
+
+function formatDuration(ms: number) {
+    if (!ms) return '-';
+    if (ms < 1000) return `${ms}ms`;
+    const seconds = Math.round(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
+function shortId(value: string | null | undefined) {
+    if (!value) return '-';
+    return value.length > 12 ? `${value.slice(0, 10)}...` : value;
+}
+
+export default function CanonicaIntakeMonitor() {
+    const { token } = theme.useToken();
+    const { data: session, status: sessionStatus } = useSession();
+    const [snapshot, setSnapshot] = useState<IntakeMonitorSnapshot | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selectedScope, setSelectedScope] = useState<SelectedScope | null>(null);
+    const [triggering, setTriggering] = useState(false);
+
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
+    const isEnabled = FEATURE_FLAGS.ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR;
+
+    const loadSnapshot = useCallback(async (mode: 'initial' | 'refresh' = 'initial', scope = selectedScope) => {
+        if (!isEnabled || !isPlatform) {
+            setLoading(false);
+            return;
+        }
+
+        if (mode === 'refresh') setRefreshing(true);
+        else setLoading(true);
+
+        try {
+            const params = new URLSearchParams({ limit: '10' });
+            if (scope) {
+                params.set('tId', String(scope.tId));
+                params.set('sId', String(scope.sId));
+            }
+            const response = await fetch(`/api/platform/canonica-intake?${params.toString()}`, {
+                cache: 'no-store',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to load Canonica intake monitor.');
+            }
+            setSnapshot(data);
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to load Canonica intake monitor');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [isEnabled, isPlatform, selectedScope]);
+
+    useEffect(() => {
+        if (sessionStatus === 'loading') return;
+        loadSnapshot('initial', null);
+    }, [loadSnapshot, sessionStatus]);
+
+    const health = useMemo(() => {
+        if (!snapshot) return { color: 'default', icon: <LuActivity />, label: 'No Data' };
+        const selectedRunErrors = snapshot.stats.latestSchedulerRun?.selectedTenantRun?.errorCount || 0;
+        if (snapshot.stats.failedJobs > 0 || selectedRunErrors > 0) {
+            return { color: 'red', icon: <LuXCircle />, label: 'Needs Attention' };
+        }
+        if (snapshot.warnings.length > 0 || snapshot.stats.activeJobs > 0) {
+            return { color: 'orange', icon: <LuAlertTriangle />, label: 'Watch' };
+        }
+        return { color: 'green', icon: <LuCheckCircle />, label: 'Healthy' };
+    }, [snapshot]);
+
+    if (!isEnabled) {
+        return (
+            <div style={{ padding: 40, textAlign: 'center' }}>
+                <Empty description="Canonica Intake Monitor is disabled." />
+            </div>
+        );
+    }
+
+    if (session && !isPlatform) {
+        return (
+            <div style={{ padding: 40, textAlign: 'center' }}>
+                <Empty description="Access restricted to platform administrators." />
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
+    const stats = snapshot?.stats;
+    const tenantOptions = (snapshot?.tenants || []).map((tenant) => ({
+        value: `${tenant.tId}:${tenant.sId}`,
+        label: `${tenant.tId}/${tenant.sId}${tenant.timeZone ? ` · ${tenant.timeZone}` : ''}`,
+    }));
+    const selectedTenantRun = stats?.latestSchedulerRun?.selectedTenantRun || null;
+
+    const handleTenantChange = (value: string) => {
+        const [tenantId, storeId] = value.split(':').map(Number);
+        if (!Number.isFinite(tenantId) || !Number.isFinite(storeId)) return;
+        const nextScope = { tId: tenantId, sId: storeId };
+        setSelectedScope(nextScope);
+        loadSnapshot('refresh', nextScope);
+    };
+
+    const handleManualRetry = () => {
+        if (!selectedScope) {
+            message.warning('Select a Canonica workspace first.');
+            return;
+        }
+
+        Modal.confirm({
+            title: 'Run Canonica nightly for selected workspace?',
+            content: (
+                <div>
+                    <p>This runs the Canonica scheduler for workspace {selectedScope.tId}/{selectedScope.sId} only.</p>
+                    <p>Use it after a failed nightly run, stale summary, or intake summary issue. It can still read/write Canonica governance, summary, and scheduler state for this workspace.</p>
+                </div>
+            ),
+            okText: 'Run retry',
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                setTriggering(true);
+                try {
+                    const response = await fetch('/api/platform/canonica-intake', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'trigger-nightly',
+                            ...selectedScope,
+                        }),
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(data?.error || 'Manual Canonica retry failed.');
+                    }
+                    message.success(`Manual retry finished: ${data?.result?.status || 'complete'}`);
+                    await loadSnapshot('refresh', selectedScope);
+                } catch (error: any) {
+                    message.error(error?.message || 'Manual Canonica retry failed.');
+                } finally {
+                    setTriggering(false);
+                }
+            },
+        });
+    };
+
+    const jobColumns: TableColumnsType<IntakeMonitorJob> = [
+        {
+            title: 'Workspace',
+            key: 'workspace',
+            width: 120,
+            render: (_, row) => <Text>{row.tId}/{row.sId}</Text>,
+        },
+        {
+            title: 'Job',
+            dataIndex: 'title',
+            key: 'title',
+            width: 220,
+            render: (title: string, row) => (
+                <Space direction="vertical" size={0}>
+                    <Text strong>{title}</Text>
+                    <Tooltip title={row.id}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{shortId(row.id)}</Text>
+                    </Tooltip>
+                </Space>
+            ),
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            width: 120,
+            render: (status: string) => <StatusTag status={status} />,
+        },
+        {
+            title: 'Sources',
+            key: 'sources',
+            width: 110,
+            render: (_, row) => `${row.readySourceCount}/${row.sourceCount}`,
+        },
+        {
+            title: 'Review',
+            key: 'review',
+            width: 150,
+            render: (_, row) => (
+                <Text>{row.reviewItemCount} total · {row.acceptedItemCount} accepted</Text>
+            ),
+        },
+        {
+            title: 'Published',
+            dataIndex: 'publishedItemCount',
+            key: 'publishedItemCount',
+            width: 100,
+        },
+        {
+            title: 'Credits',
+            dataIndex: 'usageUnitsConsumed',
+            key: 'usageUnitsConsumed',
+            width: 90,
+        },
+        {
+            title: 'Updated',
+            dataIndex: 'modifiedOn',
+            key: 'modifiedOn',
+            width: 140,
+            render: formatDate,
+        },
+        {
+            title: 'Error',
+            dataIndex: 'errorMessage',
+            key: 'errorMessage',
+            width: 220,
+            render: (error: string | null) => error ? <Text type="danger">{error}</Text> : <Text type="secondary">-</Text>,
+        },
+    ];
+
+    const ledgerColumns: TableColumnsType<IntakeMonitorLedgerRow> = [
+        {
+            title: 'Created',
+            dataIndex: 'createdOn',
+            key: 'createdOn',
+            width: 140,
+            render: formatDate,
+        },
+        {
+            title: 'Workspace',
+            key: 'workspace',
+            width: 120,
+            render: (_, row) => <Text>{row.tId}/{row.sId}</Text>,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            width: 110,
+            render: (status: string) => <StatusTag status={status} />,
+        },
+        {
+            title: 'Action',
+            dataIndex: 'action',
+            key: 'action',
+            width: 180,
+            render: (action: string) => <Text>{action}</Text>,
+        },
+        {
+            title: 'Credits',
+            key: 'credits',
+            width: 120,
+            render: (_, row) => `${row.unitsCharged}/${row.unitsReserved}`,
+        },
+        {
+            title: 'File',
+            key: 'file',
+            width: 240,
+            render: (_, row) => (
+                <Space direction="vertical" size={0}>
+                    <Text>{row.fileName || '-'}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{row.mimeType || row.provider || '-'}</Text>
+                </Space>
+            ),
+        },
+        {
+            title: 'Job',
+            dataIndex: 'jobId',
+            key: 'jobId',
+            width: 120,
+            render: (jobId: string | null) => <Text type="secondary">{shortId(jobId)}</Text>,
+        },
+        {
+            title: 'Error',
+            dataIndex: 'errorMessage',
+            key: 'errorMessage',
+            width: 220,
+            render: (error: string | null) => error ? <Text type="danger">{error}</Text> : <Text type="secondary">-</Text>,
+        },
+    ];
+
+    const schedulerColumns: TableColumnsType<IntakeMonitorSchedulerRun> = [
+        {
+            title: 'Started',
+            dataIndex: 'startedAt',
+            key: 'startedAt',
+            width: 140,
+            render: formatDate,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            width: 110,
+            render: (status: string) => <StatusTag status={status} />,
+        },
+        {
+            title: 'Trigger',
+            dataIndex: 'trigger',
+            key: 'trigger',
+            width: 110,
+        },
+        {
+            title: 'Tenants',
+            dataIndex: 'tenantsProcessed',
+            key: 'tenantsProcessed',
+            width: 90,
+        },
+        {
+            title: 'Jobs scanned',
+            dataIndex: 'knowledgeIntakeJobsScanned',
+            key: 'knowledgeIntakeJobsScanned',
+            width: 120,
+        },
+        {
+            title: 'Summaries',
+            dataIndex: 'knowledgeIntakeSummaryWritten',
+            key: 'knowledgeIntakeSummaryWritten',
+            width: 110,
+        },
+        {
+            title: 'Credits',
+            dataIndex: 'knowledgeIntakeUsageUnits',
+            key: 'knowledgeIntakeUsageUnits',
+            width: 90,
+        },
+        {
+            title: 'Duration',
+            dataIndex: 'durationMs',
+            key: 'durationMs',
+            width: 100,
+            render: formatDuration,
+        },
+        {
+            title: 'Errors',
+            key: 'errors',
+            width: 180,
+            render: (_, row) => {
+                const selectedErrors = row.selectedTenantRun?.errorCount || 0;
+                const totalErrors = selectedErrors || row.errorCount;
+                return totalErrors
+                    ? <Tooltip title={row.errorMessages.join(' | ')}><Text type="danger">{totalErrors} errors</Text></Tooltip>
+                    : <Text type="secondary">-</Text>;
+            },
+        },
+    ];
+
+    return (
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+                <div>
+                    <Space align="center" size={10}>
+                        <LuBookOpen color={token.colorPrimary} size={28} />
+                        <Title level={3} style={{ margin: 0 }}>Canonica Intake Monitor</Title>
+                        <Tag color={health.color} icon={health.icon}>{health.label}</Tag>
+                    </Space>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                        Platform-only view for intake jobs, support-credit ledger rows, and nightly summary health.
+                    </Text>
+                </div>
+                <Space wrap>
+                    <Button disabled={!selectedScope} icon={<LuPlay />} loading={triggering} onClick={handleManualRetry}>
+                        Retry selected nightly
+                    </Button>
+                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSnapshot('refresh')}>
+                        Refresh
+                    </Button>
+                </Space>
+            </div>
+
+            <Card size="small" style={{ marginBottom: 16 }} title="Workspace scope">
+                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                    <Text type="secondary">
+                        Initial load reads the Canonica tenant summary. Pick one workspace before reading intake jobs or usage-ledger rows.
+                    </Text>
+                    <Space wrap style={{ width: '100%' }}>
+                        <Select
+                            allowClear
+                            onChange={(value) => {
+                                if (!value) {
+                                    setSelectedScope(null);
+                                    loadSnapshot('refresh', null);
+                                    return;
+                                }
+                                handleTenantChange(value);
+                            }}
+                            options={tenantOptions}
+                            placeholder="Select tenant/store"
+                            showSearch
+                            style={{ minWidth: 280 }}
+                            value={selectedScope ? `${selectedScope.tId}:${selectedScope.sId}` : undefined}
+                        />
+                        <Tag>{snapshot?.tenants?.length || 0} Canonica workspaces</Tag>
+                        {snapshot?.tenantSummaryUpdatedAt ? <Tag>Summary {formatDate(snapshot.tenantSummaryUpdatedAt)}</Tag> : null}
+                    </Space>
+                </Space>
+            </Card>
+
+            {snapshot?.warnings?.length ? (
+                <Alert
+                    message="Operational attention"
+                    description={snapshot.warnings.join(' ')}
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="warning"
+                />
+            ) : null}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 16 }}>
+                <Card size="small"><Statistic prefix={<LuActivity />} title="Recent jobs" value={stats?.recentJobs || 0} /></Card>
+                <Card size="small"><Statistic title="Active jobs" value={stats?.activeJobs || 0} valueStyle={{ color: token.colorInfo }} /></Card>
+                <Card size="small"><Statistic prefix={<LuAlertTriangle />} title="Failed jobs" value={stats?.failedJobs || 0} valueStyle={{ color: stats?.failedJobs ? token.colorError : token.colorText }} /></Card>
+                <Card size="small"><Statistic title="Review items" value={stats?.reviewItems || 0} /></Card>
+                <Card size="small"><Statistic title="Published" value={stats?.publishedItems || 0} valueStyle={{ color: token.colorSuccess }} /></Card>
+                <Card size="small"><Statistic prefix={<LuCreditCard />} title="Credits charged" value={stats?.ledgerChargedUnits || 0} /></Card>
+                <Card size="small"><Statistic title="Media extractions" value={stats?.mediaExtractions || 0} /></Card>
+                <Card size="small"><Statistic title="Tenant run errors" value={selectedTenantRun?.errorCount || 0} valueStyle={{ color: selectedTenantRun?.errorCount ? token.colorError : token.colorText }} /></Card>
+                <Card size="small">
+                    <Statistic
+                        prefix={<LuClock3 />}
+                        title="Last summary run"
+                        value={stats?.latestSchedulerRun ? formatDate(stats.latestSchedulerRun.startedAt) : '-'}
+                        valueStyle={{ fontSize: 16 }}
+                    />
+                </Card>
+            </div>
+
+            <Card
+                size="small"
+                style={{ marginBottom: 16 }}
+                title="Cost model"
+            >
+                <Text type="secondary">
+                    {snapshot?.costModel?.readPattern || 'Manual bounded reads only.'} No realtime listener. Refresh is read-only; retry writes scheduler state for the selected workspace.
+                </Text>
+            </Card>
+
+            <Card title="Recent intake jobs" style={{ marginBottom: 16 }}>
+                <Table
+                    columns={jobColumns}
+                    dataSource={selectedScope ? snapshot?.jobs || [] : []}
+                    locale={{ emptyText: selectedScope ? 'No intake jobs found for this workspace.' : 'Select a workspace to load intake jobs.' }}
+                    pagination={{ pageSize: 10 }}
+                    rowKey="id"
+                    scroll={{ x: 1340 }}
+                    size="small"
+                />
+            </Card>
+
+            <Card title="Support-credit intake ledger" style={{ marginBottom: 16 }}>
+                <Table
+                    columns={ledgerColumns}
+                    dataSource={selectedScope ? snapshot?.ledger || [] : []}
+                    locale={{ emptyText: selectedScope ? 'No intake ledger rows found for this workspace.' : 'Select a workspace to load ledger rows.' }}
+                    pagination={{ pageSize: 10 }}
+                    rowKey="id"
+                    scroll={{ x: 1320 }}
+                    size="small"
+                />
+            </Card>
+
+            <Card title="Canonica scheduler intake summaries">
+                <Table
+                    columns={schedulerColumns}
+                    dataSource={snapshot?.schedulerRuns || []}
+                    pagination={false}
+                    rowKey="id"
+                    scroll={{ x: 1120 }}
+                    size="small"
+                />
+            </Card>
+        </div>
+    );
+}

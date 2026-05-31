@@ -43,7 +43,7 @@ const STATUS_META: Record<CanonicaSurfaceReadinessItem['status'], {
         icon: LuBookOpen,
         recommendation: 'Add or bind at least one article so customers on this surface can get an approved answer.',
         actionLabel: 'Add Content',
-        actionRoute: CANONICA_ROUTES.KB_GENERATION,
+        actionRoute: CANONICA_ROUTES.KNOWLEDGE_INTAKE,
     },
     open_signals: {
         label: 'Open signals',

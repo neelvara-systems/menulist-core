@@ -38,11 +38,17 @@ import {
 } from '@constant/canonica/hostedHelp';
 import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
+import {
+    MYCODEX_LOGIN_PATH,
+    MYCODEX_PRODUCT_ID,
+    MYCODEX_ROBOTS_TAG,
+    MYCODEX_SESSION_COOKIE,
+    getMyCodexExpectedCredentials,
+    isMyCodexAuthBypassPath,
+    sanitizeMyCodexReturnTo,
+    verifyMyCodexSessionToken,
+} from '@lib/mycodex/auth';
 import { NextRequest, NextResponse } from 'next/server';
-
-const MYCODEX_PRODUCT_ID = 'mycodex';
-const MYCODEX_BASIC_AUTH_REALM = 'MyCodex';
-const MYCODEX_ROBOTS_TAG = 'noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate';
 
 // ═══════════════════════════════════════════════════════════════
 // Security Headers (shared across all routing paths)
@@ -169,45 +175,24 @@ function isLocalDevelopmentHost(hostname: string | null): boolean {
         || normalizedHost.startsWith('192.168.');
 }
 
-function decodeBasicAuthCredentials(authHeader: string | null): { username: string; password: string } | null {
-    if (!authHeader) return null;
-
-    const [scheme, encoded] = authHeader.split(/\s+/, 2);
-    if (scheme?.toLowerCase() !== 'basic' || !encoded) return null;
-
-    try {
-        const decoded = atob(encoded);
-        const separatorIndex = decoded.indexOf(':');
-        if (separatorIndex === -1) return null;
-
-        return {
-            username: decoded.slice(0, separatorIndex),
-            password: decoded.slice(separatorIndex + 1),
-        };
-    } catch {
-        return null;
-    }
+function buildMyCodexLoginRedirect(request: NextRequest): NextResponse {
+    const url = request.nextUrl.clone();
+    url.pathname = MYCODEX_LOGIN_PATH;
+    url.search = '';
+    url.searchParams.set('returnTo', sanitizeMyCodexReturnTo(`${request.nextUrl.pathname}${request.nextUrl.search}`));
+    return setMyCodexResponseHeaders(NextResponse.redirect(url, 303));
 }
 
-function buildMyCodexAuthChallenge(): NextResponse {
-    return setMyCodexResponseHeaders(new NextResponse('Authentication required.', {
-        status: 401,
-        headers: {
-            'WWW-Authenticate': `Basic realm="${MYCODEX_BASIC_AUTH_REALM}", charset="UTF-8"`,
-            'Cache-Control': 'private, no-store',
-        },
-    }));
-}
-
-function authorizeMyCodexRequest(request: NextRequest): NextResponse | null {
+async function authorizeMyCodexRequest(request: NextRequest): Promise<NextResponse | null> {
     if (!process.env.VERCEL && isLocalDevelopmentHost(request.headers.get('host'))) {
         return null;
     }
 
-    const expectedUsername = process.env.MYCODEX_BASIC_AUTH_USER?.trim();
-    const expectedPassword = process.env.MYCODEX_BASIC_AUTH_PASSWORD?.trim();
+    if (isMyCodexAuthBypassPath(request.nextUrl.pathname)) {
+        return null;
+    }
 
-    if (!expectedUsername || !expectedPassword) {
+    if (!getMyCodexExpectedCredentials()) {
         return setMyCodexResponseHeaders(new NextResponse('MyCodex access is not configured.', {
             status: 503,
             headers: {
@@ -216,22 +201,23 @@ function authorizeMyCodexRequest(request: NextRequest): NextResponse | null {
         }));
     }
 
-    const credentials = decodeBasicAuthCredentials(request.headers.get('authorization'));
-    if (
-        !credentials
-        || credentials.username !== expectedUsername
-        || credentials.password !== expectedPassword
-    ) {
-        return buildMyCodexAuthChallenge();
+    const sessionToken = request.cookies.get(MYCODEX_SESSION_COOKIE)?.value;
+    if (await verifyMyCodexSessionToken(sessionToken)) {
+        return null;
     }
 
-    return null;
+    return buildMyCodexLoginRedirect(request);
 }
 
 function setMyCodexResponseHeaders(response: NextResponse): NextResponse {
     response.headers.set('Cache-Control', 'private, no-store');
     response.headers.set('X-Robots-Tag', MYCODEX_ROBOTS_TAG);
-    response.headers.set('Vary', 'Authorization');
+    const vary = response.headers.get('Vary');
+    if (!vary) {
+        response.headers.set('Vary', 'Cookie');
+    } else if (!vary.toLowerCase().split(',').map((value) => value.trim()).includes('cookie')) {
+        response.headers.set('Vary', `${vary}, Cookie`);
+    }
     return response;
 }
 
@@ -239,7 +225,7 @@ function setMyCodexResponseHeaders(response: NextResponse): NextResponse {
 // Main Middleware
 // ═══════════════════════════════════════════════════════════════
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const hostname = request.headers.get('host');
     const pathname = request.nextUrl.pathname;
     const domainInfo = resolveDomain(hostname);
@@ -319,7 +305,7 @@ export function middleware(request: NextRequest) {
         const productConfig = domainInfo.productSite;
 
         if (productConfig.id === MYCODEX_PRODUCT_ID) {
-            const authResponse = authorizeMyCodexRequest(request);
+            const authResponse = await authorizeMyCodexRequest(request);
             if (authResponse) {
                 return applySecurityHeaders(request, authResponse);
             }
@@ -375,7 +361,7 @@ export function middleware(request: NextRequest) {
         if (devProductMatch) {
             const { product, strippedPath } = devProductMatch;
             if (product.id === MYCODEX_PRODUCT_ID) {
-                const authResponse = authorizeMyCodexRequest(request);
+                const authResponse = await authorizeMyCodexRequest(request);
                 if (authResponse) {
                     return applySecurityHeaders(request, authResponse);
                 }
@@ -479,6 +465,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public folder files
          */
-        '/((?!_next/static|_next/image|favicon.ico|sw\\.js|sw-customer\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|sw\\.js|sw-customer\\.js|mycodex-sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
     ],
 };

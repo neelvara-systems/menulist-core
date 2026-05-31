@@ -348,7 +348,7 @@ export interface CanonicaMutationProposal extends CanonicaDocumentIdentity {
         // @see __docs__/canonica/automatic-knowledge-creation/
         draftTitle?: string;                                           // AI-generated answer title
         draftStatus?: 'pending' | 'generated' | 'failed';             // Draft generation lifecycle
-        draftSource?: 'signal_cluster' | 'recurring_fallback' | 'onboarding_bootstrap' | 'ticket_resolution';  // What triggered the draft
+        draftSource?: 'signal_cluster' | 'recurring_fallback' | 'onboarding_bootstrap' | 'ticket_resolution' | 'knowledge_intake';  // What triggered the draft
         draftGeneratedAt?: Timestamp;                                  // When draft was generated
         draftSignalExamples?: string[];                                // Sample signal texts used for context (max 5)
         draftEntityContext?: string;                                   // Entity name + description used
@@ -1571,6 +1571,193 @@ export interface CanonicaSupportBoardSummary extends CanonicaDocumentIdentity {
         maxCardsCreatedOrUpdatedPerRun: number;
     };
     lastUpdated?: Timestamp;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KNOWLEDGE INTAKE COMMAND CENTER
+// Private owner intake workspace for docs, URLs, FAQs, release notes, and notes.
+// Feature-flagged: ENABLE_CANONICA_KNOWLEDGE_INTAKE
+// @see __docs__/canonica/knowledge-intake-command-center/
+// ═══════════════════════════════════════════════════════════════
+
+export const CANONICA_KNOWLEDGE_INTAKE_STATUS = {
+    DRAFT: 'draft',
+    COLLECTING: 'collecting',
+    REVIEWING: 'reviewing',
+    PUBLISHING: 'publishing',
+    PUBLISHED: 'published',
+    FAILED: 'failed',
+    CANCELLED: 'cancelled',
+} as const;
+
+export type CanonicaKnowledgeIntakeStatus = typeof CANONICA_KNOWLEDGE_INTAKE_STATUS[keyof typeof CANONICA_KNOWLEDGE_INTAKE_STATUS];
+
+export const CANONICA_KNOWLEDGE_SOURCE_TYPE = {
+    WEBSITE_PAGE: 'website_page',
+    HELP_DOC: 'help_doc',
+    FAQ: 'faq',
+    CHANGELOG: 'changelog',
+    TICKET_MACRO: 'ticket_macro',
+    PRODUCT_NOTE: 'product_note',
+    FILE_TEXT: 'file_text',
+    MARKDOWN: 'markdown',
+    CSV: 'csv',
+    PDF_TEXT: 'pdf_text',
+    DOCX_TEXT: 'docx_text',
+    SCREENSHOT_NOTE: 'screenshot_note',
+    SCREENSHOT_OCR: 'screenshot_ocr',
+    MEDIA_TRANSCRIPT: 'media_transcript',
+} as const;
+
+export type CanonicaKnowledgeSourceType = typeof CANONICA_KNOWLEDGE_SOURCE_TYPE[keyof typeof CANONICA_KNOWLEDGE_SOURCE_TYPE];
+
+export const CANONICA_INTAKE_REVIEW_TARGET = {
+    KB_ARTICLE: 'kb_article',
+    FAQ: 'faq',
+    CANONICAL_PROPOSAL: 'canonical_proposal',
+    PRODUCT_SURFACE: 'product_surface',
+    CHANGELOG: 'changelog',
+} as const;
+
+export type CanonicaIntakeReviewTarget = typeof CANONICA_INTAKE_REVIEW_TARGET[keyof typeof CANONICA_INTAKE_REVIEW_TARGET];
+
+export const CANONICA_INTAKE_REVIEW_STATUS = {
+    DRAFT: 'draft',
+    ACCEPTED: 'accepted',
+    REJECTED: 'rejected',
+    PUBLISHED: 'published',
+} as const;
+
+export type CanonicaIntakeReviewStatus = typeof CANONICA_INTAKE_REVIEW_STATUS[keyof typeof CANONICA_INTAKE_REVIEW_STATUS];
+
+export const CANONICA_KNOWLEDGE_INTAKE_CONSTRAINTS = {
+    MAX_JOBS_PER_LOAD: 20,
+    MAX_SOURCES_PER_JOB: 50,
+    MAX_REVIEW_ITEMS_PER_JOB: 120,
+    MAX_SOURCES_TO_ANALYZE: 30,
+    MAX_PUBLISH_ITEMS: 50,
+    MAX_SOURCE_TEXT_CHARS: 40_000,
+    MAX_SOURCE_EXCERPT_CHARS: 1_200,
+    MAX_IMAGE_OCR_BYTES: 5 * 1024 * 1024,
+    MAX_MEDIA_TRANSCRIPTION_BYTES: 8 * 1024 * 1024,
+    MAX_REVIEW_BODY_CHARS: 12_000,
+    MAX_LINK_DISCOVERY_RESULTS: 30,
+    MAX_DISCOVERY_FETCH_BYTES: 180_000,
+    MAX_TAGS: 20,
+    MAX_ENTITY_IDS: 25,
+    MAX_CONTEXT_KEYS: 20,
+} as const;
+
+export interface CanonicaKnowledgeIntakeJob extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+    title: string;
+    status: CanonicaKnowledgeIntakeStatus;
+    description?: string;
+    productWebsiteUrl?: string | null;
+    appUrl?: string | null;
+    targetAudience?: string | null;
+    defaultCategoryId?: string;
+    defaultCategoryTitle?: string;
+    defaultSectionId?: string;
+    defaultSectionTitle?: string;
+    sourceCount: number;
+    readySourceCount?: number;
+    reviewItemCount: number;
+    acceptedItemCount: number;
+    publishedItemCount: number;
+    rejectedItemCount?: number;
+    usageUnitsConsumed?: number;
+    usageSummary?: Record<string, any>;
+    lastAnalyzedAt?: Timestamp | null;
+    publishedOn?: Timestamp | null;
+    errorMessage?: string | null;
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: string | number;
+}
+
+export interface CanonicaKnowledgeSource extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+    jobId: string;
+    type: CanonicaKnowledgeSourceType;
+    title: string;
+    status: 'ready' | 'needs_text' | 'failed';
+    originUrl?: string | null;
+    fileName?: string | null;
+    mimeType?: string | null;
+    contentText?: string | null;
+    contentExcerpt?: string;
+    contentHash: string;
+    tags?: string[];
+    contextKeys?: string[];
+    entityIds?: string[];
+    metadata?: Record<string, any>;
+    errorMessage?: string | null;
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: string | number;
+}
+
+export interface CanonicaIntakeReviewItem extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+    jobId: string;
+    sourceId?: string | null;
+    target: CanonicaIntakeReviewTarget;
+    status: CanonicaIntakeReviewStatus;
+    title: string;
+    body?: string;
+    question?: string;
+    answer?: string;
+    routePath?: string | null;
+    versionLabel?: string | null;
+    tags?: string[];
+    contextKeys?: string[];
+    entityIds?: string[];
+    confidenceScore?: number;
+    reason?: string;
+    publishTargetId?: string | null;
+    publishedOn?: Timestamp | null;
+    sortOrder?: number;
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: string | number;
+}
+
+export interface CanonicaKnowledgeIntakeSummary extends CanonicaDocumentIdentity {
+    id?: string;
+    tId: number;
+    sId: number;
+    activeJobId?: string | null;
+    activeJobTitle?: string | null;
+    activeJobs: number;
+    recentJobs: number;
+    readySources: number;
+    reviewItems: number;
+    acceptedItems: number;
+    publishedItems: number;
+    usageUnitsConsumed?: number;
+    lastJobStatus?: CanonicaKnowledgeIntakeStatus | null;
+    summaryHash?: string;
+    lastPublishedAt?: Timestamp | null;
+    lastUpdated?: Timestamp;
+}
+
+export interface CanonicaKnowledgeIntakeBundle {
+    job: CanonicaKnowledgeIntakeJob | null;
+    sources: CanonicaKnowledgeSource[];
+    reviewItems: CanonicaIntakeReviewItem[];
 }
 
 // ═══════════════════════════════════════════════════════════════

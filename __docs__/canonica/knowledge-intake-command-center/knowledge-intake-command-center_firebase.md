@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
-> **Status:** PLANNED — Cost-first implementation contract
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — day-one cost-first contract
+> **Version:** 2.0.0
 > **Created:** 2026-05-31
 > **Audience:** Engineering / Firebase / Ops
 
@@ -9,7 +9,7 @@
 
 ## 1. Cost Doctrine
 
-Canonica intake is a paid, bounded processing feature. It must not run expensive work before payment and must not materialize large AI/source artifacts in Firestore.
+Canonica intake is a licensed, bounded processing feature. Mutating and expensive API actions require an active Canonica beta/subscription on the workspace store document before URL fetch, source import, analysis, review updates, or publish.
 
 Non-negotiable rules:
 
@@ -25,7 +25,7 @@ Non-negotiable rules:
 - no native private connector until credential and retention rules are complete
 - no per-source function trigger fanout for provider work
 
-Firestore is for metadata, decisions, summaries, and live approved records. Firebase Storage is for raw files, normalized text, chunks, evidence, drafts, manifests, transcripts, and raw provider outputs if retained.
+Firestore is for compact metadata, capped extracted source text, review decisions, summaries, usage-ledger rows, and live approved records. Browser-side file extraction and server-side media extraction avoid raw file Storage writes; Storage paths below are reserved for a future native-upload/retained-evidence path.
 
 ---
 
@@ -38,7 +38,7 @@ Firestore is for metadata, decisions, summaries, and live approved records. Fire
 | `canonica_knowledgeIntakeJobs` | One compact job doc per intake run. | Low, one per owner-triggered run. |
 | `canonica_knowledgeSources` | One compact source doc per selected source. | Bounded by plan/source caps. |
 | `canonica_intakeReviewItems` | One doc per owner decision, not per fact. | Capped per job; query paginated. |
-| `canonica_intakeUsageLedger` | Immutable credit/allowance reservation and consumption rows. | One/few rows per expensive action. |
+| `canonica_intakeUsageLedger` | Immutable support-credit reservation, settlement, and refund ledger for paid intake OCR/transcription. | Low/medium; one row per paid media extraction attempt. Client read-only; admin writes only. |
 
 ### Existing Destination Collections
 
@@ -58,6 +58,8 @@ Firestore is for metadata, decisions, summaries, and live approved records. Fire
 ---
 
 ## 3. Storage Paths
+
+Day-one implementation does not upload raw files to Storage. Text-friendly files are parsed in the browser and sent as capped text sources. Screenshots/audio/video are sent to the protected media route, extracted by Gemini, and discarded after extracted support text is stored. Use the paths below only if native upload or retained evidence artifacts are added later.
 
 ```text
 canonica_intake/CN/{tId}/{sId}/{intakeJobId}/sources/{sourceId}/original/{filename}
@@ -90,42 +92,82 @@ Use summary documents as the primary read model. Owner dashboards, activation, s
 
 ### 4.1 Workspace Summary
 
-Use one compact workspace summary document:
+Implemented one compact workspace summary document:
 
 ```text
 platformSummary/knowledgeIntakeSummary_{tId}_{sId}
 ```
 
-Shape:
+Implemented day-one shape:
 
 ```ts
 {
+  schemaVersion: 1,
   pId: 'CN',
   tId: number,
   sId: number,
   activeJobId?: string,
-  activeJobStatus?: string,
-  activeJobStep?: string,
-  lastPublishedJobId?: string,
-  sourceCounts: { total: number; ready: number; failed: number; highRisk: number },
-  linkDiscovery: { discovered: number; eligible: number; selected: number; skipped: number },
-  reviewCounts: { open: number; critical: number; highRisk: number; safeBulk: number },
-  readiness: Record<string, 'ready' | 'partial' | 'not_ready' | 'needs_review'>,
-  urgentReviewPreview: Array<{ id: string; type: string; title: string; riskLevel: string }>,
-  allowance: { planId: string; creditsRemaining: number; sourcePageRemaining: number; fileRemaining: number },
-  sourceVersion: number,
-  outputVersion: number,
-  summaryHash: string,
-  dirty: boolean,
-  updatedAt: Timestamp
+  activeJobTitle?: string | null,
+  activeJobs?: number,
+  recentJobs?: number,
+  readySources?: number,
+  reviewItems?: number,
+  acceptedItems?: number,
+  publishedItems?: number,
+  usageUnitsConsumed?: number,
+  latestJobStatus?: string,
+  summaryHash?: string,
+  lastPublishedAt?: Timestamp,
+  lastUpdated: Timestamp
 }
 ```
 
 Activation and dashboard pages should read this one doc instead of scanning jobs/sources/review items.
 
-### 4.2 Bucketed Intake Directory
+### 4.2 Nightly Intake Summary Refresh
 
-Use a bucketed directory so scheduler/ops can find intake work without collection scans:
+Implemented in the existing Canonica nightly scheduler:
+
+- task: `knowledge_intake_summary`
+- function: `functions-canonica/src/canonica/knowledgeIntakeSummary.ts`
+- flag: `ENABLE_CANONICA_KNOWLEDGE_INTAKE_SCHEDULER`
+- reads: latest 20 `canonica_knowledgeIntakeJobs` for the tenant/store using the existing `(tId, sId, modifiedOn desc)` index
+- writes: `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when `summaryHash` changes
+- never retries failed jobs
+- never crawls URLs
+- never calls AI providers
+- never publishes review items
+
+This gives activation/dashboard analytics without hidden processing or source/review scans.
+
+### 4.2.1 Platform Intake Monitor
+
+Implemented internal platform-owner monitor:
+
+- route: `/platform/canonica-intake`
+- API: `/api/platform/canonica-intake`
+- flag: `ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR`
+- auth: `platformRole === 'PLATFORM'`
+- reads on initial refresh:
+  - 1 `platformSummary/canonicaTenantsSummary` document for workspace selection
+  - up to 8 `canonica_schedulerRunLogs` ordered by `startedAt desc`
+- reads after a platform admin selects a workspace:
+  - 1 `platformSummary/canonicaTenantsSummary` document
+  - up to 10 scoped `canonica_knowledgeIntakeJobs` for the selected `tId/sId` ordered by `modifiedOn desc`
+  - up to 10 scoped `canonica_intakeUsageLedger` rows for the selected `tId/sId` ordered by `createdOn desc`
+  - up to 8 `canonica_schedulerRunLogs` ordered by `startedAt desc`
+- writes: none
+- listeners: none
+- provider calls: none
+- scheduler triggers: only when a platform admin explicitly clicks **Retry selected nightly**
+
+This monitor is intentionally platform-owned and scoped. It exists so Canonica operators can verify intake adoption, failed jobs, paid media usage, refund behavior, and nightly summary health without opening individual tenant dashboards or scanning source/review-item collections. The manual retry action posts the selected `tId/sId` to the existing `triggerCanonicaNightly` function, so recovery runs for one workspace instead of forcing all tenants.
+
+### 4.3 Bucketed Intake Directory
+
+Reserved. Not implemented because current scheduler work is summary-only and tenant discovery is already handled by the Canonica tenant summary.
+
+If background repair or scheduled intake processing is enabled later, use a bucketed directory so scheduler/ops can find intake work without collection scans:
 
 ```text
 platformSummary/knowledgeIntakeDirectory_00
@@ -162,7 +204,7 @@ Each directory document stores compact entries keyed by `{tId}_{sId}`:
 }
 ```
 
-Rules:
+Future rules if this is enabled:
 
 - bucket is `hash(tId_sId) % 32`
 - update the directory entry in the same server transition that changes job/source/review state
@@ -170,15 +212,17 @@ Rules:
 - scheduler reads the bucket docs instead of scanning `canonica_knowledgeIntakeJobs`
 - if tenant count grows enough to approach Firestore document limits, increase bucket count before expanding feature availability
 
-### 4.3 Source Version Manifest
+### 4.4 Source Version Manifest
 
-Keep intake freshness aligned with the existing Canonica compiled context pattern, but do not confuse intake-only counters with public bundle inputs:
+Day-one publish uses the existing Canonica compiled context pattern directly: runtime output writes mark `kb`, `docsNav`, `surfaces`, or `releases` stale as applicable. Canonical mutation proposals are governance-only and do not mark `canonical`; that happens only when a canonical answer becomes active through the approval workflow.
+
+Reserved intake-only counters may be added later, but they are not written day one:
 
 ```text
 platformSummary/sourceVersions_{tId}_{sId}
 ```
 
-Required intake fields:
+Reserved intake fields:
 
 ```ts
 {
@@ -192,16 +236,16 @@ Required intake fields:
 }
 ```
 
-Rules:
+Future rules if intake-only counters are added:
 
 - bump `knowledgeIntakeSources` when selected source content changes, not when discovered-but-skipped URLs change
-- bump `knowledgeIntakeOutputs` when approved KB/FAQ/canonical/surface outputs are published
+- bump `knowledgeIntakeOutputs` when approved KB/FAQ/surface/runtime outputs are published
 - bump `knowledgeIntakeReadiness` when readiness changes
 - these intake-only fields may live on the same `sourceVersions_*` document for locality, but they must not be included in compiled context equality checks
 - approved runtime output must separately bump the existing compiled context keys: `kb`, `docsNav`, `canonical`, `surfaces`, `releases`, `entities`, and `entityRelations` as applicable
 - downstream bundle/context rebuilds compare runtime source versions and skip when unchanged
 
-### 4.4 Summary Write Rules
+### 4.5 Summary Write Rules
 
 Summary writes must be deterministic and sparse:
 
@@ -210,7 +254,8 @@ Summary writes must be deterministic and sparse:
 - skip summary writes when the hash is unchanged
 - store only the top urgent review preview; full review lists stay paginated
 - never rebuild summary by scanning all sources on dashboard load
-- nightly repair may rebuild summaries only for dirty entries from the directory
+- nightly summary refresh may rebuild only the compact workspace summary from bounded job docs
+- no scheduler task may read source/review-item lists for intake analytics
 
 ---
 
@@ -258,10 +303,14 @@ Discovery is paid processing. It is cheaper than extraction, but it still perfor
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
-| Dedupe by supplied hash/idempotency key | 0-1 | 0 | 0 | 0 |
+| Read job preflight | 1/source | 0 | 0 | 0 |
+| Dedupe by deterministic source id | 1/source | 0 | 0 | 0 |
+| Re-check job cap/status in transaction | 1/source | 0 | 0 | 0 |
 | Create source docs | 0 | N | 0 | 0 |
-| Upload source originals | 0 | 0 | N uploads | 0 |
-| Summary + source version update | 0 | 1-2 | 0 | 0 |
+| Update job + workspace summary | 0 | 2/source | 0 | 0 |
+| Upload source originals | 0 | 0 | 0 in day-one browser extraction | 0 |
+
+The deterministic source id is derived from `{jobId}:{contentHash}`. URL content hashes use the normalized URL after fragment/tracking-param cleanup, not the raw pasted URL. This avoids a growing `canonica_knowledgeSources` list read for every add. Duplicate selected sources cost only the bounded job/source document reads and do not write a new source, increment counters, or call providers.
 
 ### 5.6 Normalize Sources
 
@@ -272,18 +321,18 @@ Discovery is paid processing. It is cheaper than extraction, but it still perfor
 | Write normalized manifests/chunks | 0 | 0 | N writes | 0 |
 | Update source status/counters | 0 | N bounded writes | 0 | 0 |
 | Update changed source summary/version | 0 | 0-2 | 0 | 0 |
-| OCR/transcription where selected | 0 | 0 | artifact reads/writes | paid provider calls |
+| OCR/transcription where selected | 1 duplicate source precheck | usage ledger + source writes only for new media | artifact reads/writes | paid provider calls only for new media |
 
 ### 5.7 Privacy Filter
 
 | Step | Reads | Writes | Storage | Provider |
 | --- | ---: | ---: | ---: | ---: |
-| Read normalized manifests | 0 | 0 | N bounded reads | 0 |
-| Write redacted evidence manifests | 0 | 0 | N bounded writes | 0 |
-| Create private-data review items | 0 | capped writes | 0 | 0 |
-| Update source/job counters and summary | 0 | bounded writes | 0 | 0 |
+| Redact source text before Firestore write | 0 | 0 | 0 | 0 |
+| Record redaction count in source metadata | 0 | included in source write | 0 | 0 |
+| Media extraction redaction prompt | 0 | 0 | 0 | included in paid media provider call |
+| Post-extraction deterministic redaction | 0 | included in source write | 0 | 0 |
 
-Provider prompts must use redacted, selected evidence. Unsafe raw sources do not enter draft generation by default.
+Text-friendly sources do not call a provider during draft generation. Media files are hash-checked before credit reservation; duplicates return the existing source without ledger writes or provider work. New media files are sent to the provider only for owner-triggered OCR/transcription after credit reservation; extracted text is redacted again before storage. Raw media is not retained.
 
 ### 5.8 Source Audit + Product Map
 
@@ -355,26 +404,25 @@ intakeLimits: {
 }
 ```
 
-No job should continue hidden processing after a cap is reached. Status becomes `paused_limit`.
+No job should continue hidden processing after a cap is reached. Day-one implementation rejects capped actions before they run; a future usage-allowance implementation may use `paused_limit` for resumable paid-processing jobs.
 
 ---
 
 ## 7. Indexes
 
-Required indexes:
+Implemented day-one indexes:
 
 | Collection | Fields | Purpose |
 | --- | --- | --- |
-| `canonica_knowledgeIntakeJobs` | `pId ASC, tId ASC, sId ASC, status ASC, createdOn DESC` | Active/recent job list |
-| `canonica_knowledgeIntakeJobs` | `pId ASC, tId ASC, sId ASC, createdOn DESC` | Paginated job history |
-| `canonica_knowledgeSources` | `pId ASC, tId ASC, sId ASC, intakeJobId ASC, status ASC, createdOn DESC` | Job source list |
-| `canonica_knowledgeSources` | `pId ASC, tId ASC, sId ASC, sourceHash ASC` | Dedupe/idempotency |
-| `canonica_intakeReviewItems` | `pId ASC, tId ASC, sId ASC, intakeJobId ASC, status ASC, riskLevel DESC, createdOn ASC` | Review queue |
-| `canonica_intakeUsageLedger` | `pId ASC, tId ASC, sId ASC, intakeJobId ASC, createdOn DESC` | Cost audit |
+| `canonica_knowledgeIntakeJobs` | `tId ASC, sId ASC, modifiedOn DESC` | Bounded job list |
+| `canonica_knowledgeSources` | `tId ASC, sId ASC, jobId ASC, createdOn DESC` | Job source list |
+| `canonica_knowledgeSources` | `tId ASC, sId ASC, jobId ASC, status ASC, createdOn ASC` | Analyze ready sources |
+| `canonica_intakeReviewItems` | `tId ASC, sId ASC, jobId ASC, createdOn DESC` | Job review list |
+| `canonica_intakeReviewItems` | `tId ASC, sId ASC, jobId ASC, status ASC` | Publish accepted items |
 
 Lease state can live on the active job document and compact summary. Avoid a separate high-churn lock collection unless implementation proves it is needed.
 
-No index should be required for scheduler discovery. Scheduler discovery uses bucketed `platformSummary/knowledgeIntakeDirectory_*` docs.
+No extra index is required for the summary scheduler because it reuses the bounded job-list index. If background import/repair processing is added later, discovery must use bucketed `platformSummary/knowledgeIntakeDirectory_*` docs.
 
 ---
 
@@ -431,20 +479,20 @@ Server-side URL fetch must:
 
 - allow only `http` and `https`
 - block localhost, private IP ranges, link-local, metadata IPs, and internal DNS resolutions
-- re-resolve DNS after every redirect before fetching
+- validate and re-resolve DNS before fetching every redirected target
 - cap redirects
-- cap page count
+- cap page count through owner-selected links
 - cap candidate URL count
 - cap response size
+- stream response bodies only up to the byte cap instead of buffering full pages
+- reject non-text content types
 - cap crawl depth
 - cap total fetch wall time
 - block credentialed dashboard crawling, login forms, admin paths, and URLs requiring cookies
 - strip common tracking parameters before dedupe
-- respect robots where applicable
-- prefer sitemap, llms.txt, canonical links, and owner-selected paths
-- write discovered candidates to Storage manifest
+- prefer starting page links, sitemap links, and owner-selected paths in the day-one implementation
 - store only owner-selected useful pages as Firestore sources
-- compute ETag, Last-Modified, content hash, and normalized text hash for freshness
+- compute content hash for selected source idempotency
 
 No background full-site crawl.
 
@@ -520,8 +568,8 @@ If selected-link freshness checks are added for paid plans, scheduler must disco
 When implemented with this contract:
 
 - dashboard load reads one summary doc plus paginated lists only when opened
-- scheduler discovery reads bucketed directory docs instead of scanning growing collections
-- summary repair only processes dirty/active workspaces
+- intake scheduler analytics read the latest bounded job docs from already-discovered tenant scope
+- summary refresh skips writes when `summaryHash` is unchanged
 - source bodies do not inflate Firestore documents
 - no realtime listener is needed for job/history/review lists
 - active progress can use polling or one short-lived active-job listener only

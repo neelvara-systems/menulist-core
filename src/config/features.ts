@@ -1866,6 +1866,22 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,
 
+    /**
+     * Enable internal platform-owner Canonica intake monitor.
+     *
+     * Route: /platform/canonica-intake
+     * API: /api/platform/canonica-intake
+     * Access: platformRole === 'PLATFORM' only.
+     *
+     * This is a read-only observability surface for recent intake jobs,
+     * support-credit ledger rows, and Canonica scheduler intake summaries.
+     * It does not create realtime listeners or tenant-facing controls.
+     *
+     * Cost when enabled: one manual refresh reads up to 40 intake jobs,
+     * 40 ledger rows, and 10 scheduler logs by default.
+     */
+    ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR: true,
+
     // ═══════════════════════════════════════════════════════════════
     // PLATFORM ENTITY BLOCKS (Internal Admin Control)
     // ═══════════════════════════════════════════════════════════════
@@ -2077,6 +2093,56 @@ export const FEATURE_FLAGS = {
      * @see __docs__/canonica/support-board/
      */
     ENABLE_CANONICA_SUPPORT_BOARD_NIGHTLY_SUMMARY: false,
+
+    /**
+     * Canonica Knowledge Intake Command Center
+     *
+     * true: Canonica owners can collect product URLs, docs, FAQs, release notes,
+     *       pasted notes, and extracted file text into a private review workspace.
+     *       Accepted drafts publish into the existing KB, FAQ, canonical-answer,
+     *       product-surface, and changelog pipelines.
+     * false: Legacy KB generation/import route remains hidden from new nav.
+     *
+     * Cost model: owner-triggered only. Jobs/sources/review items are bounded,
+     * summary-backed, and never use realtime listeners. Runtime widget/help
+     * search continues to read existing published collections.
+     *
+     * @see __docs__/canonica/knowledge-intake-command-center/
+     */
+    ENABLE_CANONICA_KNOWLEDGE_INTAKE: true,
+
+    /**
+     * Canonica Intake URL Discovery
+     *
+     * true: Owners can provide public website/help URLs and Canonica will fetch
+     *       a capped, SSRF-guarded page/link sample for review.
+     * false: Owners can still add pasted text and extracted files manually.
+     */
+    ENABLE_CANONICA_INTAKE_URL_DISCOVERY: true,
+
+    /**
+     * Canonica Intake Native Connectors
+     *
+     * true: Future controlled rollout for Notion/GitHub/Drive native connectors.
+     * false: Day-one intake stays file/text/URL based to avoid broad scopes and
+     *        high-volume remote sync costs.
+     */
+    ENABLE_CANONICA_INTAKE_NATIVE_CONNECTORS: false,
+
+    /**
+     * Canonica Intake Screenshot OCR + Media Transcription
+     *
+     * true: Owners can upload screenshots/images and short audio/video clips.
+     *       Canonica extracts support-relevant text through Gemini, records the
+     *       AI operation, and reserves/settles Canonica support credits through
+     *       the intake usage ledger.
+     * false: Intake remains browser-extracted text files, pasted text, and URL
+     *        sources only.
+     *
+     * Raw media is not retained as a source artifact; only the extracted,
+     * sanitized support text is stored for review.
+     */
+    ENABLE_CANONICA_INTAKE_MEDIA_EXTRACTION: true,
 
     /**
      * Canonica Email Notifications

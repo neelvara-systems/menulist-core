@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Owner Helpdoc
 
-> **Status:** PLANNED — publish after feature implementation
+> **Status:** IMPLEMENTED — owner help copy for day-one intake
 > **Version:** 1.0.0
 > **Created:** 2026-05-31
 > **Audience:** Canonica workspace owners and staff
@@ -17,7 +17,7 @@ Start with:
 - app URL
 - support email
 - product pages where users get stuck
-- docs, files, FAQs, policies, changelog, screenshots, transcripts, or support exports if you already have them
+- docs, files, FAQs, policies, changelog entries, setup notes, or support macros if you already have them
 
 You do not need a perfect help center before starting.
 
@@ -25,14 +25,14 @@ You do not need a perfect help center before starting.
 
 ## Before You Start
 
-Real intake processing uses paid AI and Firebase infrastructure. You need an active Canonica plan and available processing allowance before Canonica scans, parses, transcribes, generates drafts, embeds content, or runs readiness checks.
+Real intake processing uses Firebase infrastructure. You need an active Canonica beta or subscription before Canonica imports sources, prepares drafts, embeds article output, or publishes accepted content.
 
 Prepare:
 
 - your product website
 - docs/help, pricing, changelog, terms, privacy, or security links if you have them
 - the URL where users log into your app
-- any help docs or FAQ files
+- any help docs or FAQ files, including TXT, Markdown, CSV, JSON, DOCX, or text-based PDF
 - important policy answers: refunds, cancellation, billing, roles, permissions, data deletion
 - 2-5 app pages where support questions happen often
 
@@ -45,13 +45,10 @@ Prepare:
 | Product website | Features, pricing, positioning, policies, public product truth |
 | App URL and product pages | Page-aware widget support |
 | Docs/help center | Article and FAQ source material |
-| PDF/DOCX/Markdown/TXT/HTML | Existing written support knowledge |
-| CSV/FAQ CSV/XLSX | FAQs, support macros, structured exports |
-| PPTX/sales deck | Low-authority context only; review carefully |
-| JSON/YAML | Structured product or docs exports |
-| ZIP of docs | Bulk docs import with path validation |
+| Text-based PDF/DOCX/Markdown/TXT | Existing written support knowledge |
+| CSV/FAQ CSV/JSON | FAQs, support macros, structured exports |
 | Screenshots/images | UI context and troubleshooting evidence |
-| Transcript/video/audio | Workflows and common explanations; transcripts are preferred |
+| Transcript/video/audio | Workflows and common explanations; transcripts are preferred, short raw media is credit-charged |
 | Changelog/release notes | Stale answer and release-impact review |
 | Helpdesk export | Repeated questions and support gaps |
 | Policy pack | High-authority owner answers |
@@ -166,9 +163,9 @@ Do not upload or paste:
 - production secrets
 - internal credentials
 
-Screenshots can contain hidden metadata or visible sensitive data. Review them before upload.
+Screenshots can contain visible sensitive data. Review them before upload. Canonica extracts only support-relevant text and does not keep the raw image as a source artifact.
 
-For video/audio, use transcripts when possible. Raw media processing consumes more allowance.
+For video/audio, use transcripts when possible. Raw media extraction is available for short support recordings, consumes Canonica support credits, and stores only extracted support text.
 
 Canonica should also scan normalized sources for secrets and private data before building AI drafts. If risky content is found, Canonica asks you to review or remove it instead of using it as support truth.
 
@@ -194,6 +191,10 @@ No. Start with your product link, app URL, product pages, and policy answers.
 **Can I import support tickets?**
 
 Yes through exports such as CSV/JSON/txt when enabled. Native helpdesk connectors are not required for first setup.
+
+**Can I upload screenshots or short recordings?**
+
+Yes. Screenshots/images use OCR and short audio/video can be transcribed into source text. Screenshots currently cost 1 support credit; audio/video costs 2 support credits. If extraction fails, the reserved credits are refunded.
 
 **Can Canonica scan my whole site?**
 

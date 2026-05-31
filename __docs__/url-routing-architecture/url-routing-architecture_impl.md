@@ -246,12 +246,17 @@ Source of truth: `src/constants/deploymentTargets.ts`.
 
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
-MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires HTTP Basic Auth before rewriting to `/sites/mycodex`. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Canonica public-site discovery.
+MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Canonica public-site discovery.
+
+MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
+
+MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore includes `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes so Vercel serverless functions receive the same documentation files that local `/__mycodex` reads from disk. Do not broaden this include to MenuList or Canonica routes unless those products also gain explicit filesystem-backed runtime content.
 
 | Env var | Required on Vercel | Purpose |
 | ------- | ------------------ | ------- |
-| `MYCODEX_BASIC_AUTH_USER` | Yes | Username for `menulist.digital` / `www.menulist.digital` |
-| `MYCODEX_BASIC_AUTH_PASSWORD` | Yes | Password for `menulist.digital` / `www.menulist.digital` |
+| `MYCODEX_BASIC_AUTH_USER` | Yes | Server-side username checked by the MyCodex login route |
+| `MYCODEX_BASIC_AUTH_PASSWORD` | Yes | Server-side password checked by the MyCodex login route and used as session-secret fallback |
+| `MYCODEX_SESSION_SECRET` | No | Optional dedicated HMAC secret for signing `mycodex_session`; falls back to `NEXTAUTH_SECRET`, then the MyCodex password |
 
 ### Key Env Var: `NEXT_PUBLIC_APP_URL`
 

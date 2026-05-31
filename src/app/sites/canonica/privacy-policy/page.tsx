@@ -23,7 +23,7 @@ const SECTIONS = [
         title: 'Information Canonica Handles',
         body: [
             'Canonica handles account details, team member details, workspace details, product support content, knowledge-base imports, FAQs, changelog entries, tickets, widget configuration, hosted-help domain settings, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
-            'Knowledge-base source files can include documents, screenshots, images, URLs, and starter answers. Images and files may contain hidden metadata, so customers should avoid importing unnecessary personal data.',
+            'Knowledge intake sources can include selected public URLs, pasted support text, starter answers, and supported document text. Customers should avoid importing unnecessary personal data.',
             'Page context should describe the product surface, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
         ],
     },
@@ -52,7 +52,7 @@ const SECTIONS = [
         title: 'Retention and Security',
         body: [
             'Canonica keeps data for as long as it is needed to provide the service, support the customer workspace, meet operational needs, or satisfy legal requirements.',
-            'Source files used for knowledge generation stay with the generation job and are removed when the job is deleted. Failed and cancelled jobs keep source files until deletion for review, audit, or retry.',
+            'Imported source metadata and capped extracted text stay with the intake job so owners can review drafts and lineage. Raw file retention is not required for day-one browser-extracted intake.',
             'Access controls, tenant separation, validation, and bounded payload handling are used to reduce accidental exposure and protect support data.',
         ],
     },

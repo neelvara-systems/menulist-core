@@ -8,7 +8,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Canonica workspace, add your app, invite the first team members, pick pages where users get stuck, and get a widget key for page-aware support.',
+    description: 'Create your Canonica workspace, add your app, invite the first team members, teach Canonica from starter sources, pick pages where users get stuck, and get a widget key for page-aware support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -23,7 +23,7 @@ function getBasePath(): string {
 const CRITERIA = [
     { label: 'Your SaaS app is live or close to launch', description: 'A product with real users, billing, onboarding, settings, or release notes.' },
     { label: 'Users ask repeated questions', description: 'The same setup, billing, role, release, or error questions appear more than once.' },
-    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, or common answers Canonica can learn from.' },
+    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, or common answers Canonica can learn from.' },
     { label: 'You can install one script', description: 'You can add the widget, allow domains, block routes, and pass safe page context.' },
     { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
 ];
@@ -34,7 +34,7 @@ const FIRST_SESSION = [
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
     'Seed starter surfaces for key app pages',
-    'Import first docs, FAQs, changelog, or support macros',
+    'Teach Canonica from selected links, docs, FAQs, screenshots, recordings, or support macros',
     'Verify widget install and page context',
     'Review the first approved answers',
 ];
@@ -88,7 +88,7 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
                         <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
-                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, and release updates.
+                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, release updates, screenshots, or short support recordings.
                         </p>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                             <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">First session checklist</div>

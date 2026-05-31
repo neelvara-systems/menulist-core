@@ -14,7 +14,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: team access, starter surfaces, page-aware widget with explicit screenshot input, hosted help, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -31,11 +31,11 @@ const FEATURES = [
         id: 'launch-setup',
         badge: 'Launch Setup',
         title: 'Set up support before users start asking',
-        description: 'Create a workspace, add your app details, invite the right team members, import starter knowledge, map important pages, and verify the widget before support goes live.',
+        description: 'Create a workspace, add your app details, invite the right team members, teach Canonica from selected links, files, screenshots, and short recordings, map important pages, and verify the widget before support goes live.',
         capabilities: [
             'Product profile, support email, billing model, workspace subscription, team access, and main product pages',
             'Canonica roles for workspace owners, managers, support staff, and custom permission sets',
-            'Knowledge import for docs, FAQs, custom owner answers, starter answers, and existing files',
+            'Knowledge intake for selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings',
             'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
             'Compiled context readiness so the widget can use cache-first product context after approval',

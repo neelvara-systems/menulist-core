@@ -317,6 +317,16 @@ curl -sS -X POST \
   https://us-central1-canonica-qa.cloudfunctions.net/triggerCanonicaNightly
 ```
 
+Scoped manual retry for one workspace:
+
+```bash
+curl -sS -X POST \
+  -H "Authorization: Bearer $CANONICA_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"tId":123,"sId":456}' \
+  https://us-central1-canonica-qa.cloudfunctions.net/triggerCanonicaNightly
+```
+
 Expected QA result when the code default `ENABLE_CANONICA_NIGHTLY=true` is deployed and no eligible tenant has `hasEntities=true`:
 
 ```json

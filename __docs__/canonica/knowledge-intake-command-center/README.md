@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Feature Documentation
 
-> **Status:** PLANNED — Day-one implementation contract
+> **Status:** IMPLEMENTED — day-one owner-triggered intake flow
 > **Created:** 2026-05-31
 > **Audience:** Product, Engineering, Firebase/Ops, Website, Support
 > **Source of Truth:** Runtime audit + Canonica doctrine + reviewed ChatGPT conversation
@@ -9,7 +9,7 @@
 
 ## What Is This
 
-Knowledge Intake Command Center is the planned replacement architecture for Canonica's current document-upload-first KB generation screen.
+Knowledge Intake Command Center is the implemented replacement for Canonica's document-upload-first KB generation screen.
 
 Owner-facing name:
 
@@ -32,9 +32,28 @@ This is not a generic upload widget. It is the entry point into Canonica's Suppo
 
 ---
 
-## Current Runtime Audit
+## Implemented Day-One Contract
 
-The current implementation is useful but too narrow for Canonica's long-term intake promise.
+| Area | Implementation truth |
+| --- | --- |
+| Owner route | `/canonica/knowledge-intake` is the canonical owner route. `/canonica/kb-generation` redirects for compatibility. |
+| Navigation | Launch Setup shows **Teach Canonica** and routes to the Canonica-owned intake screen. |
+| Inputs | Owners can add pasted text, selected public URLs, browser-extracted text files, screenshots/images, and short audio/video evidence. File bodies are capped before reaching the server. |
+| URL discovery | Public URL discovery is bounded, same-origin, private-network guarded, and owner-selected. Discovered links are not materialized as Firestore source docs until selected. |
+| Entitlement | Mutating and expensive actions require an active Canonica beta/subscription summary on the workspace store document. |
+| Processing | Text-friendly files are extracted in the browser. Screenshots/images and short media use gated Gemini extraction with support-credit reservation, AI operation logging, and refund-on-failure. No background crawler, native connector, or scheduler import fanout is enabled. |
+| Review | Drafts become review items. Owners accept, reject, or edit before publish. |
+| Publishing | Accepted items publish into existing Canonica runtime collections: KB articles/categories, FAQs, product surfaces, changelog pages, and canonical mutation proposals. |
+| Canonical answers | Intake creates canonical mutation proposals only. It does not auto-publish authoritative canonical answers. |
+| Runtime freshness | Publish bumps existing cache/source-version paths and rebuilds the compact context-content summary for page-aware widget/search alignment. |
+| Cost posture | No realtime listeners, no unbounded scans, no hidden retry workers, and no raw-file Storage retention were added. The nightly scheduler only refreshes a compact intake summary from the latest bounded job docs when enabled. |
+| Platform observability | `/platform/canonica-intake` reads `canonicaTenantsSummary` first, lets platform admins select one workspace, then shows scoped intake jobs, credit ledger rows, media extraction usage, scheduler health, and an explicit selected-workspace nightly retry action. |
+
+---
+
+## Pre-Implementation Runtime Audit
+
+This was the runtime baseline before the day-one intake implementation.
 
 | Area | Current runtime evidence | Current behavior |
 | --- | --- | --- |
@@ -52,7 +71,7 @@ The current implementation is useful but too narrow for Canonica's long-term int
 
 Conclusion:
 
-The current pipeline should remain as a compatibility article-generation output path, but Canonica needs a higher-level source-backed intake engine above it.
+The shared pipeline remains as a legacy compatibility path. Canonica now uses the dedicated source-backed intake engine for owner setup.
 
 ---
 
@@ -68,8 +87,8 @@ Accepted from the ChatGPT discussion:
 - Use source authority and risk domains before generating/publishing.
 - Make a tiny review queue the owner UX, not a long governance dashboard.
 - Publish only after explicit owner approval.
-- Store raw/heavy artifacts in Storage and compact metadata/summaries in Firestore.
-- Paid entitlement must be checked before any expensive scan, parse, transcription, AI generation, embedding, or readiness simulation.
+- Store capped extracted source text/metadata in Firestore for day one; raw/heavy Storage retention stays reserved for a future native-upload path.
+- Paid entitlement and available Canonica support credits must be checked before any expensive scan, parse, transcription, AI generation, embedding, or readiness simulation.
 
 Adjusted for Canonica:
 
@@ -80,9 +99,9 @@ Adjusted for Canonica:
 - Unchanged selected website pages skip extraction, draft generation, embeddings, and AI/provider calls.
 - No per-source function fanout for provider work; expensive intake uses a bounded job worker, lease, idempotency, and credit settlement.
 - Unsafe secrets/private data are filtered before provider prompts by default.
-- Dashboards and scheduler repair use summary/directory docs instead of scanning intake jobs, sources, or review items.
+- Dashboards use summary docs before detailed lists. The Canonica nightly scheduler may refresh `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` from the latest bounded job docs, but it must not retry failed jobs, crawl URLs, call providers, or publish review items.
 - No native helpdesk/OAuth connector is required for day-one; exports/import files cover support history without credential risk.
-- Video/audio support is transcript-first; raw media transcription is paid, capped, and explicitly confirmed before processing.
+- Video/audio support is transcript-first when transcripts are available; raw media transcription is implemented as an owner-triggered, paid, capped, explicitly visible intake step.
 - Current KB generation stays compatible but becomes one output of intake, not the product center.
 
 Rejected:
@@ -121,9 +140,9 @@ Rejected:
 4. **Founder-simple:** owner UI says "launch decisions", "source", "ready", "needs review", and "approved answers"; internal terms such as chunks, RAG, embeddings, mutation proposals, and ontology stay behind the scenes.
 5. **Cost-bounded:** Firestore stores metadata, summaries, review decisions, and live records. Storage stores originals, parsed text, chunks, evidence, draft bodies, manifests, and transcripts.
 6. **One product per workspace by default:** a workspace represents one product/app support brain. Studio plans can create multiple workspaces, not mix unrelated products into one support graph.
-7. **Bounded execution:** expensive jobs run under workspace concurrency, lease, retry, cancellation, and credit settlement rules.
+7. **Bounded execution:** expensive steps run under owner-triggered API routes, rate limits, caps, and credit settlement rules. Failed media extraction refunds reserved support credits; failed jobs are retried only by owner action.
 8. **Provider-safe evidence:** provider prompts use selected, redacted evidence instead of raw source bodies.
-9. **Summary-first reads:** first-screen UI and scheduler discovery use `platformSummary` summaries before detailed list queries.
+9. **Summary-first reads:** first-screen UI and nightly analytics use `platformSummary` summaries before detailed list queries. Scheduler work is summary-only for intake.
 
 ---
 
@@ -131,16 +150,16 @@ Rejected:
 
 | Existing area | Intake relationship |
 | --- | --- |
-| `kb_generation_jobs` | Compatibility output path for article + FAQ draft generation. New intake jobs should create article drafts through this path or a successor adapter, not duplicate KB publishing logic. |
+| `kb_generation_jobs` | Legacy compatibility path. New Canonica intake uses `/canonica/knowledge-intake` and publishes into the same approved runtime collections without reusing the shared platform screen. |
 | Knowledge Base | Receives approved help articles generated from source-backed drafts. |
 | FAQ Management | Receives owner-reviewed short answers linked to articles, surfaces, tags, and entities. |
 | Product Surfaces | Receives page/workflow mappings from source templates, app URL context, and owner-selected screens. |
 | Website Link Discovery | Feeds selected public product/docs/pricing/legal pages into intake without turning Canonica into a crawler. |
 | Product Ontology | Receives product concepts after review/approval; entity candidates remain human-governed. |
-| Canonical Answers | Receives approved answer drafts; canonical-first retrieval remains the runtime priority. |
+| Canonical Answers | Receives reviewable mutation proposals from intake; canonical-first retrieval remains the runtime priority after human approval. |
 | Drift / Signal Mutation | Uses source lineage and source-version manifests to know what content may be stale. |
 | Widget / Hosted Help | Uses approved KB, FAQ, product surface, and canonical-answer outputs. |
-| Billing | Owns paid entitlement and processing allowance checks before intake jobs run. |
+| Billing | Owns paid entitlement, support-credit reservation, settlement, refund, and ledger/audit rows before paid intake processing runs. |
 
 ## Runtime Alignment Contract
 
@@ -168,3 +187,5 @@ Knowledge Intake must publish into Canonica's existing runtime paths. It must no
 | 2026-05-31 | 1.2.0 | Added bounded execution and provider-safe evidence doctrine. |
 | 2026-05-31 | 1.3.0 | Added summary-first read model and bucketed scheduler directory doctrine. |
 | 2026-05-31 | 1.4.0 | Added runtime alignment contract for KB, FAQ, canonical answers, widget search, surface summaries, public cache, releases, and compiled context bundles. |
+| 2026-05-31 | 2.0.0 | Implemented day-one owner-triggered intake route, APIs, review flow, publish wiring, Firestore rules/indexes, active-license gate, and legacy route redirect. |
+| 2026-05-31 | 2.1.0 | Implemented screenshot OCR, short media transcription, Canonica intake usage ledger, AI operation logging, refund-on-failure, and summary-only nightly intake analytics. |

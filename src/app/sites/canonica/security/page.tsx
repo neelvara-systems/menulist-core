@@ -11,7 +11,7 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for Canonica page-aware support: safe page hints, explicit screenshots, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+    description: 'Security for Canonica page-aware support: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
@@ -48,6 +48,10 @@ const CONTROLS = [
     {
         title: 'Explicit screenshot attachments',
         body: 'Users can attach or paste screenshots when visual context helps. Canonica does not automatically capture the host page, scrape the DOM, or write widget images to persistent storage.',
+    },
+    {
+        title: 'Bounded source intake',
+        body: 'Knowledge Intake accepts selected public links, supported files, screenshots, and short recordings as owner-provided evidence. URL import is bounded, media work is capped and credit logged, and raw media is not retained by default.',
     },
     {
         title: 'Origin and route controls',
@@ -87,6 +91,7 @@ const SECURITY_FACTS = [
     { label: 'Widget key storage', value: 'Hashed; encrypted recovery when configured' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
     { label: 'Screenshot input', value: 'Manual attachment only' },
+    { label: 'Source intake', value: 'Owner-selected and capped' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Ticket context', value: 'Capped and sanitized' },
     { label: 'Answer authority', value: 'Owner-reviewed approved answers' },
@@ -162,6 +167,16 @@ const TRUST_AREAS = [
         ],
     },
     {
+        title: 'Knowledge intake boundary',
+        body: 'Intake is designed to teach Canonica from selected sources without creating a crawler, private connector, or automatic publishing path.',
+        points: [
+            'Public URL discovery imports only owner-selected pages.',
+            'Files are capped before processing; screenshots and short recordings are extracted into support text.',
+            'Paid OCR and transcription work is support-credit logged and refund-aware on failure.',
+            'Accepted output publishes through existing KB, FAQ, surface, changelog, or canonical proposal workflows.',
+        ],
+    },
+    {
         title: 'Governed answers',
         body: 'Support correctness comes from approved knowledge, not automatic rewriting.',
         points: [
@@ -224,7 +239,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica uses safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
+                            Canonica uses safe page hints, explicit screenshot attachments, bounded source intake, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                     </div>
                 </section>
@@ -233,7 +248,7 @@ export default function CanonicaSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-teal-300/20 bg-teal-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, assign workspace roles carefully, serve approved runtime context from controlled bundles, and approve support answers before they become official.
+                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, use Knowledge Intake only with selected sources, assign workspace roles carefully, serve approved runtime context from controlled bundles, and approve support answers before they become official.
                         </p>
                         <CanonicaLink
                             basePath={basePath}
@@ -324,6 +339,13 @@ export default function CanonicaSecurityPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
+                    <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Source intake boundary</p>
+                        <h2 className="text-2xl font-bold text-white">Import selected evidence, not everything.</h2>
+                        <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
+                            Use public product or docs pages you select, supported files, screenshots, and short recordings that are safe to process. Canonica does not crawl an entire private app, retain raw media by default, or make generated intake output official without owner review.
+                        </p>
+                    </div>
                     <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Page context boundary</p>
                         <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>

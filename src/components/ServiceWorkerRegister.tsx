@@ -4,7 +4,7 @@
  * Service Worker Registration (Per-Tenant)
  * ═══════════════════════════════════════════════════════════════
  *
- * MenuList runs TWO PWAs from one Next.js build:
+ * MenuList runs multiple isolated PWAs from one Next.js build:
  *
  *   1. Owner Dashboard PWA   → platform origins (menulist.ai, app.menulist.ai)
  *      Registers `/sw.js` (next-pwa generated, Workbox, runtime caching).
@@ -12,6 +12,9 @@
  *   2. Customer App PWA      → tenant origins ({subdomain}.menulist.ai,
  *                              verified custom domains)
  *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
+ *
+ *   3. MyCodex PWA           → menulist.digital
+ *      Registers `/mycodex-sw.js` (private docs offline shell only).
  *
  * Registration is conditional on the current origin's tenant type, which
  * is derived client-side from `window.location.host` via the same
@@ -35,6 +38,7 @@ import { useEffect } from 'react';
 
 const OWNER_SW_URL = '/sw.js';
 const CUSTOMER_SW_URL = '/sw-customer.js';
+const MYCODEX_SW_URL = '/mycodex-sw.js';
 const OWNER_APP_PATHS = [
     /^\/dashboard(?:\/|$)/,
     /^\/billing(?:\/|$)/,
@@ -64,6 +68,10 @@ function getTargetSwUrl(): string | null {
         if (resolved.type === 'subdomain' || resolved.type === 'custom') {
             return CUSTOMER_SW_URL;
         }
+        // Dedicated private docs product host.
+        if (resolved.type === 'product' && resolved.productSite?.id === 'mycodex') {
+            return MYCODEX_SW_URL;
+        }
         // Platform origins serve both the public marketing website and the
         // owner app. Keep Workbox off public website routes so Safari cannot
         // keep stale marketing pages or assets in control while scrolling.
@@ -72,7 +80,7 @@ function getTargetSwUrl(): string | null {
                 ? OWNER_SW_URL
                 : null;
         }
-        // Product sites and localhost should not register either worker.
+        // Other product sites and localhost should not register a worker.
         return null;
     } catch {
         // Unknown origin → register nothing. Safer than attaching either

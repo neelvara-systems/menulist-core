@@ -1,7 +1,13 @@
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import './styles.css';
 
 import { Inter } from 'next/font/google';
+import {
+    MYCODEX_MANIFEST_PATH,
+    MYCODEX_SITE_URL,
+    MYCODEX_THEME_COLOR,
+    getStaticMyCodexAppleStartupImages,
+} from '@lib/mycodex/pwaAssets';
 
 
 const inter = Inter({
@@ -11,25 +17,34 @@ const inter = Inter({
 
 export const metadata: Metadata = {
     applicationName: 'MyCodex',
+    metadataBase: new URL(MYCODEX_SITE_URL),
     title: {
         default: 'MyCodex — Personal Brain Reader',
         template: '%s | MyCodex',
     },
     description: 'Personal Brain & Documentation Reader for MenuList and Cascade persistence brain documentation.',
-    manifest: '/platform.webmanifest',
+    manifest: MYCODEX_MANIFEST_PATH,
     icons: {
         icon: [
-            { url: '/favicon.ico', sizes: 'any' },
-            { url: '/icons/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-            { url: '/icons/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-            { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+            { url: '/mycodex-logo.svg', type: 'image/svg+xml' },
+            { url: '/mycodex-favicon-16.png', sizes: '16x16', type: 'image/png' },
+            { url: '/mycodex-favicon-32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/mycodex-icon-192.png', sizes: '192x192', type: 'image/png' },
         ],
-        apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+        apple: [{ url: '/mycodex-apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
     appleWebApp: {
         capable: true,
         title: 'MyCodex',
         statusBarStyle: 'black-translucent',
+        startupImage: getStaticMyCodexAppleStartupImages(),
+    },
+    formatDetection: {
+        telephone: false,
+    },
+    other: {
+        'mobile-web-app-capable': 'yes',
+        'color-scheme': 'light dark',
     },
     robots: {
         index: false,
@@ -46,10 +61,11 @@ export const metadata: Metadata = {
     },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
+    themeColor: MYCODEX_THEME_COLOR,
+    viewportFit: 'cover',
 };
 
 /**

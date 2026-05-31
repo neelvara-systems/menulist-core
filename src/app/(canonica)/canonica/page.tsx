@@ -23,7 +23,7 @@ export default async function CanonicaBasePage() {
             if (access.permissions[CANONICA_PERMISSION_KEYS.MANAGE_SUPPORT]) {
                 redirect(FEATURE_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD ? CANONICA_ROUTES.SUPPORT_BOARD : CANONICA_ROUTES.TICKETS);
             }
-            if (access.permissions[CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE]) redirect(CANONICA_ROUTES.KB_GENERATION);
+            if (access.permissions[CANONICA_PERMISSION_KEYS.MANAGE_KNOWLEDGE]) redirect(CANONICA_ROUTES.KNOWLEDGE_INTAKE);
             if (access.permissions[CANONICA_PERMISSION_KEYS.MANAGE_WIDGET]) redirect(CANONICA_ROUTES.WIDGET);
         }
         if (!access && canUseCanonicaManagement(session)) {

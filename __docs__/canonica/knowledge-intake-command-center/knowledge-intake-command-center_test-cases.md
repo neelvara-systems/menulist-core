@@ -1,11 +1,35 @@
 # Knowledge Intake Command Center — Test Cases
 
-> **Status:** PLANNED — acceptance and regression matrix
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — day-one regression matrix plus future extension matrix
+> **Version:** 2.0.0
 > **Created:** 2026-05-31
 > **Audience:** QA / Engineering / Product
 
 ---
+
+## 0. Day-One Implemented Acceptance Tests
+
+| ID | Scenario | Expected result |
+| --- | --- | --- |
+| KICC-D1-001 | Open `/canonica/knowledge-intake` with Canonica management permission | Page loads the Canonica-owned **Teach Canonica** command center. |
+| KICC-D1-002 | Open legacy `/canonica/kb-generation` | Route redirects to `/canonica/knowledge-intake`. |
+| KICC-D1-003 | Non-licensed workspace attempts create/source/discover/analyze/review/publish mutation | API blocks with `402` before URL fetch, draft analysis, or publish writes. |
+| KICC-D1-004 | Owner imports a public website link | API rejects private/local hosts, fetches only capped public content, and creates a selected source only after owner action. |
+| KICC-D1-005 | Owner imports browser-extracted file text | Source doc stores capped extracted text and compact metadata; no raw Storage upload occurs. |
+| KICC-D1-006 | Owner analyzes ready sources | Review items are bounded by job caps and remain owner-reviewable. |
+| KICC-D1-007 | Owner accepts and publishes a KB item | Writes `kb_articles`, updates `kb_categories`, bumps KB freshness, and triggers context summary rebuild/cache invalidation. |
+| KICC-D1-008 | Owner publishes an FAQ item | Writes `canonica_faqs`; runtime search can use FAQ/custom-answer retrieval before vector fallback. |
+| KICC-D1-009 | Owner publishes a canonical-answer draft | Creates `canonica_mutationProposals`; no active canonical answer is auto-published and compiled `canonical` runtime context is not marked stale. |
+| KICC-D1-010 | Owner publishes product surface/changelog items | Writes existing product-surface/changelog paths and marks related compiled-context sources stale. |
+| KICC-D1-011 | User loads jobs/review lists | Reads are bounded and API-driven; no realtime Firestore listener is used. |
+| KICC-D1-012 | Owner uploads a supported screenshot | API reserves 1 support credit, validates signature, extracts support text, writes a source, logs AI operation, settles ledger, and does not retain raw media. |
+| KICC-D1-013 | Owner uploads a short supported audio/video file | API reserves 2 support credits, validates signature, extracts support transcript/summary, writes a source, logs AI operation, and settles ledger. |
+| KICC-D1-014 | Media extraction fails after credit reservation | Ledger marks `failed_refunded` and monthly/top-up credits are returned. |
+| KICC-D1-015 | Canonica nightly runs with intake scheduler flag on | It refreshes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` from latest bounded job docs only; it does not retry failed jobs, crawl, call AI, or publish. |
+| KICC-D1-016 | Platform admin opens `/platform/canonica-intake` | Screen loads `canonicaTenantsSummary` and recent scheduler logs first; intake jobs and ledger rows are not read until one workspace is selected. Non-platform users are denied. |
+| KICC-D1-017 | TypeScript validation | `npx tsc --noEmit --incremental false` passes. |
+
+The sections below preserve the broader long-term matrix. Native helpdesk/OAuth connectors, retained raw-media Storage artifacts, and scheduler directory repair remain future-extension tests. Screenshot OCR, short media transcription, support-credit ledger charging, and summary-only scheduler analytics are implemented runtime claims.
 
 ## 1. Entitlement And Cost Gates
 
@@ -25,13 +49,15 @@
 | ID | Scenario | Expected result |
 | --- | --- | --- |
 | KICC-SRC-001 | Add product website and app URL | Website discovery manifest is created; app URL is stored as setup/surface context and is not crawled behind login. |
-| KICC-SRC-002 | Upload PDF, DOCX, Markdown, TXT, HTML, CSV, XLSX, PPTX, JSON, YAML | Each accepted file has validated type, Storage artifact, compact source doc, and normalized manifest. |
-| KICC-SRC-003 | Upload ZIP with nested docs | ZIP is safely expanded within cap; path traversal entries are rejected. |
+| KICC-SRC-002 | Upload text-based PDF, DOCX, Markdown, TXT, CSV, or JSON | Accepted files are extracted before server source creation and no raw Storage artifact is retained. |
+| KICC-SRC-003 | Upload unsupported ZIP/XLSX/PPTX/YAML/HTML file | UI/API rejects or requires owner to convert to a supported text/export format. |
 | KICC-SRC-004 | Upload screenshot with visible sensitive data warning | UI warning shown before upload; source treated as evidence, not direct truth. |
 | KICC-SRC-005 | Upload transcript file | Transcript source normalizes without raw media processing. |
 | KICC-SRC-006 | Upload raw video over plan duration cap | Preflight rejects or asks for plan upgrade before upload/transcription. |
 | KICC-SRC-007 | Import helpdesk CSV export | Treated as support history/evidence; PII redaction warning shown. |
-| KICC-SRC-008 | Uploaded source contains API keys or private customer data | Privacy filter blocks provider prompts for that source and creates owner review item. |
+| KICC-SRC-008 | Uploaded source contains API keys or private customer data | Deterministic privacy filter redacts sensitive values before storage/provider use and records redaction metadata on the source. |
+| KICC-SRC-009 | Upload the same screenshot/audio/video twice in one job | Raw media hash dedupe returns the existing source without provider extraction, usage-ledger writes, or source counter increments. |
+| KICC-SRC-010 | Upload an oversized browser-extracted text file | UI rejects before parsing/sending; accepted text is capped to the server source-text limit before API submission. |
 
 ---
 
@@ -40,7 +66,7 @@
 | ID | Scenario | Expected result |
 | --- | --- | --- |
 | KICC-URL-001 | URL points to localhost/private IP | Server rejects before fetch. |
-| KICC-URL-002 | URL redirects to private IP | Server rejects after redirect resolution. |
+| KICC-URL-002 | URL redirects to private IP | Server validates the redirect target before following it and rejects the import. |
 | KICC-URL-003 | Site has sitemap with many pages | Import selects only capped support-relevant pages. |
 | KICC-URL-004 | Page response exceeds size cap | Source marked failed/too-large with retry/manual option. |
 | KICC-URL-005 | Robots disallow crawling | Source marked blocked; owner can paste/upload content manually. |
@@ -98,6 +124,8 @@
 | KICC-RUN-005 | Product surface, article, FAQ, and changelog are published in one batch | `contextContent_{tId}_{sId}` is rebuilt or marked stale once, and widget related content shows the new surface links after refresh. |
 | KICC-RUN-006 | Published output changes only intake readiness counters | Public context bundle is not rebuilt unless an approved runtime destination source key also changed. |
 | KICC-RUN-007 | Runtime image/search question is submitted after screenshot intake source was approved into content | Image-assisted query still uses the normal canonical/FAQ/RAG path; screenshot evidence is searchable only through approved outputs. |
+| KICC-RUN-008 | Owner tries to PATCH a review item directly to `published` | API rejects the patch; only the publish action can mark review items published and write runtime destinations. |
+| KICC-RUN-009 | Owner updates a review item through a different job URL in the same workspace | API rejects the update because the review item must belong to the requested job. |
 
 ---
 
@@ -154,12 +182,15 @@
 | --- | --- | --- |
 | KICC-SUM-001 | Source/review/job state changes | Workspace summary and bucketed directory update in the same server transition. |
 | KICC-SUM-002 | Summary hash is unchanged | Summary write is skipped. |
-| KICC-SUM-003 | Canonica scheduler looks for intake repair work | Scheduler reads bucketed `platformSummary/knowledgeIntakeDirectory_*` docs and does not scan intake collections. |
+| KICC-SUM-003 | Canonica scheduler looks for intake repair work | Scheduler uses normal tenant discovery and reads only latest bounded intake job docs for that workspace; it does not read source/review lists, retry failed jobs, crawl URLs, call providers, or publish outputs. |
 | KICC-SUM-004 | Directory entry is dirty | Summary repair reads bounded workspace data and clears dirty only after successful write. |
 | KICC-SUM-005 | Source content changes | `sourceVersions_{tId}_{sId}.knowledgeIntakeSources` increments. |
 | KICC-SUM-006 | Approved output publishes | `sourceVersions_{tId}_{sId}.knowledgeIntakeOutputs` increments and the matching runtime source key (`kb`, `canonical`, `surfaces`, `releases`, `entities`, or `entityRelations`) changes only when destination content changed. |
 | KICC-SUM-007 | Intake readiness changes but runtime content does not | Intake summary/source fields update; public bundle manifest remains ready and is not marked stale. |
 | KICC-SUM-008 | Publish batch affects 20 articles and 15 FAQs | Product-surface summary rebuild runs once for the batch, not once per output item. |
+| KICC-SUM-009 | Platform monitor refreshes with no selected workspace | It reads one tenant summary and recent scheduler logs only; it does not read intake jobs, ledger rows, source/review collections, or start provider work. |
+| KICC-SUM-010 | Platform admin selects one workspace | It reads only capped job and ledger rows for the selected `tId/sId`. |
+| KICC-SUM-011 | Platform admin clicks Retry selected nightly | It calls `triggerCanonicaNightly` with the selected `tId/sId`; Canonica scheduler processes that workspace only and writes normal scheduler state/run logs. |
 
 ---
 
@@ -172,3 +203,5 @@
 | 2026-05-31 | 1.2.0 | Added concurrency, cancellation, credit release, privacy filter, and idempotent retry tests. |
 | 2026-05-31 | 1.3.0 | Added summary-first dashboard, bucketed directory, scheduler repair, and source-version tests. |
 | 2026-05-31 | 1.4.0 | Added runtime search/help-center alignment tests for canonical-first retrieval, FAQ retrieval, vector readiness, surface summaries, public bundle skip behavior, and existing pipeline regression. |
+| 2026-05-31 | 2.0.0 | Added implemented screenshot/media/usage-ledger/scheduler tests. |
+| 2026-05-31 | 2.1.0 | Added platform-owner intake monitor tests and cost guardrail expectations. |

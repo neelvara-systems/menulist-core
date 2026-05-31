@@ -18,6 +18,7 @@
  * 8. Confidence Auto-Adjustment — boost answers with 30+ serves, 0 negatives
  * 9. Signal TTL Auto-Archive — delete signals older than 12 months
  * 10. Support Board Sync — create bounded owner review cards and summary
+ * 11. Knowledge Intake Summary — refresh compact owner analytics only
  * 
  * RULES:
  * - Idempotent: running twice produces identical results
@@ -42,6 +43,7 @@ import { repairCompiledContextBundle } from './contextBundleBuilder';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
+import { syncKnowledgeIntakeSummary } from './knowledgeIntakeSummary';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
@@ -1539,12 +1541,16 @@ export interface CanonicaNightlyResult {
     supportBoardCardsCreated: number;
     supportBoardCardsUpdated: number;
     supportBoardSummaryWritten: number;
-    // Step 17: Predictive Trigger Sync (Expansion Item #12)
+    // Step 17: Knowledge Intake Summary
+    knowledgeIntakeJobsScanned: number;
+    knowledgeIntakeSummaryWritten: number;
+    knowledgeIntakeUsageUnits: number;
+    // Step 18: Predictive Trigger Sync (Expansion Item #12)
     predictiveSuggestionsGenerated: number;
     predictiveTriggersTotal: number;
     predictiveEffectivenessUpdated: number;
     predictiveAutoDisabled: number;
-    // Step 18: Compiled Context Bundle Repair
+    // Step 19: Compiled Context Bundle Repair
     compiledContextBundlesRebuilt: number;
     compiledContextBundlesSkipped: number;
     compiledContextBytesGenerated: number;
@@ -1617,6 +1623,9 @@ export async function runCanonicaNightly(options: {
         supportBoardCardsCreated: 0,
         supportBoardCardsUpdated: 0,
         supportBoardSummaryWritten: 0,
+        knowledgeIntakeJobsScanned: 0,
+        knowledgeIntakeSummaryWritten: 0,
+        knowledgeIntakeUsageUnits: 0,
         predictiveSuggestionsGenerated: 0,
         predictiveTriggersTotal: 0,
         predictiveEffectivenessUpdated: 0,
@@ -1657,6 +1666,9 @@ export async function runCanonicaNightly(options: {
                     graphIndexRebuilt: result.graphIndexRebuilt,
                     supportBoardCardsCreated: result.supportBoardCardsCreated,
                     supportBoardCardsUpdated: result.supportBoardCardsUpdated,
+                    knowledgeIntakeJobsScanned: result.knowledgeIntakeJobsScanned,
+                    knowledgeIntakeSummaryWritten: result.knowledgeIntakeSummaryWritten,
+                    knowledgeIntakeUsageUnits: result.knowledgeIntakeUsageUnits,
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                     compiledContextBundlesRebuilt: result.compiledContextBundlesRebuilt,
                     compiledContextBytesGenerated: result.compiledContextBytesGenerated,
@@ -1674,6 +1686,7 @@ export async function runCanonicaNightly(options: {
                     ticketKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE,
                     graphEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH,
                     supportBoardSyncEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_SUPPORT_BOARD_SYNC,
+                    knowledgeIntakeSchedulerEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_INTAKE_SCHEDULER,
                     predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT,
                     compiledContextBundlesEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES,
                 },
@@ -2094,6 +2107,30 @@ export async function runCanonicaNightly(options: {
                         needsAnswerCards: taskResult.needsAnswerCards,
                         highPriorityCards: taskResult.highPriorityCards,
                         totalRecentCards: taskResult.totalRecentCards,
+                    })
+                );
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_INTAKE_SCHEDULER) {
+                await runTenantTask(
+                    tenantRun,
+                    'knowledge_intake_summary',
+                    'syncKnowledgeIntakeSummary',
+                    () => syncKnowledgeIntakeSummary(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.knowledgeIntakeJobsScanned += taskResult.jobsScanned;
+                        result.knowledgeIntakeSummaryWritten += taskResult.summaryWritten ? 1 : 0;
+                        result.knowledgeIntakeUsageUnits += taskResult.usageUnitsConsumed;
+                    },
+                    (taskResult) => ({
+                        jobsScanned: taskResult.jobsScanned,
+                        summaryWritten: taskResult.summaryWritten,
+                        unchanged: taskResult.unchanged === true,
+                        activeJobs: taskResult.activeJobs,
+                        reviewItems: taskResult.reviewItems,
+                        readySources: taskResult.readySources,
+                        usageUnitsConsumed: taskResult.usageUnitsConsumed,
+                        latestJobStatus: taskResult.latestJobStatus,
                     })
                 );
             }

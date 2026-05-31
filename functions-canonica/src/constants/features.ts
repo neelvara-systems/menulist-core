@@ -154,6 +154,21 @@ export const FUNCTION_FLAGS = {
     ENABLE_CANONICA_SUPPORT_BOARD_SYNC: false,
 
     /**
+     * Canonica Knowledge Intake Scheduler Hooks
+     *
+     * Summary-only nightly maintenance for knowledge-intake jobs. The scheduler
+     * reads the latest bounded job docs and writes one compact summary when the
+     * payload changed. It does not retry failed jobs, crawl URLs, call AI
+     * providers, or publish review items.
+     *
+     * Owner-triggered app routes remain the only path for extraction, analysis,
+     * media OCR/transcription, and publishing.
+     *
+     * @see __docs__/canonica/knowledge-intake-command-center/
+     */
+    ENABLE_CANONICA_KNOWLEDGE_INTAKE_SCHEDULER: true,
+
+    /**
      * Canonica Compiled Context Bundles
      *
      * When true + ENABLE_CANONICA_NIGHTLY is true:

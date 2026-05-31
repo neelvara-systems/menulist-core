@@ -1,6 +1,6 @@
 # Knowledge Intake Command Center — Marketing Notes
 
-> **Status:** PLANNED — public claims only after implementation
+> **Status:** READY — claims aligned to implemented day-one intake
 > **Version:** 1.0.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Sales / Product
@@ -19,7 +19,7 @@ Short line:
 
 Long description:
 
-Canonica intake helps first-time founders and solo SaaS builders turn product links, selected website pages, docs, files, policies, changelog entries, screenshots, transcripts, and support exports into source-backed support knowledge. Canonica finds what matters, flags conflicts, builds a product map, drafts help articles, FAQs, and approved answers, and asks the owner to approve only the important launch decisions.
+Canonica intake helps first-time founders and solo SaaS builders turn product links, selected website pages, docs, files, FAQs, release notes, setup notes, and support macros into source-backed support knowledge. Canonica prepares help articles, FAQs, product-surface suggestions, changelog drafts, and canonical answer proposals, then asks the owner to approve what should publish.
 
 ---
 
@@ -31,9 +31,9 @@ Canonica intake helps first-time founders and solo SaaS builders turn product li
 | I have no full docs yet. | Start with product URL, app URL, starter surfaces, and policy questions. |
 | I only have a marketing site. | Canonica finds candidate pricing, docs, FAQ, legal, security, changelog, and API pages, then processes only what you select. |
 | I do not want AI guessing. | Canonica shows sources, conflicts, and owner approval before answers become official. |
-| I cannot review 100 drafts. | Canonica prioritizes launch decisions, high-risk topics, and safe bulk approval. |
-| My product changes quickly. | Intake attaches source lineage, so stale answers can be found after source changes. |
-| I worry about cost. | Processing is plan-limited and paid before real scanning/generation starts. |
+| I cannot review 100 drafts. | Canonica groups drafts by destination so the owner can accept, edit, reject, and publish intentionally. |
+| My product changes quickly. | Intake publishes through the same KB, FAQ, changelog, surface, and canonical-proposal paths that the runtime already reads. |
+| I worry about cost. | Mutating and processing actions require an active Canonica beta or subscription and stay bounded by source/review caps. |
 
 ---
 
@@ -70,7 +70,7 @@ Use after the buyer understands the value, or internally:
 - Canonica can scan selected website/docs pages.
 - Canonica can discover candidate product website pages without turning every discovered URL into a Firestore source document.
 - Canonica can skip expensive reprocessing when selected website pages are unchanged.
-- Canonica can import PDF, DOCX, Markdown, CSV/FAQ CSV, XLSX, PPTX, JSON/YAML, ZIP docs, screenshots/images, transcripts, and support exports.
+- Canonica can import selected URLs, TXT, Markdown, CSV, JSON, DOCX, text-based PDF, screenshots/images, and short audio/video evidence. XLSX, PPTX, ZIP docs, and native connector imports are not public claims until implemented.
 - Canonica builds a product map before generating drafts.
 - Canonica flags source conflicts and missing launch info.
 - Canonica generates source-backed article, FAQ, approved-answer, and widget-suggestion drafts.
@@ -101,7 +101,7 @@ Headline:
 
 Subheadline:
 
-Add your product link, choose the support-worthy pages Canonica finds, add docs, files, policies, changelog entries, screenshots, transcripts, or support exports, and confirm only the launch decisions that matter.
+Add your product link, choose the support-worthy pages Canonica finds, add docs, files, policies, changelog entries, screenshots, transcripts, or short support recordings, and confirm only the launch decisions that matter.
 
 Proof strip:
 

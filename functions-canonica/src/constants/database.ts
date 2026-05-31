@@ -41,6 +41,10 @@ export const DB_COLLECTIONS = {
     CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
     CANONICA_CONTACT_ENQUIRIES: 'canonica_contactEnquiries',
     CANONICA_SUPPORT_BOARD_CARDS: 'canonica_supportBoardCards',
+    CANONICA_KNOWLEDGE_INTAKE_JOBS: 'canonica_knowledgeIntakeJobs',
+    CANONICA_KNOWLEDGE_SOURCES: 'canonica_knowledgeSources',
+    CANONICA_INTAKE_REVIEW_ITEMS: 'canonica_intakeReviewItems',
+    CANONICA_INTAKE_USAGE_LEDGER: 'canonica_intakeUsageLedger',
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs

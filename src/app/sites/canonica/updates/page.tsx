@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Canonica product updates that affect setup, team access, page-aware support, owner Q&A, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'Canonica product updates that affect knowledge intake, setup, team access, page-aware support, owner Q&A, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 31, 2026',
+        title: 'Knowledge Intake added to the public product story',
+        items: [
+            'Canonica now has a dedicated Knowledge Intake product page for selected public links, supported files, screenshots, short recordings, and source-backed review drafts.',
+            'Homepage, Product, Pricing, Get Started, FAQ, Resources, Security, route metadata, and the intake website doc now explain intake as an owner-reviewed setup path, not as a crawler or auto-publish shortcut.',
+            'Public copy calls out the cost boundary: text sources and normal widget/help usage are separate from paid OCR/transcription work, which is capped and support-credit logged.',
+        ],
+    },
     {
         date: 'May 27, 2026',
         title: 'Support Board added to the public support-control story',
@@ -229,7 +238,7 @@ export default function CanonicaUpdatesPage() {
                         Canonica product updates.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Changes that affect setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.
+                        Changes that affect knowledge intake, setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.
                     </p>
                 </section>
 

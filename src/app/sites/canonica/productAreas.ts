@@ -2,7 +2,7 @@ export const CANONICA_PRODUCT_AREAS = [
     {
         label: 'Set up support',
         href: '/product/launch-setup',
-        description: 'Create your workspace, add team access, import help content, and map the pages where users get stuck.',
+        description: 'Create your workspace, add team access, teach Canonica from starter sources, and map the pages where users get stuck.',
     },
     {
         label: 'In-app help widget',

@@ -72,7 +72,7 @@ export default function CanonicaCustomerFlowChecklist({
                 : 'Publish one approved article or FAQ before this becomes useful to customers.',
             status: hasPublicKnowledge ? 'ready' : 'pending',
             actionLabel: hasPublicKnowledge ? 'Preview' : 'Import Content',
-            route: hasPublicKnowledge ? CANONICA_ROUTES.HELP : CANONICA_ROUTES.KB_GENERATION,
+            route: hasPublicKnowledge ? CANONICA_ROUTES.HELP : CANONICA_ROUTES.KNOWLEDGE_INTAKE,
             icon: LuBookOpen,
         },
         {

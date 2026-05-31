@@ -16,9 +16,9 @@ const SETUP_STEPS = [
     },
     {
         number: '03',
-        title: 'Import FAQs, docs, changelogs, or common answers',
-        detail: 'Use the material you already have instead of building a blank help center.',
-        outcome: 'Knowledge seeded',
+        title: 'Teach Canonica from links, docs, files, or media',
+        detail: 'Use selected public pages, support notes, FAQs, release updates, supported files, screenshots, or short support recordings instead of building a blank help center.',
+        outcome: 'Drafts prepared',
     },
     {
         number: '04',

@@ -11,6 +11,7 @@ export const CANONICA_ROUTES = {
     INSTALL_CENTER: `${CANONICA_BASE_PATH}/install-center`,
     DASHBOARD: `${CANONICA_BASE_PATH}/dashboard`,
     KNOWLEDGE_BASE: `${CANONICA_BASE_PATH}/knowledge-base`,
+    KNOWLEDGE_INTAKE: `${CANONICA_BASE_PATH}/knowledge-intake`,
     KB_GENERATION: `${CANONICA_BASE_PATH}/kb-generation`,
     TICKETS: `${CANONICA_BASE_PATH}/tickets`,
     CONVERSATIONS: `${CANONICA_BASE_PATH}/conversations`,

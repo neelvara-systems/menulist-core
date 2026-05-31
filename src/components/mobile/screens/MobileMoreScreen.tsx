@@ -487,6 +487,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'opsControlRoom', icon: <LuActivity color="#dc2626" size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'schedulerMonitor', icon: <LuClock3 color="#ea580c" size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color="#7c3aed" size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
+        ...(FEATURE_FLAGS.ENABLE_CANONICA_INTAKE_PLATFORM_MONITOR ? [{ key: 'canonicaIntakeMonitor', icon: <LuBookOpen color="#0f766e" size={20} />, keywords: ['canonica', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Canonica Intake', description: 'Canonica intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/canonica-intake') }] : []),
     ] : [];
 
     const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [

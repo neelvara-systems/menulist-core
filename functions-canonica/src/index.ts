@@ -85,6 +85,17 @@ function isManualTriggerAuthorized(req: any): boolean {
     return Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
 }
 
+function parseManualTenantScope(req: any): { tId: number; sId: number } | null {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const tId = Number(body.tId);
+    const sId = Number(body.sId);
+    if (!Number.isFinite(tId) && !Number.isFinite(sId)) return null;
+    if (!Number.isInteger(tId) || tId <= 0 || !Number.isInteger(sId) || sId <= 0) {
+        throw new HttpsError('invalid-argument', 'Both tId and sId are required for scoped Canonica nightly retry.');
+    }
+    return { tId, sId };
+}
+
 export const triggerCanonicaNightly = onRequest(
     {
         region: 'us-central1',
@@ -103,15 +114,29 @@ export const triggerCanonicaNightly = onRequest(
             return;
         }
 
-        logger.info('[Canonica Manual] Triggered master scheduler manually...');
+        let scope: { tId: number; sId: number } | null = null;
+        try {
+            scope = parseManualTenantScope(req);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Invalid manual scheduler scope.';
+            res.status(400).json({ error: message });
+            return;
+        }
+
+        logger.info('[Canonica Manual] Triggered master scheduler manually...', {
+            scoped: Boolean(scope),
+            ...(scope ? { tId: scope.tId, sId: scope.sId } : {}),
+        });
         const result = await runCanonicaMasterScheduler({
             trigger: 'manual',
             triggeredBy: 'cron_secret',
-            forceAllTenants: true,
+            forceAllTenants: !scope,
+            tenantScope: scope ? [scope] : undefined,
         });
         logger.info('[Canonica Manual] Complete', {
             runLogId: result.runId,
             status: result.status,
+            scoped: Boolean(scope),
             tasks: result.tasks.map(task => ({ name: task.name, status: task.status, activity: task.activity })),
         });
         res.status(result.status === 'failed' ? 500 : 200).json(result);
