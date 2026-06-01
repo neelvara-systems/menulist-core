@@ -26,7 +26,8 @@
     "verify:customer-app-pwa": "node scripts/verification/verify-customer-app-pwa.js",
     "verify:catalog-analytics": "npm --prefix functions run build && node scripts/verification/verify-catalog-analytics-intelligence.js",
     "verify:recycle-bin": "node scripts/verification/verify-recycle-bin.js",
-    "verify:menu-export": "node scripts/verification/verify-menu-export.js"
+    "verify:menu-export": "node scripts/verification/verify-menu-export.js",
+    "verify:growthos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-growthos-flow.ts"
   },
   "overrides": {
     "zod": "^3.25.0"

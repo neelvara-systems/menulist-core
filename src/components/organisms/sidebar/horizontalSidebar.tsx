@@ -3,6 +3,7 @@ import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_ME
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
+import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import { useTodayAction } from '@providers/TodayActionProvider';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
@@ -66,6 +67,15 @@ const HorizontalSidebarComponent = () => {
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
                 if (!canManageLocations) {
+                    return;
+                }
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.GROWTH_KITS) {
+                if (!shouldShowGrowthOSNavigation({
+                    activeSubscription,
+                    storeDetails,
+                    storeId: storeDetails?.storeId,
+                })) {
                     return;
                 }
             }

@@ -9,7 +9,7 @@
 **Purpose:** Permanent founder reference — the honest top-view of everything we're building and why  
 **Updates:** Only when a product's fundamental nature changes
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
-**May 31, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal acquisition infrastructure for MenuList lead generation. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
+**June 1, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal MenuList-owned distribution automation infrastructure. Lead generation is one input; the system's job is distribution target acquisition, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
 
 ---
 
@@ -38,7 +38,7 @@ At its core, we are building **one thing**: a system that makes small business o
 
 Everything else — GrowthOS, KitStamp, Control Layer — are either natural extensions of that mission or optional revenue opportunities that emerged from deep thinking.
 
-Growth Engine is different from those product layers: it is internal acquisition infrastructure used to grow MenuList, not something SMB owners buy or use.
+Growth Engine is different from those product layers: it is internal distribution automation infrastructure used to grow MenuList truth coverage, not something SMB owners buy or use.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -333,7 +333,7 @@ TODAY: One product, multiple features
 
 The "separate products" are future extraction events, not current reality. Separation is a **design principle** (keep thinking clean), not an engineering requirement (must build separately now).
 
-Growth Engine is an exception to the owner-facing stack discussion because it handles internal acquisition, lead PII, outreach, suppressions, and attribution. It should be built as a separate product boundary in the same repo, not as a MenuList owner feature and not as GrowthOS.
+Growth Engine is an exception to the owner-facing stack discussion because it handles internal distribution targets, lead PII, owned workflows, enrichment waterfalls, AI worker runs, decision snapshots, outreach, suppressions, discovery publishing, surface health, freshness, and attribution. It should be built as a separate product boundary in the same repo, not as a MenuList owner feature and not as GrowthOS.
 
 ### Dependency Rule
 
@@ -363,7 +363,7 @@ MenuList never depends on anything else. If both GrowthOS and KitStamp disappear
 | **Control Layer** | Not a decision — just MenuList getting better. |
 | **GrowthOS** | Keep inside MenuList. Extract ONLY if identity confusion at 200+ stores. |
 | **KitStamp** | Document the idea. Don't build. Revisit in 2-3 years. |
-| **Growth Engine** | Keep in the same repo as separate internal acquisition infrastructure with separate Firebase/functions/data. Do not expose as owner product. |
+| **Growth Engine / MenuNexus candidate** | Keep in the same repo as separate internal distribution automation infrastructure with separate Firebase/functions/data. Lead gen is one input; workflow engine, enrichment waterfalls, decision snapshots, distribution target registry, canonical surfaces, discovery publishing, freshness, and attribution are the core. Do not expose as owner product. |
 
 **Your only job right now: Make MenuList indispensable for 200+ SMBs. Everything else follows.**
 

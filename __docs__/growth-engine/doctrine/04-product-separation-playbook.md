@@ -31,7 +31,7 @@ Recommended code and runtime shape:
 
 ## 2. Same Repo Rule
 
-Use the same repo initially because Growth Engine needs current MenuList onboarding and feedback contracts.
+Use the same repo initially because Growth Engine needs current MenuList onboarding, public surface, discovery, and feedback contracts.
 
 Shared root infrastructure may be reused:
 
@@ -47,6 +47,9 @@ Do not share:
 
 - Firestore data project
 - lead collections
+- distribution target collections
+- discovery publish job collections
+- surface health collections
 - source payloads
 - provider secrets
 - message histories
@@ -59,20 +62,26 @@ Allowed bridge:
 
 - create tracked growth route to an existing MenuList onboarding flow
 - receive route clicked / onboarding started / completed / dropped feedback
+- receive canonical surface publish state from MenuList
+- receive structured data, sitemap, feed export, truth packet, and freshness events
+- create owner-authorized GBP handoff records without bypassing MenuList/Google policy
 - optional prefill only through approved onboarding contract
 
 Blocked bridge:
 
 - Growth Engine writes menu/store/project/customer truth
+- Growth Engine publishes candidate-only facts to MenuList public pages
 - Growth Engine bypasses MenuList claim/onboarding validation
 - Growth Engine uses MenuList owner UI as its campaign surface
 - MenuList dashboards query Growth Engine lead data
+- Growth Engine uses Google Business Profile APIs or GoogleLocations for lead generation
+- Growth Engine uses Google Indexing API for MenuList menu/business pages
 
 ## 4. GrowthOS Collision Rule
 
 GrowthOS/Growth Kits is for existing MenuList owners and current MenuList truth.
 
-Growth Engine is for internal lead acquisition.
+Growth Engine is for internal distribution target acquisition, claim routing, owned surface distribution, and attribution.
 
 Do not reuse:
 

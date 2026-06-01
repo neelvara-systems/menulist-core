@@ -9,6 +9,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
+import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
@@ -31,6 +32,7 @@ import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_OPTIONS,
     getDefaultTempStatusDateTime,
 } from '../components/MobileTempStatusConfigurator';
+import GrowthKitsMobileCard from '../components/GrowthKitsMobileCard';
 import TodayWeeklyGrowthPackCard from '../components/TodayWeeklyGrowthPackCard';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
@@ -129,7 +131,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tToday = useTranslations('MobileToday');
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
     const { projectsList, selectProject, selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
@@ -330,6 +332,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
     const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
     const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
+    const shouldShowGrowthKitsCard = shouldShowGrowthOSNavigation({
+        activeSubscription,
+        storeDetails,
+        storeId: storeDetails?.storeId,
+    }) && Boolean(selectedProjectId);
     const hasMaintenanceCards = Boolean(
         (physicalSurfaces?.tentCard?.eligible || false)
         || (physicalSurfaces?.counterSticker?.eligible || false)
@@ -902,6 +909,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             ) : null}
 
             {weeklyGrowthPack ? <TodayWeeklyGrowthPackCard pack={weeklyGrowthPack} /> : null}
+
+            {shouldShowGrowthKitsCard ? <GrowthKitsMobileCard projectId={selectedProjectId} /> : null}
 
             <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text>
 

@@ -1,5 +1,5 @@
 import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
-import AnswerlatticeAnimatedLogo from '@atoms/answerlatticeAnimatedLogo';
+import AnswerlatticeLoaderLogo from '@atoms/answerlatticeLoaderLogo';
 import { useAppSelector } from '@hook/useAppSelector';
 import { isAnswerlatticeRuntimeRoute } from '@lib/answerlattice/sessionScope';
 import { getLoaderState } from '@reduxSlices/loader';
@@ -76,7 +76,7 @@ function Loader() {
                 style={isAnswerlatticeRoute ? undefined : { background: token.colorBgMask }}
             >
                 {isAnswerlatticeRoute
-                    ? <AnswerlatticeAnimatedLogo idPrefix="answerlattice-global-loader" />
+                    ? <AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />
                     : <AnimatedVerticalLogo showLabel={false} />}
             </div> : null}
         </>

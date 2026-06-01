@@ -34,10 +34,20 @@ Growth Engine will not:
 23. Send WhatsApp API/template messages without opt-in proof.
 24. Create artifacts without noindex, expiry, QA, and takedown state.
 25. Treat generic CRM, enrichment, or cold-email tooling as the product moat.
+26. Use third-party lead-gen, CRM, or outreach tools as the system of record.
+27. Publish candidate-only facts to public pages, sitemaps, IndexNow, feeds, or truth packets.
+28. Use Google Indexing API for MenuList menu or business pages.
+29. Use Google Business Profile APIs or GoogleLocations for lead generation.
+30. Create thin city/category pages from scraped leads.
+31. Use third-party workflow builders, enrichment tables, sequencers, or CRMs as automation system of record.
+32. Let AI act without typed schema, prompt version, eval pass, budget cap, and audit trail.
+33. Send or publish without a decision snapshot.
+34. Change sender identity midway through a target conversation to force delivery.
+35. Use Apple Business Connect or Bing Places as lead-gen sources or truth authorities.
 
 ## Rejection Rule
 
-If a proposed feature primarily increases message volume instead of completed MenuList onboardings with safety and cost control, reject it.
+If a proposed feature primarily increases message volume instead of owner-confirmed MenuList truth coverage with safety and cost control, reject it.
 
 ## Channel Rule
 
@@ -47,10 +57,42 @@ Email also requires sender-domain readiness: SPF/DKIM/DMARC status, unsubscribe 
 
 WhatsApp starts assisted. API/template sends require opt-in proof, policy review, and provider readiness.
 
-Instagram and Messenger start inbound/warm only unless a later policy review approves otherwise.
+Instagram and Messenger stay inbound/warm unless policy review approves another mode.
+
+## Automation Rule
+
+Growth Engine owns automation workflows, enrichment waterfalls, decision snapshots, AI worker registry, sender assignment, operator work queues, and attribution.
+
+Third-party tools may be low-level adapters only. They must not decide target state, channel eligibility, sender assignment, public publishing, discovery publishing, or attribution.
 
 ## Data Rule
 
 Candidate intelligence is not truth.
 
 MenuList truth starts only after owner confirmation or approved MenuList verification paths.
+
+## Distribution Rule
+
+Public distribution must come from confirmed MenuList truth.
+
+Allowed public distribution surfaces:
+
+- canonical MenuList menu pages
+- official business pages
+- structured data
+- sitemaps and sitemap indexes
+- IndexNow submissions for meaningful changed public URLs
+- menu feed exports from confirmed truth
+- AI-readable public truth packets
+- owner website widgets or embeds
+- owner-authorized Google Business Profile, Apple Business Connect, and Bing Places handoffs
+
+Blocked public distribution surfaces:
+
+- noindex claim artifacts
+- scraped candidate records
+- unconfirmed menu facts
+- private contact data
+- source payloads
+- Google Maps photos, reviews, menus, or profile content
+- external listing facts that have not become confirmed MenuList truth

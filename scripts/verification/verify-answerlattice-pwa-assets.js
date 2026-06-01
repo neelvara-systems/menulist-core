@@ -16,6 +16,9 @@ const SPLASH_SIZES = [
   '640x1136',
 ];
 
+const LOGO_CANVAS = [13, 13, 13];
+const BACKGROUND_TOLERANCE = 1;
+
 function read(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
 }
@@ -52,13 +55,22 @@ function verifyLoaderBranding() {
   const serverLoader = read('src/app/loading.tsx');
   const brandedPageLoader = read('src/components/atoms/brandedPageLoader/index.tsx');
   const globalLoader = read('src/components/organisms/loader/index.tsx');
+  const loaderLogo = read('src/components/atoms/answerlatticeLoaderLogo/index.tsx');
+  const loaderLogoStyles = read('src/components/atoms/answerlatticeLoaderLogo/answerlatticeLoaderLogo.module.scss');
 
   assertIncludes(serverLoader, "brand?: ServerSidePageLoaderBrand", 'server loader brand prop');
   assertIncludes(serverLoader, 'brand={resolvedBrand}', 'server loader resolved brand handoff');
   assertIncludes(brandedPageLoader, "brand === 'answerlattice'", 'branded page loader Answerlattice branch');
-  assertIncludes(brandedPageLoader, '<AnswerlatticeAnimatedLogo idPrefix="answerlattice-loader-logo" />', 'branded page loader Answerlattice logo');
+  assertIncludes(brandedPageLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-loader-logo" />', 'branded page loader Answerlattice logo');
   assertIncludes(globalLoader, "data-loader-brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}", 'global loader brand marker');
-  assertIncludes(globalLoader, '<AnswerlatticeAnimatedLogo idPrefix="answerlattice-global-loader" />', 'global loader Answerlattice logo');
+  assertIncludes(globalLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />', 'global loader Answerlattice logo');
+  assertIncludes(loaderLogo, 'strokeWidth="545"', 'Answerlattice loader logo final stroke width');
+  assertIncludes(loaderLogo, 'stopColor="#A4FFFA"', 'Answerlattice loader logo final left gradient');
+  assertIncludes(loaderLogo, 'stopColor="#08513E"', 'Answerlattice loader logo final right gradient');
+  assertIncludes(loaderLogoStyles, 'animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;', 'Answerlattice loader left stroke animation');
+  assertIncludes(loaderLogoStyles, 'animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;', 'Answerlattice loader right stroke animation');
+  assertIncludes(loaderLogoStyles, '-webkit-animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;', 'Answerlattice loader left webkit stroke animation');
+  assertIncludes(loaderLogoStyles, '-webkit-animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;', 'Answerlattice loader right webkit stroke animation');
 }
 
 function verifySplashFiles() {
@@ -71,6 +83,27 @@ function verifySplashFiles() {
     const png = PNG.sync.read(fs.readFileSync(fullPath));
     assert(png.width === expectedWidth, `${relPath} width must be ${expectedWidth}`);
     assert(png.height === expectedHeight, `${relPath} height must be ${expectedHeight}`);
+
+    const backgroundSamples = [
+      [0, 0],
+      [png.width - 1, 0],
+      [0, png.height - 1],
+      [png.width - 1, png.height - 1],
+      [Math.floor(png.width * 0.5), Math.floor(png.height * 0.12)],
+      [Math.floor(png.width * 0.1), Math.floor(png.height * 0.46)],
+      [Math.floor(png.width * 0.9), Math.floor(png.height * 0.46)],
+    ];
+
+    for (const [x, y] of backgroundSamples) {
+      const index = ((png.width * y) + x) << 2;
+      assert(
+        Math.abs(png.data[index] - LOGO_CANVAS[0]) <= BACKGROUND_TOLERANCE
+          && Math.abs(png.data[index + 1] - LOGO_CANVAS[1]) <= BACKGROUND_TOLERANCE
+          && Math.abs(png.data[index + 2] - LOGO_CANVAS[2]) <= BACKGROUND_TOLERANCE
+          && png.data[index + 3] === 255,
+        `${relPath} splash background must match the final logo canvas color without a contrasting logo panel`,
+      );
+    }
 
     const xStart = Math.floor(png.width * 0.2);
     const xEnd = Math.ceil(png.width * 0.8);

@@ -1,16 +1,16 @@
 # GrowthOS Add-on - Firebase And Cost Plan
 
-**Status:** Planning only
-**Runtime cost today:** No change
+**Status:** Implemented behind disabled feature flag
+**Runtime cost today:** No owner runtime cost while `ENABLE_GROWTHOS_ADDON=false`
 **Cost principle:** Paid add-on value must cover Firestore, Storage, and provider usage.
 
 ---
 
 ## 1. Current Cost Impact
 
-This documentation adds no runtime cost.
+The implementation adds Firestore rules and gated code paths, but the master feature flag defaults off.
 
-No Firestore rules, indexes, Storage rules, Cloud Functions, provider calls, scheduled jobs, or app routes were changed.
+No Storage rules, Cloud Functions, provider calls, scheduled jobs, or indexes were added.
 
 ## 2. Cost Design Principles
 
@@ -31,9 +31,9 @@ GrowthOS must follow existing MenuList cost discipline:
 | --- | ---: | --- |
 | Open Growth Kits home | 1 read | `platformSummary/growthos_{sId}`. |
 | Open from Today with existing Today data | 0-1 additional reads | Today may already have `platformSummary/campaigns_{sId}` through `useTodayCampaigns`. |
-| Refresh action queue | 1-3 reads | Current project/menu data and bounded existing summary/context reads. Exact count must be verified during implementation. |
-| Generate kit | 1-3 reads | Read source facts immediately before generation to prevent stale output. |
-| Copy/share/download kit | 0 reads | UI should already have kit data. |
+| Refresh action queue | 2-4 reads | Store entitlement context, current project/menu data, and current summary. |
+| Generate kit | 2-4 reads | Store entitlement context, current project/menu data, and current summary before generation. |
+| Copy/share/download kit | 3-5 reads | Server revalidates entitlement, kit, summary, and current source hash before recording use. |
 | Review reply draft | 0-1 reads | Owner-pasted text can avoid review collection reads. |
 | Staff Brief generation | 0 additional reads when source facts are already loaded | Deterministic V1 output from same source facts. |
 | Latest kit mobile fallback | 0 additional server reads after failed refresh | Uses last successfully loaded kit payload on device. |
@@ -45,10 +45,10 @@ GrowthOS must follow existing MenuList cost discipline:
 
 | Flow | Expected writes | Notes |
 | --- | ---: | --- |
-| Refresh action queue | 1 write | Update `platformSummary/growthos_{sId}` only when hash or ranked actions change. |
+| Refresh action queue | 0-1 write | Update `platformSummary/growthos_{sId}` only when hash, date, ranked actions, readiness, or latest-kit stale state changes. |
 | Generate text kit | 2-4 writes | Kit document, summary update, AI operation log, subscription credit update when paid AI is used. |
 | Generate image | Existing image pipeline costs | Reuse current image generation accounting and Storage path. |
-| Copy/share/download/print | 1-2 writes | Export row plus optional kit status update. |
+| Copy/share/download/print | 1-3 writes | Export row plus optional kit status update and summary latest-kit status/stale update only when changed. |
 | Mark stale | 1 write | Only when a stale check is run and critical facts changed. |
 | Staff Brief copied/shared | 1 export write | Execution signal only. |
 | Mark used | 1 export write or kit status update | No ROI or customer attribution. |
@@ -71,7 +71,7 @@ Retention:
 - one document per store
 - overwritten by hash/date changes
 
-### `growthosKits`
+### `growthosKits/{tId}/{sId}/{kitId}`
 
 Purpose:
 
@@ -85,7 +85,7 @@ Retention:
 - archive or TTL old kits after the approved retention window
 - do not store raw provider response unless existing AI operation policy requires it
 
-### `growthosExports`
+### `growthosExports/{tId}/{sId}/{exportId}`
 
 Purpose:
 
@@ -134,7 +134,9 @@ Do not create these in V1:
 
 ## 6. Index Plan
 
-Likely composite indexes:
+No composite index was added in V1 because the implemented owner UI reads latest kit data from `platformSummary/growthos_{sId}` and writes exports by document ID.
+
+Likely future composite indexes if used-history UI is later enabled:
 
 | Collection | Index | Reason |
 | --- | --- | --- |
@@ -143,23 +145,42 @@ Likely composite indexes:
 | `growthosExports` | `tId ASC, sId ASC, exportedAt DESC` | Store-scoped export history. |
 | `growthosExports` | `kitId ASC, exportedAt DESC` | Kit detail execution audit. |
 
-Do not add indexes until queries are final.
+Do not add these indexes until queries are final and the used-history UI flag is approved.
 
 ## 7. Firebase Rules
 
-Rules must enforce:
+Implemented rules enforce:
 
 - default deny
 - authenticated tenant/store access only
 - owner/support roles can read/write scoped GrowthOS data
 - users cannot read other stores' kits or exports
 - clients cannot set `tId`/`sId` outside their session scope
-- export writes are append-only where practical
-- generated kit writes should normally be server-owned if AI output is involved
+- client writes to GrowthOS kit/export documents are blocked; authenticated APIs write through server Admin SDK after entitlement, output, and stale checks
+- generated kit writes are routed through authenticated API routes in V1; admin SDK writes bypass rules but routes enforce tenant access and entitlement
+- source project reads use scoped project paths first; legacy fallback requires matching tenant/store identity or MenuList tenant-store project ID shape
 
-If Firestore rules are changed during implementation, deploy the matching Firebase target after validation per repo policy.
+Firestore rules were changed and deployed during implementation, then hardened so GrowthOS summary writes stay server-owned and kit/export writes cannot bypass the API.
 
-## 8. AI Provider Cost
+Deployment evidence:
+
+```txt
+firebase deploy --only firestore:rules --project ecomsai
+```
+
+Result: rules compiled successfully and were released to `cloud.firestore` for project `ecomsai`.
+
+## 8. Implemented Cost Optimizations
+
+Implemented V1 optimizations:
+
+- disabled or ineligible desktop route does not fetch project lists
+- summary refresh skips Firestore writes when the normalized summary did not change
+- export route reuses store entitlement data and recomputes only the current source snapshot instead of reloading the full GrowthOS context
+- summary latest-kit status is written after export only when status or stale state changed
+- deterministic dry-run coverage is available through `npm run verify:growthos`
+
+## 9. AI Provider Cost
 
 Planned cost model:
 
@@ -167,21 +188,21 @@ Planned cost model:
 | --- | --- | --- |
 | Action ranking | No | 0 units |
 | Deterministic copy from existing templates | No | 0 units |
-| Text Growth Kit | Yes, when needed | 1-2 units, final cost after token measurement |
-| Review reply draft | Yes | Reuse `REVIEW_REPLY_SUGGESTION` unit cost if payload fits |
+| Text Growth Kit | No in V1 | 0 units deterministic. |
+| Review reply draft | No in V1 | 0 units deterministic guard. |
 | Staff Brief | No in V1 | 0 units deterministic |
 | Customer FAQ snippets | No for standard snippets | 0 units deterministic |
 | Photo Capture Prompt | No | 0 units, metadata/readiness only |
 | Existing Image Adaptation | No provider call | Render/Storage cost only if pilot enabled |
 | Missing image generation | No in approved scope | Do not generate fake food in V1 |
 
-Current cost evidence:
+Cost evidence:
 
 - Campaign caption real provider estimate and unit cost exist in `src/constants/AI/unitCosts.ts:19-92`.
 - One unit is internally calibrated near INR 12 in `src/constants/AI/unitCosts.ts:49-56`.
 - Capacity is checked before provider calls in `src/lib/ai/capacityCheck.ts:71-144`.
 
-## 9. Scheduler Cost
+## 10. Scheduler Cost
 
 No scheduler in approved initial scope.
 
@@ -192,7 +213,7 @@ If background refresh is later approved:
 - add per-task lease/state tracking
 - document Firestore reads/writes in INR before enabling
 
-## 10. Cost Guardrails
+## 11. Cost Guardrails
 
 Do not ship until:
 
@@ -205,14 +226,14 @@ Do not ship until:
 - no direct posting API introduces hidden external costs
 - Firebase rules and indexes are documented if changed
 
-## 11. Pilot Cost Gates
+## 12. Pilot Cost Gates
 
 | Feature | Cost decision |
 | --- | --- |
 | Staff Brief Pack | V1 deterministic. No provider cost. One export write only when copied/shared/marked used. |
 | Existing Image Adaptation | Pilot only. Generate on owner action; Storage write only if persisted; no AI provider call. |
 | Owner-Confirmed Offer Builder | Deferred. Adds offer writes and expiry/stale logic; do not add before pilot. |
-| Review Reply Guard | Manual paste only. One bounded provider call with no raw review logging. |
+| Review Reply Guard | V1 manual paste only and deterministic. A future provider-backed version must remain bounded and must not log raw review text. |
 | Customer FAQ Reply Snippets | Pilot. Deterministic snippets from current facts; export write only when copied. |
 | Photo Capture Prompts | Pilot. Readiness/ranking only; photo upload uses existing MenuList image flow. |
 | Multi-Outlet Localized Kits | Pilot. Per selected store only; no brand-wide background refresh. |

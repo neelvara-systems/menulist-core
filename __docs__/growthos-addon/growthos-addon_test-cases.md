@@ -14,6 +14,8 @@
 | `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if entitlement exists. |
 | `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
 | `GROWTHOS_STAFF_BRIEF_MODE=deterministic` | Staff Brief generation uses current source facts with no provider call. |
+| `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed. |
+| `GROWTHOS_PAID_PLAN_IDS=["pro","premium"]` | Paid mode is limited to configured plan IDs or explicit GrowthOS entitlement. |
 | `GROWTHOS_IMAGE_MODE=disabled` | Missing item image does not trigger image generation or asset rendering. |
 | `GROWTHOS_REVIEW_REPLY_MODE=manual_paste_guarded` | Review reply requires pasted text and triage before draft. |
 | offer/quick-reply/photo/multi-outlet pilot flags disabled | No pilot-only UI or API path appears. |
@@ -34,12 +36,14 @@
 | --- | --- |
 | Item unavailable | Kit must not promote it. |
 | Price changed after kit generation | Kit becomes stale before copy/export. |
+| Project unavailable after kit generation | Copy/share/download is blocked as stale. |
 | Public menu link missing | Kit either omits link or blocks link-based destination. |
 | Store closed today | Kit does not imply the item is available today. |
 | Item has no image and image mode is disabled/existing-only | Text and Staff Brief kits still work without generating image. |
 | Review text not supplied | Review reply cannot be generated. |
 | Staff Brief item unavailable | Staff Brief must not suggest it and should place it in avoid list if relevant. |
 | Store-specific facts differ | No cross-store kit reuse unless facts are identical. |
+| Legacy project ID from another store | Source project read returns no Growth Kit data. |
 
 ## 4. Output Safety Tests
 
@@ -59,6 +63,7 @@
 | --- | --- |
 | Missing auth | Route rejects. |
 | Wrong tenant/store | Route rejects and logs security event. |
+| Valid session with another store's project ID | Route rejects or returns no eligible kit before generation/export. |
 | Invalid body | Zod validation rejects. |
 | Rate limit exceeded | Route rejects before expensive work. |
 | Safe Mode on | Provider calls are blocked. |
@@ -70,10 +75,12 @@
 | Test | Expected result |
 | --- | --- |
 | Open Growth Kits home | One summary read target. |
-| Generate deterministic action queue | Bounded reads and one summary write target. |
+| Generate deterministic action queue | Bounded reads and changed-only summary write target. |
 | Generate Staff Brief | No provider call and no extra write until kit/export action. |
-| Generate text kit | Capacity check before provider call; kit, summary, AI log, and capacity writes only as expected. |
-| Copy output | One export write and optional kit status update. |
+| Generate text kit | Deterministic V1 has no provider call; kit and summary writes only. |
+| Copy output | One export write plus changed-only kit/summary status updates. |
+| Repeat refresh with unchanged facts/actions | No summary write. |
+| Copy/share unchanged latest-kit status | No summary status write. |
 | Mark used | Execution signal only; no ROI/order/customer field written. |
 | View history | Paginated query only. |
 | No activity | No background writes. |
@@ -87,6 +94,8 @@
 | Long item name | Text wraps without layout overlap. |
 | Copy action | Clipboard copy succeeds and records export. |
 | Stale kit | Copy action blocked or warning requires regeneration. |
+| Blocked preflight output | Copy/share/download is blocked until the output is regenerated or reviewed. |
+| Staff-only preflight issue | Safe public outputs are not blocked by a staff-only guard result. |
 | Staff Brief Pack | Main line, avoid list, menu fallback, copy/share/mark-used render correctly. |
 | Used History UI flag disabled | No analytics/history dashboard appears beyond core execution signals. |
 | Direct posting | No direct posting control appears. |
@@ -100,6 +109,7 @@
 | Long text | Wraps without overlapping buttons. |
 | Kit detail sheet | All outputs are reachable without dense desktop UI. |
 | Stale kit | Warning is visible and action remains clear. |
+| Blocked preflight output | Copy/share is blocked and owner sees a short warning. |
 | Refresh/generation failure | Latest loaded kit remains visible with retry state. |
 | Staff Brief mobile card | Copy/share/mark-used works with 44px targets. |
 | Free/base store | Cannot access through mobile route or deep link. |
@@ -108,11 +118,11 @@
 
 | Test | Expected result |
 | --- | --- |
-| Positive review pasted | Short thank-you draft generated. |
+| Positive review pasted | Short deterministic thank-you draft generated. |
 | Negative review pasted | Calm owner-approved draft generated or warning shown. |
 | Volatile review pasted | System can advise not to reply publicly. |
 | Food-safety/legal review pasted | Public reply can be blocked or escalation warning shown. |
-| Raw review text on error | Raw review text is not logged. |
+| Raw review text on error | Raw review text is not logged or persisted. |
 | No pasted text | Generate button disabled. |
 | GBP ingestion unavailable | No automatic review fetch is attempted. |
 
@@ -156,6 +166,7 @@
 Implementation is not complete until:
 
 - desktop and mobile paths pass
+- deterministic dry run passes with `npm run verify:growthos`
 - API security tests pass
 - entitlement bypass tests pass
 - Firestore rules/indexes are updated and deployed if changed

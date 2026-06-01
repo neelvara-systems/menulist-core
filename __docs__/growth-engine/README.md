@@ -1,20 +1,20 @@
 # Growth Engine - Documentation Hub
 
-**Product:** Growth Engine
-**Product code:** `GE` proposed, not implemented
-**Status:** Stage 1 planning docs only. No product routes, Firebase targets, functions, or feature flags are active.
+**Product:** Growth Engine, with `MenuNexus` recommended as the naming candidate after preliminary availability checks
+**Product code:** `GE` proposed, not implemented; `MN` recommended if `MenuNexus` is secured before implementation
+**Status:** Planning docs only. No product routes, Firebase targets, functions, or feature flags are active.
 **Created:** May 31, 2026
-**Product decision:** Treat Growth Engine as a separate internal acquisition product for MenuList lead generation, not as GrowthOS/Growth Kits and not as a MenuList owner feature.
+**Product decision:** Treat Growth Engine as MenuList-owned distribution automation infrastructure, not as a generic lead-gen stack, not as GrowthOS/Growth Kits, and not as a MenuList owner feature.
 
 ---
 
 ## Current Decision
 
-Growth Engine should be designed as separate acquisition infrastructure that helps MenuList find, qualify, contact, and route prospective businesses into existing MenuList onboarding flows.
+Growth Engine should be designed as separate distribution automation infrastructure that helps MenuList find distribution targets, detect menu truth gaps, route owners into claim/onboarding, activate canonical MenuList truth, publish owned surfaces, notify discovery systems, monitor freshness, and measure distribution coverage.
 
 The active definition is:
 
-> Growth Engine is an internal acquisition control system that turns qualified lead supply into tracked MenuList onboarding starts and completions under strict cost, consent, suppression, and channel-safety rules.
+> Growth Engine is the internal MenuList distribution automation system that turns qualified business targets into claimed MenuList truth, owned public surfaces, discovery feeds, channel-safe owner routes, freshness monitoring, and attribution.
 
 It is not:
 
@@ -22,9 +22,10 @@ It is not:
 - a customer-facing MenuList feature
 - a CRM
 - a generic SDR bot
+- a third-party growth tool wrapper
 - a website-demo factory
 - an owner onboarding system
-- a public business truth system
+- a replacement for MenuList's public business truth system
 
 ## Repo Strategy Recommendation
 
@@ -35,7 +36,7 @@ Use the same repo as a product-scoped monorepo module, but do not build it insid
 | Clone MenuList and build there | Reject | Duplicates security, auth, routing, Firebase, and onboarding contracts; creates drift exactly where lead attribution needs current MenuList truth. |
 | Build as a normal MenuList feature | Reject | Acquisition data, PII, cold outreach, provider tokens, and campaign controls do not belong in owner/customer MenuList surfaces. |
 | Same repo, separate product boundary | Recommended | Reuses shared auth/security/routing patterns while keeping code, Firebase, functions, routes, docs, and product identity isolated. |
-| Separate repo later | Conditional | Use only after Growth Engine has its own team, deploy cadence, security boundary, or external product ambitions. |
+| Separate repo after independence | Conditional | Use only if Growth Engine has its own team, deploy cadence, security boundary, or external product ambitions. |
 
 The recommended first implementation shape is:
 
@@ -46,6 +47,7 @@ separate Firebase QA/prod projects
 separate Cloud Functions package
 separate product host when approved
 one narrow MenuList integration contract for onboarding routes and feedback
+owned distribution contracts for public surfaces, sitemaps, feeds, truth packets, GBP handoff, and attribution
 ```
 
 ## Why This Is Separate From GrowthOS
@@ -59,9 +61,9 @@ Growth Engine is different:
 | MenuList | SMB owner/customer | Keep public business truth current | Menus, official pages, QR, screens, PDFs |
 | GrowthOS / Growth Kits | Existing MenuList owner | Use current MenuList truth in a local action | Copy/share/print kit |
 | KitStamp | Creator/operator | Prepare approved content kits | Final Content Kit |
-| Growth Engine | Internal growth team | Acquire and route MenuList leads | Qualified lead, campaign, message, attribution, onboarding feedback |
+| Growth Engine | Internal growth/distribution team | Acquire, activate, distribute, and monitor MenuList truth | Distribution target, claim route, canonical surface, feed/ping, channel route, attribution, freshness health |
 
-Growth Engine may generate a lead preview or audit artifact, but that artifact is never MenuList truth and never a public claim about the business.
+Growth Engine may generate a lead preview or audit artifact, but that artifact is never MenuList truth and never a public claim about the business. Public distribution starts only after owner confirmation or an approved MenuList verification path.
 
 ## Document Map
 
@@ -69,6 +71,9 @@ Growth Engine may generate a lead preview or audit artifact, but that artifact i
 | --- | --- |
 | [Decision Brief](./growth-engine_decision-brief.md) | Founder-level product and repo decision. |
 | [ChatGPT Review](./growth-engine_chatgpt-review-2026-05-31.md) | Review of the attached conversation, accepted/rejected points, and risks. |
+| [Distribution Architecture](./growth-engine_distribution-architecture.md) | New direction lock: lead gen becomes MenuList-owned distribution infrastructure. |
+| [Automation Workflow Blueprint](./growth-engine_automation-workflow-blueprint.md) | Implementation-ready automation model based on researched GTM workflows and MenuList-specific distribution needs. |
+| [Naming Shortlist](./growth-engine_naming-shortlist.md) | Recommended product name after preliminary domain, search, and company-name availability signals. |
 | [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md) | Second-pass web-researched gap review from the perspective of operating the product. |
 | [Specification](./growth-engine_spec.md) | Business requirements, scope, user flows, and acceptance criteria. |
 | [Implementation Plan](./growth-engine_impl.md) | Architecture, file layout, modules, APIs, workers, and build order. |
@@ -83,30 +88,25 @@ Growth Engine may generate a lead preview or audit artifact, but that artifact i
 | [Infrastructure Freeze](./doctrine/03-infrastructure-freeze-v1.md) | 3-year architecture target. |
 | [Separation Playbook](./doctrine/04-product-separation-playbook.md) | Product and repo separation rules. |
 
-## Implementation Gate
+## Implementation Readiness
 
-Before implementation starts:
+The docs are ready for implementation planning with these locked decisions:
 
-- Confirm product code `GE` or choose another 2-character code.
-- Confirm final internal name: recommended `Growth Engine`.
-- Confirm first domain or internal route strategy; no public domain is required for the first build.
-- Confirm Firebase projects: proposed `growth-engine-qa` and `growth-engine`.
-- Confirm source policy registry: allowed sources, allowed fields, retention, raw payload rules, and approval owner.
-- Confirm no Google Maps scraped content is rehosted, stored as canonical truth, or used to create public pages.
-- Confirm email provider, sender domain, SPF/DKIM/DMARC readiness, unsubscribe endpoint, bounce handling, and spam-rate monitoring.
-- Confirm WhatsApp posture remains assisted-only until opt-in proof, approved templates, and legal/channel review exist.
-- Confirm jurisdiction/channel matrix for India, US, or both before campaign creation is implemented.
-- Confirm global consent, unsubscribe, DNC, wrong-contact, and complaint ledger.
-- Confirm first MenuList onboarding flow inventory.
-- Confirm private/noindex artifact QA, expiry, owner complaint, and takedown workflow.
-- Confirm provider decision matrix and vendor/data-processor register.
-- Confirm AI eval datasets and pass thresholds for scoring, DNC, pricing, and message safety.
-- Confirm incident severity, owner, evidence export, and kill-switch runbook.
-- Confirm dry-run report is mandatory before any campaign launch.
-- Confirm global kill switch and channel-level kill switches exist before any sending.
-- Keep all feature flags default off.
+- Product name remains `Growth Engine` until `MenuNexus` is purchased and company-name checks clear.
+- Product code is `GE` for first implementation. Reserve `MN` only if the rename is secured before product constants are added.
+- Route strategy is internal/admin only. No public Growth Engine site or host.
+- Firebase projects are `growth-engine-qa` and `growth-engine`.
+- Email adapter is Amazon SES first, with `reach.menulist.ai` or equivalent dedicated subdomain.
+- Jurisdiction policy supports India, US, and `GLOBAL_REVIEW` records.
+- Manual CSV is mandatory; Apify-like adapters are candidate-discovery only after source policy approval.
+- MenuList canonical surface resolver/bridge owns public URL truth. Growth Engine must not hardcode public URL patterns.
+- Google Business Profile, Apple Business Connect, and Bing Places are owner-authorized distribution handoffs only.
+- WhatsApp remains assisted unless explicit opt-in, approved templates, provider readiness, and policy review exist.
+- All feature flags stay default off.
 
-Implementation must start with operating gates, not sending. Source policy, channel policy, sender readiness, suppression, onboarding inventory, artifact review, evals, and incident controls are first-slice requirements.
+Implementation must include owned distribution gates and owned automation gates, not only sending gates. Source policy, channel policy, sender readiness, suppression, target registry, workflow engine, enrichment waterfalls, decision snapshots, AI worker registry, canonical surface publishing, discovery publishing, menu feed export readiness, onboarding inventory, artifact review, evals, and incident controls are launch-baseline requirements.
+
+The only non-code blocker is external: purchase/protect `menunexus.com` and complete final MCA/company-name and trademark checks before renaming product constants, folders, Firebase projects, or public-facing assets.
 
 ## Cost Impact Of This Documentation
 

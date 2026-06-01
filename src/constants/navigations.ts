@@ -26,6 +26,7 @@ export const NAVIGARIONS_ROUTINGS = {
     BUSINESS_SETTINGS: `/business-settings`,
     DASHBOARD: `/dashboard`,
     TODAY: `/today`,  // Social Content - "What should I do today?"
+    GROWTH_KITS: `/growth-kits`,
     PROJECTS: `/projects`,
     TRANSACTIONS: `/transactions`,
     MENU: `/menu`,
@@ -75,6 +76,7 @@ export type NavItemType = { key?: any, label: string, route: string, defaultRout
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
     { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
+    { label: 'Growth Kits', route: NAVIGARIONS_ROUTINGS.GROWTH_KITS, icon: LuSparkles },
     { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart },
     {
         label: 'Users',

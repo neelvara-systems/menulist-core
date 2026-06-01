@@ -10,22 +10,34 @@
 | Test | Expected |
 | --- | --- |
 | Growth Engine lead data is queried from MenuList Firestore | Fails; lead data must use Growth Engine Firebase. |
-| Growth Engine writes MenuList menu/business truth | Fails; only tracked-route feedback bridge is allowed. |
+| Growth Engine writes MenuList menu/business truth directly | Fails; only approved bridge contracts are allowed. |
 | Growth Engine uses GrowthOS folders or `GR` product ID | Fails; GrowthOS/Growth Kits is separate. |
 | Growth Engine creates a public lead demo page by default | Fails; artifacts are private/noindex unless separately approved. |
+| Growth Engine uses a third-party CRM/outreach tool as system of record | Fails; owned target registry, distribution queue, and attribution are required. |
 
 ## 2. Source Import Tests
 
 | Test | Expected |
 | --- | --- |
 | Source run starts without approved source policy | Blocked. |
-| Source run imports candidates | Candidates are staged, not messaged. |
+| Source run imports candidates | Candidates are held, not messaged. |
 | Duplicate business appears in same run | Dedupe prevents duplicate lead creation. |
 | Existing DNC identity appears in import | Lead is suppressed or held. |
 | Source payload includes photos/reviews | Restricted content is not rehosted or stored as durable facts. |
 | Source payload includes blocked fields | Blocked fields are dropped or run is held by policy. |
 | Source policy retention is missing | Import is blocked. |
 | Source run exceeds budget | Run is blocked or requires approval. |
+
+## 2B. Distribution Target Tests
+
+| Test | Expected |
+| --- | --- |
+| Candidate has no distribution target identity | Held before campaign or publishing. |
+| Target maps to duplicate business/location/menu key | Merged or held for review. |
+| Target is candidate-only and public surface publish is requested | Blocked. |
+| Target has owner-confirmed truth | Canonical surface can enter distribution readiness checks. |
+| Target has stale MenuList truth | Freshness review required before discovery publishing. |
+| Private artifact is added to sitemap | Blocked. |
 
 ## 2A. Policy And Readiness Tests
 
@@ -39,6 +51,30 @@
 | Provider missing vendor/register entry | Blocked before use. |
 | Onboarding route selected outside approved flow inventory | Blocked. |
 | AI classifier enabled without eval threshold pass | Blocked. |
+| Canonical surface contract missing | Distribution publishing blocked. |
+| Structured data contract missing | Distribution publishing blocked. |
+| Discovery publisher disabled | Sitemap/IndexNow/feed/truth-packet jobs remain blocked. |
+| Sender assignment missing for email campaign | Blocked. |
+| Campaign changes sender halfway through target conversation | Blocked unless incident-owner override exists. |
+| Send outside target timezone window | Held until eligible window. |
+| Sender ramp would exceed daily cap | Send held or rescheduled. |
+
+## 2C. Automation Workflow Tests
+
+| Test | Expected |
+| --- | --- |
+| Workflow run starts without idempotency key | Blocked. |
+| Workflow step runs while global automation kill switch is active | Blocked. |
+| Workflow step retries past retry cap | Blocked and incident/work item created. |
+| Workflow run exceeds budget policy | Non-critical steps pause. |
+| Enrichment waterfall runs without approved source policy | Blocked. |
+| Enrichment waterfall finds valid evidence in an early step | Later paid steps are skipped. |
+| Same unchanged target runs the same AI worker twice | Cached typed output is reused or duplicate spend is blocked. |
+| AI worker output schema does not validate | Output is blocked and work item created. |
+| AI worker eval status is stale | Autonomy is blocked. |
+| Decision snapshot missing evidence or rejected facts | Target action is blocked. |
+| Low-confidence identity match requests public publish | Blocked and human review required. |
+| Operator work item is closed without required role | Blocked. |
 
 ## 3. Campaign Dry-Run Tests
 
@@ -108,6 +144,28 @@
 | Onboarding completed | North-star metric updates. |
 | Unknown routeId feedback arrives | Stored in unmatched feedback queue; no crash. |
 
+## 8B. Distribution Publishing Tests
+
+| Test | Expected |
+| --- | --- |
+| Owner-confirmed menu publishes canonical page | Surface state records canonical URL, indexability, structured data, sitemap state, and freshness state. |
+| Canonical page lacks Restaurant/Menu/MenuItem structured data | Surface health marks invalid and discovery publishing is blocked. |
+| Sitemap lastmod uses generation time instead of content modified time | Test fails. |
+| Sitemap includes URL from another host | Test fails. |
+| Sitemap exceeds URL or size limit without sitemap index | Test fails. |
+| IndexNow job submits unchanged URL repeatedly | Job is deduped or blocked. |
+| Google Indexing API is called for a menu page | Test fails. |
+| Menu feed export includes candidate-only facts | Export is blocked. |
+| Menu feed export has item outside a section | Export validation fails. |
+| Truth packet contains private contact data | Test fails. |
+| Truth packet contains unconfirmed scraped menu data | Test fails. |
+| GBP handoff starts without owner authorization | Blocked. |
+| GBP GoogleLocations endpoint used for lead generation | Test fails. |
+| Owner sets MenuList URL as GBP menu link | Handoff state records completion and attribution. |
+| Apple Business Connect handoff starts without owner authorization | Blocked. |
+| Bing Places handoff starts without owner authorization | Blocked. |
+| External listing handoff imports external listing facts as MenuList truth | Test fails. |
+
 ## 8A. Artifact Tests
 
 | Test | Expected |
@@ -127,6 +185,8 @@
 | Inbox opens | Reads bounded inbox items. |
 | Raw event scan attempted by dashboard | Fails test. |
 | AI worker called twice for same unchanged source hash | Uses cached typed result or blocks duplicate spend. |
+| Enrichment waterfall continues after valid evidence exists | Later paid provider steps are skipped. |
+| Workflow dashboard scans raw step events | Fails test. |
 | BigQuery query exceeds max bytes billed | Query is blocked. |
 | Source provider daily cap exceeded | Non-critical source jobs pause. |
 | Email provider spend cap exceeded | Email sends pause or require admin approval. |

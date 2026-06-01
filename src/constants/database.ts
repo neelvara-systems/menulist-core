@@ -69,6 +69,10 @@ export const DB_COLLECTIONS = {
     CAMPAIGNS: "campaigns",
     CAMPAIGN_EXPORTS: "campaignExports",
 
+    // GrowthOS Add-on / Growth Kits
+    GROWTHOS_KITS: "growthosKits",
+    GROWTHOS_EXPORTS: "growthosExports",
+
     // Owner Control Usage (Authority Maturation Tracking)
     OWNER_CONTROL_USAGE: "ownerControlUsage",
 

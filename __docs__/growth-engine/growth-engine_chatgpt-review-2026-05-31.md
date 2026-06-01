@@ -24,7 +24,7 @@ The correct product is not a website generator and not GrowthOS.
 
 The correct product is:
 
-> Growth Engine: an internal acquisition control system that safely turns lead intelligence into tracked MenuList onboarding.
+> Growth Engine: the internal MenuList distribution system that turns qualified business targets into claimed MenuList truth, owned public surfaces, discovery feeds, channel-safe owner routes, freshness monitoring, and attribution.
 
 ChatGPT was right that personalized evidence artifacts convert better than generic pitches. It was wrong to let the artifact become a public generated website or a source-rights problem.
 
@@ -54,7 +54,9 @@ After reviewing current channel, cost, and market sources, the original docs nee
 | TRAI 2025 UCC amendments tighten commercial communication accountability in India. | India outreach needs jurisdiction/channel policy before scale, especially for calling, SMS, and WhatsApp-like behavior. |
 | DPDP requires lawful purpose, notice/consent or legitimate use, rights handling, and personal data minimization. | Add data subject request workflow, vendor register, retention classes, masking, and proof ledger. |
 | Firestore and BigQuery costs can grow through reads, index reads, event scans, and bytes processed. | Dashboards must use summaries; analytics must use partitioning, clustering, and max-bytes-billed controls. |
-| Apollo, Clay, Instantly, Smartlead, and HubSpot already cover generic lead data, enrichment, sequencing, deliverability, and CRM. | Growth Engine must not become a generic outbound platform. Its moat is MenuList-specific qualification, artifact safety, tracked onboarding, and completed onboarding attribution. |
+| Apollo, Clay, Instantly, Smartlead, and HubSpot already cover generic lead data, enrichment, sequencing, deliverability, and CRM. | Growth Engine must not become a generic outbound platform. Its moat is MenuList-owned target identity, truth activation, canonical surfaces, discovery publishing, and attribution. |
+| LocalBusiness/Menu structured data, sitemaps, IndexNow, menu feeds, and GBP menu handoffs are distribution rails that MenuList can own. | Add distribution target registry, canonical surface publisher, discovery publisher, menu feed exporter, GBP handoff manager, and truth packet publisher. |
+| Google's Indexing API is officially scoped to job posting and livestream pages. | Do not use it for MenuList menu/business pages. Use sitemaps, crawlable pages, and approved discovery protocols instead. |
 
 New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md).
 
@@ -68,7 +70,8 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | Suppression-first architecture | Accept | DNC, unsubscribe, wrong number, complaint, and channel eligibility must exist before sends. |
 | Campaign dry-run | Accept and make mandatory | Prevents unsafe sends and uncontrolled cost. |
 | Summary-doc dashboards | Accept | Required for Firestore cost control. |
-| Email-first production slice | Accept | Better proving ground than starting with WhatsApp automation. |
+| Email inside launch baseline | Accept | Better proving ground than starting with WhatsApp automation, but not the product center. |
+| Owned distribution layer | Accept | MenuList must own target registry, canonical surfaces, discovery publishing, feed exports, truth packets, and freshness health. |
 | WhatsApp assisted first | Accept | Fits channel risk better than bulk automation. |
 | BigQuery for analytics | Accept | Keeps Firestore focused on operational state. |
 | AI evals before autonomy | Accept | DNC, pricing, banned claims, and channel routing must be measured. |
@@ -81,7 +84,7 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | Generate websites for scraped leads | Use private/noindex claim or public-info audit artifacts only. Do not create mass public sites. |
 | Google Maps as lead source | Treat as one source adapter candidate, not source of truth; do not store/rehost restricted content. |
 | AI can write messages | AI writes only inside approved templates, variables, offer angles, and safety guardrails. |
-| Omnichannel from day one | Build acquisition spine first; start with email and WhatsApp-assisted before wider channels. |
+| Omnichannel from day one | Build owned distribution spine first; enable channels only when policy and readiness pass. |
 | Internal "Growth Engine" in MenuList | Keep same repo but separate product code, Firebase, functions, and route groups. |
 
 ## 6. Rejected Ideas
@@ -92,14 +95,17 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | Rehost Google photos/reviews/profile content | Google terms and source-rights risk; also misrepresents businesses. |
 | Fully automate WhatsApp/calls early | Channel, complaint, DNC, and India UCC risk are too high. |
 | Store scraped data as business truth | MenuList truth must be owner-confirmed or system-verified, not scraped. |
+| Submit private artifacts to search/feed systems | Private artifacts are noindex and expiring; public distribution starts only from confirmed MenuList truth. |
+| Use Google Indexing API for menu pages | Official scope is not restaurant menu pages. |
+| Use GBP APIs for lead generation | GBP policies require owned/authorized locations and prohibit GoogleLocations lead-gen use. |
 | Build as GrowthOS | Existing GrowthOS docs define GrowthOS as owner-facing Growth Kits, not lead acquisition. |
 | Clone MenuList repo | Creates contract drift and duplicated security/auth/routing code. |
 
 ## 7. Product Boundary Decision
 
-Growth Engine may read limited MenuList onboarding flow metadata and receive feedback events from MenuList, but it must not own MenuList onboarding, business verification, menu extraction, public pages, pricing, or activation.
+Growth Engine may read limited MenuList onboarding flow metadata and receive feedback/distribution events from MenuList, but it must not own MenuList onboarding, business verification, menu extraction, public truth, pricing, or activation.
 
-The only approved bridge is a tracked route and feedback API contract.
+The approved bridges are tracked routes, feedback events, canonical surface state, discovery publish events, and attribution. MenuList remains the truth owner.
 
 ## 8. Documentation Outcome
 

@@ -2,7 +2,7 @@
 
 **Feature:** GrowthOS Add-on for MenuList higher-tier clients
 **Owner-facing label:** Growth Kits
-**Status:** Stage 1 planning docs only. Implementation not started. Feature flag must default off.
+**Status:** Stage 2 implementation added behind disabled feature flag. Feature flag defaults off.
 **Created:** May 31, 2026
 **Product decision:** Build inside MenuList as a paid add-on, not as a standalone product.
 
@@ -98,7 +98,39 @@ Old docs remain historical direction and are now archived under this folder:
 - `__docs__/growthos-addon/_archive/growthos-command-center-2026-05-31/`
 - `__docs__/strategy/product-positioning-map.md`
 
-This folder is now the active GrowthOS implementation-planning source.
+This folder is now the active GrowthOS implementation source.
+
+## June 1, 2026 Implementation Update
+
+GrowthOS V1 is implemented as a disabled-by-default MenuList add-on under the owner label `Growth Kits`.
+
+Implemented V1 scope:
+
+- feature flags and entitlement helpers
+- desktop route `/growth-kits`
+- desktop sidebar visibility only when flag and entitlement pass
+- small Today entry point only for eligible stores
+- mobile Today card with latest-kit fallback behavior
+- deterministic source facts, action ranking, preflight, kit generation, and Staff Brief Pack
+- guarded deterministic review reply from owner-pasted text
+- API routes for refresh, kit generation, export logging, and review guard
+- Firestore rules for `platformSummary/growthos_{sId}`, `growthosKits`, and `growthosExports`
+- no direct posting, scheduler, image generation, offer builder, used-history UI, ROI, or provider call in V1
+
+Implementation evidence:
+
+| Layer | Evidence |
+| --- | --- |
+| Flags | `src/config/features.ts` |
+| Data types | `src/types/growthos.ts` |
+| Source facts and kit logic | `src/lib/growthos/` |
+| Client DAL and hook | `src/database/growthos/index.ts`, `src/hooks/useGrowthOS.ts` |
+| Server persistence | `src/database/growthos/server.ts` |
+| API routes | `src/app/api/growthos/` |
+| Desktop route | `src/app/(main)/growth-kits/page.tsx`, `src/components/templates/main-app/growthos/` |
+| Today entry point | `src/components/templates/main-app/today/index.tsx` |
+| Mobile support | `src/components/mobile/components/GrowthKitsMobileCard.tsx`, `src/components/mobile/screens/MobileHoursScreen.tsx` |
+| Rules | `firestore.rules` |
 
 ## Why This Is Worth Building
 
@@ -115,7 +147,7 @@ This folder is now the active GrowthOS implementation-planning source.
 
 | Existing foundation | Evidence |
 | --- | --- |
-| Today/Social Content already exists and is enabled as the owner action surface | `src/config/features.ts:290-326` |
+| Today/Social Content already exists and is enabled as the owner action surface | `src/config/features.ts` |
 | Campaign types and execution surfaces already model post/send/print/display outputs | `src/types/campaigns.ts:7-58` |
 | Today summary uses a one-read Firestore pattern | `src/types/campaigns.ts:195-250`, `src/database/campaigns/index.ts:49-113` |
 | Campaign engine already generates candidates from available menu items | `src/lib/campaigns/engine.ts:270-398` |
@@ -123,8 +155,9 @@ This folder is now the active GrowthOS implementation-planning source.
 | Caption generation already uses AI capacity checks and records AI operations | `src/app/api/campaigns/caption/route.ts:31-214` |
 | AI capacity is checked before provider calls | `src/lib/ai/capacityCheck.ts:71-144` |
 | AI unit costs already include campaign captions, review reply suggestions, and image generation | `src/constants/AI/unitCosts.ts:19-92` |
-| Direct posting is already explicitly disabled for Social Content | `src/config/features.ts:385-399` |
-| The Today Weekly Growth Pack is paused and flag-off | `src/config/features.ts:401-420` |
+| Direct posting is already explicitly disabled for Social Content | `src/config/features.ts` |
+| The Today Weekly Growth Pack is paused and flag-off | `src/config/features.ts` |
+| GrowthOS direct posting, image mode, offer builder, quick replies, photo prompts, multi-outlet mode, used history UI, and advanced low-data mode are gated separately | `src/config/features.ts` |
 | GBP Sync remains feature-flagged and blocked on API access | `__docs__/gbp-sync/README.md:1-24`, `src/config/features.ts:656-673` |
 | Reviews and reputation docs remain API-blocked for ingestion | `__docs__/reviews-reputation/README.md:1-23`, `__docs__/reviews-reputation/README.md:75-90` |
 | KitStamp is content preparation, not immediate growth execution | `__docs__/kitstamp/README.md:1-12`, `__docs__/strategy/product-positioning-map.md:28-68` |
@@ -168,20 +201,21 @@ The first approved implementation should be a paid add-on module inside MenuList
 | [Website Content](./growthos-addon_website.md) | Candidate public website/pricing copy for MenuList add-on pages. |
 | [Helpdoc](./growthos-addon_helpdoc.md) | Candidate owner help article. |
 | [Test Cases](./growthos-addon_test-cases.md) | Product, security, cost, desktop, mobile, and docs verification matrix. |
+| [Validation](./growthos-addon_validation.md) | Implementation validation commands, deploy result, and activation checks. |
 
 ## Implementation Gate
 
-Before code starts:
+Before activation:
 
-- Confirm add-on entitlement model and plan names.
-- Confirm public owner label: recommended `Growth Kits`.
-- Confirm no standalone route/domain.
-- Confirm `ENABLE_GROWTHOS_ADDON` defaults to `false`.
+- Keep `ENABLE_GROWTHOS_ADDON` defaulting to `false`.
+- Choose pilot stores or paid plan IDs.
+- Verify Firestore rules are deployed.
+- Run `npm run verify:growthos`.
+- Verify desktop and mobile with a real entitled store.
 - Confirm direct posting remains disabled.
-- Confirm initial outputs use manual copy/download/export only.
-- Confirm review support starts with manual owner-pasted review text only.
-- Confirm no new scheduler is added.
+- Confirm review support uses owner-pasted review text only.
+- Confirm no new scheduler is active.
 
 ## Cost Impact Of This Documentation
 
-No runtime Firebase cost change. This is documentation and planning only.
+Runtime Firebase cost remains zero while the master flag is off. When enabled, cost is owner-action driven: summary read, bounded refresh/generate reads, changed-only summary writes, kit write, and export write/status updates.

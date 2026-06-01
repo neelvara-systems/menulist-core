@@ -8,6 +8,7 @@ import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
+import { shouldShowGrowthOSNavigation } from "@lib/growthos/entitlements";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from "@lib/today/inactiveItemsReminder";
 import { buildTodayWeeklyGrowthPack } from "@lib/today/weeklyGrowthPack";
@@ -112,7 +113,7 @@ const TodayScreen = () => {
 
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading, mutate } = useTodayCampaigns();
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
-    const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { activeSubscription, storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(activeProject?.projectId || null);
     const { data: projects = [] } = useSWR<ProjectSummary[]>(
@@ -154,6 +155,11 @@ const TodayScreen = () => {
         hasMaintenanceCards,
     );
     const shouldShowMainActionHint = screenState === "action" && !hasPrimaryCampaign;
+    const shouldShowGrowthKitsEntry = shouldShowGrowthOSNavigation({
+        activeSubscription,
+        storeDetails,
+        storeId: storeDetails?.storeId,
+    }) && Boolean(hasPrimaryCampaign || hasOperationalCampaigns);
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
@@ -392,6 +398,21 @@ const TodayScreen = () => {
         );
     };
 
+    const renderGrowthKitsEntry = () => {
+        if (!shouldShowGrowthKitsEntry) return null;
+        return (
+            <Card className={styles.growthKitsEntry} size="small">
+                <div>
+                    <Text strong>Growth Kit ready</Text>
+                    <Text type="secondary">Prepare copy-ready messages from this menu action.</Text>
+                </div>
+                <Button type="primary" onClick={() => router.push('/growth-kits')}>
+                    Open Growth Kits
+                </Button>
+            </Card>
+        );
+    };
+
     // Feature not enabled state
     if (!isEnabled) {
         return (
@@ -450,6 +471,7 @@ const TodayScreen = () => {
                 />
                 <Text className={styles.todayDigest}>{todayDigest}</Text>
                 {renderInactiveItemsReminder()}
+                {renderGrowthKitsEntry()}
                 <EmptyState
                     canGenerate={Boolean(selectedProjectId)}
                     isGenerating={isGeneratingTodayActions}
@@ -508,6 +530,8 @@ const TodayScreen = () => {
             )}
 
             {renderInactiveItemsReminder()}
+
+            {renderGrowthKitsEntry()}
 
             {weeklyGrowthPack ? <WeeklyGrowthPack pack={weeklyGrowthPack} /> : null}
 

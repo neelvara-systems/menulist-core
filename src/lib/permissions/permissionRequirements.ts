@@ -22,6 +22,13 @@ const routeRequirements: Array<{
         },
     },
     {
+        matcher: (pathname) => pathname === "/growth-kits" || pathname.startsWith("/growth-kits/"),
+        requirement: {
+            anyOf: [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU, PERMISSIONS.MANAGE_MENU],
+            label: "Growth Kits",
+        },
+    },
+    {
         matcher: (pathname) => pathname === "/projects" || pathname.startsWith("/projects/"),
         requirement: {
             anyOf: [

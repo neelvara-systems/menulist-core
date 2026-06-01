@@ -3,6 +3,7 @@
 **Status:** No public website approved
 **Audience:** Internal docs only
 **Public route:** None
+**Name note:** `MenuNexus` is the recommended naming candidate after preliminary checks, but no public route should be created until domain purchase and company-name checks are final.
 
 ---
 
@@ -12,19 +13,21 @@ Growth Engine should not have a public marketing page at first.
 
 Reason:
 
-- It is internal acquisition infrastructure.
+- It is internal distribution infrastructure.
 - Publicly marketing outreach automation can damage trust.
-- Restaurants should see MenuList, not MenuList's internal acquisition machinery.
+- Restaurants should see MenuList, not MenuList's internal distribution machinery.
 - This product stores lead/contact/suppression data and should not look like a customer feature.
+- Its distribution surfaces are MenuList public menu/business surfaces, not a Growth Engine marketing site.
+- Naming availability does not create approval for a public site.
 
 ## 2. If An Internal Admin Page Is Needed
 
 Use internal product copy only:
 
 - **Page title:** Growth Engine
-- **Subtitle:** Lead acquisition, outreach safety, and tracked onboarding for MenuList.
+- **Subtitle:** Distribution targets, truth activation, owned surfaces, discovery publishing, and tracked onboarding for MenuList.
 - **Primary action:** Review today
-- **Secondary action:** Campaigns
+- **Secondary action:** Distribution targets
 
 ## 3. Internal Landing Sections
 
@@ -32,6 +35,12 @@ Use internal product copy only:
 
 Shows:
 
+- distribution targets
+- workflow run failures
+- AI eval failures
+- surface health alerts
+- freshness alerts
+- discovery publish failures
 - active campaigns
 - urgent safety alerts
 - interested replies
@@ -50,6 +59,31 @@ Shows:
 - caps
 - stop rules
 - outcomes
+
+### Distribution Targets
+
+Shows:
+
+- target identity
+- source policy
+- claim state
+- truth state
+- canonical URL
+- surface readiness
+- freshness status
+- discovery status
+
+### Discovery
+
+Shows:
+
+- sitemap inventory
+- changed URL queue
+- IndexNow submissions
+- menu feed exports
+- truth packet publishes
+- GBP handoff state
+- structured data checks
 
 ### Sources
 
@@ -88,9 +122,11 @@ No SEO targets.
 
 Growth Engine is not a public acquisition page and should not be indexed.
 
-## 6. Future Public Page Gate
+MenuList public menu/business surfaces remain the SEO and discovery surfaces. Growth Engine only operates the internal distribution controls behind them.
 
-A public page can be reconsidered only if Growth Engine becomes a separate market-facing product. That requires:
+## 6. Public Page Gate
+
+A public Growth Engine page can be reconsidered only if Growth Engine becomes a separate market-facing product. That requires:
 
 - separate product strategy
 - separate legal/compliance review

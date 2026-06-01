@@ -3,7 +3,7 @@
 **Status:** Second-pass planning audit after web research
 **Review date:** May 31, 2026
 **Audience:** Founder, growth manager, implementation owner
-**Purpose:** Capture what is still missing if the internal team tried to use Growth Engine tomorrow.
+**Purpose:** Capture what is still missing if the internal team tried to use Growth Engine as MenuList-owned distribution infrastructure.
 
 ---
 
@@ -34,26 +34,45 @@ This audit used current public/official sources for channel rules, cost shape, a
 
 Growth Engine is a valid product direction, but the first-pass docs were not yet build-ready.
 
-The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness: source permission, sender readiness, consent, suppression, provider cost, legal posture, artifact QA, AI evals, and incident handling need to be first-class product modules before the first send.
+The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness, automation readiness, and distribution readiness: source permission, automation workflows, enrichment waterfalls, decision snapshots, AI worker evals, sender assignment, operator work queues, sender readiness, consent, suppression, canonical surfaces, structured data, sitemaps, menu feed exports, truth packets, provider cost, legal posture, artifact QA, and incident handling need to be first-class product modules before the first send or public publish.
 
-Do not start implementation until these gates are locked:
+Implementation can start from the current docs, but no sending or public publishing is allowed until these gates are implemented:
 
 1. Approved source policy registry.
-2. Channel compliance matrix by country and channel.
-3. Sender-domain readiness and warm-up policy.
-4. Consent, unsubscribe, DNC, and complaint ledger.
-5. MenuList onboarding flow inventory.
-6. Artifact review and takedown workflow.
-7. Provider decision matrix and vendor register.
-8. AI eval dataset and pass thresholds.
-9. Incident severity and rollback runbook.
-10. Cost caps for source, email, AI, Firestore, and analytics.
+2. Distribution target registry.
+3. Owned automation workflow engine.
+4. Enrichment waterfall registry.
+5. Decision snapshot ledger.
+6. AI worker registry with eval dataset and pass thresholds.
+7. Sender assignment and pacing model.
+8. Operator workboard and exception queues.
+9. Canonical MenuList surface publishing contract.
+10. Structured data, sitemap, feed export, and truth-packet contracts.
+11. External listing handoff contract for GBP, Apple Business Connect, and Bing Places.
+12. Channel compliance matrix by country and channel.
+13. Sender-domain readiness and warm-up policy.
+14. Consent, unsubscribe, DNC, and complaint ledger.
+15. MenuList onboarding flow inventory.
+16. Artifact review and takedown workflow.
+17. Provider decision matrix and vendor register.
+18. Incident severity and rollback runbook.
+19. Cost caps for source, email, AI, Firestore, automation, discovery publishing, and analytics.
 
 ## 3. If I Used This Tomorrow
 
 | Operator step | Where I would get blocked | Required change |
 | --- | --- | --- |
 | Import leads | I would not know which source is legally approved, what fields can be retained, or whether scraping is allowed beyond experiment. | Add source policy registry with source terms, allowed fields, retention, provenance, and approval owner. |
+| Turn a lead into distribution | I would not know the business/location/menu target identity, claim state, truth state, or surface inventory. | Add distribution target registry. |
+| Automate repeated work | I would not know which trigger ran, which step failed, or whether retry/budget/kill-switch rules were checked. | Add automation workflow engine with typed runs and step events. |
+| Enrich target facts | I would not know source/provider order, cost, cache key, or when to stop. | Add enrichment waterfall registry and runner. |
+| Trust AI decisions | I would not know prompt version, eval state, source evidence, rejected facts, or confidence. | Add AI worker registry and decision snapshot ledger. |
+| Assign sender | I would not know which sender should keep the relationship or whether pacing/timezone is safe. | Add sender assignment and pacing model. |
+| Publish a menu page | I would not know whether the page is owner-confirmed, indexable, structured, fresh, and sitemap eligible. | Add canonical surface publisher and surface health monitor. |
+| Notify discovery systems | I would not know which changed URLs should enter sitemap/IndexNow/feed/truth-packet queues. | Add discovery publisher with changed-URL policy and idempotency. |
+| Produce a menu feed | I would not know whether export data matches entity/menu/section/item/price requirements. | Add menu feed exporter and feed validation fixtures. |
+| Guide GBP distribution | I would not know whether the owner authorized menu URL or preferred-source handoff. | Add GBP handoff manager; block lead-gen API usage. |
+| Guide Apple/Bing distribution | I would not know whether the owner authorized MenuList URL/action updates. | Add external listing handoff manager; block use as lead source or truth authority. |
 | Pick a campaign country | I would not know whether India, US, or both are in scope and which channel rules apply. | Add jurisdiction/channel matrix before any campaign creation. |
 | Send email | I would not know whether sender DNS, DMARC, unsubscribe headers, bounce handling, and spam-rate monitoring are ready. | Add sender-domain readiness module and block email until ready. |
 | Use WhatsApp | I would not know whether the contact opted in, what template is allowed, or whether the first message can be sent. | Keep WhatsApp assisted-only until explicit opt-in evidence, template approval, and policy review exist. |
@@ -77,20 +96,35 @@ The market already has strong generic tools:
 Growth Engine should not compete as a generic outbound platform. Its defensible job is narrower:
 
 ```txt
-MenuList-specific lead qualification
+MenuList-specific target qualification
 -> rights-safe private artifact
 -> safe outreach
 -> tracked MenuList onboarding
--> completed onboarding attribution
+-> owner-confirmed truth activation
+-> canonical surface publishing
+-> discovery publishing
+-> freshness monitoring
 ```
 
-That means the product should optimize for completed MenuList onboardings, not lead volume, message volume, or reply rate.
+That means the product should optimize for owner-confirmed MenuList truth coverage and freshness, not lead volume, message volume, or reply rate.
 
 ## 5. Product Gaps To Fill
 
 | Gap | Risk if missing | Required doc/product decision |
 | --- | --- | --- |
 | Source policy registry | Lead source turns into compliance and source-rights risk. | Every source must define allowed use, allowed fields, retention, raw payload policy, and approval owner. |
+| Distribution target registry | Leads do not become owned distribution coverage. | Every target needs business/location/menu identity, claim state, truth state, canonical URL, and surface inventory. |
+| Automation workflow engine | The system becomes scattered scripts and manual checks. | Define workflow, run, step, retry, idempotency, approval, budget, and kill-switch contracts. |
+| Enrichment waterfall engine | Data quality and cost become uncontrolled. | Ordered source/provider/AI steps with cache keys, stop conditions, and cost caps. |
+| Decision snapshot ledger | Operators cannot explain why a target was sent, held, published, or blocked. | Store evidence, rejected facts, scores, blockers, confidence, and next action. |
+| AI worker registry | Heavy AI use becomes unsafe and hard to measure. | Typed output schemas, prompt versions, eval thresholds, budgets, and blocked-output rules. |
+| Sender assignment and pacing | Deliverability and conversation continuity can break. | Preserve one sender per target conversation, target timezone windows, ramp, and sender-health blocks. |
+| Operator workboard | Human review becomes hidden in ad hoc chats/spreadsheets. | Queue every review, handoff, reply, health, freshness, cost, eval, and incident exception. |
+| Canonical surface publisher | MenuList cannot become distribution truth if it does not own public surfaces. | Public menu/business surfaces need indexability, canonical URL, structured data, sitemap state, and freshness state. |
+| Discovery publisher | Search and AI crawlers may not discover or refresh MenuList truth efficiently. | Own sitemaps, changed-URL queue, IndexNow, feed exports, and truth packets. |
+| Menu feed exporter | MenuList cannot participate in menu distribution ecosystems. | Create feed-ready entity/menu/section/item/price exports from confirmed MenuList truth. |
+| GBP handoff manager | Owners may not connect MenuList truth to their Google Business Profile. | Track owner-authorized menu URL/preferred-source handoff and block lead-gen API usage. |
+| External listing handoff manager | MenuList misses Apple Maps and Bing Places distribution opportunities. | Track owner-authorized GBP, Apple Business Connect, and Bing Places handoffs without treating them as source truth. |
 | Channel compliance matrix | Campaigns may violate email, WhatsApp, India telecom, or local marketing rules. | Campaigns must choose jurisdiction before channel eligibility is calculated. |
 | Sender-domain readiness | Poor deliverability or blocked email domain. | Email requires SPF/DKIM/DMARC status, unsubscribe headers, bounce handling, slow ramp, and spam-rate thresholds. |
 | Consent and suppression ledger | DNC/complaint may not propagate across campaigns. | One global ledger must override all outbound decisions. |
@@ -101,29 +135,53 @@ That means the product should optimize for completed MenuList onboardings, not l
 | Security/RBAC model | Operators may reveal contacts or launch campaigns beyond authority. | Roles must distinguish viewer, operator, growth manager, admin, compliance, and incident owner. |
 | Incident runbook | Complaint, provider block, or data error may continue too long. | Global/channel/provider kill switches plus severity, owner, export, and resolution checklist. |
 
-## 6. Revised First Slice
+## 6. Revised Launch Baseline
 
-The first slice should not start with sending. It should start with readiness:
+The baseline should not start with sending. It should start with distribution readiness:
 
 ```txt
 policy registry
+-> distribution target registry
+-> automation workflow engine
+-> enrichment waterfall
+-> AI worker and decision snapshot
 -> approved source import
 -> dedupe/suppression
+-> canonical surface contract
+-> discovery publisher
+-> menu feed exporter
+-> GBP handoff manager
+-> Apple/Bing handoff manager
 -> sender readiness
 -> onboarding flow inventory
 -> dry-run
 -> sample artifact QA
 -> email-only controlled send
+-> owner-confirmed truth activation
+-> public surface publish
+-> sitemap/feed/truth-packet readiness
 -> feedback attribution
 ```
 
-Only after that slice works should WhatsApp assisted be enabled.
+WhatsApp assisted should remain disabled until the channel policy, opt-in model, and suppression checks pass.
 
 ## 7. Launch Blockers
 
-These are launch blockers, not later improvements:
+These are launch blockers:
 
 - No approved source policy.
+- No distribution target registry.
+- No automation workflow engine.
+- No enrichment waterfall registry.
+- No decision snapshot ledger.
+- No AI worker eval gate.
+- No sender assignment and pacing model.
+- No canonical surface publisher.
+- No structured data validation.
+- No sitemap inventory and changed-URL policy.
+- No menu feed export readiness.
+- No GBP owner handoff policy.
+- No Apple/Bing owner handoff policy.
 - No sender domain with DNS/authentication verified.
 - No unsubscribe endpoint and one-click unsubscribe support where required.
 - No global suppression ledger.
@@ -149,7 +207,7 @@ But update the build decision:
 
 ```txt
 do not implement sending first
-implement operating gates first
+implement distribution gates first
 ```
 
 Growth Engine only becomes useful if it is safe to operate repeatedly. The product should feel like a control room for acquisition, not a tool that makes it easy to send more messages.

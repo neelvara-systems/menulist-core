@@ -79,6 +79,27 @@
   }
 }
 
+.growthKitsEntry {
+  border-radius: 8px;
+  margin-bottom: 16px;
+
+  :global(.ant-card-body) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    @media (max-width: 640px) {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+
+  span {
+    display: block;
+  }
+}
+
 // Loading State
 .loadingState {
   display: flex;

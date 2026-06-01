@@ -6,13 +6,53 @@
 
 ---
 
+## June 1, 2026 — Growth Engine Implementation Readiness Lock
+
+### Changed
+
+- **Growth Engine automation blueprint added** - Added `__docs__/growth-engine/growth-engine_automation-workflow-blueprint.md` to define owned workflows, enrichment waterfalls, AI worker registry, decision snapshots, sender assignment, operator work queues, and optimization loops based on researched GTM workflows.
+- **Implementation docs hardened** - Updated Growth Engine spec, implementation, Firebase, help, marketing, mobile, tests, doctrine, decision brief, gap audit, and distribution architecture so implementation requires automation contracts before sending or public distribution.
+- **External listing handoffs added** - Added owner-authorized Google Business Profile, Apple Business Connect, and Bing Places handoff tracking as distribution paths only, not lead sources or MenuList truth authorities.
+- **Naming shortlist added** - Added `__docs__/growth-engine/growth-engine_naming-shortlist.md` with `MenuNexus` as the recommended name after preliminary domain, search, and company-name availability signals.
+
+### Product Decision
+
+- **Distribution automation over outbound tooling** - Growth Engine must own workflows, waterfalls, decision evidence, AI gates, sender continuity, operator queues, discovery jobs, attribution, and freshness. Third-party tools can be low-level adapters only.
+- **AI-heavy but gated** - AI can clean, classify, score, draft inside templates, validate surfaces/feeds, and recommend actions, but DNC, complaint, wrong-contact, private-data, blocked-source, pricing, and unverified-truth fixtures need zero critical misses before autonomy.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
+## June 1, 2026 — Growth Engine Distribution Direction Lock
+
+### Changed
+
+- **Growth Engine direction updated** - Reframed Growth Engine from lead-generation infrastructure into MenuList-owned distribution infrastructure. Lead generation is now one input, while target acquisition, owner claim routing, canonical truth activation, owned surface publishing, discovery publishing, freshness monitoring, and attribution are the core.
+- **Distribution architecture added** - Added `__docs__/growth-engine/growth-engine_distribution-architecture.md` covering distribution target registry, canonical surface publisher, discovery publisher, menu feed exporter, GBP handoff manager, truth packet publisher, surface health, and freshness monitoring.
+- **Docs aligned to no-stage baseline** - Updated Growth Engine spec, implementation, Firebase, help, marketing, mobile, test cases, doctrine, gap audit, decision brief, and strategy docs so the launch baseline includes distribution gates rather than a send-first lead-gen flow.
+
+### Product Decision
+
+- **Owned distribution over third-party tools** - Growth Engine should own target identity, source policy, channel rails, public URL inventory, sitemaps, feed exports, discovery jobs, attribution, and freshness. Generic CRM, enrichment, and outreach tools must not become the system of record.
+- **Public distribution requires confirmed truth** - Sitemaps, IndexNow, menu feeds, truth packets, and canonical public surfaces must come from owner-confirmed or approved MenuList-verified truth, not scraped candidate data or private artifacts.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
 ## June 1, 2026 — Answerlattice Final Logo Source
 
 ### Changed
 
 - **Answerlattice logo source finalized** — `public/answerlattice-logo.svg` now matches the approved design-team SVG exactly and is the canonical source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives.
 - **Answerlattice logo derivatives refreshed** — Regenerated the Answerlattice logo PNGs, favicon files, PWA icons, OpenGraph image, and iOS splash images from the final SVG source without redrawing, recoloring, reshaping, or simplifying the mark.
-- **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, loaders, and dashboard navigation now render the canonical SVG through the shared `AnswerlatticeLogoMark` wrapper instead of the old inline-redrawn mark.
+- **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, and dashboard navigation now render the canonical SVG through the shared `AnswerlatticeLogoMark` wrapper instead of the old inline-redrawn mark.
+- **Answerlattice loader animation aligned** — Server and global Answerlattice loading states now use a dedicated inline SVG loader atom that keeps the final logo geometry, colors, filters, and canvas intact while matching the MenuList 3-second stroke-draw cycle.
 
 ### Cost
 

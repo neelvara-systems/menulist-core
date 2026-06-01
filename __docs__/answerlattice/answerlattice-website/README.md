@@ -150,13 +150,14 @@
 | `public/answerlattice-og-image.png` | 1200x630 public social preview image |
 | `public/answerlattice-logo.svg` | Design-final Answerlattice SVG copied exactly from the approved design source; canonical source for UI, metadata, favicon, PWA, OpenGraph, and splash derivatives |
 | `public/answerlattice-logo-mark-wide.png` | PNG derivative generated from the final SVG source for splash/icon generation and metadata-adjacent surfaces |
-| `src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx` | Shared logo wrapper that renders the exact canonical SVG across header, footer, diagrams, loaders, and dashboard navigation |
+| `src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx` | Shared logo wrapper that renders the exact canonical SVG across header, footer, diagrams, and dashboard navigation |
+| `src/components/atoms/answerlatticeLoaderLogo/index.tsx` | Loader-only inline SVG component that preserves the final logo geometry/colors and applies the same 3-second stroke-draw cycle used by the MenuList global loader |
 | `src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx` | Reusable Answerlattice hub, column-based sequence, and loop diagrams with logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | `src/app/sites/answerlattice/components/AnswerlatticeProofBlocks.tsx` | Reusable proof blocks for before/after examples, status snapshots, and fit/decision tiles that reduce text-heavy sections without adding runtime data calls |
 | `src/app/sites/answerlattice/components/SectionHeader.tsx` | Shared centered section-introduction treatment for eyebrow, heading, and supporting copy across homepage, product, high-intent public pages, and SEO page templates |
 | `public/answerlattice-favicon.ico` | Answerlattice favicon ICO generated from the final SVG logo source |
 | `public/answerlattice-icon-*.png` | Answerlattice square favicon/PWA icon family generated from the final SVG logo source |
-| `public/answerlattice-splash/apple-splash-*.png` | Answerlattice iOS startup image family used by Answerlattice website and dashboard PWA metadata |
+| `public/answerlattice-splash/apple-splash-*.png` | Answerlattice iOS startup image family rendered on the final logo canvas color so the approved logo does not appear inside a separate rectangle |
 | `public/answerlattice.webmanifest` | Answerlattice web app manifest |
 | `src/lib/answerlattice/pwaAssets.ts` | Answerlattice PWA startup image helper that keeps splash metadata out of root app defaults |
 | `src/app/sites/answerlattice/components/Header.tsx` | Shared header with desktop nav and right-side mobile drawer |
@@ -268,6 +269,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-31 | Reframed the homepage hero around the founder-readable launch promise "Launch your SaaS with support already built", made setup the primary CTA, and clarified that Answerlattice prepares docs/FAQs/answer drafts/widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed surfaces |
 | 2026-05-31 | Added Feedback Review as a buyer-facing product-feature page and added a homepage/product preview tab showing ratings, requests, suggestions, Support Board handoff, and answer-governance boundaries |
 | 2026-06-01 | Replaced all Answerlattice logo surfaces with the design-final SVG source, regenerated favicon/PWA/OpenGraph/splash derivatives from that source, and documented that the logo must not be redrawn, recolored, reshaped, or simplified |
+| 2026-06-01 | Regenerated Answerlattice splash screens on the final logo canvas color so the design-final logo remains unchanged without a visible rectangular splash box |
+| 2026-06-01 | Added a dedicated Answerlattice loader SVG atom using the final logo paths, gradients, filters, and a MenuList-matched 3-second stroke-draw animation for server and global loading states |
 | 2026-05-24 | Reframed the public website for AI-built SaaS founders: homepage opened with "You shipped the app. Now users need correct answers.", demo became the first proof, public copy teaches approved answers before advanced Answerlattice vocabulary, `/use-cases/ai-built-saas` was added, and `/use-cases/vibe-coded-saas` remains only a canonicalized campaign/search alias |
 | 2026-05-24 | Refined the shared homepage/Product support knowledge map diagram with an Answerlattice-colored logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | 2026-05-24 | Added a reusable animated Answerlattice diagram system and applied it to closed-loop, setup, how-it-works, product-area workflow, product-feature workflow/connected surfaces, SEO/use-case, install, security, resources, engine pillar, and system coverage sections |

@@ -6,6 +6,7 @@ import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import DashboardSidebarShell, { DashboardSidebarShellItem } from '@/components/shared/dashboardShell/DashboardSidebarShell';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
+import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
@@ -79,6 +80,13 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             // Hide Locations for non-master users or when feature is disabled
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
                 return canManageLocations;
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.GROWTH_KITS) {
+                return shouldShowGrowthOSNavigation({
+                    activeSubscription,
+                    storeDetails,
+                    storeId: storeDetails?.storeId,
+                });
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD

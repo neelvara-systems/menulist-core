@@ -1,5 +1,5 @@
 import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
-import AnswerlatticeAnimatedLogo from '@atoms/answerlatticeAnimatedLogo';
+import AnswerlatticeLoaderLogo from '@atoms/answerlatticeLoaderLogo';
 import styles from '@/app/page.module.css';
 
 export type BrandedPageLoaderBrand = 'menulist' | 'answerlattice';
@@ -23,12 +23,12 @@ function BrandedPageLoader({
         >
             <div className={`${styles.loadingWatermark} ${isAnswerlattice ? styles.loadingWatermarkAnswerlattice : ''}`.trim()} aria-hidden="true">
                 {isAnswerlattice
-                    ? <AnswerlatticeAnimatedLogo idPrefix="answerlattice-loader-watermark" />
+                    ? <AnswerlatticeLoaderLogo idPrefix="answerlattice-loader-watermark" />
                     : <AnimatedVerticalLogo showLabel={false} />}
             </div>
             <div className={`${styles.loadingLogo} ${isAnswerlattice ? styles.loadingLogoAnswerlattice : ''}`.trim()} aria-hidden="true">
                 {isAnswerlattice
-                    ? <AnswerlatticeAnimatedLogo idPrefix="answerlattice-loader-logo" />
+                    ? <AnswerlatticeLoaderLogo idPrefix="answerlattice-loader-logo" />
                     : <AnimatedVerticalLogo showLabel={false} />}
             </div>
         </main>

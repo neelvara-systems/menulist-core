@@ -18,38 +18,19 @@ const SPLASH_SIZES = [
   '640x1136',
 ];
 
-const BASE = [7, 7, 20];
-const VIOLET = [83, 72, 190];
-const INDIGO = [32, 32, 84];
-const CYAN = [194, 224, 222];
+const LOGO_CANVAS = [13, 13, 13];
 
 function clampChannel(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-function radial(x, y, cx, cy, radius) {
-  const dx = x - cx;
-  const dy = y - cy;
-  const distance = Math.sqrt((dx * dx) + (dy * dy));
-  if (distance >= radius) return 0;
-  const t = 1 - (distance / radius);
-  return t * t * (3 - (2 * t));
-}
-
 function writeBackground(png) {
-  const centerX = png.width * 0.5;
-  const centerY = png.height * 0.45;
-
   for (let y = 0; y < png.height; y += 1) {
     for (let x = 0; x < png.width; x += 1) {
       const index = ((png.width * y) + x) << 2;
-      const cyanGlow = radial(x, y, centerX - (png.width * 0.08), centerY - (png.height * 0.02), png.width * 0.43);
-      const violetGlow = radial(x, y, centerX + (png.width * 0.08), centerY + (png.height * 0.02), png.width * 0.48);
-      const baseLift = radial(x, y, centerX, centerY, png.width * 0.62);
-
-      png.data[index] = clampChannel(BASE[0] + (CYAN[0] * cyanGlow * 0.14) + (VIOLET[0] * violetGlow * 0.18) + (INDIGO[0] * baseLift * 0.2));
-      png.data[index + 1] = clampChannel(BASE[1] + (CYAN[1] * cyanGlow * 0.15) + (VIOLET[1] * violetGlow * 0.14) + (INDIGO[1] * baseLift * 0.2));
-      png.data[index + 2] = clampChannel(BASE[2] + (CYAN[2] * cyanGlow * 0.13) + (VIOLET[2] * violetGlow * 0.2) + (INDIGO[2] * baseLift * 0.2));
+      png.data[index] = LOGO_CANVAS[0];
+      png.data[index + 1] = LOGO_CANVAS[1];
+      png.data[index + 2] = LOGO_CANVAS[2];
       png.data[index + 3] = 255;
     }
   }

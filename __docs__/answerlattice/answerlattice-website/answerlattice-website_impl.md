@@ -19,11 +19,11 @@
 
 ## PWA Brand Assets
 
-Answerlattice website and dashboard metadata use `src/lib/answerlattice/pwaAssets.ts` for iOS startup image declarations. The generated startup PNGs live in `public/answerlattice-splash/apple-splash-*.png` and are produced by `npm run generate:answerlattice-splash` from the approved `public/answerlattice-logo-mark-wide.png` source mark.
+Answerlattice website and dashboard metadata use `src/lib/answerlattice/pwaAssets.ts` for iOS startup image declarations. The generated startup PNGs live in `public/answerlattice-splash/apple-splash-*.png` and are produced by `npm run generate:answerlattice-splash` from the approved `public/answerlattice-logo-mark-wide.png` source mark. The splash renderer fills the full startup canvas with the final logo canvas color before compositing the unchanged source mark so no separate logo rectangle appears.
 
 The root app layout defines default startup images in `metadata.appleWebApp.startupImage`; Answerlattice child layouts override that metadata with `getStaticAnswerlatticeAppleStartupImages()` so Answerlattice install/splash contexts use Answerlattice-specific startup images.
 
-`src/app/loading.tsx` exposes `brand="answerlattice"` for explicit Answerlattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Answerlattice runtime routes and swaps to the shared `AnswerlatticeAnimatedLogo` atom.
+`src/app/loading.tsx` exposes `brand="answerlattice"` for explicit Answerlattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Answerlattice runtime routes and swaps to the shared `AnswerlatticeLoaderLogo` atom. That loader-only component inlines the final logo paths, gradients, filters, and canvas color, then applies the same 3-second stroke-draw cycle as the MenuList global loader without changing final color or shape output.
 
 ---
 
@@ -332,7 +332,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 ### Prerequisites
 1. Add `answerlattice.com` domain to Vercel project dashboard
 2. Configure DNS for answerlattice.com pointing to Vercel
-3. Keep `public/answerlattice-og-image.png`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and Answerlattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. `public/answerlattice-logo.svg` is the design-final canonical source and must not be redrawn, recolored, reshaped, or simplified. Header, footer, diagrams, loaders, and dashboard navigation use the shared `AnswerlatticeLogoMark` wrapper so UI renders the exact canonical SVG.
+3. Keep `public/answerlattice-og-image.png`, `public/answerlattice.webmanifest`, `public/answerlattice-logo.svg`, `public/answerlattice-logo-mark-wide.png`, `public/answerlattice-favicon.*`, and Answerlattice icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. `public/answerlattice-logo.svg` is the design-final canonical source and must not be redrawn, recolored, reshaped, or simplified. Splash and loader canvases use the final logo canvas color instead of placing the approved logo on a contrasting panel. Header, footer, diagrams, and dashboard navigation use the shared `AnswerlatticeLogoMark` wrapper so UI renders the exact canonical SVG; server and global loaders use `AnswerlatticeLoaderLogo` so the same final SVG geometry can animate path strokes.
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)
@@ -443,3 +443,5 @@ Conversion analytics is client-side only:
 | 2026-05-28 | 1.2.44 | Added a shared centered section-header component across homepage, product, high-intent public pages, and SEO page templates so section intros use one visual treatment |
 | 2026-05-31 | 1.2.45 | Updated the homepage hero, metadata, structured data title, final CTA, and product-area support-control copy to the corrected launch-ready support positioning from the shared Answerlattice/Crisp conversation without claiming generated tickets or generated changelogs; follow-up pass restored the implemented feedback, ratings, and feature-request surface into public claims |
 | 2026-06-01 | 1.2.46 | Replaced all Answerlattice logo surfaces with the design-final SVG source, regenerated favicon/PWA/OpenGraph/splash derivatives from that source, and documented the no-redraw/no-recolor/no-reshape handling rule |
+| 2026-06-01 | 1.2.47 | Regenerated Answerlattice splash images on the final logo canvas color so the unchanged logo source does not show a separate rectangular background on startup screens |
+| 2026-06-01 | 1.2.48 | Added a dedicated Answerlattice loader SVG atom that preserves the final logo paths, colors, filters, and canvas while matching the MenuList 3-second stroke-draw loading cycle across server and global loaders |

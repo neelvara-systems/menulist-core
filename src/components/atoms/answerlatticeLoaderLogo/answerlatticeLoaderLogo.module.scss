@@ -1,0 +1,118 @@
+.logo {
+  display: block;
+  overflow: visible;
+}
+
+.leftStroke {
+  stroke-dasharray: 8494.004px;
+  stroke-dashoffset: 8494.004px;
+  -webkit-animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;
+  animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;
+}
+
+.rightStroke {
+  stroke-dasharray: 8551.09px;
+  stroke-dashoffset: 8551.09px;
+  -webkit-animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;
+  animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;
+}
+
+.overlap {
+  opacity: 0;
+  -webkit-animation: answerlattice-loader-overlap 3s infinite ease-in-out 0s both;
+  animation: answerlattice-loader-overlap 3s infinite ease-in-out 0s both;
+}
+
+@-webkit-keyframes answerlattice-loader-stroke-left {
+  0% {
+    stroke-dashoffset: 8494.004px;
+    stroke-dasharray: 8494.004px;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8494.004px;
+  }
+}
+
+@keyframes answerlattice-loader-stroke-left {
+  0% {
+    stroke-dashoffset: 8494.004px;
+    stroke-dasharray: 8494.004px;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8494.004px;
+  }
+}
+
+@-webkit-keyframes answerlattice-loader-stroke-right {
+  0% {
+    stroke-dashoffset: 8551.09px;
+    stroke-dasharray: 8551.09px;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8551.09px;
+  }
+}
+
+@keyframes answerlattice-loader-stroke-right {
+  0% {
+    stroke-dashoffset: 8551.09px;
+    stroke-dasharray: 8551.09px;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8551.09px;
+  }
+}
+
+@-webkit-keyframes answerlattice-loader-overlap {
+  0%,
+  28% {
+    opacity: 0;
+  }
+
+  58%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes answerlattice-loader-overlap {
+  0%,
+  28% {
+    opacity: 0;
+  }
+
+  58%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leftStroke {
+    -webkit-animation: none;
+    animation: none;
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8494.004px;
+  }
+
+  .rightStroke {
+    -webkit-animation: none;
+    animation: none;
+    stroke-dashoffset: 0;
+    stroke-dasharray: 8551.09px;
+  }
+
+  .overlap {
+    -webkit-animation: none;
+    animation: none;
+    opacity: 1;
+  }
+}

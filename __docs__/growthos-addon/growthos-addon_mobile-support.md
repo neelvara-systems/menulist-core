@@ -1,6 +1,6 @@
 # GrowthOS Add-on - Mobile Support
 
-**Status:** Required for launch
+**Status:** Implemented behind disabled feature flag; required for launch verification
 **Mobile owner label:** Growth Kits
 **Primary mobile rule:** Owners must be able to use a kit from a phone without desktop setup.
 
@@ -54,6 +54,15 @@ That screen already uses:
 - paused Weekly Growth Pack card when its flag is on
 
 GrowthOS mobile should reuse the same data inheritance model and not fork campaign logic.
+
+Implemented V1 mobile surface:
+
+```txt
+src/components/mobile/components/GrowthKitsMobileCard.tsx
+src/components/mobile/screens/MobileHoursScreen.tsx
+```
+
+The card is shown only when `shouldShowGrowthOSNavigation()` passes for the active store. It keeps the latest loaded kit visible when refresh fails, blocks stale copy/share use, and exposes copy/share/mark-used controls with 44px targets.
 
 ## 3. Mobile UX Requirements
 

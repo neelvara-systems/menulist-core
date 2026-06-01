@@ -1,8 +1,8 @@
 # Growth Engine - Implementation Plan
 
 **Status:** Planning only
-**Product code:** `GE` proposed, not implemented
-**Implementation rule:** Build only after decision gates in README are confirmed.
+**Product code:** `GE` proposed, not implemented; `MN` if `MenuNexus` is secured before implementation
+**Implementation rule:** Build from the locked implementation decisions in README and spec; keep feature flags default off.
 
 ---
 
@@ -12,7 +12,7 @@ Recommended implementation is same repo, separate product boundary.
 
 Do not clone MenuList. Do not add this to MenuList owner/customer folders. Do not reuse GrowthOS/Growth Kits folders.
 
-The repo already requires product-scoped folders for future products and shared root infrastructure only when it is intentionally cross-product. Evidence: `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md:995-1031`.
+The repo already requires product-scoped folders for additional products and shared root infrastructure only when it is intentionally cross-product. Evidence: `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md:995-1031`.
 
 ## 2. Proposed File Layout
 
@@ -27,6 +27,7 @@ src/data/growth-engine/
 src/database/growth-engine/
 src/hooks/growth-engine/
 src/lib/growth-engine/
+src/workflows/growth-engine/
 src/lib/firebase/growthEngineFirebaseClient.ts
 src/types/growth-engine/
 ```
@@ -39,7 +40,7 @@ When implementation starts:
 
 | File | Required change |
 | --- | --- |
-| `src/constants/product.ts` | Add `GROWTH_ENGINE: 'GE'` if `GE` is confirmed. |
+| `src/constants/product.ts` | Add `GROWTH_ENGINE: 'GE'` or `MENU_NEXUS: 'MN'` after name/code lock. |
 | `src/constants/deploymentTargets.ts` | Add deployment target only after Firebase/domain decisions are confirmed. |
 | `src/constants/productDomains.ts` | Add Growth Engine only if a host or dev prefix is approved. |
 | `src/config/features.ts` | Add `ENABLE_GROWTH_ENGINE_*` flags, default off. |
@@ -49,26 +50,37 @@ Do not reuse existing `GROWTH_OS: 'GR'`; it is reserved for GrowthOS/Growth Kits
 
 ## 4. Product Modules
 
-Build order is dependency order, not "MVP" scope.
+Build order is dependency order, not reduced scope.
 
 | Order | Module | Purpose |
 | ---: | --- | --- |
-| 1 | Data foundation | Canonical lead identity, summaries, dedupe, suppressions, events. |
-| 2 | Source ingestion | Import raw candidates through adapters; no outreach. |
-| 3 | Lead intelligence | Typed fit, need, contactability, risk, and human-review decisions. |
-| 4 | Channel identity and eligibility | Email/phone/WhatsApp/social identity states and policy gates. |
-| 5 | Campaign foundation | Drafts, audiences, caps, stop rules, approvals, summaries. |
-| 6 | Dry-run engine | End-to-end campaign validation without sending. |
-| 7 | Template and guardrails | Approved variables, banned claims, safety blocks. |
-| 8 | Onboarding route bridge | Tracked MenuList onboarding links and feedback ingestion. |
-| 9 | Email execution | First automated outbound channel. |
-| 10 | WhatsApp assisted | Operator-reviewed send queue. |
-| 11 | Unified inbox | Conversations, messages, reply composer, DNC/wrong-number actions. |
-| 12 | Reply classifier | Interested, DNC, unsubscribe, wrong-number, pricing, objection, human review. |
-| 13 | Follow-up/NBA | State-aware follow-up and retargeting with cooldowns. |
-| 14 | Attribution and rollups | Source/campaign/channel/template/flow performance. |
-| 15 | Safety/control room | Kill switches, incidents, budget caps, evals, channel health. |
-| 16 | Optimizer | Daily/weekly recommendations after enough feedback exists. |
+| 1 | Distribution data foundation | Distribution target identity, lead/contact identity, summaries, dedupe, suppressions, events. |
+| 2 | Automation workflow engine | Typed workflows, workflow runs, steps, approvals, retries, idempotency, budgets, and kill-switch checks. |
+| 3 | Source ingestion | Import raw candidates through approved adapters; no outreach or public publishing. |
+| 4 | Enrichment waterfall engine | Ordered source/provider/AI steps for identity, menu gap, contactability, source confidence, and cost-controlled evidence. |
+| 5 | AI worker registry | Typed AI workers, prompt versions, eval thresholds, cache keys, budgets, and blocked-output rules. |
+| 6 | Truth gap intelligence | Typed fit, menu truth gap, contactability, distribution readiness, risk, and human-review decisions. |
+| 7 | Distribution target registry | Business/location/menu target state, claim state, truth state, and surface inventory. |
+| 8 | Decision snapshot ledger | Evidence, rejected facts, scores, blockers, confidence, rule/prompt version, and next action for every material decision. |
+| 9 | Channel identity and eligibility | Email/phone/WhatsApp/social identity states and policy gates. |
+| 10 | Sender assignment and pacing | Sender-domain readiness, one sender per target conversation, target timezone windows, ramp, and reputation limits. |
+| 11 | Canonical surface publisher | MenuList menu/business page readiness, structured data, canonical URL, and freshness state. |
+| 12 | Discovery publisher | Sitemaps, sitemap indexes, IndexNow submissions, changed-URL queue, and crawl health. |
+| 13 | Menu feed exporter | Google-compatible and partner-compatible entity/menu/section/item feed payloads. |
+| 14 | External listing handoff manager | GBP, Apple Business Connect, and Bing Places handoff/sync state for owner-authorized distribution. |
+| 15 | Campaign foundation | Drafts, audiences, caps, stop rules, approvals, summaries. |
+| 16 | Dry-run engine | End-to-end campaign and distribution validation without sending or publishing. |
+| 17 | Template and guardrails | Approved variables, banned claims, safety blocks. |
+| 18 | Onboarding route bridge | Tracked MenuList onboarding links and feedback ingestion. |
+| 19 | Email execution | Automated outbound channel after readiness checks. |
+| 20 | WhatsApp assisted | Operator-reviewed send queue after channel policy approval. |
+| 21 | Unified inbox | Conversations, messages, reply composer, DNC/wrong-number actions. |
+| 22 | Reply classifier | Interested, DNC, unsubscribe, wrong-number, pricing, objection, human review. |
+| 23 | Operator workboard | Queue-first UI for safety, review, replies, handoffs, health, freshness, discovery failures, costs, evals, and incidents. |
+| 24 | Follow-up/NBA | State-aware follow-up and retargeting with cooldowns. |
+| 25 | Attribution and rollups | Source/campaign/channel/template/flow/surface/freshness performance. |
+| 26 | Safety/control room | Kill switches, incidents, budget caps, evals, channel health, surface health. |
+| 27 | Optimizer | Recommendations after enough feedback and distribution health exists. |
 
 ## 4A. Second-Pass Required Foundations
 
@@ -76,12 +88,24 @@ The first implementation must build these foundations before any send worker is 
 
 | Module | Purpose |
 | --- | --- |
+| Distribution target registry | Maps business/location/menu targets to source provenance, claim state, truth state, canonical URL, and surface inventory. |
+| Automation workflow engine | Defines typed triggers, steps, retries, idempotency, approvals, budgets, and kill-switch behavior. |
+| Enrichment waterfall registry | Defines provider/source/AI order, run conditions, cache keys, success provider, field confidence, and per-step cost. |
+| Decision snapshot ledger | Stores why a target was contacted, held, rejected, routed, published, or blocked. |
+| AI worker registry | Registers worker purpose, allowed input, typed output, prompt version, eval threshold, and spend cap. |
+| Sender assignment and pacing | Keeps one sender per target conversation, respects daily caps, target timezone windows, ramp, and health thresholds. |
+| Operator workboard | Converts human-review and incident decisions into auditable work items. |
 | Source policy registry | Defines approved sources, allowed fields, source terms, retention class, raw payload handling, and approval owner. |
 | Channel compliance policy | Maps country, channel, message type, opt-in requirement, unsubscribe requirement, and launch blockers. |
 | Consent/suppression ledger | Stores opt-in, unsubscribe, DNC, complaint, wrong-contact, bounce, and proof events across all campaigns. |
 | Sender-domain readiness | Tracks DNS/authentication, unsubscribe endpoint, bounce handling, sender identity, ramp limits, and health thresholds. |
 | Provider decision matrix | Records approved provider, cost model, webhook support, data retention, processor/vendor status, and shutdown path. |
 | Onboarding flow inventory | Lists approved MenuList onboarding flows, route payloads, event names, and fallback behavior. |
+| Canonical surface publisher | Tracks publish eligibility, canonical URL, structured data state, sitemap state, and freshness state. |
+| Discovery publisher | Owns sitemap inventory, IndexNow submissions, feed exports, truth packets, and discovery job audit logs. |
+| Menu feed exporter | Produces feed-ready entity/menu/section/item data from confirmed MenuList truth. |
+| GBP handoff manager | Tracks owner-authorized menu URL, preferred-source, manual handoff, and API eligibility. |
+| External listing handoff manager | Tracks GBP, Apple Business Connect, and Bing Places distribution handoffs after owner confirmation. |
 | Artifact review/takedown | Controls noindex artifacts, source-rights checks, accuracy review, expiry, owner complaints, and takedowns. |
 | Eval dataset registry | Stores seed cases and pass thresholds for lead scoring, DNC, pricing, claim safety, and reply classification. |
 | Incident runbook | Defines severity, owner, evidence export, kill-switch scope, and resolution checklist. |
@@ -252,6 +276,231 @@ type GrowthArtifactReview = {
 };
 ```
 
+### Automation Workflow
+
+```ts
+type GrowthAutomationWorkflow = {
+  workflowId: string;
+  name: string;
+  status: 'draft' | 'active' | 'paused' | 'blocked';
+  trigger:
+    | 'source_run_created'
+    | 'target_created'
+    | 'campaign_draft_saved'
+    | 'reply_received'
+    | 'truth_activated'
+    | 'public_url_changed'
+    | 'freshness_due'
+    | 'sender_health_changed'
+    | 'scheduled_rollup';
+  requiredPolicies: string[];
+  steps: {
+    stepId: string;
+    type:
+      | 'policy_gate'
+      | 'enrichment_waterfall'
+      | 'ai_worker'
+      | 'decision_snapshot'
+      | 'operator_task'
+      | 'queue_job'
+      | 'route_create'
+      | 'send_or_assist'
+      | 'surface_publish'
+      | 'discovery_publish'
+      | 'rollup';
+    retryPolicyId?: string;
+    budgetPolicyId?: string;
+    killSwitchScopes: string[];
+  }[];
+  approvalRequired: boolean;
+  updatedAt: string;
+};
+```
+
+### Enrichment Waterfall
+
+```ts
+type GrowthEnrichmentWaterfall = {
+  waterfallId: string;
+  purpose: 'business_identity' | 'menu_gap' | 'contactability' | 'source_confidence' | 'surface_readiness';
+  status: 'draft' | 'approved' | 'paused' | 'blocked';
+  runWhen: string;
+  cacheKeyFields: string[];
+  steps: {
+    stepId: string;
+    provider: 'first_party' | 'manual_csv' | 'owner_site' | 'apify' | 'ai_extractor' | 'other';
+    allowedFields: string[];
+    maxCostUsd?: number;
+    stopWhenValid: boolean;
+  }[];
+  approvalOwner: string;
+  updatedAt: string;
+};
+```
+
+### AI Worker Run
+
+```ts
+type GrowthAiWorkerRun = {
+  runId: string;
+  worker:
+    | 'source_cleaner'
+    | 'business_identity_resolver'
+    | 'menu_truth_gap_auditor'
+    | 'contactability_scorer'
+    | 'artifact_drafter'
+    | 'message_personalizer'
+    | 'reply_classifier'
+    | 'pricing_responder'
+    | 'surface_validator'
+    | 'menu_feed_validator'
+    | 'optimizer'
+    | 'incident_summarizer';
+  inputHash: string;
+  promptVersion: string;
+  outputSchemaVersion: string;
+  status: 'queued' | 'running' | 'succeeded' | 'blocked' | 'failed';
+  confidence: 'high' | 'medium' | 'low';
+  blockers: string[];
+  estimatedCostUsd: number;
+  evalStatus: 'not_required' | 'passed' | 'failed' | 'stale';
+  createdAt: string;
+  completedAt?: string;
+};
+```
+
+### Decision Snapshot
+
+```ts
+type GrowthDecisionSnapshot = {
+  snapshotId: string;
+  targetId: string;
+  campaignId?: string;
+  decision: 'reject' | 'hold' | 'review' | 'route' | 'send' | 'assist' | 'publish' | 'notify' | 'pause';
+  scores: {
+    distributionFit: number;
+    menuTruthGap: number;
+    contactability: number;
+    sourceConfidence: number;
+    surfaceReadiness: number;
+    freshnessRisk: number;
+    channelRisk: number;
+    economics: number;
+  };
+  evidenceRefs: string[];
+  rejectedFacts: string[];
+  blockers: string[];
+  nextAction?: string;
+  ruleVersion: string;
+  promptVersion?: string;
+  createdAt: string;
+};
+```
+
+### Sender Assignment
+
+```ts
+type GrowthSenderAssignment = {
+  assignmentId: string;
+  targetId: string;
+  campaignId?: string;
+  senderDomainId: string;
+  senderIdentityId: string;
+  channel: 'email' | 'whatsapp_assisted' | 'whatsapp_api';
+  status: 'assigned' | 'paused' | 'blocked' | 'completed';
+  targetTimezone?: string;
+  maxSendsPerDay: number;
+  preserveSenderForConversation: true;
+  healthState: 'healthy' | 'warning' | 'blocked';
+  updatedAt: string;
+};
+```
+
+### Operator Work Item
+
+```ts
+type GrowthOperatorWorkItem = {
+  itemId: string;
+  type:
+    | 'safety_alert'
+    | 'source_approval'
+    | 'target_hold'
+    | 'artifact_review'
+    | 'interested_reply'
+    | 'whatsapp_assisted'
+    | 'external_listing_handoff'
+    | 'surface_health_failure'
+    | 'freshness_due'
+    | 'discovery_failure'
+    | 'cost_warning'
+    | 'ai_eval_failure'
+    | 'incident_action';
+  targetId?: string;
+  campaignId?: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'in_review' | 'done' | 'blocked';
+  assignedRole: 'operator' | 'growth_manager' | 'admin' | 'compliance_reviewer' | 'incident_owner';
+  dueAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+```
+
+### Distribution Target
+
+```ts
+type GrowthDistributionTarget = {
+  pId: 'GE';
+  targetId: string;
+  leadId?: string;
+  businessName: string;
+  locationKey?: string;
+  city?: string;
+  country?: string;
+  category?: string;
+  claimState: 'unclaimed' | 'claim_started' | 'owner_confirmed' | 'menu_published' | 'blocked';
+  truthState: 'candidate_only' | 'prefill_ready' | 'owner_confirmed' | 'menu_live' | 'stale' | 'blocked';
+  surfaceReadiness: 'none' | 'private_artifact' | 'canonical_ready' | 'published' | 'distribution_active';
+  primaryCanonicalUrl?: string;
+  sourcePolicyId: string;
+  updatedAt: string;
+};
+```
+
+### Distribution Surface
+
+```ts
+type GrowthDistributionSurface = {
+  surfaceId: string;
+  targetId: string;
+  type: 'canonical_menu' | 'official_business_page' | 'city_category_page' | 'claim_artifact' | 'truth_packet' | 'menu_feed' | 'widget_embed';
+  url?: string;
+  indexability: 'indexable' | 'noindex' | 'blocked' | 'not_public';
+  truthRequirement: 'candidate_safe' | 'owner_confirmed' | 'menulist_verified';
+  structuredDataStatus: 'not_applicable' | 'missing' | 'valid' | 'invalid';
+  freshnessStatus: 'fresh' | 'review_due' | 'stale' | 'blocked';
+  sitemapStatus: 'not_applicable' | 'queued' | 'included' | 'blocked';
+  lastPublishedAt?: string;
+  lastCheckedAt?: string;
+};
+```
+
+### Discovery Publish Job
+
+```ts
+type GrowthDiscoveryPublishJob = {
+  jobId: string;
+  surfaceId: string;
+  targetId: string;
+  action: 'sitemap_update' | 'indexnow_submit' | 'menu_feed_export' | 'truth_packet_publish' | 'gbp_handoff';
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'blocked';
+  changedUrls: string[];
+  blockers: string[];
+  createdAt: string;
+  completedAt?: string;
+};
+```
+
 ## 6. Proposed Firestore Collections
 
 Hot operational:
@@ -270,6 +519,15 @@ Hot operational:
 - `growthEngineApprovals`
 - `growthEngineLeadRoutes`
 - `growthEngineChannelHealthSummaries`
+- `growthEngineDistributionTargets`
+- `growthEngineDistributionSurfaces`
+- `growthEngineDiscoveryPublishJobs`
+- `growthEngineSurfaceHealthSummaries`
+- `growthEngineFreshnessSummaries`
+- `growthEngineMenuFeedExports`
+- `growthEngineGbpHandoffs`
+- `growthEngineExternalListingHandoffs`
+- `growthEngineTruthPackets`
 - `growthEngineSourcePolicies`
 - `growthEngineChannelPolicies`
 - `growthEngineSenderDomains`
@@ -277,6 +535,13 @@ Hot operational:
 - `growthEngineArtifactReviews`
 - `growthEngineOnboardingFlowInventory`
 - `growthEngineProviderRegister`
+- `growthEngineAutomationWorkflows`
+- `growthEngineWorkflowRuns`
+- `growthEngineEnrichmentWaterfalls`
+- `growthEngineDecisionSnapshots`
+- `growthEngineAiWorkerRuns`
+- `growthEngineSenderAssignments`
+- `growthEngineOperatorWorkItems`
 
 Warm/cold:
 
@@ -291,9 +556,15 @@ Warm/cold:
 - `growthEngineOptimizationReports`
 - `growthEngineCostAttributions`
 - `growthEngineIncidents`
+- `growthEngineSitemapSnapshots`
+- `growthEngineIndexNowSubmissions`
+- `growthEngineStructuredDataChecks`
 - `growthEngineDataSubjectRequests`
 - `growthEngineVendorProcessorRegister`
 - `growthEngineEvalDatasets`
+- `growthEngineEvidencePackets`
+- `growthEngineWorkflowStepEvents`
+- `growthEngineOptimizationRecommendations`
 
 Dashboards read summaries, not raw event collections.
 
@@ -306,6 +577,25 @@ All routes require internal/admin auth, Zod validation, secure logging, rate lim
 | `/api/growth-engine/source-runs` | POST/GET | Create/list source runs. |
 | `/api/growth-engine/leads` | GET | Bounded lead summary list. |
 | `/api/growth-engine/leads/[leadId]` | GET/PATCH | Detail and operator updates. |
+| `/api/growth-engine/distribution-targets` | POST/GET | Create/list distribution targets. |
+| `/api/growth-engine/distribution-targets/[targetId]` | GET/PATCH | Target detail, claim state, truth state, surface inventory. |
+| `/api/growth-engine/distribution-surfaces` | GET | Bounded surface readiness list. |
+| `/api/growth-engine/distribution-surfaces/[surfaceId]/check` | POST | Recheck indexability, structured data, freshness, and HTTP state. |
+| `/api/growth-engine/workflows` | GET/POST | Create/list automation workflows. |
+| `/api/growth-engine/workflows/[workflowId]/run` | POST | Start an approved workflow run with idempotency key and budget checks. |
+| `/api/growth-engine/workflow-runs` | GET | Inspect bounded workflow run summaries. |
+| `/api/growth-engine/enrichment-waterfalls` | GET/POST/PATCH | Manage approved enrichment waterfall definitions. |
+| `/api/growth-engine/decision-snapshots` | GET | Inspect decision evidence for targets/campaigns. |
+| `/api/growth-engine/ai-workers` | GET/POST | Register worker definitions and request eval/run actions. |
+| `/api/growth-engine/operator-work-items` | GET/PATCH | Workboard queues for review, handoff, safety, cost, and incident actions. |
+| `/api/growth-engine/sender-assignments` | GET/POST/PATCH | Assign sender identity, pacing, and conversation continuity. |
+| `/api/growth-engine/discovery/publish` | POST | Queue sitemap, IndexNow, feed, truth-packet, or GBP handoff job. |
+| `/api/growth-engine/discovery/sitemaps` | GET/POST | Inspect or rebuild sitemap inventory. |
+| `/api/growth-engine/discovery/indexnow` | POST | Submit meaningful changed URLs where allowed. |
+| `/api/growth-engine/discovery/menu-feed` | GET/POST | Build feed-ready menu/entity export from confirmed MenuList truth. |
+| `/api/growth-engine/discovery/truth-packets` | GET/POST | Publish AI-readable public truth packets. |
+| `/api/growth-engine/gbp-handoffs` | GET/POST/PATCH | Owner-authorized menu URL/preferred-source handoff state. |
+| `/api/growth-engine/external-listing-handoffs` | GET/POST/PATCH | GBP, Apple Business Connect, and Bing Places handoff state. |
 | `/api/growth-engine/campaigns` | POST/GET | Create/list campaigns. |
 | `/api/growth-engine/campaigns/[campaignId]/dry-run` | POST | Generate dry-run report. |
 | `/api/growth-engine/campaigns/[campaignId]/launch` | POST | Launch only after dry-run and approval. |
@@ -330,19 +620,38 @@ Use `functions-growth-engine/` with task queues for long-running or rate-limited
 
 Workers:
 
+- workflow run dispatcher
+- workflow step executor
+- enrichment waterfall runner
+- AI worker executor
+- decision snapshot builder
+- operator work-item router
 - source import
 - normalization/dedupe
 - lead intelligence
+- distribution target rollup
+- surface publish readiness
+- structured data validation
+- sitemap inventory rebuild
+- IndexNow changed-URL submission
+- menu feed export
+- GBP handoff reminders
+- Apple Business Connect handoff reminders
+- Bing Places handoff reminders
+- truth packet publish
+- surface health monitor
+- freshness monitor
 - dry-run generation
 - email send jobs
 - webhook normalization
 - reply classification
 - follow-up due detection
-- route feedback rollup
+- route and distribution feedback rollup
 - campaign summary rollup
 - daily cost report
 - eval run execution
 - sender-domain health sync
+- sender assignment and pacing sync
 - consent/suppression rollup
 - artifact expiry
 - incident evidence export
@@ -366,39 +675,66 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - All provider webhooks must be idempotent and reject unsigned or replayed payloads where provider support exists.
 - Artifact review/takedown actions must be audit logged.
 - Data access, correction, and deletion requests must be tracked separately from campaign workflow.
+- Public distribution jobs must read confirmed MenuList truth only.
+- Private artifacts must never be included in sitemaps, IndexNow, feed exports, or truth packets.
+- Google Business Profile API or GoogleLocations usage must be blocked unless owner authorization and existing relationship evidence are present.
+- Google Indexing API must not be used for MenuList menu/business pages.
 
-## 10. First Build Slice
+## 10. Launch Baseline
 
 1. Product constants and feature flags default off.
 2. Growth Engine Firebase client/admin helpers.
 3. Firestore schema constants and Zod types.
 4. Source policy registry.
-5. Channel compliance policy registry.
-6. Sender-domain readiness registry.
-7. Consent/suppression ledger.
-8. Provider/vendor decision register.
-9. Onboarding flow inventory.
-10. Manual CSV import and one approved source adapter.
-11. Dedupe and suppression services.
-12. Lead summary list.
-13. Campaign draft and dry-run.
-14. Artifact review/takedown if artifacts are used.
-15. Email template renderer and safety checker.
-16. Email execution adapter.
-17. Tracked route bridge to MenuList onboarding.
-18. Feedback ingestion and campaign summary.
-19. DNC/unsubscribe/bounce handling.
-20. Global/channel/campaign/provider kill switches.
-21. Cost summary dashboard.
-22. Eval fixtures and pass/fail thresholds.
-23. Incident runbook and evidence export.
-
-WhatsApp assisted is the second slice.
+5. Distribution target registry.
+6. Automation workflow engine.
+7. Enrichment waterfall registry and runner.
+8. AI worker registry and eval-gated run executor.
+9. Decision snapshot ledger.
+10. Operator workboard and work-item queues.
+11. Channel compliance policy registry.
+12. Sender-domain readiness registry.
+13. Sender assignment and pacing registry.
+14. Consent/suppression ledger.
+15. Provider/vendor decision register.
+16. Onboarding flow inventory.
+17. Canonical surface publisher.
+18. Discovery publisher.
+19. Menu feed exporter.
+20. External listing handoff manager for GBP, Apple Business Connect, and Bing Places.
+21. Truth packet publisher.
+22. Surface health and freshness monitor.
+23. Manual CSV import and one approved source adapter.
+24. Dedupe and suppression services.
+25. Lead and distribution target summary lists.
+26. Campaign draft and dry-run.
+27. Artifact review/takedown if artifacts are used.
+28. Email template renderer and safety checker.
+29. Email execution adapter.
+30. WhatsApp assisted queue guarded by policy.
+31. Tracked route bridge to MenuList onboarding.
+32. Feedback ingestion and campaign/distribution summaries.
+33. DNC/unsubscribe/bounce handling.
+34. Global/channel/campaign/provider/surface/automation kill switches.
+35. Cost summary dashboard.
+36. Eval fixtures and pass/fail thresholds.
+37. Incident runbook and evidence export.
 
 ## 11. Implementation Non-Negotiables
 
 - No campaign launch without dry-run.
 - No source import without approved source policy.
+- No distribution target without source provenance.
+- No public surface publish without owner-confirmed or approved MenuList-verified truth.
+- No automation workflow execution without idempotency key, budget check, and kill-switch check.
+- No AI worker autonomy without current eval pass and typed output schema.
+- No target action without decision snapshot.
+- No low-confidence AI decision reaching send or public publish without human review.
+- No outbound conversation without sender assignment and pacing checks.
+- No sitemap, IndexNow, feed, or truth-packet output for private claim artifacts.
+- No Google Indexing API use for menu/business pages.
+- No GBP API or GoogleLocations use for lead generation.
+- No external listing handoff without owner authorization.
 - No campaign creation without jurisdiction/channel policy.
 - No send without suppression check.
 - No email send without sender-domain readiness, unsubscribe endpoint, and bounce handling.
@@ -410,7 +746,7 @@ WhatsApp assisted is the second slice.
 - No AI free-form campaign writing.
 - No AI classifier autonomy without eval pass thresholds.
 - No provider without budget cap and vendor/register entry.
-- No MenuList public truth writes.
+- No Growth Engine direct writes to MenuList public truth outside approved bridge contracts.
 - No Vercel deploy without explicit user instruction.
 
 ## 12. Validation
@@ -421,8 +757,22 @@ Before any implementation handoff:
 - route smoke tests for product-host/dev-prefix routing if routing is added
 - Firestore rules tests for Growth Engine project
 - function emulator tests for source/send/webhook workers
+- workflow engine idempotency/retry/kill-switch tests
+- enrichment waterfall cache/cost/stop-condition tests
+- AI worker schema/eval/budget tests
+- decision snapshot evidence tests
+- sender assignment and pacing tests
+- operator workboard queue tests
 - dry-run fixture tests
 - DNC/unsubscribe/wrong-number classifier tests
 - cost estimate tests
 - kill-switch blocking tests
 - MenuList onboarding feedback contract tests
+- distribution target state tests
+- structured data validation tests
+- sitemap and IndexNow queue tests
+- menu feed export fixture tests
+- GBP handoff policy tests
+- Apple Business Connect and Bing Places handoff policy tests
+- truth packet public-data tests
+- surface health and freshness tests

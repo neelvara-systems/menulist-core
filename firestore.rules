@@ -172,6 +172,10 @@ service cloud.firestore {
     }
 
     function isStoreScopedSummaryDoc(document) {
+      return document.matches('^(projects|campaigns|growthos)_[^_]+$');
+    }
+
+    function isClientWritableStoreScopedSummaryDoc(document) {
       return document.matches('^(projects|campaigns)_[^_]+$');
     }
 
@@ -187,7 +191,7 @@ service cloud.firestore {
 
     function canWriteCurrentStoreSummaryDoc(document) {
       return request.auth != null
-        && isStoreScopedSummaryDoc(document)
+        && isClientWritableStoreScopedSummaryDoc(document)
         && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document));
     }
 
@@ -462,6 +466,18 @@ service cloud.firestore {
     match /campaignExports/{tId}/{sId}/{docId} {
       allow read: if isAuthenticated() && belongsToTenant(tId);
       allow write: if isTenantAdmin(tId, sId);
+    }
+
+    // GrowthOS Kits — paid add-on generated artifacts
+    match /growthosKits/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isPlatformAdmin();
+    }
+
+    // GrowthOS Exports — execution signals only
+    match /growthosExports/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow write: if isPlatformAdmin();
     }
     
     // ═══════════════════════════════════════════════════════════

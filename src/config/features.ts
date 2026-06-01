@@ -427,6 +427,35 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_TODAY_WEEKLY_GROWTH_PACK: false,
 
+    /**
+     * GrowthOS Add-on / Growth Kits
+     *
+     * Paid MenuList add-on that prepares copy/share-ready local growth kits
+     * from current MenuList truth. This is intentionally separate from the
+     * paused Today Weekly Growth Pack and remains off until entitlement,
+     * mobile, security, and cost checks pass.
+     *
+     * Launch boundaries:
+     * - Manual copy/share/download/print only
+     * - Deterministic Staff Brief in V1
+     * - No direct posting, scheduler, offer invention, image generation, ROI,
+     *   chatbot, or inbox behavior
+     */
+    ENABLE_GROWTHOS_ADDON: false,
+    GROWTHOS_ADDON_ACCESS: "disabled" as "disabled" | "pilot" | "paid",
+    GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
+    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
+    GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
+    GROWTHOS_STAFF_BRIEF_MODE: "deterministic" as "disabled" | "deterministic",
+    GROWTHOS_IMAGE_MODE: "disabled" as "disabled" | "existing_only",
+    GROWTHOS_REVIEW_REPLY_MODE: "manual_paste_guarded" as "disabled" | "manual_paste_guarded",
+    GROWTHOS_OFFER_BUILDER_MODE: "disabled" as "disabled" | "pilot",
+    GROWTHOS_QUICK_REPLIES_MODE: "disabled" as "disabled" | "pilot",
+    GROWTHOS_PHOTO_PROMPTS_MODE: "disabled" as "disabled" | "pilot",
+    GROWTHOS_MULTI_OUTLET_MODE: "disabled" as "disabled" | "pilot",
+    GROWTHOS_USED_HISTORY_UI: "disabled" as "disabled" | "pilot",
+    GROWTHOS_LOW_DATA_CACHE: "latest_only" as "disabled" | "latest_only" | "pilot",
+
     // ═══════════════════════════════════════════════════════════════
     // DIGITAL SCREENS
     // Per spec: 3-YEAR ARCHITECTURE FREEZE - Ship everything at launch!

@@ -1,6 +1,6 @@
 # GrowthOS Add-on - Product Specification
 
-**Status:** Planning spec
+**Status:** Implemented V1 behind disabled feature flag
 **Owner-facing label:** Growth Kits
 **Implementation flag:** `ENABLE_GROWTHOS_ADDON` must default to `false`
 **Scope:** MenuList higher-tier add-on only
@@ -92,6 +92,14 @@ GrowthOS lives inside MenuList.
 | Website/pricing | Mention as a MenuList add-on, not as a separate product. |
 | Help center | Explain how to use a kit, not how the system works. |
 
+Implemented route:
+
+```txt
+/growth-kits
+```
+
+The route remains hidden unless the feature flag and entitlement pass.
+
 No standalone GrowthOS domain, public app, or product route is approved by this spec.
 
 ## 5. How It Works
@@ -126,7 +134,7 @@ GrowthOS may not invent:
 
 ### Kit Generation
 
-The system builds a `GrowthOSSourceFacts` object from current MenuList data, hashes it, then generates a kit from that immutable source snapshot.
+The system builds a `GrowthOSSourceFacts` object from current MenuList data, hashes it, then generates a deterministic V1 kit from that immutable source snapshot.
 
 Every generated kit must store:
 
@@ -137,7 +145,7 @@ Every generated kit must store:
 - safety status
 - expiry date
 - owner action status
-- AI operation reference when AI was used
+- AI operation reference when AI is used in a future provider-backed mode
 
 ### Output Destinations
 
@@ -283,6 +291,8 @@ Outputs:
 Review ingestion from Google remains blocked until GBP API access is approved.
 
 Review Reply Guard is not a daily Do This Now action. It appears only when the owner opens review mode and supplies text.
+
+Implemented V1 review reply guard is deterministic triage. It does not call an AI provider and does not persist raw review text.
 
 ## 7. Feature Decision Map
 

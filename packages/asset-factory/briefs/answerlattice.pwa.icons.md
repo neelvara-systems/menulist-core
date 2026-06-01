@@ -29,6 +29,7 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 - Canonical source: `public/answerlattice-logo.svg`
 - Design status: final
 - Handling rule: scale and rasterize only; do not recolor, reshape, crop into a different mark, or redraw the logo.
+- Splash rule: use the final logo canvas color as the full startup background; do not place the approved logo on a contrasting panel or gradient that exposes a rectangular asset boundary.
 
 ## Existing Files
 

@@ -1,7 +1,7 @@
 # GrowthOS Add-on - Technical Implementation Plan
 
-**Status:** Planning only
-**Code state:** Not implemented
+**Status:** Implemented behind disabled feature flag
+**Code state:** V1 deterministic add-on shell implemented June 1, 2026
 **Primary constraint:** Build inside MenuList, feature-flagged off, paid-entitlement gated
 
 ---
@@ -30,6 +30,8 @@ Add these flags to `src/config/features.ts` only during implementation:
 ```ts
 ENABLE_GROWTHOS_ADDON: false,
 GROWTHOS_ADDON_ACCESS: "disabled" as "disabled" | "pilot" | "paid",
+GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
+GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
 GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
 GROWTHOS_STAFF_BRIEF_MODE: "deterministic" as "disabled" | "deterministic",
 GROWTHOS_IMAGE_MODE: "disabled" as "disabled" | "existing_only",
@@ -46,6 +48,8 @@ Rules:
 
 - `ENABLE_GROWTHOS_ADDON` is the master kill switch.
 - `GROWTHOS_ADDON_ACCESS` controls pilot/paid visibility.
+- `GROWTHOS_PILOT_STORE_IDS` gates pilot stores when access is `"pilot"`.
+- `GROWTHOS_PAID_PLAN_IDS` gates paid rollout plan IDs when access is `"paid"`.
 - `GROWTHOS_DIRECT_POSTING` must remain `"disabled"` for the approved scope.
 - `GROWTHOS_STAFF_BRIEF_MODE` is V1 core and deterministic.
 - `GROWTHOS_IMAGE_MODE` starts disabled. It may move to `"existing_only"` only after pilot demand; never default to image generation.
@@ -56,10 +60,11 @@ Do not reuse `ENABLE_TODAY_WEEKLY_GROWTH_PACK` as the GrowthOS flag. That flag r
 
 ## 3. Entitlement Gate
 
-Add a small entitlement helper after inspecting current billing/subscription code:
+Implemented entitlement helpers:
 
 ```txt
 src/lib/growthos/entitlements.ts
+src/lib/growthos/serverEntitlements.ts
 ```
 
 Responsibilities:
@@ -95,7 +100,7 @@ interface GrowthOSSummaryDocument {
 }
 ```
 
-### `growthosKits/{kitId}`
+### `growthosKits/{tId}/{sId}/{kitId}`
 
 Generated output artifact.
 
@@ -155,7 +160,7 @@ interface GrowthOSStaffBriefOutput {
 }
 ```
 
-### `growthosExports/{exportId}`
+### `growthosExports/{tId}/{sId}/{exportId}`
 
 Execution signal only.
 
@@ -201,6 +206,8 @@ Planned files:
 | `src/lib/growthos/readiness.ts` | Computes ready/limited/blocked/stale states for kit families. |
 | `src/lib/growthos/reviewGuard.ts` | Triage-first manual pasted review reply guard when enabled. |
 | `src/database/growthos/index.ts` | Client DAL and write helpers. |
+| `src/database/growthos/server.ts` | Admin SDK server read/write helpers for scoped kit/export documents. |
+| `src/lib/growthos/serverContext.ts` | Server-only source snapshot, entitlement context, and bounded API loading helpers. |
 
 ## 6. API Routes
 
@@ -209,9 +216,9 @@ Use API routes only for operations that need server-side auth, paid capacity che
 | Route | Purpose |
 | --- | --- |
 | `POST /api/growthos/actions/refresh` | Build/rerank current action summary from MenuList truth. No provider call by default. |
-| `POST /api/growthos/kits/generate` | Generate one paid Growth Kit. Uses AI only when deterministic output is insufficient. |
+| `POST /api/growthos/kits/generate` | Generate one Growth Kit. V1 is deterministic and does not call a provider. |
 | `POST /api/growthos/kits/export` | Record copy/share/download/print execution signal. |
-| `POST /api/growthos/reviews/suggest` | Optional guarded wrapper around review reply assist for owner-pasted review text. |
+| `POST /api/growthos/reviews/suggest` | Optional deterministic guard around owner-pasted review text. No review ingestion and no provider call in V1. |
 
 Each route must:
 
@@ -223,23 +230,28 @@ Each route must:
 - check GrowthOS entitlement
 - check AI capacity before provider calls
 - sanitize generated output
+- require the source project to resolve under the current tenant/store scope; legacy project fallback must prove tenant/store ownership
+- recompute current source facts before export when the kit has a project ID
+- reuse already-loaded store entitlement context during export stale checks
+- block export for stale kits and blocked preflight outputs
+- skip summary status writes when status and stale state did not change
 - log security-relevant failures through approved logger
 - avoid sensitive/raw payload logs
 
 ## 7. AI Action Accounting
 
-Preferred launch accounting:
+Implemented V1 launch accounting:
 
 | Operation | Accounting |
 | --- | --- |
 | Deterministic action ranking | Free. No provider call. |
-| Text kit generation | Add `GROWTHOS_KIT_GENERATION` or reuse `CAMPAIGN_CAPTION` only if product finance accepts shared accounting. |
-| Review reply draft | Reuse `REVIEW_REPLY_SUGGESTION` if the payload matches existing review assist behavior. |
+| Text kit generation | Free deterministic templates in V1. No provider call and no AI operation row. |
+| Review reply draft | Free deterministic triage in V1. No raw review text persisted. |
 | Staff brief | 0 units in V1 deterministic mode. |
 | Existing image adaptation | 0 provider units; Storage/render cost only when pilot-enabled and owner-triggered. |
 | Missing item image | No provider call in V1. Use photo prompt later instead of generating fake food. |
 
-If `GROWTHOS_KIT_GENERATION` is added:
+If `GROWTHOS_KIT_GENERATION` is added later:
 
 - add to `AI_ACTIONS_TYPES`
 - add real provider estimate in `GEMINI_COST_USD`
@@ -257,10 +269,11 @@ Suggested unit shape:
 
 ### Desktop
 
-Planned folder:
+Implemented folder:
 
 ```txt
 src/components/templates/main-app/growthos/
+src/app/(main)/growth-kits/page.tsx
 ```
 
 Owner-visible label:
@@ -378,6 +391,7 @@ Security-sensitive implementation requirements:
 
 - tenant isolation is mandatory on every API route and write
 - free/base users cannot call paid generation APIs directly
+- client Firestore writes to GrowthOS kit/export documents are not allowed; authenticated APIs write through server Admin SDK after entitlement and stale checks
 - output must not include hidden prompts, provider text, or raw model responses
 - review text must not be logged raw
 - generated public copy must pass forbidden phrase and safety guards
@@ -385,19 +399,20 @@ Security-sensitive implementation requirements:
 
 ## 13. Implementation Order
 
-1. Add flags, constants, types, schemas, and entitlement helper.
-2. Add source fact builder and deterministic action ranking.
-3. Add readiness checklist logic.
-4. Add deterministic Staff Brief builder and preflight.
-5. Add DAL summary read/write helpers.
-6. Add API route for action refresh.
-7. Add kit builder and text generation route with AI capacity checks.
-8. Add desktop Growth Kits shell.
-9. Add mobile Growth Kits support, including latest-kit fallback.
-10. Add export tracking for copy/share/download/print/mark-used.
-11. Add stale source detection.
-12. Add guarded review reply only if safety and privacy tests pass.
-13. Add tests and docs parity verification.
+1. Add flags, constants, types, schemas, and entitlement helper. Done.
+2. Add source fact builder and deterministic action ranking. Done.
+3. Add readiness checklist logic. Done.
+4. Add deterministic Staff Brief builder and preflight. Done.
+5. Add DAL summary read/write helpers. Done.
+6. Add API route for action refresh. Done.
+7. Add deterministic kit builder and generation route. Done.
+8. Add desktop Growth Kits shell. Done.
+9. Add mobile Growth Kits support, including latest-kit fallback. Done.
+10. Add export tracking for copy/share/download/print/mark-used. Done.
+11. Add stale source detection. Done.
+12. Add guarded review reply. Done as deterministic triage, no provider call.
+13. Add tests and docs parity verification. Tracked in `growthos-addon_validation.md`.
+14. Add repeatable dry-run verification in `npm run verify:growthos`. Done.
 
 Do not activate the add-on for production until desktop, mobile, entitlement, cost, security, and support docs all pass.
 
