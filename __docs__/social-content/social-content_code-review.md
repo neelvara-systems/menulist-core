@@ -29,12 +29,12 @@
 
 | Impl Plan Item                   | Status | Evidence                                           |
 | -------------------------------- | ------ | -------------------------------------------------- |
-| Campaign engine in lib/campaigns | ✅     | `src/lib/campaigns/engine.ts`                      |
+| Campaign engine in lib/campaigns | Removed | Old owner generation engine deleted after GrowthOS took over new generated actions. |
 | Today tab components             | ✅     | 7 components in `today/components/`                |
 | SWR hook for data fetching       | ✅     | `useTodayCampaigns.ts`                             |
 | DAL pattern for actions          | ✅     | `useCampaignActions.ts` uses `@database/campaigns` |
 | Summary document pattern         | ✅     | `platformSummary/campaigns_{sId}`                  |
-| API route for generation         | ✅     | `/api/campaigns/generate`                          |
+| API route for generation         | Removed | Old generation API deleted; no dead route remains. |
 | withAuth on protected routes     | ✅     | `route.ts` uses `withAuth`                         |
 | Ant Design components            | ✅     | Card, Button, Typography used                      |
 

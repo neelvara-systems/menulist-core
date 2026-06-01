@@ -1,7 +1,7 @@
 import { getEnabledBlocks } from '@config/decisionBlocks';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
-import { Alert, Button, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Collapse, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { Project } from '../types';
@@ -301,6 +301,27 @@ const DecisionBlocksSettingsModal = ({
                         type="warning"
                         message="Featured section is not available"
                         description="Featured choices are not available for this business type."
+                    />
+                )}
+
+                {enabledBlockTypes.length > 0 && (
+                    <Collapse
+                        ghost
+                        size="small"
+                        items={[
+                            {
+                                key: 'featured-owner-note',
+                                label: <Text strong>Owner note</Text>,
+                                children: (
+                                    <Flex vertical gap={8}>
+                                        <Text type="secondary">This changes only the Featured section. It does not change the normal menu order.</Text>
+                                        <Text type="secondary">Leave a choice empty when you want MenuList to choose automatically.</Text>
+                                        <Text type="secondary">Best seller, prep time, price, and customer activity help automatic choices. Your selected item wins when it can be shown.</Text>
+                                        <Text type="secondary">Hidden, unavailable, out-of-time, or repeated items may be skipped on the public menu.</Text>
+                                    </Flex>
+                                ),
+                            },
+                        ]}
                     />
                 )}
             </Flex>

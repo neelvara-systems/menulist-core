@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { computeQualitySignals, getVisibleSignals, isAllClear, QualitySignal } from '@lib/mce/qualitySignals';
+import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -34,7 +34,6 @@ interface MobileMenuQualitySignalsProps {
 
 export default function MobileMenuQualitySignals({ activeKey, files, projectContent, projectLanguages, showCategoryIcons = true, showItemPrices = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
-    const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const allSignals = useMemo(
         () => computeQualitySignals(files, projectLanguages, { projectPublicContent: projectContent, showCategoryIcons, showItemPrices }),
@@ -42,10 +41,20 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectCont
     );
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);
+    const primarySignal = useMemo(() => getPrimaryQualitySignal(allSignals), [allSignals]);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || signals.length === 0) {
         return null;
     }
+
+    const handleSignalAction = (signal: QualitySignal) => {
+        if (isRepairMenuSignal(signal) && onOpenRepairMenu) {
+            onOpenRepairMenu();
+            return;
+        }
+
+        onReviewSignal?.(signal);
+    };
 
     return (
         <div
@@ -82,10 +91,21 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectCont
                             <LuCheckCircle color={token.colorSuccess} size={24} />
                             <Flex gap={2} vertical>
                                 <Text type="secondary">{t('allClearDesc')}</Text>
+                                <Text type="secondary">{t('checkedJustNow')}</Text>
                             </Flex>
                         </Flex>
                     ) : (
                         <Flex gap={8} vertical>
+                            {primarySignal ? (
+                                <Button
+                                    block
+                                    color="primary"
+                                    onClick={() => handleSignalAction(primarySignal)}
+                                    size="middle"
+                                >
+                                    {isRepairMenuSignal(primarySignal) ? t('primaryRepair') : t('primaryReview')}
+                                </Button>
+                            ) : null}
                             <Text type="secondary">{t('tapHint')}</Text>
                             <List>
                                 {signals.map((signal) => (
@@ -93,7 +113,7 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectCont
                                         arrow={signal.status === 'warning'}
                                         description={signal.helpText ? <Text type="secondary">{signal.helpText}</Text> : undefined}
                                         key={signal.id}
-                                        onClick={signal.status === 'warning' ? () => onReviewSignal?.(signal) : undefined}
+                                        onClick={signal.status === 'warning' ? () => handleSignalAction(signal) : undefined}
                                         title={(
                                             <Flex align="center" gap={8}>
                                                 {SIGNAL_ICONS[signal.id]}
@@ -104,16 +124,7 @@ export default function MobileMenuQualitySignals({ activeKey, files, projectCont
                                     />
                                 ))}
                             </List>
-                            {onOpenRepairMenu ? (
-                                <Button
-                                    block
-                                    color="primary"
-                                    onClick={() => onOpenRepairMenu()}
-                                    size="middle"
-                                >
-                                    {tMenu('repairMenuAiAction')}
-                                </Button>
-                            ) : null}
+                            <Text type="secondary">{t('checkedJustNow')}</Text>
                         </Flex>
                     )}
                 </Collapse.Panel>

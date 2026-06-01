@@ -8,8 +8,8 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="The aha moment"
-                    title="Generic AI guesses. Answerlattice answers from the page the user is on."
-                    description="A billing question from Billing should not get the same answer as a setup question from Onboarding. Answerlattice uses safe page hints to serve the right approved canonical answer or owner FAQ answer."
+                    title="A billing question should get a billing answer, not a generic reply."
+                    description="The demo shows the core value in seconds: safe page hints help Answerlattice choose the right approved answer, owner FAQ answer, related help, or fallback path for the screen where the user is stuck."
                 >
                     <AnswerlatticeLink
                         basePath={basePath}

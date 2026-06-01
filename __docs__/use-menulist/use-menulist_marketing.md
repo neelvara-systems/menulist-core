@@ -8,7 +8,7 @@
 
 ## Sales Pitch (30 seconds)
 
-"Once your menu is live, open 'Use MenuList' to get everything you need — your menu link for WhatsApp, screen link for your TV, and print-ready QR codes for tables, counter, and entrance. Download everything in one click, print, and place. Your restaurant is fully deployed in 10 minutes."
+"Once your menu is live, open 'Use MenuList' to get everything you need — your menu link for WhatsApp, screen link for your TV, print-ready QR codes, and the Print Menu workflow when you need a full menu PDF. Download, print, share, and place. Your restaurant is fully deployed in 10 minutes."
 
 ## Key Value Props
 
@@ -16,7 +16,8 @@
 2. **Copy link in 3 seconds** — Customer asks for menu? One tap, paste, done.
 3. **Print-ready assets** — Professional QR codes, no design work needed
 4. **Screen setup in 30 seconds** — Copy link, open on TV, done
-5. **Complete launch kit** — Everything needed to deploy MenuList physically
+5. **Print Menu entry** — Open the routed workflow for a menu PDF or print-shop packet
+6. **Complete launch kit** — Everything needed to deploy MenuList physically
 
 ## Competitive Advantage
 
@@ -29,4 +30,5 @@ MenuList: "Here's everything you need to deploy your menu everywhere — tables,
 2. Copy menu link → paste in WhatsApp (3 seconds)
 3. Copy screen link → show on TV demo
 4. Download Menu Kit → show print-ready assets
-5. Show feedback QR → "Collect feedback before it becomes a public review"
+5. Open Print Menu → show preview and warnings
+6. Show feedback QR → "Collect feedback before it becomes a public review"

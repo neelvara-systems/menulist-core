@@ -117,8 +117,7 @@ export interface CampaignsSummaryDocument {
 
 | File                                                                        | Purpose                       |
 | --------------------------------------------------------------------------- | ----------------------------- |
-| `src/lib/staff-prompt/eligibility.ts`                                       | Eligibility calculation logic |
-| `src/lib/staff-prompt/inertia.ts`                                           | Inertia rules enforcement     |
+| Standalone staff-prompt helper code                                         | Removed; active UI reads Today summary data only |
 | `src/components/templates/main-app/today/components/StaffPromptSection.tsx` | UI component                  |
 
 ### Files to Modify
@@ -140,8 +139,7 @@ export interface CampaignsSummaryDocument {
 | Add `StaffPrompt` interface to campaigns.ts      | [ ]    | Include inertia tracking    |
 | Add `STAFF_PROMPT_CONFIDENCE_THRESHOLD` constant | [ ]    | 0.8                         |
 | Add `STAFF_PROMPT_INERTIA` constants             | [ ]    | 3 days min, 2 days/week max |
-| Create `src/lib/staff-prompt/eligibility.ts`     | [ ]    | All gates implemented       |
-| Create `src/lib/staff-prompt/inertia.ts`         | [ ]    | Inertia calculation         |
+| Standalone staff-prompt helper code              | Removed | Deleted June 1, 2026 because it was not used by active runtime |
 
 ### Phase 2: Backend Integration (Day 2)
 
@@ -165,10 +163,15 @@ export interface CampaignsSummaryDocument {
 
 ## Code Implementation
 
-### 1. Eligibility Logic (`src/lib/staff-prompt/eligibility.ts`)
+### 1. Eligibility Logic (historical, removed from active code)
 
 ```typescript
-import { MenuItemForCampaign } from "@lib/campaigns/engine";
+type MenuItemForCampaign = {
+  available: boolean;
+  name: string;
+  price?: number | string;
+};
+
 import {
   TodayCampaignSummary,
   STAFF_PROMPT_CONFIDENCE_THRESHOLD,
@@ -263,7 +266,7 @@ export function generateStaffPromptText(itemName: string): string {
 }
 ```
 
-### 2. Inertia Logic (`src/lib/staff-prompt/inertia.ts`)
+### 2. Inertia Logic (historical, removed from active code)
 
 ```typescript
 import { StaffPrompt, STAFF_PROMPT_INERTIA } from "@type/campaigns";

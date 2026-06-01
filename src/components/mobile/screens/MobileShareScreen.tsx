@@ -10,6 +10,7 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { downloadBlob, generateMenuKit, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import {
     STARTER_ACTIVATION_SIGNALS,
@@ -213,6 +214,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
         const posSync = storeDetails.posSync;
         const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
+        const hasPublishedMenu = projects.some((project: any) => project.deleted !== true && project.active !== false);
 
         return {
             allProjects,
@@ -221,7 +223,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
             feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink) : '',
             hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
             hasPosSync,
-            hasPublishedMenu: !!obpLink,
+            hasPublishedMenu,
             installAppLink,
             menuLink,
             menuModifiedOn: defaultProject.modifiedOn || null,
@@ -454,6 +456,11 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
         } finally {
             setGeneratingDownload(null);
         }
+    };
+
+    const handleOpenMenuCardExport = () => {
+        if (!data?.projectId) return;
+        window.location.href = buildMenuCardExportUrl(data.projectId);
     };
 
     const handleStructuredExport = async (type: 'json' | 'xlsx') => {
@@ -876,11 +883,11 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                     <Flex gap={10} wrap="wrap">
                         <DownloadTile
                             compact={isCompactHandheld}
-                            description={t('menuPdfDesc')}
+                            description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
                             icon={<LuFileText size={18} />}
                             loading={generatingDownload === 'menu_pdf'}
-                            onClick={() => void handleDownloadPdf()}
-                            title={t('menuPdf')}
+                            onClick={() => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport() : void handleDownloadPdf()}
+                            title={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : t('menuPdf')}
                             highlighted
                         />
                         {FEATURE_FLAGS.ENABLE_MENU_KIT ? (

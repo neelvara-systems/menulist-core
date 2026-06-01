@@ -21,8 +21,7 @@ import {
     PhysicalSurfaceEligibility,
     ScreenSlide,
     ScreenStoreInfo,
-    StaffPrompt,
-    TodayCampaignSummary
+    StaffPrompt
 } from "@type/campaigns";
 import { UserUploadedFileType } from "@type/common";
 
@@ -112,74 +111,9 @@ export const getTodayCampaigns = async (): Promise<TodayScreenData | null> => {
     );
 };
 
-/**
- * Sync today's campaigns to summary document
- * Called when campaigns are generated or status changes
- */
-export const syncTodayCampaignsToSummary = async (
-    primary?: TodayCampaignSummary,
-    operational: TodayCampaignSummary[] = []
-) => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-            const docRef = getCampaignsSummaryDocRef(session);
-            const today = new Date().toISOString().split('T')[0];
-
-            await setDoc(docRef, {
-                lastUpdated: serverTimestamp(),
-                today: {
-                    date: today,
-                    primary: primary || null,
-                    operational,
-                    isEmpty: !primary && operational.length === 0
-                }
-            }, { merge: true });
-
-            return { synced: true, date: today };
-        },
-        { primary, operational },
-        "syncTodayCampaignsToSummary"
-    );
-};
-
 // ═══════════════════════════════════════════════════════════════
 // CAMPAIGN CRUD OPERATIONS
 // ═══════════════════════════════════════════════════════════════
-
-/**
- * Create a new campaign
- */
-export const createCampaign = async (data: Partial<Campaign>): Promise<Campaign> => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-
-            // Generate campaign ID
-            const timestamp = Date.now().toString(36);
-            const campaignId = data.id || `${session.tId}-${timestamp}-${session.sId}`;
-
-            const campaignData = await requestBodyComposer({
-                id: campaignId,
-                tId: session.tId,
-                sId: session.sId,
-                ...data,
-                status: data.status || 'suggested',
-                skipCount: data.skipCount || 0,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now()
-            }) as Campaign;
-
-            const docRef = getCampaignDocRef(session, campaignId);
-            await setDoc(docRef, campaignData);
-
-            console.log(`✅ [createCampaign] Created campaign: ${campaignId} (${data.type})`);
-            return campaignData;
-        },
-        data,
-        "createCampaign"
-    );
-};
 
 /**
  * Get a campaign by ID
@@ -202,85 +136,9 @@ export const getCampaign = async (campaignId: string): Promise<Campaign | null> 
     );
 };
 
-/**
- * Update campaign status
- * This is the primary action from Today screen (complete or skip)
- */
-export const updateCampaignStatus = async (
-    campaignId: string,
-    status: CampaignStatus,
-    additionalData?: Partial<Campaign>
-): Promise<Campaign> => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-            const docRef = getCampaignDocRef(session, campaignId);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                throw new Error('Campaign not found');
-            }
-
-            const campaign = docSnap.data() as Campaign;
-            const updateData: Partial<Campaign> = {
-                status,
-                updatedAt: Timestamp.now(),
-                resolvedAt: ['completed', 'skipped'].includes(status) ? Timestamp.now() : undefined,
-                ...additionalData
-            };
-
-            // Increment skip count if skipping
-            if (status === 'skipped') {
-                updateData.skipCount = (campaign.skipCount || 0) + 1;
-
-                // Auto-suppress if skipped twice
-                if (updateData.skipCount >= 2) {
-                    updateData.status = 'suppressed';
-                    updateData.suppressedUntil = Timestamp.fromDate(
-                        new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days
-                    );
-                }
-            }
-
-            if (updateData.suppressedUntil === undefined) {
-                delete updateData.suppressedUntil;
-            }
-
-            await setDoc(docRef, updateData, { merge: true });
-
-            console.log(`✅ [updateCampaignStatus] Updated campaign ${campaignId} to ${status}`);
-            return { ...campaign, ...updateData } as Campaign;
-        },
-        { campaignId, status, additionalData },
-        "updateCampaignStatus"
-    );
-};
-
 // ═══════════════════════════════════════════════════════════════
 // CAMPAIGN QUERIES
 // ═══════════════════════════════════════════════════════════════
-
-/**
- * Get campaigns for a specific date
- */
-export const getCampaignsByDate = async (date: string): Promise<Campaign[]> => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-            const collectionRef = getCampaignsCollectionRef(session);
-            const q = query(
-                collectionRef,
-                where("suggestedFor", "==", date),
-                orderBy("confidence.total", "desc")
-            );
-
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map(doc => doc.data() as Campaign);
-        },
-        { date },
-        "getCampaignsByDate"
-    );
-};
 
 /**
  * Get campaign history (for Past Activity screen)
@@ -319,141 +177,6 @@ export const getCampaignHistory = async (
         },
         { limitCount, projectId: projectId || null },
         "getCampaignHistory"
-    );
-};
-
-/**
- * Get suppressed campaign types
- * Used to avoid suggesting suppressed types
- */
-export const getSuppressedTypes = async (): Promise<CampaignType[]> => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-            const now = Timestamp.now();
-            const collectionRef = getCampaignsCollectionRef(session);
-            const q = query(
-                collectionRef,
-                where("status", "==", "suppressed"),
-                where("suppressedUntil", ">", now)
-            );
-
-            const snapshot = await getDocs(q);
-            const types = new Set<CampaignType>();
-
-            snapshot.docs.forEach(doc => {
-                const campaign = doc.data() as Campaign;
-                types.add(campaign.type);
-            });
-
-            return Array.from(types);
-        },
-        null,
-        "getSuppressedTypes"
-    );
-};
-
-// Alias for API consistency
-export const getSuppressedCampaignTypes = getSuppressedTypes;
-
-// ═══════════════════════════════════════════════════════════════
-// EXPORT TRACKING
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Record an export event (ground truth for campaign completion)
- * 
- * ⚠️ WARNING (ChatGPT Review Fix #5):
- * campaignExports are EXECUTION signals, NOT outcome signals.
- * Do NOT correlate exports with business performance (orders, revenue).
- * Do NOT build "ROI" or "effectiveness" features from this data.
- * 
- * This data answers: "Did owner share?"
- * It does NOT answer: "Did sharing work?"
- * 
- * Violating this creates fake causation and erodes trust.
- */
-export const recordExport = async (data: Omit<CampaignExport, 'id' | 'tId' | 'sId' | 'exportedAt'>): Promise<CampaignExport> => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-
-            const timestamp = Date.now().toString(36);
-            const exportId = `${session.tId}-${timestamp}-${session.sId}`;
-
-            const exportData = await requestBodyComposer({
-                id: exportId,
-                tId: session.tId,
-                sId: session.sId,
-                ...data,
-                exportedAt: Timestamp.now()
-            }) as CampaignExport;
-
-            const collectionRef = getExportsCollectionRef(session);
-            const docRef = doc(collectionRef, exportId);
-            await setDoc(docRef, exportData);
-
-            // Also update campaign status to completed
-            await updateCampaignStatus(data.campaignId, 'completed');
-
-            console.log(`✅ [recordExport] Recorded export for campaign ${data.campaignId} via ${data.surface}`);
-            return exportData;
-        },
-        data,
-        "recordExport"
-    );
-};
-
-// ═══════════════════════════════════════════════════════════════
-// SUPPRESSION STATS (For Summary Document)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Update suppression stats in summary
- */
-export const updateSuppressionStats = async (
-    type: CampaignType,
-    action: 'completed' | 'skipped'
-) => {
-    return await apiCallComposer(
-        async () => {
-            const session = await getActiveSession();
-            const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
-
-            const summaryDoc = docSnap.exists() ? (docSnap.data() as Partial<CampaignsSummaryDocument>) : null;
-            const currentStats = summaryDoc?.stats ?? {
-                totalCompleted: 0,
-                totalSkipped: 0,
-                typeSkipCounts: {}
-            };
-
-            const updatedStats = {
-                ...currentStats,
-                totalCompleted: action === 'completed'
-                    ? (currentStats.totalCompleted || 0) + 1
-                    : (currentStats.totalCompleted || 0),
-                totalSkipped: action === 'skipped'
-                    ? (currentStats.totalSkipped || 0) + 1
-                    : (currentStats.totalSkipped || 0),
-                lastCampaignDate: new Date().toISOString().split('T')[0],
-                typeSkipCounts: {
-                    ...(currentStats.typeSkipCounts || {}),
-                    [type]: action === 'skipped'
-                        ? (((currentStats.typeSkipCounts || {})[type] || 0) + 1)
-                        : ((currentStats.typeSkipCounts || {})[type] || 0)
-                }
-            };
-
-            await setDoc(docRef, {
-                lastUpdated: serverTimestamp(),
-                stats: updatedStats
-            }, { merge: true });
-
-            return updatedStats;
-        },
-        { type, action },
-        "updateSuppressionStats"
     );
 };
 

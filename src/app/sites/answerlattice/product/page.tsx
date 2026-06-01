@@ -5,6 +5,7 @@ import DayOneLaunchPackSection from '../components/DayOneLaunchPackSection';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import ProductPreviewSection from '../components/ProductPreviewSection';
 import SectionHeader from '../components/SectionHeader';
 import SupportKnowledgeMapSection from '../components/SupportKnowledgeMapSection';
@@ -106,7 +107,7 @@ const FEATURES = [
 const OUTCOMES = [
     ['For the founder', 'Launch support before repeated billing, onboarding, settings, and release questions become manual work.'],
     ['For the user', 'Get help from the exact app page where they are stuck instead of searching a generic docs site.'],
-    ['For the product', 'Keep approved answers, FAQs, changelogs, tickets, and app pages connected as the product changes.'],
+    ['For the product', 'Keep approved answers, FAQs, changelogs, tickets, and product pages connected as the product changes.'],
 ];
 
 export default function AnswerlatticeProductPage() {
@@ -124,8 +125,46 @@ export default function AnswerlatticeProductPage() {
                         The support layer for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Answerlattice connects your app pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
+                        Answerlattice connects your product pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
+                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/get-started"
+                            data-answerlattice-event="product_hero_cta_clicked"
+                            data-answerlattice-label="start_support_setup"
+                            className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                        >
+                            Start support setup
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/demo"
+                            data-answerlattice-event="product_hero_cta_clicked"
+                            data-answerlattice-label="demo"
+                            className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                        >
+                            See page-aware demo
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/pre-onboarding"
+                            data-answerlattice-event="product_hero_cta_clicked"
+                            data-answerlattice-label="pre_onboarding"
+                            className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                        >
+                            Prepare inputs first
+                        </AnswerlatticeLink>
+                    </div>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'What it is', value: 'Page-aware support layer for SaaS products' },
+                            { label: 'What it connects', value: 'Docs, FAQs, releases, tickets, feedback, and product pages' },
+                            { label: 'Why it converts', value: 'Approved answers first, fallback becomes visible review work' },
+                            { label: 'What stays safe', value: 'Safe context, allowed origins, role-scoped workspace access' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

@@ -5,6 +5,7 @@ import ContactForm from './ContactForm';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Contact',
@@ -69,6 +70,14 @@ export default function AnswerlatticeContactPage() {
                                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                                     Send your product URL, the questions users repeat, and where support breaks today. We will help you decide whether Answerlattice fits your launch.
                                 </p>
+                                <PageProofStrip
+                                    className="mt-8 text-left"
+                                    items={[
+                                        { label: 'Best inquiry', value: 'SaaS app with repeated support questions' },
+                                        { label: 'Useful context', value: 'Product URL, first stuck page, top recurring questions' },
+                                        { label: 'Avoid sending', value: 'Passwords, tokens, customer datasets, raw logs' },
+                                    ]}
+                                />
                             </div>
 
                             <div className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">

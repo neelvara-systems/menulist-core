@@ -48,6 +48,7 @@ import {
     LuWifi,
     LuWind,
 } from "react-icons/lu";
+import * as LuIcons from "react-icons/lu";
 import type { IconType } from "react-icons";
 import OBPActions from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
@@ -97,6 +98,7 @@ interface OBPIconItem {
     key: string;
     label: string;
     Icon?: IconType;
+    customIcon?: string;
     fallbackIcon?: string;
 }
 
@@ -392,12 +394,33 @@ function renderDisplayIcon(iconVariant: OBPIconVariant, Icon: IconType, emoji: s
         : <Icon aria-hidden="true" size={size} />;
 }
 
+function renderCustomIconValue(icon: string | undefined) {
+    const normalizedIcon = typeof icon === 'string' ? icon.trim() : '';
+    if (!normalizedIcon) return null;
+
+    if (normalizedIcon.startsWith('emoji:')) {
+        return <span aria-hidden="true" className={styles.iconTileEmoji}>{normalizedIcon.replace('emoji:', '')}</span>;
+    }
+
+    const iconName = normalizedIcon.startsWith('lu:')
+        ? normalizedIcon.replace('lu:', '')
+        : normalizedIcon;
+    const Icon = LuIcons[iconName as keyof typeof LuIcons] as IconType | undefined;
+
+    if (Icon) {
+        return <Icon aria-hidden="true" size={19} />;
+    }
+
+    return <span aria-hidden="true" className={styles.iconTileEmoji}>{normalizedIcon}</span>;
+}
+
 function renderIconTile(item: OBPIconItem) {
     const Icon = item.Icon;
+    const customIcon = renderCustomIconValue(item.customIcon);
     return (
         <div key={item.key} className={styles.iconTile}>
             <span className={styles.iconTileSymbol}>
-                {Icon ? <Icon aria-hidden="true" size={19} /> : <span aria-hidden="true" className={styles.iconTileEmoji}>{item.fallbackIcon}</span>}
+                {customIcon || (Icon ? <Icon aria-hidden="true" size={19} /> : <span aria-hidden="true" className={styles.iconTileEmoji}>{item.fallbackIcon}</span>)}
             </span>
             <span className={styles.iconTileLabel}>{item.label}</span>
         </div>
@@ -572,7 +595,8 @@ export default function OBPResolvedSurface({
     const customAttributeTags = normalizeCustomBusinessAttributes(pp.customAttributes).map((attribute) => ({
         key: attribute.id,
         Icon: iconVariant === 'icons' && !attribute.icon ? LuBadgeCheck : undefined,
-        fallbackIcon: attribute.icon || (iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.id) : '+'),
+        customIcon: attribute.icon,
+        fallbackIcon: iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.id) : '+',
         label: attribute.label,
     }));
     const repeatedStructuredAttributeKeys = new Set([

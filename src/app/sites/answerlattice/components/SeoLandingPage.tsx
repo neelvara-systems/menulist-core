@@ -2,6 +2,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticePageStructuredData from './PageStructuredData';
+import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
 
 export type SeoLandingPageProps = {
@@ -64,6 +65,14 @@ export default function SeoLandingPage({
                         {primaryCta}
                     </AnswerlatticeLink>
                 </div>
+                <PageProofStrip
+                    className="mx-auto mt-8 max-w-5xl text-left"
+                    items={[
+                        { label: 'Page context', value: 'Route, feature, workflow, role, and plan hints guide the answer.' },
+                        { label: 'Answer order', value: 'Approved answers and owner Q&A before fallback.' },
+                        { label: 'Safety boundary', value: 'Screenshots are user-attached; context never decides workspace identity.' },
+                    ]}
+                />
             </section>
 
             <section className="border-t border-white/[0.06] px-6 py-20">
@@ -140,6 +149,31 @@ export default function SeoLandingPage({
                             </AnswerlatticeLink>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            <section className="border-t border-white/[0.06] px-6 py-20 text-center">
+                <h2 className="mx-auto max-w-3xl text-3xl font-bold leading-tight text-white sm:text-4xl">
+                    Turn this support gap into a reviewed Answerlattice setup.
+                </h2>
+                <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
+                    Start with the demo, then prepare source material so the first workspace has pages, docs, FAQs, and owner-approved answers to review.
+                </p>
+                <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                    <AnswerlatticeLink
+                        basePath={basePath}
+                        href="/pre-onboarding"
+                        className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                    >
+                        Prepare inputs first
+                    </AnswerlatticeLink>
+                    <AnswerlatticeLink
+                        basePath={basePath}
+                        href="/get-started"
+                        className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                    >
+                        Start support setup
+                    </AnswerlatticeLink>
                 </div>
             </section>
         </main>

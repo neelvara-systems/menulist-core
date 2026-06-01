@@ -17,9 +17,12 @@ export type MobileMenuItemType = {
     }[];
     available: boolean;
     active: boolean;
+    duration?: number;
+    ownerBoost?: number;
     categoryId?: string;
     categoryName?: string;
     hiddenByCategory?: boolean;
+    isBestSeller?: boolean;
     description?: string;
     descriptionMissing?: boolean;
     fileId?: string;

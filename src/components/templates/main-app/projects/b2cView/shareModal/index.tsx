@@ -247,6 +247,10 @@ function ShareModal({
         }
     };
 
+    const handleOpenMenuCardExport = () => {
+        window.location.href = `/use-menulist/menu-card-export?projectId=${encodeURIComponent(projectId)}`;
+    };
+
     return (
         <Modal
             title={null}
@@ -320,11 +324,11 @@ function ShareModal({
                                     <Tooltip title={isMenuUpdatedSincePdf ? 'Menu updated since last PDF download' : undefined}>
                                         <Button
                                             icon={isMenuUpdatedSincePdf ? <LuAlertTriangle style={{ color: token.colorWarning }} /> : <LuFileText />}
-                                            onClick={handleDownloadPdf}
+                                            onClick={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
                                             loading={generatingPdf}
                                             disabled={items.length === 0}
                                         >
-                                            Menu PDF
+                                            {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : 'Menu PDF'}
                                         </Button>
                                     </Tooltip>
                                     <Button

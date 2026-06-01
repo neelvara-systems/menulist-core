@@ -24,7 +24,7 @@
 
 | Screen                         | Tab                 | DAL Functions Used                                                                | Desktop Counterpart                    |
 | ------------------------------ | ------------------- | --------------------------------------------------------------------------------- | -------------------------------------- |
-| `MobileTodayScreen`            | Today               | `getTodayCampaigns`, `completeCampaign`, `skipCampaign`                           | `TodayScreen`                          |
+| `MobileHoursScreen`            | Today               | `getTodayCampaigns`, `completeCampaign`, `skipCampaign`, GrowthOS summary hook     | `TodayScreen`                          |
 | `MobileMenuScreen`             | Menu                | `getProjectsList`, `getProjectData`, `updateProject`                              | `ProjectsPage`                         |
 | `MenuUploadSheet`              | Menu (sheet)        | `addProject`, `uploadFile`, `createMenuProcessingJob`                             | Upload flow in `ProjectsPage`          |
 | `MobileShareScreen`            | Share               | `getProjectsList`, `generateProjectUrl`, `generateOBPUrl`, `getScreenState`       | `UseMenuList`                          |
@@ -98,7 +98,7 @@ Route parity contract: handheld users remain in `MobileShell` for canonical owne
 
 Transactions parity note: `MobileTransactionsScreen` keeps the existing mobile More-tab placement, but now carries the desktop transaction essentials on phone: action filter, date-range filter, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details. It still uses the same `getPaginatedAiOperations` DAL as desktop; no mobile-only transaction data path exists.
 
-Reverse parity note: mobile Menu actions must not become mobile-only capability. The desktop `CommandCenterModal` now carries the mobile Menu command-sheet gaps found in the reverse audit: Repair Menu, Fix Text Case, and the same shared repair/text-case utilities used by mobile. Desktop `EditorActionsPopover` also exposes Generation defaults from the editor context, matching the mobile Menu command sheet.
+Reverse parity note: mobile Menu actions must not become mobile-only capability. The desktop `CommandCenterModal` now carries the mobile Menu command-sheet gaps found in the reverse audit: Repair Menu, Fix Text Case, and the same shared repair/text-case utilities used by mobile. Desktop `EditorActionsPopover` also exposes Generation defaults from the editor context, matching the mobile Menu command sheet. Mobile item edit now carries the outlet bestseller marker, prep time, and item feature-level controls from desktop Store Customization, so phone users can update `isBestSeller`, `duration`, and `ownerBoost` without opening desktop. The mobile sheet intentionally presents owner boost as Show less / Normal / Show more and includes a collapsed customer-impact guide so non-technical owners understand that reordering changes normal menu position while feature level only guides Featured choices.
 
 ---
 
@@ -134,8 +134,8 @@ Reverse parity note: mobile Menu actions must not become mobile-only capability.
 | Shared File                               | What it contains                                             | Used by (Desktop)                   | Used by (Mobile)        |
 | ----------------------------------------- | ------------------------------------------------------------ | ----------------------------------- | ----------------------- |
 | `src/config/outletPolicy.ts`              | `OUTLET_POLICY_CATEGORIES` — 15 policy toggle groupings      | `OutletPolicyEditor`                | `MobileLocationsScreen` |
-| `src/utils/campaignUtils.ts`              | `getMealName()`, `getExportMethod()`, `getShortButtonText()` | `PrimaryCard`, `OperationalSection` | `MobileTodayScreen`     |
-| `src/hooks/useTodayCampaigns.ts`          | SWR hook for today's campaigns (pure DAL, no UI deps)        | `TodayScreen`                       | `MobileTodayScreen`     |
+| `src/utils/campaignUtils.ts`              | `getMealName()`, `getExportMethod()`, `getShortButtonText()` | `PrimaryCard`, `OperationalSection` | `MobileHoursScreen`     |
+| `src/hooks/useTodayCampaigns.ts`          | SWR hook for today's campaigns (pure DAL, no UI deps)        | `TodayScreen`                       | `MobileHoursScreen`     |
 | `src/data/rolesPermissionsInitialData.ts` | `PERMISSION_CATEGORIES_CONFIG`, `PERMISSION_LABELS`          | `UserPermissionsPage`               | `MobileRolesScreen`     |
 | `src/hooks/usePaymentHandler.ts`          | Razorpay payment flow (plan upgrade, topup, cancel)          | `BillingPage`                       | `MobileBillingScreen`   |
 | `src/hooks/useOwnerDashboard.ts`          | SWR dashboard data (overview, WTD, MTD, daily, weekly)       | `OwnerDashboard`                    | `MobileDashboardScreen` |

@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import AnswerlatticePublicDemo from './AnswerlatticePublicDemo';
 
 export const metadata: Metadata = {
@@ -38,6 +39,14 @@ export default function AnswerlatticeDemoPage() {
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                                 Switch product pages and ask the same kind of question. Answerlattice changes the answer using safe page context and approved support knowledge.
                             </p>
+                            <PageProofStrip
+                                className="mt-8 text-left"
+                                items={[
+                                    { label: 'Shows', value: 'Same question, different page-aware answer' },
+                                    { label: 'Proves', value: 'Approved source before fallback' },
+                                    { label: 'Costs', value: 'Static demo with no Firebase or AI call' },
+                                ]}
+                            />
                         </div>
 
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">

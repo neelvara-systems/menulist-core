@@ -14,6 +14,7 @@ import AnswerlatticeFooter from '../../components/Footer';
 import AnswerlatticeHeader from '../../components/Header';
 import AnswerlatticeLink from '../../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../../components/PageStructuredData';
+import PageProofStrip from '../../components/PageProofStrip';
 import SectionHeader from '../../components/SectionHeader';
 import AnswerlatticePreOnboardingPromptModal from '../PromptModal';
 
@@ -41,7 +42,7 @@ const BEFORE_RUN = [
     'Target product paths and excluded sister products when the repo contains multiple products.',
     'API specs, support exports, demo recordings, or screenshots if they are approved for review.',
     'Help center, pricing, legal, security, and contact links.',
-    'Known app pages, user roles, plans, and integrations.',
+    'Known product pages, user roles, plans, and integrations.',
     'Existing support FAQs, support macros, release notes, or onboarding docs.',
     'Screenshot and marketing approval status.',
 ];
@@ -178,6 +179,14 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                             Open agent guide
                         </AnswerlatticeLink>
                     </div>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-5xl text-left"
+                        items={[
+                            { label: 'Before run', value: 'Fill product, source, approval, and boundary placeholders' },
+                            { label: 'During run', value: 'Inspect accessible sources and mark blocked ones pending' },
+                            { label: 'Before live support', value: 'Owner reviews package, sources, widget context, tests, and assets' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-b border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">

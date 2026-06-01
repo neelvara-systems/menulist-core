@@ -15,6 +15,7 @@ import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import { AnswerlatticeSequenceDiagram } from '../components/AnswerlatticeFlowDiagram';
+import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
@@ -97,6 +98,14 @@ export default function AnswerlatticeIntegrationsPage() {
                             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
                                 Answerlattice connects support governance to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
                             </p>
+                            <PageProofStrip
+                                className="mt-8 max-w-2xl"
+                                items={[
+                                    { label: 'Channels', value: 'Slack webhook and email recipients' },
+                                    { label: 'Default', value: 'Digest-first support governance updates' },
+                                    { label: 'Safety', value: 'Test delivery, delivery health, and bounded volume' },
+                                ]}
+                            />
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                                 <AnswerlatticeLink
                                     basePath={basePath}
@@ -138,7 +147,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                             Nightly support digest
                                         </div>
                                         <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                            Coverage changed, 3 answers need review, 2 repeated gaps were grouped, and Slack delivery succeeded.
+                                            Coverage changed, review items are waiting, repeated gaps were grouped, and Slack delivery succeeded.
                                         </p>
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
@@ -146,7 +155,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                             ['Slack', 'Connected'],
                                             ['Email', '2 recipients'],
                                             ['Last test', 'Succeeded'],
-                                            ['Failures', '0 consecutive'],
+                                            ['Failures', 'None active'],
                                         ].map(([label, value]) => (
                                             <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-4">
                                                 <div className="text-[11px] font-semibold uppercase tracking-widest text-[#8f8faa]">{label}</div>

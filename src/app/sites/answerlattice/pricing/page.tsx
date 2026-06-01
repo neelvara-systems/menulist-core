@@ -6,6 +6,7 @@ import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
@@ -85,6 +86,15 @@ export default function AnswerlatticePricingPage() {
                     <p className="mx-auto mt-4 max-w-lg text-lg text-[#a0a0c0]">
                         Create the beta workspace, install the widget, and prove the support loop before choosing monthly capacity.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Free setup', value: 'Create workspace and verify the first support layer' },
+                            { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
+                            { label: 'Credit use', value: 'AI-assisted answers, fallback, governance, and media extraction stay bounded' },
+                            { label: 'Not charged for', value: 'Normal widget loading, selected text import, and public help browsing' },
+                        ]}
+                    />
                 </section>
 
                 <section className="px-6 pb-10">

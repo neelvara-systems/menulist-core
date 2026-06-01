@@ -34,6 +34,20 @@
 
 ---
 
+## Successor Planning
+
+PDF Surface remains the active lightweight PDF path. It is not the long-term product surface for print.
+
+The planned successor is [Menu Card Export](../menu-card-export/README.md), a routed Print Menu workflow under `/use-menulist/menu-card-export`. It adds job presets, preflight warnings, controlled styles, export history, print-shop packet support, QR scan checks, and freshness detection.
+
+Migration rule:
+
+- Keep PDF Surface available while Menu Card Export is flagged off or still proving parity.
+- New print workflow decisions belong in `__docs__/menu-card-export/`.
+- Do not expand PDF Surface into a full route, print-shop packet system, or design editor.
+
+---
+
 ## v2.1 Design Summary (Bistro Style)
 
 ```

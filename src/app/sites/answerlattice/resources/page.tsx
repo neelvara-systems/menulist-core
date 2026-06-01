@@ -5,6 +5,7 @@ import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import { AnswerlatticeSequenceDiagram } from '../components/AnswerlatticeFlowDiagram';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 
@@ -90,6 +91,37 @@ export default function AnswerlatticeResourcesPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Start with pre-onboarding, then use the demo, fit checks, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
                     </p>
+                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/pre-onboarding"
+                            className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                        >
+                            Prepare inputs first
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/demo"
+                            className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                        >
+                            See page-aware demo
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/get-started"
+                            className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                        >
+                            Start setup
+                        </AnswerlatticeLink>
+                    </div>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Buyer path', value: 'Demo, proof, pricing, FAQ' },
+                            { label: 'Setup path', value: 'Pre-onboarding, intake, install, security' },
+                            { label: 'Product path', value: 'Setup, widget, hosted help, governance' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
@@ -144,7 +176,7 @@ export default function AnswerlatticeResourcesPage() {
                                 <h2 className="text-2xl font-bold text-white">Evaluate the individual product features.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Team Access, Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback Review, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context. Runtime scaling is covered in Product and Security because it is core infrastructure, not a separate buyer feature.
+                                Core features now have dedicated buyer-facing pages. Each page shows workflow, proof cards, and connected support-truth context. Runtime scaling stays in Product and Security because it is core infrastructure, not a separate buyer feature.
                             </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

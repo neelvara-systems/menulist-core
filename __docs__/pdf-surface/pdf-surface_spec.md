@@ -14,6 +14,8 @@ The PDF Surface is the printable representation of a MenuList digital menu. It g
 
 This is infrastructure. It runs automatically. Owners do not configure it.
 
+Successor note: PDF Surface remains the active lightweight PDF path. The long-term routed print workflow is Menu Card Export at `__docs__/menu-card-export/`, which owns presets, preflight, print-shop packets, export history, and route-level preview. Do not add those concerns back into PDF Surface.
+
 ---
 
 ## 2. Problem It Solves

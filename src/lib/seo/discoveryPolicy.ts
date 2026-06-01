@@ -1,4 +1,5 @@
 import { PLATFORM_URL, normalizeBaseUrl } from '@constant/urls';
+import { WEBSITE_RESOURCE_ALL_DISCOVERY_PAGES } from '@/content/websiteResources';
 
 export type SitemapChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
 
@@ -15,7 +16,10 @@ export const DISCOVERY_CRAWLERS = [
     'ChatGPT-User',
     'GPTBot',
     'ClaudeBot',
+    'Claude-User',
+    'Claude-SearchBot',
     'PerplexityBot',
+    'Perplexity-User',
     'Google-Extended',
     'Googlebot',
     'Bingbot',
@@ -81,6 +85,7 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         changeFrequency: 'monthly',
         priority: 0.8,
     },
+    ...WEBSITE_RESOURCE_ALL_DISCOVERY_PAGES,
     {
         label: 'About',
         path: '/about',

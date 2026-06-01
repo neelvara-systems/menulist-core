@@ -310,8 +310,8 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
-          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
+          "__docs__/answerlattice/answerlattice-website/README.md": "3b4bc1e75328aaacdcbe580c185e5c698cf2a3a1c8d3459adc61a88beda108f4",
           "src/app/sites/answerlattice/layout.tsx": "929a25a92152150b307a7d540d46c8cda2dbc72f116e5bb9a7ff7e9fef06dd59",
           "src/app/sites/answerlattice/components/HeroSection.tsx": "83f4cd29f52faeb326f791145bfb0e0be294b69004594d5643483740e8d966b6",
           "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
@@ -345,14 +345,14 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
-          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
+          "__docs__/answerlattice/answerlattice-website/README.md": "3b4bc1e75328aaacdcbe580c185e5c698cf2a3a1c8d3459adc61a88beda108f4",
           "src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx": "468a5ea5c35b9541ce36dece7ae49d2e6e661e4eaaf655e2fe97358163747f11",
           "src/components/atoms/answerlatticeLogoMark/index.tsx": "af6c5590d86e42f002268dd1c81ae40ff5d71d028c1e9bb0967cce15127b34ae",
           "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
           "scripts/website-assets/generate-answerlattice-logo-assets.js": "28bc588ed64754799b17c4b831563b12415a5cacb5e4eb7c812973fc4c1a8d64"
         },
-        "notes": "Transparent logo source applied on 2026-06-01; logo mark derivatives regenerated without the exported black canvas/frame, and visible UI/diagram surfaces use the shared inline SVG-path atom for the same geometry/colors."
+        "notes": "Transparent logo source applied on 2026-06-01; logo mark derivatives regenerated without the exported black canvas/frame, visible UI/diagram surfaces use the shared inline SVG-path atom for the same geometry/colors, loaders avoid external CSS logo shadows, and reveal CSS avoids persistent compositing after SVG diagrams become visible."
       },
       "review": {
         "decision": "approved",
@@ -390,8 +390,8 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
-          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
+          "__docs__/answerlattice/answerlattice-website/README.md": "3b4bc1e75328aaacdcbe580c185e5c698cf2a3a1c8d3459adc61a88beda108f4",
           "public/answerlattice.webmanifest": "6c9d064d8db5b86b6c0e1a80671b0ff3a63e9e0919a37fcaf2bd9f489ed38231",
           "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794",
           "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
@@ -430,8 +430,8 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
-          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "6add72848d3381fdf42ede55ee1f2b9d05083ae44e212e67610640d0901870a3",
+          "__docs__/answerlattice/answerlattice-website/README.md": "3b4bc1e75328aaacdcbe580c185e5c698cf2a3a1c8d3459adc61a88beda108f4",
           "src/lib/answerlattice/pwaAssets.ts": "9d7275dd3027b1da0a6c0a74759dc721031a7f87b45aa72e99004e6db53161ec",
           "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794",
           "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",

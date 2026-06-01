@@ -28,7 +28,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         featured: true,
     },
     {
-        label: 'First app pages',
+        label: 'First product pages',
         title: 'Starter surfaces for common SaaS screens',
         description:
             'Seed billing, onboarding, team settings, releases, integrations, and common-error surfaces so page-aware support starts with real product areas.',

@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
+import PageProofStrip from '../components/PageProofStrip';
 import {
     AnswerlatticeInstallDocKey,
     ANSWERLATTICE_INSTALL_DOCS,
@@ -43,6 +44,14 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
                                 <p className="mt-5 max-w-3xl text-lg leading-relaxed text-[#a0a0c0]">
                                     {doc.description}
                                 </p>
+                                <PageProofStrip
+                                    className="mt-8"
+                                    items={[
+                                        { label: 'Install target', value: 'One v1 widget script in the app shell' },
+                                        { label: 'Safe context', value: 'Path, title, feature, workflow, role, locale' },
+                                        { label: 'Verification', value: 'Loaded, origin allowed, route allowed, context received' },
+                                    ]}
+                                />
                             </div>
                             <div className="flex flex-wrap gap-3 lg:justify-end">
                                 <AnswerlatticeLink

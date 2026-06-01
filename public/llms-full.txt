@@ -167,6 +167,140 @@ MenuList is a platform that helps small and medium businesses (restaurants, cafe
 Website: https://menulist.ai
 Contact: support@menulist.ai
 
+## Public Resource Pages
+
+MenuList also publishes an evergreen resource layer at `https://menulist.ai/resources`. These pages are public education and discovery context for owners, search engines, crawlers, and AI assistants. They explain menu correctness, QR menu setup, Google menu source cleanup, PDF and print-file handling, restaurant menu SEO, AI search discovery, menu updates, menu engineering, and multi-location menu control.
+
+Resource pages are HTML-first and describe only visible public content. They should not be interpreted as a guarantee that Google, Bing, ChatGPT, Perplexity, Claude, or any other external system will crawl, rank, cite, show, or refresh MenuList content.
+
+Resource inventory:
+
+- `https://menulist.ai/resources`
+- `https://menulist.ai/resources/menu-source-audit`
+- `https://menulist.ai/resources/menu-engineering`
+- `https://menulist.ai/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/resources/google-business-profile-menu`
+- `https://menulist.ai/resources/official-menu-source`
+- `https://menulist.ai/resources/restaurant-menu-seo`
+- `https://menulist.ai/resources/ai-search-menu-discovery`
+- `https://menulist.ai/resources/menu-update-checklist`
+- `https://menulist.ai/resources/qr-code-placement-checklist`
+- `https://menulist.ai/resources/menu-engineering-worksheet`
+- `https://menulist.ai/resources/multi-location-menu-management`
+
+Reviewed Hindi resource inventory:
+
+- `https://menulist.ai/hi-IN/resources`
+- `https://menulist.ai/hi-IN/resources/menu-source-audit`
+- `https://menulist.ai/hi-IN/resources/menu-engineering`
+- `https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/hi-IN/resources/google-business-profile-menu`
+- `https://menulist.ai/hi-IN/resources/official-menu-source`
+- `https://menulist.ai/hi-IN/resources/restaurant-menu-seo`
+- `https://menulist.ai/hi-IN/resources/ai-search-menu-discovery`
+- `https://menulist.ai/hi-IN/resources/menu-update-checklist`
+- `https://menulist.ai/hi-IN/resources/qr-code-placement-checklist`
+- `https://menulist.ai/hi-IN/resources/menu-engineering-worksheet`
+- `https://menulist.ai/hi-IN/resources/multi-location-menu-management`
+
+Reviewed Tamil resource inventory:
+
+- `https://menulist.ai/ta-IN/resources`
+- `https://menulist.ai/ta-IN/resources/menu-source-audit`
+- `https://menulist.ai/ta-IN/resources/menu-engineering`
+- `https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/ta-IN/resources/google-business-profile-menu`
+- `https://menulist.ai/ta-IN/resources/official-menu-source`
+- `https://menulist.ai/ta-IN/resources/restaurant-menu-seo`
+- `https://menulist.ai/ta-IN/resources/ai-search-menu-discovery`
+- `https://menulist.ai/ta-IN/resources/menu-update-checklist`
+- `https://menulist.ai/ta-IN/resources/qr-code-placement-checklist`
+- `https://menulist.ai/ta-IN/resources/menu-engineering-worksheet`
+- `https://menulist.ai/ta-IN/resources/multi-location-menu-management`
+
+Reviewed Telugu resource inventory:
+
+- `https://menulist.ai/te-IN/resources`
+- `https://menulist.ai/te-IN/resources/menu-source-audit`
+- `https://menulist.ai/te-IN/resources/menu-engineering`
+- `https://menulist.ai/te-IN/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/te-IN/resources/google-business-profile-menu`
+- `https://menulist.ai/te-IN/resources/official-menu-source`
+- `https://menulist.ai/te-IN/resources/restaurant-menu-seo`
+- `https://menulist.ai/te-IN/resources/ai-search-menu-discovery`
+- `https://menulist.ai/te-IN/resources/menu-update-checklist`
+- `https://menulist.ai/te-IN/resources/qr-code-placement-checklist`
+- `https://menulist.ai/te-IN/resources/menu-engineering-worksheet`
+- `https://menulist.ai/te-IN/resources/multi-location-menu-management`
+
+Reviewed Marathi resource inventory:
+
+- `https://menulist.ai/mr-IN/resources`
+- `https://menulist.ai/mr-IN/resources/menu-source-audit`
+- `https://menulist.ai/mr-IN/resources/menu-engineering`
+- `https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/mr-IN/resources/google-business-profile-menu`
+- `https://menulist.ai/mr-IN/resources/official-menu-source`
+- `https://menulist.ai/mr-IN/resources/restaurant-menu-seo`
+- `https://menulist.ai/mr-IN/resources/ai-search-menu-discovery`
+- `https://menulist.ai/mr-IN/resources/menu-update-checklist`
+- `https://menulist.ai/mr-IN/resources/qr-code-placement-checklist`
+- `https://menulist.ai/mr-IN/resources/menu-engineering-worksheet`
+- `https://menulist.ai/mr-IN/resources/multi-location-menu-management`
+
+Reviewed Bengali resource inventory:
+
+- `https://menulist.ai/bn-IN/resources`
+- `https://menulist.ai/bn-IN/resources/menu-source-audit`
+- `https://menulist.ai/bn-IN/resources/menu-engineering`
+- `https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/bn-IN/resources/google-business-profile-menu`
+- `https://menulist.ai/bn-IN/resources/official-menu-source`
+- `https://menulist.ai/bn-IN/resources/restaurant-menu-seo`
+- `https://menulist.ai/bn-IN/resources/ai-search-menu-discovery`
+- `https://menulist.ai/bn-IN/resources/menu-update-checklist`
+- `https://menulist.ai/bn-IN/resources/qr-code-placement-checklist`
+- `https://menulist.ai/bn-IN/resources/menu-engineering-worksheet`
+- `https://menulist.ai/bn-IN/resources/multi-location-menu-management`
+
+Reviewed Arabic resource inventory:
+
+- `https://menulist.ai/ar-SA/resources`
+- `https://menulist.ai/ar-SA/resources/menu-source-audit`
+- `https://menulist.ai/ar-SA/resources/menu-engineering`
+- `https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/ar-SA/resources/google-business-profile-menu`
+- `https://menulist.ai/ar-SA/resources/official-menu-source`
+- `https://menulist.ai/ar-SA/resources/restaurant-menu-seo`
+- `https://menulist.ai/ar-SA/resources/ai-search-menu-discovery`
+- `https://menulist.ai/ar-SA/resources/menu-update-checklist`
+- `https://menulist.ai/ar-SA/resources/qr-code-placement-checklist`
+- `https://menulist.ai/ar-SA/resources/menu-engineering-worksheet`
+- `https://menulist.ai/ar-SA/resources/multi-location-menu-management`
+
+Reviewed Spanish resource inventory:
+
+- `https://menulist.ai/es-ES/resources`
+- `https://menulist.ai/es-ES/resources/menu-source-audit`
+- `https://menulist.ai/es-ES/resources/menu-engineering`
+- `https://menulist.ai/es-ES/resources/qr-menu-for-restaurants`
+- `https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu`
+- `https://menulist.ai/es-ES/resources/google-business-profile-menu`
+- `https://menulist.ai/es-ES/resources/official-menu-source`
+- `https://menulist.ai/es-ES/resources/restaurant-menu-seo`
+- `https://menulist.ai/es-ES/resources/ai-search-menu-discovery`
+- `https://menulist.ai/es-ES/resources/menu-update-checklist`
+- `https://menulist.ai/es-ES/resources/qr-code-placement-checklist`
+- `https://menulist.ai/es-ES/resources/menu-engineering-worksheet`
+- `https://menulist.ai/es-ES/resources/multi-location-menu-management`
+
 ## Suggested Agent Handling
 
 When answering questions from MenuList public data:

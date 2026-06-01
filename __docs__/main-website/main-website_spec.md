@@ -1,6 +1,6 @@
 # Main Website Strategy Spec
 
-**Version:** 3.6.0 — Agent-Readable SEO/AEO Hardening
+**Version:** 3.6.20 — Full Resource Locale Coverage
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
@@ -11,6 +11,8 @@
 > May 23, 2026 update: Chrome's agentic web / WebMCP guidance validates MenuList's discovery strategy, but WebMCP is not the strategy itself. MenuList's current PAL contract is public pages, server-rendered JSON-LD, sitemap/robots, `llms.txt`, `llms-full.txt`, and gated API/POS surfaces where enabled. WebMCP and MCP are future gated surfaces, not current website claims.
 
 > May 23, 2026 agent-readable hardening update: active platform pages now emit page-level WebPage/Breadcrumb JSON-LD, homepage structured data is server-rendered, `https://menulist.ai` is the canonical discovery host, and the legacy `/product` redirect is removed from sitemap/LLM inventories.
+
+> June 1, 2026 resource localization update: `/resources` is now an evergreen content layer with reviewed English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish resource coverage. Locale-prefixed resource URLs are discovery surfaces only after full source-versioned packs pass verifier coverage; they must stay separate from owner app, customer menu runtime, Firebase, Answerlattice, Canonica, GrowthOS, KitStamp, and other same-repo product surfaces.
 
 ---
 
@@ -75,7 +77,7 @@ ChatGPT had zero awareness of these built features:
 11. **AI image generation** — Menu item images without photographer
 12. **AI descriptions** — Professional descriptions without copywriter
 13. **AI translations** — One-click multi-language
-14. **PDF export** — Print-ready from menu data
+14. **Print files** — PDF and printer handoff files generated from the current approved menu
 15. **Menu Trust Signals** — Location, hours, freshness date on customer-facing pages
 16. **Menu Quality Signals** — Missing descriptions/images/prices flagged with one-tap fix
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
@@ -97,8 +99,9 @@ ChatGPT had zero awareness of these built features:
 5. SurfacesSection          — Public output proof
 6. CustomerBrowseSection    — Customer-facing menu preview
 7. PreparedForYouSection    — Real-world rollout proof
-8. FaqSection               — Questions answered
-9. FinalCtaSection          — Close with owner-approved menu CTA
+8. ResourcesSection         — Evergreen owner-useful resources
+9. FaqSection               — Questions answered
+10. FinalCtaSection         — Close with owner-approved menu CTA
 ```
 
 **Rationale:** After showing the transformation and public-menu pain, immediately prove the workflow and public customer result. The older `SolutionSection` was removed because its one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof without adding new buyer evidence. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.

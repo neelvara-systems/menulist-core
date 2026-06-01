@@ -6,8 +6,8 @@ import {
     refreshGrowthOSForProject,
     useGrowthOS,
 } from '@hook/useGrowthOS';
-import { isGrowthOSKitExpired } from '@lib/growthos/readiness';
-import type { GrowthOSOutput } from '@type/growthos';
+import { isGrowthOSSummaryKitStale } from '@lib/growthos/todayTrigger';
+import type { GrowthOSOutput, GrowthOSStaffBriefOutput } from '@type/growthos';
 import { useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
@@ -40,6 +40,9 @@ const copyText = async (text: string) => {
 };
 
 const canUseOutput = (output: GrowthOSOutput) => output.preflight?.status !== 'blocked';
+const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBriefOutput => (
+    output.destination === 'staff_brief'
+);
 
 export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCardProps) {
     const { growthOSSummary, mutate } = useGrowthOS();
@@ -52,10 +55,12 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
         || latestKit?.outputs[0]
         || null
     ), [latestKit?.outputs]);
-    const staffBrief = latestKit?.outputs.find((output) => output.destination === 'staff_brief') || null;
-    const isStale = Boolean(latestKit?.isStale)
-        || Boolean(latestKit?.sourceFactsHash && growthOSSummary?.sourceFactsHash && latestKit.sourceFactsHash !== growthOSSummary.sourceFactsHash)
-        || isGrowthOSKitExpired(latestKit?.expiresAt);
+    const staffBrief = latestKit?.outputs.find(isStaffBriefOutput) || null;
+    const counterPrompt = latestKit?.outputs.find((output) => output.destination === 'counter_prompt') || null;
+    const isStale = isGrowthOSSummaryKitStale(growthOSSummary);
+    const primaryOutputBlocked = Boolean(primaryOutput && !canUseOutput(primaryOutput));
+    const canUsePrimaryOutput = Boolean(primaryOutput && !primaryOutputBlocked && !isStale);
+    const needsNewPack = !primaryOutput || isStale || primaryOutputBlocked;
 
     const refresh = async () => {
         if (!projectId) {
@@ -66,10 +71,10 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
         try {
             const payload = await refreshGrowthOSForProject(projectId, true);
             await mutate(payload.data, { revalidate: false });
-            Toast.show({ content: 'Growth Kits refreshed', duration: 1300 });
+            Toast.show({ content: 'Menu checked', duration: 1300 });
         } catch {
             Toast.show({
-                content: latestKit ? 'Could not refresh. Latest kit is still available.' : 'Could not refresh Growth Kits.',
+                content: latestKit ? 'Could not check menu. Latest pack is still here.' : 'Could not check menu.',
                 duration: 2200,
             });
         } finally {
@@ -89,9 +94,9 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                 actionId: primaryAction?.id,
             });
             await mutate(payload.data.summary, { revalidate: false });
-            Toast.show({ content: 'Growth Kit ready', duration: 1300 });
+            Toast.show({ content: 'Sales Pack ready', duration: 1300 });
         } catch {
-            Toast.show({ content: 'Could not create Growth Kit', duration: 2000 });
+            Toast.show({ content: 'Could not prepare Sales Pack', duration: 2000 });
         } finally {
             setIsWorking(false);
         }
@@ -158,6 +163,10 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
     };
 
     const markUsed = async (output: GrowthOSOutput) => {
+        if (!canUseOutput(output) || isStale) {
+            Toast.show({ content: 'Update this pack before marking it used.', duration: 1800 });
+            return;
+        }
         try {
             await record(output, 'mark_used');
             Toast.show({ content: 'Marked used', duration: 1200 });
@@ -171,19 +180,37 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             <Flex gap={12} vertical>
                 <Flex align="flex-start" justify="space-between">
                     <Flex gap={4} vertical>
-                        <Text type="secondary">Growth Kits</Text>
-                        <Text strong style={{ fontSize: 17 }}>{latestKit?.title || primaryAction?.title || 'Ready to share'}</Text>
+                        <Text type="secondary">Today&apos;s Sales Pack</Text>
+                        <Text strong style={{ fontSize: 17 }}>{latestKit?.title || primaryAction?.title || 'Prepare today&apos;s message'}</Text>
                     </Flex>
-                    <Tag color={isStale ? 'warning' : 'primary'}>{isStale ? 'Check details' : 'Add-on'}</Tag>
+                    <Tag color={isStale || primaryOutputBlocked ? 'warning' : latestKit ? 'success' : 'primary'}>
+                        {isStale ? 'Update' : primaryOutputBlocked ? 'Review' : latestKit ? 'Ready' : 'Prepare'}
+                    </Tag>
                 </Flex>
 
-                {isStale ? (
-                    <Text style={{ color: 'var(--adm-color-warning)' }}>
-                        This kit may use old menu details. Create it again before using.
+                {!needsNewPack ? (
+                    <Flex gap={6} wrap>
+                        <Tag color="success">Menu checked</Tag>
+                        <Tag color="primary">Customer</Tag>
+                        <Tag color="primary">Staff</Tag>
+                        {counterPrompt ? <Tag color="primary">Counter</Tag> : null}
+                    </Flex>
+                ) : null}
+
+                {isStale || primaryOutputBlocked ? (
+                    <Text
+                        style={{
+                            background: 'rgba(250, 173, 20, 0.12)',
+                            borderRadius: 12,
+                            color: 'var(--adm-color-warning)',
+                            padding: 12,
+                        }}
+                    >
+                        {isStale ? 'Menu details changed. Update this pack before copying or sharing.' : 'This message needs review before use.'}
                     </Text>
                 ) : null}
 
-                {primaryOutput ? (
+                {primaryOutput && !needsNewPack ? (
                     <Text
                         style={{
                             background: 'var(--adm-color-background)',
@@ -196,17 +223,17 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                         {primaryOutput.text}
                     </Text>
                 ) : (
-                    <Text type="secondary">Create a Growth Kit from the current menu action.</Text>
+                    <Text type="secondary">Prepare one customer message, one staff line, and one counter line from the selected menu.</Text>
                 )}
 
                 <Flex gap={8} wrap>
-                    <Button color="primary" loading={isWorking} onClick={primaryOutput ? () => copyOutput(primaryOutput) : createKit} style={{ minHeight: 44 }}>
+                    <Button color="primary" loading={isWorking} onClick={canUsePrimaryOutput ? () => copyOutput(primaryOutput) : createKit} style={{ minHeight: 44 }}>
                         <Flex align="center" gap={6}>
-                            {primaryOutput ? <LuCopy size={16} /> : <LuShieldCheck size={16} />}
-                            <Text>{primaryOutput ? 'Copy message' : 'Create kit'}</Text>
+                            {canUsePrimaryOutput ? <LuCopy size={16} /> : <LuShieldCheck size={16} />}
+                            <Text>{canUsePrimaryOutput ? 'Copy WhatsApp' : isStale ? 'Update pack' : 'Prepare pack'}</Text>
                         </Flex>
                     </Button>
-                    {primaryOutput ? (
+                    {canUsePrimaryOutput ? (
                         <Button fill="outline" onClick={() => shareOutput(primaryOutput)} style={{ minHeight: 44 }}>
                             <Flex align="center" gap={6}>
                                 <LuSend size={16} />
@@ -217,12 +244,12 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                     <Button fill="none" loading={isWorking} onClick={refresh} style={{ minHeight: 44 }}>
                         <Flex align="center" gap={6}>
                             <LuRefreshCw size={16} />
-                            <Text>Refresh</Text>
+                            <Text>Check menu</Text>
                         </Flex>
                     </Button>
                 </Flex>
 
-                {staffBrief ? (
+                {staffBrief && !needsNewPack ? (
                     <Flex
                         gap={8}
                         style={{
@@ -231,16 +258,33 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                         }}
                         vertical
                     >
-                        <Text strong>Staff brief</Text>
-                        <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{staffBrief.text}</Text>
+                        <Text strong>Staff line</Text>
+                        <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{staffBrief.mainLine || staffBrief.text}</Text>
                         <Flex gap={8}>
                             <Button fill="outline" onClick={() => copyOutput(staffBrief)} style={{ minHeight: 44 }}>
-                                Use staff line
+                                Copy staff line
                             </Button>
                             <Button fill="none" onClick={() => markUsed(staffBrief)} style={{ minHeight: 44 }}>
-                                Mark used
+                                Done
                             </Button>
                         </Flex>
+                    </Flex>
+                ) : null}
+
+                {counterPrompt && !needsNewPack ? (
+                    <Flex
+                        gap={8}
+                        style={{
+                            borderTop: staffBrief ? undefined : '1px solid var(--adm-color-border)',
+                            paddingTop: staffBrief ? 0 : 10,
+                        }}
+                        vertical
+                    >
+                        <Text strong>Counter line</Text>
+                        <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{counterPrompt.text}</Text>
+                        <Button fill="outline" onClick={() => copyOutput(counterPrompt)} style={{ minHeight: 44, width: 'fit-content' }}>
+                            Copy counter line
+                        </Button>
                     </Flex>
                 ) : null}
             </Flex>

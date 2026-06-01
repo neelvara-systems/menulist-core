@@ -23,7 +23,7 @@ export default function ProductTeamsUseCasePage() {
             canonicalPath="/use-cases/product-teams"
             eyebrow="For product teams"
             title="See where product changes break support."
-            description="Answerlattice connects releases, app pages, support gaps, and approved answers so stale support becomes visible after changes."
+            description="Answerlattice connects releases, product pages, support gaps, and approved answers so stale support becomes visible after changes."
             problem="Fast releases change workflows, limits, roles, and states. Without drift review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
@@ -36,7 +36,7 @@ export default function ProductTeamsUseCasePage() {
                 'Approve proposed answer updates.',
                 'Track which surfaces still need support.',
             ]}
-            primaryCta="Start free beta"
+            primaryCta="Start support setup"
             secondaryCta="Try page-aware demo"
         />
     );

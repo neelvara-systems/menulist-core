@@ -47,6 +47,7 @@ OBP has TWO surfaces — each assessed separately:
 | Copy message action    | ✅ DONE — OBPLinkCard       | Conversation-ready message for WhatsApp/Instagram    |
 | Dual QR (Share + Menu) | ✅ DONE — OBPLinkCard       | Two QR types with Segmented toggle + download        |
 | OBP settings editor    | ✅ Mobile More tab + desktop | Uses same store DAL and compact mobile cards         |
+| Custom attributes      | ✅ Mobile More tab + desktop | Uses the shared category icon/emoji picker and same `publicPresence.customAttributes` save path |
 | Business cover         | ✅ Mobile More tab + desktop | Upload/generate/adjust through shared media system   |
 | Photo upload           | ✅ Mobile More tab + desktop | Shared media card, two-column mobile grid, modal actions |
 | Google review fields   | ❌ Desktop only             | One-time setup, number inputs                        |
@@ -70,6 +71,7 @@ OBP has TWO surfaces — each assessed separately:
 - Official page link card
 - Business cover image card with upload, replace, adjust, remove, and Generate/Regenerate
 - Descriptor, known for, special note, links, rating fields, action visibility, policy links
+- Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
 - Business photo gallery with shared media upload and per-photo action sheet
 
 ### Public OBP Page (customer-facing):

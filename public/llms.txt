@@ -47,6 +47,26 @@ MenuList provides structured, owner-maintained SMB public business data. Each bu
 - [Multi Location](https://menulist.ai/multi-location): Multi-location business support
 - [Get Started](https://menulist.ai/get-started): Owner onboarding entry point
 - [Create Menu](https://menulist.ai/create-menu): Public menu creation entry point
+- [Resources](https://menulist.ai/resources): Menu correctness, QR, Google menu, SEO, and AI discovery resources
+- [Menu Source Audit](https://menulist.ai/resources/menu-source-audit): Checklist for finding old public and staff-shared menu copies
+- [Menu Engineering](https://menulist.ai/resources/menu-engineering): Practical menu engineering starting from the current customer-facing menu
+- [QR Menu for Restaurants](https://menulist.ai/resources/qr-menu-for-restaurants): QR menu setup, placement, and stable menu source guidance
+- [Digital Menu vs PDF Menu](https://menulist.ai/resources/digital-menu-vs-pdf-menu): Comparison of mobile menu pages, PDF files, and generated print files
+- [Google Business Profile Menu](https://menulist.ai/resources/google-business-profile-menu): Google menu link and old menu cleanup guidance
+- [Official Menu Source](https://menulist.ai/resources/official-menu-source): Definition of one owner-approved public menu source
+- [Restaurant Menu SEO](https://menulist.ai/resources/restaurant-menu-seo): Visible menu text, metadata, internal links, and structured data guidance
+- [AI Search Menu Discovery](https://menulist.ai/resources/ai-search-menu-discovery): Clear public menu source guidance for search and AI systems
+- [Menu Update Checklist](https://menulist.ai/resources/menu-update-checklist): Checklist before and after price, item, availability, and link updates
+- [QR Code Placement Checklist](https://menulist.ai/resources/qr-code-placement-checklist): QR placement and scan-testing checklist
+- [Menu Engineering Worksheet](https://menulist.ai/resources/menu-engineering-worksheet): Owner-readable item review worksheet
+- [Multi-location Menu Management](https://menulist.ai/resources/multi-location-menu-management): Master menu, outlet differences, and branch consistency guidance
+- [Hindi Resources](https://menulist.ai/hi-IN/resources): Reviewed Hindi resource hub for Indian business owners
+- [Tamil Resources](https://menulist.ai/ta-IN/resources): Reviewed Tamil resource hub for Indian business owners
+- [Telugu Resources](https://menulist.ai/te-IN/resources): Reviewed Telugu resource hub for Indian business owners
+- [Marathi Resources](https://menulist.ai/mr-IN/resources): Reviewed Marathi resource hub for Indian business owners
+- [Bengali Resources](https://menulist.ai/bn-IN/resources): Reviewed Bengali resource hub for Indian business owners
+- [Spanish Resources](https://menulist.ai/es-ES/resources): Reviewed Spanish resource hub for business owners
+- [Arabic Resources](https://menulist.ai/ar-SA/resources): Reviewed Arabic resource hub for business owners
 - [About Us](https://menulist.ai/about): Company mission and team information
 - [Contact Us](https://menulist.ai/contact): Support and inquiry details
 - [Trust & Security](https://menulist.ai/trust-security): Trust and security information

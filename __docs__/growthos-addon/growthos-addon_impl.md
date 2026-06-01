@@ -15,7 +15,6 @@ Existing reusable pieces:
 | Existing layer | Reuse plan |
 | --- | --- |
 | `src/types/campaigns.ts` | Reuse campaign type, surface, confidence, and summary concepts where they fit. |
-| `src/lib/campaigns/engine.ts` | Reuse candidate generation and confidence scoring as one input into GrowthOS ranking. |
 | `src/lib/campaigns/executionSurfaces.ts` | Reuse copy/export surface helpers where possible. |
 | `src/hooks/useTodayCampaigns.ts` | Reuse the one-read Today summary pattern. |
 | `src/database/campaigns/index.ts` | Reuse export tracking doctrine: execution signals only, not ROI. |
@@ -57,6 +56,8 @@ Rules:
 - offer builder, quick replies, photo prompts, multi-outlet localization, used history UI, and advanced low-data behavior remain disabled until pilot admission.
 
 Do not reuse `ENABLE_TODAY_WEEKLY_GROWTH_PACK` as the GrowthOS flag. That flag remains paused for the older Today wedge.
+
+The legacy Social Content owner generator is deleted, not feature-flagged. Existing Today campaigns, staff prompts, and physical-surface cards can still be read, completed, skipped, copied, or downloaded. New generated action creation should go through GrowthOS / `Today's Sales Pack`, not a replacement `Generate Today Action` prompt, helper, route, or campaign engine.
 
 ## 3. Entitlement Gate
 
@@ -318,6 +319,11 @@ Required mobile V1 behaviors:
 - mark used
 - regenerate stale kit
 - keep latest loaded kit visible when refresh/generation fails
+- label the Today card as `Today's Sales Pack`
+- present the paid outcome as one customer message, one staff line, and one counter line
+- hide or disable copy/share/download actions when the kit is stale or blocked
+- make `Update pack` the primary action when menu details changed
+- avoid owner-facing confidence percentages on Today; use current/freshness language instead
 - no long editor, analytics, calendar, channel setup, or design variant browsing
 
 ## 9. Direct Posting Policy

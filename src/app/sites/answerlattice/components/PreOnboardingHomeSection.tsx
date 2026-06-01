@@ -25,22 +25,22 @@ export default function PreOnboardingHomeSection({ basePath = '' }: { basePath?:
         <section className="border-y border-white/[0.06] bg-[radial-gradient(circle_at_18%_0%,rgba(20,184,166,0.13),transparent_34%),rgba(255,255,255,0.012)] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Before setup"
-                    title="Prepare Answerlattice with your product sources first."
-                    description="The Pre-Onboarding Kit gives your AI coding agent a strict prompt, copy/download flow, source-mode rules, and safety boundaries before the first Answerlattice intake job."
+                    eyebrow="Source preparation"
+                    title="Use the Pre-Onboarding Kit when your sources are scattered."
+                    description="This stays visible, but lower in the story: founders first understand the product value, then use the kit to package repo context, docs, website pages, owner notes, screenshots, recordings, and support questions before setup."
                 />
 
                 <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
                     <div className="flex flex-col justify-between rounded-[1.5rem] border border-teal-300/20 bg-teal-400/[0.055] p-6">
                         <div>
                             <div className="mb-5 inline-flex rounded-full border border-teal-200/20 bg-teal-300/[0.08] px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-teal-100">
-                                Main onboarding entry
+                                Preparation entry
                             </div>
                             <h3 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
                                 One page for the prompt, guide, source rules, and safety boundary.
                             </h3>
                             <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
-                                Owners start at the human page. Agents and IDEs can still use the raw Markdown prompt and companion guides when they need machine-readable instructions.
+                                Owners can use the human page. Agents and IDEs can use the raw Markdown prompt and companion guides when they need machine-readable instructions.
                             </p>
                         </div>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">

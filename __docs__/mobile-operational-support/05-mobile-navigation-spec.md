@@ -113,7 +113,7 @@ The mobile navigation is designed so that an owner who has never used the mobile
 
 ```
 Today Tab
-├── MobileTodayScreen (default)
+├── MobileHoursScreen (default)
 │   └── → Dashboard drill-in (Level 2, optional)
 ```
 
@@ -193,7 +193,7 @@ More Tab
 | --- | --- | --- | --- |
 | `/dashboard` | DashboardPage | MobileDashboardScreen | More |
 | `/projects` | ProjectsPage (Editor) | MobileMenuScreen | Menu |
-| `/today` | TodayPage | MobileTodayScreen | Today |
+| `/today` | TodayPage | MobileHoursScreen | Today |
 | `/feedback` | FeedbackPage | MobileFeedbackScreen | Feedback |
 | `/qr-code` | QrCodePage | MobileShareScreen | Share |
 | `/business-settings` | BusinessSettings | MobilePublicInfoScreen | More → Info |

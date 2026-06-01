@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 import { ANSWERLATTICE_FRAMEWORK_SNIPPETS } from '@lib/answerlattice/installContract/contract';
 
@@ -88,6 +89,14 @@ export default function AnswerlatticeQuickstartsPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Use the v1 script once, then send safe page context from the app screens where users get stuck.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Install once', value: 'Global script in the app shell, not page-by-page embeds' },
+                            { label: 'Context shape', value: 'Path, title, feature, workflow, role, locale' },
+                            { label: 'Verification', value: 'Loaded, origin allowed, route allowed, context received' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

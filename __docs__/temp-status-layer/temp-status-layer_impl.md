@@ -66,7 +66,7 @@ const TempStatusSchema = z.object({
   storeId: z.number().positive(),
   action: z.enum(['set', 'clear']),
   // Required when action === 'set'
-  type: z.enum(['closed_today', 'opening_late', 'special_menu', 'custom']).optional(),
+  type: z.enum(['closed_today', 'opening_late', 'closing_early', 'kitchen_closed', 'special_menu', 'custom']).optional(),
   message: z.string().max(100).optional(),
   expiresAt: z.string().datetime().optional(), // ISO 8601
 });
@@ -110,6 +110,7 @@ const TempStatusSchema = z.object({
 
 1. Add `tempStatus` type to `StoreDataType`
 2. Create API route with full security (withAuth, verifyTenantAccess, Zod, rate limit)
+3. Revalidate customer-facing cache tags after every set/clear: `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`
 
 ### Phase 2: Customer-Facing Banner
 
@@ -128,6 +129,7 @@ const TempStatusSchema = z.object({
 ### Phase 4: Owner Controls (Mobile)
 
 1. Create `MobileTempStatusScreen`
+2. Use temporary status for one-day close actions. Regular weekday hour edits remain explicit working-hours updates and are labeled as recurring schedule edits.
 2. ActionSheet for type selection
 3. DatePicker for expiry
 4. Wire into MobileMoreScreen navigation
@@ -156,6 +158,8 @@ const TempStatusSchema = z.object({
 | Write tempStatus (set)   | ~2/week per store | Negligible |
 | Write tempStatus (clear) | ~2/week per store | Negligible |
 | Read (part of store doc) | 0 extra reads     | ₹0         |
+
+Cache revalidation has no Firestore cost. It only clears public Next.js cache tags so OBP and menu pages pick up the status change promptly.
 
 ---
 

@@ -21,12 +21,14 @@
     "assets:generate:missing": "node packages/asset-factory/scripts/generate-missing-placeholder.js",
     "generate:answerlattice-splash": "node scripts/website-assets/generate-answerlattice-splash.js",
     "verify:agent-readiness": "node scripts/verification/verify-agent-readiness.js",
+    "verify:website-resource-locales": "node scripts/verification/verify-website-resource-locales.js",
     "verify:env-targets": "node scripts/verification/verify-agent-readiness.js --env-targets-only",
     "verify:answerlattice-pwa": "node scripts/verification/verify-answerlattice-pwa-assets.js",
     "verify:customer-app-pwa": "node scripts/verification/verify-customer-app-pwa.js",
     "verify:catalog-analytics": "npm --prefix functions run build && node scripts/verification/verify-catalog-analytics-intelligence.js",
     "verify:recycle-bin": "node scripts/verification/verify-recycle-bin.js",
     "verify:menu-export": "node scripts/verification/verify-menu-export.js",
+    "verify:menu-card-export": "node scripts/verification/verify-menu-card-export.js",
     "verify:growthos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-growthos-flow.ts"
   },
   "overrides": {

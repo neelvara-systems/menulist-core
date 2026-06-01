@@ -4,12 +4,13 @@ import { FEATURE_FLAGS } from '@config/features';
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from '@constant/todayFeatureGuide';
 import { completeCampaign as dbCompleteCampaign, getCampaign, skipCampaign as dbSkipCampaign } from '@database/campaigns';
 import { updateStore } from '@database/stores';
-import { generateCampaignsForProject, useTodayCampaigns } from '@hook/useTodayCampaigns';
-import { useAppDispatch } from '@hook/useAppDispatch';
+import { useTodayCampaigns } from '@hook/useTodayCampaigns';
+import { useGrowthOS } from '@hook/useGrowthOS';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
+import { getGrowthOSTodayTriggerState } from '@lib/growthos/todayTrigger';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
@@ -17,16 +18,13 @@ import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrio
 import { buildTodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
-import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
-import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
     MOBILE_TEMP_STATUS_OPTIONS,
@@ -39,6 +37,17 @@ import { useMobileProjects } from '../providers/MobileProjectsProvider';
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
 const getTodayKey = () => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+const DAY_LABELS: Record<string, string> = {
+    sun: 'Sunday',
+    mon: 'Monday',
+    tue: 'Tuesday',
+    wed: 'Wednesday',
+    thu: 'Thursday',
+    fri: 'Friday',
+    sat: 'Saturday',
+};
+const TEMP_CLOSED_TYPES = new Set(['closed_today', 'kitchen_closed']);
+
 const parseTimeToMinutes = (value?: string): number | null => {
     if (!value) return null;
     const [hoursRaw, minutesRaw] = value.split(':');
@@ -76,7 +85,7 @@ const buildTodayDigest = (
     }
 
     if (!parts.length) {
-        return 'No action suggestions available right now.';
+        return '';
     }
 
     return `${parts.join(' · ')}.`;
@@ -132,13 +141,12 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
     const { activeSubscription, storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-    const dispatch = useAppDispatch();
-    const { projectsList, selectProject, selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
+    const { selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
-    const [originalTodayHours, setOriginalTodayHours] = useState<string | null>(null);
     const todayKey = getTodayKey();
+    const todayLabel = DAY_LABELS[todayKey] || 'today';
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
     const [isNudgeDismissed, setIsNudgeDismissed] = useState(false);
@@ -152,9 +160,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isTempStatusLoading, setIsTempStatusLoading] = useState(false);
     const [isTodayHoursSheetOpen, setIsTodayHoursSheetOpen] = useState(false);
     const [isSavingTodayHours, setIsSavingTodayHours] = useState(false);
-    const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isTodayGuideOpen, setIsTodayGuideOpen] = useState(false);
-    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
@@ -198,6 +204,10 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     }, [storeDetails?.workingHours, todayKey]);
 
     const todayStatus = useMemo((): TodayStatus => {
+        if (isTempActive && TEMP_CLOSED_TYPES.has(String(currentTempStatus?.type))) {
+            return 'closed_today';
+        }
+
         const todayValue = storeDetails?.workingHours?.[todayKey];
         if (!todayValue || todayValue.toLowerCase() === 'closed') {
             return 'closed_today';
@@ -223,7 +233,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         if (isOpenNow) return 'open';
         if (!isOvernight && currentMinutes >= closeMinutes) return 'closed_after_hours';
         return 'closed_today';
-    }, [storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
+    }, [currentTempStatus?.type, isTempActive, storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
 
     const inactiveItemsReminder = useMemo(
         () => getInactiveItemsReminder(selectedProject as any),
@@ -242,40 +252,35 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const handleCloseToday = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsUpdating(true);
-        const currentHours = storeDetails.workingHours?.[todayKey] || '';
-        setOriginalTodayHours(currentHours);
-
-        const updatedHours = { ...storeDetails.workingHours, [todayKey]: '' };
-        setStoreDetails((previous: any) => ({ ...previous, workingHours: updatedHours }));
+        const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+        const nextStatus = {
+            type: 'closed_today',
+            message: 'Closed today',
+            expiresAt,
+            createdAt: new Date().toISOString(),
+        };
+        const previousStatus = storeDetails?.tempStatus;
+        setStoreDetails((previous: any) => ({ ...previous, tempStatus: nextStatus }));
         Toast.show({ content: t('closedForToday'), duration: 1500 });
 
         try {
-            await updateStore({ ...storeDetails, workingHours: updatedHours } as any);
+            const res = await fetch('/api/store/temp-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'set', type: 'closed_today', expiresAt }),
+            });
+            if (!res.ok) throw new Error();
         } catch {
-            setStoreDetails((previous: any) => ({ ...previous, workingHours: { ...storeDetails.workingHours, [todayKey]: currentHours } }));
+            setStoreDetails((previous: any) => {
+                if (previousStatus) return { ...previous, tempStatus: previousStatus };
+                const { tempStatus, ...rest } = previous || {};
+                return rest;
+            });
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         } finally {
             setIsUpdating(false);
         }
-    }, [setStoreDetails, storeDetails, t, todayKey]);
-
-    const handleReopenToday = useCallback(async () => {
-        if (!storeDetails?.storeId) return;
-        setIsUpdating(true);
-        const restoredHours = originalTodayHours || '09:00-22:00';
-        const updatedHours = { ...storeDetails.workingHours, [todayKey]: restoredHours };
-        setStoreDetails((previous: any) => ({ ...previous, workingHours: updatedHours }));
-        Toast.show({ content: t('reopened'), duration: 1500 });
-
-        try {
-            await updateStore({ ...storeDetails, workingHours: updatedHours } as any);
-        } catch {
-            setStoreDetails((previous: any) => ({ ...previous, workingHours: { ...storeDetails.workingHours, [todayKey]: '' } }));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
-        } finally {
-            setIsUpdating(false);
-        }
-    }, [originalTodayHours, setStoreDetails, storeDetails, t, todayKey]);
+    }, [setStoreDetails, storeDetails?.storeId, storeDetails?.tempStatus, t]);
 
     const handleCompleteCampaign = async (campaign: TodayCampaignSummary) => {
         setIsCampaignProcessing(true);
@@ -332,11 +337,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
     const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
     const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
-    const shouldShowGrowthKitsCard = shouldShowGrowthOSNavigation({
+    const canAccessGrowthKitsToday = shouldShowGrowthOSNavigation({
         activeSubscription,
         storeDetails,
         storeId: storeDetails?.storeId,
     }) && Boolean(selectedProjectId);
+    const { growthOSSummary } = useGrowthOS(canAccessGrowthKitsToday);
+    const growthOSTodayTrigger = getGrowthOSTodayTriggerState(growthOSSummary);
+    const shouldShowGrowthKitsCard = canAccessGrowthKitsToday && growthOSTodayTrigger.shouldSurface;
     const hasMaintenanceCards = Boolean(
         (physicalSurfaces?.tentCard?.eligible || false)
         || (physicalSurfaces?.counterSticker?.eligible || false)
@@ -385,7 +393,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             ? { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
         : { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
     const closeTodayCtaLabel = 'Mark Closed for Today';
-    const reopenTodayCtaLabel = 'Mark Open for Today';
+    const editRegularHoursCtaLabel = `Edit ${todayLabel} Hours`;
+    const isTemporaryClosedToday = Boolean(isTempActive && TEMP_CLOSED_TYPES.has(String(currentTempStatus?.type)));
 
     const hoursConfidence = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
         ? getHoursConfidenceState({
@@ -418,8 +427,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         Boolean(staffPrompt?.eligible),
         hasMaintenanceCards,
     );
-    const shouldShowMainActionHint = !primaryCampaign && hasAnyTodayCampaign;
-    const shouldShowGenerateTodayAction = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading && !hasAnyTodayCampaign;
+    const shouldShowTodayDigest = hasAnyTodayCampaign || hasMaintenanceCards;
     const mealName = primaryCampaign ? getMealName() : '';
     const primaryTitle = primaryCampaign
         ? (ACTION_TITLES[primaryCampaign.type] || 'Share this item')
@@ -467,32 +475,12 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         try {
             await updateStore({ ...storeDetails, workingHours: nextHours } as any);
             setIsTodayHoursSheetOpen(false);
-            Toast.show({ content: 'Today timings updated', duration: 1400 });
+            Toast.show({ content: `${todayLabel} hours updated`, duration: 1400 });
         } catch {
             setStoreDetails((previous: any) => ({ ...previous, workingHours: previousHours }));
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         } finally {
             setIsSavingTodayHours(false);
-        }
-    };
-
-    const handleGenerateTodayActions = async () => {
-        if (!selectedProjectId) {
-            Toast.show({ content: 'Select a project to generate today action.', duration: 1800 });
-            return;
-        }
-
-        setIsGeneratingTodayActions(true);
-        dispatch(startLoader('Generating today action'));
-        try {
-            await generateCampaignsForProject(selectedProjectId, true);
-            await mutate();
-            Toast.show({ content: 'Today action generated', duration: 1400 });
-        } catch {
-            Toast.show({ content: tToday('failed'), duration: 1800 });
-        } finally {
-            dispatch(stopLoader('Generating today action'));
-            setIsGeneratingTodayActions(false);
         }
     };
 
@@ -543,7 +531,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             const res = await fetch('/api/store/temp-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'clear' }) });
             if (!res.ok) throw new Error();
         } catch {
-            setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
+            setStoreDetails((prev: any) => {
+                if (prevStatus) return { ...prev, tempStatus: prevStatus };
+                const { tempStatus, ...rest } = prev || {};
+                return rest;
+            });
             Toast.show({ content: 'Failed to clear status', duration: 2000 });
         } finally {
             setIsTempStatusLoading(false);
@@ -662,7 +654,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     <Card size="small" style={{ width: '100%' }}>
                         <Flex gap={8} vertical>
                             <Flex align="center" justify="space-between">
-                                <Text strong>Today&apos;s Timings</Text>
+                                <Text strong>{`Regular ${todayLabel} Hours`}</Text>
                                 <Button
                                     fill="outline"
                                     onClick={() => setIsTodayHoursSheetOpen(true)}
@@ -673,7 +665,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                         paddingInline: 12,
                                     }}
                                 >
-                                    Edit Timings
+                                    Edit Hours
                                 </Button>
                             </Flex>
                             <Text>{todayTimingsLabel}</Text>
@@ -698,13 +690,17 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                         >
                             {closeTodayCtaLabel}
                         </Button>
+                    ) : isTemporaryClosedToday ? (
+                        <Button block color="primary" loading={isTempStatusLoading} onClick={() => void handleClearTempStatus()} size="large" style={{ minHeight: 44 }}>
+                            Clear Temporary Status
+                        </Button>
                     ) : (
-                        <Button block color="primary" loading={isUpdating} onClick={() => void handleReopenToday()} size="large" style={{ minHeight: 44 }}>
-                            {reopenTodayCtaLabel}
+                        <Button block color="primary" onClick={() => setIsTodayHoursSheetOpen(true)} size="large" style={{ minHeight: 44 }}>
+                            {editRegularHoursCtaLabel}
                         </Button>
                     )}
                     <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-                        This updates today&apos;s status only.
+                        Closing uses Temporary Status. Editing hours changes your regular {todayLabel} schedule.
                     </Text>
                 </Flex>
             </Card>
@@ -729,7 +725,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             padding: '12px 14px',
                         }}
                     >
-                        <Text strong>Edit Today&apos;s Timings</Text>
+                        <Text strong>{`Edit Regular ${todayLabel} Hours`}</Text>
                         <Button
                             fill="none"
                             onClick={() => {
@@ -745,7 +741,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                         </Button>
                     </Flex>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 14 }} vertical>
-                        <Text type="secondary">Set opening and closing time for today only.</Text>
+                        <Text type="secondary">{`Set the opening and closing time used every ${todayLabel}.`}</Text>
                         <Flex align="center" gap={8}>
                             <Flex style={{ flex: 1 }} vertical>
                                 <Text type="secondary">Open</Text>
@@ -912,16 +908,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
             {shouldShowGrowthKitsCard ? <GrowthKitsMobileCard projectId={selectedProjectId} /> : null}
 
-            <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text>
-
-            {shouldShowMainActionHint ? (
-                <Card style={{ borderRadius: 20 }}>
-                    <Flex gap={10} vertical>
-                        <Text strong>No main action today</Text>
-                        <Text type="secondary">Generate one suggested action if you want a guided action now.</Text>
-                    </Flex>
-                </Card>
-            ) : null}
+            {shouldShowTodayDigest ? <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text> : null}
 
             {primaryCampaign ? (
                 <Card style={{ borderRadius: 20 }}>
@@ -944,47 +931,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             style={{ color: '#94a3b8' }}
                         >
                             <Text type="secondary">{tToday('skip')}</Text>
-                        </Button>
-                    </Flex>
-                </Card>
-            ) : null}
-
-            {shouldShowGenerateTodayAction ? (
-                <Card style={{ borderRadius: 20 }}>
-                    <Flex gap={10} vertical>
-                        <Text strong>No today action yet</Text>
-                        <Text type="secondary">Generate one suggested action and share it in one tap.</Text>
-                        {projectsList.length > 1 && selectedProjectId ? (
-                            <ProjectSelectorTrigger
-                                clickable
-                                currentProject={{
-                                    active: selectedProjectSummary?.active !== false,
-                                    deleted: selectedProjectSummary?.deleted === true,
-                                    id: selectedProjectId,
-                                    isDefault: selectedProjectSummary?.isDefault,
-                                    isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
-                                    name: selectedProjectSummary?.name || 'Untitled',
-                                    projectImage: selectedProjectSummary?.projectImage || null,
-                                    specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
-                                    specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
-                                        ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
-                                        : undefined,
-                                    specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
-                                    specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
-                                }}
-                                onClick={() => setIsProjectSelectorOpen(true)}
-                            />
-                        ) : null}
-                        <Button
-                            block
-                            color="primary"
-                            disabled={!selectedProjectId}
-                            loading={isGeneratingTodayActions}
-                            onClick={() => void handleGenerateTodayActions()}
-                            size="large"
-                            style={{ minHeight: 44 }}
-                        >
-                            Generate Today Action
                         </Button>
                     </Flex>
                 </Card>
@@ -1092,17 +1038,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     </Flex>
                 </Flex>
             </Popup>
-
-            <MobileProjectSelectorSheet
-                currentProjectId={selectedProjectId}
-                currentProjectName={selectedProjectSummary?.name || null}
-                onClose={() => setIsProjectSelectorOpen(false)}
-                onProjectsChanged={async (preferredProjectId) => {
-                    setIsProjectSelectorOpen(false);
-                    await selectProject(preferredProjectId || null);
-                }}
-                visible={isProjectSelectorOpen}
-            />
         </Flex>
     );
 }

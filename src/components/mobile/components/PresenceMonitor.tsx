@@ -13,6 +13,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
+import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
     shouldRecordStarterActivationSignal,
@@ -152,7 +153,7 @@ export default function MobilePresenceMonitor({
 
     const handleCopyOfficialLink = async () => {
         try {
-            await navigator.clipboard.writeText(obpLink);
+            await navigator.clipboard.writeText(withAnalyticsSource(obpLink, 'copy_link'));
             Toast.show({ content: t('menuLinkCopied'), duration: 1000 });
         } catch {
             Toast.show({ content: t('menuLinkCopyFailed'), duration: 1000 });

@@ -160,7 +160,6 @@ Routes with auth but **NO rate limiting**:
 | Route | File | AI Service | Est. Cost/Call |
 |-------|------|-----------|---------------|
 | `/api/campaigns/caption` | `src/app/api/campaigns/caption/route.ts` | AI | Medium |
-| `/api/campaigns/generate` | `src/app/api/campaigns/generate/route.ts` | AI | Medium |
 | `/api/descriptions` | `src/app/api/descriptions/route.ts` | AI | Medium |
 | `/api/image-editing` | `src/app/api/image-editing/route.ts` | AI | High |
 | `/api/image-generation` | `src/app/api/image-generation/route.ts` | AI | High |

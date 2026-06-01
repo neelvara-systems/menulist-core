@@ -24,6 +24,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0.0016, // Store-level metadata generation
     [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0.0020, // Multi-surface store copy generation
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 0.0008, // Tiny caption generation
+    [AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR]: 0.0012, // Bounded print-layout recommendation JSON
     [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0.0020, // Upload preflight identity/readability check
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0.0080, // Public draft extraction
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0.0016, // Analytics summary narrative
@@ -81,6 +82,7 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 1, // Tiny owner-requested campaign copy generation
+    [AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR]: 1, // Pro/Premium print-layout recommendation
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 1, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 1, // ₹12 charge vs ₹0.13 cost → ~99x margin
     [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // ₹60 charge vs ₹3.38 cost → ~18x margin

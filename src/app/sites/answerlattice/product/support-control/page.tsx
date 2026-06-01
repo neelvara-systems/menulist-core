@@ -28,10 +28,10 @@ export default function SupportControlProductPage() {
             <ProductCapabilityLandingPage
                 basePath={basePath}
                 canonicalPath="/product/support-control"
-                eyebrow="Help center + tickets"
+                eyebrow="Help center and tickets"
                 title="Keep docs, FAQs, owner answers, releases, widget answers, tickets, and feedback connected."
                 description="Answerlattice gives you a practical support layer for hosted help, page-aware answers, custom Q&A, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
-                activeTab="Help center + tickets"
+                activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 canvasTitle="Support operations without support chaos"
                 canvasSubtitle="Support Control is the layer for hosted help, knowledge base, FAQ, custom owner answers, changelog, tickets as fallback, feedback review, conversations, Support Board, workflow notifications, and weekly review output."

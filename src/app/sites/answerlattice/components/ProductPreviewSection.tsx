@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import SectionHeader from './SectionHeader';
 
-type PreviewTab = 'Product setup' | 'Key app pages' | 'Widget install' | 'Feedback review' | 'Answer review';
+type PreviewTab = 'Product setup' | 'Key product pages' | 'Widget install' | 'Feedback review' | 'Answer review';
 
 type CardItem = {
     title: string;
@@ -38,7 +38,7 @@ type PreviewConfig = {
     queueRows: RowItem[];
 };
 
-const TABS: PreviewTab[] = ['Product setup', 'Key app pages', 'Widget install', 'Feedback review', 'Answer review'];
+const TABS: PreviewTab[] = ['Product setup', 'Key product pages', 'Widget install', 'Feedback review', 'Answer review'];
 
 const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
     emerald: 'bg-emerald-500/10 text-emerald-300',
@@ -55,7 +55,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
         badge: 'Live preview',
         badgeTone: 'emerald',
         leftEyebrow: 'Activation Command Center',
-        leftTitle: '78% launch ready',
+        leftTitle: 'Launch checklist active',
         leftStatus: 'Runtime verified',
         leftItems: [
             { title: 'Product profile', state: 'Complete', detail: 'Company, product, support email' },
@@ -78,19 +78,19 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Invoice retry confusion', meta: 'Ticket fallback', result: 'Needs review' },
         ],
     },
-    'Key app pages': {
-        tab: 'Key app pages',
+    'Key product pages': {
+        tab: 'Key product pages',
         route: 'app.answerlattice.com/workspace/product-surfaces',
         sidebarActive: 'Product surfaces',
-        badge: '3 routes live',
+        badge: 'Starter routes',
         badgeTone: 'sky',
         leftEyebrow: 'Product surfaces',
         leftTitle: 'Support mapped by route',
         leftStatus: 'Coverage visible',
         leftItems: [
-            { title: 'billing_invoices', state: '3 answers', detail: '2 FAQs, 1 release note, 4 tickets linked' },
-            { title: 'team_settings', state: '2 answers', detail: '1 FAQ, role and permission scope' },
-            { title: 'onboarding_checklist', state: '4 answers', detail: '3 FAQs, setup import workflow' },
+            { title: 'billing_invoices', state: 'Mapped', detail: 'FAQs, release notes, and ticket fallback linked' },
+            { title: 'team_settings', state: 'Scoped', detail: 'Role and permission support context attached' },
+            { title: 'onboarding_checklist', state: 'Ready for review', detail: 'Setup import workflow and FAQs connected' },
             { title: 'usage_limits_release', state: 'Drift watch', detail: 'Release changed plan limit guidance' },
         ],
         rightEyebrow: 'Related support',
@@ -178,11 +178,11 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
         leftTitle: 'Coverage and trust stay visible',
         leftStatus: 'Nightly checked',
         leftItems: [
-            { title: 'Canonical coverage', state: '82%', detail: 'Known questions resolved by approved answers' },
+            { title: 'Canonical coverage', state: 'Tracked', detail: 'Known questions resolved by approved answers' },
             { title: 'Drift pressure', state: 'Medium', detail: 'Release touched billing and usage-limit answers' },
             { title: 'Trust readiness', state: 'Ready', detail: 'Critical surfaces have reviewed fallback paths' },
             { title: 'Support-day check', state: 'Due today', detail: 'Workspace timezone and EOD decide the governance window' },
-            { title: 'Mutation proposals', state: '6 open', detail: 'Draft improvements waiting for owner review' },
+            { title: 'Mutation proposals', state: 'Open', detail: 'Draft improvements waiting for owner review' },
         ],
         rightEyebrow: 'Canonical answer review',
         rightTitle: 'Draft before publish',
@@ -242,9 +242,9 @@ export default function ProductPreviewSection() {
         <section className="relative overflow-hidden border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.11),transparent_34%),rgba(255,255,255,0.01)] px-4 py-16 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Support launch checklist"
-                    title="See what is ready before users rely on support."
-                    description="Product profile, imported knowledge, mapped app pages, widget install, compiled context readiness, and first approved answers stay visible in one launch path."
+                    eyebrow="Product proof"
+                    title="Show the workspace, not just the promise."
+                    description="The homepage now puts the product surface early: setup readiness, mapped product pages, widget install, feedback review, and approved-answer review all stay visible before a buyer reaches pricing."
                 />
 
                 <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:justify-center" role="tablist" aria-label="Answerlattice product preview">
@@ -366,7 +366,7 @@ export default function ProductPreviewSection() {
                                         <div className="rounded-2xl border border-white/[0.06] bg-[#070714] p-4">
                                             <h3 className="text-lg font-semibold text-white">{preview.tab}</h3>
                                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                                This tab changes the route, sidebar highlight, readiness panel, widget result, and review queue so the product proof behaves like a real Answerlattice workspace.
+                                                This sample tab changes the route, sidebar highlight, readiness panel, widget result, and review queue so buyers can understand the connected workspace before final product media is captured.
                                             </p>
                                         </div>
                                     </div>

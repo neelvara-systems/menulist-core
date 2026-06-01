@@ -13,6 +13,7 @@ import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import { AnswerlatticeSequenceDiagram } from '../components/AnswerlatticeFlowDiagram';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 import AnswerlatticePreOnboardingPromptModal from './PromptModal';
 
@@ -113,6 +114,14 @@ export default function AnswerlatticePreOnboardingPage() {
                                     Start Answerlattice setup
                                 </AnswerlatticeLink>
                             </div>
+                            <PageProofStrip
+                                className="mt-8"
+                                items={[
+                                    { label: 'Input modes', value: 'Repo, website, docs, owner notes, screenshots, mixed sources' },
+                                    { label: 'Output', value: 'Reviewed source package, upload skeletons, support tests, asset rules' },
+                                    { label: 'Boundary', value: 'Prepares inputs; does not publish official answers' },
+                                ]}
+                            />
                         </div>
 
                         <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">

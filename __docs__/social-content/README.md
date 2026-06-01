@@ -1,8 +1,8 @@
 # Social Content — Documentation Hub
 
 > **Feature:** Today / Social Content
-> **Status:** Today implemented. Weekly Growth Pack paused behind a disabled flag.
-> **Last Updated:** May 31, 2026
+> **Status:** Today read/complete/skip surface implemented. Legacy owner generation retired; Weekly Growth Pack paused behind a disabled flag.
+> **Last Updated:** June 1, 2026
 
 ---
 
@@ -27,7 +27,20 @@ Prepare owner-ready actions from current MenuList truth: one Today action and op
 - Mobile owner tab: `Today`, currently rendered by `src/components/mobile/screens/MobileHoursScreen.tsx`.
 - Shared data path: `platformSummary/campaigns_{sId}` through `src/hooks/useTodayCampaigns.ts`.
 - Existing master flag: `FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED`.
+- Owner generation path: deleted. Do not show `Generate Today Action` or add a replacement Social Content generation route while GrowthOS owns new generated actions.
 - Weekly pack flag: `FEATURE_FLAGS.ENABLE_TODAY_WEEKLY_GROWTH_PACK` defaults to `false`.
+
+## June 1, 2026 Addendum
+
+The old manual `Generate Today Action` prompt is retired from desktop and mobile Today.
+
+Decision:
+
+- Keep reading `platformSummary/campaigns_{sId}` because it still carries existing Today campaigns, staff prompt, and physical-surface cards.
+- Keep complete/skip/download/copy paths for already-prepared items.
+- Do not ask owners to generate weak one-off actions from Today.
+- Delete, rather than flag, the retired generator path so no hidden endpoint, helper, or old campaign engine remains.
+- GrowthOS / `Today's Sales Pack` owns new generated action creation for Pro/Premium stores.
 
 ## May 31, 2026 Addendum
 

@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.1 (starter activation telemetry)
-> **Last Updated:** May 20, 2026
+> **Version:** 2.2 (published-menu truth + link attribution)
+> **Last Updated:** June 1, 2026
 > **Audience:** Developers
 
 ---
@@ -44,7 +44,7 @@ starterActivationSignals?: {
 
 | Surface         | Source                    | Detection Logic                                                     |
 | --------------- | ------------------------- | ------------------------------------------------------------------- |
-| Table QR        | Use MenuList data loader  | `data.hasPublishedMenu === true` (Menu Kit requires published menu) |
+| Table QR        | Use MenuList data loader  | At least one non-deleted active project exists                      |
 | Digital Screens | `data.hasScreen`          | Screen token exists in campaigns collection                         |
 | Feedback QR     | `data.hasFeedbackEnabled` | Store `feedbackEnabled !== false`                                   |
 
@@ -138,6 +138,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
    - Progress indicator: "X of 6 surfaces active"
 3. Embed in `useMenuList/index.tsx` between Quick Actions and Share section
 4. Gate behind `FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR`
+5. Copy actions append `entry_source=copy_link` through `withAnalyticsSource()` before writing to clipboard.
 
 ### Phase 3: Mobile UI (~45 min)
 

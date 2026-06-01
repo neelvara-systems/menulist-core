@@ -175,6 +175,9 @@ Result: rules compiled successfully and were released to `cloud.firestore` for p
 Implemented V1 optimizations:
 
 - disabled or ineligible desktop route does not fetch project lists
+- mobile Today trigger gating uses the existing `platformSummary/growthos_{sId}` summary read for eligible Pro/Premium stores
+- mobile Today trigger gating does not refresh actions, generate kits, write exports, update summaries, query project lists, or start listeners
+- legacy Social Content owner generation is deleted, including its API route and campaign engine, so there is no hidden endpoint or surprise campaign write path
 - summary refresh skips Firestore writes when the normalized summary did not change
 - export route reuses store entitlement data and recomputes only the current source snapshot instead of reloading the full GrowthOS context
 - summary latest-kit status is written after export only when status or stale state changed

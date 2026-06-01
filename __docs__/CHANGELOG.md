@@ -6,6 +6,263 @@
 
 ---
 
+## June 2, 2026 — Menu Card Export Mobile Surface Parity
+
+### Changed
+
+- **Print Menu mobile discovery** - Mobile Share remains the primary print/export surface, Mobile Menu now adds a command-sheet Print Menu shortcut for owners who just edited a menu, and More > Modules now lists Print Menu beside Dashboard for discoverability.
+- **Print Menu route helper** - Mobile entry points now share one route helper so selected project links consistently open `/use-menulist/menu-card-export?projectId=...`.
+
+### Fixed
+
+- **Edited mobile menus save before print** - Opening Print Menu from the mobile Menu command sheet now flushes pending local menu edits before route navigation, preventing the export route from reading stale saved menu data after a fresh phone edit.
+
+### Cost
+
+- **No new Firebase export cost** - The new mobile entries are route links only. No export collection, Storage upload, Cloud Function, Firestore index, Firebase rule, or artifact API route was added.
+
+---
+
+## June 1, 2026 — Full Website Resource Locale Coverage
+
+### Added
+
+- **Arabic and Spanish resource packs** - The MenuList resources layer now has reviewed Arabic and Spanish packs for the hub and all 12 article routes, completing long-form resource coverage for every language in the public website switcher.
+- **All active resource locale URLs** - `/ar-SA/resources` and `/es-ES/resources` now join Hindi, Tamil, Telugu, Marathi, and Bengali in localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, `llms.txt`, and `llms-full.txt` coverage.
+- **Locale coverage guard** - `verify:website-resource-locales` now fails unless every active non-default website language has a reviewed resource pack and reviewed route coverage.
+- **Default resource locale guard** - `verify:website-resource-locales` now also fails if the unprefixed `/resources` routes derive content from the visitor locale cookie instead of the English default route.
+
+### Changed
+
+- **Localized resource layout messages** - Locale-prefixed resource routes now load the matching website locale JSON for all active website languages, with RTL direction applied for Arabic.
+- **Footer language menu clearance** - The footer language dropdown now opens farther above the trigger with enough open-up height for the full language list, preventing the last option from overlapping the trigger hit area during resource-language switching.
+- **English resource route stability** - `/resources` and `/resources/[slug]` now render through the English website locale boundary, so localized content only appears on locale-prefixed URLs such as `/es-ES/resources/[slug]` and `/ar-SA/resources/[slug]`.
+
+### Cost
+
+- **Static website content only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, Firebase rules, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Menu Card Export Freeze Guardrails
+
+### Fixed
+
+- **Print Menu mobile route guard** - `/use-menulist/menu-card-export` now bypasses the generic mobile shell on handheld devices, so the Mobile Share action opens the responsive export route instead of falling back to the Share tab.
+- **Print Menu feature flag parity** - The local history flag now controls the history UI and browser history write path; the print-shop flag now hides packet creation and blocks stale flagged state from creating a packet.
+- **Print Menu freeze cleanup** - Removed unused placeholder modules from the menu-card export library so the frozen surface only contains wired runtime code.
+
+### Cost
+
+- **No new Firebase export cost** - The freeze pass kept PDF/packet generation browser-local. No export collection, Storage upload, Cloud Function, Firestore index, Firebase rule, or artifact API route was added.
+- **AI cost guard unchanged** - Pro/Premium layout suggestions remain owner-click only, plan-gated before provider work, capacity-checked before generation, and consumed only after a valid bounded recommendation.
+
+---
+
+## June 1, 2026 — Indian Resource Pack Rollout
+
+### Added
+
+- **Reviewed Indian resource packs** - The MenuList resources layer now has full Tamil, Telugu, Marathi, and Bengali packs for the hub and all 12 article routes, alongside the existing English and Hindi coverage.
+- **Locale-prefixed resource discovery** - `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, and `/bn-IN/resources` now expose reviewed localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, and LLM context coverage.
+- **Verifier alignment** - `verify:website-resource-locales` now passes for Hindi, Tamil, Telugu, Marathi, and Bengali, and `verify:agent-readiness` derives reviewed/planned resource-locale checks from the resource locale registry.
+
+### Changed
+
+- **Localized hub CTA routing** - Locale-prefixed resource hubs now keep their secondary resource CTA inside the same locale route instead of linking back to the English article path.
+- **Resource language switcher routing** - Switching languages while reading a resource now moves between `/resources`, `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, and `/bn-IN/resources` instead of only refreshing locale state on the current URL.
+
+### Cost
+
+- **Static website content only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, Firebase rules, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Featured Choices Public Fallback
+
+### Added
+
+- **Owner note for Featured choices** - Desktop and mobile Featured section controls now include a collapsed owner note explaining that the setting affects only Featured choices, not normal menu order, and how automatic choices behave.
+- **Menu action descriptions tightened** - Mobile menu actions and desktop editor actions now use clearer owner-facing descriptions for generation defaults, design, categories, add item, reorder, Featured choices, command center, and outlet-only store customization.
+- **Mobile menu action locale coverage** - Active MenuList locale files now include the mobile menu feature keys used by the menu command sheet, bulk actions, text case, repair menu, category reorder, and Featured choices sheets.
+
+### Fixed
+
+- **Owner-selected Featured choices stay visible during stale scoring** - If the background Decision Blocks score document is older than the safe window, the public menu now hides automatic picks but still renders available owner-selected Featured, Quick, and Value choices.
+
+### Cost
+
+- **No new Firebase cost** - The fix reuses the existing public menu render data and existing owner settings. No new reads, writes, collections, indexes, Storage operations, Cloud Functions, provider calls, schedulers, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Hindi Resource URL Layer
+
+### Added
+
+- **Reviewed Hindi resource URLs** - The MenuList resource hub and all 12 resource articles now have stable Hindi URLs under `/hi-IN/resources`.
+- **Localized discovery metadata** - Hindi resource pages now use locale-aware metadata, JSON-LD `inLanguage`, and `hreflang` alternates tied to the English resource URLs.
+- **Discovery guardrails** - Sitemap, `llms.txt`, `llms-full.txt`, `verify:agent-readiness`, and `verify:website-resource-locales` now check reviewed Hindi exposure. At this stage, Tamil, Telugu, Marathi, and Bengali stayed out of discovery until reviewed packs existed.
+
+### Cost
+
+- **Static website routing only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, Firebase rules, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Main Website Resource Localization Guardrails
+
+### Added
+
+- **Reviewed Hindi resource pack** - The MenuList resources layer now has a full `hi-IN` resource pack for the hub and all 12 article routes, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs.
+- **Resource locale architecture** - Added source-versioned resource locale packs, stable FAQ IDs, and a localization builder that applies reviewed packs over the English source of truth.
+- **Locale verification** - Added `npm run verify:website-resource-locales` to block reviewed resource packs with missing articles, missing sections, stale source version, forbidden claims, or English body fallback.
+
+### Decision
+
+- **Other Indian languages were deferred until complete** - At this guardrail stage, Tamil, Telugu, Marathi, and Bengali stayed on English fallback for long-form resource content until full reviewed packs were implemented. This was superseded later on June 1, 2026 by the Indian Resource Pack Rollout.
+- **Multilingual SEO exposure requires reviewed URLs** - Hindi could be exposed through locale-prefixed URLs after the Hindi Resource URL Layer. Future languages must pass the same route, sitemap, hreflang, and LLM checks before discovery exposure.
+
+### Cost
+
+- **Static website content only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, Firebase rules, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Mobile Item Feature Guidance
+
+### Changed
+
+- **Item sheet explains customer impact** - Mobile item edit now includes a collapsed guide explaining Reorder, Best seller, Prep time, and Feature level in plain owner language.
+- **Feature level replaces raw priority entry** - Mobile owners choose Show less, Normal, or Show more instead of typing a numeric priority value. The setting still saves to the existing `ownerBoost` field.
+
+### Cost
+
+- **No new Firebase cost** - The guidance and three-choice control reuse the existing item save path and existing item fields. No new reads, writes, collections, indexes, Storage operations, Cloud Functions, provider calls, schedulers, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Menu Card Export Website Alignment
+
+### Changed
+
+- **Website keeps Print Menu lightweight** - Menu Card Export is not added as a separate homepage section. The public website now refers to the capability as `Print files` inside existing source-to-public surfaces.
+- **Features page copy aligned** - The old `PDF export` card now describes PDFs and printer handoff packets generated from the current approved menu.
+- **PDF resource copy aligned** - `/resources/digital-menu-vs-pdf-menu` now explains PDFs and print files as useful generated outputs, while keeping the mobile digital menu as the main public source.
+
+### Cost
+
+- **Website content only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Public Menu Reorder Consistency
+
+### Fixed
+
+- **Linked outlet item order reaches the public menu** - Inherited outlet item `orderIndex` overrides are now merged into the resolved project and sorted within each category before rendering, so customer-facing menus follow the owner’s outlet-specific reorder.
+
+### Cost
+
+- **No new Firebase cost** - The fix uses the existing public project resolution path and existing outlet override data. No new reads, writes, collections, indexes, Storage operations, Cloud Functions, provider calls, schedulers, or deploy targets were added.
+
+---
+
+## June 1, 2026 — Main Website Resources Layer
+
+### Added
+
+- **Resources hub** - Added `/resources` as an evergreen public content layer for menu correctness, QR menu setup, Google menu source cleanup, restaurant menu SEO, AI search discovery, checklists, worksheets, and multi-location menu control.
+- **Resource article routes** - Added 12 server-rendered resource articles, including Menu Source Audit, Official Menu Source, QR Menu for Restaurants, Google Business Profile Menu, Digital Menu vs PDF, Menu Update Checklist, QR Placement Checklist, and Menu Engineering Worksheet.
+- **Discovery coverage** - Added resource routes to the platform discovery registry, generated sitemap output, static sitemap, `llms.txt`, `llms-full.txt`, robots crawler policy, and agent-readiness verification.
+
+### Changed
+
+- **Homepage resources section** - Added a compact lower-page resources section without changing the hero, upload funnel, pricing, auth, billing, Firebase, owner dashboard, or customer menu runtime.
+- **Header and footer navigation** - Added a simple Resources link to the header and resource links to the footer while keeping MenuList product routing separate from Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces.
+
+### Cost
+
+- **Static website content only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, billing logic, auth logic, or Firebase deploy targets were added.
+
+---
+
+## June 1, 2026 — Menu Card Export Implementation And QA
+
+### Added
+
+- **Menu Card Export docs** - Added a routed feature plan for creating print-ready menu files from the current MenuList menu, with controlled styles, job presets, preflight, preview, export history, freshness checks, mobile support, and Firebase cost tracking.
+- **Menu Card Export research** - Added market and print research covering menu builders, print-shop handoff, QR reliability, PDF quality, and SMB owner workflow additions.
+- **Print Menu route** - Added `/use-menulist/menu-card-export` with client-side menu selection, presets, preflight, preview, PDF creation, print-shop packet ZIP, and local export history.
+- **Print Menu entry points** - Use MenuList, project Share modal, and Mobile Share now open the routed Print Menu workflow when `ENABLE_MENU_CARD_EXPORT` is on.
+- **Multi-project Print Menu selection** - The route uses the shared project selector pattern, honors `projectId` links, avoids stale menu/source mixing while switching, and reuses selected project data within the route session.
+- **Menu Card Export verification** - Added `npm run verify:menu-card-export` to check route files, feature flags, client-side generation, local history, and the absence of default API/Firebase write paths.
+- **Real-data runtime QA** - Active multi-project demo data generated valid PDFs and print-shop packet ZIPs from separate non-empty menus before the feature was marked production ready.
+
+### Fixed
+
+- **Real menu extraction shape** - Print Menu now reads item/category data from both top-level project data and file-based `project.files[].extractedData.data`, matching real uploaded-menu project documents.
+- **Print-shop packet robustness** - The rendered PDF is added to JSZip as an `ArrayBuffer`, so packet creation is reliable without a server-side renderer or Storage handoff.
+
+### Decision
+
+- **Separate route over single button** - The current PDF Surface stays documented as the live lightweight PDF path, while Menu Card Export becomes the planned long-term owner route at `/use-menulist/menu-card-export`.
+- **Print workflow over file utility** - The planned route owns Home Print, WhatsApp PDF, Print-shop packet, QR scan checks, and stale-file regeneration instead of expanding Use MenuList or PDF Surface.
+- **Firebase cost first** - The implementation intentionally uses browser Blob downloads and local history. No Firestore collection, Firestore index, Storage path, API route, Cloud Function, or Firebase deploy was added.
+
+### Cost
+
+- **Zero Firebase export write path** - Preview/export generation adds no Firestore writes and no Storage uploads. The route performs normal owner menu reads only when opened or when the selected menu changes.
+
+---
+
+## June 1, 2026 — Owner Truth And Menu Quality Polish
+
+### Changed
+
+- **Close-today actions now use Temporary Status** - Mobile "Mark Closed for Today" no longer rewrites the recurring weekday hours field. Recurring hour edits are labeled as regular weekday schedule changes.
+- **Temporary Status refreshes public output cache** - Status set/clear now revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` so customer-facing menu and official page output can refresh promptly.
+- **Menu Check actions open the editor context** - Desktop dashboard checks now hand off to the matching project editor action, including repair flow, no-image/no-price filters, language management, and editor review.
+- **Menu Check dashboard panel is mounted** - The owner dashboard overview now shows the Menu Check card below the hero card, including before analytics data exists when a selected project is available.
+- **Menu Check editor banner uses the same action router** - Editor banner actions now use the same repair/filter/language handoff path as dashboard checks.
+- **Menu Check owner polish** - Owner-facing quality surfaces now read as Menu Check, show one primary action, prefer Repair Menu for fixable gaps, use "No action needed" for all-clear, and show "Checked just now" on mobile/dashboard.
+- **Presence Monitor readiness tightened** - Mobile and desktop sharing surfaces now treat an active menu project, not merely an OBP/domain URL, as the published-menu readiness signal. Mobile Presence Monitor copied links now include the same analytics source attribution as desktop.
+
+### Cost
+
+- **No new Firebase collection or provider path** - Changes reuse existing store/project reads, existing Temporary Status writes, browser `sessionStorage`, and public cache tag invalidation. No new listener, Cloud Function, Storage object, provider call, scheduler, index, or deploy target was added.
+
+---
+
+## June 1, 2026 — Growth Kits Owner-Value Hardening
+
+### Changed
+
+- **Mobile Today now presents a Sales Pack** - Eligible Pro/Premium stores see the mobile Today card as `Today's Sales Pack`, focused on one customer message, one staff line, and one counter line.
+- **Sales Pack is now trigger-based** - Mobile Today surfaces it only for a fresh prepared pack, a previously used stale pack that needs an update, or a strong menu reason. Weak generic actions stay quiet.
+- **Legacy Today generation deleted** - The old `No today action yet` / `Generate Today Action` prompt, generation helper, campaign engine, and generation API route were removed. Existing prepared Today campaigns still work, but new generated actions belong to GrowthOS / Sales Pack.
+- **Stale packs require an update first** - Mobile and desktop now avoid presenting stale packs as directly usable. Owners are guided to prepare a fresh pack before copy/share/download actions.
+- **Desktop Growth Kits copy tightened** - The module now emphasizes the daily Sales Pack outcome and removes owner-facing confidence percentages from the primary action panel.
+
+### Cost
+
+- **Old generator has no cost path** - The retired Social Content generator code is deleted, so there is no hidden endpoint, helper, campaign engine, project-read path, or campaign-write path. Mobile Today uses the existing shared GrowthOS summary read for eligible stores and adds no new Firestore collection, listener, Cloud Function, Storage object, provider call, scheduler, or index.
+
+---
+
+## June 1, 2026 — Custom Business Attribute Icons
+
+### Changed
+
+- **Custom business attributes use the shared icon picker** - Desktop and mobile Business Attributes settings now use the existing category icon/emoji picker for owner-defined public attributes.
+- **Official Business Page renders selected custom icons** - Custom attribute chips now render saved Lucide icons and emoji values from `publicPresence.customAttributes[].icon`.
+
+### Cost
+
+- **No new Firebase cost** - The icon value is saved inside the existing OBP settings store update. This adds no Firestore reads, additional writes, listeners, indexes, Storage operations, Cloud Functions, provider calls, schedulers, external credentials, or deploys.
+
+---
+
 ## June 1, 2026 — Growth Engine Foursquare Source And Business Truth Graph Policy
 
 ### Added
@@ -138,8 +395,10 @@
 - **Answerlattice logo background removed** — The canonical SVG and shared inline logo atom no longer include the exported black canvas/frame; the mark paths, gradients, filters, stroke widths, and geometry stay unchanged and render on transparent SVG backgrounds like the MenuList logo.
 - **Answerlattice logo derivatives refreshed** — Regenerated the Answerlattice logo PNGs, favicon files, PWA icons, OpenGraph image, and iOS splash images from the transparent SVG source without recoloring, reshaping, or simplifying the mark.
 - **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, and dashboard navigation now render the exact canonical SVG path geometry through the shared `AnswerlatticeLogoMark` atom instead of the old inline-redrawn mark.
-- **Answerlattice loader animation aligned** — Server and global Answerlattice loading states now use a dedicated loader atom that animates the shared final SVG path geometry and keeps the design-team colors, filters, and transparent canvas while matching the MenuList 3-second stroke-draw cycle.
+- **Answerlattice loader animation aligned** — Server and global Answerlattice loading states now use a dedicated loader atom that animates the shared final SVG path geometry and keeps the design-team colors, SVG-native filters, and transparent canvas while matching the MenuList 3-second stroke-draw cycle.
+- **Answerlattice external logo shadows removed** — Answerlattice server and global loaders no longer add CSS blur or drop-shadow around the SVG logo, so the only path shadow/effect comes from the design-team SVG itself.
 - **Answerlattice website diagrams guarded as vectors** — Visible Answerlattice website diagram components now fail verification if they reintroduce raster images, PNG logo usage, or image-wrapped logo rendering instead of the shared inline SVG-path mark.
+- **Answerlattice reveal layer softened-logo fix** — Visible Answerlattice website sections no longer keep a persistent `translate3d`/`will-change` compositing layer after reveal, so inline SVG diagram logos stay crisp when the page is zoomed.
 
 ### Cost
 

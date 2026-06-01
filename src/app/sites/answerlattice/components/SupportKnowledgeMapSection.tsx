@@ -51,8 +51,8 @@ export default function SupportKnowledgeMapSection({
                     eyebrow="Support knowledge map"
                     title={isProduct
                         ? 'One governed source behind every support surface.'
-                        : 'Turn your existing notes into support users can trust.'}
-                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. Answerlattice connects them to the pages where users ask for help, then serves approved canonical or owner answers before fallback."
+                        : 'Connect sources, app screens, and support answers in one map.'}
+                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. Answerlattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
                 />
 
                 <div className="al-support-map" data-answerlattice-reveal>
@@ -118,7 +118,7 @@ export default function SupportKnowledgeMapSection({
                     {[
                         ['Not a helpdesk replacement', 'Tickets stay fallback and signals, not the center of the product.'],
                         ['Not an autopilot', 'Drafts and improvements require review before becoming official.'],
-                        ['Not a static docs site', 'Answers stay tied to app pages, releases, and support gaps.'],
+                        ['Not a static docs site', 'Answers stay tied to product pages, releases, and support gaps.'],
                     ].map(([title, detail]) => (
                         <article key={title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                             <h3 className="font-semibold text-white">{title}</h3>

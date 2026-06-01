@@ -345,7 +345,7 @@ Add a "Menu Kit" section inside the existing Share Modal (`src/components/.../sh
 Share your menu
 ├── Link + QR Code (existing)
 ├── Social Sharing (existing: WhatsApp, Instagram, Facebook)
-├── Menu PDF (existing)
+├── Print Menu / Menu Card Export (linked route)
 └── 📦 Menu Kit (NEW)
     └── "Download Menu Kit" button
     └── Downloads ZIP with all 9 asset files + shows staff script
@@ -366,6 +366,7 @@ Separate tab/section in project B2C view. Less discoverable but cleaner separati
 | ❌ Offer/discount posters           | Feature creep → campaign management territory | Law 7: No Feature Without Autonomy                 |
 | ❌ Review QR cards                  | Not core menu infrastructure                  | Product Evolution Rule 2: Customer-facing only     |
 | ❌ Design editor / customization UI | Turns MenuList into Canva                     | Product Taste: "Infrastructure, not software"      |
+| ❌ Full menu-card PDF workflow      | Belongs in Menu Card Export route             | Separate print workflow, not QR deployment pack    |
 | ❌ Festival/seasonal templates      | Creates ongoing maintenance burden            | Feature Rejection Gate Q2: Cannot act autonomously |
 | ❌ Takeaway stickers (4×4)          | Low priority, owners can crop counter sticker | P2 at best                                         |
 | ❌ WiFi password field              | Scope creep, not menu infrastructure          | Product Taste: "Should this exist at all?"         |

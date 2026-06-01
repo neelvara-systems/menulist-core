@@ -36,7 +36,7 @@ export default function SupportTeamsUseCasePage() {
                 'Let tickets capture safe context when fallback is needed.',
                 'Use Support Board for selected follow-up and the signal queue to prioritize recurring gaps.',
             ]}
-            primaryCta="Start free beta"
+            primaryCta="Start support setup"
             secondaryCta="Try page-aware demo"
         />
     );

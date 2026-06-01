@@ -31,7 +31,7 @@ export default function AiBuiltSaasUseCasePage() {
             ownerReview="Generic chat can answer without knowing the page, plan, state, or approved truth. Answerlattice serves reviewed answers first and turns missing coverage into review work."
             setupSteps={[
                 'Create your Answerlattice workspace.',
-                'Pick the first app pages where users get stuck.',
+                'Pick the first product pages where users get stuck.',
                 'Import docs, FAQs, owner answers, release notes, setup notes, or recurring questions.',
                 'Install the in-app widget and pass safe page context.',
                 'Review missing-answer signals before publishing official answers.',

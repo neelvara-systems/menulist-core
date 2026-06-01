@@ -27,7 +27,7 @@ export default function VibeCodedSaasUseCasePage() {
             problem="Fast AI-assisted launches create a support gap. Users still need help with setup, billing, settings, integrations, releases, and errors, even when the product was built before a full help center existed."
             question="Users are asking questions before my support docs are ready. What should I launch first?"
             genericAnswer="Create a documentation site and add a chatbot later."
-            answerlatticeAnswer="Start with the app pages where users get stuck, import your notes and repeated questions, install the widget, and review missing-answer signals as real users ask for help."
+            answerlatticeAnswer="Start with the product pages where users get stuck, import your notes and repeated questions, install the widget, and review missing-answer signals as real users ask for help."
             ownerReview="Answerlattice is not a generic chatbot for prototypes. It is the support layer for live or near-live AI-built SaaS apps where repeated questions need approved answers and reviewable gaps."
             setupSteps={[
                 'Create your Answerlattice workspace.',

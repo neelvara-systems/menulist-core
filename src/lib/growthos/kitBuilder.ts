@@ -24,20 +24,23 @@ function buildLine(params: {
     const { destination, facts, item } = params;
     const itemName = item?.name || "today's menu";
     const price = item ? formatGrowthOSPrice(item) : "";
+    const itemWithPrice = `${itemName}${price ? ` (${price})` : ""}`;
     const linkLine = facts.menuLink ? ` View the menu: ${facts.menuLink}` : "";
     const hoursLine = facts.todayHoursLabel ? ` Today's hours: ${facts.todayHoursLabel}.` : "";
+    const availabilityLabel = facts.isOpenToday ? "Available today" : "On the menu";
+    const menuLabel = facts.isOpenToday ? "On the menu today" : "On the menu";
 
     if (destination === "whatsapp_status") {
-        return `${facts.businessName}: ${itemName}${price ? ` at ${price}` : ""} is available today.${linkLine}`;
+        return `${facts.businessName}: ${availabilityLabel} - ${itemWithPrice}.${linkLine}`;
     }
     if (destination === "whatsapp_message") {
-        return `Hi, ${itemName}${price ? ` (${price})` : ""} is available today at ${facts.businessName}.${linkLine}`;
+        return `Hi, ${facts.businessName} has ${itemWithPrice} ${facts.isOpenToday ? "available today" : "on the menu"}.${linkLine}`;
     }
     if (destination === "instagram_caption") {
-        return `${itemName}${price ? ` (${price})` : ""} is on the menu today at ${facts.businessName}.${linkLine}`;
+        return `${menuLabel} at ${facts.businessName}: ${itemWithPrice}.${linkLine}`;
     }
     if (destination === "google_update_draft") {
-        return `${facts.businessName} has ${itemName}${price ? ` (${price})` : ""} available today.${hoursLine}${linkLine}`;
+        return `${facts.businessName} menu update: ${itemWithPrice} ${facts.isOpenToday ? "available today" : "on the menu"}.${hoursLine}${linkLine}`;
     }
     if (destination === "counter_prompt") {
         return `Ask us about ${itemName} today.${linkLine}`;

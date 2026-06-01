@@ -9,6 +9,7 @@ import AnswerlatticeFooter from './components/Footer';
 import AnswerlatticeHeader from './components/Header';
 import HeroSection from './components/HeroSection';
 import HomePageAwareDemoSection from './components/HomePageAwareDemoSection';
+import HomeProofBandSection from './components/HomeProofBandSection';
 import HomeTrustSection from './components/HomeTrustSection';
 import HowItWorksSection from './components/HowItWorksSection';
 import ObjectionsSection from './components/ObjectionsSection';
@@ -59,20 +60,21 @@ export default function AnswerlatticeHomePage() {
             <AnswerlatticeStructuredData />
             <main className="al-home-flow">
                 <HeroSection basePath={basePath} />
-                <PreOnboardingHomeSection basePath={basePath} />
+                <HomeProofBandSection basePath={basePath} />
+                <ProductPreviewSection />
                 <HomePageAwareDemoSection basePath={basePath} />
                 <SupportKnowledgeMapSection />
-                <ClosedLoopSection />
-                <ProductPreviewSection />
+                <HowItWorksSection />
                 <ProductAreasSection basePath={basePath} />
+                <WidgetSection basePath={basePath} />
+                <ClosedLoopSection />
+                <HomeTrustSection />
                 <BestFitSection />
                 <SetupFunnelSection />
+                <PreOnboardingHomeSection basePath={basePath} />
                 <DayOneLaunchPackSection basePath={basePath} />
-                <WidgetSection basePath={basePath} />
-                <HomeTrustSection />
                 <PillarsSection />
                 <SystemCoverageSection />
-                <HowItWorksSection />
                 <ComparisonSection />
                 <PricingPreviewSection basePath={basePath} />
                 <ObjectionsSection />

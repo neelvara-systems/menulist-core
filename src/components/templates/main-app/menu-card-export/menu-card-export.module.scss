@@ -1,0 +1,72 @@
+.route {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.header {
+    margin-bottom: 20px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(260px, 320px);
+    gap: 16px;
+    align-items: start;
+}
+
+.panel {
+    height: fit-content;
+}
+
+.previewPage {
+    border: 1px solid var(--menu-card-border, #d9d9d9);
+    border-radius: 8px;
+    min-height: 420px;
+    padding: 18px;
+    background: #fff;
+}
+
+.presetButton {
+    width: 100%;
+    min-height: 58px;
+    text-align: left;
+    white-space: normal;
+}
+
+.toggleRow {
+    min-height: 36px;
+}
+
+.advisorBox {
+    border: 1px solid var(--menu-card-border, #f0f0f0);
+    border-radius: 8px;
+    padding: 12px;
+    background: #fafafa;
+}
+
+.advisorCopy {
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+.historyRow {
+    border: 1px solid var(--menu-card-border, #f0f0f0);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+@media (max-width: 920px) {
+    .route {
+        padding: 12px;
+        padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .previewPage {
+        min-height: 320px;
+    }
+}

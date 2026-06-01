@@ -5,6 +5,7 @@ import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import { AnswerlatticeBeforeAfterStrip } from '../components/AnswerlatticeProofBlocks';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
@@ -126,6 +127,30 @@ export default function AnswerlatticeUseCasesPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         When users ask from billing, onboarding, settings, releases, or error screens, Answerlattice serves support that matches the page instead of giving generic AI replies.
                     </p>
+                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/demo"
+                            className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                        >
+                            Try page-aware demo
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/proof"
+                            className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                        >
+                            Review proof pack
+                        </AnswerlatticeLink>
+                    </div>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Best pages', value: 'Billing, onboarding, settings, releases, integrations, errors' },
+                            { label: 'Best teams', value: 'Founders, support teams, product teams, engineering' },
+                            { label: 'Best proof', value: 'Generic reply vs reviewed page-aware answer' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
@@ -175,7 +200,7 @@ export default function AnswerlatticeUseCasesPage() {
                         href="/demo"
                         className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
-                        Open Demo
+                        Open demo
                     </AnswerlatticeLink>
                 </section>
             </main>

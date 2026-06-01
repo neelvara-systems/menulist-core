@@ -13,6 +13,7 @@
 | `ENABLE_GROWTHOS_ADDON=false` | No Growth Kits navigation, Today entry point, API generation, or mobile card is available. |
 | `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if a Pro or Premium subscription exists. |
 | `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
+| Legacy Social Content owner generation | Legacy `Generate Today Action` UI, generation helper, campaign engine, and generation API route are absent from active code. |
 | `GROWTHOS_STAFF_BRIEF_MODE=deterministic` | Staff Brief generation uses current source facts with no provider call. |
 | `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed and the store has Pro or Premium. |
 | `GROWTHOS_PAID_PLAN_IDS=["pro","premium"]` | Paid mode is limited to active Pro and Premium subscriptions. |
@@ -82,6 +83,12 @@
 | Generate deterministic action queue | Bounded reads and changed-only summary write target. |
 | Generate Staff Brief | No provider call and no extra write until kit/export action. |
 | Generate text kit | Deterministic V1 has no provider call; kit and summary writes only. |
+| Open mobile Today for eligible Pro/Premium store | Uses the existing shared GrowthOS summary read only; no refresh, generation, export, or write happens from the trigger gate. |
+| Weak generic GrowthOS action exists | Mobile Today stays quiet and does not render `Today's Sales Pack`. |
+| Strong menu action exists | Mobile Today renders `Today's Sales Pack` without generating a kit until the owner taps prepare/update. |
+| Fresh prepared pack exists | Mobile Today renders `Today's Sales Pack` with usable copy/share controls. |
+| Unused stale draft exists | Mobile Today stays quiet instead of resurrecting old copy. |
+| Previously used stale pack exists | Mobile Today renders `Today's Sales Pack` with update-first controls. |
 | Copy output | One export write plus changed-only kit/summary status updates. |
 | Repeat refresh with unchanged facts/actions | No summary write. |
 | Copy/share unchanged latest-kit status | No summary status write. |
@@ -111,14 +118,18 @@
 | Test | Expected result |
 | --- | --- |
 | Paid store opens mobile Today | Latest Growth Kit entry point is visible when eligible. |
+| Paid store opens mobile Today after hardening | Card label reads `Today's Sales Pack`, not a generic module entry. |
+| Sales Pack is visible on mobile Today | Older `No today action yet` / `Generate Today Action` empty prompt is hidden. |
+| Mobile Today has no GrowthOS trigger and no prepared campaigns | The surface stays quiet; no old generation card appears. |
 | Copy/share buttons | Minimum 44px target and instant feedback. |
 | Clipboard API blocked or slow | Copy falls back to textarea copy instead of leaving the owner without feedback. |
 | Long text | Wraps without overlapping buttons. |
 | Kit detail sheet | All outputs are reachable without dense desktop UI. |
-| Stale kit | Warning is visible and action remains clear. |
+| Stale kit | Warning is visible, copy/share controls are not usable, and `Update pack` is the primary action. |
 | Blocked preflight output | Copy/share is blocked and owner sees a short warning. |
 | Refresh/generation failure | Latest loaded kit remains visible with retry state. |
 | Staff Brief mobile card | Copy/share/mark-used works with 44px targets. |
+| Counter line mobile card | Counter line is copyable when the pack is fresh. |
 | Free/base store | Cannot access through mobile route or deep link. |
 
 ## 9. Review Reply Tests

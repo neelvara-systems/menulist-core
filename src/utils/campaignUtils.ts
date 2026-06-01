@@ -3,7 +3,7 @@
  *
  * Used by:
  * - Desktop: PrimaryCard, OperationalSection (src/components/templates/main-app/today/)
- * - Mobile: MobileTodayScreen (src/components/mobile/screens/MobileTodayScreen.tsx)
+ * - Mobile: MobileHoursScreen (src/components/mobile/screens/MobileHoursScreen.tsx)
  *
  * Pure functions — no UI framework dependencies.
  */

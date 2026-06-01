@@ -14,6 +14,7 @@ A single "Use MenuList" page that aggregates every usable output into one operat
 - Get a screen URL for their TV
 - Download print-ready QR assets
 - Download a complete Menu Kit bundle
+- Open the routed Print Menu / Menu Card Export workflow when they need a full menu PDF or print-shop packet
 
 ## 3. User Stories
 
@@ -34,6 +35,9 @@ A single "Use MenuList" page that aggregates every usable output into one operat
 
 ### US-6: Share on Google Business
 **As** a restaurant owner, **I want** clear guidance on how to add my menu link to Google Business Profile so customers can find my menu from Google search.
+
+### US-7: Create printable menu files
+**As** a restaurant owner, **when** I need a menu PDF or print-shop packet, **I want** Use MenuList to take me to the print workflow so I can preview, check warnings, and create the right file.
 
 ## 4. Page Structure
 
@@ -61,7 +65,7 @@ Individual asset cards with Preview + Download:
 - Counter Sticker (8×8cm PNG)
 - Entrance Poster (A4 PDF)
 - Feedback QR (PNG)
-- Printable Menu (PDF)
+- Print Menu (opens Menu Card Export route)
 
 ### 4.5 Resources
 Micro-guides (modal-based):
@@ -71,7 +75,7 @@ Micro-guides (modal-based):
 
 ## 5. UX Rules (Non-Negotiable)
 
-1. **No configuration** — Only outputs. No toggles, no editing, no settings.
+1. **No hub configuration** — The hub shows outputs and entry points. Complex settings belong inside child routes such as Menu Card Export.
 2. **One-click actions** — Copy, Open, Download. Nothing else.
 3. **No technical language** — "Online Menu Page" not "OBP". "TV Menu Screen" not "Digital Screen endpoint".
 4. **Mobile-first** — Most owners access this on their phone inside the restaurant.
@@ -96,6 +100,7 @@ Micro-guides (modal-based):
 3. Every output represents a surface, not content — table QR yes, burger promo no
 4. Page must never exceed 3 main sections (Share, Screens, Print)
 5. If a new output doesn't fit these sections, it belongs in another product
+6. A print workflow with preview/history/preflight belongs in Menu Card Export, not directly in the hub
 
 ## 8. Success Criteria
 

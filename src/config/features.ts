@@ -1665,6 +1665,28 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_PDF_SURFACE: true,
 
+    /**
+     * Menu Card Export — Routed print menu workflow
+     *
+     * When enabled:
+     * - /use-menulist/menu-card-export route is available
+     * - Share Modal, Use MenuList, and Mobile Share can link to the route
+     * - Preview, preflight, PDF creation, print-shop packet, and local history run client-side
+     * - Optional Pro/Premium layout suggestion calls one AI route only after owner click
+     *
+     * Firebase cost: $0.00 for export. AI advisor adds one subscription read,
+     * one AI operation write, and one subscription credit write after a valid
+     * Pro/Premium recommendation. Starter users are blocked before provider call.
+     *
+     * @see __docs__/menu-card-export/
+     */
+    ENABLE_MENU_CARD_EXPORT: true,
+    ENABLE_MENU_CARD_EXPORT_HISTORY: true,
+    ENABLE_MENU_CARD_EXPORT_PRINT_SHOP: true,
+    ENABLE_MENU_CARD_EXPORT_BATCH: false,
+    ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
+    MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"] as string[],
+
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)
     // @see __docs__/menu-kit/
@@ -2688,6 +2710,25 @@ export const FEATURE_FLAGS = {
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
     ENABLE_PUBLIC_MENU_ENTRY: true,
+
+    /**
+     * Main Website Resources — public education and discovery layer
+     *
+     * Adds the evergreen /resources hub and resource article routes for menu
+     * source audits, QR menu setup, Google menu source cleanup, restaurant menu
+     * SEO, AI search discovery, checklists, worksheets, and multi-location menu
+     * control.
+     *
+     * true: Resource routes, navigation links, homepage section, sitemap, and
+     * discovery files stay active.
+     * false: Resource routes return 404 and navigation should hide links.
+     *
+     * Cost: Static website content only. No Firestore reads/writes, Storage
+     * objects, Cloud Functions, provider calls, schedulers, or indexes.
+     *
+     * @see __docs__/main-website/main-website_resources-plan.md
+     */
+    ENABLE_WEBSITE_RESOURCES: true,
 
     /**
      * Media Image System

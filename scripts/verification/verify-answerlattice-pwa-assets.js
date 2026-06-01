@@ -62,6 +62,8 @@ function verifyLoaderBranding() {
   const sourceLogo = read('public/answerlattice-logo.svg');
   const logoMark = read('src/components/atoms/answerlatticeLogoMark/index.tsx');
   const loaderLogo = read('src/components/atoms/answerlatticeLoaderLogo/index.tsx');
+  const pageLoaderStyles = read('src/app/page.module.css');
+  const globalLoaderStyles = read('src/components/organisms/loader/loader.module.scss');
   const loaderLogoStyles = read('src/components/atoms/answerlatticeLoaderLogo/answerlatticeLoaderLogo.module.scss');
 
   assertIncludes(serverLoader, "brand?: ServerSidePageLoaderBrand", 'server loader brand prop');
@@ -86,6 +88,12 @@ function verifyLoaderBranding() {
   assertNotIncludes(sourceLogo, '<rect width="8425.81" height="5130.15" fill="#0D0D0D"/>', 'canonical Answerlattice logo background frame');
   assertNotIncludes(logoMark, 'fill="#0D0D0D"', 'Answerlattice inline logo background frame');
   assertNotIncludes(loaderLogo, '<rect width="8425.81" height="5130.15" fill="#0D0D0D" />', 'Answerlattice loader logo background frame');
+  assertIncludes(pageLoaderStyles, '.loadingLogoAnswerlattice', 'Answerlattice server loader CSS override');
+  assertIncludes(pageLoaderStyles, '.loadingWatermarkAnswerlattice', 'Answerlattice server loader watermark CSS override');
+  assertNotIncludes(pageLoaderStyles, 'blur(0.2px)', 'Answerlattice server loader logo external blur');
+  assertNotIncludes(pageLoaderStyles, 'drop-shadow(0 18px 38px', 'Answerlattice server loader logo external shadow');
+  assertNotIncludes(globalLoaderStyles, 'drop-shadow(0 18px 38px', 'Answerlattice global loader logo external shadow');
+  assertIncludes(globalLoaderStyles, 'filter: none;', 'Answerlattice global loader logo keeps only SVG-native filters');
 
   const sourcePaths = extractPathData(sourceLogo);
   const inlinePaths = extractPathData(logoMark);
@@ -142,6 +150,7 @@ function verifyTransparentLogoAssets() {
 
 function verifyWebsiteDiagramVectors() {
   const componentsRoot = path.join(ROOT, 'src/app/sites/answerlattice/components');
+  const scrollRevealStyles = read('src/app/sites/answerlattice/scroll-reveal.css');
   const rasterPattern = /(<img\b|from ['"]next\/image['"]|\.png\b|\.jpe?g\b|\.webp\b|\/answerlattice-logo\.svg)/;
   const allowedRasterMetadataFiles = new Set([
     path.join(componentsRoot, 'StructuredData.tsx'),
@@ -178,6 +187,9 @@ function verifyWebsiteDiagramVectors() {
   const supportMap = read('src/app/sites/answerlattice/components/SupportKnowledgeMapSection.tsx');
   assertIncludes(flowDiagram, '<AnswerlatticeLogoMark height={42}', 'Answerlattice flow diagram SVG logo atom');
   assertIncludes(supportMap, '<AnswerlatticeLogoMark height={42}', 'Answerlattice support map SVG logo atom');
+  assertNotIncludes(scrollRevealStyles, 'translate3d(0, 0, 0)', 'Answerlattice reveal settled-state vector rasterization guard');
+  assertIncludes(scrollRevealStyles, 'transform: none;', 'Answerlattice reveal visible state avoids persistent transform on SVG diagrams');
+  assertIncludes(scrollRevealStyles, 'will-change: auto;', 'Answerlattice reveal visible state releases composited SVG layer');
 }
 
 function verifySplashFiles() {

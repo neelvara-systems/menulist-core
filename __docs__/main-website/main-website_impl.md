@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.5 Live Diagram Pulse Polish
-**Last Updated:** May 24, 2026
+**Status:** IMPLEMENTED — v3.6.20 Full Resource Locale Coverage
+**Last Updated:** June 1, 2026
 **Audience:** Developers
 
 ---
@@ -36,17 +36,24 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/create-menu` | `(website)/create-menu/page.tsx` | `CreateMenuClient` | Server (gate) | Per-page |
 | `/create-menu/preview/[draftId]` | `(website)/create-menu/preview/[draftId]/page.tsx` | `PreviewClient` | — | — |
 | `/create-menu/success` | `(website)/create-menu/success/page.tsx` | — | — | — |
+| `/resources` | `(website)/resources/page.tsx` | `ResourcesHub` | Server | Per-page |
+| `/resources/[slug]` | `(website)/resources/[slug]/page.tsx` | `ArticleLayout` | Server static params | Dynamic per article |
+| `/{locale}/resources` | `(website)/[locale]/resources/page.tsx` | `ResourceHubPageShell` | Server static params | Localized per-page for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
+| `/{locale}/resources/[slug]` | `(website)/[locale]/resources/[slug]/page.tsx` | `ResourceArticlePageShell` | Server static params | Localized per article for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
 | `/product` | `(website)/product/page.tsx` | **Permanent redirect → `/how-it-works`** | Server | — |
 | `/privacy-policy` | `(website)/privacy-policy/page.tsx` | `PrivacyPolicyPage` | Server | Per-page |
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 16 routes (8 core + 3 create-menu + 1 redirect + 3 legal + 1 trust)**
+**Total: 120 routes (8 core + 3 create-menu + 13 English resources + 91 reviewed localized resources + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
+- `/resources` and resource article routes are feature-gated by `ENABLE_WEBSITE_RESOURCES`.
+- Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 12 article slugs.
+- Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
 - Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
 - `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes.
 
@@ -75,7 +82,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (9 sections plus sticky CTA, in order)
+## 4. Homepage Sections (10 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -88,8 +95,9 @@ LocalisationProvider (locale from next-intl/server)
 | 5 | Surfaces | `SurfacesSection.tsx` |
 | 6 | Customer Browse | `CustomerBrowseSection.tsx` |
 | 7 | Prepared For You | `PreparedForYouSection.tsx` |
-| 8 | FAQ | `FaqSection.tsx` |
-| 9 | Final CTA | `FinalCtaSection.tsx` |
+| 8 | Resources | `ResourcesSection.tsx` |
+| 9 | FAQ | `FaqSection.tsx` |
+| 10 | Final CTA | `FinalCtaSection.tsx` |
 
 `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
 
@@ -125,6 +133,18 @@ LocalisationProvider (locale from next-intl/server)
 The legacy redirect is also registered in `next.config.js` so crawlers receive an HTTP 308 before page streaming begins.
 The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai`; `menulist.online` remains an alias, not the canonical discovery host.
 
+**Resources + AI discovery layer:** v3.6.15 adds `/resources` plus 12 resource article routes for menu source audit, menu engineering, QR menu setup, PDF replacement, Google Business Profile menu source, official menu source, restaurant menu SEO, AI search menu discovery, menu update checklist, QR placement checklist, menu engineering worksheet, and multi-location menu management. Content and localized cluster labels live in `src/content/websiteResources/`, pages render through `src/components/website/resources/`, schema comes from `src/lib/website/resourceSchema.ts`, article breadcrumbs use `Home -> Resources -> Article`, and discovery updates flow through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/robots.txt`, `public/llms.txt`, `public/llms-full.txt`, and `verify:agent-readiness`. This is static website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Resources localization guardrails:** v3.6.16 moves long-form resource localization into structured locale packs with source-version tracking, reviewed status, stable section IDs, stable FAQ IDs, and `buildLocalizedWebsiteResources()`. Hindi (`hi-IN`) is now a full reviewed resource pack for the hub and all 12 articles. `npm run verify:website-resource-locales` checks reviewed packs for completeness, stale source version, forbidden claims, missing sections/FAQ, and English body fallback.
+
+**Hindi resource URL layer:** v3.6.18 adds reviewed Hindi resource routes at `/hi-IN/resources` and `/hi-IN/resources/[slug]` through the same `ResourcePageShell` used by the English routes. Hindi resource pages have localized metadata, JSON-LD `inLanguage`, `alternates.languages`, sitemap hreflang coverage, LLM context coverage, and verifier coverage. Tamil, Telugu, Marathi, and Bengali were intentionally deferred at this stage and were later added by v3.6.19.
+
+**Indian resource pack rollout:** v3.6.19 adds reviewed Tamil (`ta-IN`), Telugu (`te-IN`), Marathi (`mr-IN`), and Bengali (`bn-IN`) resource packs for the hub and all 12 articles. At that stage, the localized route layer exposed Hindi, Tamil, Telugu, Marathi, and Bengali resource URLs with localized metadata, JSON-LD `inLanguage`, `alternates.languages`, sitemap hreflang coverage, LLM context coverage, and `verify:website-resource-locales` coverage. This is static website content only; owner app, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Full resource locale coverage:** v3.6.20 adds reviewed Arabic (`ar-SA`) and Spanish (`es-ES`) resource packs for the hub and all 12 articles. The localized resource layout now loads all active website locale JSON files and applies RTL direction for Arabic. `verify:website-resource-locales` now fails if any active non-default website-switcher language lacks a reviewed resource pack, route, sitemap, hreflang, and LLM context coverage.
+
+**Default resource route stability:** The unprefixed `/resources` and `/resources/[slug]` routes are the English public source routes. They render through `DefaultWebsiteResourceLocaleBoundary` with `WEBSITE_RESOURCE_DEFAULT_LOCALE` so a visitor's locale cookie cannot change canonical English resource content. Locale-specific content must live on reviewed locale-prefixed routes such as `/hi-IN/resources/[slug]`, `/ar-SA/resources/[slug]`, and `/es-ES/resources/[slug]`.
+
 **POS Sync operations proof:** Stage 7.10 added one POS Sync proof point to `SmartFeaturesSection.tsx` and one Operations card to `FeaturesPage.tsx`. This is intentionally low prominence because POS Sync is an advanced operations capability, not the first-screen buying promise for a non-technical SMB owner. Copy uses signed full-menu snapshot and connected store POS webhook language and does not claim universal POS support, real-time sync, or a POS integration suite. POS Sync runtime, APIs, settings behavior, pricing/payment/auth, and create-menu runtime logic were not changed.
 
 **Mobile owner operations proof:** Stage 7.11 added a dedicated Operations card to `FeaturesPage.tsx` for phone-browser/PWA owner management. This expands the existing short reassurance line into a feature-level proof point, grounded in existing mobile owner surfaces rather than a new runtime change. Mobile owner runtime, dashboard logic, digital screens runtime, POS Sync runtime, pricing/payment/auth, and create-menu runtime logic were not changed.
@@ -156,6 +176,7 @@ src/components/website/
 ├── get-started/GetStartedPage.tsx  — Get Started page
 ├── multi-location/MultiLocationPage.tsx — Multi-Location page
 ├── product/ProductPage.tsx     — How It Works page (used by /how-it-works route)
+├── resources/                   — Resources hub, article layout, resource cards, schema wrapper, and GA4-only link tracking
 ├── legal/                      — PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage
 ├── trust-security/TrustSecurityPage.tsx — Trust & Security page
 ├── pricing/PricingWrapper.tsx  — Pricing page wrapper
@@ -207,6 +228,7 @@ src/pages/
 - Pattern: `useTranslations('Website')` with `t('Section.keyName')`
 - **Fully translated:** en-US + hi-IN (all sections)
 - **Core sections translated:** ar-SA, es-ES, ta-IN, te-IN, mr-IN, bn-IN (Header/Footer/Hero; rest falls back to English via deepMerge)
+- **Long-form resources:** Resource articles use `src/content/websiteResources/`. `en-US` is the source, and `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` are reviewed full packs that pass `npm run verify:website-resource-locales`.
 - **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
   (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
 - **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer dropdown and persists through the existing `ThemeProvider` localStorage contract.
@@ -218,7 +240,8 @@ src/pages/
 
 | Flag | File | Default | Purpose |
 |------|------|---------|---------|
-| `ENABLE_PUBLIC_MENU_ENTRY` | `src/config/features.ts` | `false` | Gates `/create-menu` public entry page |
+| `ENABLE_PUBLIC_MENU_ENTRY` | `src/config/features.ts` | `true` | Gates `/create-menu` public entry page |
+| `ENABLE_WEBSITE_RESOURCES` | `src/config/features.ts` | `true` | Gates `/resources`, resource article routes, resource navigation, and discovery content |
 
 **Note:** `ENABLE_NEW_WEBSITE` no longer exists. The current website is the canonical default.
 
@@ -234,7 +257,7 @@ src/pages/
 - Robots: Full crawling enabled (index, follow, max-image-preview: large) with non-www canonical discovery links
 - Agent context: `public/llms.txt` and `public/llms-full.txt` define public business fact access, official handoff boundaries, unknown handling, and WebMCP/MCP deferral
 - Per-page canonical URLs via `alternates.canonical`
-- Verification: `npm run verify:agent-readiness` checks platform/Answerlattice discovery registries, structured-data coverage, robots, sitemap, and LLM files
+- Verification: `npm run verify:agent-readiness` checks platform/Answerlattice discovery registries, structured-data coverage, robots, sitemap, and LLM files. `npm run verify:website-resource-locales` checks reviewed resource locale packs.
 
 ---
 

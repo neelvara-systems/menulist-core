@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.14 (Public Menu Link Import)
+**Version:** 3.6.20 (Full Resource Locale Coverage)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 31, 2026
+**Last Updated:** June 1, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,19 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.14** | **Public Menu Link Import** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.20** | **Full Resource Locale Coverage** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+
+Version 3.6.15 adds the public `/resources` layer as an evergreen MenuList website surface. It ships a resources hub, 12 server-rendered article routes including Menu Source Audit, QR/Google/PDF/SEO/AI discovery guides, checklists, worksheet content, resource schema, platform discovery registry entries, static sitemap entries, robots crawler-policy sync, `llms.txt`/`llms-full.txt` coverage, a homepage resources section, and header/footer navigation. This is static public website content only; owner dashboard, auth, billing, Firebase, Cloud Functions, customer menu runtime, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+Version 3.6.16 keeps Menu Card Export off the homepage as a standalone feature block and folds it into the existing lightweight website surfaces as `Print files`. The homepage workflow output, Features page card, and `/resources/digital-menu-vs-pdf-menu` now describe PDFs and printer handoff files as generated outputs from the current approved menu, not as a separate public source. This is copy/content alignment only; pricing, payment, subscription, auth, onboarding, Firebase, Cloud Functions, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.17 adds structured resource localization guardrails and completes Hindi long-form resource coverage. Resource localization now uses source-versioned locale packs, stable section IDs, stable FAQ IDs, reviewed status, and `npm run verify:website-resource-locales` to catch missing article sections, stale source versions, forbidden claims, and English body fallback. Hindi (`hi-IN`) now covers the resources hub and all 12 resource articles. Tamil, Telugu, Marathi, and Bengali were deferred at this stage until full reviewed packs and locale-prefixed routes were implemented.
+
+Version 3.6.18 adds reviewed Hindi resource URLs at `/hi-IN/resources` and `/hi-IN/resources/[slug]`. The Hindi routes share the same resource shell as English, expose localized metadata and JSON-LD `inLanguage`, include `hreflang` alternates in sitemap coverage, and are listed in LLM context files. Tamil, Telugu, Marathi, and Bengali were still held out of discovery at this stage until full reviewed packs existed.
+
+Version 3.6.19 completes the first Indian-language resource rollout by adding reviewed Tamil, Telugu, Marathi, and Bengali packs for the resources hub and all 12 resource articles. The reviewed route layer now covers `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, and `/bn-IN/resources`, with localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, and LLM context coverage. This is static public website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+Version 3.6.20 completes long-form resource coverage for every language in the public website switcher by adding reviewed Arabic and Spanish packs for the resources hub and all 12 resource articles. Reviewed resource routes now cover `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, `/bn-IN/resources`, `/ar-SA/resources`, and `/es-ES/resources`, with localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, LLM context coverage, locale JSON loading, and Arabic RTL direction support. This is static public website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
 Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Source-to-public bridge -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -79,6 +91,9 @@ Old runnable/source-code backups have been removed. Historical research and stag
 | Design/Dev      | [Design System](./main-website_design-system.md) | Colors, typography, spacing, components             |
 | Design/Dev      | [Image Assets](./main-website_image-assets.md)   | Image & asset requirements                          |
 | Content         | [Content](./main-website_content.md)             | Page-by-page copy specification                     |
+| Content/Strategy | [Resources Plan](./main-website_resources-plan.md) | Planning tracker for Resources + AI discovery content layer |
+| Content/Strategy | [Resources Localization Plan](./main-website_resources-localization-plan.md) | Resource translation and management plan for active website languages |
+| Dev / QA        | [Resources Validation](./main-website_resources-validation.md) | Implementation verification log for the Resources layer |
 | Dev / SEO       | [SEO & AEO](./main-website_seo-aeo.md)           | Title tags, meta, schema, AEO strategy              |
 | Strategy/AI     | [Website Prep Codex Prompts](./website-prep-codex-prompts/README.md) | Staged prompt pack for repo-grounded website strategy, visual direction, implementation, launch, and governance |
 
@@ -107,6 +122,9 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
+| `src/components/website/resources/`                          | Resource hub, article layout, cards, schema, and GA4-only resource tracking |
+| `src/content/websiteResources/`                              | Typed localized resource content registry      |
+| `src/lib/website/resourceSchema.ts`                           | Resource WebPage, Article, BreadcrumbList, FAQPage, and ItemList JSON-LD builders |
 | `src/components/seo/JsonLdScript.tsx`                       | Shared server-rendered JSON-LD script helper   |
 | `src/components/website/shared/LogoMark.tsx`                | Official MenuList logo mark used by website header/footer |
 | `src/components/website/shared/WebsiteFeatureCard.tsx`      | Shared spacious top-right-icon card for website proof and feature grids |
@@ -118,7 +136,7 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/config/websiteLanguages.ts`                            | Language configuration                         |
 | `public/locales/menulist.ai/en-US.json`                     | Website locale default + base file (Website namespace) |
 | `src/styles/website.css`                                    | Website-specific styles                        |
-| `src/config/features.ts`                                    | `ENABLE_PUBLIC_MENU_ENTRY` flag                |
+| `src/config/features.ts`                                    | `ENABLE_PUBLIC_MENU_ENTRY` and `ENABLE_WEBSITE_RESOURCES` flags |
 | `scripts/verification/verify-agent-readiness.js`            | MenuList + Answerlattice route/discovery/structured-data verifier |
 
 Supported website locale files:
@@ -138,6 +156,7 @@ Supported website locale files:
 | Flag                       | Default | Purpose                           |
 | -------------------------- | ------- | --------------------------------- |
 | `ENABLE_PUBLIC_MENU_ENTRY` | `true` | Gates `/create-menu` public entry |
+| `ENABLE_WEBSITE_RESOURCES` | `true` | Gates `/resources`, resource navigation, and public discovery content |
 
 **Note:** `ENABLE_NEW_WEBSITE` was removed. The current active homepage is the Stage 4/5 official-source implementation.
 
@@ -612,6 +631,12 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.20 | June 1, 2026 | Added reviewed Arabic and Spanish resource packs, completed reviewed resource coverage for every public website-switcher language, and added verifier coverage for active language parity. |
+| 3.6.19 | June 1, 2026 | Added reviewed Tamil, Telugu, Marathi, and Bengali resource packs and locale-prefixed resource discovery coverage. |
+| 3.6.18 | June 1, 2026 | Added reviewed Hindi resource URLs, localized resource metadata/schema, sitemap hreflang alternates, LLM coverage, and route/discovery verifier checks. |
+| 3.6.17 | June 1, 2026 | Added source-versioned resource locale packs, stable FAQ IDs, full Hindi long-form coverage for all 12 resource articles, and `npm run verify:website-resource-locales`. |
+| 3.6.16 | June 1, 2026 | Kept Menu Card Export out of the homepage as a standalone block and folded PDFs/print files into existing website and resource copy as generated outputs from the approved menu. |
+| 3.6.15 | June 1, 2026 | Added `/resources`, 12 resource article routes, resource schema, homepage/header/footer resource links, and discovery coverage in sitemap, robots, LLM files, and agent-readiness verification. |
 | 3.6.14 | May 31, 2026 | Added public `/create-menu` menu-link input with permission confirmation, SSRF-safe acquisition reuse, review-first draft behavior, and updated website FAQ/copy. |
 | 3.6.13 | May 30, 2026 | Reversed the shared headline/accent gradient so highlighted text starts with stronger blue and finishes with the lighter accent, without changing the official logo mark. |
 | 3.6.12 | May 30, 2026 | Tightened shared website feature-card spacing so subtitles and descriptions read as one grouped proof unit, with card rows sized from the tallest content in that row. |

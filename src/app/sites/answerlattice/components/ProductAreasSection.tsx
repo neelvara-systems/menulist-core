@@ -4,9 +4,9 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const AREA_PROOF: Record<string, string> = {
-    'Set up support': 'Workspace, team access, product profile, starter knowledge, key app pages, widget key, and activation readiness.',
+    'Set up support': 'Workspace, team access, product profile, starter knowledge, key product surfaces, widget key, and activation readiness.',
     'In-app help widget': 'Safe page context, allowed origins, blocked routes, hosted help, canonical answers, and owner FAQs before fallback.',
-    'Help center + tickets': 'Docs, FAQ, owner-published changelog, ticket fallback, feedback, ratings, feature requests, Support Board, conversations, and weekly review output from one support layer.',
+    'Help center and tickets': 'Docs, FAQ, owner-published changelog, ticket fallback, feedback, ratings, feature requests, Support Board, conversations, and weekly review output from one support layer.',
     'Review approved answers': 'Product structure, approved answers, stale-answer review, repeated questions, coverage, and readiness metrics.',
 };
 
@@ -51,8 +51,8 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                     <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                            Product features
-                        </p>
+                                Product features
+                            </p>
                             <h3 className="text-2xl font-bold text-white">Feature pages for setup and support operations.</h3>
                         </div>
                         <AnswerlatticeLink

@@ -9,7 +9,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { computeQualitySignals, getActionableSignals, QualitySignal } from '@lib/mce/qualitySignals';
+import { computeQualitySignals, getActionableSignals, getPrimaryQualitySignal, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
 import { Alert, Button, Flex, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import type { Project } from '../types';
@@ -35,6 +35,7 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
     if (actionableSignals.length === 0) return null;
 
     const summaryParts = actionableSignals.map(s => s.label).join(' · ');
+    const primarySignal = getPrimaryQualitySignal(actionableSignals);
 
     return (
         <Alert
@@ -44,32 +45,19 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
             message={
                 <Flex align="center" justify="space-between" wrap="wrap" gap={8}>
                     <Text style={{ fontSize: 12 }}>
-                        {summaryParts}
+                        <Text strong style={{ fontSize: 12 }}>Menu Check:</Text> {summaryParts}
                     </Text>
                     <Flex gap={6}>
-                        {actionableSignals.map(signal => (
-                            signal.actionLabel && signal.actionRoute ? (
-                                <Button
-                                    key={signal.id}
-                                    type="link"
-                                    size="small"
-                                    onClick={() => onAction(signal.actionRoute!)}
-                                    style={{ fontSize: 12, padding: '0 4px' }}
-                                >
-                                    {signal.actionLabel} {
-                                        signal.id === 'descriptions'
-                                            ? 'Descriptions'
-                                            : signal.id === 'images'
-                                                ? 'Images'
-                                                : signal.id === 'categoryIcons'
-                                                    ? 'Categories'
-                                                    : signal.id === 'projectContent'
-                                                        ? 'Project Details'
-                                                        : ''
-                                    }
-                                </Button>
-                            ) : null
-                        ))}
+                        {primarySignal ? (
+                            <Button
+                                type="link"
+                                size="small"
+                                onClick={() => onAction(primarySignal.id)}
+                                style={{ fontSize: 12, padding: '0 4px' }}
+                            >
+                                {isRepairMenuSignal(primarySignal) ? 'Repair Menu' : 'Review'}
+                            </Button>
+                        ) : null}
                     </Flex>
                 </Flex>
             }

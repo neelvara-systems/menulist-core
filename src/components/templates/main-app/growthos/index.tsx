@@ -18,6 +18,7 @@ import type {
     GrowthOSDestination,
     GrowthOSOutput,
     GrowthOSReviewGuardResult,
+    GrowthOSStaffBriefOutput,
 } from "@type/growthos";
 import { Alert, App, Button, Card, Divider, Input, Select, Space, Spin, Tag, Typography } from "antd";
 import { useRouter } from "next/navigation";
@@ -89,6 +90,9 @@ const downloadText = (filename: string, text: string) => {
 };
 
 const canUseOutput = (output: GrowthOSOutput) => output.preflight?.status !== "blocked";
+const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBriefOutput => (
+    output.destination === "staff_brief"
+);
 
 const GrowthOSPage = () => {
     const { notification } = App.useApp();
@@ -133,7 +137,11 @@ const GrowthOSPage = () => {
     const isLatestKitStale = Boolean(latestKit?.isStale)
         || Boolean(latestKit?.sourceFactsHash && growthOSSummary?.sourceFactsHash && latestKit.sourceFactsHash !== growthOSSummary.sourceFactsHash)
         || isGrowthOSKitExpired(latestKit?.expiresAt);
-    const staffBrief = latestKit?.outputs.find((output) => output.destination === "staff_brief");
+    const staffBrief = latestKit?.outputs.find(isStaffBriefOutput);
+    const counterPrompt = latestKit?.outputs.find((output) => output.destination === "counter_prompt");
+    const channelOutputs = latestKit?.outputs.filter((output) => (
+        output.destination !== "staff_brief" && output.destination !== "counter_prompt"
+    )) || [];
 
     const action = growthOSSummary?.primaryAction || null;
     const secondaryActions = growthOSSummary?.secondaryActions || [];
@@ -152,9 +160,9 @@ const GrowthOSPage = () => {
         try {
             const payload = await refreshGrowthOSForProject(selectedProjectId, true);
             await mutate(payload.data, { revalidate: false });
-            notification.success({ message: "Growth Kits refreshed", placement: "bottomRight" });
+            notification.success({ message: "Menu checked", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not refresh Growth Kits", description: (error as Error).message, placement: "bottomRight" });
+            notification.error({ message: "Could not check menu", description: (error as Error).message, placement: "bottomRight" });
         } finally {
             setIsRefreshing(false);
         }
@@ -169,9 +177,9 @@ const GrowthOSPage = () => {
                 actionId: nextAction?.id || action?.id,
             });
             await mutate(payload.data.summary, { revalidate: false });
-            notification.success({ message: "Growth Kit ready", placement: "bottomRight" });
+            notification.success({ message: "Sales Pack ready", placement: "bottomRight" });
         } catch (error) {
-            notification.error({ message: "Could not create Growth Kit", description: (error as Error).message, placement: "bottomRight" });
+            notification.error({ message: "Could not prepare Sales Pack", description: (error as Error).message, placement: "bottomRight" });
         } finally {
             setIsGenerating(false);
         }
@@ -309,7 +317,7 @@ const GrowthOSPage = () => {
             <div className={styles.headerRow}>
                 <div>
                     <Title level={2}>Growth Kits</Title>
-                    <Text type="secondary">Ready-to-use messages from the current menu.</Text>
+                    <Text type="secondary">Today&apos;s Sales Pack from the current menu.</Text>
                 </div>
                 <Space wrap>
                     <Select
@@ -345,20 +353,25 @@ const GrowthOSPage = () => {
                 <Card className={styles.actionPanel}>
                     <div className={styles.actionHeader}>
                         <div>
-                            <Text type="secondary">Do this now</Text>
+                            <Text type="secondary">Today&apos;s Sales Pack</Text>
                             <Title level={3}>{action.title}</Title>
                             <Text type="secondary">{action.reason}</Text>
                         </div>
-                        <Tag color="green">{Math.round(action.confidence * 100)}%</Tag>
+                        <Tag color={isLatestKitStale ? "orange" : "green"}>{isLatestKitStale ? "Update first" : "Menu checked"}</Tag>
+                    </div>
+                    <div className={styles.packPromise}>
+                        <Tag color="blue">Customer message</Tag>
+                        <Tag color="blue">Staff line</Tag>
+                        <Tag color="blue">Counter line</Tag>
                     </div>
                     <Button type="primary" loading={isGenerating} onClick={() => handleGenerate(action)}>
-                        Create kit
+                        Prepare Sales Pack
                     </Button>
                     {secondaryActions.length ? (
                         <div className={styles.secondaryActions}>
                             {secondaryActions.map((nextAction) => (
                                 <Button key={nextAction.id} onClick={() => handleGenerate(nextAction)} loading={isGenerating}>
-                                    {nextAction.title}
+                                    Prepare: {nextAction.title}
                                 </Button>
                             ))}
                         </div>
@@ -375,18 +388,23 @@ const GrowthOSPage = () => {
                 <section className={styles.kitSection}>
                     <div className={styles.sectionTitle}>
                         <Title level={3}>{latestKit.title}</Title>
-                        <Tag color={isLatestKitStale ? "orange" : "blue"}>{isLatestKitStale ? "May use old details" : "Ready to share"}</Tag>
+                        <Tag color={isLatestKitStale ? "orange" : "blue"}>{isLatestKitStale ? "Update first" : "Ready to use"}</Tag>
                     </div>
                     {isLatestKitStale ? (
                         <Alert
                             className={styles.banner}
-                            message="This kit may use old menu details. Create it again before using."
+                            action={(
+                                <Button loading={isGenerating} onClick={() => handleGenerate(action)} size="small" type="primary">
+                                    Prepare fresh pack
+                                </Button>
+                            )}
+                            message="Menu details changed. Prepare a fresh pack before copying, sharing, or downloading."
                             type="warning"
                             showIcon
                         />
                     ) : null}
                     <div className={styles.outputGrid}>
-                        {latestKit.outputs.map((output) => (
+                        {channelOutputs.map((output) => (
                             <Card key={output.id} className={styles.outputCard} size="small">
                                 <Text strong>{output.label}</Text>
                                 <Text className={styles.outputText}>{getOutputPreview(output)}</Text>
@@ -394,18 +412,25 @@ const GrowthOSPage = () => {
                                     <Tag color={output.preflight.status === "blocked" ? "red" : "orange"}>{output.preflight.status}</Tag>
                                 ) : null}
                                 <Space wrap>
-                                    <Button icon={<LuClipboard />} onClick={() => handleCopy(output)}>Copy</Button>
-                                    <Button icon={<LuSend />} onClick={() => handleShare(output)}>Share</Button>
-                                    <Button icon={<LuDownload />} onClick={() => handleDownload(output)}>Download</Button>
+                                    <Button disabled={isLatestKitStale || !canUseOutput(output)} icon={<LuClipboard />} onClick={() => handleCopy(output)}>Copy</Button>
+                                    <Button disabled={isLatestKitStale || !canUseOutput(output)} icon={<LuSend />} onClick={() => handleShare(output)}>Share</Button>
+                                    <Button disabled={isLatestKitStale || !canUseOutput(output)} icon={<LuDownload />} onClick={() => handleDownload(output)}>Download</Button>
                                 </Space>
                             </Card>
                         ))}
                     </div>
                     {staffBrief ? (
                         <Card className={styles.staffPanel}>
-                            <Text strong>Staff Brief Pack</Text>
-                            <Text className={styles.outputText}>{staffBrief.text}</Text>
-                            <Button onClick={() => handleMarkUsed(staffBrief)}>Mark used</Button>
+                            <Text strong>Staff line</Text>
+                            <Text className={styles.outputText}>{staffBrief.mainLine || staffBrief.text}</Text>
+                            <Button disabled={isLatestKitStale || !canUseOutput(staffBrief)} onClick={() => handleMarkUsed(staffBrief)}>Done</Button>
+                        </Card>
+                    ) : null}
+                    {counterPrompt ? (
+                        <Card className={styles.staffPanel}>
+                            <Text strong>Counter line</Text>
+                            <Text className={styles.outputText}>{counterPrompt.text}</Text>
+                            <Button disabled={isLatestKitStale || !canUseOutput(counterPrompt)} icon={<LuClipboard />} onClick={() => handleCopy(counterPrompt)}>Copy counter line</Button>
                         </Card>
                     ) : null}
                 </section>

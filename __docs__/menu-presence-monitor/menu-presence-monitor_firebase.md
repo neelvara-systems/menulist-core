@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Firebase Cost Tracking
 
-> **Version:** 1.1
-> **Last Updated:** May 20, 2026
+> **Version:** 1.2
+> **Last Updated:** June 1, 2026
 
 ---
 
@@ -34,6 +34,8 @@ For starter activation stores, confirming Google Business, Instagram Bio, or Wha
 ## Why Zero Additional Reads
 
 The store document is already fetched by the Use MenuList data loader (`PlatformGlobalDataContext` provides store details). The `menuPresence` field piggybacks on this existing read. No new queries needed.
+
+The published-menu readiness check uses the already-loaded projects list and does not add a read. Clipboard links are source-attributed in the browser with `entry_source=copy_link`, which adds no Firestore write.
 
 ## Firestore Indexes
 

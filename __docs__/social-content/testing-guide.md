@@ -124,14 +124,6 @@ For active users (4+ actions in 7 days):
 
 ## API Testing (Optional)
 
-### Campaign Generation API
-
-```bash
-curl -X POST http://localhost:3000/api/campaigns/generate \
-  -H "Content-Type: application/json" \
-  -d '{"projectId": "YOUR_PROJECT_ID"}'
-```
-
 ### Caption Generation API
 
 ```bash
@@ -183,15 +175,9 @@ curl -X POST http://localhost:3000/api/campaigns/caption \
 
 ---
 
-## Console Logs to Check
+## Browser Console Check
 
-Look for these in browser console:
-
-```
-✅ [completeCampaign] Completed campaign {id}
-✅ [skipCampaign] Skipped campaign {id}
-✅ [recordExport] Recorded export for campaign {id}
-```
+No success logs are required. The browser console should stay free of errors while completing or skipping a prepared Today action.
 
 ---
 
@@ -200,5 +186,5 @@ Look for these in browser console:
 After testing, verify in Firebase:
 
 1. `campaigns/{tId}/{sId}/{campaignId}` - Campaign status updated
-2. `campaignExports/{tId}/{sId}/{exportId}` - Export recorded
+2. `campaignExports/{tId}/{sId}/{exportId}` - Export recorded by `completeCampaign`
 3. `platformSummary/campaigns_{sId}` - Summary updated

@@ -8,9 +8,9 @@
 
 ## Feature Benefit Block
 
-**Title:** Your menu keeps improving
-**Description:** Simple signals show what's missing — descriptions, images, prices. One tap generates them. Your menu gets better every time you open MenuList.
-**Visual:** Dashboard card showing quality checklist with green checkmarks
+**Title:** Your menu gets checked
+**Description:** Menu Check shows what needs attention. Repair Menu can fill safe gaps like descriptions, category icons, and language text, while prices and photos stay in owner review.
+**Visual:** Dashboard card showing Menu Check with one primary Repair Menu action
 
 ## SEO Meta
 

@@ -1,7 +1,9 @@
 'use client'
 
+import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
+import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { getBusinessAttributeGroupsForType, normalizeCustomBusinessAttributes } from '@lib/obp/businessAttributes';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
@@ -52,6 +54,7 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
         try {
             await updateStore(payload as any);
             setOriginalAttributes(attributes);
+            setCustomAttributes(payload.publicPresence.customAttributes);
             setOriginalCustomAttributes(payload.publicPresence.customAttributes);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch {
@@ -117,13 +120,17 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                         <Text type="secondary">{t('customBusinessAttributesHelp')}</Text>
                         {customAttributes.map((attribute, index) => (
                             <Flex align="center" gap={8} key={attribute.id || index}>
-                                <Input
-                                    maxLength={8}
-                                    onChange={(value) => setCustomAttributes((previous) => previous.map((entry, entryIndex) => (
-                                        entryIndex === index ? { ...entry, icon: value } : entry
-                                    )))}
-                                    placeholder="Icon"
-                                    style={{ width: 72 }}
+                                <IconPicker
+                                    allowClear
+                                    buttonSize="large"
+                                    buttonStyle={{ height: 48, minWidth: 48 }}
+                                    iconSize={22}
+                                    onChange={(value) => {
+                                        const icon = normalizeCategoryIconValue(value) || undefined;
+                                        setCustomAttributes((previous) => previous.map((entry, entryIndex) => (
+                                            entryIndex === index ? { ...entry, icon } : entry
+                                        )));
+                                    }}
                                     value={attribute.icon || ''}
                                 />
                                 <Input

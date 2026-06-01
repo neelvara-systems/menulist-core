@@ -11,7 +11,7 @@ const OBJECTIONS = [
     },
     {
         question: 'Do I need a full docs site first?',
-        answer: 'No. Start with FAQs, release notes, app pages, setup guides, and common support answers. Answerlattice turns those into review work.',
+        answer: 'No. Start with FAQs, release notes, product pages, setup guides, and common support answers. Answerlattice turns those into review work.',
     },
     {
         question: 'Can I add my own repeated Q&A?',

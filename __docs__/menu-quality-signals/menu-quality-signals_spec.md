@@ -1,29 +1,29 @@
 # Menu Quality Signals — Spec
 
-> **Version:** 1.1
-> **Last Updated:** March 16, 2026
+> **Version:** 1.2
+> **Last Updated:** June 1, 2026
 > **Audience:** CEO, PM, Business stakeholders
 
 ---
 
 ## 1. Executive Summary
 
-**What:** A small dashboard panel showing simple, actionable quality signals about the owner's menu — items missing descriptions, items missing images, category issues — with one-tap access to the AI features that fix them.
+**What:** A small owner-facing Menu Check panel showing simple, actionable signals about the owner's menu — items missing descriptions, images, prices, icons, language text, or review — with one primary action.
 
-**Why:** MenuList already has AI description generation, AI image generation, and a validation engine (MCE). But owners don't know when to use them. Menu Quality Signals surfaces the need ("5 items missing descriptions") and connects it to the solution ("Generate Descriptions" button). This gently drives menu improvement without overwhelming owners.
+**Why:** MenuList already has Repair Menu, AI description generation, image workflows, language repair, and a validation engine (MCE). But owners don't know when to use them. Menu Check surfaces the need ("5 items missing descriptions") and opens the safest path first: Repair Menu for fixable gaps, review filters for facts the owner must confirm.
 
 **For Whom:** All MenuList business owners with a published menu.
 
-**Success Metric:** Owners who see quality signals use AI description/image generation 2x more than those who don't.
+**Success Metric:** Owners who see Menu Check use Repair Menu and issue filters more often than owners who do not see it.
 
 ---
 
 ## 2. Goals
 
 1. Surface menu quality gaps as simple, non-judgmental signals
-2. Connect each signal directly to the existing AI feature that solves it
+2. Connect each signal directly to the existing repair or review path
 3. Encourage continuous menu improvement without creating anxiety
-4. Never exceed 5 signals (avoid overwhelming the owner)
+4. Never show more than 4 warning rows and one primary action (avoid overwhelming the owner)
 
 ## 3. Non-Goals (Out of Scope)
 
@@ -39,18 +39,18 @@
 ## 4. Target Users
 
 **ICP:** Non-tech SMB owner who uploaded a menu and wants to make it better but doesn't know where to start.
-**Moment:** Owner opens dashboard and sees "5 items missing descriptions" → taps "Generate" → AI writes descriptions → signal disappears.
+**Moment:** Owner opens dashboard and sees "5 items missing descriptions" → taps "Repair Menu" → descriptions are generated → signal disappears.
 **Tone:** Helpful suggestions, not criticism. "Add descriptions to help customers understand your dishes" — not "Your menu quality is low."
 
 ---
 
-## 5. Signal Definitions (v1 — Max 5)
+## 5. Signal Definitions (v1.2)
 
 ### Signal 1: Description Coverage
 
 - **Trigger:** Any item in the active project lacks a `description` field (empty or undefined)
 - **Display:** "X items missing descriptions"
-- **Action:** "Generate Descriptions" → navigates to AI Description Generator in editor
+- **Action:** "Repair Menu" → opens Command Center repair / mobile Repair Menu
 - **Resolution:** Signal disappears when all items have descriptions
 - **Priority:** High (descriptions are the #1 quality factor for digital menus)
 
@@ -58,11 +58,20 @@
 
 - **Trigger:** Any item lacks an `imageUrl` field
 - **Display:** "X items missing images"
-- **Action:** "Generate Images" → navigates to AI Image Generator in editor
+- **Action:** "Review" → filters no-image items for owner review
 - **Resolution:** Signal disappears when all items have images
 - **Priority:** High (images drive ordering decisions)
 
-### Signal 3: Pricing Gaps
+### Signal 3: Category Icon Coverage
+
+- **Trigger:** Any active category has no icon while category icons are enabled
+- **Display:** "X categories missing icons"
+- **Help text:** "Icons make categories easier to scan on your menu"
+- **Action:** "Repair Menu" → adds safe suggested category icons
+- **Resolution:** Signal disappears when active categories have icons
+- **Priority:** High (helps mobile scanning)
+
+### Signal 4: Pricing Gaps
 
 - **Trigger:** Any item lacks a `price` field or has empty price
 - **Display:** "X items missing prices"
@@ -71,7 +80,7 @@
 - **Design override:** If `project.config.design.menu.showItemPrices === false`, pricing-gap and price-outlier signals are hidden because prices are intentionally not public on the menu.
 - **Priority:** Medium (some items legitimately have no price, e.g., "Ask")
 
-### Signal 4: Hidden Items
+### Signal 5: Hidden Items
 
 - **Trigger:** Any item has `active: false` (invisible to customers)
 - **Display:** "X items are hidden from customers"
@@ -80,7 +89,7 @@
 - **Resolution:** Signal disappears when no items are hidden
 - **Priority:** Medium (operational awareness — owner may have forgotten)
 
-### Signal 5: Price Outliers
+### Signal 6: Price Outliers
 
 - **Trigger:** An item's price deviates significantly from the median price of its category (< 35% or > 300% of median). Only evaluated when category has ≥ 4 priced items. Items with variants (attributes) are excluded.
 - **Display:** "X prices look unusual"
@@ -88,6 +97,20 @@
 - **Action:** "Review" → opens editor
 - **Resolution:** Signal disappears when prices are corrected
 - **Priority:** Medium (catches OCR errors, typos like 299→29)
+
+### Signal 7: Item Translation Gaps
+
+- **Trigger:** Visible menu item name, description, or attribute text exists in the primary language but is missing in another selected menu language
+- **Display:** "X items missing translations"
+- **Action:** "Repair Menu" → repairs language gaps
+- **Resolution:** Signal disappears when selected menu languages have required item text
+
+### Signal 8: Project Detail Translation Gaps
+
+- **Trigger:** Project name, description, or notes exist in the primary language but are missing in another selected menu language
+- **Display:** "X project details missing translations"
+- **Action:** "Repair Menu" → repairs project public-content translations
+- **Resolution:** Signal disappears when selected menu languages have project public content
 
 ---
 
@@ -99,13 +122,16 @@ Compact card on the owner dashboard, below the hero status card. Max 4 warning s
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ Menu Quality                                        │
+│ Menu Check                                          │
+│ Checked just now                                    │
 │                                                     │
-│ ⚠ 5 items missing descriptions          [Generate] │
+│ Repair what can be fixed now        [Repair Menu]  │
+│ 5 items missing descriptions                        │
+│                                                     │
+│ ⚠ 5 items missing descriptions           [Repair]  │
 │   Customers understand offerings better with details│
-│ ⚠ 12 items missing images               [Generate] │
+│ ⚠ 12 items missing images                [Review]  │
 │   Customers choose faster when they see the item    │
-│ ✓ All items have prices                             │
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
@@ -115,7 +141,7 @@ Compact card on the owner dashboard, below the hero status card. Max 4 warning s
 Lightweight closable alert banner at the top of the editor. Only shows when actionable signals meet thresholds (descriptions ≥ 3, images ≥ 3, prices ≥ 1, outliers ≥ 1).
 
 ```
-ℹ 8 items missing descriptions · 5 items missing images  [Generate Descriptions] [Generate Images]
+ℹ Menu Check: 8 items missing descriptions · 5 items missing images  [Repair Menu]
 ```
 
 ### 6.3 Surface #3: Publish Intercept (Highest Leverage)
@@ -141,10 +167,10 @@ When all signals are resolved:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Menu Quality                                │
+│ Menu Check                                  │
 │                                             │
-│ ✓ Your menu looks great                     │
-│   Descriptions, images, prices — all set    │
+│ ✓ No action needed                          │
+│   Your public menu is ready                 │
 │                                             │
 └─────────────────────────────────────────────┘
 ```
@@ -168,7 +194,7 @@ All signals are computed from the active project document — specifically the `
 ## 8. Risks & Open Questions
 
 1. **False positives for images/descriptions** — Some menus intentionally skip descriptions (e.g., simple price list). Signals should feel like suggestions, not errors.
-2. **Price outlier false positives** — Category median comparison may flag intentionally cheap items (e.g., "Water" in a restaurant). Kept as soft suggestion.
+2. **Price outlier false positives** — Category median comparison may flag intentionally cheap items (e.g., "Water" in a restaurant). Kept as soft suggestion. Mobile already supports marking a flagged price reviewed while unchanged.
 3. **Dashboard space** — Capped at max 4 warning signals. Editor banner is closable.
 
 ---
@@ -176,14 +202,16 @@ All signals are computed from the active project document — specifically the `
 ## 9. Success Criteria
 
 - Owner sees quality signals within 2 seconds of dashboard load
-- Each signal has a clear action button
-- Tapping action button navigates to the correct feature
-- "All clear" state shows when menu is complete
+- One primary action appears before the issue list
+- Repairable issues route to Repair Menu
+- Manual issues route to filtered review
+- "All clear" state shows "No action needed" when menu is complete
 - Zero new Firebase collections
 - Zero new API routes
-- Feature flag OFF by default
+- Feature flag is enabled in current config
 
 ---
 
 **Document Signature:** Product Specification
 **Created:** March 15, 2026
+**Updated:** June 1, 2026 — owner-facing Menu Check polish and Repair Menu-first routing

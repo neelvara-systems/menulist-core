@@ -1,6 +1,6 @@
 # Answerlattice Website — Implementation
 
-> **Version:** 1.2.50
+> **Version:** 1.2.53
 > **Last Updated:** 2026-06-01
 > **Audience:** Developers
 
@@ -23,9 +23,13 @@ Answerlattice website and dashboard metadata use `src/lib/answerlattice/pwaAsset
 
 The root app layout defines default startup images in `metadata.appleWebApp.startupImage`; Answerlattice child layouts override that metadata with `getStaticAnswerlatticeAppleStartupImages()` so Answerlattice install/splash contexts use Answerlattice-specific startup images.
 
-`src/app/loading.tsx` exposes `brand="answerlattice"` for explicit Answerlattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Answerlattice runtime routes and swaps to the shared `AnswerlatticeLoaderLogo` atom. Static logo UI and loaders now share `src/components/atoms/answerlatticeLogoMark/index.tsx`, which follows the MenuList inline SVG-path pattern and carries the final logo paths, gradients, filters, stroke widths, and transparent background directly. `AnswerlatticeLoaderLogo` only adds path classes for the same 3-second stroke-draw cycle as the MenuList global loader without changing final color or shape output.
+`src/app/loading.tsx` exposes `brand="answerlattice"` for explicit Answerlattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Answerlattice runtime routes and swaps to the shared `AnswerlatticeLoaderLogo` atom. Static logo UI and loaders now share `src/components/atoms/answerlatticeLogoMark/index.tsx`, which follows the MenuList inline SVG-path pattern and carries the final logo paths, gradients, filters, stroke widths, and transparent background directly. `AnswerlatticeLoaderLogo` only adds path classes for the same 3-second stroke-draw cycle as the MenuList global loader without changing final color or shape output. Loader surfaces must not add CSS blur or drop-shadow to the Answerlattice logo; any path shadow/effect must come only from the SVG-native design filters.
 
 Visible Answerlattice website diagrams stay vector-based. `AnswerlatticeFlowDiagram`, `SupportKnowledgeMapSection`, and routed product/SEO diagram surfaces use inline SVG paths plus the shared `AnswerlatticeLogoMark` atom; they should not use PNGs, raster screenshots, or image-wrapped logo assets for diagram marks. `scripts/verification/verify-answerlattice-pwa-assets.js` enforces this by scanning the public website component directory, with the metadata-only `StructuredData.tsx` logo reference excluded because it is not a visible diagram.
+
+`src/app/sites/answerlattice/scroll-reveal.css` must not leave visible sections on a persistent `translate3d(0, 0, 0)` or `will-change` compositing layer. Pending reveal can use a temporary transform, but the visible state returns to `transform: none` and `will-change: auto` so inline SVG diagrams remain vector-painted and do not look rasterized when the browser zoom level changes.
+
+`src/app/layout.tsx` imports `src/app/sites/answerlattice/styles.css` and `src/app/sites/answerlattice/scroll-reveal.css` from the root app layout. This keeps the Answerlattice CSS in the root `app/layout.css` bundle and avoids clean-cache requests for a missing nested `app/sites/answerlattice/layout.css` chunk. Answerlattice visual rules must remain scoped to `.answerlattice-site`, `.al-home-flow`, `.al-page-flow`, or explicit Answerlattice selectors so root loading does not recolor MenuList or other product pages.
 
 ---
 
@@ -33,10 +37,10 @@ Visible Answerlattice website diagrams stay vector-based. `AnswerlatticeFlowDiag
 
 ```
 src/app/sites/answerlattice/
-├── layout.tsx                     # Root layout (metadata, OG, viewport)
+├── layout.tsx                     # Route layout (metadata, OG, viewport, analytics/reveal client islands)
 ├── theme.ts                       # Verdigris Answer Layer theme contract and browser theme color
-├── styles.css                     # Tailwind directives, CSS variables, and homepage section-band rhythm
-├── scroll-reveal.css              # Answerlattice-specific viewport reveal motion with reduced-motion support
+├── styles.css                     # Root-loaded Tailwind directives, scoped CSS variables, and section rhythm
+├── scroll-reveal.css              # Root-loaded Answerlattice viewport reveal motion with reduced-motion support
 ├── page.tsx                       # Homepage (server component)
 ├── not-found.tsx                  # 404 page
 ├── productAreas.ts                # Shared product-area navigation and descriptions
@@ -102,11 +106,13 @@ src/app/sites/answerlattice/
     ├── AnswerlatticeLogoMark.tsx       # Shared wrapper for the atom-level inline SVG-path logo
     ├── AnswerlatticeFlowDiagram.tsx    # Reusable animated hub, column-sequence, and loop diagrams
     ├── AnswerlatticeProofBlocks.tsx    # Reusable before/after, status snapshot, and decision proof blocks
+    ├── PageProofStrip.tsx         # Reusable compact proof strip for non-home page hero/value sections
     ├── SectionHeader.tsx          # Shared centered eyebrow, heading, and subheading treatment for section intros
     ├── AnswerlatticeLink.tsx           # Dev/production-aware Link wrapper
     ├── AnswerlatticeAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
     ├── AnswerlatticeScrollReveal.tsx   # Layout-level reveal observer for public sections, cards, CTA controls, and footer groups
-    ├── HeroSection.tsx            # AI-built SaaS homepage hero
+    ├── HeroSection.tsx            # Page-aware support-answer hero with inline sample workspace preview
+    ├── HomeProofBandSection.tsx   # Homepage conversion proof band for core buyer claims
     ├── SupportKnowledgeMapSection.tsx # Visual source map for support inputs, the Answerlattice answer layer, and output surfaces
     ├── HomePageAwareDemoSection.tsx # Embedded generic-vs-Answerlattice demo
     ├── ClosedLoopSection.tsx      # Page question to reviewed support-fix loop diagram
@@ -144,6 +150,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - "vibe-coded SaaS" is treated as an SEO/campaign alias, not the main public buyer label
 - homepage and product page expose the implemented Answerlattice engine pillars: Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
+- homepage now leads with the page-aware support-answer value proposition, an inline sample workspace preview, and setup/demo/source-prep CTAs
+- homepage adds `HomeProofBandSection.tsx` immediately after the hero so page-aware answers, approved knowledge, hosted help, feedback gaps, widget install, and source preparation are not missed before the deeper story
 - homepage includes a screenshot-led responsive product scene showing activation, widget context, product surfaces, and governance queue states
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
 - `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
@@ -167,6 +175,9 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from Answerlattice Billing using product-scoped Razorpay requests.
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
 - May 31 shared-conversation pass changed the homepage hero to "Launch your SaaS with support already built.", made support setup the primary CTA, and clarified that Answerlattice prepares docs, FAQs, answer drafts, hosted help, and page-aware widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed.
+- June 1 fresh-product conversion pass changed the homepage hero to "Give every SaaS page the right support answer.", added a sample workspace preview to the hero, added the conversion proof band, moved product proof and page-aware demo above setup-heavy sections, and moved Pre-Onboarding lower as a source-preparation accelerator.
+- June 1 full-site conversion pass added `PageProofStrip.tsx` and applied compact proof strips/clearer CTAs to product overview, product-area pages, product-feature template, SEO/use-case template, setup, pricing, resources, proof, security, install, FAQ, contact, pre-onboarding, updates, privacy, and terms pages. It also grouped the FAQ into scannable sections, replaced exact fake-looking mockup metrics with status-style placeholder states, and tightened shared mobile heading wrapping for non-home page readability.
+- June 1 final copy/CSS pass corrected rendered wording across all public Answerlattice routes, replaced plus-sign product labels with plain-language labels where they appear as buyer-facing copy, changed ambiguous page terminology to "product pages", and moved scoped Answerlattice CSS imports to the root app layout so clean-cache renders keep Tailwind utilities and dark theme styling.
 - May 31 feedback website pass added `/product/feedback-review`, registered it through `ANSWERLATTICE_SUPPORT_FEATURES`, exposed it in header/footer/resources/product grids through shared feature data, and added a homepage/Product preview tab for ratings, feature requests, suggestions, Support Board handoff, and answer-governance boundaries.
 - May 24 AI-built SaaS pass changed the homepage hero to "You shipped the app. Now users need correct answers.", moved the page-aware demo directly after the hero, and teaches approved answers before advanced Answerlattice vocabulary.
 - May 24 AI-built SaaS pass added `/use-cases/ai-built-saas` and `/use-cases/vibe-coded-saas` as a canonicalized alias for campaign/search traffic.
@@ -448,4 +459,7 @@ Conversion analytics is client-side only:
 | 2026-06-01 | 1.2.47 | Regenerated Answerlattice splash images so the startup surface owns the background and the logo source does not show a separate rectangular background on startup screens |
 | 2026-06-01 | 1.2.48 | Added a dedicated Answerlattice loader SVG atom that preserves the final logo paths, colors, and filters while matching the MenuList 3-second stroke-draw loading cycle across server and global loaders |
 | 2026-06-01 | 1.2.49 | Removed the exported black canvas/frame from the canonical Answerlattice SVG, loader SVG, transparent logo PNGs, favicons, PWA icons, OpenGraph image, and splash source mark while preserving the mark paths, gradients, filters, and stroke animation |
-| 2026-06-01 | 1.2.50 | Refactored `AnswerlatticeLogoMark` to the MenuList-style inline SVG-path pattern, made the loader reuse that same canonical geometry/color source for animation, and added verification that visible website diagrams stay vector-based |
+| 2026-06-01 | 1.2.50 | Refactored `AnswerlatticeLogoMark` to the MenuList-style inline SVG-path pattern, made the loader reuse that same canonical geometry/color source for animation, removed extra CSS blur/drop-shadow from Answerlattice logo loader surfaces, removed persistent post-reveal compositing from website sections, and added verification that visible website diagrams stay vector-based |
+| 2026-06-01 | 1.2.51 | Reworked the homepage implementation for conversion clarity: page-aware support-answer hero, inline sample workspace preview, new `HomeProofBandSection`, product proof/demo moved earlier, Pre-Onboarding repositioned as source preparation, metadata refreshed, and final asset-preparation doc added |
+| 2026-06-01 | 1.2.52 | Extended the conversion pass across non-home pages with reusable `PageProofStrip`, clearer hero CTAs, grouped FAQ rendering, safer sample-state wording, and install/product/SEO template updates without adding Firebase reads, external calls, or new dependencies |
+| 2026-06-01 | 1.2.53 | Completed rendered copy QA across all public Answerlattice routes and root-loaded scoped Answerlattice CSS from `src/app/layout.tsx` so clean-cache route loads no longer depend on a nested website CSS chunk |

@@ -18,7 +18,7 @@
 
 - Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
 - Mobile: dedicated `MobileShareScreen.tsx` is the phone-side output center for the same owner distribution jobs
-- Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, PDF generation, structured export, and Menu Kit generation
+- Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, legacy PDF fallback, structured export, Menu Kit generation, and Menu Card Export route entry
 
 ## Mobile UX Requirements
 
@@ -36,7 +36,8 @@ Mobile covers the owner output actions that previously required desktop:
 - copy/open direct project link
 - copy/open feedback link
 - show/download Store Menu QR, Business Profile QR, Project Menu QR, and outlet-scoped Store Menu QRs for master owners
-- download the selected menu PDF
+- open Menu Card Export / Print Menu for full PDF or print-shop packet creation
+- download the selected menu PDF only while the legacy fallback remains available
 - export the selected menu data as XLSX or JSON
 - download the complete Menu Kit ZIP
 - download/share Menu Kit print and social assets: table tent, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image

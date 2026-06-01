@@ -208,57 +208,9 @@ function getValidUntil(days: number): Timestamp {
 
 ---
 
-## Backend: Sync Integration
+## Backend: Current Integration
 
-```typescript
-// Add to src/database/campaigns/index.ts
-
-import { calculatePhysicalSurfaceEligibility } from "@lib/physical-surfaces/eligibility";
-
-/**
- * Enhanced sync function
- * Add physical surfaces calculation
- */
-export const syncTodayCampaignsToSummary = async (
-  primary?: TodayCampaignSummary,
-  operational: TodayCampaignSummary[] = [],
-  menuQrUrl?: string,
-  itemStabilityDays?: number,
-) => {
-  return await apiCallComposer(
-    async () => {
-      const docRef = await getCampaignsSummaryDocRef();
-      const today = new Date().toISOString().split("T")[0];
-
-      // Calculate physical surface eligibility
-      const physicalSurfaces = calculatePhysicalSurfaceEligibility(
-        primary,
-        menuQrUrl || "",
-        itemStabilityDays,
-      );
-
-      await setDoc(
-        docRef,
-        {
-          lastUpdated: serverTimestamp(),
-          today: {
-            date: today,
-            primary: primary || null,
-            operational,
-            isEmpty: !primary && operational.length === 0,
-          },
-          physicalSurfaces,
-        },
-        { merge: true },
-      );
-
-      return { synced: true, date: today };
-    },
-    { primary, operational },
-    "syncTodayCampaignsToSummary",
-  );
-};
-```
+Physical-surface eligibility is stored on `platformSummary/campaigns_{sId}.physicalSurfaces` and read through `getTodayCampaigns`. The old campaign sync helper has been removed from active code; any future writer must update the summary document directly in the same write path that creates or mutates the prepared Today action.
 
 ---
 

@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Set Up Support',
-    description: 'Create an Answerlattice workspace, add team access, import starter knowledge, map important app pages, and verify the widget before launch.',
+    description: 'Create an Answerlattice workspace, add team access, import starter knowledge, map important product pages, and verify the widget before launch.',
     alternates: { canonical: '/product/launch-setup' },
 };
 
@@ -45,7 +45,7 @@ export default function LaunchSetupProductPage() {
                 metrics={[
                     { label: 'Workspace', value: 'Created' },
                     { label: 'Widget key', value: 'Ready once' },
-                    { label: 'Activation', value: '78%' },
+                    { label: 'Activation', value: 'Checklist active' },
                 ]}
                 bentoTitle="You always know what is ready and what is missing."
                 bentoDescription="A buyer should know exactly what remains before launch: content, context, widget install, and first approved answers."

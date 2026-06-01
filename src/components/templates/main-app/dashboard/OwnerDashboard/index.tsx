@@ -30,6 +30,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
 import LoadingState from './LoadingState';
+import MenuQualitySignals from '../MenuQualitySignals';
 import MonthlyView from './MonthlyView';
 import OverallFooter from './OverallFooter';
 import OverviewView from './OverviewView';
@@ -158,7 +159,10 @@ const OwnerDashboard: React.FC = () => {
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         <Title level={4} style={{ margin: 0 }}>Overview</Title>
                         <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
-                        {data?.overview ? <OverviewView data={data.overview} /> : null}
+                        <OverviewView
+                            data={data?.overview || null}
+                            qualitySignalsSlot={<MenuQualitySignals projectId={activeProjectId} />}
+                        />
                         <OBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}

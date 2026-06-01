@@ -6,8 +6,10 @@ import HeroSection from './HeroSection';
 import InteractiveWorkflowSection from './InteractiveWorkflowSection';
 import PreparedForYouSection from './PreparedForYouSection';
 import ProblemSection from './ProblemSection';
+import ResourcesSection from './ResourcesSection';
 import SetupReliefSection from './SetupReliefSection';
 import SurfacesSection from './SurfacesSection';
+import { FEATURE_FLAGS } from '@config/features';
 
 export default function HomePage() {
   return (
@@ -19,6 +21,7 @@ export default function HomePage() {
       <SurfacesSection />
       <CustomerBrowseSection />
       <PreparedForYouSection />
+      {FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES ? <ResourcesSection /> : null}
       <FaqSection />
       <FinalCtaSection />
       <StickyCta />

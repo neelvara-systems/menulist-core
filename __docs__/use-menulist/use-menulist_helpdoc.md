@@ -25,6 +25,14 @@
 4. Print on regular A4 paper
 5. Place QR codes on tables, entrance, and counter
 
+### Create a menu PDF or print-shop packet
+
+1. Open **Use MenuList**
+2. Scroll to **Print for Your Restaurant**
+3. Open **Print Menu**
+4. Check the preview and warnings
+5. Create the PDF or packet
+
 ### Where to place QR codes
 
 - **Table QR** — Center of each table or inside table stands

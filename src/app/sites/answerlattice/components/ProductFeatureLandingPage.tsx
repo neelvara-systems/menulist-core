@@ -18,6 +18,7 @@ import type { IconType } from 'react-icons';
 import type { AnswerlatticeProductFeature } from '../productFeatures';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
+import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
 
 const CARD_ICONS: IconType[] = [
@@ -170,6 +171,14 @@ export default function ProductFeatureLandingPage({
                                 </div>
                             ))}
                         </div>
+                        <PageProofStrip
+                            className="mt-5 max-w-2xl"
+                            items={[
+                                { label: 'Connected to', value: 'Widget, hosted help, tickets, and review' },
+                                { label: 'Authority rule', value: 'Drafts stay review work until approved' },
+                                { label: 'Conversion proof', value: 'Shows what the feature changes in the support loop' },
+                            ]}
+                        />
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <AnswerlatticeLink
                                 basePath={basePath}
@@ -188,6 +197,15 @@ export default function ProductFeatureLandingPage({
                                 className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                             >
                                 Try the demo
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/pre-onboarding"
+                                data-answerlattice-event="feature_page_cta_clicked"
+                                data-answerlattice-label={`${feature.slug}_pre_onboarding`}
+                                className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-center text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                            >
+                                Prepare inputs
                             </AnswerlatticeLink>
                         </div>
                     </div>
@@ -313,7 +331,7 @@ export default function ProductFeatureLandingPage({
                         href="/product/support-control"
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                     >
-                        See Help Center + Tickets
+                        See Help Center and Tickets
                     </AnswerlatticeLink>
                 </div>
             </section>

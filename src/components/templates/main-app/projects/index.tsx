@@ -91,6 +91,14 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
     languages?: string[];
 };
+type PendingQualityAction = {
+    action: string;
+    createdAt: number;
+    projectId?: string | null;
+};
+
+const PENDING_QUALITY_ACTION_STORAGE_KEY = 'menulist:pendingQualityAction';
+const PENDING_QUALITY_ACTION_MAX_AGE_MS = 5 * 60 * 1000;
 
 const normalizeProjectsList = (projects: unknown): ProjectMetadata[] => {
     if (Array.isArray(projects)) {
@@ -181,6 +189,18 @@ function ProjectsPage() {
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
     const [currentView, setCurrentView] = useState(1);
+    const [pendingQualityAction, setPendingQualityAction] = useState<PendingQualityAction | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = window.sessionStorage.getItem(PENDING_QUALITY_ACTION_STORAGE_KEY);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed?.action || typeof parsed.createdAt !== 'number') return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    });
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
     const [uiEditorHasChanges, setUiEditorHasChanges] = useState(false);
     const b2cViewRef = useRef<B2CViewRef>(null);
@@ -223,6 +243,12 @@ function ProjectsPage() {
     const [menuLinkImporting, setMenuLinkImporting] = useState(false);
     const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
+    const clearPendingQualityAction = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(PENDING_QUALITY_ACTION_STORAGE_KEY);
+        }
+        setPendingQualityAction(null);
+    }, []);
 
     // Job Queue: Track active menu processing job
     // Persist in sessionStorage so it survives page reloads mid-processing
@@ -1404,6 +1430,26 @@ function ProjectsPage() {
 
     // Auto-select first project + handle SWR errors
     useEffect(() => {
+        if (pendingQualityAction && projectsList.length > 0) {
+            if (Date.now() - pendingQualityAction.createdAt > PENDING_QUALITY_ACTION_MAX_AGE_MS) {
+                clearPendingQualityAction();
+            } else {
+                const targetProject = projectsList.find((project) => (
+                    String(project.projectId) === String(pendingQualityAction.projectId)
+                )) || projectsList[0];
+
+                if (targetProject) {
+                    if (selectedProject?.projectId !== targetProject.projectId) {
+                        setSelectedProject(targetProject);
+                    }
+                    if (currentView !== 2) {
+                        setCurrentView(2);
+                    }
+                    return;
+                }
+            }
+        }
+
         // Auto-select first project if none selected
         if (!selectedProject && projectsList.length > 0) {
             setSelectedProject(projectsList[0]);
@@ -1417,7 +1463,7 @@ function ProjectsPage() {
             console.error('[ProjectsPage] Project error:', projectError);
             message.error(`Failed to load ${labels.offeringPhrase} data`);
         }
-    }, [projectsList.length, projectsError, projectError]);
+    }, [clearPendingQualityAction, currentView, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject]);
 
     // Smart initial view: Auto-navigate to Editor if project has processed files
     useEffect(() => {
@@ -2588,6 +2634,12 @@ function ProjectsPage() {
                                     <Editor
                                         selectedProject={selectedProject}
                                         onRemove={handleRemove}
+                                        initialQualityAction={
+                                            pendingQualityAction && (!pendingQualityAction.projectId || String(pendingQualityAction.projectId) === String(selectedProject?.projectId))
+                                                ? pendingQualityAction.action
+                                                : null
+                                        }
+                                        onQualityActionHandled={clearPendingQualityAction}
                                         addFileButton={
                                             <Flex gap={8} align="center">
                                                 <Upload {...uploadProps} id="quick-action-upload" onChange={(info) => onSelectFile(info, 'quick-action-upload')}>

@@ -14,6 +14,23 @@ GrowthOS should be sold as:
 
 The value is not "marketing software." The value is that MenuList already knows what the business can safely say today.
 
+The mobile owner hook is:
+
+> Today's Sales Pack: one customer message, one staff line, and one counter line from the current menu.
+
+This is the clearest paid value because it removes the blank page, gives staff something usable, and gives the counter a short line without asking the owner to understand a marketing workflow.
+
+Strategic posture:
+
+- Do not sell Growth Kits as the main MenuList reason to buy.
+- Do not place it on the homepage during the current rollout.
+- Sell it quietly to Pro/Premium clients after they understand MenuList as their official menu source.
+- Use real pilot usage before expanding public copy.
+
+30-day pilot signal:
+
+The feature earns broader placement only if Pro/Premium owners repeatedly copy, share, print, or mark packs used without support explaining the value. If usage is weak, keep it as a quiet add-on or pause expansion.
+
 ## 2. Customer Promise
 
 Use this promise:
@@ -78,6 +95,7 @@ Market the first version around the core loop only:
 | Multi-handoff kit | One action becomes WhatsApp, Instagram, Google draft, staff, and print/counter copy. |
 | Staff Brief Pack | A short line staff can use today, plus what to avoid. |
 | Manual use | Owner copies, downloads, prints, shares, or marks used. |
+| Today's Sales Pack | Mobile Today shows the finished customer/staff/counter handoff and blocks stale use until updated. |
 
 Do not lead with review replies, image assets, offers, customer replies, multi-outlet, or history until those paths are implemented and support-ready.
 
@@ -175,3 +193,4 @@ Do not market publicly until:
 - no direct posting claim appears
 - helpdoc is ready
 - support team knows what it does not do
+- 30-day Pro/Premium pilot usage proves owners use packs without explanation

@@ -1,6 +1,6 @@
 # Temporary Status Layer — Mobile Support Assessment
 
-**Date:** February 19, 2026
+**Date:** June 1, 2026
 
 ---
 
@@ -19,7 +19,9 @@
 - antd-mobile ActionSheet for status type selection
 - DatePicker for expiry time
 - Optimistic update (banner shows immediately, syncs to Firestore after)
+- Mobile "Mark Closed for Today" uses Temporary Status instead of changing recurring `workingHours`
+- Regular weekday hour edits are labeled as recurring schedule edits, not one-day overrides
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** June 1, 2026

@@ -1,7 +1,7 @@
 # Menu Quality Signals — Firebase Cost Tracking
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** June 1, 2026
 
 ---
 
@@ -31,9 +31,11 @@ None.
 
 ## Cost Details
 
-- **Desktop:** 1 additional `getProjectData()` read per dashboard load. The `useOwnerDashboard` hook fetches analytics data but not the project document itself.
+- **Desktop:** 1 additional `getProjectData()` read when the dashboard overview mounts the Menu Quality panel. The `useOwnerDashboard` hook fetches analytics data but not the project document itself.
 - **Mobile:** Zero additional reads — MobileMenuScreen already fetches the full project via `getProjectData()`, and the quality signals component receives `menuData.files` as a prop.
-- **Computation:** Pure client-side. No Firestore writes. No Cloud Functions.
+- **Action routing:** Dashboard-to-editor handoff uses browser `sessionStorage`. No Firestore writes, listeners, indexes, Storage operations, API routes, or Cloud Functions.
+- **Editor banner routing:** Reuses already-loaded editor project data and the existing editor action router. No extra Firestore read or write.
+- **Computation:** Pure client-side.
 
 ## Firestore Indexes
 

@@ -137,7 +137,18 @@ export const useEditorLogic = ({
                 });
             }
 
-            // 4. Has Image Filter
+            // 4. Has Price Filter
+            if (showItemPrices && filters?.hasPrice !== null && filters?.hasPrice !== undefined) {
+                filtered = filtered.filter((item) => {
+                    const price = Number(
+                        String(item.price || "").replace(/[^0-9.-]+/g, ""),
+                    );
+                    const hasPrice = Number.isFinite(price) && price > 0;
+                    return hasPrice === filters.hasPrice;
+                });
+            }
+
+            // 5. Has Image Filter
             if (filters?.hasImage !== null && filters?.hasImage !== undefined) {
                 filtered = filtered.filter((item) => {
                     const hasImages = Boolean(item.images && item.images.length > 0);
@@ -145,7 +156,7 @@ export const useEditorLogic = ({
                 });
             }
 
-            // 5. Active Status Filter
+            // 6. Active Status Filter
             if (
                 filters?.activeStatus !== null &&
                 filters?.activeStatus !== undefined

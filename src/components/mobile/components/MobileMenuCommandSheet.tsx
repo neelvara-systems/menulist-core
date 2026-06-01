@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPalette, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPalette, LuPen, LuPlus, LuPrinter, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from '../sheets/menuSheetLayout';
 
@@ -34,6 +34,7 @@ interface MobileMenuCommandSheetProps {
     onOpenDesignEditor?: () => void;
     onRepairMenu: () => void;
     onPreview: () => void;
+    onPrintMenu?: () => void;
     onTextCase: () => void;
     onUploadMenu: () => void;
     onPricing: () => void;
@@ -80,6 +81,7 @@ export default function MobileMenuCommandSheet({
     onOpenDesignEditor,
     onRepairMenu,
     onPreview,
+    onPrintMenu,
     onTextCase,
     onUploadMenu,
     onPricing,
@@ -138,8 +140,8 @@ export default function MobileMenuCommandSheet({
         {
             key: 'ai-defaults',
             icon: <LuSettings2 style={{ fontSize: 20 }} />,
-            title: 'Generation defaults',
-            description: 'Set the default writing and photo style for this menu.',
+            title: t('generationDefaults'),
+            description: t('generationDefaultsDesc'),
             onClick: onAIDefaults,
         },
         {
@@ -180,11 +182,18 @@ export default function MobileMenuCommandSheet({
             description: `See how customers view this ${labels.offeringLower}.`,
             onClick: onPreview,
         },
+        ...(onPrintMenu ? [{
+            key: 'print-menu',
+            icon: <LuPrinter style={{ fontSize: 20 }} />,
+            title: 'Print Menu',
+            description: 'Preview and create a PDF from this menu.',
+            onClick: onPrintMenu,
+        }] : []),
         ...(onOpenDesignEditor ? [{
             key: 'design',
             icon: <LuPalette style={{ fontSize: 20 }} />,
-            title: 'Menu Design',
-            description: 'Edit colors, layout, images, and customer-facing menu style.',
+            title: t('menuDesignTitle'),
+            description: t('menuDesignCommandDesc'),
             onClick: onOpenDesignEditor,
         }] : []),
         {
@@ -198,18 +207,21 @@ export default function MobileMenuCommandSheet({
             key: 'categories',
             icon: <LuTags style={{ fontSize: 20 }} />,
             title: t('editCategories'),
+            description: t('editCategoriesDesc'),
             onClick: onCategories,
         },
         {
             key: 'add-item',
             icon: <LuPlus style={{ fontSize: 20 }} />,
             title: t('addItem'),
+            description: t('addItemDesc'),
             onClick: onAddItem,
         },
         {
             key: 'reorder-menu',
             icon: <LuArrowUpDown style={{ fontSize: 20 }} />,
             title: t('reorderMenu'),
+            description: t('reorderMenuDesc'),
             onClick: onReorderMenu,
         },
         {
@@ -219,7 +231,7 @@ export default function MobileMenuCommandSheet({
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
+    ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onPrintMenu, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex
@@ -289,7 +301,7 @@ export default function MobileMenuCommandSheet({
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('contentGenerationSection')}</Text>
                         {renderActionList(aiActions)}
-                </Flex>
+                    </Flex>
 
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('menuSetup')}</Text>

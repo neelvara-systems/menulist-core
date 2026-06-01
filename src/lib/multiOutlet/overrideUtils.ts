@@ -41,6 +41,7 @@ export function applyItemOverride(
         images: override.images ?? item.images,
         available: override.available ?? item.available,
         active: override.active ?? item.active,
+        orderIndex: override.orderIndex ?? item.orderIndex,
         isBestSeller: override.isBestSeller ?? item.isBestSeller,
         duration: override.duration ?? item.duration,
         ownerBoost: override.ownerBoost ?? item.ownerBoost,

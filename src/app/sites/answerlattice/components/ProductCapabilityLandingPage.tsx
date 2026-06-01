@@ -1,6 +1,7 @@
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticePageStructuredData from './PageStructuredData';
+import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
 
 export type ProductCapabilityCard = {
@@ -32,6 +33,7 @@ export type ProductCapabilityLandingPageProps = {
     workflowSteps: ProductCapabilityCard[];
     basePath?: string;
     canonicalPath?: string;
+    proofItems?: ProductCapabilityMetric[];
 };
 
 function getBentoCardClass(index: number, totalCards: number) {
@@ -86,6 +88,12 @@ export default function ProductCapabilityLandingPage({
     workflowSteps,
     basePath = '',
     canonicalPath,
+    proofItems = [
+        { label: 'Context', value: 'Page-aware support path' },
+        { label: 'Authority', value: 'Approved answers before fallback' },
+        { label: 'Review', value: 'Owner approval before official guidance' },
+        { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals connected' },
+    ],
 }: ProductCapabilityLandingPageProps) {
     return (
         <main className="al-page-flow">
@@ -96,6 +104,35 @@ export default function ProductCapabilityLandingPage({
                         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">{eyebrow}</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{title}</h1>
                         <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{description}</p>
+                        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/get-started"
+                                data-answerlattice-event="product_area_cta_clicked"
+                                data-answerlattice-label={`${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_start_setup`}
+                                className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                            >
+                                Start support setup
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/demo"
+                                data-answerlattice-event="product_area_cta_clicked"
+                                data-answerlattice-label={`${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_demo`}
+                                className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                            >
+                                See page-aware demo
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/pre-onboarding"
+                                data-answerlattice-event="product_area_cta_clicked"
+                                data-answerlattice-label={`${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_prepare_inputs`}
+                                className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                            >
+                                Prepare inputs first
+                            </AnswerlatticeLink>
+                        </div>
                     </div>
 
                     <div className="mx-auto mt-10 flex max-w-5xl gap-2 overflow-x-auto pb-2 sm:justify-center">
@@ -117,6 +154,8 @@ export default function ProductCapabilityLandingPage({
                             );
                         })}
                     </div>
+
+                    <PageProofStrip items={proofItems} className="mx-auto mt-8 max-w-6xl" />
 
                     <div className="mx-auto mt-10 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                         <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[#101028] text-white">

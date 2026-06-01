@@ -156,7 +156,8 @@ function isPrecomputedValid(precomputed: PrecomputedDecisionBlocks | null | unde
 
 /**
  * Check if precomputed blocks are critically stale (>72h)
- * Beyond normal TTL — even pinned items should not show
+ * Beyond normal TTL, automatic picks should not show. Owner pins can still
+ * render through the pinned-only fallback after runtime availability checks.
  */
 function isHardStale(precomputed: PrecomputedDecisionBlocks | null | undefined): boolean {
     if (!precomputed) return false;
@@ -574,11 +575,12 @@ export default function DecisionBlocks({
     // LAYER 0: Global activation gate (minimum data thresholds)
     // LAYER 1: If precomputed valid → lifecycle-aware block computation + runtime availability filter
     // LAYER 2: If precomputed stale → owner-pinned only (no client-side ranking)
-    // LAYER 3: If hard stale (>72h) → nothing at all
+    // LAYER 3: If hard stale (>72h) → owner-pinned only; automatic scoring hidden
     const blocks = useMemo(() => {
-        // Hard stale guard: if scheduler hasn't run in >72h, show nothing
+        // Hard stale guard: if scheduler hasn't run in >72h, keep owner pins only.
+        // Owner pins are explicit menu truth; stale analytics should not suppress them.
         if (isHardStale(precomputedBlocks)) {
-            return [];
+            return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
         }
 
         const usePrecomputed = isPrecomputedValid(precomputedBlocks);

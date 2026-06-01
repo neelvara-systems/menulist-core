@@ -7,11 +7,12 @@ import { rankGrowthOSActions } from "../../src/lib/growthos/actionRanking";
 import { computeGrowthOSReadiness, isGrowthOSKitExpired } from "../../src/lib/growthos/readiness";
 import { evaluateGrowthOSEntitlement } from "../../src/lib/growthos/entitlements";
 import { guardGrowthOSReviewReply } from "../../src/lib/growthos/reviewGuard";
+import { getGrowthOSTodayTriggerState } from "../../src/lib/growthos/todayTrigger";
 import {
     buildGrowthOSSourceFacts,
     hashGrowthOSSourceFacts,
 } from "../../src/lib/growthos/sourceFacts";
-import type { GrowthOSOutput } from "../../src/types/growthos";
+import type { GrowthOSActionSummary, GrowthOSKitSummary, GrowthOSOutput, GrowthOSSummaryDocument } from "../../src/types/growthos";
 
 type CheckResult = {
     detail?: string;
@@ -74,6 +75,75 @@ function scanDeferredGrowthOSSurface(): string[] {
             .map((token) => `${path.relative(process.cwd(), file)}:${token}`);
     });
 }
+
+function scanRetiredTodayActionPrompts(): string[] {
+    const files = [
+        "src/components/mobile/screens/MobileHoursScreen.tsx",
+        "src/components/templates/main-app/today/index.tsx",
+        "src/components/templates/main-app/today/components/EmptyState/index.tsx",
+    ];
+    const retiredTokens = [
+        "Generate Today Action",
+        "Generate one suggested action",
+        "No today action yet",
+        "No action suggestions available right now",
+    ];
+    return files.flatMap((file) => {
+        const text = fs.readFileSync(path.resolve(file), "utf8");
+        return retiredTokens
+            .filter((token) => text.includes(token))
+            .map((token) => `${file}:${token}`);
+    });
+}
+
+function scanDeletedTodayGenerationFiles(): string[] {
+    return [
+        "src/app/api/campaigns/generate/route.ts",
+        "src/lib/campaigns/engine.ts",
+        "src/lib/staff-prompt/eligibility.ts",
+        "src/lib/staff-prompt/inertia.ts",
+    ].filter((file) => fs.existsSync(path.resolve(file)));
+}
+
+function scanRetiredGlobalTodayPolling(): string[] {
+    const roots = [
+        "src/providers",
+        "src/components/organisms/sidebar",
+    ];
+    const retiredTokens = [
+        "TodayActionProvider",
+        "useTodayAction",
+    ];
+    const files = roots.flatMap((root) => readFilesRecursive(path.resolve(root)))
+        .filter((file) => /\.(ts|tsx)$/.test(file));
+
+    return files.flatMap((file) => {
+        const text = fs.readFileSync(file, "utf8");
+        return retiredTokens
+            .filter((token) => text.includes(token))
+            .map((token) => `${path.relative(process.cwd(), file)}:${token}`);
+    });
+}
+
+function scanRetiredCampaignDalExports(): string[] {
+    const file = "src/database/campaigns/index.ts";
+    const text = fs.readFileSync(path.resolve(file), "utf8");
+    const retiredTokens = [
+        "export const syncTodayCampaignsToSummary",
+        "export const createCampaign",
+        "export const updateCampaignStatus",
+        "export const getCampaignsByDate",
+        "export const getSuppressedTypes",
+        "export const getSuppressedCampaignTypes",
+        "export const recordExport",
+        "export const updateSuppressionStats",
+    ];
+
+    return retiredTokens
+        .filter((token) => text.includes(token))
+        .map((token) => `${file}:${token}`);
+}
+
 
 const storeData = {
     currencySymbol: "₹",
@@ -190,6 +260,61 @@ const updatedFacts = buildGrowthOSSourceFacts({
     tId: "dry-tenant",
 });
 
+const makeSummary = (overrides: Partial<GrowthOSSummaryDocument> = {}): GrowthOSSummaryDocument => ({
+    date: "2026-06-01",
+    eligible: true,
+    latestKit: null,
+    primaryAction: actions[0],
+    sId: storeData.storeId,
+    secondaryActions: actions.slice(1),
+    sourceFactsHash: kit.sourceFactsHash,
+    tId: "dry-tenant",
+    ...overrides,
+});
+const freshKitSummary: GrowthOSKitSummary = {
+    actionType: kit.actionType,
+    createdAt: "2026-06-01T09:00:00.000Z",
+    expiresAt: "2099-06-01T21:00:00.000Z",
+    id: kit.id,
+    isStale: false,
+    itemName: kit.itemName,
+    outputs: kit.outputs,
+    sourceFactsHash: kit.sourceFactsHash,
+    status: "draft",
+    title: kit.title,
+};
+const weakGenericAction: GrowthOSActionSummary = {
+    ...actions[0],
+    confidence: 0.72,
+    reason: "This available item is ready to share from the current menu.",
+    type: "promote_item",
+};
+const strongActionTrigger = getGrowthOSTodayTriggerState(makeSummary({ latestKit: null }));
+const weakActionTrigger = getGrowthOSTodayTriggerState(makeSummary({
+    latestKit: null,
+    primaryAction: weakGenericAction,
+}));
+const freshPackTrigger = getGrowthOSTodayTriggerState(makeSummary({
+    latestKit: freshKitSummary,
+    primaryAction: null,
+}));
+const staleDraftTrigger = getGrowthOSTodayTriggerState(makeSummary({
+    latestKit: {
+        ...freshKitSummary,
+        expiresAt: "2020-05-30T09:00:00.000Z",
+        status: "draft",
+    },
+    primaryAction: weakGenericAction,
+}));
+const staleUsedTrigger = getGrowthOSTodayTriggerState(makeSummary({
+    latestKit: {
+        ...freshKitSummary,
+        expiresAt: "2020-05-30T09:00:00.000Z",
+        status: "copied",
+    },
+    primaryAction: weakGenericAction,
+}));
+
 function withGrowthOSFlags<T>(overrides: Record<string, unknown>, fn: () => T): T {
     const previous = { ...FEATURE_FLAGS };
     Object.assign(FEATURE_FLAGS, overrides);
@@ -211,6 +336,10 @@ const entitlement = evaluateGrowthOSEntitlement({
     storeId: storeData.storeId,
 });
 const deferredMatches = scanDeferredGrowthOSSurface();
+const retiredTodayPromptMatches = scanRetiredTodayActionPrompts();
+const deletedTodayGenerationFiles = scanDeletedTodayGenerationFiles();
+const retiredGlobalTodayPollingMatches = scanRetiredGlobalTodayPolling();
+const retiredCampaignDalExports = scanRetiredCampaignDalExports();
 
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
 assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
@@ -297,6 +426,15 @@ assertCheck(Boolean(safeReply.reply), "review guard prepares low-risk reply");
 assertCheck(!unsafeReply.reply && unsafeReply.publicReplyRecommended === false, "review guard blocks food-safety public reply");
 assertCheck(hashGrowthOSSourceFacts(facts) !== hashGrowthOSSourceFacts(updatedFacts), "source hash changes when menu truth changes");
 assertCheck(isGrowthOSKitExpired(new Date("2026-05-30T09:00:00.000Z").toISOString()) === true, "kit expiry marks old kit stale");
+assertCheck(strongActionTrigger.shouldSurface === true && strongActionTrigger.reason === "strong_menu_action", "Today Sales Pack surfaces strong menu actions");
+assertCheck(weakActionTrigger.shouldSurface === false && weakActionTrigger.reason === "none", "Today Sales Pack stays quiet for weak generic actions");
+assertCheck(freshPackTrigger.shouldSurface === true && freshPackTrigger.reason === "fresh_pack_ready", "Today Sales Pack surfaces a fresh prepared pack");
+assertCheck(staleDraftTrigger.shouldSurface === false && staleDraftTrigger.reason === "none", "Today Sales Pack does not surface unused stale drafts");
+assertCheck(staleUsedTrigger.shouldSurface === true && staleUsedTrigger.reason === "used_pack_stale", "Today Sales Pack surfaces previously used stale packs for update");
+assertCheck(retiredTodayPromptMatches.length === 0, "retired Today Action generation prompts are absent from active Today surfaces", retiredTodayPromptMatches.join(", "));
+assertCheck(deletedTodayGenerationFiles.length === 0, "retired Today generation code files are deleted", deletedTodayGenerationFiles.join(", "));
+assertCheck(retiredGlobalTodayPollingMatches.length === 0, "retired global Today polling provider is absent", retiredGlobalTodayPollingMatches.join(", "));
+assertCheck(retiredCampaignDalExports.length === 0, "retired campaign generation DAL exports are absent", retiredCampaignDalExports.join(", "));
 assertCheck(deferredMatches.length === 0, "deferred GrowthOS scope has no provider, posting, offer, order, or ROI hooks", deferredMatches.join(", "));
 
 console.log(JSON.stringify({

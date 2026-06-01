@@ -96,7 +96,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
         }
 
-        // Invalidate store cache so public pages pick up the change
+        // Invalidate public menu/OBP cache so customers see the new status immediately.
+        revalidateTag(`menu-store-${storeId}`);
+        revalidateTag(`store-${storeId}`);
         revalidateTag('client-stores');
 
         return NextResponse.json({ success: true });

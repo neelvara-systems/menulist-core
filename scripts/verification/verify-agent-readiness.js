@@ -118,6 +118,15 @@ function verifyEnvironmentTargets() {
 
 function platformPagePathToFile(pagePath) {
   if (pagePath === '/') return 'src/app/(website)/page.tsx';
+  if (/^\/[^/]+\/resources\/[^/]+$/.test(pagePath)) {
+    return 'src/app/(website)/[locale]/resources/[slug]/page.tsx';
+  }
+  if (/^\/[^/]+\/resources$/.test(pagePath)) {
+    return 'src/app/(website)/[locale]/resources/page.tsx';
+  }
+  if (pagePath.startsWith('/resources/') && pagePath !== '/resources') {
+    return 'src/app/(website)/resources/[slug]/page.tsx';
+  }
   return `src/app/(website)${pagePath}/page.tsx`;
 }
 
@@ -128,14 +137,26 @@ function answerlatticePagePathToFile(pagePath) {
 
 function verifyMenuListDiscovery() {
   const {
+    DISCOVERY_CRAWLERS,
     PLATFORM_DISCOVERY_PAGES,
+    PUBLIC_DISCOVERY_DISALLOWED_PATHS,
     getPlatformDiscoveryBaseUrl,
   } = require('../../src/lib/seo/discoveryPolicy');
+  const {
+    WEBSITE_RESOURCE_REVIEWED_ROUTE_LOCALES,
+  } = require('../../src/content/websiteResources');
+  const {
+    WEBSITE_RESOURCE_PLANNED_INDIAN_LOCALES,
+  } = require('../../src/content/websiteResources/locales');
   const sitemap = read('public/sitemap.xml');
   const robots = read('public/robots.txt');
   const llms = read('public/llms.txt');
+  const llmsFull = read('public/llms-full.txt');
   const schemaMarkup = read('src/components/website/SchemaMarkup.tsx');
   const pageStructuredData = read('src/components/website/WebsitePageStructuredData.tsx');
+  const languageSwitcher = read('src/components/website/shared/WebsiteLanguageSwitcher.tsx');
+  const localizedResourceLayout = read('src/app/(website)/[locale]/layout.tsx');
+  const resourceShell = read('src/components/website/resources/ResourcePageShell.tsx');
   const rootLayout = read('src/app/layout.tsx');
   const websiteLayout = read('src/app/(website)/layout.tsx');
   const homepage = read('src/app/(website)/page.tsx');
@@ -165,9 +186,31 @@ function verifyMenuListDiscovery() {
   assertIncludes(robots, 'https://menulist.ai/llms-full.txt', 'MenuList robots');
   assertIncludes(robots, 'Sitemap: https://menulist.ai/sitemap.xml', 'MenuList robots');
   assertNotIncludes(robots, 'www.menulist.ai', 'MenuList robots');
+  for (const crawler of DISCOVERY_CRAWLERS) {
+    assertIncludes(robots, `User-agent: ${crawler}`, `MenuList robots crawler ${crawler}`);
+  }
+  for (const disallowedPath of PUBLIC_DISCOVERY_DISALLOWED_PATHS) {
+    assertIncludes(robots, `Disallow: ${disallowedPath}`, `MenuList robots disallow ${disallowedPath}`);
+  }
 
   assertNotIncludes(sitemap, 'www.menulist.ai', 'MenuList sitemap');
   assertNotIncludes(sitemap, 'https://menulist.ai/product', 'MenuList sitemap');
+  for (const plannedLocale of WEBSITE_RESOURCE_PLANNED_INDIAN_LOCALES) {
+    assertNotIncludes(
+      sitemap,
+      `https://menulist.ai/${plannedLocale}/resources`,
+      `MenuList sitemap planned ${plannedLocale} resources`,
+    );
+  }
+  for (const reviewedLocale of WEBSITE_RESOURCE_REVIEWED_ROUTE_LOCALES) {
+    assertIncludes(sitemap, `hreflang="${reviewedLocale}"`, `MenuList sitemap ${reviewedLocale} hreflang`);
+    assertIncludes(localizedResourceLayout, `'${reviewedLocale}'`, `MenuList localized resource layout messages ${reviewedLocale}`);
+  }
+  assertIncludes(localizedResourceLayout, 'dir={language?.direction', 'MenuList localized resource layout direction support');
+  assertIncludes(languageSwitcher, 'usePathname', 'MenuList website language switcher localized resource routing');
+  assertIncludes(languageSwitcher, 'buildWebsiteResourcePath', 'MenuList website language switcher localized resource routing');
+  assertIncludes(languageSwitcher, 'isReviewedWebsiteResourceLocale', 'MenuList website language switcher localized resource routing');
+  assertIncludes(languageSwitcher, 'router.push(localizedResourcePath)', 'MenuList website language switcher localized resource routing');
   assertNotIncludes(llms, 'https://menulist.ai/product', 'MenuList llms.txt');
 
   for (const page of PLATFORM_DISCOVERY_PAGES) {
@@ -178,6 +221,40 @@ function verifyMenuListDiscovery() {
     const content = read(routeFile);
     if (page.path === '/') {
       assertIncludes(content, '<SchemaMarkup />', 'MenuList homepage structured data');
+    } else if (page.path === '/resources') {
+      assertIncludes(content, 'ResourceHubPageShell', 'MenuList resources hub route shell');
+      assertIncludes(resourceShell, 'ResourceStructuredData', 'MenuList resources hub structured data');
+      assertIncludes(resourceShell, 'type="hub"', 'MenuList resources hub structured data');
+      assertIncludes(llms, 'https://menulist.ai/resources', 'MenuList llms.txt resources hub');
+    } else if (page.path.startsWith('/resources/')) {
+      const slug = page.path.replace('/resources/', '');
+      const resourceContent = read('src/content/websiteResources/en-US.ts');
+      assertIncludes(content, 'generateStaticParams', `MenuList resource dynamic params ${page.path}`);
+      assertIncludes(content, 'ResourceArticlePageShell', `MenuList resource route shell ${page.path}`);
+      assertIncludes(resourceShell, 'ResourceStructuredData', `MenuList resource structured data ${page.path}`);
+      assertIncludes(resourceShell, 'type="article"', `MenuList resource article structured data ${page.path}`);
+      assertIncludes(resourceContent, `slug: '${slug}'`, `MenuList resource content ${page.path}`);
+      assertIncludes(llms, `https://menulist.ai${page.path}`, `MenuList llms.txt ${page.path}`);
+    } else if (/^\/[^/]+\/resources(?:\/[^/]+)?$/.test(page.path)) {
+      const {
+        getWebsiteResourceArticle,
+        getWebsiteResourcesCopy,
+        isReviewedWebsiteResourceLocale,
+      } = require('../../src/content/websiteResources');
+      const [, locale, slug] = page.path.match(/^\/([^/]+)\/resources(?:\/([^/]+))?$/);
+      assert(isReviewedWebsiteResourceLocale(locale), `MenuList localized resource locale must be reviewed: ${locale}`);
+      assert(getWebsiteResourcesCopy(locale).localeStatus === 'reviewed', `MenuList localized resource copy must be reviewed: ${locale}`);
+      assertIncludes(content, 'generateStaticParams', `MenuList localized resource dynamic params ${page.path}`);
+      assertIncludes(content, slug ? 'ResourceArticlePageShell' : 'ResourceHubPageShell', `MenuList localized resource shell ${page.path}`);
+      assertIncludes(content, 'buildResource', `MenuList localized resource metadata ${page.path}`);
+      assertIncludes(sitemap, `https://menulist.ai${page.path}`, `MenuList sitemap ${page.path}`);
+      assertIncludes(sitemap, `hreflang="${locale}" href="https://menulist.ai${page.path}"`, `MenuList sitemap hreflang ${page.path}`);
+      assertIncludes(llmsFull, `https://menulist.ai${page.path}`, `MenuList llms-full.txt ${page.path}`);
+      if (!slug) {
+        assertIncludes(llms, `https://menulist.ai${page.path}`, `MenuList llms.txt ${page.path}`);
+      } else {
+        assert(getWebsiteResourceArticle(slug, locale), `MenuList localized resource content ${page.path}`);
+      }
     } else {
       assertIncludes(content, 'WebsitePageStructuredData', `MenuList page structured data ${page.path}`);
       assertIncludes(content, `path="${page.path}"`, `MenuList structured data path ${page.path}`);

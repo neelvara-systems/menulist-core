@@ -4,8 +4,6 @@ import AnswerlatticeAnalytics from './components/AnswerlatticeAnalytics';
 import AnswerlatticeScrollReveal from './components/AnswerlatticeScrollReveal';
 import { buildAnswerlatticeUrl, ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE, ANSWERLATTICE_SITE_URL } from './siteConfig';
 import { ANSWERLATTICE_THEME_COLOR } from './theme';
-import './styles.css';
-import './scroll-reveal.css';
 
 export const metadata: Metadata = {
     applicationName: 'Answerlattice',

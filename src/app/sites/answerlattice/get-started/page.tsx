@@ -5,6 +5,7 @@ import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ const FIRST_SESSION = [
     'Create your Answerlattice workspace',
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
-    'Seed starter surfaces for key app pages',
+    'Seed starter surfaces for key product pages',
     'Teach Answerlattice from selected links, docs, FAQs, screenshots, recordings, or support macros',
     'Verify widget install and page context',
     'Review the first approved answers',
@@ -59,6 +60,15 @@ export default function AnswerlatticeGetStartedPage() {
                                 Sign in with Google, add your app, invite the people who need access, pick the pages where users get stuck, and get a widget key for your first support layer.
                             </p>
                         </div>
+
+                        <PageProofStrip
+                            className="mb-10"
+                            items={[
+                                { label: 'First session', value: 'Workspace, team, product pages, widget key' },
+                                { label: 'Best input', value: 'Docs, FAQs, owner notes, screenshots, recordings, recurring questions' },
+                                { label: 'Go-live rule', value: 'Review answers and verify widget context before relying on live support' },
+                            ]}
+                        />
 
                         <div className="mb-10 rounded-[1.5rem] border border-teal-300/20 bg-teal-400/[0.055] p-5">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -412,6 +412,46 @@ export const CampaignGenerateRequestSchema = z.object({
 export type CampaignGenerateRequest = z.infer<typeof CampaignGenerateRequestSchema>;
 
 // ═══════════════════════════════════════════════════════════
+// MENU CARD EXPORT DESIGN ADVISOR
+// ═══════════════════════════════════════════════════════════
+
+const menuCardExportPresetSchema = z.enum(['home_print', 'whatsapp', 'print_shop_packet', 'table_menu']);
+const menuCardExportStyleSchema = z.enum(['classic', 'compact', 'premium']);
+const menuCardExportDensitySchema = z.enum(['comfortable', 'balanced', 'compact']);
+
+export const MenuCardDesignAdvisorRequestSchema = z.object({
+    projectId: z.string().min(1).max(100),
+    sourceHash: z.string().min(1).max(160),
+    currentSettings: z.object({
+        preset: menuCardExportPresetSchema,
+        styleId: menuCardExportStyleSchema,
+        density: menuCardExportDensitySchema,
+        includeDescriptions: z.boolean(),
+        includeQr: z.boolean(),
+        includeContactBlock: z.boolean(),
+    }),
+    sourceSummary: z.object({
+        businessName: z.string().min(1).max(120),
+        menuTitle: z.string().min(1).max(120),
+        categoryCount: z.number().int().min(0).max(200),
+        itemCount: z.number().int().min(0).max(1000),
+        pageCount: z.number().int().min(0).max(200),
+        hasDescriptions: z.boolean(),
+        hasVariants: z.boolean(),
+        hasDietaryTags: z.boolean(),
+        hasMissingPrices: z.boolean(),
+        categoryNames: z.array(z.string().max(80)).max(20).optional(),
+    }),
+    preflightWarnings: z.array(z.object({
+        code: z.string().max(80),
+        severity: z.enum(['info', 'warning', 'blocker']),
+        message: z.string().max(180),
+    })).max(20),
+});
+
+export type MenuCardDesignAdvisorRequest = z.infer<typeof MenuCardDesignAdvisorRequestSchema>;
+
+// ═══════════════════════════════════════════════════════════
 // GUEST FEEDBACK (Internal Feedback System)
 // @see __docs__/projects/internal-feedback-system/
 // ═══════════════════════════════════════════════════════════

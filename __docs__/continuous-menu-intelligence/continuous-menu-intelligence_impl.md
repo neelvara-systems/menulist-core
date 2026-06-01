@@ -71,7 +71,7 @@ All autonomous action logic exists in `functions/src/intelligence/menuIntelligen
 | Component                     | Location                                 | Relevance                                                                                   |
 | ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **Decision Blocks Scheduler** | `functions/src/decisionBlocksScoring.ts` | **EXTEND THIS** - Already iterates stores/projects, fetches 7-day analytics, extracts items |
-| Campaign Engine               | `src/lib/campaigns/engine.ts`            | Already has confidence scoring, silence governor, recency decay                             |
+| GrowthOS ranking              | `src/lib/growthos/actionRanking.ts`      | Current generated-action ranking source after old Social Content engine deletion            |
 | Slide Generator               | `src/lib/screen/slideGenerator.ts`       | Already uses confidence thresholds (0.7), monotonicity                                      |
 | Analytics Tracking            | `src/lib/analytics/unified.ts`           | Tracks views, taps, decision block clicks                                                   |
 | Confidence Thresholds         | `src/type/campaigns.ts`                  | `CONFIDENCE_THRESHOLDS` already defined                                                     |
@@ -523,7 +523,7 @@ src/
 
 | Task                           | File                               | Status     | Notes                      |
 | ------------------------------ | ---------------------------------- | ---------- | -------------------------- |
-| Integrate with campaign engine | `src/lib/campaigns/engine.ts`      | ⬜ Pending | Read confidence from state |
+| Integrate with GrowthOS ranking | `src/lib/growthos/actionRanking.ts` | ⬜ Pending | Read confidence from current action ranking |
 | Integrate with slide generator | `src/lib/screen/slideGenerator.ts` | ⬜ Pending | Read suppression windows   |
 | Add Firestore security rules   | `firestore.rules`                  | ⬜ Pending | Read-only for owners       |
 
@@ -604,9 +604,8 @@ src/
 
 | Check                           | Status  | Evidence                                            |
 | ------------------------------- | ------- | --------------------------------------------------- |
-| Existing confidence system      | ✅ PASS | `src/lib/campaigns/engine.ts:95-179`                |
-| Existing silence governor       | ✅ PASS | `src/lib/campaigns/engine.ts:442-455`               |
-| Existing recency decay          | ✅ PASS | `src/lib/campaigns/engine.ts:71-85`                 |
+| Current action ranking          | ✅ PASS | `src/lib/growthos/actionRanking.ts`                 |
+| Old Social Content engine       | Removed | Deleted to avoid duplicate generated-action systems |
 | Existing analytics tracking     | ✅ PASS | `src/lib/analytics/unified.ts:102-126`              |
 | **Decision Blocks Scheduler**   | ✅ PASS | `functions/src/decisionBlocksScoring.ts`            |
 | 7-day analytics fetch           | ✅ PASS | `decisionBlocksScoring.ts:298-343`                  |

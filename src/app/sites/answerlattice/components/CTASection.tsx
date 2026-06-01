@@ -5,10 +5,10 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-3xl text-center">
                 <h2 className="text-3xl font-bold sm:text-4xl">
-                    Get your SaaS support-ready before users arrive.
+                    Give your SaaS product a support layer users can trust.
                 </h2>
                 <p className="mt-4 text-lg text-[#a0a0c0]">
-                    Start with your existing docs, notes, FAQs, and release updates. Answerlattice prepares help content, answer drafts, and page-aware support while tickets, changelogs, feedback, ratings, and feature requests stay owner-managed.
+                    Start with existing docs, notes, FAQs, releases, screenshots, recordings, and repeated questions. Answerlattice turns them into page-aware support, hosted help, answer drafts, fallback signals, and review work.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                     <AnswerlatticeLink

@@ -142,6 +142,7 @@ export const AI_ACTIONS_TYPES: any = {
     SEO_AEO_GENERATION: "seo_aeo_generation",
     BUSINESS_COPY_GENERATION: "business_copy_generation",
     CAMPAIGN_CAPTION: "campaign_caption",
+    MENU_CARD_EXPORT_DESIGN_ADVISOR: "menu_card_export_design_advisor",
     MENU_INTAKE_IDENTITY: "menu_intake_identity",
     PUBLIC_MENU_EXTRACTION: "public_menu_extraction",
     REVIEW_REPLY_SUGGESTION: "review_reply_suggestion",

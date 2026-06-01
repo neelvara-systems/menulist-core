@@ -15,6 +15,7 @@ import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
+import { normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
@@ -175,6 +176,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         longitude: storeDetails?.longitude ?? storeDetails?.geo?.longitude,
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
+            customAttributes: normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes),
             descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
             knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
             specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, contentLanguage, ''),
@@ -861,6 +863,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             const localizedPresenceDrafts = changesToUpload.__localizedPublicPresenceDrafts;
             changesToUpload.publicPresence = {
                 ...changesToUpload.publicPresence,
+                customAttributes: Array.isArray(changesToUpload.publicPresence.customAttributes)
+                    ? normalizeCustomBusinessAttributes(changesToUpload.publicPresence.customAttributes)
+                    : changesToUpload.publicPresence.customAttributes,
                 descriptor: localizedPresenceDrafts
                     ? applyLocalizedDraftMap(
                         currentPresence.descriptor,

@@ -537,8 +537,14 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
       return {
         ...item,
         price: override.price ?? item.price,
+        description: override.description ?? item.description,
+        images: override.images ?? item.images,
         available: override.available ?? item.available,
         active: override.active ?? item.active,
+        orderIndex: override.orderIndex ?? item.orderIndex,
+        isBestSeller: override.isBestSeller ?? item.isBestSeller,
+        duration: override.duration ?? item.duration,
+        ownerBoost: override.ownerBoost ?? item.ownerBoost,
       };
     })
     // Filter out items where active=false (hidden at this store)
@@ -567,13 +573,22 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
     (cat) => !masterCategoryIds.has(cat.id),
   );
 
-  // Sort categories by override orderIndex if present
+  // Sort categories by override orderIndex if present.
+  // Items are also sorted within their category by item orderIndex so outlet
+  // item reordering reaches the public customer menu.
   const sortedCategories = [...resolvedCategories, ...localOnlyCategories].sort(
     (a, b) => {
       const orderA = overrides.categories[a.id]?.orderIndex ?? Infinity;
       const orderB = overrides.categories[b.id]?.orderIndex ?? Infinity;
       return orderA - orderB;
     },
+  );
+  const categoryRenderOrder = new Map(
+    sortedCategories.map((category, index) => [String(category.id), index]),
+  );
+  const sortedItems = sortItemsWithinCategoryByOrder(
+    [...resolvedItems, ...localOnlyItems],
+    categoryRenderOrder,
   );
 
   // Build item states
@@ -605,7 +620,7 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
     ...store,
     files: reconstructFiles(
       store,
-      [...resolvedItems, ...localOnlyItems],
+      sortedItems,
       sortedCategories,
     ),
     _resolved: {

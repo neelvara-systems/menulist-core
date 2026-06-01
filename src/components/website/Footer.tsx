@@ -2,7 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { LuArrowRight, LuBadgeCheck, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin, LuShieldCheck } from 'react-icons/lu';
+import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin } from 'react-icons/lu';
+import { FEATURE_FLAGS } from '@config/features';
 import BrandWordmark from './shared/BrandWordmark';
 import WebsiteButton from './shared/WebsiteButton';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
@@ -22,11 +23,19 @@ const sourceLinks = [
   { href: '/get-started', key: 'getStarted' },
 ];
 
-const resourceLinks = [
-  { href: '/about', key: 'about' },
-  { href: '/contact', key: 'contact' },
-  { href: '/trust-security', key: 'trustSecurity' },
-];
+const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
+  ? [
+    { href: '/resources', key: 'resourcesHub' },
+    { href: '/resources/menu-source-audit', key: 'menuSourceAudit' },
+    { href: '/resources/google-business-profile-menu', key: 'googleMenuSource' },
+    { href: '/resources/qr-code-placement-checklist', key: 'qrPlacement' },
+    { href: '/resources/menu-update-checklist', key: 'menuUpdateChecklist' },
+  ]
+  : [
+    { href: '/about', key: 'about' },
+    { href: '/contact', key: 'contact' },
+    { href: '/trust-security', key: 'trustSecurity' },
+  ];
 
 const legalLinks = [
   { href: '/privacy-policy', key: 'privacyPolicy' },
@@ -130,7 +139,7 @@ export default function Footer() {
             </div>
 
             <div>
-              <h3><LuShieldCheck size={15} /> {t('Footer.resourcesHeading')}</h3>
+              <h3><LuBookOpen size={15} /> {t('Footer.resourcesHeading')}</h3>
               <ul>
                 {resourceLinks.map((link) => (
                   <li key={`${link.href}-${link.key}`}>

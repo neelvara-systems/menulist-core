@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Terms of Service',
@@ -79,6 +80,14 @@ export default function AnswerlatticeTermsOfServicePage() {
                             These terms describe the expected use of Answerlattice&apos;s website, dashboard, help widget, and
                             support knowledge features.
                         </p>
+                        <PageProofStrip
+                            className="mt-8 text-left"
+                            items={[
+                                { label: 'Customer responsibility', value: 'Review uploaded content, workspace users, domains, and widget context' },
+                                { label: 'Draft boundary', value: 'AI-assisted output is not official until owner approval' },
+                                { label: 'Acceptable use', value: 'Do not send secrets, payment data, malware, or abusive traffic' },
+                            ]}
+                        />
                     </div>
                 </section>
 

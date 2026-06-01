@@ -4,6 +4,7 @@ import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'About',
@@ -37,8 +38,32 @@ export default function AnswerlatticeAboutPage() {
                             Answerlattice exists because solo founders and small SaaS teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Answerlattice keeps approved support knowledge connected to product surfaces. It gives founders launch setup, a help center, hosted docs, widget, changelog binding, tickets as fallback, and a governance queue without asking them to run a large support operation.
+                            Answerlattice keeps approved support knowledge connected to product surfaces. Founders get launch setup, hosted help, widget support, changelog binding, ticket fallback, and a governance queue without having to run a large support operation.
                         </p>
+                        <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/product"
+                                className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                            >
+                                See the product
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/proof"
+                                className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                            >
+                                Review proof pack
+                            </AnswerlatticeLink>
+                        </div>
+                        <PageProofStrip
+                            className="mt-8 text-left"
+                            items={[
+                                { label: 'Audience', value: 'Live or near-live SaaS teams with repeated support questions' },
+                                { label: 'Belief', value: 'Correct approved answers beat more support channels' },
+                                { label: 'Boundary', value: 'Not a helpdesk replacement or autopilot' },
+                            ]}
+                        />
                     </div>
                 </section>
 

@@ -40,23 +40,27 @@ const { useToken } = theme;
 
 interface OverviewViewProps {
     data: OverviewData | null;
+    qualitySignalsSlot?: React.ReactNode;
 }
 
-const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
+const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot }) => {
     const labels = useOfferingLabels();
     const { token } = useToken();
 
     if (!data) {
         return (
-            <Card className={styles.emptyCard}>
-                <Empty
-                    description={
-                        <Text type="secondary">
-                            No data yet. Your analytics will appear once customers start viewing.
-                        </Text>
-                    }
-                />
-            </Card>
+            <div className={styles.overviewView}>
+                <Card className={styles.emptyCard}>
+                    <Empty
+                        description={
+                            <Text type="secondary">
+                                No data yet. Your analytics will appear once customers start viewing.
+                            </Text>
+                        }
+                    />
+                </Card>
+                {qualitySignalsSlot}
+            </div>
         );
     }
 
@@ -537,6 +541,8 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                     </Row>
                 )}
             </Card>
+
+            {qualitySignalsSlot}
 
             <OwnerActionPlanCard
                 actionPlan={ownerActionPlan}

@@ -6,7 +6,7 @@
 
 ## 1. Architecture
 
-Pure UI aggregation layer. Zero new backend logic. Zero new Firestore collections. Zero Firebase cost delta.
+Use MenuList itself remains a UI aggregation layer. The hub adds no backend logic, no Firestore collections, and no Firebase cost delta. Complex child workflows linked from the hub, such as Menu Card Export, own their own route/API/data contracts and cost documentation.
 
 The page reads existing data (store details, screen state, project metadata) and presents links/downloads using existing generators.
 
@@ -69,7 +69,7 @@ UseMenuListPage
  ├── ShareSection           — OBP link card + Direct menu link card
  ├── QRSection              — Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs
  ├── ScreensSection         — Menu Board + Highlights link cards
- ├── PrintSection           — Individual asset cards (table, counter, entrance, feedback, PDF, Menu Kit)
+ ├── PrintSection           — Individual asset cards (table, counter, entrance, feedback, Print Menu, Menu Kit)
  ├── ExportSection          — XLSX/JSON backup downloads
  ├── POSSection             — POS provider setup summary + settings handoff
  └── ResourcesSection       — Setup/Printing/Sharing guide modals
@@ -78,7 +78,7 @@ UseMenuListPage
 Mobile implements the same owner output jobs in `src/components/mobile/screens/MobileShareScreen.tsx` using mobile cards and sheets:
 - project/OBP/customer app/feedback link cards
 - raw QR sheet for Store Menu, Business Profile, Project Menu, and outlet aliases
-- PDF, Menu Kit ZIP, print assets, social assets, and feedback QR downloads
+- Print Menu route entry, Menu Kit ZIP, print assets, social assets, and feedback QR downloads
 - XLSX/JSON export from the selected project cache
 - Menu Board and Highlights links from `getScreenState()`
 - POS setup summary copy and mobile POS settings handoff

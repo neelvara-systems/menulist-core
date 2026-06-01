@@ -6,6 +6,7 @@ import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import { AnswerlatticeHubDiagram } from '../components/AnswerlatticeFlowDiagram';
 import { AnswerlatticeStatusBoard } from '../components/AnswerlatticeProofBlocks';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
 import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
@@ -241,6 +242,30 @@ export default function AnswerlatticeSecurityPage() {
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                             Answerlattice uses safe page hints, explicit screenshot attachments, bounded source intake, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
+                        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/security-one-pager"
+                                className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                            >
+                                Open one-pager
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/quickstarts"
+                                className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                            >
+                                View install safety
+                            </AnswerlatticeLink>
+                        </div>
+                        <PageProofStrip
+                            className="mt-8 text-left"
+                            items={[
+                                { label: 'Widget', value: 'Allowed origins, blocked routes, safe context' },
+                                { label: 'Sources', value: 'Owner-selected intake, capped media extraction' },
+                                { label: 'Authority', value: 'Owner-approved answers before official guidance' },
+                            ]}
+                        />
                     </div>
                 </section>
 
@@ -248,7 +273,7 @@ export default function AnswerlatticeSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-teal-300/20 bg-teal-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, use Knowledge Intake only with selected sources, assign workspace roles carefully, serve approved runtime context from controlled bundles, and approve support answers before they become official.
+                            Install the widget only on allowed domains and hide it from sensitive routes. Send safe page context instead of secrets. Keep screenshots user-initiated, use selected sources for Knowledge Intake, and approve support answers before they become official.
                         </p>
                         <AnswerlatticeLink
                             basePath={basePath}

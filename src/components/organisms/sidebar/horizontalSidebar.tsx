@@ -5,7 +5,6 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
-import { useTodayAction } from '@providers/TodayActionProvider';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -37,9 +36,6 @@ const HorizontalSidebarComponent = () => {
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const { activeSubscription, tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
-
-    // Today action indicator (per Strategy Doc: small dot when action exists)
-    const { hasAction: hasTodayAction } = useTodayAction();
 
     const ACTION_MENUS: NavItemType[] = [
         { label: 'App Appearance', route: 'dashboard-settings', icon: <MdOutlineSettingsSuggest /> },
@@ -98,24 +94,9 @@ const HorizontalSidebarComponent = () => {
                 return;
             }
 
-            // Add dot indicator for Today when action exists (per Strategy Doc)
-            const isToday = nav.label === 'Today';
-            const showDot = isToday && hasTodayAction;
-
             const navItem: any = {
                 key: nav.label,
-                label: showDot ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {tNav(nav.label as any)}
-                        <span style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            backgroundColor: token.colorPrimary,
-                            display: 'inline-block'
-                        }} />
-                    </span>
-                ) : tNav(nav.label as any),
+                label: tNav(nav.label as any),
                 icon: <nav.icon />,
                 route: `${nav.route}`,
                 children: Boolean(visibleSubNav?.length) ?
@@ -161,7 +142,7 @@ const HorizontalSidebarComponent = () => {
                 setActiveNav([currentNav.key])
             }
         }
-    }, [pathname, platformRole, hasTodayAction, canManageLocations, hasStarterAccess, userPermissions])
+    }, [pathname, platformRole, canManageLocations, hasStarterAccess, userPermissions])
 
     const onClickNav: MenuProps['onClick'] = (menu: any) => {
         getMenuItems().map((nav: any) => {

@@ -2,10 +2,9 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { getCampaign } from "@database/campaigns";
-import { getProjectsListWithoutLoader } from "@database/projects";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
-import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
+import { useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { shouldShowGrowthOSNavigation } from "@lib/growthos/entitlements";
@@ -15,11 +14,10 @@ import { buildTodayWeeklyGrowthPack } from "@lib/today/weeklyGrowthPack";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
-import { Button, Card, Divider, Drawer, Select, Spin, Typography, notification } from "antd";
+import { Button, Card, Divider, Drawer, Spin, Typography, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { LuCalendarOff, LuInfo } from "react-icons/lu";
-import useSWR from "swr";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
 import TempStatusCard from "../businessSettings/TempStatusCard";
 import OwnerActionPlanCard from "../dashboard/OwnerDashboard/OwnerActionPlanCard";
@@ -38,14 +36,6 @@ import { sortOperationalCampaignsByPriority } from "@lib/today/todayCampaignPrio
 const { Title, Text } = Typography;
 
 type ScreenState = "loading" | "action" | "empty" | "post-action";
-type ProjectSummary = {
-    active?: boolean;
-    deleted?: boolean;
-    isDefault?: boolean;
-    name?: string | Record<string, string>;
-    projectId: string;
-};
-
 const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
     getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
 );
@@ -77,29 +67,10 @@ const buildTodayDigest = (
     }
 
     if (!parts.length) {
-        return 'No action suggestions available right now.';
+        return '';
     }
 
     return `${parts.join(' · ')}.`;
-};
-
-const resolveSelectedProject = (
-    projects: ProjectSummary[],
-    preferredProjectId?: string | null,
-) => {
-    const availableProjects = projects.filter((project) => project.deleted !== true);
-    const activeProjects = availableProjects.filter((project) => project.active !== false);
-    const selectionPool = activeProjects.length ? activeProjects : availableProjects.length ? availableProjects : projects;
-
-    if (!selectionPool.length) return null;
-
-    if (preferredProjectId) {
-        const preferred = availableProjects.find((project) => project.projectId === preferredProjectId)
-            || projects.find((project) => project.projectId === preferredProjectId);
-        if (preferred) return preferred;
-    }
-
-    return selectionPool.find((project) => project.isDefault) || selectionPool[0] || null;
 };
 
 const TodayScreen = () => {
@@ -107,7 +78,6 @@ const TodayScreen = () => {
     const [screenState, setScreenState] = useState<ScreenState>("loading");
     const [lastAction, setLastAction] = useState<"shared" | "skipped" | null>(null);
     const [lastActionFeedback, setLastActionFeedback] = useState<TodayActionFeedback | null>(null);
-    const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
 
@@ -115,28 +85,11 @@ const TodayScreen = () => {
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
     const { activeSubscription, storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(activeProject?.projectId || null);
-    const { data: projects = [] } = useSWR<ProjectSummary[]>(
-        "today-projects",
-        async () => {
-            const result = await getProjectsListWithoutLoader(true);
-            return (result?.projects || []) as ProjectSummary[];
-        },
-        {
-            revalidateOnFocus: true,
-            revalidateOnReconnect: true,
-            dedupingInterval: 30000,
-        }
-    );
-    const selectedProject = useMemo(
-        () => projects.find((project) => project.projectId === selectedProjectId) || null,
-        [projects, selectedProjectId]
-    );
     const inactiveItemsReminder = useMemo(() => {
-        if (!activeProject?.projectId || activeProject.projectId !== selectedProjectId) return null;
+        if (!activeProject?.projectId) return null;
         return getInactiveItemsReminder(activeProject as any);
-    }, [activeProject, selectedProjectId]);
-    const ownerActionPlan = useOwnerActionPlan(selectedProjectId);
+    }, [activeProject]);
+    const ownerActionPlan = useOwnerActionPlan(activeProject?.projectId || null);
     const sortedOperationalCampaigns = useMemo(
         () => sortOperationalCampaignsByPriority(todayCampaigns?.operational || []),
         [todayCampaigns?.operational]
@@ -154,7 +107,7 @@ const TodayScreen = () => {
         Boolean(staffPrompt?.eligible),
         hasMaintenanceCards,
     );
-    const shouldShowMainActionHint = screenState === "action" && !hasPrimaryCampaign;
+    const shouldShowTodayDigest = hasPrimaryCampaign || hasOperationalCampaigns || hasMaintenanceCards;
     const shouldShowGrowthKitsEntry = shouldShowGrowthOSNavigation({
         activeSubscription,
         storeDetails,
@@ -163,18 +116,6 @@ const TodayScreen = () => {
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
-
-    useEffect(() => {
-        if (!projects.length) {
-            setSelectedProjectId(null);
-            return;
-        }
-
-        const resolvedProject = resolveSelectedProject(projects, activeProject?.projectId || selectedProjectId);
-        if (resolvedProject?.projectId !== selectedProjectId) {
-            setSelectedProjectId(resolvedProject?.projectId || null);
-        }
-    }, [activeProject?.projectId, projects, selectedProjectId]);
 
     useEffect(() => {
         if (isLoading) {
@@ -213,8 +154,8 @@ const TodayScreen = () => {
 
     const shouldShowInactiveReminder = Boolean(inactiveItemsReminder && !isInactiveReminderDismissed);
     const selectedProjectDisplayName = useMemo(() => (
-        resolveProjectName((activeProject as any)?.name || selectedProject?.name, '')
-    ), [activeProject, selectedProject?.name]);
+        resolveProjectName((activeProject as any)?.name, '')
+    ), [activeProject]);
     const todayMenuLink = useMemo(() => (
         buildTodayMenuLink(
             storeDetails?.subdomain,
@@ -263,7 +204,7 @@ const TodayScreen = () => {
             const menuLink = buildTodayMenuLink(
                 storeDetails?.subdomain,
                 storeDetails?.customDomain,
-                (activeProject as any)?.name || selectedProject?.name,
+                (activeProject as any)?.name,
             );
             const fullCampaign = surface === 'whatsapp_status' || surface === 'whatsapp_message'
                 ? null
@@ -320,19 +261,6 @@ const TodayScreen = () => {
                 description: "Please try again.",
                 placement: "bottomRight",
             });
-        }
-    };
-
-    const handleGenerateTodayActions = async () => {
-        if (!selectedProjectId) return;
-        setIsGeneratingTodayActions(true);
-        try {
-            await generateCampaignsForProject(selectedProjectId, true);
-            await mutate();
-        } catch (error) {
-            console.error("Failed to generate today campaigns:", error);
-        } finally {
-            setIsGeneratingTodayActions(false);
         }
     };
 
@@ -469,29 +397,10 @@ const TodayScreen = () => {
                     sourceQuality={ownerActionPlan.sourceQuality}
                     analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
                 />
-                <Text className={styles.todayDigest}>{todayDigest}</Text>
+                {shouldShowTodayDigest ? <Text className={styles.todayDigest}>{todayDigest}</Text> : null}
                 {renderInactiveItemsReminder()}
                 {renderGrowthKitsEntry()}
-                <EmptyState
-                    canGenerate={Boolean(selectedProjectId)}
-                    isGenerating={isGeneratingTodayActions}
-                    onGenerate={handleGenerateTodayActions}
-                    selectorContent={projects.length > 0 ? (
-                        <div className={styles.todayProjectSelectorRow}>
-                            <Text type="secondary">Project</Text>
-                            <Select
-                                className={styles.todayProjectSelector}
-                                onChange={(value) => setSelectedProjectId(value)}
-                                options={projects.map((project) => ({
-                                    label: resolveProjectName(project.name),
-                                    value: project.projectId,
-                                }))}
-                                placeholder="Select project"
-                                value={selectedProjectId || undefined}
-                            />
-                        </div>
-                    ) : null}
-                />
+                <EmptyState />
                 {weeklyGrowthPack ? <WeeklyGrowthPack pack={weeklyGrowthPack} /> : null}
                 {renderGuideDrawer()}
             </div>
@@ -510,14 +419,7 @@ const TodayScreen = () => {
                 analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
             />
 
-            {shouldShowMainActionHint ? (
-                <Card className={styles.sectionSummaryCard} size="small">
-                    <Text strong>No main action today</Text>
-                    <Text type="secondary">Use the Generate button if you want a main action now.</Text>
-                </Card>
-            ) : null}
-
-            <Text className={styles.todayDigest}>{todayDigest}</Text>
+            {shouldShowTodayDigest ? <Text className={styles.todayDigest}>{todayDigest}</Text> : null}
 
             {/* Primary Campaign */}
             {todayCampaigns.primary && (

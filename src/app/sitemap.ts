@@ -1,9 +1,27 @@
 import { MetadataRoute } from 'next';
 import {
+    buildWebsiteResourceLanguageAlternates,
+} from '@/content/websiteResources';
+import {
     PLATFORM_DISCOVERY_PAGES,
     buildPlatformDiscoveryUrl,
     getPlatformDiscoveryBaseUrl,
 } from '@lib/seo/discoveryPolicy';
+
+function buildSitemapAlternates(path: string, baseUrl: string): MetadataRoute.Sitemap[number]['alternates'] | undefined {
+    const resourceMatch = path.match(/^\/(?:([^/]+)\/)?resources(?:\/([^/]+))?$/);
+    if (!resourceMatch) return undefined;
+
+    const slug = resourceMatch[2] || null;
+    const languages = Object.fromEntries(
+        Object.entries(buildWebsiteResourceLanguageAlternates(slug)).map(([locale, alternatePath]) => [
+            locale,
+            buildPlatformDiscoveryUrl(alternatePath, baseUrl),
+        ]),
+    );
+
+    return { languages };
+}
 
 /**
  * Platform Sitemap - Only includes menulist.ai platform pages
@@ -25,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(),
         changeFrequency: page.changeFrequency,
         priority: page.priority,
+        alternates: buildSitemapAlternates(page.path, baseUrl),
     }));
 
     // IMPORTANT: Client menus are NOT included in platform sitemap

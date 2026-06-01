@@ -35,7 +35,7 @@ COVERAGE: 100% (6/6 flows)
 
 | File Path                                                          | LOC  | Purpose               |
 | ------------------------------------------------------------------ | ---- | --------------------- |
-| `src/lib/campaigns/engine.ts`                                      | 467  | Campaign engine       |
+| Social Content campaign engine                                     | Removed | Deleted after GrowthOS took over new generated actions |
 | `src/components/.../today/index.tsx`                               | 183  | Today screen UI       |
 | `src/types/campaigns.ts`                                           | 572  | Types + constants     |
 | `src/components/.../today/components/PrimaryCard/index.tsx`        | ~130 | Primary campaign card |

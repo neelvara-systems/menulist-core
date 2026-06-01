@@ -1,6 +1,6 @@
 # Temporary Status Layer — Firebase Cost Tracking
 
-**Date:** February 19, 2026
+**Date:** June 1, 2026
 
 ---
 
@@ -19,6 +19,16 @@ Extremely lightweight — single field on existing store document.
 
 No new collections. `tempStatus` is a field on existing store document.
 
+## Cache Invalidation
+
+`POST /api/store/temp-status` revalidates the public cache tags that can display store status:
+
+- `menu-store-{storeId}`
+- `store-{storeId}`
+- `client-stores`
+
+This adds no Firestore reads, writes, indexes, listeners, Storage operations, or Cloud Functions.
+
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** June 1, 2026

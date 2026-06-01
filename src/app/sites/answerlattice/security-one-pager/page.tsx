@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Security and Ops One-Pager',
@@ -49,6 +50,14 @@ export default function AnswerlatticeSecurityOnePagerPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Answerlattice can be page-aware and source-backed without collecting secrets. Use this one-page summary for install reviews, developer handoff, intake reviews, and buyer security checks.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-5xl text-left"
+                        items={[
+                            { label: 'Install review', value: 'Origin, route, context, and widget key boundaries' },
+                            { label: 'Data review', value: 'What can be sent, what must never be sent' },
+                            { label: 'Answer review', value: 'Drafts and generated content stay owner-approved' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

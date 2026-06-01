@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 import AnswerlatticeRoiCalculator from './AnswerlatticeRoiCalculator';
 
 export const metadata: Metadata = {
@@ -36,6 +37,14 @@ export default function AnswerlatticeRoiCalculatorPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Answerlattice is most useful when the same billing, onboarding, settings, release, or error questions keep returning. Use this static calculator to plan the first support layer.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Model type', value: 'Planning estimate, not a guaranteed deflection claim' },
+                            { label: 'Inputs', value: 'Repeated questions, founder time, support volume' },
+                            { label: 'Next step', value: 'Map pages and review which questions deserve approved answers' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

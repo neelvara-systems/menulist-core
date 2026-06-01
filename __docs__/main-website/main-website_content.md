@@ -15,6 +15,8 @@
 4. **Tone:** Premium calm + practical. Not fancy, not salesy, not startup-y.
 5. **Language:** Operational words only. No AI-hype, no jargon, no marketing buzzwords.
 
+> Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
+
 ---
 
 ## Page 1: Homepage
@@ -34,13 +36,46 @@ Supporting pages now share the same official-source discipline through shared he
 5. `SurfacesSection`
 6. `CustomerBrowseSection`
 7. `PreparedForYouSection`
-8. `FaqSection`
-9. `FinalCtaSection`
-10. `StickyCta`
+8. `ResourcesSection`
+9. `FaqSection`
+10. `FinalCtaSection`
+11. `StickyCta`
 
-**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `ResourcesSection` is mounted as a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+
+**Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
+
+**Print files placement policy (June 1, 2026):** do not add a separate Menu Card Export homepage section. The homepage may show `Print files` as one output of the approved menu source, while the Features page and `/resources/digital-menu-vs-pdf-menu` carry the fuller PDF/printer handoff explanation.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination accepts a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
+
+---
+
+## Page 1A: Resources
+
+### Canonical Implementation Scope
+
+The `/resources` layer is an evergreen MenuList public website surface, not a chronological blog. It explains how owners keep one approved public menu source current across QR, Google Business Profile, WhatsApp, Instagram, PDFs, websites, printed material, AI/search discovery, and multi-location teams.
+
+**Current route set:**
+
+1. `/resources`
+2. `/resources/menu-source-audit`
+3. `/resources/menu-engineering`
+4. `/resources/qr-menu-for-restaurants`
+5. `/resources/digital-menu-vs-pdf-menu`
+6. `/resources/google-business-profile-menu`
+7. `/resources/official-menu-source`
+8. `/resources/restaurant-menu-seo`
+9. `/resources/ai-search-menu-discovery`
+10. `/resources/menu-update-checklist`
+11. `/resources/qr-code-placement-checklist`
+12. `/resources/menu-engineering-worksheet`
+13. `/resources/multi-location-menu-management`
+
+**Content rule:** Each resource page needs a visible quick answer, practical checklist/comparison/worksheet where relevant, owner-readable caveats, related-resource links, and one intent-matched CTA. Resource copy must not promise ranking, citation, AI answer placement, Google refresh timing, revenue lift, or automatic external-platform sync.
+
+**Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 12 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
 
 ---
 
@@ -187,7 +222,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 - Left side: current menu inputs (`Photo`, `PDF`, `Existing link`, `Text`).
 - Center: official MenuList logo plus `Owner review`.
-- Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print/PDF`).
+- Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print files`).
 - Mobile uses three rows so inputs spread horizontally, owner review stays centered, outputs sit below, and the dotted connector paths stay edge-anchored without using the desktop geometry.
 - Diagram colors must stay theme-aware: light mode uses light surfaces, dark mode uses dark surfaces.
 - Static dotted paths remain visible. A subtle pulse layer travels from inputs into MenuList, pauses while the center rings keep a light always-on pulse, and then moves from MenuList toward outputs; each destination card briefly highlights only its existing border when the pulse arrives. Reduced-motion users only see the static paths.
@@ -526,7 +561,7 @@ Key FAQ topics:
 
 - Left side: menu inputs (`Photo`, `PDF`, `Existing link`, `Typed text`).
 - Center: official MenuList mark plus owner-review gate.
-- Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print/PDF`, `Official page`, `Saved shortcut`).
+- Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print files`, `Official page`, `Saved shortcut`).
 - Desktop output connector paths start under the center logo/ring and visually emerge from the core boundary, matching the homepage source-map alignment.
 - The center ring ripple is intentionally visible in light mode so the MenuList core feels active without adding extra copy or decoration.
 - The visual must stay restrained and product-specific. Do not use generic SaaS node graphics.
@@ -635,7 +670,7 @@ Key FAQ topics:
 2. **Official Business Page** — One official link with your menu, hours, location, photos, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR.
 3. **Google Presence** — Your Google Business Profile can point customers toward the current MenuList public menu where configured.
 4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices, and visibility can follow the published MenuList source.
-5. **PDF Export** — A clean, formatted PDF of your current menu. For print, packaging, or internal use.
+5. **Print Files** — A PDF or printer handoff packet generated from the current approved menu. For print, WhatsApp, packaging, or internal use.
 6. **Shareable Link** — Direct link to your live menu. Works in any message, email, or social post.
 
 **Source:** `client-menu_website.md`, `official-business-page_website.md`, `digital-screens_website.md`, `gbp-sync_website.md`

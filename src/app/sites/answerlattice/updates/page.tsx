@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Updates',
@@ -249,6 +250,14 @@ export default function AnswerlatticeUpdatesPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Changes that affect knowledge intake, setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'Read this for', value: 'Capability changes that affect website claims and setup planning' },
+                            { label: 'Most useful updates', value: 'Knowledge intake, widget runtime, feedback review, Support Board, security' },
+                            { label: 'Next action', value: 'Use the demo or resources page to evaluate current state' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

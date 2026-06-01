@@ -2,10 +2,10 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from './productFeatures';
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
 
 export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
-export const ANSWERLATTICE_SITE_TITLE = 'Answerlattice — Launch-Ready Support for SaaS Founders';
+export const ANSWERLATTICE_SITE_TITLE = 'Answerlattice — Page-Aware Support Answers for SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'Answerlattice helps SaaS founders launch support-ready: turn product material into docs, FAQs, answer drafts, hosted help, and a page-aware widget while tickets, changelogs, feedback, and feature requests stay owner-managed.';
+    'Answerlattice helps SaaS founders turn docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved page-aware answers for the app widget, hosted help, and support review queue.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -31,7 +31,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/launch-setup',
         title: 'Set Up Support | Answerlattice',
-        description: 'Create an Answerlattice workspace, add team access, teach Answerlattice from selected links, files, screenshots, and short recordings, map important app pages, and verify the widget before launch.',
+        description: 'Create an Answerlattice workspace, add team access, teach Answerlattice from selected links, files, screenshots, and short recordings, map important product pages, and verify the widget before launch.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },

@@ -38,7 +38,12 @@ const StarterActivationBanner = dynamic(() => import('../../onboarding/StarterAc
 
 const { Content } = Layout;
 const DESKTOP_ONLY_ROUTE_PREFIXES: string[] = [];
-const DESKTOP_ONLY_ROUTES = ['/platform/test-sentry'];
+const DESKTOP_ONLY_ROUTES = [
+    '/platform/test-sentry',
+    // Responsive route-level workflow launched from desktop Use MenuList and mobile Share.
+    // Handheld devices must render the route itself instead of being absorbed by MobileShell.
+    '/use-menulist/menu-card-export',
+];
 
 export default function AntdLayoutWrapper(props: any) {
 

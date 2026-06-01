@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LuArrowRight,
+  LuBookOpen,
   LuEye,
   LuFileText,
   LuLayoutGrid,
@@ -18,11 +19,15 @@ import {
   LuZap,
 } from "react-icons/lu";
 import BrandWordmark from "./shared/BrandWordmark";
+import { FEATURE_FLAGS } from "@config/features";
 
 const navItemKeys = [
   { href: "/how-it-works", key: "howItWorks", icon: LuZap },
   { href: "/#customer-demo", key: "demo", icon: LuEye },
   { href: "/features", key: "features", icon: LuLayoutGrid },
+  ...(FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
+    ? [{ href: "/resources", key: "resources", icon: LuBookOpen }]
+    : []),
   { href: "/pricing", key: "pricing", icon: LuFileText },
   { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
 ];
@@ -95,31 +100,34 @@ export default function Header() {
             }}
             className="ws-desktop-nav"
           >
-            {navItemKeys.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  fontSize: "0.9375rem",
-                  fontWeight: 500,
-                  color:
-                    pathname === item.href
-                      ? "var(--ws-text-primary)"
-                      : "var(--ws-text-secondary)",
-                  textDecoration: "none",
-                  transition: "color var(--ws-transition-fast)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = "var(--ws-text-primary)")
-                }
-                onMouseLeave={(e) => {
-                  if (pathname !== item.href)
-                    e.currentTarget.style.color = "var(--ws-text-secondary)";
-                }}
-              >
-                {t(`Header.${item.key}`)}
-              </Link>
-            ))}
+            {navItemKeys.map((item) => {
+              const isActive = pathname === item.href || (item.href === "/resources" && pathname?.startsWith("/resources"));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    fontSize: "0.9375rem",
+                    fontWeight: 500,
+                    color:
+                      isActive
+                        ? "var(--ws-text-primary)"
+                        : "var(--ws-text-secondary)",
+                    textDecoration: "none",
+                    transition: "color var(--ws-transition-fast)",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "var(--ws-text-primary)")
+                  }
+                  onMouseLeave={(e) => {
+                    if (!isActive)
+                      e.currentTarget.style.color = "var(--ws-text-secondary)";
+                  }}
+                >
+                  {t(`Header.${item.key}`)}
+                </Link>
+              );
+            })}
           </div>
 
           <div
@@ -275,7 +283,7 @@ export default function Header() {
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || (item.href === "/resources" && pathname?.startsWith("/resources"));
                 return (
                   <Link
                     key={item.href}

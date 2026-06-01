@@ -1,8 +1,10 @@
 'use client';
 
+import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
+import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { getBusinessAttributeGroupsForType } from '@lib/obp/businessAttributes';
-import { Button, Card, Col, Divider, Form, Input, Row, Space, Switch, Typography, theme } from 'antd';
+import { Button, Card, Col, Divider, Flex, Form, Input, Row, Space, Switch, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef } from 'react';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -72,12 +74,22 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                         <Space direction="vertical" style={{ width: '100%' }} size={8}>
                             {fields.map((field) => (
                                 <Row gutter={[8, 8]} key={field.key} align="middle">
-                                    <Col xs={6} md={4}>
-                                        <Form.Item name={[field.name, 'icon']} style={{ marginBottom: 0 }}>
-                                            <Input placeholder="Icon" maxLength={8} />
+                                    <Col xs={5} md={3}>
+                                        <Form.Item
+                                            name={[field.name, 'icon']}
+                                            normalize={(value) => normalizeCategoryIconValue(value) || undefined}
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <IconPicker
+                                                allowClear
+                                                buttonSize="large"
+                                                buttonStyle={{ height: 44, minWidth: 44 }}
+                                                iconSize={21}
+                                                placement="leftTop"
+                                            />
                                         </Form.Item>
                                     </Col>
-                                    <Col xs={14} md={16}>
+                                    <Col xs={15} md={17}>
                                         <Form.Item
                                             name={[field.name, 'label']}
                                             rules={[{ max: 32, message: t('customBusinessAttributeMax') }]}
@@ -87,7 +99,9 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                                         </Form.Item>
                                     </Col>
                                     <Col xs={4}>
-                                        <Button danger icon={<LuTrash2 size={14} />} onClick={() => remove(field.name)} />
+                                        <Flex justify="flex-end">
+                                            <Button danger icon={<LuTrash2 size={14} />} onClick={() => remove(field.name)} />
+                                        </Flex>
                                     </Col>
                                 </Row>
                             ))}

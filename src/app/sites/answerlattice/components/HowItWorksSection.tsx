@@ -5,7 +5,7 @@ const STEPS = [
     {
         step: '1',
         title: 'Add product details',
-        description: 'Create the workspace, add your product URL, support email, billing model, and the core app pages users ask about.',
+        description: 'Create the workspace, add your product URL, support email, billing model, and the core product pages users ask about.',
         visual: '{ }',
     },
     {
@@ -41,7 +41,8 @@ export default function HowItWorksSection() {
                 <SectionHeader
                     className="mb-16"
                     eyebrow="How it works"
-                    title="Launch support without building a support team"
+                    title="From product sources to approved answers in five steps."
+                    description="The flow stays practical for founders: map the product, import the first sources, review answers, install the widget, then improve from support gaps."
                 />
 
                 <AnswerlatticeSequenceDiagram

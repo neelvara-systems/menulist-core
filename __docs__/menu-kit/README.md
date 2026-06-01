@@ -75,6 +75,19 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ---
 
+## Relationship To Menu Card Export
+
+Menu Kit and Menu Card Export are related, but they solve different owner jobs.
+
+| Feature | Owner job | Output |
+| --- | --- | --- |
+| Menu Kit | Put QR/MenuList surfaces around the restaurant and online. | Table tent, counter sticker, entrance poster, social assets, placement guide, staff script, print instructions. |
+| Menu Card Export | Create the actual printable menu/menu-card file from current menu data. | Home-print PDF, WhatsApp PDF, print-shop packet, export history, freshness checks. |
+
+Menu Kit should not grow into a menu design or full-menu PDF editor. Use MenuList can link owners from Menu Kit/Print assets into Menu Card Export when they need the full printable menu file.
+
+---
+
 ## Strategic Validation (ChatGPT Session #14 — Mar 14, 2026)
 
 An independent ChatGPT strategic review of the original Physical Surfaces spec (campaign-based recommendation cards) arrived at the same conclusions that drove Menu Kit's design:

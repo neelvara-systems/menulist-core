@@ -74,6 +74,7 @@ interface CommandCenterModalProps {
     storeName?: string;
     storeDetails?: any;
     allowInheritedDescriptionOverride?: boolean;
+    initialAction?: CommandCenterAction | null;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
 }
@@ -89,6 +90,7 @@ export default function CommandCenterModal({
     storeName,
     storeDetails,
     allowInheritedDescriptionOverride = false,
+    initialAction = null,
     onClose,
     onApply,
 }: CommandCenterModalProps) {
@@ -137,7 +139,7 @@ export default function CommandCenterModal({
     useEffect(() => {
         if (open) {
             setSelectedIds(new Set());
-            setActiveAction(null);
+            setActiveAction(initialAction);
             setLastApplyMessage(null);
             setPricingPreview(null);
             setPricingConfig(null);
@@ -154,7 +156,7 @@ export default function CommandCenterModal({
             undoProjectRef.current = null;
             setInternalProject(removeObjRef(projectData));
         }
-    }, [open]);
+    }, [initialAction, open]);
 
     // Build selectable items from current internal project state
     const allItems = useMemo(

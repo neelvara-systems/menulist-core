@@ -62,6 +62,13 @@ export function itemMatchesFilters(
         if (max !== null && price > max) return false;
     }
 
+    // Has price filter
+    if (showItemPrices && filters?.hasPrice !== null && filters?.hasPrice !== undefined) {
+        const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
+        const hasPrice = Number.isFinite(price) && price > 0;
+        if (hasPrice !== filters.hasPrice) return false;
+    }
+
     // Has image filter
     if (filters?.hasImage !== null && filters?.hasImage !== undefined) {
         const hasImages = Boolean(item.images && item.images.length > 0);
@@ -123,6 +130,7 @@ export function hasActiveFilters(options: FilterItemsOptions): boolean {
         (searchTerm && searchTerm.trim()) ||
         (options.showItemPrices !== false && filters?.priceRange?.min !== null && filters?.priceRange?.min !== undefined) ||
         (options.showItemPrices !== false && filters?.priceRange?.max !== null && filters?.priceRange?.max !== undefined) ||
+        (options.showItemPrices !== false && filters?.hasPrice !== null && filters?.hasPrice !== undefined) ||
         filters?.hasImage !== null ||
         filters?.activeStatus !== null
     );

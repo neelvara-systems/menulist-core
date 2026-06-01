@@ -18,7 +18,7 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
-import { Button, Card, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast } from '../antd';
+import { Button, Card, Collapse, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 type BlockType = 'popular' | 'quickPick' | 'bestValue';
@@ -289,6 +289,21 @@ export default function SmartRecommendationsSheet({
                                 style={{ borderRadius: 8 }}
                                 type="warning"
                             />
+                        ) : null}
+
+                        {enabledBlockTypes.length > 0 ? (
+                            <Card style={sectionCardStyle}>
+                                <Collapse accordion>
+                                    <Collapse.Panel key="featured-owner-note" title={<Text strong>{t('smartRecommendationsOwnerNoteTitle')}</Text>}>
+                                        <Flex gap={8} vertical>
+                                            <Text type="secondary">{t('smartRecommendationsOwnerNoteOrder')}</Text>
+                                            <Text type="secondary">{t('smartRecommendationsOwnerNoteAuto')}</Text>
+                                            <Text type="secondary">{t('smartRecommendationsOwnerNoteSignals')}</Text>
+                                            <Text type="secondary">{t('smartRecommendationsOwnerNoteSkipped')}</Text>
+                                        </Flex>
+                                    </Collapse.Panel>
+                                </Collapse>
+                            </Card>
                         ) : null}
 
                     </Flex>

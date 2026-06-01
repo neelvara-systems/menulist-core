@@ -276,6 +276,7 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
                 images: override.images ?? item.images,
                 available: override.available ?? item.available,
                 active: override.active ?? item.active,
+                orderIndex: override.orderIndex ?? item.orderIndex,
                 isBestSeller: override.isBestSeller ?? item.isBestSeller,
                 duration: override.duration ?? item.duration,
                 ownerBoost: override.ownerBoost ?? item.ownerBoost,
@@ -316,6 +317,13 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
             return orderA - orderB;
         },
     );
+    const categoryRenderOrder = new Map(
+        sortedCategories.map((category, index) => [String(category.id), index]),
+    );
+    const sortedItems = sortItemsWithinCategoryByOrder(
+        [...resolvedItems, ...localOnlyItems],
+        categoryRenderOrder,
+    );
 
     // Build item states and track master prices for visual diff (FR-8, US-3)
     const itemStates: Record<string, InheritanceState> = {};
@@ -348,7 +356,7 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
         ...store,
         files: reconstructFiles(
             store,
-            [...resolvedItems, ...localOnlyItems],
+            sortedItems,
             sortedCategories as ExtractedDataCategory[],
             master,
         ),
@@ -386,6 +394,38 @@ function extractCategories(project: Project): ExtractedDataCategory[] {
     return (
         project.files?.flatMap((f) => f.extractedData?.data?.categories || []) || []
     );
+}
+
+function sortItemsWithinCategoryByOrder(
+    items: ExtractedDataItem[],
+    categoryRenderOrder: Map<string, number>,
+): ExtractedDataItem[] {
+    return items
+        .map((item, originalIndex) => ({ item, originalIndex }))
+        .sort((left, right) => {
+            const leftCategoryId = String(left.item.category || "");
+            const rightCategoryId = String(right.item.category || "");
+            const leftCategoryOrder = categoryRenderOrder.get(leftCategoryId) ?? Number.POSITIVE_INFINITY;
+            const rightCategoryOrder = categoryRenderOrder.get(rightCategoryId) ?? Number.POSITIVE_INFINITY;
+
+            if (leftCategoryOrder !== rightCategoryOrder) {
+                return leftCategoryOrder - rightCategoryOrder;
+            }
+
+            if (leftCategoryId === rightCategoryId) {
+                const leftOrder = typeof left.item.orderIndex === "number"
+                    ? left.item.orderIndex
+                    : Number.POSITIVE_INFINITY;
+                const rightOrder = typeof right.item.orderIndex === "number"
+                    ? right.item.orderIndex
+                    : Number.POSITIVE_INFINITY;
+
+                if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+            }
+
+            return left.originalIndex - right.originalIndex;
+        })
+        .map(({ item }) => item);
 }
 
 /**

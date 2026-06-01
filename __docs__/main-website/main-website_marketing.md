@@ -21,6 +21,16 @@
 
 > Feedback-loop note (May 21, 2026): Customer feedback belongs on the homepage only when framed as public correction: customers report wrong prices, missing items, outdated details, or menu/business-detail issues, and the owner corrects the approved source. Prefer owner-readable labels such as "Customer-reported issues" over review/reputation language. Do not frame this as reviews, reputation management, testimonials, or growth marketing.
 
+> Resources/distribution note (June 1, 2026): The approved planning direction is an evergreen `/resources` layer, not a date-based blog. The resource hub should support SEO, AEO, founder distribution, WhatsApp/local outreach, partner sharing, and product-led conversion through owner-useful pages such as Menu Source Audit, Google menu source, QR placement, menu update checklist, and menu engineering worksheet. See `__docs__/main-website/main-website_resources-plan.md` before creating website resource routes or launch content.
+
+> Resources implementation note (June 1, 2026): `/resources` is now live in code as static MenuList website content with 12 article routes, homepage bridge, header/footer links, GA4-only resource events, and discovery-file coverage. Use the Menu Source Audit page as the primary shareable acquisition asset. Do not use the resource layer to create competitor attack pages, gated lead magnets, ranking promises, AI citation promises, or GrowthOS/KitStamp/Answerlattice cross-product messaging.
+
+> Indian-language resources note (June 1, 2026): Hindi, Tamil, Telugu, Marathi, and Bengali received reviewed resource packs and locale-prefixed resource URLs in the first language rollout. Distribution can use those URLs for regional owner education, WhatsApp/local outreach, partner handoff, and search/AI discovery, but copy must still avoid ranking guarantees, AI citation guarantees, or automatic external-platform update claims.
+
+> Full resource locale coverage note (June 1, 2026): Arabic and Spanish now have the same reviewed long-form resource coverage as the Indian-language packs. Regional distribution can use the locale-prefixed resource URLs, but all language variants remain owner-education surfaces, not ranking guarantees or automatic external-platform update promises.
+
+> Growth Kits website placement note (June 1, 2026): do not add GrowthOS, Growth Kits, or Today's Sales Pack to the homepage. It is a Pro/Premium client upsell after MenuList has current menu truth, not a first-visit acquisition promise. If usage proves demand, place it later as a small Pro/Premium pricing or Features-page proof point with no auto-posting, scheduler, revenue-lift, or sales-growth promise.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)

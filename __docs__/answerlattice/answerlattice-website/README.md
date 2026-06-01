@@ -1,8 +1,8 @@
 # Answerlattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for Answerlattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for AI-built SaaS founders, self-service Answerlattice, and agent-readable public discovery
-> **Date:** 2026-05-31
+> **Status:** ✅ IMPLEMENTED — refreshed for page-aware SaaS support conversion, self-service Answerlattice, and agent-readable public discovery
+> **Date:** 2026-06-01
 > **Domain:** answerlattice.com (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -16,6 +16,7 @@
 | 1 | **README.md** (this file) | Everyone | Master index |
 | 2 | `answerlattice-website_spec.md` | CEO/PM | Business requirements, page architecture |
 | 3 | `answerlattice-website_impl.md` | Developers | Technical blueprint, file paths, routing |
+| 4 | `answerlattice-website_assets-preparation.md` | Marketing / Design / Product | Final screenshot, video, and placeholder asset capture plan |
 
 ## Related Strategy
 
@@ -29,12 +30,12 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Launch-ready support hero for SaaS founders + first-scroll Pre-Onboarding Kit route + page-aware demo + support knowledge map + missed-question review loop + dashboard-style product proof + best-fit/not-fit + setup funnel + day-one launch pack + bento widget/hosted-help install + trust controls + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
-| `/product` | Product | Self-serve product overview with visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
-| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, app pages, widget key, and readiness |
-| `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, and owner FAQ answers |
-| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, and weekly support review |
-| `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, and trust metrics |
+| `/` | Homepage | Page-aware SaaS support hero with inline sample workspace preview + conversion proof band + dashboard-style product proof + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
+| `/product` | Product | Self-serve product overview with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
+| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, readiness proof strip, and setup/demo/source-prep CTAs |
+| `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
+| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, weekly support review, and connected-runtime proof |
+| `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, trust metrics, and human-review proof |
 | `/product/team-access` | Product Feature | Standalone feature page for workspace members, Answerlattice roles, owner-passcode sharing, owner reset, force sign-out, and workspace-scoped access |
 | `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
 | `/product/faq-management` | Product Feature | Standalone feature page for owner-written Q&A, article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
@@ -71,7 +72,7 @@
 | `/resources` | Resources | Answerlattice learning hub for pre-onboarding, AI-built SaaS evaluation, setup, feedback review, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline for product and website changes without using dashboard-owned changelog routes |
 | `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, Answerlattice role permissions, owner-approved answers, runtime limits, and responsible disclosure |
-| `/faq` | FAQ | Founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
+| `/faq` | FAQ | Grouped founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, runtime safety, and data handling |
 | `/about` | About | Company beliefs + Answerlattice operating principles |
 | `/contact` | Contact | Answerlattice-owned inquiry form plus direct contact paths for setup, demos, pricing, security, and partnerships |
 | `/get-started` | Get Started | Self-service onboarding for a new Answerlattice workspace, with a pre-onboarding prompt for owners who have source material before signup |
@@ -84,10 +85,11 @@
 
 | File | Purpose |
 |------|---------|
-| `src/app/sites/answerlattice/layout.tsx` | Layout with metadata, OG tags, SEO |
+| `src/app/layout.tsx` | Root app layout that imports scoped Answerlattice CSS so clean-cache public routes receive the dark theme and Tailwind utilities from `app/layout.css` |
+| `src/app/sites/answerlattice/layout.tsx` | Answerlattice route layout with metadata, OG tags, SEO, analytics, and reveal client islands |
 | `src/app/sites/answerlattice/theme.ts` | Answerlattice public-site theme contract: Verdigris Answer Layer colors, primary accent, status colors, and browser theme color |
-| `src/app/sites/answerlattice/styles.css` | Tailwind directives + CSS variables |
-| `src/app/sites/answerlattice/scroll-reveal.css` | Answerlattice-specific viewport reveal motion for public website sections, cards, CTAs, and footer groups |
+| `src/app/sites/answerlattice/styles.css` | Root-loaded Tailwind directives, scoped Answerlattice CSS variables, and page/section rhythm |
+| `src/app/sites/answerlattice/scroll-reveal.css` | Root-loaded Answerlattice viewport reveal motion for public website sections, cards, CTAs, and footer groups |
 | `src/app/sites/answerlattice/page.tsx` | Homepage (server component) |
 | `src/app/sites/answerlattice/productAreas.ts` | Shared product-area navigation and descriptions |
 | `src/app/sites/answerlattice/product/launch-setup/page.tsx` | Product-area landing page for Launch Setup |
@@ -168,14 +170,16 @@
 | `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
 | `src/app/sites/answerlattice/components/AnswerlatticeScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across Answerlattice public pages |
 | `src/constants/answerlattice/routes.ts` | Lightweight Answerlattice dashboard route constants used by public client islands without importing sidebar icon metadata |
-| `src/app/sites/answerlattice/components/HeroSection.tsx` | Launch-ready support hero with setup-first CTAs |
-| `src/app/sites/answerlattice/components/PreOnboardingHomeSection.tsx` | Homepage pre-onboarding placement that sends buyers to the main preparation route before setup |
+| `src/app/sites/answerlattice/components/HeroSection.tsx` | Page-aware support-answer hero with inline sample workspace preview and setup/demo/source-prep CTAs |
+| `src/app/sites/answerlattice/components/HomeProofBandSection.tsx` | Homepage conversion proof band for page-aware answers, approved knowledge, hosted help, feedback gaps, widget install, and source preparation |
+| `src/app/sites/answerlattice/components/PageProofStrip.tsx` | Reusable compact proof-strip cards used across non-home pages to keep hero proof, safety boundaries, and next-step clarity consistent without fake logos or metrics |
+| `src/app/sites/answerlattice/components/PreOnboardingHomeSection.tsx` | Homepage source-preparation placement that sends buyers to the Pre-Onboarding Kit after the product value is clear |
 | `src/app/sites/answerlattice/components/SupportKnowledgeMapSection.tsx` | Homepage and product-page visual map showing support knowledge inputs, the Answerlattice answer layer, and output surfaces |
 | `src/app/sites/answerlattice/components/HomePageAwareDemoSection.tsx` | Homepage tabbed static page-aware demo section |
 | `src/app/sites/answerlattice/components/ClosedLoopSection.tsx` | Homepage animated missed-question loop from page question to reviewed support fix |
 | `src/app/sites/answerlattice/components/BestFitSection.tsx` | Homepage best-fit/not-fit buyer qualification decision tiles |
-| `src/app/sites/answerlattice/components/ProductPreviewSection.tsx` | Responsive dashboard/widget/governance product scene used on homepage and product page |
-| `src/app/sites/answerlattice/components/ProductAreasSection.tsx` | Homepage product-suite cross-link section for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers |
+| `src/app/sites/answerlattice/components/ProductPreviewSection.tsx` | Early responsive dashboard/widget/governance product scene used on homepage and product page |
+| `src/app/sites/answerlattice/components/ProductAreasSection.tsx` | Homepage product-suite cross-link section for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers |
 | `src/app/sites/answerlattice/components/SetupFunnelSection.tsx` | Homepage 10-minute setup visual funnel |
 | `src/app/sites/answerlattice/components/DayOneLaunchPackSection.tsx` | Homepage and Product section packaging quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff without adding another route |
 | `src/app/sites/answerlattice/components/WidgetSection.tsx` | Homepage page-aware widget proof with UI scene and status snapshots |
@@ -215,7 +219,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 ## Design Decisions
 
 1. **Dark theme** — Deep navy with verdigris/teal controls. Infrastructure-grade support knowledge visual direction without generic AI-product indigo.
-2. **Tailwind CSS** — Same build pipeline as rest of app. `@tailwind` directives in `styles.css`.
+2. **Tailwind CSS** — Same build pipeline as rest of app. Answerlattice `@tailwind` directives and scoped theme rules are root-loaded through `src/app/layout.tsx` so public routes do not depend on a nested CSS chunk.
 3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the mobile hamburger can open a right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **AnswerlatticeLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
@@ -229,6 +233,9 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-01 | Reworked the homepage from a setup-first story into a conversion-first story: clearer page-aware support-answer hero, inline sample workspace preview, new conversion proof band, earlier product proof/demo, Pre-Onboarding moved lower as a source-preparation accelerator, refreshed metadata, and final asset-preparation plan added |
+| 2026-06-01 | Extended the homepage conversion pattern across the rest of the public site: product, product-area, feature, SEO/use-case, setup, pricing, resources, proof, security, install, FAQ, contact, legal, and updates pages now expose compact proof strips, clearer CTAs, grouped FAQ scanning, and safer sample-state wording |
+| 2026-06-01 | Completed rendered wording QA across all public Answerlattice routes and root-loaded scoped Answerlattice CSS through `src/app/layout.tsx` so clean-cache pages keep the dark theme, Tailwind utilities, and route styling without relying on a nested CSS chunk |
 | 2026-03-07 | Initial implementation: 6 pages, shared components, Tailwind, multi-product routing |
 | 2026-05-21 | Added small-SaaS positioning, `/demo`, Starter/Growth/Studio pricing copy, founder-friendly product/get-started/contact pages, public security/FAQ/legal pages, Answerlattice sitemap/robots, manifest, icons, and structured data |
 | 2026-05-21 | Restored implemented Answerlattice engine pillars to homepage and product page while keeping the deferred API/integration pillar off public claims |
@@ -276,6 +283,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-06-01 | Removed the exported black SVG canvas/frame from the canonical Answerlattice logo and regenerated logo, favicon, PWA, OpenGraph, and splash derivatives with transparent logo backgrounds |
 | 2026-06-01 | Aligned `AnswerlatticeLogoMark` with the MenuList inline SVG-path pattern so static logo UI and loaders share the same canonical path geometry instead of an image wrapper |
 | 2026-06-01 | Added verification that visible Answerlattice website diagram components stay vector-based and do not reintroduce PNG/image-wrapped logo usage |
+| 2026-06-01 | Removed extra CSS blur/drop-shadow from Answerlattice loader logo surfaces so the logo renders only with the SVG-native design filters |
+| 2026-06-01 | Removed the persistent post-reveal `translate3d`/`will-change` layer from Answerlattice website sections so inline SVG diagram logos do not look rasterized when zoomed |
 | 2026-05-24 | Reframed the public website for AI-built SaaS founders: homepage opened with "You shipped the app. Now users need correct answers.", demo became the first proof, public copy teaches approved answers before advanced Answerlattice vocabulary, `/use-cases/ai-built-saas` was added, and `/use-cases/vibe-coded-saas` remains only a canonicalized campaign/search alias |
 | 2026-05-24 | Refined the shared homepage/Product support knowledge map diagram with an Answerlattice-colored logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | 2026-05-24 | Added a reusable animated Answerlattice diagram system and applied it to closed-loop, setup, how-it-works, product-area workflow, product-feature workflow/connected surfaces, SEO/use-case, install, security, resources, engine pillar, and system coverage sections |

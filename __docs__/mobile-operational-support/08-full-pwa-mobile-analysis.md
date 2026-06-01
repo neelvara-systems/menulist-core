@@ -17,7 +17,7 @@
 
 **No — and here's why.**
 
-The current mobile scope (10 screens) covers **90%+ of daily operational needs**. But there's a small gap: a PWA-only user would be STUCK for certain rare but necessary actions. The solution is NOT to rebuild everything for mobile — it's to provide a clear "escape hatch" to desktop mode for the remaining 10%.
+The current mobile scope covers **90%+ of daily operational needs**, including the original Phase 2 identity, locale, and working-hours gaps. The solution is NOT to rebuild everything for mobile — it is to keep high-frequency owner actions truth-safe and provide a clear desktop escape hatch for rare admin work.
 
 ---
 
@@ -99,15 +99,15 @@ A small business owner who:
 
 10 operational screens. This is what we built. Covers daily operations.
 
-### Phase 2 (Recommended — Next)
+### Phase 2 (Implemented — Core Gap Closed)
 
-Add these screens to close the PWA-only gap:
+The original Phase 2 recommendation was to add identity, locale, and full working-hours screens for PWA-only owners. Current runtime has those routes in `MobileMoreScreen`: `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, and `MobileWorkingHoursEditScreen`. Remaining work is polish, not rebuilding these screens.
 
 | Screen                                                  | Priority | Why                                                        | Complexity            |
 | ------------------------------------------------------- | -------- | ---------------------------------------------------------- | --------------------- |
-| **Basic Settings** (name, logo, business type)          | P1       | Owner should be able to update basic identity              | Low — simple form     |
-| **Locale Settings** (language, timezone, currency)      | P1       | Already in AppSettings Redux, just need mobile UI          | Low — selector UI     |
-| **Working Hours Editor** (full edit, not just override) | P1       | Current mobile only has quick close/open, not full editing | Medium — time pickers |
+| **Basic Settings** (name, logo, business type)          | P1       | Owner should be able to update basic identity              | ✅ Built              |
+| **Locale Settings** (language, timezone, currency)      | P1       | Already in AppSettings Redux, just need mobile UI          | ✅ Built              |
+| **Working Hours Editor** (full edit, not just override) | P1       | Current mobile only has quick close/open, not full editing | ✅ Built              |
 | **Notification Preferences**                            | P2       | If we add push notifications                               | Low                   |
 | **Simple Item Edit** (description, image from camera)   | P2       | Mobile camera → item image is natural mobile flow          | Medium — camera API   |
 
@@ -181,7 +181,7 @@ Rationale:
 1. **90% coverage now** — daily operations are fully covered
 2. **Escape hatch exists** — "Switch to Desktop" handles edge cases
 3. **Avoid scope creep** — rebuilding 12 Business Settings tabs for mobile = weeks of work for <5% usage
-4. **Phase 2 is small** — only 2-3 screens needed to close the PWA-only gap
+4. **Phase 2 core gap is closed** — identity, locale, and working-hours mobile screens exist; polish should focus on truth safety and action routing
 5. **Solo founder maintainability** — fewer mobile screens = less maintenance burden
 
 ---
@@ -191,7 +191,7 @@ Rationale:
 | Item                                                                 | Priority | When                    |
 | -------------------------------------------------------------------- | -------- | ----------------------- |
 | Ship Phase 1 (current 10 screens)                                    | P0       | NOW — ready for testing |
-| Plan Phase 2 (BasicInfo + LocaleSettings + full WorkingHours editor) | P1       | After Phase 1 validated |
+| Keep Phase 2 screens polished and truth-safe                         | P1       | Ongoing                 |
 | Track PWA adoption metrics                                           | P1       | After launch            |
 | Decide Phase 3 based on PWA adoption data                            | P2       | 3 months post-launch    |
 

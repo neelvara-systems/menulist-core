@@ -19,15 +19,16 @@ MenuList already generates multiple outputs scattered across the product:
 - Screen link (in Settings > Digital Screen)
 - QR codes (in Share Modal / Menu Kit)
 - Feedback QR (in Feedback Settings)
-- Menu PDF (in Share Modal)
+- Print Menu / Menu Card Export (successor to Menu PDF)
 - Menu Kit ZIP (in Share Modal)
 
 Owners miss half of them. This page aggregates everything into one operational hub.
 
 ## Architecture Principle
 
-**Pure UI aggregation layer.** Zero new backend logic. Zero new collections. Zero Firebase cost.
-References existing outputs: URLs, QR generators, PDF generators, Menu Kit.
+**Hub remains a UI aggregation layer.** Use MenuList should not absorb complex workflows. It links to existing outputs and to routed child workflows such as Menu Card Export.
+
+The hub itself should add zero new backend logic, zero new collections, and zero Firebase cost. Routed child features may own their own APIs, records, and cost docs.
 
 ## Page Structure
 
@@ -44,7 +45,7 @@ Digital Screens (display)
   Highlights Link
 
 Print for Your Restaurant (assets)
-  Table Tent | Counter Sticker | Entrance Poster | Feedback QR | Menu PDF
+  Table Tent | Counter Sticker | Entrance Poster | Feedback QR | Print Menu
 
 Resources (guides)
   Setup Guide | Printing Guide | Sharing Guide
@@ -72,7 +73,8 @@ Resources (guides)
 | Screen URL | `src/lib/screen/utils.ts` | Screen link construction |
 | Feedback QR | `src/lib/utils/feedbackQrCode.ts` | Feedback QR generation |
 | Menu Kit | `src/lib/menu-kit/menuKitGenerator.ts` | ZIP bundle generation |
-| Menu PDF | `src/lib/export/menuPdfGenerator.ts` | PDF generation |
+| Menu Card Export | `__docs__/menu-card-export/` | Routed print workflow |
+| Menu PDF | `src/lib/export/menuPdfGenerator.ts` | Legacy lightweight PDF generation while migration is active |
 | Screen State DAL | `src/database/campaigns/index.ts` | Screen token retrieval |
 
 ## Documents

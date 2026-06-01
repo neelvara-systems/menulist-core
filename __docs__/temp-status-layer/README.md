@@ -43,10 +43,10 @@ These are infrequent but create customer anger when not communicated.
 ```
 Store Document
   └── tempStatus?: {
-        type: 'closed_today' | 'opening_late' | 'special_menu' | 'custom';
+        type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
         message?: string;        // Custom message (max 100 chars)
-        expiresAt: Timestamp;    // Auto-remove after this time
-        createdAt: Timestamp;
+        expiresAt: string;       // ISO string; public surfaces hide expired statuses
+        createdAt: string;
       }
   ↓
 OBP + Digital Menu (banner display)
@@ -55,6 +55,16 @@ OBP + Digital Menu (banner display)
 Auto-expiry (client-side check OR nightly cleanup)
   └── Remove expired statuses
 ```
+
+## Cache Behavior
+
+Status writes affect customer-facing output, so the API invalidates all public menu tags for the store:
+
+- `menu-store-{storeId}`
+- `store-{storeId}`
+- `client-stores`
+
+Mobile "Mark Closed for Today" uses this temporary status path. Recurring weekday hours remain a separate working-hours edit.
 
 ## Feature Flag
 
@@ -71,9 +81,9 @@ ENABLE_TEMP_STATUS: false; // In src/config/features.ts (added Feb 19, 2026)
 | `src/components/atoms/TempStatusBanner/index.tsx`                       | Banner for OBP + menu               |
 | `src/components/templates/main-app/businessSettings/TempStatusCard.tsx` | Desktop card                        |
 | `src/components/mobile/screens/MobileTempStatusScreen.tsx`              | Mobile screen                       |
-| `src/app/_client/obp/OBPContent.tsx`                                    | OBP page integration                |
-| `src/app/_client/[[...slug]]/page.tsx`                                  | Digital menu integration            |
+| `src/app/client/obp/OBPResolvedSurface.tsx`                             | OBP page integration                |
+| `src/app/client/[[...slug]]/page.tsx`                                   | Digital menu integration            |
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** June 1, 2026 — public cache tags and mobile today-hours guardrail documented

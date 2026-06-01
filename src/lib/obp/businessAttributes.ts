@@ -72,6 +72,22 @@ export function getBusinessAttributeGroupsForType(businessType?: string, busines
         .filter((group) => group.fields.length > 0);
 }
 
+function normalizeCustomBusinessAttributeIcon(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const icon = value.trim();
+    if (!icon) return undefined;
+
+    if (icon.startsWith('lu:')) {
+        return icon.slice(0, 64);
+    }
+
+    if (icon.startsWith('emoji:')) {
+        return icon.slice(0, 40);
+    }
+
+    return icon.slice(0, 8);
+}
+
 export function normalizeCustomBusinessAttributes(value: unknown): CustomBusinessAttribute[] {
     if (!Array.isArray(value)) return [];
     return value
@@ -83,7 +99,7 @@ export function normalizeCustomBusinessAttributes(value: unknown): CustomBusines
             return {
                 id,
                 label,
-                icon: String(raw.icon || '').trim().slice(0, 8) || undefined,
+                icon: normalizeCustomBusinessAttributeIcon(raw.icon),
                 active: raw.active !== false,
             };
         })

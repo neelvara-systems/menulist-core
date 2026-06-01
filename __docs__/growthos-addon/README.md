@@ -2,6 +2,7 @@
 
 **Feature:** GrowthOS plan-gated module for MenuList Pro/Premium clients
 **Owner-facing label:** Growth Kits
+**Mobile Today label:** Today's Sales Pack
 **Status:** Enabled behind Pro/Premium entitlement gate.
 **Created:** May 31, 2026
 **Product decision:** Build inside MenuList as a Pro/Premium plan feature, not as a standalone product.
@@ -62,6 +63,14 @@ The practical owner job is:
 
 > "Give me something accurate I can post, send, print, or say today from my real menu."
 
+June 1 product posture:
+
+- GrowthOS is not the main MenuList feature.
+- It is not a homepage promise or standalone product.
+- It is a quiet Pro/Premium retention and upsell layer after official menu truth exists.
+- Broader public placement requires real pilot usage.
+- If 30-day Pro/Premium usage is weak, keep it quiet or pause expansion instead of adding more surface area.
+
 ## What GrowthOS Is Now
 
 GrowthOS is a Pro/Premium MenuList feature that turns verified MenuList truth into short, ready-to-use local growth kits.
@@ -117,6 +126,31 @@ Implemented V1 scope:
 - Firestore rules for `platformSummary/growthos_{sId}`, `growthosKits`, and `growthosExports`
 - no direct posting, scheduler, image generation, offer builder, used-history UI, ROI, or provider call in V1
 
+## June 1, 2026 Owner-Value Hardening Update
+
+The owner-facing Today surface is now framed as `Today's Sales Pack`, not as a generic module card.
+
+Active product contract:
+
+```txt
+One current menu action -> one customer message -> one staff line -> one counter line -> owner uses it manually
+```
+
+This hardening was added because the first mobile test proved the feature worked technically, but the visible `Growth Kits` abstraction still felt like a side feature. The paid value must be a finished daily sales handoff, not a place the owner has to understand.
+
+Implementation rules added:
+
+- mobile Today must lead with the daily outcome label `Today's Sales Pack`
+- stale or blocked kits must not present usable copy/share controls
+- stale kits must show `Update pack` / fresh-pack action before use
+- owner-facing status should say `Menu checked`, `Ready`, or `Update first`, not confidence percentages
+- staff and counter lines are first-class parts of the pack, not hidden secondary content
+- mobile Today should not show the older `No today action yet` generation prompt when `Today's Sales Pack` is already present
+- mobile Today must stay quiet when GrowthOS only has a weak generic action; surface the Sales Pack only for a fresh prepared pack, a previously used stale pack that needs an update, or a strong menu reason such as a new item, customer favorite, or high-confidence action
+- the mobile trigger gate uses the existing GrowthOS summary read and must not refresh, generate, export, or write anything until the owner taps an action
+- the legacy Social Content `Generate Today Action` owner path is retired; existing prepared Today campaigns can still be completed/skipped, but new generated action creation belongs to GrowthOS / `Today's Sales Pack`
+- the desktop module may remain `Growth Kits`, but its core panel must describe the same daily Sales Pack loop
+
 Implementation evidence:
 
 | Layer | Evidence |
@@ -150,8 +184,7 @@ Implementation evidence:
 | Today/Social Content already exists and is enabled as the owner action surface | `src/config/features.ts` |
 | Campaign types and execution surfaces already model post/send/print/display outputs | `src/types/campaigns.ts:7-58` |
 | Today summary uses a one-read Firestore pattern | `src/types/campaigns.ts:195-250`, `src/database/campaigns/index.ts:49-113` |
-| Campaign engine already generates candidates from available menu items | `src/lib/campaigns/engine.ts:270-398` |
-| Campaign generation API already uses auth, rate limiting, validation, tenant checks, and project menu data | `src/app/api/campaigns/generate/route.ts:25-155` |
+| Old Social Content owner generator has been removed | No `src/app/api/campaigns/generate/route.ts`, no `src/lib/campaigns/engine.ts`, and no owner-facing `Generate Today Action` prompt remain in active code. |
 | Caption generation already uses AI capacity checks and records AI operations | `src/app/api/campaigns/caption/route.ts:31-214` |
 | AI capacity is checked before provider calls | `src/lib/ai/capacityCheck.ts:71-144` |
 | AI unit costs already include campaign captions, review reply suggestions, and image generation | `src/constants/AI/unitCosts.ts:19-92` |

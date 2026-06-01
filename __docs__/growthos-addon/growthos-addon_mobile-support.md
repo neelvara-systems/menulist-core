@@ -2,6 +2,7 @@
 
 **Status:** Implemented behind Pro/Premium entitlement gate; required for rollout verification
 **Mobile owner label:** Growth Kits
+**Today card label:** Today's Sales Pack
 **Primary mobile rule:** Owners must be able to use a kit from a phone without desktop setup.
 
 ---
@@ -62,7 +63,24 @@ src/components/mobile/components/GrowthKitsMobileCard.tsx
 src/components/mobile/screens/MobileHoursScreen.tsx
 ```
 
-The card is shown only when `shouldShowGrowthOSNavigation()` passes for the active store. It keeps the latest loaded kit visible when refresh fails, blocks stale copy/share use, and exposes copy/share/mark-used controls with 44px targets.
+The card is shown only when `shouldShowGrowthOSNavigation()` passes for the active store and the GrowthOS summary has a real Today reason. It now appears to owners as `Today's Sales Pack`, keeps the latest loaded kit visible when refresh fails, blocks stale copy/share use, and exposes copy/share/mark-used controls with 44px targets.
+
+Today trigger rule:
+
+- show when a fresh prepared pack exists
+- show when a previously used/copied/shared stale pack needs an update
+- show when the current menu action is strong, such as a new item, a customer favorite, or a high-confidence action
+- do not show for weak generic `share this item` actions
+- do not render the older `No today action yet` generation card for Pro/Premium stores while GrowthOS owns this surface
+- do not reintroduce the legacy `Generate Today Action` owner prompt on mobile; existing Today campaigns remain usable, but GrowthOS owns new generated action creation
+
+The mobile card must not feel like another module. It should feel like today's finished handoff:
+
+```txt
+customer message + staff line + counter line
+```
+
+When this card is visible, the older mobile Today empty prompt (`No today action yet` / `Generate Today Action`) should not render underneath it. The owner should see one primary daily action surface, not two competing prompts.
 
 ## 3. Mobile UX Requirements
 
@@ -87,7 +105,8 @@ Shows:
 - freshness state
 - main output preview
 - copy/share action
-- secondary outputs collapsed
+- staff line
+- counter line
 - fallback state when refresh or generation fails
 
 If refresh fails:
@@ -100,9 +119,11 @@ Your latest kit is still available.
 If stale:
 
 ```txt
-This kit may use old menu details.
-Create it again before using.
+Menu details changed.
+Update this pack before copying or sharing.
 ```
+
+When stale, copy/share/download actions must not be usable from mobile Today. The primary action becomes `Update pack`.
 
 ### Staff Brief Card
 
@@ -183,9 +204,14 @@ Copy behavior must not depend only on the browser Clipboard API. Mobile copy use
 Use:
 
 - "Ready to share"
+- "Today's Sales Pack"
+- "Menu checked"
+- "Update pack"
 - "Copy message"
+- "Copy WhatsApp"
 - "Copy caption"
 - "Use staff line"
+- "Copy counter line"
 - "Brief staff"
 - "This may use old menu details"
 - "Create again"
@@ -210,6 +236,8 @@ Required before activation:
 - copy/share buttons remain at least 44px high
 - long item names wrap without overlapping controls
 - stale warning does not cover actions
+- stale warning blocks visible copy/share actions until updated
+- Today card shows the paid outcome as customer/staff/counter handoffs, not a generic add-on entry
 - empty state has a clear next step
 - entitlement denial cannot be bypassed through mobile route
 - direct posting controls do not appear
@@ -225,8 +253,9 @@ Mobile should not add extra read paths beyond the shared summary pattern.
 
 Target:
 
-- one summary read for latest GrowthOS state
+- one shared summary read for latest GrowthOS state on eligible Pro/Premium mobile Today
 - no realtime listener by default
+- no refresh, generation, export, or write from the trigger check
 - no extra write unless the owner generates, copies, shares, downloads, prints, or marks used
 
 Local latest-kit fallback should reduce server reads. It must not cache raw pasted review text unless a separate privacy decision approves it.

@@ -191,6 +191,7 @@ export default function UseMenuList() {
             // POS Sync status (if enabled)
             const posSync = storeDetails.posSync;
             const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
+            const hasPublishedMenu = projects.some((project: any) => project.deleted !== true && project.active !== false);
 
             const outputData: UseMenuListData = {
                 obpLink,
@@ -214,7 +215,7 @@ export default function UseMenuList() {
                 allProjects,
                 hasPosSync,
                 posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
-                hasPublishedMenu: !!obpLink,
+                hasPublishedMenu,
                 hasScreen: !!screenToken,
                 hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
             };
@@ -245,6 +246,11 @@ export default function UseMenuList() {
 
     const handleOpen = (url: string) => {
         window.open(url, '_blank');
+    };
+
+    const handleOpenMenuCardExport = () => {
+        if (!data?.projectId) return;
+        window.location.href = `/use-menulist/menu-card-export?projectId=${encodeURIComponent(data.projectId)}`;
     };
 
     const handleDownloadMenuKit = async () => {
@@ -939,10 +945,11 @@ export default function UseMenuList() {
                 <Col xs={12} sm={8}>
                     <AssetCard
                         icon={<LuFileText size={20} />}
-                        title={`${labels.offeringTitle} PDF`}
-                        description="Printable paper version"
+                        title="Print Menu"
+                        description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : 'Printable paper version'}
                         loading={generatingAsset === 'Menu PDF'}
-                        onDownload={handleDownloadPdf}
+                        onDownload={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
+                        actionLabel={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Open' : 'Download'}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -1142,6 +1149,7 @@ interface AssetCardProps {
     description: string;
     loading: boolean;
     onDownload: () => void;
+    actionLabel?: string;
     disabled?: boolean;
     highlight?: boolean;
     themeToken: any;
@@ -1162,7 +1170,7 @@ function buildStoreAddress(store: any): string | undefined {
     return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
-function AssetCard({ icon, title, description, loading, onDownload, disabled, highlight, themeToken }: AssetCardProps) {
+function AssetCard({ icon, title, description, loading, onDownload, actionLabel = 'Download', disabled, highlight, themeToken }: AssetCardProps) {
     return (
         <Card
             size="small"
@@ -1185,7 +1193,7 @@ function AssetCard({ icon, title, description, loading, onDownload, disabled, hi
                     disabled={disabled}
                     block
                 >
-                    {loading ? 'Generating...' : 'Download'}
+                    {loading ? 'Generating...' : actionLabel}
                 </Button>
             </Flex>
         </Card>

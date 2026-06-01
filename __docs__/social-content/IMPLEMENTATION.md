@@ -849,11 +849,11 @@ src/
 | `src/constants/database.ts`                                                       | ✅ Updated | Added CAMPAIGNS, CAMPAIGN_EXPORTS          |
 | `src/config/features.ts`                                                          | ✅ Updated | Added SOCIAL*CONTENT*\* flags              |
 | `src/constants/navigations.ts`                                                    | ✅ Updated | Added TODAY route + sidebar                |
-| `src/database/campaigns/index.ts`                                                 | ✅         | Campaign DAL with Summary Pattern          |
+| `src/database/campaigns/index.ts`                                                 | ✅ Updated | Read/action DAL with Summary Pattern; generation-era helper exports removed |
 | `src/app/(main)/today/page.tsx`                                                   | ✅         | Today page route                           |
 | `src/components/templates/main-app/today/index.tsx`                               | ✅         | Main Today component                       |
 | `src/components/templates/main-app/today/styles.module.scss`                      | ✅         | Styles                                     |
-| `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts`              | ✅         | SWR hook                                   |
+| `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts`              | ✅ Updated | Re-exports shared read hook only           |
 | `src/components/templates/main-app/today/hooks/useCampaignActions.ts`             | ✅         | Actions hook                               |
 | `src/components/templates/main-app/today/components/PrimaryCard/index.tsx`        | ✅         | Primary card                               |
 | `src/components/templates/main-app/today/components/OperationalSection/index.tsx` | ✅         | Operational section                        |
@@ -861,11 +861,11 @@ src/
 | `src/components/templates/main-app/today/components/PostActionState/index.tsx`    | ✅         | Post-action state                          |
 | `src/app/(main)/today/history/page.tsx`                                           | ✅         | Past Activity page route                   |
 | `src/components/templates/main-app/today/PastActivity/index.tsx`                  | ✅         | Past Activity screen                       |
-| `src/lib/campaigns/engine.ts`                                                     | ✅         | Campaign engine + confidence scoring       |
+| Social Content generation engine                                                  | Removed   | Old owner-generation engine deleted after GrowthOS took over new generated actions |
 | `src/lib/campaigns/executionSurfaces.ts`                                          | ✅         | Execution surfaces (WhatsApp, Poster)      |
-| `src/providers/TodayActionProvider.tsx`                                           | ✅         | Context for sidebar dot indicator          |
-| `src/providers/clientProviders.tsx`                                               | ✅ Updated | Added TodayActionProvider                  |
-| `src/components/organisms/sidebar/horizontalSidebar.tsx`                          | ✅ Updated | Added dot indicator for Today              |
+| `src/providers/TodayActionProvider.tsx`                                           | Removed   | Old global polling provider deleted        |
+| `src/providers/clientProviders.tsx`                                               | ✅ Updated | No Today polling wrapper                   |
+| `src/components/organisms/sidebar/horizontalSidebar.tsx`                          | ✅ Updated | Today dot removed to avoid background summary reads |
 
 ### Files Created (Day 2 - AI Integration)
 
@@ -875,8 +875,8 @@ src/
 | `src/services/gemini/prompts/index.ts`                               | ✅ Updated | Added campaignCaption to registry         |
 | `src/lib/validation/apiSchemas.ts`                                   | ✅ Updated | Added campaign Zod schemas                |
 | `src/app/api/campaigns/caption/route.ts`                             | ✅         | Caption generation API (follows patterns) |
-| `src/app/api/campaigns/generate/route.ts`                            | ✅         | Campaign generation API (Projects integ.) |
-| `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts` | ✅ Updated | Added generateCampaignsForProject helper  |
+| Social Content generation API                                        | Removed   | Old route deleted; no hidden flag or dead endpoint remains |
+| `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts` | ✅ Updated | Re-exports shared read hook only |
 
 ### Week 2 Progress
 
@@ -903,7 +903,7 @@ src/
 
 | Question                 | Decision                                | Status         |
 | ------------------------ | --------------------------------------- | -------------- |
-| Navigation dot indicator | Simple dot only, no count               | ✅ Implemented |
+| Navigation dot indicator | Removed after old owner-generation path was retired | ✅ Removed |
 | Default landing behavior | Dashboard default (Today is optional)   | ✅ Decided     |
 | Multi-project handling   | Highest confidence across projects      | ✅ Implemented |
 | WhatsApp sharing         | Deep link + fallback to copy on desktop | ✅ Implemented |
@@ -924,12 +924,12 @@ _Author: Cascade AI_
 | Feature               | Files                                                       | Status |
 | --------------------- | ----------------------------------------------------------- | ------ |
 | Today Tab UI          | `today/index.tsx`, PrimaryCard, EmptyState, PostActionState | ✅     |
-| Campaign Engine       | `engine.ts`, confidence scoring, suppression                | ✅     |
-| Campaign DAL          | `database/campaigns/index.ts`                               | ✅     |
+| Campaign Engine       | Old `engine.ts`                                             | Removed |
+| Campaign DAL          | `database/campaigns/index.ts`                               | ✅ Read/action path only |
 | WhatsApp Execution    | Deep link + desktop fallback                                | ✅     |
 | Poster/QR Tent        | Download button                                             | ✅     |
 | Caption Generation    | `campaigns/caption/route.ts` + phraseGuard                  | ✅     |
-| Sidebar Dot Indicator | TodayActionProvider                                         | ✅     |
+| Sidebar Dot Indicator | TodayActionProvider                                         | Removed |
 
 ### ✅ OWNER FEATURES (Completed Jan 4, 2026)
 

@@ -5,7 +5,6 @@
 /* Answerlattice Website — Global Styles
    Theme: Verdigris Answer Layer */
 
-:root,
 .answerlattice-site {
     --al-bg: #0a0a1a;
     --al-bg-subtle: #0f0f23;
@@ -31,15 +30,9 @@
     --al-danger: #ef4444;
 }
 
-html,
-body {
-    background: var(--al-bg) !important;
-    color-scheme: dark;
-}
-
 html:has(.answerlattice-site),
 body:has(.answerlattice-site) {
-    background: var(--al-bg) !important;
+    background: #0a0a1a !important;
     color-scheme: dark;
 }
 
@@ -191,6 +184,15 @@ body:has(.answerlattice-site) {
     z-index: 1;
 }
 
+.al-page-flow h1,
+.al-page-flow h2,
+.al-page-flow h3,
+.al-page-flow p,
+.al-page-flow a,
+.al-page-flow span {
+    overflow-wrap: break-word;
+}
+
 @media (max-width: 640px) {
     .al-home-flow > section {
         padding-block: clamp(4rem, 16vw, 5.5rem);
@@ -208,6 +210,11 @@ body:has(.answerlattice-site) {
     .al-page-flow > section:first-child {
         padding-top: 5.75rem;
         padding-bottom: 4rem;
+    }
+
+    .al-page-flow h1 {
+        font-size: clamp(2rem, 9vw, 2.25rem);
+        line-height: 1.12;
     }
 }
 

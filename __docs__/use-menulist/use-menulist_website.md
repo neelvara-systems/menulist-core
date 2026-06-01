@@ -8,10 +8,11 @@
 **Deploy your menu everywhere — from one place.**
 
 ### Subheadline
-Copy your menu link, set up digital screens, and download print-ready QR codes. Everything you need to use MenuList in your restaurant.
+Copy your menu link, set up digital screens, download print-ready QR codes, and open the print menu workflow. Everything you need to use MenuList in your restaurant.
 
 ### Key Points
 - **Share instantly** — Copy your menu link and send it on WhatsApp in 3 seconds
 - **Digital screens** — Show your menu on TVs with one link
 - **Print-ready assets** — Table QR, counter sticker, entrance poster — all generated automatically
 - **Menu Kit download** — Everything you need in one ZIP file
+- **Print Menu** — Open Menu Card Export when you need a menu PDF or print-shop packet

@@ -2,22 +2,22 @@
 
 .al-scroll-reveal {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
     transition-property: opacity, transform;
     transition-duration: var(--al-reveal-duration, 560ms), var(--al-reveal-duration, 560ms);
     transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
     transition-delay: var(--al-reveal-delay, 0s);
-    will-change: opacity, transform;
 }
 
 .al-scroll-reveal--pending {
     opacity: 0;
-    transform: translate3d(0, var(--al-reveal-distance, 14px), 0) scale(0.992);
+    transform: translateY(var(--al-reveal-distance, 14px)) scale(0.992);
+    will-change: opacity, transform;
 }
 
 .al-scroll-reveal--visible {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: none;
+    will-change: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

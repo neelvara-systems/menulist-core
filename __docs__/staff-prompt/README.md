@@ -1,8 +1,12 @@
 # Staff Prompt — Documentation Hub
 
 > **Feature:** AI-Powered Staff Training Prompts  
-> **Status:** Production Ready  
-> **Last Updated:** February 7, 2026
+> **Status:** Read-only Today summary display retained; standalone helper code removed
+> **Last Updated:** June 1, 2026
+
+## June 1, 2026 Cleanup
+
+The unused standalone helper files under `src/lib/staff-prompt/` were deleted while removing the old Social Content owner-generation path. Active owner surfaces still read `staffPrompt` from the Today summary and render it when present, but there is no separate staff-prompt generation engine in active code.
 
 ---
 

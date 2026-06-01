@@ -16,7 +16,7 @@
 
 | #   | Screen         | Tab      | File                       | Frequency          |
 | --- | -------------- | -------- | -------------------------- | ------------------ |
-| 1   | Today Screen   | Today    | `MobileTodayScreen.tsx`    | Daily              |
+| 1   | Today Screen   | Today    | `MobileHoursScreen.tsx`    | Daily              |
 | 2   | Menu Screen    | Menu     | `MobileMenuScreen.tsx`     | Multiple times/day |
 | 3   | Share Hub      | Share    | `MobileShareScreen.tsx`    | Daily              |
 | 4   | More Hub       | More     | `MobileMoreScreen.tsx`     | As needed          |

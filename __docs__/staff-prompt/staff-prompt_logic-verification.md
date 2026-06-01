@@ -24,8 +24,7 @@ COVERAGE: 100% (4/4 flows)
 
 | Logic Type   | Entry Point                        | Trigger     | Source File                    | Docs Reference  |
 | ------------ | ---------------------------------- | ----------- | ------------------------------ | --------------- |
-| Eligibility  | `checkStaffPromptEligibility():31` | Daily sync  | `eligibility.ts`               | spec.md Gates   |
-| Inertia Calc | `calculateInertia():29`            | Daily sync  | `inertia.ts`                   | spec.md Inertia |
+| Staff prompt display | Today summary `staffPrompt` field | Daily sync | `src/database/campaigns/index.ts` | Summary read only |
 | Text Gen     | `generateStaffPromptText():91`     | On eligible | `eligibility.ts`               | spec.md Copy    |
 | UI Render    | `StaffPromptSection():24`          | Conditional | `StaffPromptSection/index.tsx` | impl.md UI      |
 
@@ -33,8 +32,7 @@ COVERAGE: 100% (4/4 flows)
 
 | File Path                                         | LOC | Purpose                  |
 | ------------------------------------------------- | --- | ------------------------ |
-| `src/lib/staff-prompt/eligibility.ts`             | 94  | 8-gate eligibility check |
-| `src/lib/staff-prompt/inertia.ts`                 | 104 | Inertia rules            |
+| Standalone staff-prompt helper files              | 0   | Removed June 1, 2026; active code reads Today summary only |
 | `src/components/.../StaffPromptSection/index.tsx` | 73  | Read-only UI             |
 | `src/types/campaigns.ts` (partial)                | ~45 | Types + constants        |
 

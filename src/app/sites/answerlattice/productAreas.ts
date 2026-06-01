@@ -10,7 +10,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
         description: 'Install one widget, pass safe page hints, accept explicit screenshot context, control allowed domains, and answer users inside your app.',
     },
     {
-        label: 'Help center + tickets',
+        label: 'Help center and tickets',
         href: '/product/support-control',
         description: 'Publish docs, FAQs, custom Q&A, and release notes; manage fallback tickets, feedback, ratings, and feature requests from one connected support layer.',
     },

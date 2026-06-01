@@ -45,7 +45,7 @@
 
 .loadingWatermarkAnswerlattice {
   opacity: 0.085;
-  filter: blur(0.2px);
+  filter: none;
 }
 
 .loadingLogo {
@@ -59,9 +59,7 @@
 .loadingLogoAnswerlattice {
   width: clamp(210px, 20vw, 300px);
   height: clamp(121px, 11.6vw, 173px);
-  filter:
-    drop-shadow(0 18px 38px rgba(99, 102, 241, 0.24))
-    drop-shadow(0 2px 12px rgba(194, 224, 222, 0.14));
+  filter: none;
 }
 
 @media (max-width: 640px) {

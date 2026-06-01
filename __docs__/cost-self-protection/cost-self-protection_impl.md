@@ -212,7 +212,6 @@ Add `checkSafeMode()` before expensive operations in these routes:
 | `/api/image-editing`                  | `src/app/api/image-editing/route.ts`                  | AI image editing                |
 | `/api/descriptions`                   | `src/app/api/descriptions/route.ts`                   | AI text generation              |
 | `/api/translations`                   | `src/app/api/translations/route.ts`                   | AI translation                  |
-| `/api/campaigns/generate`             | `src/app/api/campaigns/generate/route.ts`             | AI campaign generation          |
 | `/api/campaigns/caption`              | `src/app/api/campaigns/caption/route.ts`              | AI caption generation           |
 
 **Pattern:**

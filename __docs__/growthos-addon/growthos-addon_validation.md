@@ -42,7 +42,17 @@ Excluded by code and flag:
 npm run verify:growthos
 ```
 
-Result: passed. The dry run executed 29 GrowthOS checks covering enabled master-flag behavior, kill-switch denial, Pro/Premium entitlement denial/allowance, pilot allowlist plus plan gating, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, and deferred-scope leakage.
+Result: passed. The dry run executed 36 GrowthOS checks covering enabled master-flag behavior, kill-switch denial, Pro/Premium entitlement denial/allowance, pilot allowlist plus plan gating, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, Today Sales Pack trigger gating, retired legacy Today generation prompts, and deferred-scope leakage.
+
+Trigger checks passed:
+
+- strong menu action surfaces `Today's Sales Pack`
+- weak generic action stays quiet
+- fresh prepared pack surfaces
+- unused stale draft stays quiet
+- previously used stale pack surfaces with update-first behavior
+- legacy Today owner generation code files are deleted
+- old `Generate Today Action` prompt strings are absent from active desktop/mobile Today surfaces
 
 ```txt
 npx tsc --noEmit --incremental false
@@ -134,6 +144,52 @@ Local infrastructure notes:
 
 - Upstash rate-limit provider timeout logs appeared locally, but GrowthOS API calls still returned 200.
 - The local Next dev process became unstable after hot reload with a missing vendor chunk for `next-auth`; restarting the dev server cleared the issue. This was treated as local dev runtime instability, not a GrowthOS logic failure.
+
+## Owner-Value Hardening Retest
+
+After the mobile Today review showed the feature worked but felt like a side module, the owner-facing surface was hardened into `Today's Sales Pack`.
+
+Changes validated:
+
+- mobile Today card label is `Today's Sales Pack`
+- mobile stale state shows `Update pack` and does not expose `Copy WhatsApp`
+- mobile Today no longer shows the older `No today action yet` / `Generate Today Action` empty prompt when the Sales Pack is visible
+- mobile card no longer exposes the `Growth Kits` system label
+- desktop route keeps `Growth Kits` as the module name but frames the core panel as `Today's Sales Pack`
+- desktop primary action uses `Prepare Sales Pack`
+- owner-facing confidence percentages are removed from the desktop primary action panel
+- deterministic templates avoid singular/plural grammar traps such as plural item names followed by `is available`
+
+Commands run after hardening:
+
+```txt
+npm run verify:growthos
+```
+
+Result: passed with 29 checks.
+
+```txt
+npx tsc --noEmit --incremental false
+```
+
+Result: passed.
+
+```txt
+npm run lint
+```
+
+Result: passed.
+
+```txt
+git diff --check
+```
+
+Result: passed.
+
+Focused Chrome QA:
+
+- mobile Today QA passed at iPhone viewport with touch/mobile user agent and authenticated store `15`; screenshot: `/tmp/growthos-sales-pack-mobile-final-1780314093875.png`
+- desktop `/growth-kits` QA passed with Sales Pack framing and no confidence percentage in the primary action panel
 
 ## Docs Parity
 

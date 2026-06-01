@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** May 23, 2026
+**Last Updated:** June 1, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -10,6 +10,12 @@
 > May 23, 2026 update: after reviewing Chrome's agentic web / WebMCP guidance, MenuList treats agent-readiness as an extension of the existing public truth layer. The immediate production contract is semantic public pages, schema.org JSON-LD, robots/sitemaps, `llms.txt`, `llms-full.txt`, and gated public API/POS surfaces where enabled. WebMCP remains a future browser-agent enhancement that must be feature-flagged, visible, read-only or pending-suggestion scoped, and covered by evals before release.
 
 > May 23, 2026 end-to-end pass: platform discovery now uses non-www `https://menulist.ai`, homepage JSON-LD is server-rendered, active marketing/legal pages emit WebPage and BreadcrumbList JSON-LD, and the legacy `/product` URL is a framework-level permanent redirect that is no longer listed in sitemap or LLM discovery files. The public platform-domain env config also uses `menulist.ai` as canonical, with `menulist.online` retained as an alias. Use `npm run verify:agent-readiness` before closing future SEO/AEO changes.
+
+> June 1, 2026 resources implementation note: the evergreen `/resources` layer is implemented. Resource pages are server-rendered, visible-text-first, internally linked, schema-aligned, and backed by quick answers, checklists, worksheets, and clear claim boundaries. `PLATFORM_DISCOVERY_PAGES`, sitemap output, static sitemap, robots/crawler policy, `llms.txt`, `llms-full.txt`, and `verify:agent-readiness` were updated in the same pass. Resource pages must still avoid ranking, citation, external-platform refresh, or AI placement promises.
+
+> June 1, 2026 Indian resource localization note: reviewed Hindi, Tamil, Telugu, Marathi, and Bengali resource packs were exposed through locale-prefixed URLs, localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, and LLM context coverage in the first language rollout. English remains the non-prefixed canonical source. Future languages must stay out of discovery until full source-versioned packs pass `verify:website-resource-locales`.
+
+> June 1, 2026 full resource locale coverage note: Arabic and Spanish resource packs are now reviewed and exposed through the same locale-prefixed URL, metadata, JSON-LD, sitemap, `hreflang`, and LLM context system. `verify:website-resource-locales` now enforces full reviewed resource coverage for every active non-default language in the public website switcher.
 
 ---
 
@@ -28,6 +34,8 @@
 | Contact          | Contact Us — MenuList \| Get in Touch                                 | `(website)/contact/page.tsx`          |
 | Get Started      | Get Started — Create Your Official Menu Source                        | `(website)/get-started/page.tsx`      |
 | Create Menu      | Create Your Official Menu Source — MenuList                           | `(website)/create-menu/page.tsx`      |
+| Resources        | Resources — MenuList \| Keep One Public Menu Current                  | `(website)/resources/page.tsx`        |
+| Resource Article | Dynamic per article from `src/content/websiteResources/en-US.ts` and reviewed locale packs | `(website)/resources/[slug]/page.tsx`, `(website)/[locale]/resources/[slug]/page.tsx` |
 | Trust & Security | Trust & Security — MenuList \| How We Keep Your Data Safe             | `(website)/trust-security/page.tsx`   |
 | Privacy          | Privacy Policy — MenuList                                             | `(website)/privacy-policy/page.tsx`   |
 | Terms            | Terms of Service — MenuList                                           | `(website)/terms-of-service/page.tsx` |
@@ -251,6 +259,7 @@ Current agent-readable surfaces:
 
 - SSR public menu and OBP pages
 - server-rendered JSON-LD on homepage and active platform pages
+- server-rendered `/resources` pages with WebPage, Article, BreadcrumbList, FAQPage where visible, and ItemList hub schema
 - schema.org JSON-LD on public output
 - platform and per-store robots/sitemaps
 - `public/llms.txt` and `public/llms-full.txt`

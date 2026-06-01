@@ -7,6 +7,7 @@ import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { logger } from '@lib/monitoring/logger';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
@@ -40,6 +41,7 @@ import {
     LuPalette,
     LuPencil,
     LuPhone,
+    LuPrinter,
     LuReceipt,
     LuRefreshCw,
     LuSearch,
@@ -55,6 +57,7 @@ import {
 } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobilePlatformInternalScreenKey } from './MobilePlatformInternalScreen';
 
 type ItemStatusTag = {
@@ -249,6 +252,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         name?: string;
         phoneNumber?: string;
     }>({});
+    const { selectedProjectId } = useMobileProjects();
 
     const sessionUser = (session?.user || {}) as any;
     const userName = profileOverrides.name || sessionUser.name || 'User';
@@ -392,6 +396,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         router.push(path);
     };
 
+    const openMenuCardExport = useCallback(() => {
+        window.location.href = buildMenuCardExportUrl(selectedProjectId);
+    }, [selectedProjectId]);
+
     const openOfficialPage = (backTarget: MoreSubScreen) => {
         setOfficialPageBackTarget(backTarget);
         openSubScreen('officialPage');
@@ -433,6 +441,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const moduleItems: MoreListItem[] = [
         ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color="#0f766e" size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
         ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
         ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr'], label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') }] : []),
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS && canManageStore ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),

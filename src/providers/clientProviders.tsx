@@ -3,7 +3,6 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import NoSSRProvider from '@providers/noSSRProvider';
 import { ReduxStoreProvider } from '@providers/reduxProvider';
-import { TodayActionProvider } from '@providers/TodayActionProvider';
 import { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import React from 'react';
@@ -25,9 +24,7 @@ export default function ClientProviders({ children, session }: ClientProvidersPr
       <NoSSRProvider>
         <ReduxStoreProvider>
           <SessionProvider session={session}>
-            <TodayActionProvider>
-              {children}
-            </TodayActionProvider>
+            {children}
           </SessionProvider>
         </ReduxStoreProvider>
       </NoSSRProvider>

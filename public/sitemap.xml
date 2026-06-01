@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
-  <!-- Homepage -->
   <url>
-    <loc>https://menulist.ai/</loc>
+    <loc>https://menulist.ai</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <priority>1</priority>
   </url>
-
-  <!-- Core Product Pages -->
   <url>
     <loc>https://menulist.ai/features</loc>
     <lastmod>2026-05-23</lastmod>
@@ -34,8 +32,6 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Conversion Pages -->
   <url>
     <loc>https://menulist.ai/get-started</loc>
     <lastmod>2026-05-23</lastmod>
@@ -48,8 +44,1566 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Company Pages -->
+  <url>
+    <loc>https://menulist.ai/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/hi-IN/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ta-IN/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/te-IN/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/mr-IN/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/bn-IN/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/ar-SA/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/menu-source-audit</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-source-audit" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-source-audit" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7999999999999999</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/menu-engineering</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/qr-menu-for-restaurants</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-menu-for-restaurants" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-menu-for-restaurants" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/digital-menu-vs-pdf-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/digital-menu-vs-pdf-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/google-business-profile-menu</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/google-business-profile-menu" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/google-business-profile-menu" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/official-menu-source</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/official-menu-source" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/official-menu-source" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.78</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/restaurant-menu-seo</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/restaurant-menu-seo" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/restaurant-menu-seo" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/ai-search-menu-discovery</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/ai-search-menu-discovery" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/ai-search-menu-discovery" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.76</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/menu-update-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-update-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-update-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/qr-code-placement-checklist</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/qr-code-placement-checklist" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/qr-code-placement-checklist" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/menu-engineering-worksheet</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/menu-engineering-worksheet" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/menu-engineering-worksheet" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/es-ES/resources/multi-location-menu-management</loc>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="hi-IN" href="https://menulist.ai/hi-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ta-IN" href="https://menulist.ai/ta-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="te-IN" href="https://menulist.ai/te-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="mr-IN" href="https://menulist.ai/mr-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="bn-IN" href="https://menulist.ai/bn-IN/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="ar-SA" href="https://menulist.ai/ar-SA/resources/multi-location-menu-management" />
+    <xhtml:link rel="alternate" hreflang="es-ES" href="https://menulist.ai/es-ES/resources/multi-location-menu-management" />
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.74</priority>
+  </url>
   <url>
     <loc>https://menulist.ai/about</loc>
     <lastmod>2026-05-23</lastmod>
@@ -68,8 +1622,6 @@
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
-
-  <!-- Legal Pages -->
   <url>
     <loc>https://menulist.ai/privacy-policy</loc>
     <lastmod>2026-05-23</lastmod>

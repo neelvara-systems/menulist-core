@@ -17,8 +17,7 @@
 | Add `StaffPrompt` interface to campaigns.ts      | ✅ PASS | `src/types/campaigns.ts:273-296` |
 | Add `STAFF_PROMPT_CONFIDENCE_THRESHOLD` constant | ✅ PASS | `src/types/campaigns.ts:258`     |
 | Add `STAFF_PROMPT_INERTIA` constants             | ✅ PASS | `src/types/campaigns.ts:263-267` |
-| Create `src/lib/staff-prompt/eligibility.ts`     | ✅ PASS | File created with all 8 gates    |
-| Create `src/lib/staff-prompt/inertia.ts`         | ✅ PASS | File created with inertia logic  |
+| Standalone staff-prompt helper files             | Removed | Deleted June 1, 2026 because active code only reads `staffPrompt` from Today summary |
 
 ### Phase 2: Backend Integration (Day 2)
 
@@ -92,8 +91,7 @@
 | File                                                                              | Lines | Status      | Issues |
 | --------------------------------------------------------------------------------- | ----- | ----------- | ------ |
 | `src/types/campaigns.ts`                                                          | +54   | ✅ Modified | None   |
-| `src/lib/staff-prompt/eligibility.ts`                                             | 88    | ✅ Created  | None   |
-| `src/lib/staff-prompt/inertia.ts`                                                 | 97    | ✅ Created  | None   |
+| Standalone staff-prompt helper files                                              | 0     | Removed | Active UI reads summary data only |
 | `src/database/campaigns/index.ts`                                                 | +20   | ✅ Modified | None   |
 | `src/components/templates/main-app/today/hooks/useTodayCampaigns.ts`              | +5    | ✅ Modified | None   |
 | `src/components/templates/main-app/today/components/StaffPromptSection/index.tsx` | 70    | ✅ Created  | None   |

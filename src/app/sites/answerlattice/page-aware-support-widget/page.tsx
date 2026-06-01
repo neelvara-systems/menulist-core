@@ -34,7 +34,7 @@ export default function PageAwareSupportWidgetPage() {
                 question="Why was I charged again?"
                 genericAnswer="Please check your billing settings or contact support."
                 answerlatticeAnswer="You are on Billing. Your plan renews monthly, failed invoice retries follow the configured retry window, and payment can be updated from Settings -> Billing."
-                ownerReview="The widget serves canonical answers first, then matching published owner answers. If coverage is missing, fallback is marked and the repeated gap becomes review work instead of hidden chat history. Screenshots are explicit user input, not automatic runtime capture."
+                ownerReview="The widget serves canonical answers first, then matching published owner answers. Missing coverage is marked as fallback and repeated gaps become review work. Screenshots are explicit user input, not automatic runtime capture."
                 setupSteps={[
                     'Create an Answerlattice workspace.',
                     'Add billing, onboarding, settings, or release surfaces.',

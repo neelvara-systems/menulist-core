@@ -36,7 +36,7 @@ export default function FoundersUseCasePage() {
                 'Install the widget and verify page context.',
                 'Approve the first answers from the review queue.',
             ]}
-            primaryCta="Start free beta"
+            primaryCta="Start support setup"
             secondaryCta="Try page-aware demo"
         />
     );

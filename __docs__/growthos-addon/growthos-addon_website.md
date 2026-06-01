@@ -1,8 +1,33 @@
 # GrowthOS Add-on - Website Copy Candidate
 
-**Status:** Candidate copy only
-**Placement:** MenuList Pro/Premium pricing page, not a standalone GrowthOS website
+**Status:** Hold from main website; candidate copy only
+**Placement:** Not on the MenuList homepage. Possible future placement: Pro/Premium pricing or Features page after owner usage proves demand.
 **Public name:** Growth Kits
+
+## Website Placement Decision - June 1, 2026
+
+Do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the main MenuList homepage right now.
+
+Reason: the public website is for non-technical SMB owners who need one clear first action: upload the current menu and publish one official customer-facing version. Growth Kits is a higher-tier retention/upsell feature for existing MenuList clients after the menu truth exists. Promoting it on the first homepage pass would blur the core promise and make MenuList feel like another marketing tool.
+
+Current homepage coverage is enough:
+
+- `Launch materials prepared` already covers QR, links, PDF, WhatsApp, Instagram, and physical placement assets without adding a new module name.
+- `WhatsApp and Instagram` already explains everyday sharing from the official page.
+- `Simple activity signals` and resources content already support the operational proof without promising growth, revenue, or posting automation.
+
+Allowed later:
+
+- Add a small Pro/Premium pricing-row mention only after rollout evidence shows owners understand and use it.
+- Add a Features-page card only if it stays outcome-first, for example `Menu-based messages and prompts`, not `GrowthOS`.
+- Keep all public copy clear that MenuList prepares drafts/materials only. No auto-posting, scheduler, revenue lift, or sales promise.
+
+Not allowed now:
+
+- No homepage section.
+- No header/footer navigation entry.
+- No standalone GrowthOS website, route, product page, or public domain.
+- No resources article that sells GrowthOS as a growth/marketing system.
 
 ---
 

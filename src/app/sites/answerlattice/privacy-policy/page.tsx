@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy',
@@ -22,7 +23,8 @@ const SECTIONS = [
     {
         title: 'Information Answerlattice Handles',
         body: [
-            'Answerlattice handles account details, team member details, workspace details, product support content, knowledge-base imports, FAQs, changelog entries, tickets, widget configuration, hosted-help domain settings, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
+            'Answerlattice handles account, team member, workspace, widget, hosted-help domain, and ticket details needed to operate the service.',
+            'It also handles product support content, knowledge-base imports, FAQs, changelog entries, safe page context that a customer chooses to send through the widget, and capped ticket debugging context when a ticket is created.',
             'Knowledge intake sources can include selected public URLs, pasted support text, starter answers, and supported document text. Customers should avoid importing unnecessary personal data.',
             'Page context should describe the product surface, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
         ],
@@ -81,6 +83,14 @@ export default function AnswerlatticePrivacyPolicyPage() {
                             This policy explains how Answerlattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.
                         </p>
+                        <PageProofStrip
+                            className="mt-8 text-left"
+                            items={[
+                                { label: 'Widget context', value: 'Use page and workflow hints; avoid secrets and private records' },
+                                { label: 'Source intake', value: 'Owner-selected support material and capped extracted text' },
+                                { label: 'Workspace control', value: 'Owners manage team access, widget settings, and published support content' },
+                            ]}
+                        />
                     </div>
                 </section>
 

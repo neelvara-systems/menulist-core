@@ -4,6 +4,7 @@ import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Proof Pack',
@@ -66,6 +67,14 @@ export default function AnswerlatticeProofPage() {
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         These are anonymized example workloads, not inflated customer claims. They show how Answerlattice should be evaluated on day one.
                     </p>
+                    <PageProofStrip
+                        className="mx-auto mt-8 max-w-6xl text-left"
+                        items={[
+                            { label: 'No fake proof', value: 'Examples show workloads, not customer logos or vanity metrics' },
+                            { label: 'Day-one proof', value: 'Install, context, surfaces, sources, and first approved answers' },
+                            { label: 'Best use', value: 'Compare your launch support problem against these patterns' },
+                        ]}
+                    />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">

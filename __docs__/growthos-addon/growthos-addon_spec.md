@@ -2,6 +2,7 @@
 
 **Status:** Implemented V1 and enabled behind Pro/Premium entitlement gate
 **Owner-facing label:** Growth Kits
+**Mobile Today label:** Today's Sales Pack
 **Implementation flag:** `ENABLE_GROWTHOS_ADDON=true` with `GROWTHOS_ADDON_ACCESS="paid"`
 **Scope:** MenuList Pro/Premium plan feature only
 
@@ -27,6 +28,28 @@ The V1 product loop is intentionally small:
 ```txt
 Find one useful action -> check truth -> create one kit -> owner uses it manually -> record execution signal
 ```
+
+The owner-facing mobile loop is even stricter:
+
+```txt
+Today's Sales Pack = one customer message + one staff line + one counter line from current menu truth
+```
+
+If the pack is stale or blocked, the owner must update it before copy/share/download controls are usable.
+
+### Product Role
+
+GrowthOS is not the main MenuList value proposition.
+
+MenuList is bought for official menu truth, QR/public menu publishing, customer-facing accuracy, and owner-approved public surfaces. GrowthOS is useful only after those foundations exist. Treat it as a Pro/Premium retention and upsell layer, not as acquisition positioning.
+
+The feature should stay quiet unless it has something concrete and current for the owner:
+
+- a fresh prepared pack
+- a previously used stale pack that needs update before reuse
+- a strong menu reason such as a new item, customer favorite, or high-confidence current action
+
+If none of those exist, no GrowthOS card should compete with the operational Today surface.
 
 ## 2. Why
 
@@ -88,7 +111,7 @@ GrowthOS lives inside MenuList.
 | --- | --- |
 | Desktop owner app | Add a paid module entry labelled `Growth Kits` only for eligible stores. |
 | Today screen | Show a small eligible-user entry point when a current action exists. Today itself remains focused on operational truth. |
-| Mobile owner app | Show latest kit and copy/share actions from the current Today mobile surface and a compact Pro/Premium entry point. |
+| Mobile owner app | Show `Today's Sales Pack` from the current Today mobile surface. It must provide fresh customer/staff/counter handoffs and block stale use. |
 | Website/pricing | Mention as included in Pro/Premium, not as a separate product. |
 | Help center | Explain how to use a kit, not how the system works. |
 
@@ -101,6 +124,8 @@ Implemented route:
 The route remains hidden unless the feature flag and entitlement pass.
 
 No standalone GrowthOS domain, public app, or product route is approved by this spec.
+
+Do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the public homepage. A small pricing or Features-page mention requires rollout evidence that owners are actually using packs.
 
 ## 5. How It Works
 
@@ -254,6 +279,8 @@ Outputs:
 - counter card copy
 - QR tent copy
 - digital screen line where existing screen surfaces support it
+
+The mobile Today card must expose at least one counter line when the kit is fresh. This makes the pack useful even when the owner is standing at the counter and not posting online.
 
 ### Local Trust Kit
 

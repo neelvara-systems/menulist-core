@@ -66,6 +66,7 @@ import {
     ProjectMetadata,
     ProjectSummaryData,
 } from "../types";
+import type { CommandCenterAction } from "../types/commandCenter.types";
 import { associateItemImagesWithProject } from "./utils/associateItemImages";
 import { translateFile } from "../utils/translationsUtils";
 import AiDisclaimerAlert from "./AiDisclaimerAlert";
@@ -100,9 +101,20 @@ type EditorProps = {
     selectedProject: ProjectMetadata;
     onRemove: (id: string) => void;
     addFileButton: React.ReactNode;
+    initialQualityAction?: string | null;
+    onQualityActionHandled?: () => void;
 };
 
-function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
+const DEFAULT_EDITOR_FILTERS: EditorFilters = {
+    category: null,
+    priceRange: { min: null, max: null },
+    hasImage: null,
+    hasPrice: null,
+    activeStatus: null,
+    timeSlotPreset: null,
+};
+
+function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction, onQualityActionHandled }: EditorProps) {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const [previewFile, setPreviewFile] = useState<ProjectFileType | null>(null);
@@ -141,6 +153,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
     const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
+    const [commandCenterInitialAction, setCommandCenterInitialAction] = useState<CommandCenterAction | null>(null);
     const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
@@ -173,13 +186,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
 
     // Search and Filter state
     const [searchTerm, setSearchTerm] = useState("");
-    const [filters, setFilters] = useState<EditorFilters>({
-        category: null,
-        priceRange: { min: null, max: null },
-        hasImage: null,
-        activeStatus: null,
-        timeSlotPreset: null,
-    });
+    const [filters, setFilters] = useState<EditorFilters>(DEFAULT_EDITOR_FILTERS);
 
     // View mode state
     const [editorView, setEditorView] = useState<
@@ -627,6 +634,59 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
         });
     }, [dispatch, projectData, setActiveProject, storeDetails]);
 
+    const openCommandCenterRepair = useCallback(() => {
+        setCommandCenterInitialAction('repairMenu');
+        setIsCommandCenterOpen(true);
+    }, []);
+
+    const handleQualityActionRoute = useCallback((actionRoute?: string | null) => {
+        if (!actionRoute) return;
+
+        setSearchTerm('');
+        setEditorView('advanced');
+
+        if (actionRoute === 'descriptions' || actionRoute === 'categoryIcons' || actionRoute === 'projectContent') {
+            openCommandCenterRepair();
+            return;
+        }
+
+        if (actionRoute === 'images') {
+            setFilters({ ...DEFAULT_EDITOR_FILTERS, hasImage: false });
+            return;
+        }
+
+        if (actionRoute === 'prices') {
+            setFilters({ ...DEFAULT_EDITOR_FILTERS, hasPrice: false });
+            return;
+        }
+
+        if (actionRoute === 'hidden') {
+            setFilters({ ...DEFAULT_EDITOR_FILTERS, activeStatus: false });
+            return;
+        }
+
+        if (actionRoute === 'translations') {
+            setIsLanguageModalOpen(true);
+            return;
+        }
+
+        if (actionRoute === 'priceOutliers') {
+            setFilters(DEFAULT_EDITOR_FILTERS);
+            message.info('Review unusual prices in the editor.');
+            return;
+        }
+
+        if (actionRoute === 'editor') {
+            setFilters(DEFAULT_EDITOR_FILTERS);
+        }
+    }, [openCommandCenterRepair]);
+
+    useEffect(() => {
+        if (!initialQualityAction) return;
+        handleQualityActionRoute(initialQualityAction);
+        onQualityActionHandled?.();
+    }, [handleQualityActionRoute, initialQualityAction, onQualityActionHandled]);
+
     // ============================
     // FILTERED ITEMS FOR KEYBOARD NAVIGATION
     // Uses shared filter utility - single source of truth
@@ -1015,6 +1075,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 setIsStoreCustomizationModalOpen(true);
                 break;
             case "commandCenter":
+                setCommandCenterInitialAction(null);
                 setIsCommandCenterOpen(true);
                 break;
         }
@@ -1134,15 +1195,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 {/* Quality Signals Banner */}
                 <EditorQualityBanner
                     projectData={projectData}
-                    onAction={(actionRoute) => {
-                        if (actionRoute === 'descriptions') {
-                            setIsDescModalOpen({ active: true, sourceFile: projectData?.files?.[0] });
-                        } else if (actionRoute === 'images') {
-                            // Scroll to first item missing image — for now just focus editor
-                        } else if (actionRoute === 'projectContent') {
-                            handleRepairProjectPublicContent();
-                        }
-                    }}
+                    onAction={handleQualityActionRoute}
                 />
 
                 {/* Conditional View Rendering */}
@@ -1453,7 +1506,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     storeName={storeContextName}
                     storeDetails={storeDetails}
                     allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
-                    onClose={() => setIsCommandCenterOpen(false)}
+                    initialAction={commandCenterInitialAction}
+                    onClose={() => {
+                        setCommandCenterInitialAction(null);
+                        setIsCommandCenterOpen(false);
+                    }}
                     onApply={(updatedProject) => {
                         setProjectData(updatedProject);
                         setActiveProject(updatedProject);

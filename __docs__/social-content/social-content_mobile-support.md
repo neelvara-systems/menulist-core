@@ -1,7 +1,7 @@
 # Social Content (Today Screen) — Mobile Support
 
-**Last Updated:** May 31, 2026 (v4 - MobileHoursScreen is the live Today tab; Weekly Growth Pack paused)
-**Decision:** Full mobile support for Today actions. Weekly Growth Pack mobile UI exists behind a disabled flag and is not rollout-ready.
+**Last Updated:** June 1, 2026 (v5 - MobileHoursScreen is the live Today tab; legacy owner generation retired)
+**Decision:** Mobile supports existing Today actions, staff prompt, and physical-surface cards. The old `Generate Today Action` prompt is retired; GrowthOS / `Today's Sales Pack` owns new generated actions.
 
 ---
 
@@ -12,7 +12,7 @@
 | **Frequency** | ✅ PASS | Daily — owner checks every day                    |
 | **Speed**     | ✅ PASS | One-tap share to WhatsApp <3s                     |
 | **Touch**     | ✅ PASS | Big primary button, skip below                    |
-| **Value**     | ✅ PASS for Today actions; HOLD for weekly pack | Daily truth/actions matter on phone. Weekly copy-pack need is not proven enough to roll out. |
+| **Value**     | ✅ PASS for prepared Today actions; HOLD for owner generation and weekly pack | Existing prepared actions matter on phone. Asking owners to generate weak actions is now retired in favor of GrowthOS Sales Pack. |
 
 ---
 
@@ -28,9 +28,10 @@
 | Staff prompt (read-only)      | `MobileHoursScreen`                                   | Done   |
 | Operational campaigns (max 2) | `MobileHoursScreen`                                   | Done   |
 | Weekly Growth Pack            | `TodayWeeklyGrowthPackCard` behind feature flag       | Paused, default off |
+| Legacy owner generation       | Deleted from active code                              | Removed |
 | Feature flag gate             | `SOCIAL_CONTENT_ENABLED`, `ENABLE_TODAY_WEEKLY_GROWTH_PACK` | Done |
 
-`MobileTodayScreen` remains in the codebase, but the current bottom-nav Today tab renders `MobileHoursScreen`. New Today work should target `MobileHoursScreen` unless the mobile shell changes.
+`MobileTodayScreen` has been removed from active code. The current bottom-nav Today tab renders `MobileHoursScreen`; new Today work should target `MobileHoursScreen` unless the mobile shell changes.
 
 ## DAL Parity
 
@@ -44,8 +45,10 @@
 
 Do not surface the weekly pack on mobile until owner pilots prove it is useful. Mobile Today should remain focused on immediate truth and operations first: current hours, store status, public link, campaign/action status, and critical fixes.
 
+Do not bring back the old `No today action yet` / `Generate Today Action` card. If there is no prepared action and no GrowthOS trigger, Today should stay quiet.
+
 If revived, the mobile pack should appear as a compact optional action, not a long default card.
 
 ## Cost Impact
 
-Firebase cost impact: `$0.00`. The weekly pack is client-side, deterministic, and uses data already loaded by the Today tab.
+Firebase cost impact: `$0.00` incremental for the retired weekly pack. The active Today/GrowthOS path reads only when the Today surface loads; the old global sidebar polling provider has been removed.

@@ -11,6 +11,7 @@ export interface EditorFilters {
     category: string | null;
     priceRange: { min: number | null; max: number | null };
     hasImage: boolean | null;
+    hasPrice: boolean | null;
     activeStatus: boolean | null;
     timeSlotPreset: string | null; // Filter by assigned time slot preset ID
 }
@@ -52,26 +53,28 @@ export default function EditorFiltersPopover({
     const effectiveFilters = useMemo<EditorFilters>(() => (
         showItemPrices
             ? filters
-            : { ...filters, priceRange: { min: null, max: null } }
+            : { ...filters, hasPrice: null, priceRange: { min: null, max: null } }
     ), [filters, showItemPrices]);
     const effectiveLocalFilters = showItemPrices
         ? localFilters
-        : { ...localFilters, priceRange: { min: null, max: null } };
+        : { ...localFilters, hasPrice: null, priceRange: { min: null, max: null } };
 
     useEffect(() => {
         if (
             showItemPrices ||
-            (filters.priceRange.min === null && filters.priceRange.max === null)
+            (filters.priceRange.min === null && filters.priceRange.max === null && filters.hasPrice === null)
         ) {
             return;
         }
 
         onFiltersChange({
             ...filters,
+            hasPrice: null,
             priceRange: { min: null, max: null },
         });
         setLocalFilters((prev) => ({
             ...prev,
+            hasPrice: null,
             priceRange: { min: null, max: null },
         }));
     }, [filters, onFiltersChange, showItemPrices]);
@@ -81,6 +84,7 @@ export default function EditorFiltersPopover({
     const appliedFilterCount = [
         effectiveFilters.category !== null,
         showItemPrices && (effectiveFilters.priceRange.min !== null || effectiveFilters.priceRange.max !== null),
+        showItemPrices && effectiveFilters.hasPrice !== null,
         effectiveFilters.hasImage !== null,
         effectiveFilters.activeStatus !== null,
         effectiveFilters.timeSlotPreset !== null,
@@ -90,6 +94,7 @@ export default function EditorFiltersPopover({
     const pendingFilterCount = [
         effectiveLocalFilters.category !== null,
         showItemPrices && (effectiveLocalFilters.priceRange.min !== null || effectiveLocalFilters.priceRange.max !== null),
+        showItemPrices && effectiveLocalFilters.hasPrice !== null,
         effectiveLocalFilters.hasImage !== null,
         effectiveLocalFilters.activeStatus !== null,
         effectiveLocalFilters.timeSlotPreset !== null,
@@ -105,6 +110,7 @@ export default function EditorFiltersPopover({
             category: null,
             priceRange: { min: null, max: null },
             hasImage: null,
+            hasPrice: null,
             activeStatus: null,
             timeSlotPreset: null,
         };
@@ -171,6 +177,23 @@ export default function EditorFiltersPopover({
                                 prefix="$"
                             />
                         </Flex>
+                    </Flex>
+
+                    <Divider style={{ margin: 0 }} />
+
+                    <Flex vertical gap={8}>
+                        <Text strong style={{ fontSize: 13 }}>Price Availability</Text>
+                        <Select
+                            placeholder="All items"
+                            allowClear
+                            value={localFilters.hasPrice}
+                            onChange={(value) => setLocalFilters({ ...localFilters, hasPrice: value ?? null })}
+                            style={{ width: '100%' }}
+                            options={[
+                                { label: 'Has price', value: true },
+                                { label: 'No price', value: false },
+                            ]}
+                        />
                     </Flex>
 
                     <Divider style={{ margin: 0 }} />

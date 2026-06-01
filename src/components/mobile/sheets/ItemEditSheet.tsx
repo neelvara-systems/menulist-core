@@ -21,7 +21,7 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuDownload, LuLanguages, LuPlus, LuShare2, LuSparkles, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuClock, LuDownload, LuLanguages, LuMinus, LuPlus, LuShare2, LuSparkles, LuStar, LuTrash2, LuTrendingUp } from 'react-icons/lu';
 import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParams, Project, ProjectFileType } from '../../templates/main-app/projects/types';
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
@@ -77,11 +77,13 @@ function createDraftItem({
             : Object.fromEntries(languages.map((lang) => [lang, lang === primaryLanguage ? (item?.description || '') : ''])),
         id: item?.rawItem?.id || item?.id || `draft-item-${Date.now()}`,
         images: item?.rawItem?.images || undefined,
+        isBestSeller: item?.rawItem?.isBestSeller ?? item?.isBestSeller ?? false,
         name: item?.rawItem?.name
             ? { ...item.rawItem.name }
             : Object.fromEntries(languages.map((lang) => [lang, lang === primaryLanguage ? (item?.name || '') : ''])),
         price: item?.rawItem?.price !== undefined ? String(item.rawItem.price || '') : String(item?.price || ''),
-        duration: item?.rawItem?.duration,
+        duration: item?.rawItem?.duration ?? item?.duration,
+        ownerBoost: clampOwnerBoost(item?.rawItem?.ownerBoost ?? item?.ownerBoost),
         decisionFacts: item?.rawItem?.decisionFacts ? { ...item.rawItem.decisionFacts } : undefined,
         allergens: item?.rawItem?.allergens,
         dietaryTags: item?.rawItem?.dietaryTags,
@@ -117,10 +119,12 @@ function normalizeDraftItemForComparison(draftItem: ExtractedDataItem, languages
         category: draftItem.category || '',
         decisionFacts: draftItem.decisionFacts || {},
         description: normalizeLocalizedRecord(draftItem.description, languages),
+        isBestSeller: draftItem.isBestSeller === true,
         legacyFacts: {
             allergens: draftItem.allergens || [],
             dietaryTags: draftItem.dietaryTags || [],
             duration: draftItem.duration,
+            ownerBoost: draftItem.ownerBoost ?? 0,
             materials: draftItem.materials || '',
             nutritionInfo: draftItem.nutritionInfo || {},
             skillLevel: draftItem.skillLevel || '',
@@ -131,6 +135,19 @@ function normalizeDraftItemForComparison(draftItem: ExtractedDataItem, languages
         name: normalizeLocalizedRecord(draftItem.name, languages),
         price: String(draftItem.price ?? '').trim(),
     };
+}
+
+function clampOwnerBoost(value: unknown): number {
+    const parsed = Number(value ?? 0);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.min(20, Math.max(-20, parsed));
+}
+
+function parseBoundedNumber(value: string, min: number, max: number): number | undefined {
+    if (!value.trim()) return undefined;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return undefined;
+    return Math.min(max, Math.max(min, parsed));
 }
 
 export default function ItemEditSheet({
@@ -188,6 +205,19 @@ export default function ItemEditSheet({
     const [isCardWorking, setIsCardWorking] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
     const canEditImageInline = (isAddMode || !onManageImages) && canEditImages;
+
+    const ownerBoostLevel = (draftItem.ownerBoost ?? 0) > 0
+        ? 'higher'
+        : (draftItem.ownerBoost ?? 0) < 0
+            ? 'lower'
+            : 'normal';
+
+    const setOwnerBoostLevel = (value: number) => {
+        setDraftItem((previous) => ({
+            ...previous,
+            ownerBoost: clampOwnerBoost(value),
+        }));
+    };
 
     const resetDraft = () => {
         setDraftItem(createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
@@ -640,6 +670,16 @@ export default function ItemEditSheet({
             }
         }
 
+        if (draftItem.duration !== undefined && (draftItem.duration < 0 || draftItem.duration > 240)) {
+            Toast.show({ content: t('prepTimeRangeHelp'), duration: 1800 });
+            return;
+        }
+
+        if (draftItem.ownerBoost !== undefined && (draftItem.ownerBoost < -20 || draftItem.ownerBoost > 20)) {
+            Toast.show({ content: t('priorityRangeHelp'), duration: 1800 });
+            return;
+        }
+
         const chosenCategory = categories.find((category) => category.id === draftItem.category);
         const categoryName = chosenCategory?.name || item?.categoryName || t('uncategorized');
         setIsSaving(true);
@@ -660,7 +700,10 @@ export default function ItemEditSheet({
                 image: isAddMode || !onManageImages
                     ? imagePreview || (item?.image ? null : undefined)
                     : undefined,
+                isBestSeller: draftItem.isBestSeller === true,
+                duration: draftItem.duration,
                 name: getLocalizedValue(draftItem.name, primaryLanguage).trim(),
+                ownerBoost: draftItem.ownerBoost ?? 0,
                 price: parseFloat(String(draftItem.price || 0)) || 0,
                 rawItem: draftItem,
             });
@@ -941,6 +984,131 @@ export default function ItemEditSheet({
                                     <Switch checked={draftItem.active !== false} onChange={(checked) => setDraftItem((previous) => ({ ...previous, active: checked }))} />
                                 </Flex>
                             </div>
+
+                            <div style={inlineSurfaceStyle}>
+                                <Flex align="center" justify="space-between">
+                                    <Flex align="center" gap={10}>
+                                        <LuStar
+                                            size={18}
+                                            style={{
+                                                color: draftItem.isBestSeller ? token.colorWarning : token.colorTextSecondary,
+                                            }}
+                                        />
+                                        <Flex gap={2} vertical>
+                                            <Text strong>{t('bestSeller')}</Text>
+                                            <Text type="secondary">{t('bestSellerHelp')}</Text>
+                                        </Flex>
+                                    </Flex>
+                                    <Switch
+                                        checked={draftItem.isBestSeller === true}
+                                        onChange={(checked) => setDraftItem((previous) => ({ ...previous, isBestSeller: checked }))}
+                                    />
+                                </Flex>
+                            </div>
+
+                            <div style={inlineSurfaceStyle}>
+                                <Flex gap={12} vertical>
+                                    <Flex align="center" gap={10}>
+                                        <LuClock size={18} style={{ color: token.colorTextSecondary }} />
+                                        <Flex gap={2} vertical>
+                                            <Text strong>{t('prepTime')}</Text>
+                                            <Text type="secondary">{t('prepTimeHelp')}</Text>
+                                        </Flex>
+                                    </Flex>
+                                    <Input
+                                        max={240}
+                                        min={0}
+                                        onChange={(value) => setDraftItem((previous) => ({
+                                            ...previous,
+                                            duration: parseBoundedNumber(value, 0, 240),
+                                        }))}
+                                        placeholder={t('prepTimePlaceholder')}
+                                        step={1}
+                                        type="number"
+                                        value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
+                                    />
+                                </Flex>
+                            </div>
+
+                            <div style={inlineSurfaceStyle}>
+                                <Flex gap={12} vertical>
+                                    <Flex align="center" gap={10}>
+                                        <LuTrendingUp size={18} style={{ color: token.colorTextSecondary }} />
+                                        <Flex gap={2} vertical>
+                                            <Text strong>{t('priority')}</Text>
+                                            <Text type="secondary">{t('priorityHelp')}</Text>
+                                        </Flex>
+                                    </Flex>
+                                    <Flex gap={8}>
+                                        <Button
+                                            fill={ownerBoostLevel === 'lower' ? 'solid' : 'outline'}
+                                            onClick={() => setOwnerBoostLevel(-10)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            <Flex align="center" gap={6} justify="center">
+                                                <LuMinus size={14} />
+                                                <Text>{t('lower')}</Text>
+                                            </Flex>
+                                        </Button>
+                                        <Button
+                                            fill={ownerBoostLevel === 'normal' ? 'solid' : 'outline'}
+                                            onClick={() => setOwnerBoostLevel(0)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            <Text>{t('normal')}</Text>
+                                        </Button>
+                                        <Button
+                                            fill={ownerBoostLevel === 'higher' ? 'solid' : 'outline'}
+                                            onClick={() => setOwnerBoostLevel(10)}
+                                            style={{ flex: 1 }}
+                                        >
+                                            <Flex align="center" gap={6} justify="center">
+                                                <LuPlus size={14} />
+                                                <Text>{t('higher')}</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Flex>
+                                    <Text type="secondary">{t('priorityRangeHelp')}</Text>
+                                </Flex>
+                            </div>
+
+                            <Collapse accordion>
+                                <Collapse.Panel
+                                    key="customer-impact-guide"
+                                    title={(
+                                        <Flex gap={2} vertical>
+                                            <Text strong>{t('itemCustomerImpactTitle')}</Text>
+                                            <Text type="secondary">{t('itemCustomerImpactIntro')}</Text>
+                                        </Flex>
+                                    )}
+                                >
+                                    <Flex gap={12} vertical>
+                                        {[
+                                            {
+                                                desc: t('itemCustomerImpactReorderDesc'),
+                                                label: t('itemCustomerImpactReorderLabel'),
+                                            },
+                                            {
+                                                desc: t('itemCustomerImpactBestSellerDesc'),
+                                                label: t('itemCustomerImpactBestSellerLabel'),
+                                            },
+                                            {
+                                                desc: t('itemCustomerImpactPrepTimeDesc'),
+                                                label: t('itemCustomerImpactPrepTimeLabel'),
+                                            },
+                                            {
+                                                desc: t('itemCustomerImpactFeatureDesc'),
+                                                label: t('itemCustomerImpactFeatureLabel'),
+                                            },
+                                        ].map((row) => (
+                                            <Flex gap={2} key={row.label} vertical>
+                                                <Text strong>{row.label}</Text>
+                                                <Text type="secondary">{row.desc}</Text>
+                                            </Flex>
+                                        ))}
+                                    </Flex>
+                                </Collapse.Panel>
+                            </Collapse>
                         </Flex>
                     </Card>
 
@@ -958,23 +1126,7 @@ export default function ItemEditSheet({
                                 >
                                     <Flex gap={14} vertical>
                                         <Text type="secondary">Only add details you know are correct.</Text>
-                                        {metadataFields.map((field) => {
-                                            if (field.key === 'duration') {
-                                                return (
-                                                    <Flex gap={6} key={field.key} vertical>
-                                                        <Text strong>{field.label}</Text>
-                                                        <Input
-                                                            onChange={(value) => updateDecisionFact(field, value ? Number(value) : undefined)}
-                                                            placeholder={field.tooltip}
-                                                            type="number"
-                                                            value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
-                                                        />
-                                                    </Flex>
-                                                );
-                                            }
-
-                                            return renderDecisionFactControl(field);
-                                        })}
+                                        {metadataFields.map(renderDecisionFactControl)}
                                     </Flex>
                                 </Collapse.Panel>
                             </Collapse>

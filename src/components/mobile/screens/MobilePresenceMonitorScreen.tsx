@@ -7,6 +7,7 @@ import { useContext, useMemo } from 'react';
 import { Flex } from '../antd';
 import MobilePresenceMonitor from '../components/PresenceMonitor';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 interface MobilePresenceMonitorScreenProps {
     onBack: () => void;
@@ -14,10 +15,15 @@ interface MobilePresenceMonitorScreenProps {
 
 export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMonitorScreenProps) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { projectsList } = useMobileProjects();
     const obpLink = useMemo(() => {
         if (!storeDetails) return '';
         return generateOBPUrl(storeDetails.subdomain || '', storeDetails.customDomain);
     }, [storeDetails]);
+    const hasPublishedMenu = useMemo(
+        () => projectsList.some((project: any) => project.deleted !== true && project.active !== false),
+        [projectsList],
+    );
 
     if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR || !storeDetails) return null;
 
@@ -32,7 +38,7 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
                 <MobilePresenceMonitor
                     hasFeedbackEnabled={storeDetails.feedbackEnabled !== false}
                     hidePageSummary
-                    hasPublishedMenu={Boolean(storeDetails.subdomain || storeDetails.customDomain)}
+                    hasPublishedMenu={hasPublishedMenu}
                     obpLink={obpLink}
                     storeDetails={storeDetails as any}
                 />

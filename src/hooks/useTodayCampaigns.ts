@@ -3,7 +3,7 @@
  *
  * Moved from: src/components/templates/main-app/today/hooks/useTodayCampaigns.ts
  * Reason: Pure SWR + DAL — no UI framework dependency. Both desktop TodayScreen
- * and MobileTodayScreen need this same data.
+ * and MobileHoursScreen need this same data.
  *
  * Per Strategy Doc:
  * - Single read from summary document (Firebase cost optimization)
@@ -35,22 +35,4 @@ export const useTodayCampaigns = () => {
         isError: error,
         mutate
     };
-};
-
-/**
- * Generate campaigns for a specific project
- * Calls the API to analyze menu data and create campaigns
- */
-export const generateCampaignsForProject = async (projectId: string, forceRefresh = false) => {
-    const response = await fetch('/api/campaigns/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, forceRefresh })
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to generate campaigns');
-    }
-
-    return response.json();
 };

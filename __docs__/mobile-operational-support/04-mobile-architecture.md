@@ -73,7 +73,7 @@ src/
 │       │   ├── MobilePublicInfoScreen.tsx   ← More > Public info
 │       │   ├── MobileBillingScreen.tsx      ← More > Billing
 │       │   ├── MobileDashboardScreen.tsx    ← More > Dashboard analytics
-│       │   ├── MobileTodayScreen.tsx        ← More > Today campaigns
+│       │   ├── MobileHoursScreen.tsx        ← Tab: Today hours, status, campaigns, GrowthOS Sales Pack
 │       │   ├── MobileUsersScreen.tsx        ← More > Staff management
 │       │   ├── MobileTransactionsScreen.tsx ← More > AI usage history, filters, details
 │       │   ├── MobileHelpScreen.tsx         ← More > Help center

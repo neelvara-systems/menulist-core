@@ -4,6 +4,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import { updateStore } from '@database/stores';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
@@ -22,11 +23,13 @@ import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
+import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { resolveProjectForRender } from '@lib/multiOutlet';
 import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjectPersistence';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { normalizeCategoryIconValue } from '@lib/categoryIcons';
@@ -438,6 +441,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const labels = useOfferingLabels();
     const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
+    const canOpenMenuCardExport = FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && hasAnyPermission(userPermissions, [
+        PERMISSIONS.MANAGE_MENU,
+        PERMISSIONS.MANAGE_MENU_SHARING,
+        PERMISSIONS.PUBLISH_MENU,
+    ]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
     const [draftFilters, setDraftFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
@@ -1684,9 +1692,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             })),
                             available,
                             active,
+                            duration: item.duration,
+                            ownerBoost: item.ownerBoost,
                             categoryId: item.category,
                             categoryName,
                             hiddenByCategory,
+                            isBestSeller: item.isBestSeller === true,
                             description: itemDescription,
                             descriptionMissing: hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                             fileId: file.uid,
@@ -1716,9 +1727,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         })),
                         available,
                         active,
+                        duration: item.duration,
+                        ownerBoost: item.ownerBoost,
                         categoryId: item.category,
                         categoryName: uncategorizedLabel,
                         hiddenByCategory: false,
+                        isBestSeller: item.isBestSeller === true,
                         description: itemDescription,
                         descriptionMissing: hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                         fileId: file.uid,
@@ -2724,6 +2738,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
         window.open(withAnalyticsSource(menuPreviewUrl, 'direct'), '_blank');
     }, [menuPreviewUrl, tShare]);
+
+    const handleOpenMenuCardExport = useCallback(async () => {
+        const projectId = menuData?.projectId || selectedProjectId;
+        if (!projectId) {
+            Toast.show({ content: 'No menu selected.', duration: 1200 });
+            return;
+        }
+
+        if (pendingMenuRef.current?.projectId === projectId) {
+            Toast.show({ content: 'Saving menu before print...', duration: 900 });
+            await flushPendingMenuPersist();
+
+            if (pendingMenuRef.current?.projectId === projectId) {
+                Toast.show({ content: 'Menu is still saving. Try again in a moment.', duration: 1800 });
+                return;
+            }
+        }
+
+        window.location.href = buildMenuCardExportUrl(projectId);
+    }, [flushPendingMenuPersist, menuData?.projectId, selectedProjectId]);
 
     const editingItemInheritanceState = editingItem?.id ? itemInheritanceStates[editingItem.id] : undefined;
     const isEditingInheritedOutletItem = Boolean(
@@ -3917,6 +3951,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     setIsBulkActionsOpen(true);
                 })}
                 onPreview={handlePreviewMenu}
+                onPrintMenu={canOpenMenuCardExport ? () => { void handleOpenMenuCardExport(); } : undefined}
                 onTextCase={() => launchCommandAction(() => {
                     if (menuData?.masterProjectId) {
                         Toast.show({ content: 'Inherited item names stay connected to the master menu.', duration: 1800 });
@@ -4117,6 +4152,18 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             const priceChanged = updatedItem.price !== undefined && nextPriceValue !== currentPriceValue;
                             const availableChanged = updatedItem.available !== undefined && updatedItem.available !== editingItem.available;
                             const activeChanged = updatedItem.active !== undefined && updatedItem.active !== editingItem.active;
+                            const currentBestSellerValue = Boolean(editingItem.rawItem?.isBestSeller ?? editingItem.isBestSeller);
+                            const nextBestSellerValue = Boolean(updatedItem.rawItem?.isBestSeller ?? updatedItem.isBestSeller);
+                            const bestSellerChanged = (
+                                updatedItem.isBestSeller !== undefined ||
+                                updatedItem.rawItem?.isBestSeller !== undefined
+                            ) && nextBestSellerValue !== currentBestSellerValue;
+                            const currentDurationValue = editingItem.rawItem?.duration ?? editingItem.duration;
+                            const nextDurationValue = rawItem?.duration;
+                            const durationChanged = rawItem !== null && (currentDurationValue ?? null) !== (nextDurationValue ?? null);
+                            const currentOwnerBoostValue = editingItem.rawItem?.ownerBoost ?? editingItem.ownerBoost ?? 0;
+                            const nextOwnerBoostValue = rawItem?.ownerBoost ?? 0;
+                            const ownerBoostChanged = rawItem !== null && currentOwnerBoostValue !== nextOwnerBoostValue;
                             const currentDescriptionValue = String(
                                 editingItem.rawItem?.description?.[primaryLang] ?? editingItem.description ?? ''
                             );
@@ -4151,6 +4198,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             if (activeChanged) {
                                 nextOverride.active = updatedItem.active;
                             }
+                            if (bestSellerChanged) {
+                                nextOverride.isBestSeller = nextBestSellerValue;
+                            }
+                            if (durationChanged) {
+                                nextOverride.duration = nextDurationValue;
+                            }
+                            if (ownerBoostChanged) {
+                                nextOverride.ownerBoost = nextOwnerBoostValue;
+                            }
                             if (descriptionChanged && nextDescription) {
                                 if (outletPolicy?.descriptionOverride !== true) {
                                     Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
@@ -4183,6 +4239,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         ...(priceChanged ? { price: nextPriceValue } : {}),
                                         ...(availableChanged ? { available: updatedItem.available } : {}),
                                         ...(activeChanged ? { active: updatedItem.active } : {}),
+                                        ...(bestSellerChanged ? { isBestSeller: nextBestSellerValue } : {}),
+                                        ...(durationChanged ? { duration: nextDurationValue } : {}),
+                                        ...(ownerBoostChanged ? { ownerBoost: nextOwnerBoostValue } : {}),
                                         ...(descriptionChanged && nextDescription ? { description: nextDescription, descriptionSource: 'manual' } : {}),
                                         ...(imageChanged ? { images: pendingImage ? [{ url: pendingImage, name: imageName }] : [] } : {}),
                                     };
@@ -4228,6 +4287,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         }
                                         if (updatedItem.active !== undefined) {
                                             nextItem.active = updatedItem.active;
+                                        }
+                                        if (updatedItem.isBestSeller !== undefined) {
+                                            nextItem.isBestSeller = updatedItem.isBestSeller === true;
+                                        }
+                                        if (updatedItem.duration !== undefined || updatedItem.rawItem?.duration !== undefined) {
+                                            nextItem.duration = updatedItem.rawItem?.duration ?? updatedItem.duration;
+                                        }
+                                        if (updatedItem.ownerBoost !== undefined || updatedItem.rawItem?.ownerBoost !== undefined) {
+                                            nextItem.ownerBoost = updatedItem.rawItem?.ownerBoost ?? updatedItem.ownerBoost ?? 0;
                                         }
                                         if (updatedItem.categoryId) {
                                             nextItem.category = updatedItem.categoryId;
@@ -4329,6 +4397,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         createdItem.orderIndex = targetFile.extractedData.data.items.filter((item: any) => item.category === categoryId).length;
                         createdItem.active = newItem.active !== false;
                         createdItem.available = newItem.available !== false;
+                        createdItem.isBestSeller = newItem.isBestSeller === true;
+                        createdItem.duration = newItem.duration;
+                        createdItem.ownerBoost = newItem.ownerBoost ?? 0;
                         createdItem.attributes = (newItem.attributes || []).map((attribute) => ({
                             id: attribute.id,
                             active: attribute.active !== false,
@@ -4343,6 +4414,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             createdItem.category = rawItem.category || categoryId;
                             createdItem.active = rawItem.active !== false;
                             createdItem.available = rawItem.available !== false;
+                            createdItem.isBestSeller = rawItem.isBestSeller === true;
+                            createdItem.duration = rawItem.duration;
+                            createdItem.ownerBoost = rawItem.ownerBoost ?? 0;
                             createdItem.attributes = (rawItem.attributes || []).map((attribute) => ({
                                 ...attribute,
                                 price: String(attribute.price || ''),

@@ -16,6 +16,27 @@ The winning shape is narrow:
 
 > MenuList knows what is true today. GrowthOS turns that truth into something the owner can use today.
 
+## June 1, 2026 Founder Decision
+
+Keep the feature, but do not treat it as a main MenuList feature.
+
+GrowthOS / Growth Kits is a Pro/Premium retention and upsell layer for stores that already have current MenuList truth. It is not the first reason an SMB owner buys MenuList, and it should not be promoted as a homepage promise, standalone product, or generic marketing suite.
+
+Active posture:
+
+- Core MenuList remains official menu truth, QR, public page, customer actions, and owner-approved public surfaces.
+- Growth Kits remains a quiet higher-tier add-on that removes the blank page after the menu truth exists.
+- Mobile Today may show `Today's Sales Pack` only when there is a real, current reason or a fresh prepared pack.
+- Do not expand into scheduler, campaign dashboard, direct posting, growth analytics, ROI claims, offer engine, or broad creative tooling.
+
+Pilot rule:
+
+Run it with Pro/Premium clients first. If owners do not repeatedly copy, share, print, or mark packs used during a 30-day pilot, keep the feature paused/quiet and do not expand the surface.
+
+Promotion rule:
+
+Do not add it to the MenuList homepage. Consider a small Pro/Premium pricing or Features-page mention only after real owner usage proves demand.
+
 ## Why Not Standalone
 
 Standalone SMB marketing generation is already being attacked by large platforms.

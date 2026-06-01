@@ -204,7 +204,7 @@ If at any point it feels like "all three are equally important" — that's the m
 | Product        | Current State                                                                                                                   |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **MenuList**   | ✅ BUILT — Full infrastructure, active development                                                                              |
-| **GrowthOS**   | 🟡 ~60% EXISTS as Social Content Engine inside MenuList (`src/lib/campaigns/engine.ts`, 9 campaign types, 5 execution surfaces) |
+| **GrowthOS**   | 🟡 Exists as the new GrowthOS / Growth Kits add-on foundation; the old Social Content owner-generation engine has been deleted to avoid duplicate product paths. |
 | **KitStamp** | 🔴 NOT STARTED — Concept only                                                                                                   |
 
 GrowthOS extraction from MenuList only happens when scale demands it.

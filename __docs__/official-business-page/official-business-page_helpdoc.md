@@ -127,6 +127,14 @@ Your cover image appears at the top of your official business page.
 
 You can replace, remove, or regenerate the cover later from the same place.
 
+### How to Add Custom Attributes
+
+1. Go to **Settings** → **Business Profile** → **Business Attributes**
+2. Find **Custom Attributes**
+3. Add the attribute name
+4. Pick an icon or emoji
+5. Save changes
+
 ### How to Add "Known For" Text
 
 1. Go to **Settings** → **Business Profile** → **Official Page Settings**

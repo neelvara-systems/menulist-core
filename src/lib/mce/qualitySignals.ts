@@ -55,6 +55,7 @@ const SIGNAL_PRIORITY: Record<string, number> = {
     hidden: 7,
     priceOutliers: 8,
 };
+const REPAIR_MENU_SIGNAL_IDS = new Set(['descriptions', 'categoryIcons', 'translations', 'projectContent']);
 
 interface ComputeQualitySignalsOptions {
     projectPublicContent?: any;
@@ -404,6 +405,24 @@ export function computeQualitySignals(
  */
 export function isAllClear(signals: QualitySignal[]): boolean {
     return signals.length > 0 && signals.every(s => s.status === 'ok');
+}
+
+export function isRepairMenuSignal(signal: QualitySignal | string): boolean {
+    const id = typeof signal === 'string' ? signal : signal.id;
+    return REPAIR_MENU_SIGNAL_IDS.has(id);
+}
+
+export function getPrimaryQualitySignal(signals: QualitySignal[]): QualitySignal | null {
+    const warnings = signals
+        .filter((signal) => signal.status === 'warning')
+        .sort((a, b) => {
+            const aPriority = SIGNAL_PRIORITY[a.id] ?? 999;
+            const bPriority = SIGNAL_PRIORITY[b.id] ?? 999;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return b.count - a.count;
+        });
+
+    return warnings.find(isRepairMenuSignal) || warnings[0] || null;
 }
 
 /**

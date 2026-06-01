@@ -205,10 +205,10 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Knowledge Base',
         title: 'Docs that power page-aware support.',
         description:
-            'Import or write help articles, connect them to app pages, and use them as source material for approved answers, custom owner Q&A, FAQs, hosted help, and widget suggestions.',
+            'Import or write help articles, connect them to product pages, and use them as source material for approved answers, custom owner Q&A, FAQs, hosted help, and widget suggestions.',
         heroBullets: [
             'Import starter knowledge and files',
-            'Attach articles to app pages',
+            'Attach articles to product pages',
             'Keep Help Center, widget, and governance connected',
         ],
         proofTitle: 'Manage support knowledge without building a docs empire.',
@@ -226,7 +226,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Start from current docs, files, FAQs, release notes, owner Q&A, or starter support answers instead of building a blank help center.',
             },
             {
-                title: 'Organise by surface',
+                title: 'Organize by surface',
                 description:
                     'Connect articles to product pages, workflows, entities, tags, and support contexts so answers match where users are stuck.',
             },

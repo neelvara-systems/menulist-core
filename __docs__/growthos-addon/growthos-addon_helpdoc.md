@@ -10,6 +10,8 @@
 
 Growth Kits prepares short messages and prompts from your current MenuList menu.
 
+On the mobile Today tab, this appears as `Today's Sales Pack`: one customer message, one staff line, and one counter line for the day.
+
 You can use a kit for:
 
 - WhatsApp status or messages
@@ -39,7 +41,7 @@ If you do not see Growth Kits, your store may not be on an active Pro or Premium
 ## Use A WhatsApp Message
 
 1. Open the kit.
-2. Select `Copy message`.
+2. Select `Copy WhatsApp` or `Copy message`.
 3. Paste it into WhatsApp.
 4. Review it once before sending.
 
@@ -84,10 +86,12 @@ Review replies may not be enabled for every store.
 If you see:
 
 ```txt
-This kit may use old menu details.
+Menu details changed.
 ```
 
-Create the kit again before using it. This can happen when an item price, availability, hours, or public link changed after the kit was created.
+Select `Update pack` before using it. This can happen when an item price, availability, hours, or public link changed after the kit was created.
+
+Copy, share, and download actions are blocked until the pack is updated.
 
 ## When Refresh Fails
 

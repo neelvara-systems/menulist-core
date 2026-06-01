@@ -90,6 +90,7 @@ export async function checkAICapacity(
     storeId: number,
     actionType: string,
     quantity: number = 1,
+    preloadedSubscription?: FirestoreSubscriptionDoc | null,
 ): Promise<CapacityCheckResult> {
     // Free actions always allowed (even when kill switch is OFF)
     if (isFreeTierAction(actionType)) {
@@ -114,7 +115,9 @@ export async function checkAICapacity(
     }
 
     const unitsRequired = getUnitCost(actionType) * quantity;
-    let subscription = await getActiveSubscriptionForStore(tenantId, storeId);
+    let subscription = preloadedSubscription === undefined
+        ? await getActiveSubscriptionForStore(tenantId, storeId)
+        : preloadedSubscription;
 
     if (!subscription) {
         return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };

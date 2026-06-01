@@ -1263,6 +1263,30 @@ const getProjectsListCore = async (includeInactive = false) => {
     return { projects };
 };
 
+/**
+ * Read existing projects from the summary document without creating a default menu.
+ *
+ * Export/print/share surfaces should use this helper when an empty state is valid.
+ * The legacy project-list helper creates a default project when none exist, which is
+ * correct for editor/onboarding flows but would add write cost to read-only routes.
+ */
+const getExistingProjectsListCore = async (includeInactive = false) => {
+    const summaryDocRef = await getProjectsSummaryDocRef();
+    const summaryDoc = await getDoc(summaryDocRef);
+    const projectsMap = summaryDoc.exists()
+        ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+        : {};
+
+    const projects = Object.entries(projectsMap)
+        .map(([projectId, data]) => normalizeProjectReadState({
+            projectId,
+            ...(data as ProjectSummaryData),
+        }))
+        .filter((p) => includeInactive || p.active !== false);
+
+    return { projects };
+};
+
 export const getProjectsList = async (includeInactive = false) => {
     return await apiCallComposer(
         async () => {
@@ -1278,6 +1302,14 @@ export const getProjectsListWithoutLoader = async (includeInactive = false) => {
         async () => await getProjectsListCore(includeInactive),
         { includeInactive },
         "getProjectsListWithoutLoader",
+    );
+};
+
+export const getExistingProjectsListWithoutLoader = async (includeInactive = false) => {
+    return await apiCallComposerClientWithoutLoader(
+        async () => await getExistingProjectsListCore(includeInactive),
+        { includeInactive },
+        "getExistingProjectsListWithoutLoader",
     );
 };
 

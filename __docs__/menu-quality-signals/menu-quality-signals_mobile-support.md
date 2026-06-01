@@ -1,7 +1,7 @@
 # Menu Quality Signals — Mobile Support Assessment
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** June 1, 2026
 
 ---
 
@@ -16,14 +16,17 @@
 | **Touch** | Works with thumb-only? | Viewing signals = yes. Generating content = needs editor | ⚠ Borderline |
 | **Value** | Needed away from desk? | Viewing is useful anywhere. Acting requires editor access. | ⚠ Borderline |
 
-**Result:** PARTIAL — Show the signals panel on mobile (read-only awareness). Action buttons navigate to desktop editor features. The signal computation itself is lightweight and works on mobile.
+**Result:** SUPPORTED — Show the Menu Check panel on mobile. Repairable issues open the existing mobile Repair Menu sheet, and manual issues filter the mobile item list. The signal computation itself is lightweight and works on mobile.
 
 ## Mobile Implementation
 
-- **Screen:** Read-only panel in MobileMenuScreen or mobile dashboard
+- **Screen:** Menu Check panel in MobileMenuScreen
 - **Component:** `src/components/mobile/components/MenuQualitySignals.tsx`
-- **UI Library:** antd-mobile `Card` + `List`
-- **Actions:** View only on mobile. "Generate" buttons open a message: "Open MenuList on desktop to generate descriptions/images."
+- **UI Library:** antd-mobile `Collapse` + `List`
+- **Primary action:** One button appears before the issue list.
+  - Repairable issues open `BulkActionsSheet` with `action="aiRepair"`.
+  - Manual issues apply mobile filters such as missing price, missing photo, hidden item, translation missing, category icon missing, or unusual price.
+- **False positive handling:** Price outliers can be marked reviewed on mobile. The reviewed price is stored on the item `qualityReview` metadata and no longer counts as an outlier while the price is unchanged.
 
 ## Localization
 
@@ -36,3 +39,4 @@ Same NextAuth session, same RBAC.
 ---
 
 **Created:** March 15, 2026
+**Updated:** June 1, 2026 — mobile Menu Check now routes to Repair Menu and issue filters

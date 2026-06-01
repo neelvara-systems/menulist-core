@@ -98,7 +98,7 @@ publicPresence?: {
     /** Owner-managed business photos. First 3 are shown on OBP; tapping opens the full viewer. */
     photos?: string[];
 
-    /** Owner-defined public attribute chips, shown after controlled attributes. */
+    /** Owner-defined public attribute chips, shown after controlled attributes. `icon` supports legacy short text plus category icon picker values: `lu:*` or `emoji:*`. */
     customAttributes?: Array<{ id: string; label: string; icon?: string; active?: boolean }>;
 };
 
@@ -326,7 +326,7 @@ Primary implementation files:
 - Social links use the same social source family as the public menu footer: Instagram, Facebook, X/Twitter, LinkedIn, YouTube, WhatsApp, and Website.
 - Menu CTA listing excludes inactive/deleted menus and only includes the currently active special menu, using its base menu URL so the public resolver can apply the special-menu override.
 - Business attributes are filtered by business type before display and include compact icon labels.
-- Owner-defined custom attributes render after controlled attributes, capped by settings UI.
+- Owner-defined custom attributes render after controlled attributes, capped by settings UI, and support the shared category icon/emoji picker on desktop and mobile.
 - OBP photos open an in-page preview on click.
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
 - Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled.
