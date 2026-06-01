@@ -310,14 +310,15 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "db59a18c7be0a349cacf7af8bbb6cf4ff8a751099dda12f7266d2be261d1b6d3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "60cb8cfc79e07d00269ebf527ac334cbaf5c8cfd85e0e1d7eba8bd60b4ff3122",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
+          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
           "src/app/sites/answerlattice/layout.tsx": "929a25a92152150b307a7d540d46c8cda2dbc72f116e5bb9a7ff7e9fef06dd59",
           "src/app/sites/answerlattice/components/HeroSection.tsx": "83f4cd29f52faeb326f791145bfb0e0be294b69004594d5643483740e8d966b6",
-          "public/answerlattice-logo.svg": "2e704299f902959d7ae4c2f393ad86ff77f24ac2bc229a33e2703a9829ae45b7",
-          "public/answerlattice-og-image.svg": "82d90fd250eb658b355054cc2aa00ecfa86c4608a98386f15318f32eed57a6d1"
+          "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
+          "public/answerlattice-og-image.svg": "b5961446645786b7856d18bd446a7db478dcd0cb7b751409aa07e44966a94564",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "28bc588ed64754799b17c4b831563b12415a5cacb5e4eb7c812973fc4c1a8d64"
         },
-        "notes": "Design-final logo source applied on 2026-06-01."
+        "notes": "Transparent logo source applied on 2026-06-01; OpenGraph logo embed regenerated without the exported black canvas/frame."
       },
       "review": {
         "decision": "approved",
@@ -327,7 +328,7 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Answerlattice OpenGraph asset refreshed with the design-final logo source."
+        "notes": "Answerlattice OpenGraph asset refreshed with the transparent canonical logo source."
       }
     },
     "answerlattice.brand.logo.mark": {
@@ -344,13 +345,14 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "db59a18c7be0a349cacf7af8bbb6cf4ff8a751099dda12f7266d2be261d1b6d3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "60cb8cfc79e07d00269ebf527ac334cbaf5c8cfd85e0e1d7eba8bd60b4ff3122",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
+          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
           "src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx": "468a5ea5c35b9541ce36dece7ae49d2e6e661e4eaaf655e2fe97358163747f11",
-          "src/components/atoms/answerlatticeLogoMark/index.tsx": "ef65fa6a20ceb3f18fecf1bf28c606f58023e8865f81d351f401e543c624d81a",
-          "public/answerlattice-logo.svg": "2e704299f902959d7ae4c2f393ad86ff77f24ac2bc229a33e2703a9829ae45b7"
+          "src/components/atoms/answerlatticeLogoMark/index.tsx": "af6c5590d86e42f002268dd1c81ae40ff5d71d028c1e9bb0967cce15127b34ae",
+          "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "28bc588ed64754799b17c4b831563b12415a5cacb5e4eb7c812973fc4c1a8d64"
         },
-        "notes": "Design-final logo source applied on 2026-06-01."
+        "notes": "Transparent logo source applied on 2026-06-01; logo mark derivatives regenerated without the exported black canvas/frame, and visible UI/diagram surfaces use the shared inline SVG-path atom for the same geometry/colors."
       },
       "review": {
         "decision": "approved",
@@ -360,7 +362,7 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Answerlattice logo mark assets refreshed from the design-final SVG source."
+        "notes": "Answerlattice logo mark assets refreshed from the transparent canonical SVG source."
       }
     },
     "answerlattice.pwa.icons": {
@@ -388,13 +390,14 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "db59a18c7be0a349cacf7af8bbb6cf4ff8a751099dda12f7266d2be261d1b6d3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "60cb8cfc79e07d00269ebf527ac334cbaf5c8cfd85e0e1d7eba8bd60b4ff3122",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
+          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
           "public/answerlattice.webmanifest": "6c9d064d8db5b86b6c0e1a80671b0ff3a63e9e0919a37fcaf2bd9f489ed38231",
-          "scripts/website-assets/generate-answerlattice-splash.js": "92f25208f785111acb8fb6febc4e1f617eb474b2d9eb3673863206574cb9bf4f",
-          "public/answerlattice-logo.svg": "2e704299f902959d7ae4c2f393ad86ff77f24ac2bc229a33e2703a9829ae45b7"
+          "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794",
+          "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "28bc588ed64754799b17c4b831563b12415a5cacb5e4eb7c812973fc4c1a8d64"
         },
-        "notes": "Design-final logo source applied on 2026-06-01."
+        "notes": "Transparent logo source applied on 2026-06-01; favicon and PWA icon derivatives regenerated without the exported black canvas/frame."
       },
       "review": {
         "decision": "approved",
@@ -404,7 +407,7 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Answerlattice icon family refreshed from the design-final SVG source."
+        "notes": "Answerlattice icon family refreshed from the transparent canonical SVG source."
       }
     },
     "answerlattice.pwa.splash": {
@@ -427,14 +430,15 @@
       "sourceFingerprint": {
         "files": {
           "packages/asset-factory/slots/answerlattice.asset-slots.ts": "45863cb31378bc0a8fe0a9b640a61179f59f176771b9fe32fc3aeb1f29e7f799",
-          "packages/asset-factory/brand/answerlattice.asset-context.md": "db59a18c7be0a349cacf7af8bbb6cf4ff8a751099dda12f7266d2be261d1b6d3",
-          "__docs__/answerlattice/answerlattice-website/README.md": "60cb8cfc79e07d00269ebf527ac334cbaf5c8cfd85e0e1d7eba8bd60b4ff3122",
+          "packages/asset-factory/brand/answerlattice.asset-context.md": "02d4d2aef83d825af8259d21837ea951d6345f47415dfc7466144e76a4329c99",
+          "__docs__/answerlattice/answerlattice-website/README.md": "31953424edbcdefa826eea4609e851500a5eba2246e5534a59aa9e64bbdec0b1",
           "src/lib/answerlattice/pwaAssets.ts": "9d7275dd3027b1da0a6c0a74759dc721031a7f87b45aa72e99004e6db53161ec",
-          "scripts/website-assets/generate-answerlattice-splash.js": "92f25208f785111acb8fb6febc4e1f617eb474b2d9eb3673863206574cb9bf4f",
-          "public/answerlattice-logo.svg": "2e704299f902959d7ae4c2f393ad86ff77f24ac2bc229a33e2703a9829ae45b7",
-          "public/answerlattice-logo-mark-wide.png": "cb8573b964c0d566cdc5c8770417a911c52a1f3a1cd83d35cbb08e1e45283797"
+          "scripts/website-assets/generate-answerlattice-splash.js": "321c92eb6a134d5ef45f020a9da048e0edf5df8396b06e444f2575a132a3a794",
+          "public/answerlattice-logo.svg": "4e77221dd812775f1a618607f7f1b68fb4551a2575f373b1b323c40e8ecddb73",
+          "public/answerlattice-logo-mark-wide.png": "fdfcb20bf4ca2f67dd4fea4c28faa6b3359b70049b66ae03e93f1030fc15f76d",
+          "scripts/website-assets/generate-answerlattice-logo-assets.js": "28bc588ed64754799b17c4b831563b12415a5cacb5e4eb7c812973fc4c1a8d64"
         },
-        "notes": "Design-final logo source applied on 2026-06-01."
+        "notes": "Transparent logo source applied on 2026-06-01; splash assets regenerated with surface-owned background and transparent logo source."
       },
       "review": {
         "decision": "approved",
@@ -444,7 +448,7 @@
         "performance": "pass",
         "reviewer": "asset-factory-v1",
         "reviewedAt": "2026-05-31",
-        "notes": "Representative generated Answerlattice splash asset; full family remains under public/answerlattice-splash."
+        "notes": "Representative generated Answerlattice splash asset rebuilt from the transparent logo source; full family remains under public/answerlattice-splash."
       }
     },
     "answerlattice.home.hero.support-control-motion": {

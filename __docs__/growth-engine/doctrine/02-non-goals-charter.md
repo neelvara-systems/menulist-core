@@ -44,6 +44,13 @@ Growth Engine will not:
 33. Send or publish without a decision snapshot.
 34. Change sender identity midway through a target conversation to force delivery.
 35. Use Apple Business Connect or Bing Places as lead-gen sources or truth authorities.
+36. Treat Google Places content as durable MenuList truth.
+37. Use Google Places wildcard field masks in production.
+38. Store Google Places photos, reviews, profile content, or menu content as Growth Engine assets.
+39. Use Foursquare Places API pay-as-you-go data to contact listed businesses as prospects without separate contract or written permission.
+40. Treat Foursquare source content as MenuList truth.
+41. Rehost Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content.
+42. Publish Business Truth Graph candidate or low-confidence edges as public truth.
 
 ## Rejection Rule
 
@@ -71,6 +78,12 @@ Candidate intelligence is not truth.
 
 MenuList truth starts only after owner confirmation or approved MenuList verification paths.
 
+Google Places place IDs may be stored as provider identity handles. Broader Places API content must stay source-limited and must not become MenuList truth, public artifact content, sitemap content, feed content, or truth-packet content.
+
+Foursquare place IDs, category IDs, and chain IDs may be stored as provider identity handles when source policy allows it. Foursquare Places API pay-as-you-go data must not be used for prospect outreach unless a separate contract or written permission explicitly allows it. Foursquare source content must not become MenuList truth, public artifact content, sitemap content, feed content, or truth-packet content.
+
+The Business Truth Graph is a state model, not a shortcut around verification. Candidate edges describe where to inspect next. Confirmed truth edges require owner confirmation or approved MenuList verification.
+
 ## Distribution Rule
 
 Public distribution must come from confirmed MenuList truth.
@@ -95,4 +108,6 @@ Blocked public distribution surfaces:
 - private contact data
 - source payloads
 - Google Maps photos, reviews, menus, or profile content
+- Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content
+- Business Truth Graph candidate or low-confidence edges
 - external listing facts that have not become confirmed MenuList truth

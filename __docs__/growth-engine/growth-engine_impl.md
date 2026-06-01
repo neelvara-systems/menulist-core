@@ -206,11 +206,12 @@ type GrowthKillSwitch = {
 ```ts
 type GrowthSourcePolicy = {
   sourcePolicyId: string;
-  provider: 'manual_csv' | 'apify' | 'first_party' | 'other';
+  provider: 'manual_csv' | 'google_places' | 'foursquare_places_api' | 'fsq_os_places' | 'apify' | 'first_party' | 'other';
   status: 'draft' | 'approved' | 'paused' | 'blocked';
   allowedUse: 'candidate_discovery' | 'enrichment' | 'verification_only';
   allowedFields: string[];
   blockedFields: string[];
+  fieldMaskProfiles?: string[];
   rawPayloadRetentionDays: number;
   mayUseForOutreach: boolean;
   mayUseInArtifact: boolean;
@@ -218,6 +219,103 @@ type GrowthSourcePolicy = {
   approvalOwner: string;
   approvedAt?: string;
   updatedAt: string;
+};
+```
+
+### Google Places Source Run
+
+```ts
+type GrowthGooglePlacesSourceRun = {
+  sourceRunId: string;
+  sourcePolicyId: string;
+  provider: 'google_places';
+  query: string;
+  includedType?: string;
+  regionCode?: string;
+  languageCode?: string;
+  fieldMask: string;
+  pageSize: number;
+  maxPages: number;
+  estimatedSkuTier: 'ids_only' | 'essentials' | 'pro' | 'enterprise' | 'enterprise_atmosphere';
+  status: 'draft' | 'queued' | 'running' | 'succeeded' | 'blocked' | 'failed';
+  blockers: string[];
+  createdAt: string;
+  completedAt?: string;
+};
+```
+
+### External Place Identity
+
+```ts
+type GrowthExternalPlaceIdentity = {
+  targetId: string;
+  provider: 'google_places' | 'foursquare_places_api' | 'fsq_os_places';
+  externalPlaceId: string;
+  resourceName?: string;
+  externalSourceUrl?: string;
+  contentLicense?: string;
+  lastCheckedAt: string;
+  sourceRunId: string;
+  fieldMaskUsed: string;
+  durableContentStored: false;
+};
+```
+
+### Foursquare Source Run
+
+```ts
+type GrowthFoursquareSourceRun = {
+  sourceRunId: string;
+  sourcePolicyId: string;
+  provider: 'foursquare_places_api' | 'fsq_os_places';
+  query?: string;
+  ll?: string;
+  radius?: number;
+  near?: string;
+  fsqCategoryIds?: string[];
+  fsqChainIds?: string[];
+  fieldsProfile: 'pro_identity' | 'premium_signal';
+  limit: number;
+  estimatedTier: 'pro' | 'premium' | 'open_source';
+  outreachEligibility: 'blocked_by_terms' | 'contract_approved' | 'not_applicable';
+  status: 'draft' | 'queued' | 'running' | 'succeeded' | 'blocked' | 'failed';
+  blockers: string[];
+  createdAt: string;
+  completedAt?: string;
+};
+```
+
+### Business Truth Graph
+
+```ts
+type GrowthBusinessTruthGraphNode = {
+  nodeId: string;
+  targetId: string;
+  type: 'business' | 'location' | 'outlet' | 'menu' | 'surface' | 'source' | 'handoff' | 'claim' | 'freshness' | 'attribution';
+  truthState: 'candidate' | 'owner_confirmed' | 'menulist_verified' | 'blocked';
+  sourceRefs: string[];
+  updatedAt: string;
+};
+
+type GrowthBusinessTruthGraphEdge = {
+  edgeId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  relation:
+    | 'same_as'
+    | 'located_at'
+    | 'has_outlet'
+    | 'has_menu'
+    | 'claimed_by'
+    | 'published_as'
+    | 'sourced_from'
+    | 'handed_off_to'
+    | 'supersedes'
+    | 'needs_freshness_review'
+    | 'attributed_to';
+  confidence: 'high' | 'medium' | 'low';
+  truthState: 'candidate' | 'owner_confirmed' | 'menulist_verified' | 'blocked';
+  createdAt: string;
 };
 ```
 
@@ -298,6 +396,10 @@ type GrowthAutomationWorkflow = {
     stepId: string;
     type:
       | 'policy_gate'
+      | 'google_places_seed'
+      | 'google_places_details'
+      | 'foursquare_identity_graph'
+      | 'business_truth_graph_rollup'
       | 'enrichment_waterfall'
       | 'ai_worker'
       | 'decision_snapshot'
@@ -328,7 +430,7 @@ type GrowthEnrichmentWaterfall = {
   cacheKeyFields: string[];
   steps: {
     stepId: string;
-    provider: 'first_party' | 'manual_csv' | 'owner_site' | 'apify' | 'ai_extractor' | 'other';
+    provider: 'first_party' | 'manual_csv' | 'owner_site' | 'google_places' | 'foursquare_places_api' | 'fsq_os_places' | 'apify' | 'ai_extractor' | 'other';
     allowedFields: string[];
     maxCostUsd?: number;
     stopWhenValid: boolean;
@@ -535,6 +637,11 @@ Hot operational:
 - `growthEngineArtifactReviews`
 - `growthEngineOnboardingFlowInventory`
 - `growthEngineProviderRegister`
+- `growthEngineGooglePlacesSourceRuns`
+- `growthEngineFoursquareSourceRuns`
+- `growthEngineExternalPlaceIdentities`
+- `growthEngineBusinessTruthGraphNodes`
+- `growthEngineBusinessTruthGraphEdges`
 - `growthEngineAutomationWorkflows`
 - `growthEngineWorkflowRuns`
 - `growthEngineEnrichmentWaterfalls`
@@ -575,6 +682,10 @@ All routes require internal/admin auth, Zod validation, secure logging, rate lim
 | Route | Method | Purpose |
 | --- | --- | --- |
 | `/api/growth-engine/source-runs` | POST/GET | Create/list source runs. |
+| `/api/growth-engine/source-runs/google-places` | POST | Create approved Google Places Text Search seed runs with field-mask and budget validation. |
+| `/api/growth-engine/source-runs/google-places/[sourceRunId]/details` | POST | Run approved Place Details enrichment for filtered targets only. |
+| `/api/growth-engine/source-runs/foursquare` | POST | Create approved Foursquare identity/category/chain source runs with PAYG outreach blocking and field-profile validation. |
+| `/api/growth-engine/business-truth-graph` | GET/POST | Inspect or update candidate graph nodes and edges with provenance, confidence, and truth state. |
 | `/api/growth-engine/leads` | GET | Bounded lead summary list. |
 | `/api/growth-engine/leads/[leadId]` | GET/PATCH | Detail and operator updates. |
 | `/api/growth-engine/distribution-targets` | POST/GET | Create/list distribution targets. |
@@ -627,6 +738,10 @@ Workers:
 - decision snapshot builder
 - operator work-item router
 - source import
+- Google Places Text Search seed discovery
+- Google Places Details selective enrichment
+- Foursquare identity/category/chain enrichment
+- business truth graph rollup
 - normalization/dedupe
 - lead intelligence
 - distribution target rollup
@@ -677,6 +792,8 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - Data access, correction, and deletion requests must be tracked separately from campaign workflow.
 - Public distribution jobs must read confirmed MenuList truth only.
 - Private artifacts must never be included in sitemaps, IndexNow, feed exports, or truth packets.
+- Foursquare PAYG Places Data must not be used to contact listed businesses as prospects unless a separate contract or written permission explicitly allows it.
+- Foursquare photos, tips, ratings, descriptions, popularity, menus, or profile content must not appear in public artifacts, sitemaps, feeds, truth packets, or MenuList truth.
 - Google Business Profile API or GoogleLocations usage must be blocked unless owner authorization and existing relationship evidence are present.
 - Google Indexing API must not be used for MenuList menu/business pages.
 
@@ -687,43 +804,51 @@ No new MenuList scheduled function should be added for Growth Engine work.
 3. Firestore schema constants and Zod types.
 4. Source policy registry.
 5. Distribution target registry.
-6. Automation workflow engine.
-7. Enrichment waterfall registry and runner.
-8. AI worker registry and eval-gated run executor.
-9. Decision snapshot ledger.
-10. Operator workboard and work-item queues.
-11. Channel compliance policy registry.
-12. Sender-domain readiness registry.
-13. Sender assignment and pacing registry.
-14. Consent/suppression ledger.
-15. Provider/vendor decision register.
-16. Onboarding flow inventory.
-17. Canonical surface publisher.
-18. Discovery publisher.
-19. Menu feed exporter.
-20. External listing handoff manager for GBP, Apple Business Connect, and Bing Places.
-21. Truth packet publisher.
-22. Surface health and freshness monitor.
-23. Manual CSV import and one approved source adapter.
-24. Dedupe and suppression services.
-25. Lead and distribution target summary lists.
-26. Campaign draft and dry-run.
-27. Artifact review/takedown if artifacts are used.
-28. Email template renderer and safety checker.
-29. Email execution adapter.
-30. WhatsApp assisted queue guarded by policy.
-31. Tracked route bridge to MenuList onboarding.
-32. Feedback ingestion and campaign/distribution summaries.
-33. DNC/unsubscribe/bounce handling.
-34. Global/channel/campaign/provider/surface/automation kill switches.
-35. Cost summary dashboard.
-36. Eval fixtures and pass/fail thresholds.
-37. Incident runbook and evidence export.
+6. Business Truth Graph registry.
+7. Automation workflow engine.
+8. Enrichment waterfall registry and runner.
+9. AI worker registry and eval-gated run executor.
+10. Decision snapshot ledger.
+11. Operator workboard and work-item queues.
+12. Channel compliance policy registry.
+13. Sender-domain readiness registry.
+14. Sender assignment and pacing registry.
+15. Consent/suppression ledger.
+16. Provider/vendor decision register.
+17. Onboarding flow inventory.
+18. Canonical surface publisher.
+19. Discovery publisher.
+20. Menu feed exporter.
+21. External listing handoff manager for GBP, Apple Business Connect, and Bing Places.
+22. Truth packet publisher.
+23. Surface health and freshness monitor.
+24. Manual CSV import, Google Places source adapter, and Foursquare identity/category/chain adapter.
+25. Dedupe and suppression services.
+26. Lead and distribution target summary lists.
+27. Campaign draft and dry-run.
+28. Artifact review/takedown if artifacts are used.
+29. Email template renderer and safety checker.
+30. Email execution adapter.
+31. WhatsApp assisted queue guarded by policy.
+32. Tracked route bridge to MenuList onboarding.
+33. Feedback ingestion and campaign/distribution summaries.
+34. DNC/unsubscribe/bounce handling.
+35. Global/channel/campaign/provider/surface/automation kill switches.
+36. Cost summary dashboard.
+37. Eval fixtures and pass/fail thresholds.
+38. Incident runbook and evidence export.
 
 ## 11. Implementation Non-Negotiables
 
 - No campaign launch without dry-run.
 - No source import without approved source policy.
+- No Google Places call without approved source policy, field-mask profile, budget cap, and provider register entry.
+- No Google Places wildcard field mask in production.
+- No Google Places Details enrichment before dedupe and pre-score.
+- No Foursquare Places API PAYG outreach use without separate contract or written permission.
+- No Foursquare Premium Signal profile without explicit approval, budget cap, and public-output blocker.
+- No Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content in public artifacts, public pages, sitemaps, feeds, truth packets, or MenuList truth.
+- No Business Truth Graph candidate or low-confidence edge reaching public publishing.
 - No distribution target without source provenance.
 - No public surface publish without owner-confirmed or approved MenuList-verified truth.
 - No automation workflow execution without idempotency key, budget check, and kill-switch check.
@@ -742,6 +867,7 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - No artifact without noindex, source-rights check, expiry, and takedown path.
 - No public demo sites.
 - No Google Maps photos/reviews/menu/profile rehosting.
+- No durable storage of broader Places content as MenuList truth; persist place IDs and request metadata only.
 - No raw event dashboard reads.
 - No AI free-form campaign writing.
 - No AI classifier autonomy without eval pass thresholds.
@@ -759,6 +885,9 @@ Before any implementation handoff:
 - function emulator tests for source/send/webhook workers
 - workflow engine idempotency/retry/kill-switch tests
 - enrichment waterfall cache/cost/stop-condition tests
+- Google Places field-mask, quota, and retention tests
+- Foursquare source-policy, PAYG outreach-blocking, field-profile, and retention tests
+- Business Truth Graph node/edge provenance, confidence, truth-state, and public-publish blocking tests
 - AI worker schema/eval/budget tests
 - decision snapshot evidence tests
 - sender assignment and pacing tests

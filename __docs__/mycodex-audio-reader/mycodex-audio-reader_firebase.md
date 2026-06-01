@@ -8,8 +8,8 @@ No Firebase impact.
 
 | Operation | Count | Reason |
 | --- | ---: | --- |
-| Firestore reads | 0 | Audio uses already-rendered page text. |
-| Firestore writes | 0 | Preferences are stored in browser `localStorage`. |
+| Firestore reads | 0 | Page audio uses rendered text; favorites playback reads Markdown from the same-origin MyCodex route, not Firestore. |
+| Firestore writes | 0 | Preferences, queue, favorites, and scroll positions are stored in browser `localStorage`. |
 | Firestore deletes | 0 | No server state is created. |
 | Realtime listeners | 0 | No live data subscription. |
 | Cloud Functions | 0 | No backend synthesis or queue. |

@@ -22,6 +22,7 @@ Every first-version module needs:
 - kill-switch checks
 - retry/queue behavior where needed
 - data retention policy
+- Business Truth Graph node and edge state
 - automation workflow state
 - enrichment waterfall state
 - AI worker eval state
@@ -38,28 +39,29 @@ No outbound channel can send and no public distribution job can publish until th
 
 1. lead identity model
 2. distribution target identity model
-3. dedupe keys
-4. suppressions
-5. campaign model
-6. approved templates
-7. canonical surface model
-8. discovery publish job model
-9. menu feed export model
-10. GBP handoff model
-11. dry-run engine
-12. budget policy
-13. kill switches
-14. send job model
-15. DNC/unsubscribe handling
-16. route tracking
-17. feedback ingestion
-18. freshness and surface health monitor
-19. automation workflow engine
-20. enrichment waterfall registry
-21. AI worker registry
-22. decision snapshot ledger
-23. sender assignment and pacing registry
-24. operator workboard
+3. Business Truth Graph model
+4. dedupe keys
+5. suppressions
+6. campaign model
+7. approved templates
+8. canonical surface model
+9. discovery publish job model
+10. menu feed export model
+11. GBP handoff model
+12. dry-run engine
+13. budget policy
+14. kill switches
+15. send job model
+16. DNC/unsubscribe handling
+17. route tracking
+18. feedback ingestion
+19. freshness and surface health monitor
+20. automation workflow engine
+21. enrichment waterfall registry
+22. AI worker registry
+23. decision snapshot ledger
+24. sender assignment and pacing registry
+25. operator workboard
 
 ## 3. Launch Baseline
 
@@ -67,6 +69,7 @@ No outbound channel can send and no public distribution job can publish until th
 source import
 -> normalize/dedupe/suppress
 -> distribution target registry
+-> Business Truth Graph registry
 -> automation workflow engine
 -> enrichment waterfall
 -> AI worker gated decision
@@ -144,6 +147,7 @@ First controlled use is not approved until:
 
 - dry-run can block unsafe campaigns
 - distribution targets can block public publishing from candidate-only data
+- Business Truth Graph can block public publishing from candidate or low-confidence edges
 - canonical surfaces have structured data, sitemap, and freshness state
 - discovery jobs can be blocked, retried, and audited
 - menu feed exports validate entity/menu/section/item data

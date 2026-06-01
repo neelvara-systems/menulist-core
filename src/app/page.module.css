@@ -24,11 +24,14 @@
 }
 
 .loadingWrapAnswerlattice {
-  background: #0d0d0d;
+  background: #070714;
 }
 
 .loadingWrapAnswerlattice::before {
-  background: none;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(194, 224, 222, 0.18), transparent 24%),
+    radial-gradient(circle at 52% 52%, rgba(139, 139, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 48% 58%, rgba(49, 46, 129, 0.28), transparent 48%);
 }
 
 .loadingWatermark {

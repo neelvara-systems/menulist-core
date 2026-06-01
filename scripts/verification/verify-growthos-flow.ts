@@ -189,6 +189,22 @@ const updatedFacts = buildGrowthOSSourceFacts({
     storeData,
     tId: "dry-tenant",
 });
+
+function withGrowthOSFlags<T>(overrides: Record<string, unknown>, fn: () => T): T {
+    const previous = { ...FEATURE_FLAGS };
+    Object.assign(FEATURE_FLAGS, overrides);
+    try {
+        return fn();
+    } finally {
+        Object.assign(FEATURE_FLAGS, previous);
+    }
+}
+
+const makeSubscription = (planId: string, status = "active") => ({
+    planId,
+    status,
+} as any);
+
 const entitlement = evaluateGrowthOSEntitlement({
     activeSubscription: null,
     storeDetails: storeData as any,
@@ -196,9 +212,75 @@ const entitlement = evaluateGrowthOSEntitlement({
 });
 const deferredMatches = scanDeferredGrowthOSSurface();
 
-assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === false, "feature flag defaults off");
+assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
+assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
 assertCheck(FEATURE_FLAGS.GROWTHOS_DIRECT_POSTING === "disabled", "direct posting remains disabled");
-assertCheck(entitlement.allowed === false && entitlement.reason === "feature_off", "disabled feature denies entitlement");
+assertCheck(entitlement.allowed === false && entitlement.reason === "not_paid", "enabled GrowthOS denies stores without Pro or Premium");
+withGrowthOSFlags({
+    ENABLE_GROWTHOS_ADDON: false,
+}, () => {
+    const disabled = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    assertCheck(disabled.allowed === false && disabled.reason === "feature_off", "GrowthOS kill switch denies even active Pro plan");
+});
+withGrowthOSFlags({
+    ENABLE_GROWTHOS_ADDON: true,
+    GROWTHOS_ADDON_ACCESS: "paid",
+    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"],
+}, () => {
+    const starter = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("starter"),
+        storeDetails: { ...(storeData as any), growthosEntitlement: true },
+        storeId: storeData.storeId,
+    });
+    const pro = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    const premium = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("premium"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    const expiredPro = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro", "expired"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    assertCheck(starter.allowed === false && starter.reason === "not_paid", "GrowthOS denies starter even with explicit add-on flags");
+    assertCheck(pro.allowed === true, "GrowthOS paid gate allows active Pro plan");
+    assertCheck(premium.allowed === true, "GrowthOS paid gate allows active Premium plan");
+    assertCheck(expiredPro.allowed === false && expiredPro.reason === "not_paid", "GrowthOS paid gate denies inactive Pro subscription");
+});
+withGrowthOSFlags({
+    ENABLE_GROWTHOS_ADDON: true,
+    GROWTHOS_ADDON_ACCESS: "pilot",
+    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"],
+    GROWTHOS_PILOT_STORE_IDS: [storeData.storeId],
+}, () => {
+    const pilotWithoutPaidPlan = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("starter"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    const pilotWithPaidPlan = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro"),
+        storeDetails: storeData as any,
+        storeId: storeData.storeId,
+    });
+    const paidPlanOutsidePilot = evaluateGrowthOSEntitlement({
+        activeSubscription: makeSubscription("pro"),
+        storeDetails: storeData as any,
+        storeId: "not-in-pilot",
+    });
+    assertCheck(pilotWithoutPaidPlan.allowed === false && pilotWithoutPaidPlan.reason === "not_paid", "GrowthOS pilot gate still requires Pro or Premium");
+    assertCheck(pilotWithPaidPlan.allowed === true, "GrowthOS pilot gate allows listed Pro store");
+    assertCheck(paidPlanOutsidePilot.allowed === false && paidPlanOutsidePilot.reason === "not_pilot_store", "GrowthOS pilot gate blocks paid stores outside allowlist");
+});
 assertCheck(facts.items.length === 3, "source facts read extracted menu items");
 assertCheck(facts.items.some((item) => item.name === "Free Dessert" && item.available === false), "source facts retain unavailable item for staff guardrails");
 assertCheck(readiness.status !== "blocked", "readiness allows available menu facts");

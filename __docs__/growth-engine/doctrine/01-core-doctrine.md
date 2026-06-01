@@ -18,6 +18,7 @@ detect menu truth gaps
 contact safely where allowed
 route owners into MenuList claim/onboarding
 activate confirmed MenuList truth
+maintain candidate and confirmed business truth graph relationships
 publish owned distribution surfaces
 notify discovery systems where allowed
 monitor freshness and drift
@@ -66,12 +67,13 @@ No outreach or distribution without:
 9. kill-switch coverage
 10. tracked onboarding route when a link is used
 11. distribution target identity
-12. owner-confirmed or approved MenuList-verified truth before public publishing
-13. structured data and sitemap readiness before discovery publishing
-14. automation workflow idempotency, budget, and kill-switch checks
-15. decision snapshot before any route, send, publish, notify, or pause action
-16. AI eval pass before autonomous classification or generation
-17. sender assignment before outbound execution
+12. Business Truth Graph provenance, confidence, and truth state
+13. owner-confirmed or approved MenuList-verified truth before public publishing
+14. structured data and sitemap readiness before discovery publishing
+15. automation workflow idempotency, budget, and kill-switch checks
+16. decision snapshot before any route, send, publish, notify, or pause action
+17. AI eval pass before autonomous classification or generation
+18. sender assignment before outbound execution
 
 ## 4. System Posture
 
@@ -94,6 +96,7 @@ It should run on:
 - surface health checks
 - freshness checks
 - discovery publish queues
+- Business Truth Graph nodes and edges
 
 It should not run on:
 
@@ -130,6 +133,7 @@ Growth Engine owns:
 - sender assignment and pacing
 - operator work queues
 - distribution target operations
+- Business Truth Graph candidate edges
 - campaigns
 - outreach
 - public surface readiness

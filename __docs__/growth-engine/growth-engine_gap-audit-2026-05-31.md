@@ -24,6 +24,9 @@ This audit used current public/official sources for channel rules, cost shape, a
 | Amazon SES pricing | https://aws.amazon.com/ses/pricing/ |
 | Resend pricing/features | https://resend.com/pricing |
 | Apify Google Maps Scraper example | https://apify.com/crustapi/google-maps-scraper |
+| Foursquare Places API overview | https://docs.foursquare.com/developer/reference/places-api-overview |
+| Foursquare categories and chains | https://docs.foursquare.com/data-products/docs/categories and https://docs.foursquare.com/data-products/docs/chains |
+| Foursquare PAYG API terms | https://foursquare.com/legal/terms/apilicenseagreement/ |
 | Apollo | https://www.apollo.io/ |
 | Clay | https://www.clay.com/ |
 | Instantly | https://instantly.ai/ |
@@ -34,29 +37,30 @@ This audit used current public/official sources for channel rules, cost shape, a
 
 Growth Engine is a valid product direction, but the first-pass docs were not yet build-ready.
 
-The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness, automation readiness, and distribution readiness: source permission, automation workflows, enrichment waterfalls, decision snapshots, AI worker evals, sender assignment, operator work queues, sender readiness, consent, suppression, canonical surfaces, structured data, sitemaps, menu feed exports, truth packets, provider cost, legal posture, artifact QA, and incident handling need to be first-class product modules before the first send or public publish.
+The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness, automation readiness, graph readiness, and distribution readiness: source permission, Business Truth Graph state, automation workflows, enrichment waterfalls, decision snapshots, AI worker evals, sender assignment, operator work queues, sender readiness, consent, suppression, canonical surfaces, structured data, sitemaps, menu feed exports, truth packets, provider cost, legal posture, artifact QA, and incident handling need to be first-class product modules before the first send or public publish.
 
 Implementation can start from the current docs, but no sending or public publishing is allowed until these gates are implemented:
 
 1. Approved source policy registry.
 2. Distribution target registry.
-3. Owned automation workflow engine.
-4. Enrichment waterfall registry.
-5. Decision snapshot ledger.
-6. AI worker registry with eval dataset and pass thresholds.
-7. Sender assignment and pacing model.
-8. Operator workboard and exception queues.
-9. Canonical MenuList surface publishing contract.
-10. Structured data, sitemap, feed export, and truth-packet contracts.
-11. External listing handoff contract for GBP, Apple Business Connect, and Bing Places.
-12. Channel compliance matrix by country and channel.
-13. Sender-domain readiness and warm-up policy.
-14. Consent, unsubscribe, DNC, and complaint ledger.
-15. MenuList onboarding flow inventory.
-16. Artifact review and takedown workflow.
-17. Provider decision matrix and vendor register.
-18. Incident severity and rollback runbook.
-19. Cost caps for source, email, AI, Firestore, automation, discovery publishing, and analytics.
+3. Business Truth Graph registry.
+4. Owned automation workflow engine.
+5. Enrichment waterfall registry.
+6. Decision snapshot ledger.
+7. AI worker registry with eval dataset and pass thresholds.
+8. Sender assignment and pacing model.
+9. Operator workboard and exception queues.
+10. Canonical MenuList surface publishing contract.
+11. Structured data, sitemap, feed export, and truth-packet contracts.
+12. External listing handoff contract for GBP, Apple Business Connect, and Bing Places.
+13. Channel compliance matrix by country and channel.
+14. Sender-domain readiness and warm-up policy.
+15. Consent, unsubscribe, DNC, and complaint ledger.
+16. MenuList onboarding flow inventory.
+17. Artifact review and takedown workflow.
+18. Provider decision matrix and vendor register.
+19. Incident severity and rollback runbook.
+20. Cost caps for source, email, AI, Firestore, automation, discovery publishing, and analytics.
 
 ## 3. If I Used This Tomorrow
 
@@ -64,6 +68,7 @@ Implementation can start from the current docs, but no sending or public publish
 | --- | --- | --- |
 | Import leads | I would not know which source is legally approved, what fields can be retained, or whether scraping is allowed beyond experiment. | Add source policy registry with source terms, allowed fields, retention, provenance, and approval owner. |
 | Turn a lead into distribution | I would not know the business/location/menu target identity, claim state, truth state, or surface inventory. | Add distribution target registry. |
+| Build durable identity | I would not know whether a source fact is a business, location, outlet, menu, claim, surface, or handoff relationship, or whether it is candidate-only. | Add Business Truth Graph nodes and edges with provenance, confidence, truth state, and public-publish blockers. |
 | Automate repeated work | I would not know which trigger ran, which step failed, or whether retry/budget/kill-switch rules were checked. | Add automation workflow engine with typed runs and step events. |
 | Enrich target facts | I would not know source/provider order, cost, cache key, or when to stop. | Add enrichment waterfall registry and runner. |
 | Trust AI decisions | I would not know prompt version, eval state, source evidence, rejected facts, or confidence. | Add AI worker registry and decision snapshot ledger. |
@@ -114,6 +119,7 @@ That means the product should optimize for owner-confirmed MenuList truth covera
 | --- | --- | --- |
 | Source policy registry | Lead source turns into compliance and source-rights risk. | Every source must define allowed use, allowed fields, retention, raw payload policy, and approval owner. |
 | Distribution target registry | Leads do not become owned distribution coverage. | Every target needs business/location/menu identity, claim state, truth state, canonical URL, and surface inventory. |
+| Business Truth Graph registry | Pages and lead rows do not compound into public business truth. | Model business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships with provenance, confidence, truth state, and publish blockers. |
 | Automation workflow engine | The system becomes scattered scripts and manual checks. | Define workflow, run, step, retry, idempotency, approval, budget, and kill-switch contracts. |
 | Enrichment waterfall engine | Data quality and cost become uncontrolled. | Ordered source/provider/AI steps with cache keys, stop conditions, and cost caps. |
 | Decision snapshot ledger | Operators cannot explain why a target was sent, held, published, or blocked. | Store evidence, rejected facts, scores, blockers, confidence, and next action. |
@@ -142,6 +148,7 @@ The baseline should not start with sending. It should start with distribution re
 ```txt
 policy registry
 -> distribution target registry
+-> Business Truth Graph registry
 -> automation workflow engine
 -> enrichment waterfall
 -> AI worker and decision snapshot
@@ -171,6 +178,7 @@ These are launch blockers:
 
 - No approved source policy.
 - No distribution target registry.
+- No Business Truth Graph registry.
 - No automation workflow engine.
 - No enrichment waterfall registry.
 - No decision snapshot ledger.

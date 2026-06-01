@@ -1,6 +1,6 @@
 # GrowthOS Add-on - Mobile Support
 
-**Status:** Implemented behind disabled feature flag; required for launch verification
+**Status:** Implemented behind Pro/Premium entitlement gate; required for rollout verification
 **Mobile owner label:** Growth Kits
 **Primary mobile rule:** Owners must be able to use a kit from a phone without desktop setup.
 
@@ -164,7 +164,7 @@ These are not launch scope:
 | Capability | Desktop | Mobile |
 | --- | --- | --- |
 | View eligible actions | Yes | Yes, compact |
-| Generate kit | Yes | Yes, if entitlement and capacity pass |
+| Generate kit | Yes | Yes, if Pro/Premium entitlement and capacity pass |
 | Copy/share text | Yes | Yes |
 | Download/print | Yes | Download/share handoff |
 | Review reply from pasted text | Yes | Yes |
@@ -175,6 +175,8 @@ These are not launch scope:
 | Direct posting | No | No |
 
 Mobile does not need every desktop layout control, but it must support the core paid job.
+
+Copy behavior must not depend only on the browser Clipboard API. Mobile copy uses a textarea fallback when the Clipboard API is blocked, slow, or unavailable.
 
 ## 6. Mobile Copy Rules
 

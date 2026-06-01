@@ -1,8 +1,8 @@
 # GrowthOS Add-on - Technical Implementation Plan
 
-**Status:** Implemented behind disabled feature flag
+**Status:** Enabled behind Pro/Premium entitlement gate
 **Code state:** V1 deterministic add-on shell implemented June 1, 2026
-**Primary constraint:** Build inside MenuList, feature-flagged off, paid-entitlement gated
+**Primary constraint:** Build inside MenuList, Pro/Premium-entitlement gated
 
 ---
 
@@ -28,8 +28,8 @@ Existing reusable pieces:
 Add these flags to `src/config/features.ts` only during implementation:
 
 ```ts
-ENABLE_GROWTHOS_ADDON: false,
-GROWTHOS_ADDON_ACCESS: "disabled" as "disabled" | "pilot" | "paid",
+ENABLE_GROWTHOS_ADDON: true,
+GROWTHOS_ADDON_ACCESS: "paid" as "disabled" | "pilot" | "paid",
 GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
 GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
 GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
@@ -47,9 +47,9 @@ GROWTHOS_LOW_DATA_CACHE: "latest_only" as "disabled" | "latest_only" | "pilot",
 Rules:
 
 - `ENABLE_GROWTHOS_ADDON` is the master kill switch.
-- `GROWTHOS_ADDON_ACCESS` controls pilot/paid visibility.
-- `GROWTHOS_PILOT_STORE_IDS` gates pilot stores when access is `"pilot"`.
-- `GROWTHOS_PAID_PLAN_IDS` gates paid rollout plan IDs when access is `"paid"`.
+- `GROWTHOS_ADDON_ACCESS` defaults to `"paid"` so turning on the master flag still requires plan entitlement.
+- `GROWTHOS_PILOT_STORE_IDS` gates pilot stores when access is `"pilot"`; pilot stores must still have an eligible paid plan.
+- `GROWTHOS_PAID_PLAN_IDS` gates rollout plan IDs and must remain `["pro", "premium"]` unless pricing changes.
 - `GROWTHOS_DIRECT_POSTING` must remain `"disabled"` for the approved scope.
 - `GROWTHOS_STAFF_BRIEF_MODE` is V1 core and deterministic.
 - `GROWTHOS_IMAGE_MODE` starts disabled. It may move to `"existing_only"` only after pilot demand; never default to image generation.
@@ -70,12 +70,12 @@ src/lib/growthos/serverEntitlements.ts
 Responsibilities:
 
 - check global feature flag
-- check store plan or explicit add-on entitlement
-- check pilot allowlist when `GROWTHOS_ADDON_ACCESS === "pilot"`
+- check active Pro or Premium subscription through the same valid-subscription helper used by billing gates
+- check pilot allowlist when `GROWTHOS_ADDON_ACCESS === "pilot"`, then still require Pro or Premium
 - return owner-safe denial reasons
 - expose a server-safe and client-safe variant if needed
 
-Do not add an owner-facing toggle. GrowthOS access is a plan/add-on entitlement, not a setting.
+Do not add an owner-facing toggle. GrowthOS access is a Pro/Premium plan entitlement, not a setting or standalone add-on override.
 
 ## 4. Data Model
 
@@ -327,6 +327,7 @@ No direct posting in the approved implementation.
 Allowed:
 
 - copy to clipboard
+- fallback textarea copy when Clipboard API is unavailable, blocked, or slow
 - native share sheet
 - download text/image/PDF
 - print/export
@@ -414,7 +415,7 @@ Security-sensitive implementation requirements:
 13. Add tests and docs parity verification. Tracked in `growthos-addon_validation.md`.
 14. Add repeatable dry-run verification in `npm run verify:growthos`. Done.
 
-Do not activate the add-on for production until desktop, mobile, entitlement, cost, security, and support docs all pass.
+Do not widen beyond active Pro/Premium stores until desktop, mobile, entitlement, cost, security, and support checks all pass.
 
 ## 14. Pilot Extension Admission
 

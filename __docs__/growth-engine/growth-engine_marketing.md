@@ -14,6 +14,8 @@ It is internal distribution automation infrastructure:
 
 > Find qualified business targets, activate confirmed MenuList truth, distribute it through owned surfaces and channels, and measure coverage without relying on generic growth tools.
 
+The internal asset is the MenuList Business Truth Graph: business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships that become more valuable as confirmed truth coverage grows.
+
 ## 2. One-Line Pitch
 
 Growth Engine turns target discovery into MenuList-owned distribution coverage without losing control of truth, cost, safety, or channel reputation.
@@ -56,6 +58,7 @@ Use:
 - sender assignment
 - operator workboard
 - distribution target
+- Business Truth Graph
 - truth activation
 - canonical MenuList surface
 - discovery publisher
@@ -68,6 +71,7 @@ Use:
 - suppression-first
 - assisted WhatsApp
 - source quality
+- place ID seed discovery
 - cost per completed onboarding
 - private/noindex preview
 
@@ -105,10 +109,13 @@ Current market alternatives already cover most generic growth workflows:
 | CRM and lead management | HubSpot | Lead scoring, routing, CRM history, rep workspaces, automation | General-purpose sales pipeline management. |
 | Workflow automation | Zapier-style workflows, Apollo/Clay automations | Trigger/action workflows and provider integrations | Generic automation without MenuList truth activation or distribution authority. |
 | Scraper/source platforms | Apify | Cheap source runs and exports from many public sources | Treating scraped output as durable truth or public content. |
+| Place data APIs | Google Places, Foursquare | Place IDs, discovery, location/category/contact hints, category taxonomy, chain identity, and relationship signals | Treating provider content as MenuList truth, using Foursquare PAYG data for prospect outreach, or enriching every candidate before scoring. |
 
 Growth Engine's edge is MenuList-owned distribution:
 
 - identify businesses with weak public menu truth
+- use place IDs and approved source handles for candidate discovery
+- build candidate Business Truth Graph edges from approved source evidence
 - create rights-safe private evidence
 - route interested owners into approved MenuList onboarding
 - publish canonical MenuList surfaces after confirmation

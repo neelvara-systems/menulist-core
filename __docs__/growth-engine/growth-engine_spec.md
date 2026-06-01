@@ -35,8 +35,11 @@ Not:
 
 - lead source runs and imports
 - manual CSV import
+- Google Places candidate discovery through approved field-mask profiles
+- Foursquare identity/category/chain enrichment through approved source policy
 - lead normalization and dedupe
 - distribution target registry
+- Business Truth Graph registry for business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships
 - owned automation workflow engine
 - enrichment waterfalls for target identity, menu gap, contactability, and source confidence
 - decision snapshots explaining every route, hold, reject, send, publish, or block action
@@ -83,6 +86,11 @@ Not:
 - direct Google Business Profile claiming
 - Google Indexing API use for menu pages
 - Google review ingestion for lead gen
+- Google Places content as durable truth
+- Google Places photos/reviews/profile/menu rehosting
+- Foursquare Places API pay-as-you-go data used to contact listed businesses as prospects without separate contract or written permission
+- Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content as public artifacts or MenuList truth
+- Foursquare source content as durable MenuList truth
 - bulk calling/SMS/WhatsApp blasting
 - generic CRM pipeline management
 - generic lead database/enrichment replacement
@@ -183,6 +191,7 @@ Hard rules:
 - Artifact is private or noindex by default.
 - Artifact must say "unclaimed preview" or equivalent when not owner-confirmed.
 - Artifact must not rehost Google photos, reviews, menus, or profile content.
+- Artifact must not rehost Foursquare photos, tips, ratings, descriptions, popularity, menus, or profile content.
 - Artifact must not invent menu items, prices, phone numbers, offers, hours, ratings, or customer claims.
 - Artifact must not become MenuList truth until owner-confirmed through approved MenuList flows.
 - Artifact must not be submitted to sitemaps, IndexNow, feeds, or search surfaces.
@@ -211,6 +220,7 @@ Web research and the distribution decision make these product gates:
 | Foundation | Requirement |
 | --- | --- |
 | Distribution target registry | Every lead-like record must map to a business/location/menu target, claim state, truth state, and surface inventory. |
+| Business Truth Graph registry | Every business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationship must have source provenance, confidence, and truth state. Candidate or low-confidence edges cannot publish. |
 | Automation workflow engine | Every recurring action must run through typed triggers, steps, retries, idempotency keys, approvals, budgets, and kill-switch checks. |
 | Enrichment waterfall registry | Business identity, menu gap, contactability, and source confidence must use ordered source/provider/AI steps with run conditions, cache keys, costs, and success-provider evidence. |
 | Decision snapshot ledger | Every target action must store the evidence, scores, rejected facts, blockers, confidence, rule/prompt version, and next action. |
@@ -240,7 +250,9 @@ Production-shaped baseline:
 
 ```txt
 source policy registry
+-> source identity handles
 -> distribution target registry
+-> Business Truth Graph registry
 -> automation workflow engine
 -> enrichment waterfall registry
 -> AI worker registry
@@ -340,7 +352,11 @@ These decisions are locked for implementation unless an explicit owner override 
 | First email provider | Use Amazon SES as the primary low-level email delivery adapter because it supports production sender control, bounce/complaint handling, and low per-send cost. Keep provider abstraction so Resend can be used for controlled testing if explicitly approved. |
 | First sender domain | Use a dedicated subdomain such as `reach.menulist.ai`; do not send from the root MenuList domain. Require SPF, DKIM, DMARC, one-click unsubscribe, bounce/complaint webhooks, and slow ramp before sends. |
 | Jurisdictions | Support India, US, and `GLOBAL_REVIEW` policy records from the start. A campaign must choose one jurisdiction policy before eligibility is calculated. |
-| Source adapters | Manual CSV is mandatory. Apify or similar source adapters are allowed only as approved candidate-discovery sources with source policy, field allowlist, raw payload TTL, spend cap, and no rehosting of restricted content. |
+| Source adapters | Manual CSV is mandatory. Google Places is allowed as a controlled candidate-discovery and place identity adapter. Apify or similar adapters are allowed only as approved candidate-discovery sources with source policy, field allowlist, raw payload TTL, spend cap, and no rehosting of restricted content. |
+| Google Places usage | Use Text Search (New) IDs-only field masks for seed discovery, persist place IDs only as durable Google handles, and run Place Details only for filtered candidates using approved field-mask profiles. No wildcard field masks, durable Places content, photos, reviews, profile content, or public output from Google data. |
+| Foursquare usage | Use Foursquare only as a source-policy-gated identity/category/chain graph signal by default. Standard pay-as-you-go API data cannot be used to contact listed businesses as prospective customers unless a separate contract or written permission explicitly allows it. |
+| FSQ OS Places usage | Evaluate FSQ OS Places separately with license review, field allowlist, retention policy, source attribution, and no public truth use until confirmed through MenuList. |
+| Business Truth Graph | Growth Engine creates candidate graph edges from source evidence. MenuList creates confirmed truth edges through owner confirmation or approved MenuList verification. Public publishing blocks on candidate-only or low-confidence graph state. |
 | Distribution target identity | Resolve by normalized business name, country, city, address/location key, phone/domain/menu URL evidence, MenuList store/outlet match, and source provenance. Low confidence goes to human review. |
 | Eligible public surfaces | Canonical MenuList menu page and official business page are eligible after owner confirmation or approved MenuList verification. City/category pages require confirmed public truth and usefulness; no thin pages from candidate data. |
 | Canonical URL contract | Growth Engine must consume MenuList's canonical surface resolver or bridge output. It must not hardcode public URL patterns. |
@@ -359,7 +375,7 @@ These decisions are locked for implementation unless an explicit owner override 
 | Artifact ownership | Compliance reviewer owns approval/takedown; admin owns incident escalation. Expiry, noindex, source-rights check, and owner complaint path are mandatory. |
 | AI thresholds | DNC, unsubscribe, complaint, wrong-contact, private-data, blocked-source, pricing-invention, and unverified-truth fixtures need zero critical misses before autonomy. Non-critical classification should meet the documented eval threshold before unattended use. |
 | Workflow schema | Use typed workflow, workflow run, step, retry, budget, approval, idempotency, and kill-switch models from the implementation plan. |
-| Enrichment waterfall order | Default order is first-party/MenuList data, owner-provided data, allowed owner website/public URL facts, approved source adapter, AI extractor. Stop after valid evidence. |
+| Enrichment waterfall order | Default order is first-party/MenuList data, owner-provided data, allowed owner website/public URL facts, Google Places place-ID seed when approved, Foursquare identity/category/chain signal when approved, approved source adapter, AI extractor. Stop after valid evidence. |
 | Sender assignment | One sender identity per target conversation, target timezone windows, gradual ramp, spam-rate thresholds, bounce thresholds, and pause on sender health warning/block. |
 | Provider register | Approved provider records required for SES, OpenAI, Firebase, BigQuery export if enabled, source adapters, and any WhatsApp provider. |
 
@@ -371,6 +387,9 @@ Growth Engine is ready for first controlled use only when:
 - source policy and channel policy are configured
 - sender domain readiness is green for email
 - source candidates can be imported without outreach
+- Google Places source runs use approved field masks, budget caps, and place-ID-only durable storage
+- Foursquare PAYG source runs block outreach eligibility unless separate contract or written permission allows prospecting
+- Business Truth Graph nodes and edges store provenance, confidence, truth state, and public-publishing blockers
 - dedupe and suppression work before campaigns
 - workflow runs are idempotent, resumable, budget-gated, and kill-switch-aware
 - enrichment waterfalls cache by source hash and stop after valid evidence

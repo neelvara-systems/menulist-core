@@ -7,8 +7,8 @@ Private MyCodex read-aloud controls for long documentation sessions.
 - Product: MyCodex only
 - Route surface: `src/app/sites/mycodex/`
 - Flag: `ENABLE_MYCODEX_AUDIO_READER`
-- Cost model: no Firebase, no OpenAI, no Google Cloud, no server route
-- Storage: browser `localStorage` for voice, speed, follow-reading, and keep-awake settings
+- Cost model: no Firebase, no OpenAI, no Google Cloud, no paid TTS; favorites use a protected same-origin Markdown route
+- Storage: browser `localStorage` for India voice, speed, follow-reading, keep-awake settings, favorite docs, read-later queue, and scroll positions
 
 ## Documents
 
@@ -27,6 +27,7 @@ Private MyCodex read-aloud controls for long documentation sessions.
 
 | File | Responsibility |
 | --- | --- |
-| `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Settings drawer controls, speech queue, mini-player, persistence |
+| `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Header page-read control, settings drawer controls, favorites/read-later queue playback, India voice filter, speech queue, mini-player, persistence |
+| `src/app/sites/mycodex/api/document/route.ts` | Protected same-origin Markdown reader for favorite playback |
 | `src/app/sites/mycodex/styles.css` | Active spoken-block highlight |
 | `src/config/features.ts` | `ENABLE_MYCODEX_AUDIO_READER` flag |

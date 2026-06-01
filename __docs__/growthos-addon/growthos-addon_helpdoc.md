@@ -27,7 +27,7 @@ Growth Kits does not post anything automatically.
 2. Select `Growth Kits`.
 3. Choose the latest suggested kit or create a new one.
 
-If you do not see Growth Kits, your store may not have the add-on enabled.
+If you do not see Growth Kits, your store may not be on an active Pro or Premium plan.
 
 ## Create A Kit
 
@@ -118,7 +118,7 @@ Growth Kits will not:
 | The item is wrong | Update the item in MenuList, then create the kit again. |
 | The price is old | Update the menu price, then create the kit again. |
 | The kit is too generic | Choose a more specific menu item or use an item with an image. |
-| I cannot create a kit | Check whether Growth Kits is included in your plan or add-on. |
+| I cannot create a kit | Check whether your store is on an active Pro or Premium plan. |
 | I cannot use review replies | Review replies may be disabled for your store or require pasted review text. |
 | Staff line suggests the wrong item | Check item availability in MenuList, then create the kit again. |
 

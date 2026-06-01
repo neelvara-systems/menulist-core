@@ -73,6 +73,8 @@ Growth Engine may generate a lead preview or audit artifact, but that artifact i
 | [ChatGPT Review](./growth-engine_chatgpt-review-2026-05-31.md) | Review of the attached conversation, accepted/rejected points, and risks. |
 | [Distribution Architecture](./growth-engine_distribution-architecture.md) | New direction lock: lead gen becomes MenuList-owned distribution infrastructure. |
 | [Automation Workflow Blueprint](./growth-engine_automation-workflow-blueprint.md) | Implementation-ready automation model based on researched GTM workflows and MenuList-specific distribution needs. |
+| [Google Places Source Policy](./growth-engine_google-places-source-policy.md) | Controlled use of Google Places as a cost-gated candidate source and place identity adapter. |
+| [Foursquare Source Policy](./growth-engine_foursquare-source-policy.md) | Controlled use of Foursquare as an identity/category/chain graph signal, with PAYG outreach restrictions blocked by default. |
 | [Naming Shortlist](./growth-engine_naming-shortlist.md) | Recommended product name after preliminary domain, search, and company-name availability signals. |
 | [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md) | Second-pass web-researched gap review from the perspective of operating the product. |
 | [Specification](./growth-engine_spec.md) | Business requirements, scope, user flows, and acceptance criteria. |
@@ -98,7 +100,11 @@ The docs are ready for implementation planning with these locked decisions:
 - Firebase projects are `growth-engine-qa` and `growth-engine`.
 - Email adapter is Amazon SES first, with `reach.menulist.ai` or equivalent dedicated subdomain.
 - Jurisdiction policy supports India, US, and `GLOBAL_REVIEW` records.
-- Manual CSV is mandatory; Apify-like adapters are candidate-discovery only after source policy approval.
+- Manual CSV is mandatory; Google Places and Apify-like adapters are candidate-discovery only after source policy approval.
+- Google Places may persist place IDs, request metadata, and decision state only; broader Places content must not become durable MenuList truth or public output.
+- Foursquare Places API pay-as-you-go data must not be used to contact listed businesses as prospects unless a separate contract or written permission explicitly allows it.
+- Foursquare is useful as an identity/category/chain graph signal. It can create candidate graph edges, not MenuList truth.
+- Business Truth Graph is a required implementation model: Growth Engine creates candidate business/location/menu/surface/source edges, and MenuList creates confirmed truth edges.
 - MenuList canonical surface resolver/bridge owns public URL truth. Growth Engine must not hardcode public URL patterns.
 - Google Business Profile, Apple Business Connect, and Bing Places are owner-authorized distribution handoffs only.
 - WhatsApp remains assisted unless explicit opt-in, approved templates, provider readiness, and policy review exist.

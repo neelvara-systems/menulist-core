@@ -19,7 +19,7 @@ import type {
     GrowthOSOutput,
     GrowthOSReviewGuardResult,
 } from "@type/growthos";
-import { Alert, Button, Card, Divider, Input, Select, Space, Spin, Tag, Typography, notification } from "antd";
+import { Alert, App, Button, Card, Divider, Input, Select, Space, Spin, Tag, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { LuArrowLeft, LuClipboard, LuDownload, LuRefreshCw, LuSend, LuShieldCheck } from "react-icons/lu";
@@ -47,11 +47,14 @@ const resolveName = (name: ProjectSummary["name"], fallback = "Untitled") => {
 
 const getOutputPreview = (output?: GrowthOSOutput) => output?.text || "";
 
-const copyToClipboard = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
-    }
+const writeClipboardWithTimeout = (text: string) => (
+    Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error("Clipboard write timed out")), 1200)),
+    ])
+);
+
+const copyWithTextarea = (text: string) => {
     const textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
@@ -60,6 +63,19 @@ const copyToClipboard = async (text: string) => {
     textArea.select();
     document.execCommand("copy");
     document.body.removeChild(textArea);
+};
+
+const copyToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+        try {
+            await writeClipboardWithTimeout(text);
+            return;
+        } catch {
+            copyWithTextarea(text);
+            return;
+        }
+    }
+    copyWithTextarea(text);
 };
 
 const downloadText = (filename: string, text: string) => {
@@ -75,8 +91,9 @@ const downloadText = (filename: string, text: string) => {
 const canUseOutput = (output: GrowthOSOutput) => output.preflight?.status !== "blocked";
 
 const GrowthOSPage = () => {
+    const { notification } = App.useApp();
     const router = useRouter();
-    const { activeSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, activeSubscriptionLoading, storeDetails } = useContext(PlatformGlobalDataContext);
     const { activeProject } = useContext(ProjectsDataContext);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(activeProject?.projectId || null);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -90,10 +107,11 @@ const GrowthOSPage = () => {
         storeDetails,
         storeId: storeDetails?.storeId,
     });
-    const { growthOSSummary, isLoading, mutate } = useGrowthOS(entitlement.allowed);
+    const isCheckingEntitlement = FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON && activeSubscriptionLoading;
+    const { growthOSSummary, isLoading, mutate } = useGrowthOS(!isCheckingEntitlement && entitlement.allowed);
 
     const { data: projects = [] } = useSWR<ProjectSummary[]>(
-        entitlement.allowed ? "growthos-projects" : null,
+        !isCheckingEntitlement && entitlement.allowed ? "growthos-projects" : null,
         async () => {
             const result = await getProjectsListWithoutLoader(true);
             return (result?.projects || []) as ProjectSummary[];
@@ -259,6 +277,19 @@ const GrowthOSPage = () => {
             setIsReviewing(false);
         }
     };
+
+    if (isCheckingEntitlement) {
+        return (
+            <div className={styles.growthOSContainer}>
+                <Button icon={<LuArrowLeft />} onClick={() => router.push("/today")} type="text">Back to Today</Button>
+                <div className={styles.emptyState}>
+                    <Spin />
+                    <Title level={3}>Growth Kits</Title>
+                    <Text type="secondary">Checking plan access...</Text>
+                </div>
+            </div>
+        );
+    }
 
     if (!FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON || !entitlement.allowed) {
         return (

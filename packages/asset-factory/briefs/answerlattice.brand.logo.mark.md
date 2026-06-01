@@ -16,7 +16,7 @@ Keep the final Answerlattice mark consistent across metadata and static previews
 - Page: Answerlattice brand system
 - Route: /
 - Placement: static logo mark family
-- Component: src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx
+- Component: src/components/atoms/answerlatticeLogoMark/index.tsx
 - Destination: public/answerlattice-logo-mark.png
 
 ## Output Contract
@@ -28,7 +28,7 @@ Keep the final Answerlattice mark consistent across metadata and static previews
 
 - Canonical source: `public/answerlattice-logo.svg`
 - Design status: final
-- Handling rule: derive raster assets from the canonical SVG only; do not alter color, shape, geometry, or effects.
+- Handling rule: derive raster assets from the canonical transparent SVG only; UI must use the same SVG path geometry through the shared atom. Do not alter color, shape, geometry, effects, or reintroduce the exported black canvas/frame.
 
 ## Existing Files
 
@@ -62,6 +62,8 @@ Keep the final Answerlattice mark consistent across metadata and static previews
 - packages/asset-factory/brand/answerlattice.asset-context.md: Answerlattice Asset Context
 - __docs__/answerlattice/answerlattice-website/README.md: Answerlattice Website (answerlattice.com)
 - src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx: Source file
+- src/components/atoms/answerlatticeLogoMark/index.tsx: Source file
+- scripts/website-assets/generate-answerlattice-logo-assets.js: Source file
 
 ## Brand Context Snapshot
 

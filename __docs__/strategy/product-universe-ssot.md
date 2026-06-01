@@ -9,7 +9,7 @@
 **Purpose:** Permanent founder reference — the honest top-view of everything we're building and why  
 **Updates:** Only when a product's fundamental nature changes
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
-**June 1, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal MenuList-owned distribution automation infrastructure. Lead generation is one input; the system's job is distribution target acquisition, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
+**June 1, 2026 Growth Engine Addendum:** Growth Engine is documented separately at `__docs__/growth-engine/README.md` as internal MenuList-owned distribution automation infrastructure. Lead generation is one input; the system's job is distribution target acquisition, Business Truth Graph candidate edges, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not GrowthOS, not a MenuList owner feature, and not part of the public product stack.
 
 ---
 

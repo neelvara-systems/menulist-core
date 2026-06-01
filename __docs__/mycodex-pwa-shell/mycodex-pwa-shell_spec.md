@@ -11,8 +11,10 @@ MyCodex must remain readable and usable when installed as an iOS PWA, including 
 | Top safe area | Mobile header, progress bar, drawers, login, and offline screens do not sit under the iOS status area. |
 | Bottom safe area | Fixed controls, toast, drawer footer, settings drawer body, login, and offline screens do not sit under the home indicator. |
 | Left/right safe area | Landscape and notched devices keep primary controls inside horizontal safe areas. |
+| Mobile resume | The mobile root route surfaces the last document, saved scroll progress, queue, and favorites before the full index. |
+| Read-later queue | MyCodex stores a temporary read-later list locally and exposes it at `/queue` (`/__mycodex/queue` locally). |
 | Product separation | Safe-area handling stays in MyCodex files only. |
-| No runtime cost | No API, Firebase, or provider work is needed. |
+| No runtime cost | No Firebase, remote database, or provider work is needed. |
 
 ## Non-Goals
 

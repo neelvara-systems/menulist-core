@@ -93,6 +93,7 @@ Growth Engine owns:
 - sender assignment and pacing
 - operator work queues
 - distribution target registry
+- Business Truth Graph candidate edges
 - menu truth gap detection
 - canonical surface readiness
 - sitemap and discovery publish jobs
@@ -172,6 +173,9 @@ Modified:
 
 - "AI website demos" becomes "private/noindex claim or audit artifact" only when source rights and accuracy allow it
 - Google Maps scraping becomes "source adapter candidate input," not source of truth
+- Google Places API becomes a controlled source adapter for place IDs, candidate discovery, and selective enrichment with approved field masks, budget caps, and no durable public truth use
+- Foursquare becomes a controlled identity/category/chain graph signal only; PAYG data is blocked for prospect outreach unless separate contract or written permission exists
+- the place-graph idea becomes Growth Engine's Business Truth Graph: candidate business/location/menu/source/surface edges are internal until owner confirmation or approved MenuList verification
 - generic lead/outreach tools become optional infrastructure inputs, not systems of record
 - generic workflow/enrichment/sequencing patterns become internal MenuList-owned automation contracts
 - omnichannel becomes email-first plus WhatsApp-assisted, with Instagram/Messenger inbound or warm-only until policy is proven
@@ -181,6 +185,11 @@ Rejected:
 
 - mass-generate public demo websites
 - rehost Google Maps photos, reviews, menus, or profile content
+- store broader Google Places content as durable MenuList truth
+- use Google Places wildcard field masks in production
+- use Foursquare Places API PAYG data to contact listed businesses as prospects without separate contract or written permission
+- rehost Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content
+- publish Business Truth Graph candidate or low-confidence edges as public truth
 - treat scraped data as MenuList truth
 - use Google Business Profile APIs or GoogleLocations for lead generation
 - use Google Indexing API for menu/business pages

@@ -18,7 +18,7 @@ const SPLASH_SIZES = [
   '640x1136',
 ];
 
-const LOGO_CANVAS = [13, 13, 13];
+const SPLASH_BACKGROUND = [10, 10, 26];
 
 function clampChannel(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -28,9 +28,9 @@ function writeBackground(png) {
   for (let y = 0; y < png.height; y += 1) {
     for (let x = 0; x < png.width; x += 1) {
       const index = ((png.width * y) + x) << 2;
-      png.data[index] = LOGO_CANVAS[0];
-      png.data[index + 1] = LOGO_CANVAS[1];
-      png.data[index + 2] = LOGO_CANVAS[2];
+      png.data[index] = SPLASH_BACKGROUND[0];
+      png.data[index + 1] = SPLASH_BACKGROUND[1];
+      png.data[index + 2] = SPLASH_BACKGROUND[2];
       png.data[index + 3] = 255;
     }
   }

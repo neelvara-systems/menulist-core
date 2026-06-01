@@ -27,7 +27,7 @@ Present Answerlattice as governed answer infrastructure while using the final ap
 
 - Canonical logo source: `public/answerlattice-logo.svg`
 - Design status: final
-- Handling rule: embed or rasterize the canonical SVG only; do not recolor, reshape, simplify, or redraw the logo.
+- Handling rule: embed or rasterize the canonical transparent SVG only; do not recolor, reshape, simplify, redraw the logo, or reintroduce the exported black canvas/frame.
 
 ## Existing Files
 
@@ -61,6 +61,7 @@ Present Answerlattice as governed answer infrastructure while using the final ap
 - __docs__/answerlattice/answerlattice-website/README.md: Answerlattice Website (answerlattice.com)
 - src/app/sites/answerlattice/layout.tsx: Source file
 - src/app/sites/answerlattice/components/HeroSection.tsx: Source file
+- scripts/website-assets/generate-answerlattice-logo-assets.js: Source file
 
 ## Brand Context Snapshot
 

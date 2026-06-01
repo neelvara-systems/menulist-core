@@ -16,7 +16,7 @@ const SPLASH_SIZES = [
   '640x1136',
 ];
 
-const LOGO_CANVAS = [13, 13, 13];
+const SPLASH_BACKGROUND = [10, 10, 26];
 const BACKGROUND_TOLERANCE = 1;
 
 function read(relPath) {
@@ -37,6 +37,10 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+function extractPathData(content) {
+  return [...content.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((match) => match[1]);
+}
+
 function verifyStartupMetadata() {
   const rootLayout = read('src/app/layout.tsx');
   const answerlatticeAppLayout = read('src/app/(answerlattice)/layout.tsx');
@@ -55,6 +59,8 @@ function verifyLoaderBranding() {
   const serverLoader = read('src/app/loading.tsx');
   const brandedPageLoader = read('src/components/atoms/brandedPageLoader/index.tsx');
   const globalLoader = read('src/components/organisms/loader/index.tsx');
+  const sourceLogo = read('public/answerlattice-logo.svg');
+  const logoMark = read('src/components/atoms/answerlatticeLogoMark/index.tsx');
   const loaderLogo = read('src/components/atoms/answerlatticeLoaderLogo/index.tsx');
   const loaderLogoStyles = read('src/components/atoms/answerlatticeLoaderLogo/answerlatticeLoaderLogo.module.scss');
 
@@ -64,13 +70,114 @@ function verifyLoaderBranding() {
   assertIncludes(brandedPageLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-loader-logo" />', 'branded page loader Answerlattice logo');
   assertIncludes(globalLoader, "data-loader-brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}", 'global loader brand marker');
   assertIncludes(globalLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />', 'global loader Answerlattice logo');
-  assertIncludes(loaderLogo, 'strokeWidth="545"', 'Answerlattice loader logo final stroke width');
-  assertIncludes(loaderLogo, 'stopColor="#A4FFFA"', 'Answerlattice loader logo final left gradient');
-  assertIncludes(loaderLogo, 'stopColor="#08513E"', 'Answerlattice loader logo final right gradient');
+  assertIncludes(logoMark, 'viewBox="0 0 8367 5131"', 'Answerlattice inline logo source viewBox');
+  assertIncludes(logoMark, 'strokeWidth="545"', 'Answerlattice inline logo final stroke width');
+  assertIncludes(logoMark, 'stopColor="#A4FFFA"', 'Answerlattice inline logo final left gradient');
+  assertIncludes(logoMark, 'stopColor="#08513E"', 'Answerlattice inline logo final right gradient');
+  assertNotIncludes(logoMark, '<img', 'Answerlattice logo mark');
+  assertIncludes(loaderLogo, '<AnswerlatticeLogoMark', 'Answerlattice loader shared SVG-path source');
+  assertIncludes(loaderLogo, 'leftStroke: styles.leftStroke', 'Answerlattice loader left path class handoff');
+  assertIncludes(loaderLogo, 'rightStroke: styles.rightStroke', 'Answerlattice loader right path class handoff');
+  assertIncludes(loaderLogo, 'overlap: styles.overlap', 'Answerlattice loader overlap path class handoff');
   assertIncludes(loaderLogoStyles, 'animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;', 'Answerlattice loader left stroke animation');
   assertIncludes(loaderLogoStyles, 'animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;', 'Answerlattice loader right stroke animation');
   assertIncludes(loaderLogoStyles, '-webkit-animation: answerlattice-loader-stroke-left 3s infinite ease-in-out 0s both;', 'Answerlattice loader left webkit stroke animation');
   assertIncludes(loaderLogoStyles, '-webkit-animation: answerlattice-loader-stroke-right 3s infinite ease-in-out 0s both;', 'Answerlattice loader right webkit stroke animation');
+  assertNotIncludes(sourceLogo, '<rect width="8425.81" height="5130.15" fill="#0D0D0D"/>', 'canonical Answerlattice logo background frame');
+  assertNotIncludes(logoMark, 'fill="#0D0D0D"', 'Answerlattice inline logo background frame');
+  assertNotIncludes(loaderLogo, '<rect width="8425.81" height="5130.15" fill="#0D0D0D" />', 'Answerlattice loader logo background frame');
+
+  const sourcePaths = extractPathData(sourceLogo);
+  const inlinePaths = extractPathData(logoMark);
+  assert(sourcePaths.length === 6, 'canonical Answerlattice logo must expose the six design path elements');
+  assert(
+    JSON.stringify(inlinePaths) === JSON.stringify(sourcePaths),
+    'Answerlattice inline logo paths must match the canonical SVG geometry exactly',
+  );
+}
+
+function verifyTransparentLogoAssets() {
+  const transparentAssets = [
+    'public/answerlattice-logo-mark.png',
+    'public/answerlattice-logo-mark-wide.png',
+    'public/answerlattice-icon-512.png',
+    'public/answerlattice-icon-maskable-512.png',
+  ];
+
+  for (const relPath of transparentAssets) {
+    const fullPath = path.join(ROOT, relPath);
+    assert(fs.existsSync(fullPath), `missing transparent Answerlattice asset: ${relPath}`);
+
+    const png = PNG.sync.read(fs.readFileSync(fullPath));
+    const samples = [
+      [0, 0],
+      [png.width - 1, 0],
+      [0, png.height - 1],
+      [png.width - 1, png.height - 1],
+    ];
+
+    for (const [x, y] of samples) {
+      const index = ((png.width * y) + x) << 2;
+      assert(png.data[index + 3] === 0, `${relPath} must keep transparent logo corners instead of a baked background frame`);
+    }
+
+    let visibleLogoSamples = 0;
+    const step = Math.max(1, Math.floor(Math.min(png.width, png.height) / 96));
+
+    for (let y = 0; y < png.height; y += step) {
+      for (let x = 0; x < png.width; x += step) {
+        const index = ((png.width * y) + x) << 2;
+        const r = png.data[index];
+        const g = png.data[index + 1];
+        const b = png.data[index + 2];
+        const a = png.data[index + 3];
+        const isFinalLogoTeal = a > 160 && g > 70 && b > 50 && g > r + 12 && b > r + 4;
+        if (isFinalLogoTeal) visibleLogoSamples += 1;
+      }
+    }
+
+    assert(visibleLogoSamples > 24, `${relPath} must keep the final Answerlattice mark visible after removing the background frame`);
+  }
+}
+
+function verifyWebsiteDiagramVectors() {
+  const componentsRoot = path.join(ROOT, 'src/app/sites/answerlattice/components');
+  const rasterPattern = /(<img\b|from ['"]next\/image['"]|\.png\b|\.jpe?g\b|\.webp\b|\/answerlattice-logo\.svg)/;
+  const allowedRasterMetadataFiles = new Set([
+    path.join(componentsRoot, 'StructuredData.tsx'),
+  ]);
+  const filesToCheck = [];
+
+  function collectTsxFiles(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        collectTsxFiles(entryPath);
+      } else if (entry.isFile() && entry.name.endsWith('.tsx')) {
+        filesToCheck.push(entryPath);
+      }
+    }
+  }
+
+  collectTsxFiles(componentsRoot);
+
+  for (const fullPath of filesToCheck) {
+    if (allowedRasterMetadataFiles.has(fullPath)) {
+      continue;
+    }
+
+    const relPath = path.relative(ROOT, fullPath);
+    const content = fs.readFileSync(fullPath, 'utf8');
+    assert(
+      !rasterPattern.test(content),
+      `${relPath} must keep visible Answerlattice website diagrams vector-based instead of raster image/logo usage`,
+    );
+  }
+
+  const flowDiagram = read('src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx');
+  const supportMap = read('src/app/sites/answerlattice/components/SupportKnowledgeMapSection.tsx');
+  assertIncludes(flowDiagram, '<AnswerlatticeLogoMark height={42}', 'Answerlattice flow diagram SVG logo atom');
+  assertIncludes(supportMap, '<AnswerlatticeLogoMark height={42}', 'Answerlattice support map SVG logo atom');
 }
 
 function verifySplashFiles() {
@@ -97,11 +204,11 @@ function verifySplashFiles() {
     for (const [x, y] of backgroundSamples) {
       const index = ((png.width * y) + x) << 2;
       assert(
-        Math.abs(png.data[index] - LOGO_CANVAS[0]) <= BACKGROUND_TOLERANCE
-          && Math.abs(png.data[index + 1] - LOGO_CANVAS[1]) <= BACKGROUND_TOLERANCE
-          && Math.abs(png.data[index + 2] - LOGO_CANVAS[2]) <= BACKGROUND_TOLERANCE
+        Math.abs(png.data[index] - SPLASH_BACKGROUND[0]) <= BACKGROUND_TOLERANCE
+          && Math.abs(png.data[index + 1] - SPLASH_BACKGROUND[1]) <= BACKGROUND_TOLERANCE
+          && Math.abs(png.data[index + 2] - SPLASH_BACKGROUND[2]) <= BACKGROUND_TOLERANCE
           && png.data[index + 3] === 255,
-        `${relPath} splash background must match the final logo canvas color without a contrasting logo panel`,
+        `${relPath} splash background must be owned by the splash surface without a contrasting logo panel`,
       );
     }
 
@@ -130,6 +237,8 @@ function verifySplashFiles() {
 function main() {
   verifyStartupMetadata();
   verifyLoaderBranding();
+  verifyTransparentLogoAssets();
+  verifyWebsiteDiagramVectors();
   verifySplashFiles();
   console.log('Answerlattice PWA assets verified');
 }

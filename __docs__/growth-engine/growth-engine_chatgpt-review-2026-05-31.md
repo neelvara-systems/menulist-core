@@ -35,6 +35,7 @@ ChatGPT was right that personalized evidence artifacts convert better than gener
 | Google Maps data | Google Maps Platform terms prohibit exporting, extracting, scraping, storing, resharing, or rehosting Google Maps Content outside the services. Source: https://cloud.google.com/maps-platform/terms | Do not treat Google Maps output as durable canonical data. Do not rehost reviews/photos/profile details. |
 | Google Business Profile API | Google says GoogleLocations is only for merchants with an existing business relationship; use for lead generation is against policy. Source: https://developers.google.com/my-business/content/policies | GBP API is not a lead-gen source. Use only after a real relationship/authorization exists. |
 | Apify | Apify markets lead-generation actors that export Google Maps and website data. Source: https://apify.com/use-cases/lead-generation | Apify can be a source adapter for experimentation, but legal/source policy must be reviewed and data must stay candidate intelligence. |
+| Foursquare Places | Foursquare Places provides POI search, fields, categories, chains, and open-source POI schemas. PAYG API terms prohibit using Places Data to contact listed businesses as prospects. Sources: https://docs.foursquare.com/developer/reference/places-api-overview, https://docs.foursquare.com/data-products/docs/categories, https://docs.foursquare.com/data-products/docs/chains, and https://foursquare.com/legal/terms/apilicenseagreement/ | Use Foursquare as identity/category/chain graph signal only by default. Block PAYG outreach eligibility unless separate contract or written permission allows prospecting. |
 | Firestore costs | Firestore charges for reads, writes, deletes, storage, and index-entry reads. Source: https://firebase.google.com/docs/firestore/pricing | Dashboards must use summary docs and bounded queries; no raw event scans. |
 | Cloud Tasks | Firebase task queues support async, resource-intensive, bandwidth-limited work with rate limiting and retry controls. Source: https://firebase.google.com/docs/functions/task-functions | Use task queues for source imports, AI scoring, sends, webhook processing, and follow-ups. |
 | Email compliance | FTC CAN-SPAM covers commercial email including B2B, requires address/opt-out handling, and prompt opt-out honoring. Source: https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Email must include opt-out, sender identity, physical address, suppression, bounce handling, and audit logs. |
@@ -56,6 +57,7 @@ After reviewing current channel, cost, and market sources, the original docs nee
 | Firestore and BigQuery costs can grow through reads, index reads, event scans, and bytes processed. | Dashboards must use summaries; analytics must use partitioning, clustering, and max-bytes-billed controls. |
 | Apollo, Clay, Instantly, Smartlead, and HubSpot already cover generic lead data, enrichment, sequencing, deliverability, and CRM. | Growth Engine must not become a generic outbound platform. Its moat is MenuList-owned target identity, truth activation, canonical surfaces, discovery publishing, and attribution. |
 | LocalBusiness/Menu structured data, sitemaps, IndexNow, menu feeds, and GBP menu handoffs are distribution rails that MenuList can own. | Add distribution target registry, canonical surface publisher, discovery publisher, menu feed exporter, GBP handoff manager, and truth packet publisher. |
+| Foursquare's place-graph model validates identity relationships as the compounding asset. | Add Business Truth Graph registry for business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution edges. |
 | Google's Indexing API is officially scoped to job posting and livestream pages. | Do not use it for MenuList menu/business pages. Use sitemaps, crawlable pages, and approved discovery protocols instead. |
 
 New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md).
@@ -83,6 +85,8 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | --- | --- |
 | Generate websites for scraped leads | Use private/noindex claim or public-info audit artifacts only. Do not create mass public sites. |
 | Google Maps as lead source | Treat as one source adapter candidate, not source of truth; do not store/rehost restricted content. |
+| Foursquare as lead source | Treat as identity/category/chain graph signal only by default; block PAYG prospect outreach unless separate contract or written permission allows it. |
+| Place pages as moat | Replace page-first thinking with Business Truth Graph nodes and edges. Pages are outputs of confirmed truth, not the asset itself. |
 | AI can write messages | AI writes only inside approved templates, variables, offer angles, and safety guardrails. |
 | Omnichannel from day one | Build owned distribution spine first; enable channels only when policy and readiness pass. |
 | Internal "Growth Engine" in MenuList | Keep same repo but separate product code, Firebase, functions, and route groups. |
@@ -93,6 +97,9 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | --- | --- |
 | Mass-generate public demo websites | Weakens MenuList trust, creates source-rights risk, and looks like agency commodity work. |
 | Rehost Google photos/reviews/profile content | Google terms and source-rights risk; also misrepresents businesses. |
+| Use Foursquare PAYG data for prospect outreach | PAYG terms prohibit contacting listed businesses as prospective customers without separate permission. |
+| Rehost Foursquare tips/photos/ratings/menu/profile content | Source-rights, cost, and public-claim risk. |
+| Publish candidate graph edges as truth | Candidate edges are inspection signals. Public MenuList truth requires owner confirmation or approved MenuList verification. |
 | Fully automate WhatsApp/calls early | Channel, complaint, DNC, and India UCC risk are too high. |
 | Store scraped data as business truth | MenuList truth must be owner-confirmed or system-verified, not scraped. |
 | Submit private artifacts to search/feed systems | Private artifacts are noindex and expiring; public distribution starts only from confirmed MenuList truth. |

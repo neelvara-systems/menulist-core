@@ -46,6 +46,7 @@ Mobile must not allow:
 - approving AI autonomy
 - closing AI eval failures
 - editing decision snapshots
+- editing Business Truth Graph nodes or edges
 - editing distribution targets
 - approving public surface publishing
 - submitting IndexNow jobs

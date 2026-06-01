@@ -12,7 +12,7 @@ MyCodex is a private internal documentation reader. The audio reader is not a pu
 
 For internal release notes only:
 
-> MyCodex can read selected text, the current section, or the full document using the browser/device voice system.
+> MyCodex can read the full document using the browser/device voice system, with India-related voices shown when the device provides them.
 
 ## Disallowed Description
 

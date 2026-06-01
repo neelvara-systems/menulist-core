@@ -33,6 +33,12 @@ export function isGrowthOSMasterEnabled(): boolean {
     return Boolean((FEATURE_FLAGS as any).ENABLE_GROWTHOS_ADDON);
 }
 
+function hasEligibleGrowthOSPlan(input: GrowthOSEntitlementInput): boolean {
+    const subscription = input.activeSubscription || null;
+    const activePlan = String(subscription?.planId || "").toLowerCase();
+    return hasValidSubscriptionAccess(subscription) && getPaidPlanIds().includes(activePlan);
+}
+
 export function evaluateGrowthOSEntitlement(input: GrowthOSEntitlementInput = {}): GrowthOSEntitlementResult {
     const mode = FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS as GrowthOSAccessMode;
     if (!isGrowthOSMasterEnabled()) {
@@ -65,24 +71,16 @@ export function evaluateGrowthOSEntitlement(input: GrowthOSEntitlementInput = {}
                 message: "Growth Kits is available only for selected pilot stores right now.",
             };
         }
-        return { allowed: true, mode, reason: "allowed", message: "Growth Kits is available." };
     }
 
-    const subscription = input.activeSubscription || null;
-    const activePlan = String(subscription?.planId || input.storeDetails?.activePlanType || "").toLowerCase();
-    const hasGrowthOSAddon = Boolean(
-        (subscription as any)?.addons?.growthos === true
-        || (subscription as any)?.entitlements?.growthos === true
-        || (input.storeDetails as any)?.growthosEntitlement === true
-    );
-    const hasPaidPlan = hasValidSubscriptionAccess(subscription) && getPaidPlanIds().includes(activePlan);
+    const hasPaidPlan = hasEligibleGrowthOSPlan(input);
 
-    if (!hasPaidPlan && !hasGrowthOSAddon) {
+    if (!hasPaidPlan) {
         return {
             allowed: false,
             mode,
             reason: "not_paid",
-            message: "Growth Kits is available on higher MenuList plans or as an add-on.",
+            message: "Growth Kits is available on Pro and Premium MenuList plans.",
         };
     }
 

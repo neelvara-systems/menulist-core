@@ -8,6 +8,7 @@
   --mycodex-safe-bottom: env(safe-area-inset-bottom, 0px);
   --mycodex-safe-left: env(safe-area-inset-left, 0px);
   --mycodex-mobile-header-height: calc(4rem + var(--mycodex-safe-top));
+  --mycodex-bottom-nav-height: calc(3.75rem + var(--mycodex-safe-bottom));
 }
 
 @supports (padding-top: constant(safe-area-inset-top)) {
@@ -75,6 +76,7 @@
   .mycodex-main {
     min-height: 100dvh;
     padding-top: var(--mycodex-mobile-header-height) !important;
+    padding-bottom: var(--mycodex-bottom-nav-height) !important;
   }
 
   .mycodex-sidebar,
@@ -117,24 +119,30 @@
 
   .mycodex-article {
     padding-right: calc(1rem + var(--mycodex-safe-right)) !important;
-    padding-bottom: calc(1.5rem + var(--mycodex-safe-bottom)) !important;
+    padding-bottom: calc(1.5rem + var(--mycodex-bottom-nav-height)) !important;
     padding-left: calc(1rem + var(--mycodex-safe-left)) !important;
   }
 
+  .mycodex-bottom-nav {
+    padding-right: calc(0.5rem + var(--mycodex-safe-right)) !important;
+    padding-bottom: calc(0.25rem + var(--mycodex-safe-bottom)) !important;
+    padding-left: calc(0.5rem + var(--mycodex-safe-left)) !important;
+  }
+
   .mycodex-audio-player {
-    bottom: calc(1.25rem + var(--mycodex-safe-bottom)) !important;
+    bottom: calc(4.75rem + var(--mycodex-safe-bottom)) !important;
     left: calc(1rem + var(--mycodex-safe-left)) !important;
     right: calc(5rem + var(--mycodex-safe-right)) !important;
   }
 
   .mycodex-scroll-top {
     right: calc(1rem + var(--mycodex-safe-right)) !important;
-    bottom: calc(1.25rem + var(--mycodex-safe-bottom)) !important;
+    bottom: calc(4.75rem + var(--mycodex-safe-bottom)) !important;
   }
 
   .mycodex-action-toast {
     right: calc(1rem + var(--mycodex-safe-right)) !important;
-    bottom: calc(5rem + var(--mycodex-safe-bottom)) !important;
+    bottom: calc(8.5rem + var(--mycodex-safe-bottom)) !important;
     left: calc(1rem + var(--mycodex-safe-left)) !important;
   }
 }

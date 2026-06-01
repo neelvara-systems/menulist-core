@@ -29,7 +29,7 @@ Firestore charges for reads, writes, deletes, storage, and index-entry reads. Fi
 
 BigQuery on-demand queries are charged by bytes processed, and explicit `LIMIT` does not reduce bytes scanned by itself. Source: https://cloud.google.com/bigquery/pricing
 
-Provider costs must be modeled alongside Firebase costs. Amazon SES lists outbound email pricing per 1,000 emails, Resend plans include domain/authentication and webhook features, and Apify Google Maps Scraper-style actors can charge per 1,000 results. Sources: https://aws.amazon.com/ses/pricing/, https://resend.com/pricing, https://apify.com/crustapi/google-maps-scraper
+Provider costs must be modeled alongside Firebase costs. Amazon SES lists outbound email pricing per 1,000 emails, Resend plans include domain/authentication and webhook features, Apify Google Maps Scraper-style actors can charge per 1,000 results, Google Places API billing is SKU/field-mask driven, and Foursquare Places pricing separates Pro and Premium endpoints/fields. Sources: https://aws.amazon.com/ses/pricing/, https://resend.com/pricing, https://apify.com/crustapi/google-maps-scraper, https://developers.google.com/maps/documentation/places/web-service/usage-and-billing, https://foursquare.com/pricing/, and https://docs.foursquare.com/developer/reference/response-fields
 
 Hard rules:
 
@@ -54,6 +54,12 @@ Hard rules:
 19. No enrichment waterfall without cache key, policy approval, and per-step cost cap.
 20. No AI worker run without typed output schema, prompt version, budget cap, and eval status.
 21. No sender rotation that breaks one sender per target conversation.
+22. No Google Places source run without approved field-mask profile and per-run budget cap.
+23. No Google Places wildcard field mask in production.
+24. No durable storage of broader Places content as MenuList truth.
+25. No Foursquare Places API pay-as-you-go data used for prospect outreach without separate contract or written permission.
+26. No Foursquare Premium Signal profile without explicit approval, budget cap, and public-output blocker.
+27. No public publishing from Business Truth Graph candidate or low-confidence edges.
 
 ## 4. Hot Collections
 
@@ -72,6 +78,11 @@ Hard rules:
 | `growthEngineConsentLedger` | Opt-in, unsubscribe, DNC, complaint, bounce proof | Identity lookup only |
 | `growthEngineOnboardingFlowInventory` | Approved MenuList route bridge flows | Small policy list |
 | `growthEngineProviderRegister` | Approved providers, costs, retention, webhooks | Small policy list |
+| `growthEngineGooglePlacesSourceRuns` | Google Places query plan, field mask, SKU estimate, and run state | Admin/source detail only |
+| `growthEngineFoursquareSourceRuns` | Foursquare query/import plan, field profile, outreach eligibility, tier estimate, and run state | Admin/source detail only |
+| `growthEngineExternalPlaceIdentities` | Provider place IDs mapped to distribution targets | Target/detail lookup only |
+| `growthEngineBusinessTruthGraphNodes` | Business/location/outlet/menu/source/claim/surface/handoff graph nodes | Target/detail lookup only |
+| `growthEngineBusinessTruthGraphEdges` | Provenance, confidence, and truth-state relationships between graph nodes | Target/detail lookup only |
 | `growthEngineAutomationWorkflows` | Approved workflow definitions | Small policy list |
 | `growthEngineWorkflowRuns` | Workflow run summaries and status | Bounded list/detail |
 | `growthEngineEnrichmentWaterfalls` | Approved source/provider/AI waterfall definitions | Small policy list |
@@ -132,7 +143,9 @@ Use Cloud Storage for:
 
 Firestore stores references, checksums, timestamps, provider/source metadata, retention class, and status.
 
-Do not store Google Maps photos, reviews, menus, or profile content as Growth Engine assets.
+Do not store Google Maps photos, reviews, menus, profile content, or broader Places API content as Growth Engine assets or durable truth. Google place IDs, request metadata, field masks, response hashes, and internal decision state may be stored.
+
+Do not store Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content as Growth Engine assets, public artifact content, or durable MenuList truth. Foursquare place IDs, category IDs, chain IDs, source run metadata, response hashes, and candidate graph edges may be stored when source policy allows it.
 
 ## 7. Task Queues And Workers
 
@@ -141,6 +154,10 @@ Firebase task queue functions can handle async, resource-intensive, rate-limited
 Use task queues for:
 
 - source import
+- Google Places seed runs
+- Google Places selective details enrichment
+- Foursquare identity/category/chain enrichment
+- Business Truth Graph rollups
 - workflow run dispatch
 - workflow step execution
 - enrichment waterfall execution
@@ -193,6 +210,14 @@ type GrowthBudgetPolicy = {
   sources: {
     maxApifySpendUsdPerRun: number;
     maxApifySpendUsdPerDay: number;
+    maxGooglePlacesSpendUsdPerRun?: number;
+    maxGooglePlacesSpendUsdPerDay?: number;
+    maxGooglePlacesTextSearchRequestsPerRun?: number;
+    maxGooglePlacesDetailsRequestsPerRun?: number;
+    maxFoursquareSpendUsdPerRun?: number;
+    maxFoursquareSpendUsdPerDay?: number;
+    maxFoursquareRequestsPerRun?: number;
+    maxFoursquarePremiumRequestsPerRun?: number;
     requireApprovalAboveUsd: number;
   };
   channels: {
@@ -243,6 +268,9 @@ Default first-run posture:
 | Provider area | Guardrail |
 | --- | --- |
 | Source providers | Require policy approval, run cap, daily cap, raw payload retention class, and source-quality review before campaign eligibility. |
+| Google Places | Require approved source policy, named field-mask profile, per-run request cap, SKU estimate, quota alert, place-ID-only durable storage, and block photos/reviews/profile/menu content. |
+| Foursquare | Require approved source policy, field profile, per-run request cap, tier estimate, outreach-eligibility flag, and PAYG prospecting block unless contract/written permission exists. |
+| Business Truth Graph | Store nodes/edges as compact summary records with provenance, confidence, and truth state. Public publishing reads confirmed MenuList truth only, not candidate graph edges. |
 | Email provider | Track per-send cost, bounce webhook health, unsubscribe webhook health, domain readiness, spam-rate threshold, and daily send cap. |
 | WhatsApp provider | Assisted-only until opt-in proof and template approval exist; API costs stay disabled until policy review. |
 | AI provider | Cache typed outputs by source hash and prompt version; block duplicate spend on unchanged inputs. |
@@ -262,6 +290,10 @@ For a first controlled campaign of 100 leads:
 | Operation | Estimated count | Cost note |
 | --- | ---: | --- |
 | Import candidates | 100-300 writes | Depends on source result volume and staging retention. |
+| Google Places Text Search seed | capped external calls + source run metadata | IDs-only field mask by default; store place IDs and request metadata only. |
+| Google Places Details enrichment | only filtered candidates | Approved field mask only; no wildcard, photos, reviews, or durable Places content. |
+| Foursquare identity enrichment | capped external calls/import rows + source run metadata | Pro identity profile only by default; block PAYG outreach eligibility and Premium fields unless approved. |
+| Business Truth Graph rollup | 100-300 compact edge writes | Candidate edges stay internal; public publishing requires confirmed truth state. |
 | Dedupe keys | 100-300 reads/writes | Hash lookup plus created/merged keys. |
 | Lead summaries | 100 writes | One summary per accepted lead. |
 | Lead intelligence | 100 AI/provider runs max | Must be budget-gated and cached by source hash. |
@@ -292,6 +324,12 @@ For 1,000 leads, use batch jobs and summary rollups. Do not open raw lead/event 
 | Data | Retention posture |
 | --- | --- |
 | Raw source payload | Short TTL unless needed for audit. |
+| Google Places place ID | Long-term allowed as provider identity handle. |
+| Google Places response content | Do not persist by default; if legally approved for operational evidence, use short TTL Storage only and never public output. |
+| Foursquare place ID, category ID, and chain ID | Long-term allowed as provider identity handles when source policy allows it. |
+| Foursquare PAYG response content | Do not persist by default; if legally approved for operational evidence, use short TTL Storage only, block prospect outreach use, and never use as public output. |
+| Business Truth Graph candidate node/edge | Retain while target remains eligible; candidate and low-confidence edges cannot publish. |
+| Business Truth Graph confirmed node/edge | Retain while MenuList truth, surface, attribution, or handoff remains active. |
 | Raw webhook payload | Short TTL after normalized event is stored. |
 | Lead summary | Active while lead remains eligible. |
 | DNC/suppression evidence | Long-term retention. |

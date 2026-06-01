@@ -28,6 +28,40 @@
 | Source policy retention is missing | Import is blocked. |
 | Source run exceeds budget | Run is blocked or requires approval. |
 
+## 2D. Google Places Source Tests
+
+| Test | Expected |
+| --- | --- |
+| Google Places run starts without approved source policy | Blocked. |
+| Google Places run starts without provider budget cap | Blocked. |
+| Text Search uses wildcard field mask | Blocked. |
+| Text Search seed uses approved IDs-only field mask | Place IDs and request metadata can be stored. |
+| Text Search requests non-ID fields without higher budget approval | Blocked. |
+| Query run exceeds policy page/result cap | Run stops at cap. |
+| Place Details runs before dedupe and pre-score | Blocked. |
+| Place Details uses unapproved field mask | Blocked. |
+| Place Details requests photos, reviews, review summary, generative summary, or editorial summary | Blocked. |
+| Full Places response is written to Firestore | Test fails. |
+| Places content is used in public artifact, sitemap, feed, truth packet, or MenuList truth | Test fails. |
+| Google attribution is missing when Places content is displayed internally | Blocked. |
+| Stored place ID remains after raw evidence expiry | Allowed. |
+
+## 2E. Foursquare Source And Business Truth Graph Tests
+
+| Test | Expected |
+| --- | --- |
+| Foursquare Places API run starts without approved source policy | Blocked. |
+| Foursquare Places API PAYG run attempts outreach eligibility | Blocked unless separate contract or written permission is recorded. |
+| Foursquare Places API PAYG data is used to contact a listed business as a prospect | Test fails. |
+| Foursquare source run requests Premium Signal fields without explicit approval | Blocked. |
+| Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content appears in public artifacts, public pages, sitemaps, feeds, truth packets, or MenuList truth | Test fails. |
+| Foursquare category or chain signal creates a candidate graph edge only | Allowed. |
+| Foursquare unresolved flag such as closed, duplicate, privatevenue, or doesnt_exist is present | Target is held or routed to review. |
+| FSQ OS Places source run starts without license/source review | Blocked. |
+| Business Truth Graph edge has missing source provenance | Blocked. |
+| Business Truth Graph edge has low confidence and requests public publishing | Blocked and human review required. |
+| Business Truth Graph candidate edge is converted to confirmed truth without owner confirmation or approved MenuList verification | Test fails. |
+
 ## 2B. Distribution Target Tests
 
 | Test | Expected |
@@ -49,6 +83,7 @@
 | Email selected while unsubscribe endpoint is missing | Blocked. |
 | Email selected while bounce webhook is unhealthy | Blocked. |
 | Provider missing vendor/register entry | Blocked before use. |
+| Google Places provider register entry is missing | Blocked before use. |
 | Onboarding route selected outside approved flow inventory | Blocked. |
 | AI classifier enabled without eval threshold pass | Blocked. |
 | Canonical surface contract missing | Distribution publishing blocked. |

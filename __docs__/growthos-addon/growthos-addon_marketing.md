@@ -87,9 +87,9 @@ Recommended packages:
 
 | Package | Who | Shape |
 | --- | --- | --- |
-| Premium included allowance | Higher-tier MenuList client | Limited monthly Growth Kits included as a premium benefit. |
-| Growth Kits add-on | Active local business | More kit generations per month plus review reply drafts. |
-| Managed Growth Kits | Multi-outlet or premium service client | Operator-assisted kit review and setup, still using MenuList truth as source. |
+| Pro included access | Active Pro client | Core Growth Kits access for current menu-based messages, prompts, and staff brief packs. |
+| Premium included access | Premium client | Higher kit allowance and stronger managed-service fit for clients already paying for MenuList depth. |
+| Managed Growth Kits | Multi-outlet or premium service client | Operator-assisted kit review and setup for Pro/Premium clients, still using MenuList truth as source. |
 
 Do not sell GrowthOS to non-MenuList clients in the current plan.
 

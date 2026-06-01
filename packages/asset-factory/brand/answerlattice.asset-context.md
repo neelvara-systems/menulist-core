@@ -10,7 +10,7 @@ Answerlattice assets should show governed support knowledge moving from product 
 
 Assets must feel systemic, dark, restrained, and infrastructure-grade. Use Answerlattice's existing diagrams, status boards, proof blocks, and public website visual language as the reference system.
 
-The official Answerlattice logo is design-final at `public/answerlattice-logo.svg`. Use that file as the canonical source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives. Do not redraw, recolor, reshape, simplify, or reinterpret the logo mark.
+The official Answerlattice logo is design-final at `public/answerlattice-logo.svg`. Use that file as the canonical transparent source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives. UI components must follow the MenuList inline SVG-path pattern through `src/components/atoms/answerlatticeLogoMark/index.tsx` so the design-team geometry, colors, gradients, filters, and stroke widths are not reinterpreted. Visible website diagrams must stay vector-based through inline SVG paths and the shared logo atom, not PNGs, screenshots, or image-wrapped logo assets. Do not redraw, recolor, reshape, simplify, reinterpret the logo mark, or reintroduce the exported black canvas/frame into logo assets.
 
 ## Approved Directions
 

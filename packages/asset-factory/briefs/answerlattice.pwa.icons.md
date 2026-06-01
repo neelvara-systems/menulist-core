@@ -29,7 +29,7 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 - Canonical source: `public/answerlattice-logo.svg`
 - Design status: final
 - Handling rule: scale and rasterize only; do not recolor, reshape, crop into a different mark, or redraw the logo.
-- Splash rule: use the final logo canvas color as the full startup background; do not place the approved logo on a contrasting panel or gradient that exposes a rectangular asset boundary.
+- Transparency rule: the logo source and logo-derived PNGs must not bake in the exported black canvas/frame; UI, splash, and OpenGraph surfaces own their backgrounds separately.
 
 ## Existing Files
 
@@ -74,7 +74,7 @@ Keep installed Answerlattice app icons tied to the final approved mark.
 - packages/asset-factory/brand/answerlattice.asset-context.md: Answerlattice Asset Context
 - __docs__/answerlattice/answerlattice-website/README.md: Answerlattice Website (answerlattice.com)
 - public/answerlattice.webmanifest: Source file
-- scripts/website-assets/generate-answerlattice-splash.js: Source file
+- scripts/website-assets/generate-answerlattice-logo-assets.js: Source file
 
 ## Brand Context Snapshot
 

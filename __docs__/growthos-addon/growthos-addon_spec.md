@@ -1,9 +1,9 @@
 # GrowthOS Add-on - Product Specification
 
-**Status:** Implemented V1 behind disabled feature flag
+**Status:** Implemented V1 and enabled behind Pro/Premium entitlement gate
 **Owner-facing label:** Growth Kits
-**Implementation flag:** `ENABLE_GROWTHOS_ADDON` must default to `false`
-**Scope:** MenuList higher-tier add-on only
+**Implementation flag:** `ENABLE_GROWTHOS_ADDON=true` with `GROWTHOS_ADDON_ACCESS="paid"`
+**Scope:** MenuList Pro/Premium plan feature only
 
 ---
 
@@ -88,8 +88,8 @@ GrowthOS lives inside MenuList.
 | --- | --- |
 | Desktop owner app | Add a paid module entry labelled `Growth Kits` only for eligible stores. |
 | Today screen | Show a small eligible-user entry point when a current action exists. Today itself remains focused on operational truth. |
-| Mobile owner app | Show latest kit and copy/share actions from the current Today mobile surface and a compact paid add-on entry point. |
-| Website/pricing | Mention as a MenuList add-on, not as a separate product. |
+| Mobile owner app | Show latest kit and copy/share actions from the current Today mobile surface and a compact Pro/Premium entry point. |
+| Website/pricing | Mention as included in Pro/Premium, not as a separate product. |
 | Help center | Explain how to use a kit, not how the system works. |
 
 Implemented route:
@@ -457,7 +457,7 @@ GrowthOS is not a default MenuList feature.
 Required gates:
 
 - `ENABLE_GROWTHOS_ADDON === true`
-- store plan or explicit add-on entitlement is active
+- active store subscription is Pro or Premium
 - AI capacity is available for paid generation
 - store has enough MenuList truth to produce accurate outputs
 
@@ -465,9 +465,9 @@ Suggested packaging:
 
 | Package | Behavior |
 | --- | --- |
-| Higher-tier included allowance | Small monthly kit allowance for premium MenuList plans. |
-| Growth Kits add-on | Additional monthly kit allowance for active businesses. |
-| Managed growth service | Operator-assisted setup and review for higher-value clients. |
+| Pro included access | Core Growth Kits access for active Pro stores. |
+| Premium included access | Higher kit allowance and managed-service readiness for active Premium stores. |
+| Managed growth service | Operator-assisted setup and review for Pro/Premium clients only. |
 
 Exact pricing remains a business decision before implementation.
 
@@ -503,10 +503,11 @@ Pause or redesign if:
 
 ## 12. Acceptance Criteria
 
-Before activation:
+Current rollout requirements:
 
-- feature flag defaults off
-- add-on entitlement gate works on desktop and mobile
+- master feature flag is enabled
+- paid access mode remains active
+- Pro/Premium entitlement gate works on desktop and mobile
 - free/base users cannot access paid generation APIs
 - generated output cites only current MenuList facts
 - stale kit warning appears when source facts change

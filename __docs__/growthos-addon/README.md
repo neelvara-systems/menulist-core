@@ -1,10 +1,10 @@
 # GrowthOS Add-on - Documentation Hub
 
-**Feature:** GrowthOS Add-on for MenuList higher-tier clients
+**Feature:** GrowthOS plan-gated module for MenuList Pro/Premium clients
 **Owner-facing label:** Growth Kits
-**Status:** Stage 2 implementation added behind disabled feature flag. Feature flag defaults off.
+**Status:** Enabled behind Pro/Premium entitlement gate.
 **Created:** May 31, 2026
-**Product decision:** Build inside MenuList as a paid add-on, not as a standalone product.
+**Product decision:** Build inside MenuList as a Pro/Premium plan feature, not as a standalone product.
 
 ---
 
@@ -14,7 +14,7 @@ GrowthOS/Growth Kits is not the new Growth Engine acquisition product.
 
 | Product | Active meaning |
 | --- | --- |
-| GrowthOS / Growth Kits | MenuList paid add-on for existing higher-tier clients. It turns current MenuList truth into copy/share/print kits. |
+| GrowthOS / Growth Kits | MenuList Pro/Premium feature for existing higher-tier clients. It turns current MenuList truth into copy/share/print kits. |
 | Growth Engine | Separate internal acquisition product for MenuList lead generation, outreach safety, tracked onboarding, and attribution. Active docs: `__docs__/growth-engine/README.md`. |
 
 Do not reuse GrowthOS routes, `GR` product identity, entitlement model, owner UI, or docs for Growth Engine implementation.
@@ -54,7 +54,7 @@ The implementation plan should start only with the V1 core loop:
 
 ## Decision Summary
 
-GrowthOS should move forward as a MenuList higher-tier add-on because MenuList already owns the hard part: current menu truth, store status, item availability, images, public links, and owner context.
+GrowthOS should move forward as a MenuList Pro/Premium plan feature because MenuList already owns the hard part: current menu truth, store status, item availability, images, public links, and owner context.
 
 It should not compete with Canva, Adobe, Google Pomelli, schedulers, or agency tools. Those products start from a blank creative surface or a brand profile. GrowthOS starts from the live MenuList truth and returns a ready-to-use local action kit for the business owner.
 
@@ -64,7 +64,7 @@ The practical owner job is:
 
 ## What GrowthOS Is Now
 
-GrowthOS is a paid MenuList add-on that turns verified MenuList truth into short, ready-to-use local growth kits.
+GrowthOS is a Pro/Premium MenuList feature that turns verified MenuList truth into short, ready-to-use local growth kits.
 
 It produces:
 
@@ -85,7 +85,7 @@ Current decision:
 
 | Area | Current active decision |
 | --- | --- |
-| Product form | MenuList paid add-on for higher-tier clients |
+| Product form | MenuList Pro/Premium plan feature for higher-tier clients |
 | Public owner label | Growth Kits |
 | Standalone app/domain | Not approved |
 | Direct posting | Disabled |
@@ -102,7 +102,7 @@ This folder is now the active GrowthOS implementation source.
 
 ## June 1, 2026 Implementation Update
 
-GrowthOS V1 is implemented as a disabled-by-default MenuList add-on under the owner label `Growth Kits`.
+GrowthOS V1 is implemented as a Pro/Premium-gated MenuList module under the owner label `Growth Kits`.
 
 Implemented V1 scope:
 
@@ -164,7 +164,7 @@ Implementation evidence:
 
 ## Active Scope
 
-The first approved implementation should be a paid add-on module inside MenuList that:
+The first approved implementation should be a Pro/Premium-gated module inside MenuList that:
 
 1. Reads current MenuList truth.
 2. Ranks one or more immediate local action opportunities.
@@ -198,17 +198,18 @@ The first approved implementation should be a paid add-on module inside MenuList
 | [Firebase Cost](./growthos-addon_firebase.md) | Firestore, Storage, AI unit, scheduler, and index cost planning. |
 | [Mobile Support](./growthos-addon_mobile-support.md) | Mobile admission, UX, touch, and parity requirements. |
 | [Marketing Notes](./growthos-addon_marketing.md) | Packaging, sales positioning, competition, and pricing shape. |
-| [Website Content](./growthos-addon_website.md) | Candidate public website/pricing copy for MenuList add-on pages. |
+| [Website Content](./growthos-addon_website.md) | Candidate public website/pricing copy for MenuList Pro/Premium pages. |
 | [Helpdoc](./growthos-addon_helpdoc.md) | Candidate owner help article. |
 | [Test Cases](./growthos-addon_test-cases.md) | Product, security, cost, desktop, mobile, and docs verification matrix. |
-| [Validation](./growthos-addon_validation.md) | Implementation validation commands, deploy result, and activation checks. |
+| [Validation](./growthos-addon_validation.md) | Implementation validation commands, deploy result, and rollout checks. |
 
-## Implementation Gate
+## Rollout Gate
 
-Before activation:
+Current runtime posture:
 
-- Keep `ENABLE_GROWTHOS_ADDON` defaulting to `false`.
-- Choose pilot stores or paid plan IDs.
+- `ENABLE_GROWTHOS_ADDON=true`.
+- `GROWTHOS_ADDON_ACCESS="paid"`.
+- Keep paid plan IDs limited to Pro and Premium unless pricing changes.
 - Verify Firestore rules are deployed.
 - Run `npm run verify:growthos`.
 - Verify desktop and mobile with a real entitled store.

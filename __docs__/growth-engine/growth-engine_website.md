@@ -65,6 +65,7 @@ Shows:
 Shows:
 
 - target identity
+- Business Truth Graph state
 - source policy
 - claim state
 - truth state
@@ -90,6 +91,7 @@ Shows:
 Shows:
 
 - source runs
+- Google Places and Foursquare policy status
 - valid lead rate
 - rejected lead reasons
 - cost per accepted lead

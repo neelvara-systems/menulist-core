@@ -430,10 +430,10 @@ export const FEATURE_FLAGS = {
     /**
      * GrowthOS Add-on / Growth Kits
      *
-     * Paid MenuList add-on that prepares copy/share-ready local growth kits
-     * from current MenuList truth. This is intentionally separate from the
-     * paused Today Weekly Growth Pack and remains off until entitlement,
-     * mobile, security, and cost checks pass.
+     * Pro/Premium MenuList module that prepares copy/share-ready local growth
+     * kits from current MenuList truth. This is intentionally separate from the
+     * paused Today Weekly Growth Pack and is visible only when the owner has
+     * an active Pro or Premium subscription.
      *
      * Launch boundaries:
      * - Manual copy/share/download/print only
@@ -441,8 +441,8 @@ export const FEATURE_FLAGS = {
      * - No direct posting, scheduler, offer invention, image generation, ROI,
      *   chatbot, or inbox behavior
      */
-    ENABLE_GROWTHOS_ADDON: false,
-    GROWTHOS_ADDON_ACCESS: "disabled" as "disabled" | "pilot" | "paid",
+    ENABLE_GROWTHOS_ADDON: true,
+    GROWTHOS_ADDON_ACCESS: "paid" as "disabled" | "pilot" | "paid",
     GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
     GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
     GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",

@@ -6,6 +6,91 @@
 
 ---
 
+## June 1, 2026 — Growth Engine Foursquare Source And Business Truth Graph Policy
+
+### Added
+
+- **Foursquare source policy added** - Added `__docs__/growth-engine/growth-engine_foursquare-source-policy.md` to classify Foursquare as an identity/category/chain graph signal, not a direct cold-outreach source by default.
+- **Business Truth Graph added to Growth Engine docs** - Updated Growth Engine architecture, spec, implementation, Firebase, tests, doctrine, marketing, decision brief, and strategy summaries so business/location/outlet/menu/source/claim/surface/handoff/freshness/attribution relationships are implementation contracts.
+- **PAYG outreach blocker documented** - Locked that Foursquare Places API pay-as-you-go data must not be used to contact listed businesses as prospects unless a separate contract or written permission explicitly allows it.
+
+### Product Decision
+
+- **Useful but bounded** - Foursquare validates the graph model that matters for MenuList, but Growth Engine must only use it through source policy, field-profile, budget, retention, and public-output blockers.
+- **Graph over pages** - Growth Engine creates candidate graph edges; MenuList creates confirmed truth edges through owner confirmation or approved MenuList verification.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
+## June 1, 2026 — MyCodex Mobile Reading Flow
+
+### Added
+
+- **Mobile continue-reading home** - MyCodex now uses the mobile root route as a short-session home with the last opened document, saved scroll progress, queue, favorites, and recent docs.
+- **Read-later queue** - MyCodex adds `/queue` (`/__mycodex/queue` locally) for temporary docs to read or play later.
+- **Mobile bottom navigation** - The mobile PWA now has Home, Search, Queue, Saved, and Settings shortcuts above the iOS home indicator.
+- **Scroll resume** - Per-document scroll positions are stored locally so a reopened document can resume where reading stopped.
+
+### Decision
+
+- **No database added** - This remains browser-local because MyCodex is a private single-user PWA. The new state is stored under `mycodex:queue-docs` and `mycodex:scroll-positions`.
+
+### Cost
+
+- **No Firebase or provider cost** - This adds no Firestore reads, writes, listeners, functions, indexes, Storage operations, remote database, or provider calls.
+
+---
+
+## June 1, 2026 — MyCodex Favorite Docs
+
+### Added
+
+- **Favorite docs are now local to the reader** - MyCodex adds a star action in the document header on desktop and mobile, plus a Favorites jump list in settings.
+- **Favorites stay on the device** - Favorite entries are stored in browser `localStorage` under `mycodex:favorite-docs` with document path, title, source path, and favorite time.
+- **Dedicated favorites page** - MyCodex adds `/favorites` (`/__mycodex/favorites` locally) to list every starred document on the current device.
+- **Favorites playback** - The favorites page can play one starred document or all starred documents one by one through the browser/device voice engine until playback is stopped.
+
+### Cost
+
+- **No Firebase or provider cost** - Favorites remain browser-local and playback uses the browser/device voice engine. The same-origin MyCodex document route reads Markdown from `__docs__` for favorites playback and adds no Firebase reads, writes, listeners, functions, storage operations, or provider calls.
+
+---
+
+## June 1, 2026 — MyCodex Page Audio Shortcut
+
+### Changed
+
+- **Whole-page reading is now a primary document action** - MyCodex shows a direct read-page control in the document header on desktop and mobile, so full-page playback no longer requires opening settings first.
+- **Audio controls are simpler** - Removed selection and section playback from the visible audio controls. The reader now focuses on whole-page play, pause, resume, and stop.
+- **Voice choices are India-focused** - The voice picker now shows India-related browser/OS voices only, including Indian English, Hindi, and other India language voices when installed. If none are installed, MyCodex uses the device default without listing unrelated voices.
+
+### Cost
+
+- **No Firebase or provider cost** - This remains browser-local `speechSynthesis` behavior. It adds no reads, writes, listeners, functions, storage operations, provider calls, or API routes.
+
+---
+
+## June 1, 2026 — Growth Engine Google Places Policy
+
+### Added
+
+- **Google Places source policy added** - Added `__docs__/growth-engine/growth-engine_google-places-source-policy.md` to validate Google Places as a controlled candidate-discovery and place identity adapter.
+- **Field-mask and cost gates documented** - Updated Growth Engine docs so Google Places runs require approved source policy, named field-mask profiles, SKU/cost estimate, provider budget caps, and no wildcard field masks in production.
+- **Retention boundary clarified** - Locked that place IDs can be durable provider handles, while broader Google Places content must not become MenuList truth, public artifact content, sitemap/feed/truth-packet content, or Firestore lead facts.
+
+### Product Decision
+
+- **Useful but bounded** - Google Places is useful for seed discovery, dedupe, and selective enrichment, but the intelligence layer, opportunity scoring, contactability prediction, and distribution activation remain Growth Engine-owned.
+
+### Cost
+
+- **No runtime Firebase cost change** - This is documentation and planning only. It adds no Firestore reads, writes, listeners, Cloud Functions, indexes, Storage operations, provider calls, routes, schedulers, external credentials, or deploys.
+
+---
+
 ## June 1, 2026 — Growth Engine Implementation Readiness Lock
 
 ### Changed
@@ -49,10 +134,12 @@
 
 ### Changed
 
-- **Answerlattice logo source finalized** — `public/answerlattice-logo.svg` now matches the approved design-team SVG exactly and is the canonical source for Answerlattice logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives.
-- **Answerlattice logo derivatives refreshed** — Regenerated the Answerlattice logo PNGs, favicon files, PWA icons, OpenGraph image, and iOS splash images from the final SVG source without redrawing, recoloring, reshaping, or simplifying the mark.
-- **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, and dashboard navigation now render the canonical SVG through the shared `AnswerlatticeLogoMark` wrapper instead of the old inline-redrawn mark.
-- **Answerlattice loader animation aligned** — Server and global Answerlattice loading states now use a dedicated inline SVG loader atom that keeps the final logo geometry, colors, filters, and canvas intact while matching the MenuList 3-second stroke-draw cycle.
+- **Answerlattice logo source finalized** — `public/answerlattice-logo.svg` is the canonical Answerlattice mark source for logo UI, metadata, favicon, PWA, OpenGraph, and splash derivatives.
+- **Answerlattice logo background removed** — The canonical SVG and shared inline logo atom no longer include the exported black canvas/frame; the mark paths, gradients, filters, stroke widths, and geometry stay unchanged and render on transparent SVG backgrounds like the MenuList logo.
+- **Answerlattice logo derivatives refreshed** — Regenerated the Answerlattice logo PNGs, favicon files, PWA icons, OpenGraph image, and iOS splash images from the transparent SVG source without recoloring, reshaping, or simplifying the mark.
+- **Shared Answerlattice logo wrapper aligned** — Header, footer, diagrams, and dashboard navigation now render the exact canonical SVG path geometry through the shared `AnswerlatticeLogoMark` atom instead of the old inline-redrawn mark.
+- **Answerlattice loader animation aligned** — Server and global Answerlattice loading states now use a dedicated loader atom that animates the shared final SVG path geometry and keeps the design-team colors, filters, and transparent canvas while matching the MenuList 3-second stroke-draw cycle.
+- **Answerlattice website diagrams guarded as vectors** — Visible Answerlattice website diagram components now fail verification if they reintroduce raster images, PNG logo usage, or image-wrapped logo rendering instead of the shared inline SVG-path mark.
 
 ### Cost
 

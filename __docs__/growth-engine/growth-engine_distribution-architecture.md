@@ -46,6 +46,9 @@ Lead generation remains one input. Distribution activation becomes the product.
 | Google Business Profile menu editor | https://support.google.com/business/answer/9455840 | Claimed owners can set menu URLs, choose preferred menu sources, and manage menu data on Search/Maps. Growth Engine should produce owner handoff and authorized sync paths only. |
 | Apple Business Connect | https://www.apple.com/newsroom/2023/01/introducing-apple-business-connect/ | Business owners can manage Apple Maps place cards and action links; Growth Engine should track owner-authorized handoffs where MenuList URL improves distribution. |
 | Bing Places API | https://cdn.bingplaces.com/tpshared/BingPlaces_API_Latest.pdf | Bing Places supports restaurant categories, menu URLs, status checks, and quality issues; Growth Engine should track authorized handoffs without treating Bing as canonical truth. |
+| Foursquare Places API and data products | https://docs.foursquare.com/developer/reference/places-api-overview, https://docs.foursquare.com/data-products/docs/categories, and https://docs.foursquare.com/data-products/docs/chains | Foursquare validates the place-graph model: place identity, category taxonomy, chain membership, related places, and quality flags are valuable for target identity. Use as source-policy-gated identity/category/chain signal, not as MenuList truth. |
+| Foursquare PAYG API terms | https://foursquare.com/legal/terms/apilicenseagreement/ | Standard pay-as-you-go terms prohibit using Places Data to contact listed businesses as prospective customers. Growth Engine must block outreach eligibility for Foursquare PAYG data unless a separate contract or written permission allows it. |
+| FSQ OS Places | https://docs.foursquare.com/data-products/docs/fsq-places-open-source and https://docs.foursquare.com/data-products/docs/places-os-data-schema | Open-source POI data can be evaluated separately for identity graph enrichment, with license/source review, field allowlist, retention policy, and no public truth use until verified. |
 | Gmail sender rules | https://support.google.com/a/answer/81126 | Owned email distribution still needs SPF, DKIM, DMARC, one-click unsubscribe, visible unsubscribe, and spam-rate monitoring. |
 | CAN-SPAM | https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Commercial email requires sender identity, postal address, opt-out handling, and prompt suppression. |
 
@@ -56,6 +59,7 @@ The lead-gen model was missing the parts that create distribution power:
 | Missing piece | Why it matters |
 | --- | --- |
 | Distribution target registry | A lead is a person/contact. Distribution needs a business/location/menu target with surfaces, claim state, and public URL inventory. |
+| Business Truth Graph registry | MenuList becomes global menu truth only if businesses, locations, outlets, menus, surfaces, sources, claims, and handoffs are durable identities with relationships. Pages alone do not compound. |
 | Canonical truth activation | Outreach does not matter unless it creates a MenuList-owned canonical menu/business surface. |
 | Public surface publisher | MenuList needs its own menu pages, business pages, city/category pages where legitimate, structured data, and freshness metadata. |
 | Discovery publisher | Sitemaps, robots.txt references, IndexNow, feed exports, and crawl health must be owned internally. |
@@ -74,6 +78,7 @@ Do not depend on third-party growth tools as the system of record.
 Growth Engine owns:
 
 - target identity graph
+- business truth graph candidate edges
 - source policy
 - consent and suppression
 - distribution queue
@@ -127,6 +132,7 @@ The product value must live in MenuList-owned logic, not in Clay, Apollo, HubSpo
 | Module | Responsibility |
 | --- | --- |
 | Distribution Target Registry | Business/location/menu target identity, source provenance, claim state, and surface inventory. |
+| Business Truth Graph Registry | Candidate and confirmed identity nodes/edges across business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships. |
 | Automation Workflow Engine | Typed triggers, steps, retries, idempotency, budget gates, approvals, and kill-switch checks. |
 | Enrichment Waterfall Engine | Ordered source/provider/AI evidence runs for identity, menu gap, contactability, and source confidence. |
 | AI Worker Registry | Typed AI worker inputs/outputs, prompt versions, eval thresholds, budget caps, and blocked-output behavior. |
@@ -163,6 +169,36 @@ type GrowthDistributionTarget = {
   updatedAt: string;
 };
 
+type GrowthBusinessTruthGraphNode = {
+  nodeId: string;
+  targetId: string;
+  type: 'business' | 'location' | 'outlet' | 'menu' | 'surface' | 'source' | 'handoff' | 'claim' | 'freshness' | 'attribution';
+  truthState: 'candidate' | 'owner_confirmed' | 'menulist_verified' | 'blocked';
+  sourceRefs: string[];
+  updatedAt: string;
+};
+
+type GrowthBusinessTruthGraphEdge = {
+  edgeId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  relation:
+    | 'same_as'
+    | 'located_at'
+    | 'has_outlet'
+    | 'has_menu'
+    | 'claimed_by'
+    | 'published_as'
+    | 'sourced_from'
+    | 'handed_off_to'
+    | 'supersedes'
+    | 'needs_freshness_review'
+    | 'attributed_to';
+  confidence: 'high' | 'medium' | 'low';
+  truthState: 'candidate' | 'owner_confirmed' | 'menulist_verified' | 'blocked';
+  createdAt: string;
+};
+
 type GrowthDistributionSurface = {
   surfaceId: string;
   targetId: string;
@@ -195,6 +231,8 @@ The launch baseline must include the complete distribution loop:
 
 ```txt
 source policy
+-> source identity handles
+-> business truth graph candidate edges
 -> distribution target registry
 -> truth gap detection
 -> private claim artifact

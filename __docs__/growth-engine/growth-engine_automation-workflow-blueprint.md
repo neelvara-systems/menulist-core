@@ -51,6 +51,8 @@ The useful workflows are source orchestration, enrichment waterfalling, scoring,
 | Google Business Profile menu operations | Owners can edit menu URLs and choose preferred menu sources; APIs require authorization and existing business relationship. Sources: https://support.google.com/business/answer/9455840 and https://developers.google.com/my-business/content/policies | Growth Engine tracks owner handoff and authorized sync only. No GBP lead-generation use. |
 | Apple Business Connect and Bing Places | Business owners or approved partners can manage place cards, business data, action links, menu URLs, and quality checks. Sources: https://www.apple.com/newsroom/2023/01/introducing-apple-business-connect/ and https://cdn.bingplaces.com/tpshared/BingPlaces_API_Latest.pdf | Treat external listing systems as owner-authorized distribution handoffs, not scraping sources or truth authorities. |
 | Google menu feeds and structured data | Menu feeds need entity/menu/section/item/price correctness; LocalBusiness structured data helps expose business facts to search. Sources: https://developers.google.com/actions-center/verticals/ordering/redirect/reference/menu-feeds/overview and https://developers.google.com/search/docs/appearance/structured-data/local-business | MenuList canonical truth must be feed-ready, structured, sitemap-ready, and freshness-monitored. |
+| Google Places source adapter | Places API Text Search and Place Details require field masks; field choice affects cost; Text Search returns capped pages of candidates; place IDs can be stored indefinitely while broader Places content has caching/storage limits. Sources: https://developers.google.com/maps/documentation/places/web-service/text-search, https://developers.google.com/maps/documentation/places/web-service/place-details, https://developers.google.com/maps/documentation/places/web-service/choose-fields, and https://developers.google.com/maps/documentation/places/web-service/policies | Use Google Places only as a cost-gated candidate source and place identity handle. Persist place IDs, not Google content as MenuList truth. |
+| Foursquare place graph model | Foursquare Places exposes search, place fields, category taxonomy, chain membership, related-place signals, and open-source POI schemas. Its pay-as-you-go API terms prohibit using Places Data to contact listed businesses as prospective customers. Sources: https://docs.foursquare.com/developer/reference/places-api-overview, https://docs.foursquare.com/developer/reference/response-fields, https://docs.foursquare.com/data-products/docs/categories, https://docs.foursquare.com/data-products/docs/chains, https://docs.foursquare.com/data-products/docs/fsq-places-open-source, and https://foursquare.com/legal/terms/apilicenseagreement/ | Use Foursquare as an identity/category/chain graph signal only. Block PAYG outreach eligibility unless a separate contract or written permission allows prospecting. |
 | Google sender rules and CAN-SPAM | Authentication, spam-rate monitoring, one-click unsubscribe for large marketing/subscribed sends, sender identity, and opt-out handling. Sources: https://support.google.com/a/answer/81126 and https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Email cannot launch without sender-domain health, unsubscribe, bounce handling, complaint thresholds, and suppression proof. |
 
 ## 3. Owned Automation Workflow
@@ -60,7 +62,10 @@ Growth Engine needs one deterministic workflow engine with typed steps, evidence
 ```txt
 source intake
 -> source policy gate
+-> Google Places IDs-only seed discovery where approved
+-> Foursquare identity/category/chain enrichment where approved
 -> target identity resolution
+-> business truth graph candidate edge creation
 -> enrichment waterfall
 -> AI evidence extraction
 -> distribution score
@@ -88,6 +93,7 @@ Every step must be resumable, idempotent, budget-gated, kill-switch-aware, and e
 | Workflow run | Immutable execution record for one workflow execution. |
 | Decision snapshot | Typed state used to explain why a target was contacted, held, rejected, routed, or published. |
 | Evidence packet | Source facts, source URLs, confidence, extracted fields, rejected facts, and expiry. |
+| Business truth graph | Candidate and confirmed nodes/edges for business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships. |
 | Enrichment waterfall | Ordered providers and AI extraction steps for a specific field or target decision. |
 | Distribution score | Fit, truth gap, contactability, surface readiness, freshness risk, channel risk, and economics. |
 | Sender assignment | One sender identity per target/campaign, daily cap, ramp state, and health state. |
@@ -103,7 +109,7 @@ AI workers required:
 | AI worker | Input | Output | Hard gate |
 | --- | --- | --- | --- |
 | Source cleaner | Raw source row/payload | normalized candidate fields and rejected fields | Cannot create truth. |
-| Business identity resolver | Candidate facts, existing targets, MenuList stores | match decision, merge/hold/reject reason | Low confidence goes to human review. |
+| Business identity resolver | Candidate facts, graph edges, existing targets, MenuList stores | match decision, candidate graph edges, merge/hold/reject reason | Low confidence goes to human review. |
 | Menu truth gap auditor | Public menu URL, owner site facts, MenuList state | gap type, evidence, confidence | No scraped menu fact becomes public truth. |
 | Contactability scorer | Allowed contact fields and source policy | channel eligibility and risk | Suppression ledger overrides AI. |
 | Artifact drafter | Evidence packet and approved template | private claim/audit draft | Noindex, expiry, and artifact QA required. |
@@ -155,6 +161,10 @@ These recipes must exist as configurable internal workflows, not hardcoded one-o
 | --- | --- | --- |
 | Approved source import | Source policy approved and run requested | Import, normalize, dedupe, create targets, score, summarize. |
 | Target qualification | New or changed target | Run evidence extraction, distribution score, action router. |
+| Google Places seed discovery | Approved Places source policy and query plan | Run IDs-only Text Search, persist place IDs/request metadata, dedupe targets, and hold before Details enrichment. |
+| Google Places details enrichment | Target passed dedupe/pre-score and field-mask profile is approved | Request only approved fields, update evidence packet, and block public truth usage. |
+| Foursquare identity graph enrichment | Approved Foursquare source policy and non-outreach use | Request or import allowed identity/category/chain fields, create candidate graph edges, block PAYG outreach eligibility, and prevent public truth use. |
+| Business truth graph rollup | New source evidence, owner confirmation, or surface event | Create or update business/location/menu/source/claim/surface edges, mark low-confidence edges for review, and expose only confirmed MenuList truth to public publishing. |
 | Claim artifact readiness | Target eligible and artifact template approved | Draft artifact, check rights, noindex, expiry, QA, approval. |
 | Campaign dry-run | Campaign draft saved | Build snapshot, exclusions, samples, sender capacity, surface readiness, cost, blockers. |
 | Sender health guard | Sender-domain health changes | Pause sends, reduce ramp, create incident or warning. |
@@ -217,6 +227,7 @@ The docs are implementation-ready only if these contracts are present:
 | --- | --- |
 | Workflow engine | Typed workflow, run, step, retry, idempotency, budget, approval, and kill-switch model. |
 | Enrichment waterfall | Provider order, run conditions, cache key, success provider, cost, source-policy approval. |
+| Business truth graph | Node/edge schema, source provenance, confidence, truth state, owner confirmation path, and public publish blocker for candidate or low-confidence edges. |
 | AI worker registry | Worker purpose, allowed inputs, typed output, prompt version, eval threshold, budget cap. |
 | Decision snapshot | Stored explanation for every action and blocker. |
 | Sender assignment | One sender per target conversation and sender health gating. |

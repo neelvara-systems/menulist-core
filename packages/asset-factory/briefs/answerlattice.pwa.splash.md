@@ -28,7 +28,7 @@ Keep Answerlattice startup images aligned with the dark infrastructure identity 
 - Canonical logo source: `public/answerlattice-logo.svg`
 - Splash source PNG: `public/answerlattice-logo-mark-wide.png`
 - Design status: final
-- Handling rule: rasterize and place only; do not recolor, redraw, crop into a different mark, or simplify the logo.
+- Handling rule: rasterize and place only; do not recolor, redraw, crop into a different mark, simplify the logo, or reintroduce a baked logo background frame.
 
 ## Existing Files
 
@@ -68,6 +68,7 @@ Keep Answerlattice startup images aligned with the dark infrastructure identity 
 - packages/asset-factory/brand/answerlattice.asset-context.md: Answerlattice Asset Context
 - __docs__/answerlattice/answerlattice-website/README.md: Answerlattice Website (answerlattice.com)
 - src/lib/answerlattice/pwaAssets.ts: Source file
+- scripts/website-assets/generate-answerlattice-logo-assets.js: Source file
 - scripts/website-assets/generate-answerlattice-splash.js: Source file
 
 ## Brand Context Snapshot

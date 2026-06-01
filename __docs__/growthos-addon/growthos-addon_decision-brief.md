@@ -2,7 +2,7 @@
 
 **Status:** Active planning decision
 **Decision date:** May 31, 2026
-**Recommended path:** Build GrowthOS as a paid MenuList add-on for higher-tier clients.
+**Recommended path:** Build GrowthOS as a Pro/Premium MenuList feature for higher-tier clients.
 
 ---
 
@@ -73,7 +73,7 @@ Avoid:
 
 ## What We Should Build First
 
-Build the paid add-on around a simple action flow:
+Build the Pro/Premium feature around a simple action flow:
 
 1. Open Growth Kits.
 2. See one or a few current action opportunities.

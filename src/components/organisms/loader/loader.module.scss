@@ -20,7 +20,10 @@
 
 .answerlatticeLoaderbody {
   backdrop-filter: blur(3px);
-  background: rgba(13, 13, 13, 0.94);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(194, 224, 222, 0.18), transparent 26%),
+    radial-gradient(circle at 52% 53%, rgba(139, 139, 255, 0.2), transparent 38%),
+    rgba(7, 7, 20, 0.88);
 
   svg {
     width: clamp(210px, 20vw, 300px);

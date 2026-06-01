@@ -11,11 +11,11 @@
 | Test | Expected result |
 | --- | --- |
 | `ENABLE_GROWTHOS_ADDON=false` | No Growth Kits navigation, Today entry point, API generation, or mobile card is available. |
-| `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if entitlement exists. |
+| `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if a Pro or Premium subscription exists. |
 | `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
 | `GROWTHOS_STAFF_BRIEF_MODE=deterministic` | Staff Brief generation uses current source facts with no provider call. |
-| `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed. |
-| `GROWTHOS_PAID_PLAN_IDS=["pro","premium"]` | Paid mode is limited to configured plan IDs or explicit GrowthOS entitlement. |
+| `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed and the store has Pro or Premium. |
+| `GROWTHOS_PAID_PLAN_IDS=["pro","premium"]` | Paid mode is limited to active Pro and Premium subscriptions. |
 | `GROWTHOS_IMAGE_MODE=disabled` | Missing item image does not trigger image generation or asset rendering. |
 | `GROWTHOS_REVIEW_REPLY_MODE=manual_paste_guarded` | Review reply requires pasted text and triage before draft. |
 | offer/quick-reply/photo/multi-outlet pilot flags disabled | No pilot-only UI or API path appears. |
@@ -26,8 +26,12 @@
 | --- | --- |
 | Free/base store opens desktop route directly | Access denied with owner-safe message. |
 | Free/base store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
-| Paid eligible store opens module | Growth Kits summary appears. |
-| Pilot allowlist excludes store | Store cannot access even when flag is on. |
+| Starter store has explicit GrowthOS add-on flags | Access remains denied because Growth Kits is Pro/Premium only. |
+| Pro eligible store opens module | Growth Kits summary appears. |
+| Premium eligible store opens module | Growth Kits summary appears. |
+| Inactive Pro or Premium subscription | Access denied before summary/project reads. |
+| Pilot allowlist excludes store | Store cannot access even with a Pro or Premium subscription. |
+| Pilot allowlist includes store without Pro/Premium | Store cannot access because pilot mode still requires Pro or Premium. |
 | Entitlement removed mid-session | Next generation/export attempt is blocked. |
 
 ## 3. Source Truth Tests
@@ -93,9 +97,11 @@
 | No eligible action | Shows calm empty state, not suggestions theater. |
 | Long item name | Text wraps without layout overlap. |
 | Copy action | Clipboard copy succeeds and records export. |
+| Clipboard API blocked or slow | Copy falls back to textarea copy and still records export when the output is valid. |
 | Stale kit | Copy action blocked or warning requires regeneration. |
 | Blocked preflight output | Copy/share/download is blocked until the output is regenerated or reviewed. |
 | Staff-only preflight issue | Safe public outputs are not blocked by a staff-only guard result. |
+| Ant Design notification context | Refresh/generate/copy notifications do not emit static notification context warnings. |
 | Staff Brief Pack | Main line, avoid list, menu fallback, copy/share/mark-used render correctly. |
 | Used History UI flag disabled | No analytics/history dashboard appears beyond core execution signals. |
 | Direct posting | No direct posting control appears. |
@@ -106,6 +112,7 @@
 | --- | --- |
 | Paid store opens mobile Today | Latest Growth Kit entry point is visible when eligible. |
 | Copy/share buttons | Minimum 44px target and instant feedback. |
+| Clipboard API blocked or slow | Copy falls back to textarea copy instead of leaving the owner without feedback. |
 | Long text | Wraps without overlapping buttons. |
 | Kit detail sheet | All outputs are reachable without dense desktop UI. |
 | Stale kit | Warning is visible and action remains clear. |

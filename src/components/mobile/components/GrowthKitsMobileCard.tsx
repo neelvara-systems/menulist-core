@@ -18,8 +18,15 @@ interface GrowthKitsMobileCardProps {
 
 const copyText = async (text: string) => {
     if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
+        try {
+            await Promise.race([
+                navigator.clipboard.writeText(text),
+                new Promise((_, reject) => window.setTimeout(() => reject(new Error('Clipboard write timed out')), 1200)),
+            ]);
+            return true;
+        } catch {
+            // Fall through to textarea copy for browsers that expose Clipboard API but block it.
+        }
     }
     const textArea = document.createElement('textarea');
     textArea.value = text;

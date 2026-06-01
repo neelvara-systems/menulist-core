@@ -1,8 +1,8 @@
 # GrowthOS Add-on - Implementation Validation
 
 **Date:** June 1, 2026
-**Status:** Retest and hardening validation complete
-**Feature flag state:** `ENABLE_GROWTHOS_ADDON=false`
+**Status:** Retest, hardening, and Pro/Premium enablement validation complete
+**Feature flag state:** `ENABLE_GROWTHOS_ADDON=true`, `GROWTHOS_ADDON_ACCESS="paid"`
 
 ---
 
@@ -12,8 +12,8 @@ Implemented GrowthOS V1 as a MenuList add-on labelled `Growth Kits`.
 
 Included:
 
-- disabled-by-default feature flags
-- pilot and paid plan gates
+- enabled master flag with Pro/Premium-only access
+- Pro/Premium plan gate with pilot allowlist still requiring Pro/Premium
 - deterministic source facts, ranking, readiness, kit generation, and Staff Brief
 - guarded deterministic review reply from owner-pasted text
 - desktop `/growth-kits` route
@@ -42,7 +42,7 @@ Excluded by code and flag:
 npm run verify:growthos
 ```
 
-Result: passed. The dry run executed 20 GrowthOS checks covering feature flag default-off behavior, entitlement denial, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, and deferred-scope leakage.
+Result: passed. The dry run executed 29 GrowthOS checks covering enabled master-flag behavior, kill-switch denial, Pro/Premium entitlement denial/allowance, pilot allowlist plus plan gating, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, and deferred-scope leakage.
 
 ```txt
 npx tsc --noEmit --incremental false
@@ -107,6 +107,34 @@ Retest found and fixed:
 - Export summary status/stale writes are skipped when the existing summary already matches.
 - Desktop and mobile local state now receives the server stale flag returned by export recording.
 
+## Chrome E2E Flow
+
+Local Chrome E2E was run on June 1, 2026 against `http://localhost:3000/growth-kits` with `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=shared` and `ANSWERLATTICE_FIREBASE_MODE=shared` so local MenuList auth claim sync used the shared Firebase mode.
+
+Kill-switch proof:
+
+- `ENABLE_GROWTHOS_ADDON=false` rendered the authenticated desktop shell with `Growth Kits is not available yet.`
+- No GrowthOS generation, export, or review action was available while the master flag was off.
+
+Temporary pilot proof:
+
+- The flag was temporarily set to pilot mode for local store `15` during the Chrome run. Current access posture is enabled with paid-plan gating: Pro and Premium only.
+- Desktop Growth Kits loaded for `Habibis Restaurant - Danysa (HQ)` and resolved the current menu as `Bar Menu`.
+- Refresh returned 200 and showed the action `Share 100% fresh fruit juices today`, with secondary actions for `Chocolate milk shake` and `Fruit and nut smoothie`.
+- Kit generation returned 200 and rendered WhatsApp, Instagram, Google update, counter prompt, QR table prompt, Staff brief, and Staff Brief Pack outputs using real item/menu facts and the public menu link.
+- Copy/export and mark-used calls returned 200 and recorded execution without ROI, order, customer, or attribution fields.
+- Guarded review reply accepted owner-pasted review text and showed `Owner review is still required before posting.` before the deterministic draft.
+
+Chrome-run fixes:
+
+- Desktop notification calls now use `App.useApp()` so Ant Design theme/context warnings do not appear in Growth Kits.
+- Desktop and mobile copy actions now fall back to textarea copy if the browser exposes `navigator.clipboard.writeText` but blocks or stalls the write.
+
+Local infrastructure notes:
+
+- Upstash rate-limit provider timeout logs appeared locally, but GrowthOS API calls still returned 200.
+- The local Next dev process became unstable after hot reload with a missing vendor chunk for `next-auth`; restarting the dev server cleared the issue. This was treated as local dev runtime instability, not a GrowthOS logic failure.
+
 ## Docs Parity
 
 | Area | Result |
@@ -118,12 +146,11 @@ Retest found and fixed:
 | Mobile | Docs now point to the implemented mobile card and Today host screen. |
 | Public copy | No public website copy was published; candidate copy remains gated. |
 
-## Remaining Activation Checks
+## Remaining Rollout Checks
 
-Do not turn the feature on until:
+Do not widen beyond the Pro/Premium paid gate until:
 
-- a real pilot store ID or paid plan rollout decision is selected
-- desktop route is browser-tested with an entitled store
+- a Pro/Premium rollout decision is selected
 - mobile Today is browser/device-tested at iPhone width
 - stale kit behavior is tested with changed menu facts
 - support copy is reviewed for paid rollout

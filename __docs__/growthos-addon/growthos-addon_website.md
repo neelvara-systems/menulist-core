@@ -1,7 +1,7 @@
 # GrowthOS Add-on - Website Copy Candidate
 
 **Status:** Candidate copy only
-**Placement:** MenuList pricing/add-ons page, not a standalone GrowthOS website
+**Placement:** MenuList Pro/Premium pricing page, not a standalone GrowthOS website
 **Public name:** Growth Kits
 
 ---

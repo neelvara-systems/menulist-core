@@ -27,7 +27,9 @@ Private PWA shell handling for MyCodex on `menulist.digital` and local `/__mycod
 | File | Responsibility |
 | --- | --- |
 | `src/app/sites/mycodex/layout.tsx` | MyCodex layout shell class and PWA viewport metadata |
-| `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Reader shell, header, drawers, fixed controls |
+| `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Reader shell, mobile home, queue/favorites views, header, drawers, fixed controls |
+| `src/app/sites/mycodex/queue/page.tsx` | Read-later route |
+| `src/app/sites/mycodex/favorites/page.tsx` | Favorites route |
 | `src/app/sites/mycodex/styles.css` | Safe-area variables and mobile PWA spacing |
 | `src/app/sites/mycodex/login/page.tsx` | Safe-area login screen |
 | `src/app/sites/mycodex/offline/page.tsx` | Safe-area offline screen |

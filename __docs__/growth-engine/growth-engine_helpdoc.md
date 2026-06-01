@@ -21,6 +21,9 @@ You need:
 - internal admin access
 - an approved source
 - approved source policy
+- approved Google Places field-mask profile when using Places
+- approved Foursquare field profile and outreach blocker when using Foursquare
+- Business Truth Graph policy for node/edge confidence and truth state
 - approved distribution target policy
 - approved automation workflow
 - approved enrichment waterfall
@@ -44,19 +47,21 @@ Confirm these items before any outreach or public distribution:
 
 1. Source is approved for candidate discovery and the allowed fields are clear.
 2. Distribution target identity is complete.
-3. Enrichment waterfall evidence is present for identity, menu gap, contactability, and source confidence.
-4. Decision snapshot explains the next action and blockers.
-5. Jurisdiction is selected and channel policy allows the campaign.
-6. Sender domain is ready for email, including DNS/authentication, unsubscribe, and bounce handling.
-7. Sender assignment exists and preserves one sender per target conversation.
-8. WhatsApp is assisted-only unless opt-in proof and approved templates are already reviewed.
-9. Onboarding flow is from the approved inventory.
-10. Canonical MenuList surface contract is ready.
-11. Structured data, sitemap, feed export, and truth-packet checks are ready.
-12. External listing handoff is owner-authorized before GBP, Apple Business Connect, or Bing Places work.
-13. Private artifact, if used, has noindex, expiry, source-rights check, accuracy check, and takedown path.
-14. Dry-run passes with costs, exclusions, samples, sender capacity, surface readiness, risks, and blockers reviewed.
-15. Global/channel/campaign/surface/automation kill switches are available.
+3. Business Truth Graph nodes and edges have provenance, confidence, and truth state.
+4. Candidate or low-confidence graph edges are blocked from public publishing.
+5. Enrichment waterfall evidence is present for identity, menu gap, contactability, and source confidence.
+6. Decision snapshot explains the next action and blockers.
+7. Jurisdiction is selected and channel policy allows the campaign.
+8. Sender domain is ready for email, including DNS/authentication, unsubscribe, and bounce handling.
+9. Sender assignment exists and preserves one sender per target conversation.
+10. WhatsApp is assisted-only unless opt-in proof and approved templates are already reviewed.
+11. Onboarding flow is from the approved inventory.
+12. Canonical MenuList surface contract is ready.
+13. Structured data, sitemap, feed export, and truth-packet checks are ready.
+14. External listing handoff is owner-authorized before GBP, Apple Business Connect, or Bing Places work.
+15. Private artifact, if used, has noindex, expiry, source-rights check, accuracy check, and takedown path.
+16. Dry-run passes with costs, exclusions, samples, sender capacity, surface readiness, risks, and blockers reviewed.
+17. Global/channel/campaign/surface/automation kill switches are available.
 
 ### Daily Order
 
@@ -128,6 +133,36 @@ Safety comes before growth.
 5. Approve only after legal/source-rights review is complete.
 
 Do not import from a source before policy approval.
+
+## How To Review A Google Places Run
+
+1. Open **Sources**.
+2. Select the Google Places source run.
+3. Confirm the source policy is approved for candidate discovery.
+4. Confirm the field mask profile is approved.
+5. Confirm the run starts with IDs-only Text Search unless a higher-cost profile is approved.
+6. Confirm the query, category/type, city, result cap, and budget cap.
+7. Confirm only place IDs, request metadata, field mask, and decision state are durable.
+8. Block the run if it requests photos, reviews, profile summaries, menus, wildcard field masks, or public artifact use.
+
+## How To Review A Foursquare Run
+
+1. Open **Sources**.
+2. Select the Foursquare source run.
+3. Confirm the source policy is approved for identity/category/chain enrichment.
+4. Confirm PAYG outreach eligibility is blocked unless separate contract or written permission is attached.
+5. Confirm the field profile is Pro Identity unless Premium Signal approval is attached.
+6. Confirm place IDs, category IDs, chain IDs, source metadata, response hashes, and candidate graph edges are the only durable outputs by default.
+7. Block the run if it requests photos, tips, ratings, descriptions, popularity, menu, profile content, or public artifact use.
+
+## How To Review The Business Truth Graph
+
+1. Open **Business Truth Graph** from a distribution target.
+2. Confirm business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution nodes have clear source references.
+3. Confirm each edge has confidence and truth state.
+4. Hold low-confidence identity, menu, claim, or surface edges for human review.
+5. Confirm candidate edges are internal only.
+6. Approve public publishing only when the public fact comes from owner-confirmed or approved MenuList-verified truth.
 
 ## How To Check Discovery Publishing
 
@@ -285,6 +320,12 @@ Pause non-critical jobs. Review source run size, lead intelligence runs, dashboa
 - No WhatsApp bulk behavior.
 - No manual lead messages outside the system.
 - No source import before policy approval.
+- No Google Places run without approved field-mask profile and budget cap.
+- No Google Places wildcard field mask in production.
+- No durable Google Places content as MenuList truth.
+- No Foursquare PAYG outreach use without separate contract or written permission.
+- No Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content in artifacts, public pages, sitemaps, feeds, truth packets, or MenuList truth.
+- No Business Truth Graph candidate or low-confidence edge in public publishing.
 - No workflow execution without idempotency, budget, and kill-switch checks.
 - No AI autonomy without current eval pass.
 - No target action without a decision snapshot.

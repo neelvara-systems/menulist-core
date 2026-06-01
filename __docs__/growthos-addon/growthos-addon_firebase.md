@@ -1,14 +1,14 @@
 # GrowthOS Add-on - Firebase And Cost Plan
 
-**Status:** Implemented behind disabled feature flag
-**Runtime cost today:** No owner runtime cost while `ENABLE_GROWTHOS_ADDON=false`
-**Cost principle:** Paid add-on value must cover Firestore, Storage, and provider usage.
+**Status:** Enabled behind Pro/Premium entitlement gate
+**Runtime cost today:** Only active Pro/Premium stores can reach Growth Kits reads/writes while `GROWTHOS_ADDON_ACCESS="paid"`
+**Cost principle:** Pro/Premium plan value must cover Firestore, Storage, and provider usage.
 
 ---
 
 ## 1. Current Cost Impact
 
-The implementation adds Firestore rules and gated code paths, but the master feature flag defaults off.
+The implementation adds Firestore rules and gated code paths. The master feature flag is enabled, but Growth Kits remains limited to active Pro/Premium stores.
 
 No Storage rules, Cloud Functions, provider calls, scheduled jobs, or indexes were added.
 
@@ -61,7 +61,7 @@ GrowthOS must follow existing MenuList cost discipline:
 
 Purpose:
 
-- one-read add-on dashboard
+- one-read Growth Kits home summary
 - latest ranked action
 - latest kit summary
 - owner-safe empty state
