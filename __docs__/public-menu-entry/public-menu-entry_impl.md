@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** May 20, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -15,7 +15,7 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | ------------------------------------- | ------- | ---------------------------------------------------------- | ----------------------------------------------- |
 | Image optimization (client-side)      | ✅      | `compressor.js` (package.json)                             | Direct reuse — same compression before upload   |
 | Firebase Storage upload               | ✅      | `src/database/projects/index.ts`                           | New path: `publicMenuDrafts/{draftId}/`         |
-| AI menu extraction (Gemini 2.0 Flash in public route; shared pipeline uses configured AI model) | ✅      | `src/app/api/public/create-menu/route.ts`, `functions/src/logic/processMenuImagesJob.ts` | Reuse core extraction logic and keep model/cost visible |
+| AI menu extraction                     | ✅      | `functions/src/logic/processMenuImagesJob.ts`              | Queue durable `menuImageProcessingJobs` from the public route and reuse the shared worker |
 | Menu preview rendering                | ✅      | `src/components/templates/website/clientWebsite/`          | Reuse `MainContentRenderer` with extracted data |
 | QR code generation                    | ✅      | `src/components/.../shareModal/qrCodeView.tsx`             | Reuse QR component on success page              |
 | Menu Kit (share assets)               | ✅      | `src/components/.../shareModal/MenuKitSection.tsx`         | Available post-publish                          |
@@ -62,6 +62,7 @@ interface PublicMenuDraft {
   } | null;
   extractionStatus: "pending" | "processing" | "completed" | "failed";
   extractionError?: string;
+  extractionJobId?: string;
 
   // AI-detected business info
   detectedBusinessName?: string;
@@ -87,6 +88,16 @@ interface PublicMenuDraft {
 **TTL:** 24 hours from creation
 **Index needed:** `token` (equality) — for preview lookup
 **Index needed:** `expiresAt` (range) + `claimed` (equality) — for nightly cleanup
+
+## Durable Extraction
+
+Public create-menu no longer runs extraction inside `src/app/api/public/create-menu/route.ts` after returning the draft response. The route creates a draft, then queues `menuImageProcessingJobs/{jobId}` with `destination.type = "public_menu_draft"` and `skipProjectSave: true`.
+
+`functions/src/logic/processMenuImagesJob.ts` marks the draft `processing`, then updates `publicMenuDrafts/{draftId}` to `completed` with extracted categories/items/languages or `failed` with an owner-safe error.
+
+This keeps the public preview polling contract unchanged while reusing the same extraction, validation, hardening, and link-text parser path used by authenticated owner extraction.
+
+For sources supported by the shared menu-intake identity helper, the public route adds `sourceMetadata.identityCheck` to the queued job. The shared worker uses that metadata to keep `detectedBusinessName` and `detectedBusinessType` populated for the claim form without restoring the old inline public extraction model.
 
 ### 2.1A Claimed Starter Activation
 
@@ -319,21 +330,23 @@ const schema = z.object({
 
 ---
 
-## 5. Inline Extraction Helper
+## 5. Durable Extraction Job
 
-**Location:** `src/app/api/public/create-menu/route.ts` (`triggerExtraction`)
-**Type:** Fire-and-forget server helper inside the Next.js API route
-**Purpose:** Run AI extraction on the uploaded image or acquired public menu-link artifact without exposing the Gemini key to the client
+**Location:** `src/app/api/public/create-menu/route.ts` and `functions/src/logic/processMenuImagesJob.ts`
+**Type:** Durable `menuImageProcessingJobs` entry with `destination.type = "public_menu_draft"`
+**Purpose:** Run extraction through the shared worker and write completion/failure back to `publicMenuDrafts/{draftId}`.
 
 **Reuses:**
 
-- Shared Gemini client (`genAIClient`)
-- Shared category/business-type helpers
-- Shared AI operation logging (`recordAiOperation`)
+- Shared extraction worker (`processMenuImagesJobLogic`)
+- Shared source validation and extraction hardening
+- Shared deterministic link-text parser for imported text artifacts
+- Shared job status/error lifecycle
 
-**Does NOT reuse:**
+**Does not write:**
 
-- Full `processMenuImagesJobLogic` (too coupled to project/session/job queue)
+- `projects/{tId}/{sId}` before the owner claims the draft
+- Any public menu output before authenticated claim/publish
 - Separate callable Cloud Function (not needed for v1)
 
 **Flow:**
@@ -477,7 +490,7 @@ const schema = z.object({
 - [x] Add feature flag + DB constant (both frontend + CF)
 - [x] Create `publicMenuDrafts` collection schema
 - [x] Create upload API route (`/api/public/create-menu`)
-- [x] Keep extraction inline in the public API route for v1
+- [x] Queue extraction through `menuImageProcessingJobs` instead of keeping AI work inline in the public API route
 - [x] Create upload page UI (`/create-menu`)
 - [x] Create preview page UI (`/create-menu/preview/[draftId]`)
 - [x] Add Firestore indexes
@@ -512,17 +525,17 @@ const schema = z.object({
 
 ## 10. ADRs (Architecture Decision Records)
 
-### ADR-1: Why a separate `publicMenuDrafts` collection?
+### ADR-1: Why keep a separate `publicMenuDrafts` collection?
 
-**Decision:** New collection, not reusing `menuImageProcessingJobs` or `projects`.
+**Decision:** Keep `publicMenuDrafts` for anonymous preview state, but queue extraction through `menuImageProcessingJobs`.
 
-**Reason:** The existing job queue is tightly coupled to authenticated sessions (requires `tId`, `sId`, `uId`). Public drafts have no tenant context until claim. A separate collection keeps concerns clean and allows easy TTL cleanup without affecting real jobs.
+**Reason:** Public drafts have no real tenant/store/project until claim, so preview state and TTL cleanup still belong in `publicMenuDrafts`. The extraction work itself now belongs in the central durable job queue with `destination.type = "public_menu_draft"`.
 
-### ADR-2: Why server-side extraction (not client-side)?
+### ADR-2: Why durable server-side extraction (not client-side or request-lifecycle AI)?
 
-**Decision:** API route uploads the image and runs the narrow extraction helper server-side.
+**Decision:** The API route uploads the source, creates the draft, and queues a durable extraction job.
 
-**Reason:** Gemini API key must stay server-side. Client-side extraction would expose the key. Keeping the helper in the API route avoids a separate Cloud Function while still allowing SAFE_MODE, rate limiting, secure logging, and AI operation accounting before the model call.
+**Reason:** Gemini API keys must stay server-side, and extraction should not depend on the public API request staying alive after the response. The shared worker already handles model calls, validation, source hardening, and terminal job status.
 
 ### ADR-3: Why no editor on preview page?
 

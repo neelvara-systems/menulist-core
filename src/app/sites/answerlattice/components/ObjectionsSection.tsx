@@ -2,24 +2,24 @@ import SectionHeader from './SectionHeader';
 
 const OBJECTIONS = [
     {
-        question: 'Does Answerlattice replace Intercom or Zendesk?',
-        answer: 'No. Answerlattice is the support knowledge layer and page-aware widget. It can reduce repetitive questions before they become tickets, but it is not a full helpdesk replacement.',
+        question: 'Does AnswerLattice replace Intercom or Zendesk?',
+        answer: 'No. AnswerLattice is the support knowledge layer and page-aware widget. It can reduce repetitive questions before they become tickets, but it is not a full helpdesk replacement.',
     },
     {
         question: 'Will answers publish automatically?',
-        answer: 'No. Answerlattice can generate drafts and proposals, but official answers require owner approval.',
+        answer: 'No. AnswerLattice can generate drafts and proposals, but official answers require owner approval.',
     },
     {
         question: 'Do I need a full docs site first?',
-        answer: 'No. Start with FAQs, release notes, product pages, setup guides, and common support answers. Answerlattice turns those into review work.',
+        answer: 'No. Start with FAQs, release notes, product pages, setup guides, and common support answers. AnswerLattice turns those into review work.',
     },
     {
         question: 'Can I add my own repeated Q&A?',
-        answer: 'Yes. Owners can publish exact FAQ or custom answers, link them to articles and product pages, and let Answerlattice use them after canonical answers and before fallback.',
+        answer: 'Yes. Owners can publish exact FAQ or custom answers, link them to articles and product pages, and let AnswerLattice use them after canonical answers and before fallback.',
     },
     {
-        question: 'I built my app with AI. Is Answerlattice still useful?',
-        answer: 'Yes, if real users are asking repeated questions. Answerlattice helps support keep up when the product ships faster than docs and support processes.',
+        question: 'I built my app with AI. Is AnswerLattice still useful?',
+        answer: 'Yes, especially when the product is live, in beta, or preparing to launch. AnswerLattice helps support keep up when the product ships faster than docs and support processes.',
     },
     {
         question: 'How hard is install?',

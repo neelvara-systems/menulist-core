@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'In-App Help Widget',
-    description: 'Install Answerlattice as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, canonical answers, and owner FAQ answers before fallback.',
+    description: 'Install AnswerLattice as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, canonical answers, and owner FAQ answers before fallback.',
     alternates: { canonical: '/product/page-aware-widget' },
 };
 
@@ -56,13 +56,13 @@ export default function PageAwareWidgetProductPage() {
                     { title: 'Route-aware answers', description: 'The same question can resolve differently on invoices, onboarding import, team permissions, or release pages.' },
                     { title: 'Hosted help handoff', description: 'Users can move from the widget to hosted docs, owner FAQs, and changelog content on your support domain.' },
                     { title: 'Feedback as signal', description: 'Negative feedback and fallback answers become review work, not invisible chat noise.' },
-                    { title: 'Screenshot-aware support', description: 'Users can add a screenshot to explain visual errors, while Answerlattice keeps automatic page capture out of the runtime.' },
+                    { title: 'Screenshot-aware support', description: 'Users can add a screenshot to explain visual errors, while AnswerLattice keeps automatic page capture out of the runtime.' },
                     { title: 'Quiet proactive help', description: 'Rule-based prompts can appear only when active triggers and approved support summaries exist for the page.' },
                 ]}
                 workflowTitle="Install once, then make every important page support-aware."
-                workflowDescription="Answerlattice separates the runtime key, allowed origins, blocked routes, page context, and proactive capability checks so widget behavior stays maintainable."
+                workflowDescription="AnswerLattice separates the runtime key, allowed origins, blocked routes, page context, and proactive capability checks so widget behavior stays maintainable."
                 workflowSteps={[
-                    { title: 'Generate widget key', description: 'Create the widget credential from the Answerlattice dashboard and copy it during setup.' },
+                    { title: 'Generate widget key', description: 'Create the widget credential from the AnswerLattice dashboard and copy it during setup.' },
                     { title: 'Install the script', description: 'Place the widget snippet in the client product shell or selected app surfaces.' },
                     { title: 'Configure access', description: 'Add allowed origins and blocked routes so the widget appears only where it should.' },
                     { title: 'Send safe context', description: 'Pass page, feature, workflow, role, or plan hints; screenshot input stays user-initiated, optional, and bounded.' },

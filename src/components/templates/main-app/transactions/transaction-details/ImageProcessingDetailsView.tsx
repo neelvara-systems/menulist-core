@@ -1,5 +1,5 @@
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { formatCurrency } from '@util/formatters';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { Descriptions, Divider, Image, Table, Tag, Typography } from 'antd';
 import React, { useContext } from 'react';
 import { TransactionDetails } from '../TransactionDetailsModal'; // Adjust import path if needed
@@ -9,7 +9,7 @@ interface ImageProcessingDetailsViewProps {
 }
 
 // Helper to render extracted menu items from image processing
-const renderExtractedMenuItems = (clientResponse: any, categories: any[]) => {
+const renderExtractedMenuItems = (clientResponse: any, categories: any[], currencySymbol: string) => {
     if (!clientResponse?.data?.items || clientResponse.data.items.length === 0) {
         return <Typography.Text>No menu items found</Typography.Text>;
     }
@@ -37,7 +37,7 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[]) => {
                     render: (price) => {
                         if (typeof price === 'string' && price !== 'N/A' && price !== 'Multiple prices') {
                             const numericPrice = parseFloat(price);
-                            return isNaN(numericPrice) ? price : formatCurrency(numericPrice * 100, 'INR'); // Convert to cents
+                            return isNaN(numericPrice) ? price : formatMenuPrice(numericPrice, currencySymbol, { fractionDigits: 2 });
                         }
                         return price;
                     }
@@ -70,7 +70,7 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[]) => {
                                     key: 'price',
                                     render: (price) => {
                                         const numericPrice = parseFloat(price);
-                                        return isNaN(numericPrice) ? price : formatCurrency(numericPrice * 100, 'INR'); // Convert to cents
+                                        return isNaN(numericPrice) ? price : formatMenuPrice(numericPrice, currencySymbol, { fractionDigits: 2 });
                                     }
                                 }
                             ]}
@@ -97,7 +97,8 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[]) => {
 
 const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({ transaction }) => {
     const { files, targetLanguages, clientResponse } = transaction;
-    const { tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const currencySymbol = storeDetails?.currencySymbol || '₹';
 
     const categories = clientResponse?.data?.categories || [];
     const items = clientResponse?.data?.items || [];
@@ -152,7 +153,7 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                                     </div>
                                 )}
 
-                                {renderExtractedMenuItems(clientResponse, categories)}
+                                {renderExtractedMenuItems(clientResponse, categories, currencySymbol)}
 
                                 {items.length === 0 && categories.length === 0 && (
                                     <Typography.Text>No menu items or categories found</Typography.Text>

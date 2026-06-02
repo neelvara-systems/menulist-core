@@ -11,11 +11,11 @@
  * - Smart Picks performance
  */
 
-import { AppstoreOutlined, EyeOutlined, FallOutlined, FireOutlined, RiseOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, WeeklyViewData } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Row, Tag, Typography } from 'antd';
 import React from 'react';
+import { LuEye, LuFlame, LuSmartphone, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
 import MetricCard from './MetricCard';
 import styles from './OwnerDashboard.module.scss';
@@ -56,10 +56,10 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
         const isPositive = change > 0;
         return (
             <Tag
-                color={isPositive ? 'green' : 'orange'}
+                color={isPositive ? 'success' : 'warning'}
                 className={styles.changeTag}
             >
-                {isPositive ? <RiseOutlined /> : <FallOutlined />}
+                {isPositive ? <LuTrendingUp /> : <LuTrendingDown />}
                 {isPositive ? '+' : ''}{change}%
             </Tag>
         );
@@ -78,7 +78,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                     <MetricCard
                         title={labels.scansLabel}
                         value={metrics.menuVisits}
-                        icon={<EyeOutlined />}
+                        icon={<LuEye />}
                         subtitle={metricsChange?.menuVisitsChange !== undefined
                             ? `${metricsChange.menuVisitsChange > 0 ? '+' : ''}${metricsChange.menuVisitsChange}% vs last week`
                             : undefined}
@@ -89,7 +89,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                     <MetricCard
                         title="Item Clicks"
                         value={metrics.itemClicks}
-                        icon={<AppstoreOutlined />}
+                        icon={<LuSmartphone />}
                         tooltip="Number of times customers tapped on items"
                     />
                 </Col>
@@ -111,7 +111,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                     <MetricCard
                         title="Smart Picks Shown"
                         value={metrics.smartPicksRendered}
-                        icon={<ThunderboltOutlined />}
+                        icon={<LuZap />}
                         tooltip="How many times Smart Picks appeared on your page"
                     />
                 </Col>
@@ -119,7 +119,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                     <MetricCard
                         title="Smart Picks Used"
                         value={`${smartPicksEngagementRate}%`}
-                        icon={<FireOutlined />}
+                        icon={<LuFlame />}
                         subtitle={`${metrics.smartPicksClicks} clicks`}
                         tooltip="Percentage of customers who used Smart Picks"
                     />

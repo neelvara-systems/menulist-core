@@ -287,6 +287,7 @@ interface TransactionObject {
     chargePerCredit: number;
     totalCredits: number;
     totalCharge: number;
+    unitsConsumed: number;
 }
 
 /**
@@ -851,6 +852,7 @@ export async function processMenuImagesLogic(
             chargePerCredit: CHARGE_PER_CREDIT,
             totalCredits: totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT,
             totalCharge: CHARGE_PER_CREDIT * (totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT),
+            unitsConsumed: 0,
         };
 
         // Step 7: Add operation to database
@@ -907,6 +909,7 @@ export async function processMenuImagesLogic(
                 requestId,
                 totalCharge: transactionObject.totalCharge,
                 totalCredits: transactionObject.totalCredits,
+                unitsConsumed: transactionObject.unitsConsumed,
                 processingTime: transactionObject.processingTime,
                 transactionId: transactionObject.transactionId,
                 recorded: transactionRecorded,

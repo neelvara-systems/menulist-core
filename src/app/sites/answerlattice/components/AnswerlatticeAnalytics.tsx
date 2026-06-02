@@ -27,9 +27,10 @@ function AnswerlatticeConversionTracker() {
             if (typeof win.gtag !== 'function') return;
 
             win.gtag('event', eventName, {
-                event_category: 'answerlattice_website',
+                event_category: target.dataset.answerlatticeCategory || 'answerlattice_website',
                 event_label: target.dataset.answerlatticeLabel || target.textContent?.trim().slice(0, 80) || undefined,
                 page_path: window.location.pathname,
+                link_url: target instanceof HTMLAnchorElement ? target.href : undefined,
             });
         };
 

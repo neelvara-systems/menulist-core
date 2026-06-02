@@ -1,5 +1,6 @@
 {
     "BusinessSettings": {
+        "currency": "ચલણ",
         "publicClosedToday": "આજે બંધ",
         "publicOpenToday": "આજે ખુલ્લું: {hours}",
         "publicInfoVerifiedToday": "માહિતી આજે ચકાસાઈ",

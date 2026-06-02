@@ -296,9 +296,6 @@ export const POST = withAuth(async (request, session) => {
             // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');
-                const nextBilling = providerSubscription.charge_at
-                    ? new Date(providerSubscription.charge_at * 1000).toLocaleDateString()
-                    : 'See dashboard';
                 sendLifecycleMessage({
                     storeId: String(internalSub.storeId),
                     tenantId: String(internalSub.tenantId),
@@ -310,7 +307,9 @@ export const POST = withAuth(async (request, session) => {
                         amount: payment.amount ? (Number(payment.amount) / 100) : 0,
                         currency: payment.currency?.toUpperCase() || 'INR',
                         planName: planDetails.name || 'Subscription',
-                        nextBillingDate: nextBilling,
+                        nextBillingAt: providerSubscription.charge_at
+                            ? new Date(providerSubscription.charge_at * 1000).toISOString()
+                            : null,
                     },
                 }).catch(() => { /* non-blocking */ });
             } catch { /* non-blocking */ }

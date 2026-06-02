@@ -4,8 +4,7 @@ import ArticleView from '@organisms/ArticleView';
 import { Badge, Button, Card, Flex, Space, Tag, Tooltip, Typography, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { LuArrowRight, LuFileText, LuMaximize2 } from 'react-icons/lu';
-import { TbLayoutBottombarCollapse, TbLayoutNavbarCollapse } from 'react-icons/tb';
+import { LuArrowRight, LuChevronDown, LuChevronUp, LuFileText, LuMaximize2 } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -118,7 +117,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                                                         style={{ display: 'inline-flex', alignItems: 'center' }}
                                                     >
-                                                        {isExpanded ? <TbLayoutNavbarCollapse size={14} /> : <TbLayoutBottombarCollapse size={14} />}
+                                                        {isExpanded ? <LuChevronUp size={14} /> : <LuChevronDown size={14} />}
                                                     </motion.span>
                                                 }
                                                 onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}

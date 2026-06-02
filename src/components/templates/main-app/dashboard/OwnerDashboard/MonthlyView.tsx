@@ -12,11 +12,13 @@
  * - AI summary max 3 bullets (calm, reassuring)
  */
 
-import { CheckCircleOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, MonthlyViewData } from '@template/main-app/projects/types';
+import { formatDateKey } from '@util/dateTime';
 import { Card, Col, Empty, Row, Statistic, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import React from 'react';
+import { LuCheckCircle } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
 import MetricCard from './MetricCard';
 import styles from './OwnerDashboard.module.scss';
@@ -29,6 +31,7 @@ interface MonthlyViewProps {
 
 const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
+    const formatter = useFormatter();
 
     if (!data) {
         return (
@@ -47,10 +50,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
     const { metrics, aiSummary, daysWithData, monthStart, monthEnd } = data;
 
     // Format month for display
-    const monthName = new Date(monthStart).toLocaleDateString('en-IN', {
-        month: 'long',
-        year: 'numeric',
-    });
+    const monthName = formatDateKey(monthStart, formatter);
 
     const smartPicksEngagementRate = metrics.smartPicksRendered > 0
         ? Math.round((metrics.smartPicksClicks / metrics.smartPicksRendered) * 100)
@@ -61,7 +61,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
             {/* Month Header */}
             <Card className={styles.monthHeader} variant="borderless">
                 <div className={styles.monthHeaderContent}>
-                    <CheckCircleOutlined className={styles.monthIcon} />
+                    <LuCheckCircle className={styles.monthIcon} />
                     <div>
                         <Title level={4} className={styles.monthTitle}>
                             {monthName}

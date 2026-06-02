@@ -210,7 +210,7 @@ src/lib/
 ├── analytics/
 │   └── unified.ts                   # Tracking logic (MENU_VIEW, ITEM_VIEW, etc.)
 ├── schema/
-│   └── index.ts                     # Schema.org utilities (buildAddress, buildBreadcrumbList, buildFaqSchema, etc.)
+│   └── index.ts                     # Schema.org utilities (buildAddress, buildBreadcrumbList, buildFaqSchema utility for visible FAQ content, etc.)
 ├── mce/
 │   ├── index.ts                     # MCE entry point (mceValidate, toMCEMetadata)
 │   ├── correctnessResolver.ts       # 17 validation rules

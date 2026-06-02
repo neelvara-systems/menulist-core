@@ -4,7 +4,10 @@ import { calculateOfflineLocationTopup } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
 import type { ResellerTransaction } from '@type/reseller';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatInrPaise } from '@util/formatters';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { useState } from 'react';
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
 import { Button, Card, Empty, Flex, Input, NavBar, Popup, Spin, Tag, Text, Title, Toast } from '../antd';
@@ -24,15 +27,11 @@ const STATUS_COLORS: Record<string, string> = {
     cancelled: 'default',
 };
 
-function formatMoney(paise?: number) {
-    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
-}
-
-function formatDate(value: any) {
+function formatDate(value: any, formatter: IntlFormatter) {
     if (!value) return 'Auto-renew';
     const date = value?.toDate ? value.toDate() : new Date(value);
     if (Number.isNaN(date.getTime())) return 'Auto-renew';
-    return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    return formatDateTime(date, 'date', formatter);
 }
 
 function getDaysLeft(value: any) {
@@ -53,6 +52,7 @@ function ClientCard({
     onOpenPaymentLink: (link: string) => void;
     transaction: ResellerTransaction;
 }) {
+    const formatter = useFormatter();
     const daysLeft = getDaysLeft(transaction.validUntil);
     const statusColor = STATUS_COLORS[transaction.status] || 'default';
     const isManual = transaction.paymentMode === 'offline' || transaction.subscriptionBillingMode === 'manual';
@@ -74,12 +74,12 @@ function ClientCard({
                 <Flex gap={8} wrap="wrap">
                     <Tag>{transaction.paymentMode === 'online' ? 'Online' : 'Offline'}</Tag>
                     <Tag>{transaction.pricingTier}</Tag>
-                    <Tag>{formatMoney(transaction.amountExpected)}</Tag>
+                    <Tag>{formatInrPaise(transaction.amountExpected)}</Tag>
                     <Tag>{transaction.subscriptionQuantity || transaction.locationCount || 1} location{(transaction.subscriptionQuantity || transaction.locationCount || 1) > 1 ? 's' : ''}</Tag>
                 </Flex>
                 <Flex align="center" justify="space-between">
                     <Text type="secondary">Expires</Text>
-                    <Text strong>{formatDate(transaction.validUntil)}{daysLeft && daysLeft > 0 ? ` (${daysLeft}d)` : ''}</Text>
+                    <Text strong>{formatDate(transaction.validUntil, formatter)}{daysLeft && daysLeft > 0 ? ` (${daysLeft}d)` : ''}</Text>
                 </Flex>
                 {canAddLocation ? (
                     <Button block fill="outline" onClick={() => onAddLocation(transaction)} style={{ minHeight: 44 }}>
@@ -149,7 +149,7 @@ export default function MobileResellerDashboardScreen({
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || 'Could not add location');
-            Toast.show({ content: `Collect ${formatMoney(data.amountExpected)}`, duration: 2200, icon: 'success' });
+            Toast.show({ content: `Collect ${formatInrPaise(data.amountExpected)}`, duration: 2200, icon: 'success' });
             setSelectedClient(null);
             setLocationCount('1');
             refresh();
@@ -188,7 +188,7 @@ export default function MobileResellerDashboardScreen({
                 description={isPlatform ? 'View reseller clients across the platform.' : 'View your clients and license status.'}
                 onBack={onBack}
                 right={(
-                    <Button aria-label="Refresh reseller dashboard" fill="none" onClick={() => refresh()} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                    <Button aria-label="Refresh reseller dashboard" fill="none" onClick={() => refresh()} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                         <LuRefreshCw size={18} />
                     </Button>
                 )}
@@ -238,8 +238,8 @@ export default function MobileResellerDashboardScreen({
                             {[
                                 ['Clients', monthlySummary.totals.clientCount],
                                 ['Txns', monthlySummary.totals.transactionCount],
-                                ['Collected', formatMoney(monthlySummary.totals.recognizedRevenuePaise)],
-                                ['Online pending', formatMoney(monthlySummary.totals.onlinePendingPaise)],
+                                ['Collected', formatInrPaise(monthlySummary.totals.recognizedRevenuePaise)],
+                                ['Online pending', formatInrPaise(monthlySummary.totals.onlinePendingPaise)],
                             ].map(([label, value]) => (
                                 <Flex key={label as string} gap={2} vertical>
                                     <Text type="secondary">{label}</Text>
@@ -255,7 +255,7 @@ export default function MobileResellerDashboardScreen({
                         <Flex gap={8} vertical>
                             <Flex justify="space-between"><Text type="secondary">Offline cap</Text><Text strong>{profile.currentActiveOfflineStores || 0} / {profile.maxOfflineActivations || 0}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Total onboarded</Text><Text strong>{profile.totalStoresOnboarded || 0}</Text></Flex>
-                            <Flex justify="space-between"><Text type="secondary">Revenue tracked</Text><Text strong>{formatMoney(profile.totalRevenueCollectedPaise)}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Revenue tracked</Text><Text strong>{formatInrPaise(profile.totalRevenueCollectedPaise)}</Text></Flex>
                         </Flex>
                     </Card>
                 ) : null}
@@ -309,7 +309,7 @@ export default function MobileResellerDashboardScreen({
                             <Card size="small">
                                 <Flex gap={4} vertical>
                                     <Text type="secondary">Collect from client</Text>
-                                    <Text strong>{formatMoney(locationTopup?.amountPaise)}</Text>
+                                    <Text strong>{formatInrPaise(locationTopup?.amountPaise)}</Text>
                                     <Text type="secondary">{locationTopup?.daysRemaining || 0} days remaining.</Text>
                                 </Flex>
                             </Card>

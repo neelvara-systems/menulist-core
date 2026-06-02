@@ -57,7 +57,7 @@ None — permissions and policies are toggled, never deleted.
 | Role definitions (3 default + custom) | `stores/{storeId}.roles[]`            | ~2KB per role × 3–5 roles | Array of `StoreRoleDataType` with 23 permission flags each |
 | User's role assignment                | `users/{userId}.stores[].role`        | ~20 bytes                 | Role ID string (e.g., `"owner"`, `"manager"`)              |
 | Outlet policy (15 flags)              | `stores/{masterStoreId}.outletPolicy` | ~200 bytes                | Only on master store. `OutletPolicy` object.               |
-| Extraction job store guard            | `menuImageProcessingJobs.sId`         | String store ID           | Firestore rules require this to match `request.auth.token.storeId` on client-created extraction jobs. |
+| Extraction job store guard            | `POST /api/menu-extraction/jobs`      | Server-created job        | Protected route verifies tenant/store/project ownership before creating extraction jobs. |
 
 ---
 

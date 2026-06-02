@@ -5,7 +5,7 @@
 **Author:** Lead Architect (Cascade)  
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Architecture Alignment + Market Research (Feb 2026)  
 **Applies:** 3-Year Architecture Freeze Rule  
-**Last Audit:** February 8, 2026 (Market Research → ChatGPT Strategic Review v1+v2 → Cascade Final Decision → LOCKED)
+**Last Audit:** June 2, 2026 (market scan + owner-trust/readability hardening; feature remains locked)
 
 ---
 
@@ -24,6 +24,8 @@ Digital Screens operates in **two rendering modes** from the same truth system:
 
 Both modes use the same data pipeline, same URL base, same zero-configuration philosophy. Owner opens a link on their TV. That's it.
 The screen always follows the store's currently active menu truth automatically.
+
+June 2026 hardening clarified the two screen types in owner setup and raised the TV output standard without changing the product boundary: Menu Board is the counter ordering surface, Highlights is the secondary featured-content surface, and neither becomes signage software.
 
 ### The Core Insight
 
@@ -91,6 +93,12 @@ That includes project-level screen assignment. Screens follow the active store m
 
 3. **Availability Reliability:** Items with uncertain availability (time-based, volatile stock) are excluded from screens. System adapts internally; owner doesn't configure.
 
+4. **Content Factuality:** Screen labels must not invent claims such as chef endorsement, permanent availability, or recommendation authority. Use factual labels like `Today`, `Popular`, `Featured`, category name, or `On menu`.
+
+5. **Content Normalization:** Item names, descriptions, categories, prices, tags, and custom-slide captions must be normalized before screen display. Technical IDs, HTML-like text, control characters, and unparseable price strings must not leak onto TV output.
+
+6. **Owner Artwork Boundary:** Custom slide captions are management labels. Owner-uploaded poster artwork displays as the content itself; the system must not force item-title overlays onto custom poster slides.
+
 ---
 
 ## Scope
@@ -105,6 +113,7 @@ That includes project-level screen assignment. Screens follow the active store m
 | **Live Screen URL**             | One URL per store, mode via query parameter                        |
 | **Automatic Content**           | System decides what to show based on menu data + availability      |
 | **Owner Visibility**            | See what's currently showing (read-only)                           |
+| **Owner Setup Trust**           | See two screen types, compact TV links, QR blocks, and last-seen status |
 | **Owner Inserts**               | Upload custom images (optional escape hatch, highlights mode only) |
 | **Offline Resilience**          | Screen continues working during internet outages                   |
 | **Availability-Aware**          | Auto-removes sold-out items from both modes                        |
@@ -156,18 +165,19 @@ Restaurant screens operate in:
 
 | Element                    | Minimum Size | Weight | Contrast             |
 | -------------------------- | ------------ | ------ | -------------------- |
-| Menu Board item name       | 18px         | 500+   | White on dark (>7:1) |
-| Menu Board price           | 18px         | 700+   | High contrast        |
-| Menu Board category header | 22px         | 800    | White on dark        |
+| Menu Board item name       | 30px target  | 700+   | White on dark (>7:1) |
+| Menu Board price           | 32px target  | 800    | High contrast        |
+| Menu Board category header | 31px target  | 800    | White on dark        |
 | Highlights item name       | 48px+        | 800    | White + text-shadow  |
 | Highlights price           | 32px+        | 800    | Green on dark        |
 
-**Decorative elements MUST:**
+**Screen output elements MUST:**
 
 - Never overlap or interfere with text
-- Use low opacity (≤0.2) for background effects
-- Remain in background layers (z-index below content)
-- Not reduce text contrast in any lighting condition
+- Avoid ambient or decorative background effects
+- Keep stable row, price, QR, and progress dimensions
+- Preserve text contrast in bright store lighting
+- Use letter spacing `0`; never use negative or wide tracking for screen text
 
 **If any future change reduces readability at 2m distance on a 40" TV: REVERT immediately.**
 
@@ -201,7 +211,7 @@ Restaurant screens operate in:
 
 #### Story 6: Upsell Discovery (Highlights)
 
-> "I'm waiting at the counter. The screen shows 'Chef's Pick: Paneer Tikka — ₹280' with a QR code. I scan it, see the full menu, order more."
+> "I'm waiting at the counter. The screen shows 'Popular: Paneer Tikka — ₹280' with a QR code. I scan it, see the full menu, order more."
 
 ---
 
@@ -230,6 +240,10 @@ Restaurant screens operate in:
 | FR-17 | **All items display prices in both modes**                        | Must Have   | Both       |
 | FR-18 | **Default URL (`/screen/token`) renders Menu Board**              | Must Have   | Menu Board |
 | FR-19 | **`?mode=highlights` renders promotional slideshow**              | Must Have   | Highlights |
+| FR-20 | **Menu Board preserves menu/category order where source metadata exists** | Must Have | Menu Board |
+| FR-21 | **Owner settings show TV setup status and two distinct screen links** | Must Have | Both |
+| FR-22 | **Screen content normalizes text, prices, categories, tags, and captions** | Must Have | Both |
+| FR-23 | **Owner-uploaded artwork is not overlaid with management caption text** | Must Have | Highlights |
 
 ### Non-Functional Requirements
 
@@ -240,6 +254,7 @@ Restaurant screens operate in:
 | NFR-3 | Data refresh interval      | Real-time (onSnapshot) + 6hr proactive reload |
 | NFR-4 | Minimum slides guaranteed  | 2 (never blank)                               |
 | NFR-5 | Maximum slides in rotation | 8                                             |
+| NFR-6 | Menu Board page density    | 8 item slots target for distance readability |
 
 ### Firebase Cost Analysis
 

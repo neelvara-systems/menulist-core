@@ -53,6 +53,7 @@ The useful workflows are source orchestration, enrichment waterfalling, scoring,
 | Google menu feeds and structured data | Menu feeds need entity/menu/section/item/price correctness; LocalBusiness structured data helps expose business facts to search. Sources: https://developers.google.com/actions-center/verticals/ordering/redirect/reference/menu-feeds/overview and https://developers.google.com/search/docs/appearance/structured-data/local-business | MenuList canonical truth must be feed-ready, structured, sitemap-ready, and freshness-monitored. |
 | Google Places source adapter | Places API Text Search and Place Details require field masks; field choice affects cost; Text Search returns capped pages of candidates; place IDs can be stored indefinitely while broader Places content has caching/storage limits. Sources: https://developers.google.com/maps/documentation/places/web-service/text-search, https://developers.google.com/maps/documentation/places/web-service/place-details, https://developers.google.com/maps/documentation/places/web-service/choose-fields, and https://developers.google.com/maps/documentation/places/web-service/policies | Use Google Places only as a cost-gated candidate source and place identity handle. Persist place IDs, not Google content as MenuList truth. |
 | Foursquare place graph model | Foursquare Places exposes search, place fields, category taxonomy, chain membership, related-place signals, and open-source POI schemas. Its pay-as-you-go API terms prohibit using Places Data to contact listed businesses as prospective customers. Sources: https://docs.foursquare.com/developer/reference/places-api-overview, https://docs.foursquare.com/developer/reference/response-fields, https://docs.foursquare.com/data-products/docs/categories, https://docs.foursquare.com/data-products/docs/chains, https://docs.foursquare.com/data-products/docs/fsq-places-open-source, and https://foursquare.com/legal/terms/apilicenseagreement/ | Use Foursquare as an identity/category/chain graph signal only. Block PAYG outreach eligibility unless a separate contract or written permission allows prospecting. |
+| WhatsApp Business Platform | WhatsApp Business Terms, Business Messaging Policy, pricing, and Flows require opt-in, opt-out handling, approved templates for business-initiated messages, customer service window awareness, quality monitoring, and structured Flow governance. Sources: https://www.whatsapp.com/legal/business-terms/, https://www.whatsapp.com/legal/business-policy/, https://whatsappbusiness.com/products/platform-pricing/, and https://whatsappbusiness.com/products/whatsapp-flows/ | Use WhatsApp as a consented owner-verification and truth-maintenance rail. Build message governance before API sending. Do not use scraped/enriched phones for cold WhatsApp outreach. |
 | Google sender rules and CAN-SPAM | Authentication, spam-rate monitoring, one-click unsubscribe for large marketing/subscribed sends, sender identity, and opt-out handling. Sources: https://support.google.com/a/answer/81126 and https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Email cannot launch without sender-domain health, unsubscribe, bounce handling, complaint thresholds, and suppression proof. |
 
 ## 3. Owned Automation Workflow
@@ -72,6 +73,7 @@ source intake
 -> action router
 -> dry-run
 -> approval
+-> message governance check
 -> channel execution or operator task
 -> reply/event ingestion
 -> MenuList claim route
@@ -85,11 +87,14 @@ source intake
 
 Every step must be resumable, idempotent, budget-gated, kill-switch-aware, and explainable.
 
+Provider-backed steps must also require an active connection adapter from Connections And Activation.
+
 ## 4. Automation Objects
 
 | Object | Responsibility |
 | --- | --- |
 | Automation workflow | Defines trigger, target set, eligibility rules, actions, caps, approvals, and stop conditions. |
+| Connection adapter | Provider handle, secret refs, webhook endpoints, budget cap, kill-switch scope, validation state, and activation state. |
 | Workflow run | Immutable execution record for one workflow execution. |
 | Decision snapshot | Typed state used to explain why a target was contacted, held, rejected, routed, or published. |
 | Evidence packet | Source facts, source URLs, confidence, extracted fields, rejected facts, and expiry. |
@@ -97,6 +102,8 @@ Every step must be resumable, idempotent, budget-gated, kill-switch-aware, and e
 | Enrichment waterfall | Ordered providers and AI extraction steps for a specific field or target decision. |
 | Distribution score | Fit, truth gap, contactability, surface readiness, freshness risk, channel risk, and economics. |
 | Sender assignment | One sender identity per target/campaign, daily cap, ramp state, and health state. |
+| Message governance audit | Consent, suppression, template, conversation-window, sender, pacing, reputation, and blocker decision for every outbound attempt. |
+| WhatsApp conversation state | Customer service window, free-entry window, latest inbound, template-required state, and suppression state for WhatsApp contacts. |
 | Operator work item | Human task for artifact review, WhatsApp assisted send, reply triage, GBP handoff, or incident action. |
 | AI worker run | Typed AI input/output, prompt version, source hashes, confidence, cost, eval status, and blocker outcome. |
 
@@ -114,7 +121,7 @@ AI workers required:
 | Contactability scorer | Allowed contact fields and source policy | channel eligibility and risk | Suppression ledger overrides AI. |
 | Artifact drafter | Evidence packet and approved template | private claim/audit draft | Noindex, expiry, and artifact QA required. |
 | Message personalizer | Approved variables and template | rendered message variables | No free-form claims. |
-| Reply classifier | Inbound message | interested, DNC, wrong contact, pricing, objection, human review | DNC/complaint recall must be perfect on seed fixtures. |
+| Reply classifier | Inbound message | interested, DNC, opt-out, wrong contact, support, pricing, objection, human review | DNC/complaint/opt-out recall must be perfect on seed fixtures. |
 | Pricing responder | Approved pricing policy and reply context | approved answer or human-review block | No pricing invention. |
 | Surface validator | Public URL and expected contract | indexability, structured data, canonical, sitemap, freshness state | Discovery publishing blocks on critical failure. |
 | Menu feed validator | Confirmed MenuList menu truth | entity/menu/section/item/price validation | Candidate-only facts block export. |
@@ -168,6 +175,11 @@ These recipes must exist as configurable internal workflows, not hardcoded one-o
 | Claim artifact readiness | Target eligible and artifact template approved | Draft artifact, check rights, noindex, expiry, QA, approval. |
 | Campaign dry-run | Campaign draft saved | Build snapshot, exclusions, samples, sender capacity, surface readiness, cost, blockers. |
 | Sender health guard | Sender-domain health changes | Pause sends, reduce ramp, create incident or warning. |
+| WhatsApp owner claim verification | Owner submits phone and explicit opt-in on claim page | Create consent event, pick approved verification template, create governance audit, send or queue assisted task, update conversation state, and route reply/Flow output into claim review. |
+| WhatsApp stale data confirmation | Confirmed MenuList truth reaches freshness review policy | Check consent category, template status, conversation state, sender quality, pacing, and suppression before sending a confirmation template or creating a human-review task. |
+| WhatsApp template/reputation guard | Template quality, sender quality, opt-out, complaint, failure, or reply metrics change | Pause or reduce sends, create incident/work item, and block affected templates/senders until review clears. |
+| WhatsApp webhook ingest | Meta webhook received | Verify signature, normalize event, update message attempt, conversation state, suppression, reputation, and attribution. |
+| WhatsApp Flow truth capture | Approved Flow submitted | Validate schema, write only approved business-truth fields, update candidate graph edges, and route low confidence to operator review. |
 | Inbox triage | New reply/webhook/operator note | Classify, suppress if needed, route interested owners, create human-review tasks. |
 | Truth activation | MenuList feedback confirms owner/menu | Update target, publish surface state, queue structured data and sitemap checks. |
 | Discovery publish | Canonical public URL changed meaningfully | Queue sitemap update, IndexNow where allowed, truth packet, feed readiness. |
@@ -195,6 +207,20 @@ Owned email automation should include:
 - automatic pause on bounce, complaint, blocklist, DNS, unsubscribe, or webhook failure
 
 WhatsApp remains assisted unless opt-in proof, approved templates, provider readiness, and policy review exist.
+
+WhatsApp API sending requires a Message Governance Layer:
+
+- consent proof with category, source, text shown, timestamp, privacy version, and proof hash
+- suppression check immediately before send
+- approved template or open customer service window
+- conversation state with service-window and free-entry expiry
+- sender identity health and allowed use case
+- pacing policy below provider throughput
+- webhook signature verification and event ingestion
+- template quality and sender quality monitoring
+- automatic pause on opt-out, complaint, quality drop, template pause/disable, webhook failure, or abnormal failure rate
+
+WhatsApp allowed journeys are owner claim, business verification, public-info correction, incomplete claim recovery, stale data confirmation, support handoff, and owner referral. Scraped or enriched phone numbers must not be used for WhatsApp API outreach without explicit opt-in.
 
 ## 9. Operator Workboard
 
@@ -226,11 +252,13 @@ The docs are implementation-ready only if these contracts are present:
 | Contract | Required state |
 | --- | --- |
 | Workflow engine | Typed workflow, run, step, retry, idempotency, budget, approval, and kill-switch model. |
+| Connections and activation | Adapter registry, secret refs, email pipeline readiness, WhatsApp pipeline readiness, webhook health, budget caps, kill switches, validation runs, and activation audit. |
 | Enrichment waterfall | Provider order, run conditions, cache key, success provider, cost, source-policy approval. |
 | Business truth graph | Node/edge schema, source provenance, confidence, truth state, owner confirmation path, and public publish blocker for candidate or low-confidence edges. |
 | AI worker registry | Worker purpose, allowed inputs, typed output, prompt version, eval threshold, budget cap. |
 | Decision snapshot | Stored explanation for every action and blocker. |
 | Sender assignment | One sender per target conversation and sender health gating. |
+| WhatsApp governance | Consent ledger, suppression ledger, template registry, conversation state, governance audit, webhook verification, reputation monitor, sender identity policy, pacing policy, Flow definition registry, and kill switches. |
 | Operator queue | Every human decision is a work item with owner, severity, SLA, and audit trail. |
 | External listing handoff | GBP, Apple Business Connect, and Bing Places tracked as authorized distribution handoffs. |
 | Optimization report | Recommendations are generated from outcomes but do not auto-scale without approval. |

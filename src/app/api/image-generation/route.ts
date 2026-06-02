@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PER_CREDIT, TOKENS_PER_IMAGEN_IMAGE } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { GenerateContentResponse } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
@@ -136,7 +136,7 @@ export const POST = withAuth(async (request, session) => {
             totalTokenCount: 0,
             candidatesTokenCount: 0,
             promptTokenCount: 0,
-            transactionId: "test" // Default/fallback ID
+            transactionId: null
         };
 
         if (generatedImagesResponse?.length > 0) {
@@ -182,16 +182,20 @@ export const POST = withAuth(async (request, session) => {
             // Add the operation to the database
             try {
                 transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-                const transactionId = await addAiOperation(transactionObject);
-                logger.debug('Image generation transaction recorded', { transactionId });
-                transactionObject.transactionId = transactionId; // Update transaction ID
-                // Consume capacity after successful operation
-                if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                    remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-                }
+                const accounting = await finalizeAiOperationAccounting({
+                    capacitySubscription: capacityCheck.subscription,
+                    context: { userId, projectId, fileId, action: transactionObject.action },
+                    input: transactionObject,
+                    logLabel: 'Image generation',
+                    session,
+                });
+                logger.debug('Image generation transaction recorded', { transactionId: accounting.transactionId });
+                transactionObject.unitsConsumed = accounting.unitsConsumed;
+                transactionObject.transactionId = accounting.transactionId;
+                remainingBalance = accounting.remainingBalance;
             } catch (transactionError) {
                 logger.error('Failed to record image generation transaction', transactionError);
-                // Continue with the function even if transaction recording fails
+                throw transactionError;
             }
         }
 
@@ -220,6 +224,6 @@ export const POST = withAuth(async (request, session) => {
     } catch (error) {
         logger.error('Image generation API error', error);
         await writeErrorLogEntry(LOG_FILE, error);
-        return NextResponse.json({ error: error, message: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: 'Image generation failed' }, { status: 500 });
     }
 });

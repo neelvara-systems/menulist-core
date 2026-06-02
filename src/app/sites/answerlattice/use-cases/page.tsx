@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'Answerlattice use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback.',
+    description: 'AnswerLattice use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -51,7 +51,7 @@ const USE_CASES = [
         context: 'Domains, account roles, permissions, product setup, billing settings',
         question: 'Can my teammate change billing?',
         generic: 'Check your user role permissions in settings.',
-        answerlattice: 'You are on Team Settings. Billing changes require an owner-level permission; if that answer is incomplete, Answerlattice routes the gap to review.',
+        answerlattice: 'You are on Team Settings. Billing changes require an owner-level permission; if that answer is incomplete, AnswerLattice routes the gap to review.',
         outcome: 'Ground answers in configured product surfaces instead of sending every user to generic docs.',
     },
     {
@@ -59,7 +59,7 @@ const USE_CASES = [
         context: 'New features, changed workflows, removed states, version mismatch',
         question: 'Did usage limits change?',
         generic: 'Read the latest release notes for usage limits.',
-        answerlattice: 'The usage-limits release affected plan quota answers. Answerlattice flags stale-answer risk until the related approved answer is reviewed.',
+        answerlattice: 'The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed.',
         outcome: 'Connect changelog entries to affected answers so stale support content becomes visible.',
     },
     {
@@ -125,7 +125,7 @@ export default function AnswerlatticeUseCasesPage() {
                         Support use cases for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        When users ask from billing, onboarding, settings, releases, or error screens, Answerlattice serves support that matches the page instead of giving generic AI replies.
+                        When users ask from billing, onboarding, settings, releases, or error screens, AnswerLattice serves support that matches the page instead of giving generic AI replies.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink

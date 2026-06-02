@@ -1,6 +1,6 @@
-import { CheckCircleOutlined, InfoCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Image, Modal, Space, Steps, Switch, Typography, theme } from 'antd';
 import React, { useState } from 'react';
+import { LuArrowLeft, LuArrowRight, LuCheckCircle, LuInfo } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
 const { Step } = Steps;
@@ -252,7 +252,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
             content: (
                 <Card variant="borderless">
                     <Space direction="vertical" align="center" style={{ width: '100%', textAlign: 'center' }}>
-                        <CheckCircleOutlined style={{ fontSize: '48px', color: token.colorSuccess }} />
+                        <LuCheckCircle size={48} style={{ color: token.colorSuccess }} />
                         <Title level={4}>Great Job! You&apos;re All Set!</Title>
                         <Paragraph>
                             Your analytics are now ready to go! You&apos;ll start seeing data in about 24 hours.
@@ -289,7 +289,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
         <Modal
             title={
                 <Space>
-                    <InfoCircleOutlined />
+                    <LuInfo />
                     <span>Analytics Setup Guide</span>
                 </Space>
             }
@@ -298,16 +298,16 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
             width={800}
             footer={[
                 currentStep > 0 && (
-                    <Button key="back" onClick={prev} icon={<LeftOutlined />}>
+                    <Button key="back" onClick={prev} icon={<LuArrowLeft />}>
                         Back
                     </Button>
                 ),
                 !isLastStep ? (
-                    <Button type="primary" onClick={next} icon={<RightOutlined />}>
+                    <Button type="primary" onClick={next} icon={<LuArrowRight />}>
                         Next Step
                     </Button>
                 ) : (
-                    <Button type="primary" onClick={onClose} icon={<CheckCircleOutlined />}>
+                    <Button type="primary" onClick={onClose} icon={<LuCheckCircle />}>
                         Finish Setup
                     </Button>
                 )

@@ -8,8 +8,9 @@ import generateBusinessCopyViaAPI, { BusinessCopyGenerationResult } from '@servi
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
+import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Divider, Flex, Form, List, Tag, Typography, message, theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 
@@ -24,6 +25,7 @@ interface BusinessCopySetupTabProps {
 
 export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateMissingTranslations, scrollRef, storeDetails }: BusinessCopySetupTabProps) {
     const t = useTranslations('BusinessSettings');
+    const formatter = useFormatter();
     const { token } = theme.useToken();
     const form = Form.useFormInstance();
     const tenantName = Form.useWatch('tenantName');
@@ -52,7 +54,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
     const showFullGenerationCta = coverage.repairableGapCount === 0 || hasEmptyBusinessCopyFields;
     const fullGenerationLabel = hasCoverageGaps ? t('generateBusinessCopy') : t('regenerateBusinessCopy');
     const businessCopyMeta = storeDetails?.businessCopyMeta;
-    const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
+    const formatAuditTime = (value?: string) => value ? formatDateTime(value, 'datetime', formatter) : '';
 
     const handleGenerate = async () => {
         if (!businessName?.trim()) {

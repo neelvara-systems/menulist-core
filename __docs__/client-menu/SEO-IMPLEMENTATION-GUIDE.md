@@ -212,7 +212,7 @@ Based on current industry research and Google's guidelines.
 
 ### Phase 4: Advanced SEO (Future)
 
-- [ ] FAQ schema for voice search
+- [ ] Visible FAQ content with FAQ schema only when the FAQ is rendered and reviewed; do not re-add hidden generated FAQ JSON-LD to OBP runtime
 - [ ] Review/Rating schema (if reviews are collected)
 - [ ] Event schema (for special menu events)
 - [ ] Breadcrumb schema

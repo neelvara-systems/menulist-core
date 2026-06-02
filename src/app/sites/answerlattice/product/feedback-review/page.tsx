@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('feedback-review');
 
 if (!feature) {
-    throw new Error('Answerlattice Feedback Review feature configuration is missing.');
+    throw new Error('AnswerLattice Feedback Review feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

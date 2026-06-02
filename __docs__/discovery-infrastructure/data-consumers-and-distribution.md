@@ -65,9 +65,9 @@ This document maps every data consumer type, how they discover MenuList data, wh
 | Discovery Method | How It Works | MenuList Status |
 |-----------------|-------------|-----------------|
 | **Googlebot crawling** | Crawls SSR pages, reads schema.org JSON-LD | ✅ All pages SSR, schema.org embedded |
-| **Sitemap** | `sitemap.xml` lists all crawlable URLs | ✅ `Sitemap: https://www.menulist.ai/sitemap.xml` in robots.txt |
+| **Sitemap** | `sitemap.xml` lists crawlable URLs that pass quality gates | ✅ Platform sitemap plus tenant `src/app/client/sitemap.ts`; tenant URLs use the public truth indexability gate |
 | **robots.txt** | Tells crawlers what to index | ✅ `public/robots.txt` + tenant `src/app/client/robots.ts` — explicit search/AI crawler allows, internal paths blocked |
-| **Schema.org Rich Results** | JSON-LD enables Google rich results (restaurant info, FAQ, hours) | ✅ LocalBusiness, FAQPage, BreadcrumbList, OpeningHoursSpecification |
+| **Schema.org Rich Results** | JSON-LD describes visible public facts (business info, menus, hours, breadcrumbs) | ✅ LocalBusiness/Restaurant, Menu, MenuSection, MenuItem, BreadcrumbList, OpeningHoursSpecification; FAQPage only where FAQ content is visible and reviewed |
 
 **What they need:**
 - Canonical URLs (avoid duplicate content)

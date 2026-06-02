@@ -19,17 +19,19 @@ const productLinks = [
 const sourceLinks = [
   { href: '/#public-proof', key: 'publicProof' },
   { href: '/#public-proof', key: 'officialPage' },
-  { href: '/trust-security', key: 'trustSecurity' },
   { href: '/get-started', key: 'getStarted' },
 ];
 
 const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
   ? [
-    { href: '/resources', key: 'resourcesHub' },
-    { href: '/resources/menu-source-audit', key: 'menuSourceAudit' },
-    { href: '/resources/google-business-profile-menu', key: 'googleMenuSource' },
-    { href: '/resources/qr-code-placement-checklist', key: 'qrPlacement' },
-    { href: '/resources/menu-update-checklist', key: 'menuUpdateChecklist' },
+    { href: '/resources/menu-engineering', key: 'menuEngineering' },
+    { href: '/resources/qr-menu-for-restaurants', key: 'qrMenuForRestaurants' },
+    { href: '/resources/digital-menu-vs-pdf-menu', key: 'digitalMenuVsPdf' },
+    { href: '/resources/google-business-profile-menu', key: 'googleBusinessProfileMenu' },
+    { href: '/resources/restaurant-menu-seo', key: 'restaurantMenuSeo' },
+    { href: '/resources/ai-search-menu-discovery', key: 'aiSearchDiscovery' },
+    { href: '/resources/official-menu-source', key: 'officialMenuSource' },
+    { href: '/trust-security', key: 'trustSecurity' },
   ]
   : [
     { href: '/about', key: 'about' },

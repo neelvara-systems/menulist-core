@@ -80,11 +80,11 @@ export default function SeoLandingPage({
                     <SectionHeader
                         eyebrow="Question flow"
                         title={question}
-                        description="Answerlattice turns a generic support gap into a reviewed answer that matches the current product page."
+                        description="AnswerLattice turns a generic support gap into a reviewed answer that matches the current product page."
                     />
                     <AnswerlatticeHubDiagram
                         idPrefix={`${diagramId}-question`}
-                        inputLabel="Before Answerlattice"
+                        inputLabel="Before AnswerLattice"
                         outputLabel="Reviewed output"
                         inputs={[
                             {
@@ -98,7 +98,7 @@ export default function SeoLandingPage({
                         ]}
                         outputs={[
                             {
-                                title: 'Answerlattice answer',
+                                title: 'AnswerLattice answer',
                                 detail: answerlatticeAnswer,
                             },
                             {
@@ -132,7 +132,7 @@ export default function SeoLandingPage({
                 <div className="mx-auto max-w-6xl">
                     <SectionHeader
                         className="mb-8"
-                        eyebrow="Explore Answerlattice"
+                        eyebrow="Explore AnswerLattice"
                         title="The same loop across setup, widget, support, and governance."
                         description="Each product area has a dedicated page so founders, support teams, product teams, and engineers can evaluate the part they care about first."
                     />
@@ -154,7 +154,7 @@ export default function SeoLandingPage({
 
             <section className="border-t border-white/[0.06] px-6 py-20 text-center">
                 <h2 className="mx-auto max-w-3xl text-3xl font-bold leading-tight text-white sm:text-4xl">
-                    Turn this support gap into a reviewed Answerlattice setup.
+                    Turn this support gap into a reviewed AnswerLattice setup.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
                     Start with the demo, then prepare source material so the first workspace has pages, docs, FAQs, and owner-approved answers to review.

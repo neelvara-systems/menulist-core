@@ -29,9 +29,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         label: 'Team Access',
         href: '/product/team-access',
         eyebrow: 'Team Access',
-        title: 'Give the right people the right Answerlattice access.',
+        title: 'Give the right people the right AnswerLattice access.',
         description:
-            'Invite workspace members, assign Answerlattice-specific roles, reset login details, and force sign-out without exposing broad owner-level controls.',
+            'Invite workspace members, assign AnswerLattice-specific roles, reset login details, and force sign-out without exposing broad owner-level controls.',
         heroBullets: [
             'Workspace members and roles',
             'Email or owner-passcode login',
@@ -39,17 +39,17 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Production support needs controlled workspace access.',
         proofDescription:
-            'Answerlattice now treats team management as part of the workspace control layer. Owners can add staff, assign role permissions, reset access, and keep support work role-scoped.',
+            'AnswerLattice now treats team management as part of the workspace control layer. Owners can add staff, assign role permissions, reset access, and keep support work role-scoped.',
         cards: [
             {
                 title: 'Invite team members',
                 description:
-                    'Add support leads, managers, or staff to the Answerlattice workspace without giving every member owner-level access.',
+                    'Add support leads, managers, or staff to the AnswerLattice workspace without giving every member owner-level access.',
             },
             {
-                title: 'Assign Answerlattice roles',
+                title: 'Assign AnswerLattice roles',
                 description:
-                    'Use Owner, Manager, Support Staff, or custom Answerlattice roles so billing, team, knowledge, widget, governance, and support controls stay scoped.',
+                    'Use Owner, Manager, Support Staff, or custom AnswerLattice roles so billing, team, knowledge, widget, governance, and support controls stay scoped.',
             },
             {
                 title: 'Use email or passcode login',
@@ -69,14 +69,14 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Keep workspace controls scoped',
                 description:
-                    'Answerlattice roles use Answerlattice permission claims and routes, so billing, widget, knowledge, support, and governance access can be controlled separately.',
+                    'AnswerLattice roles use AnswerLattice permission claims and routes, so billing, widget, knowledge, support, and governance access can be controlled separately.',
             },
         ],
         workflowTitle: 'From workspace owner to controlled team access.',
         workflowDescription:
-            'Team Access gives Answerlattice workspaces an owner-managed member lifecycle for support, governance, billing, widget, and knowledge access.',
+            'Team Access gives AnswerLattice workspaces an owner-managed member lifecycle for support, governance, billing, widget, and knowledge access.',
         workflowSteps: [
-            { title: 'Open Team Access', description: 'The owner uses the Answerlattice workspace team page.' },
+            { title: 'Open Team Access', description: 'The owner uses the AnswerLattice workspace team page.' },
             { title: 'Add member details', description: 'Enter name, optional email, phone metadata, and the starting role.' },
             { title: 'Share login details', description: 'Email users set their password; passcode users receive a one-time staff ID and temporary passcode.' },
             { title: 'Adjust permissions', description: 'Change roles or custom permission sets as the workspace team grows.' },
@@ -95,7 +95,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Is this general account management?',
                 description:
-                    'No. The roles and permissions are Answerlattice-specific and apply only to the Answerlattice workspace.',
+                    'No. The roles and permissions are AnswerLattice-specific and apply only to the AnswerLattice workspace.',
             },
             {
                 title: 'Can owners reset passwords and passcodes?',
@@ -103,9 +103,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Yes. Owners can create a new temporary passcode and revoke active sessions. Email-backed members receive setup email when first created.',
             },
             {
-                title: 'Where do team members use Answerlattice?',
+                title: 'Where do team members use AnswerLattice?',
                 description:
-                    'Team members use the Answerlattice dashboard and team page with the permissions assigned to their workspace role.',
+                    'Team members use the AnswerLattice dashboard and team page with the permissions assigned to their workspace role.',
             },
         ],
     },
@@ -114,9 +114,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         label: 'Knowledge Intake',
         href: '/product/knowledge-intake',
         eyebrow: 'Knowledge Intake',
-        title: 'Teach Answerlattice your product before users need support.',
+        title: 'Teach AnswerLattice your product before users need support.',
         description:
-            'Start from selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings. Answerlattice prepares source-backed drafts for owner review before anything becomes support knowledge.',
+            'Start from selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings. AnswerLattice prepares source-backed drafts for owner review before anything becomes support knowledge.',
         heroBullets: [
             'Selected public links, files, screenshots, and short media',
             'KB, FAQ, surface, and answer-proposal drafts',
@@ -129,7 +129,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Inspect selected public pages',
                 description:
-                    'Paste a product or docs URL, review the support-worthy pages Answerlattice finds, and import only the pages you choose.',
+                    'Paste a product or docs URL, review the support-worthy pages AnswerLattice finds, and import only the pages you choose.',
             },
             {
                 title: 'Bring existing files',
@@ -139,7 +139,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Extract support context from screenshots',
                 description:
-                    'Upload screenshots/images when UI evidence matters. Answerlattice extracts support-relevant text, charges one support credit, and keeps only extracted source text for review.',
+                    'Upload screenshots/images when UI evidence matters. AnswerLattice extracts support-relevant text, charges one support credit, and keeps only extracted source text for review.',
             },
             {
                 title: 'Transcribe short support recordings',
@@ -164,14 +164,14 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         workflowTitle: 'From product material to reviewed support content.',
         workflowDescription:
-            'Teach Answerlattice is built for first setup: add sources, generate drafts, approve what is right, and publish into the same runtime the widget and hosted help already use.',
+            'Teach AnswerLattice is built for first setup: add sources, generate drafts, approve what is right, and publish into the same runtime the widget and hosted help already use.',
         workflowSteps: [
             { title: 'Create intake', description: 'Name the intake and add product/app URLs for context.' },
             { title: 'Add sources', description: 'Import selected pages, pasted content, support macros, release notes, supported files, screenshots, or short support recordings.' },
             { title: 'Review drafts', description: 'Edit, accept, or reject drafts before they become customer-facing support.' },
             { title: 'Publish accepted items', description: 'Write approved content into KB, FAQ, product surface, or canonical proposal paths.' },
         ],
-        connectedTitle: 'Intake feeds Answerlattice without creating a second knowledge system.',
+        connectedTitle: 'Intake feeds AnswerLattice without creating a second knowledge system.',
         connectedDescription:
             'Published intake output lands in the same collections and freshness paths used by hosted help, widget search, page-aware suggestions, and governance.',
         connectedItems: [
@@ -184,7 +184,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Does intake crawl my whole site?',
                 description:
-                    'No. Answerlattice discovers bounded candidates and imports only the pages the owner selects.',
+                    'No. AnswerLattice discovers bounded candidates and imports only the pages the owner selects.',
             },
             {
                 title: 'Does imported content go live automatically?',
@@ -213,7 +213,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Manage support knowledge without building a docs empire.',
         proofDescription:
-            'The knowledge base is not just a document shelf. It is the reviewed source material Answerlattice uses for page-aware support, approved answers, FAQs, and coverage review.',
+            'The knowledge base is not just a document shelf. It is the reviewed source material AnswerLattice uses for page-aware support, approved answers, FAQs, and coverage review.',
         cards: [
             {
                 title: 'Create reviewed articles',
@@ -243,7 +243,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         workflowTitle: 'From rough notes to trusted support source.',
         workflowDescription:
-            'Answerlattice keeps the owner in control: source content becomes drafts, drafts are reviewed, and approved knowledge becomes reusable support.',
+            'AnswerLattice keeps the owner in control: source content becomes drafts, drafts are reviewed, and approved knowledge becomes reusable support.',
         workflowSteps: [
             { title: 'Bring content in', description: 'Upload files or add starter support content from existing product material.' },
             { title: 'Review generated drafts', description: 'Check article drafts and related FAQs before publishing.' },
@@ -263,7 +263,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Is this a full documentation CMS?',
                 description:
-                    'No. Answerlattice keeps publishing simple because the product goal is reviewed support knowledge, not a general website builder.',
+                    'No. AnswerLattice keeps publishing simple because the product goal is reviewed support knowledge, not a general website builder.',
             },
             {
                 title: 'Can articles power widget answers?',
@@ -284,7 +284,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'FAQ Management',
         title: 'Short answers backed by real source content.',
         description:
-            'Answerlattice treats FAQs and custom owner answers as customer-facing shortcuts, not loose snippets. Owners can write exact Q&A, generate article-backed suggestions, link source articles, and serve matching answers in the Help Center or widget.',
+            'AnswerLattice treats FAQs and custom owner answers as customer-facing shortcuts, not loose snippets. Owners can write exact Q&A, generate article-backed suggestions, link source articles, and serve matching answers in the Help Center or widget.',
         heroBullets: [
             'Manual Q&A and article-backed generation',
             'Linked articles, tags, entities, and surfaces',
@@ -348,7 +348,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Can owners add their own custom questions and answers?',
                 description:
-                    'Yes. Owners can write exact Q&A, attach article and surface context, publish it, and let Answerlattice use it as an owner answer when it matches the user question.',
+                    'Yes. Owners can write exact Q&A, attach article and surface context, publish it, and let AnswerLattice use it as an owner answer when it matches the user question.',
             },
             {
                 title: 'Should FAQs be generated separately after all articles?',
@@ -374,7 +374,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Changelog',
         title: 'Release notes that keep support current.',
         description:
-            'Answerlattice connects changelog entries to product surfaces, tags, affected entities, and support content so releases become review triggers instead of stale support risk.',
+            'AnswerLattice connects changelog entries to product surfaces, tags, affected entities, and support content so releases become review triggers instead of stale support risk.',
         heroBullets: [
             'Publish release notes for customers',
             'Connect changes to product surfaces',
@@ -382,7 +382,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Explain what changed and what support must review.',
         proofDescription:
-            'A changelog should do more than announce features. In Answerlattice it also helps owners see which answers, articles, and FAQs may need review after a release.',
+            'A changelog should do more than announce features. In AnswerLattice it also helps owners see which answers, articles, and FAQs may need review after a release.',
         cards: [
             {
                 title: 'Create customer-facing updates',
@@ -412,7 +412,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         workflowTitle: 'From release note to support readiness.',
         workflowDescription:
-            'Answerlattice treats product changes as support events. When the product moves, support content gets a review path.',
+            'AnswerLattice treats product changes as support events. When the product moves, support content gets a review path.',
         workflowSteps: [
             { title: 'Write the release note', description: 'Describe what changed in customer-readable language.' },
             { title: 'Assign affected surfaces', description: 'Connect the update to pages, workflows, entities, tags, and related articles.' },
@@ -440,7 +440,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Yes, when it is relevant to the current product surface and safe to show as related support context.',
             },
             {
-                title: 'Does Answerlattice auto-change answers after a release?',
+                title: 'Does AnswerLattice auto-change answers after a release?',
                 description:
                     'No. Release impact can create review work, but authoritative answers remain human-approved.',
             },
@@ -453,7 +453,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Tickets',
         title: 'Fallback tickets that improve future answers.',
         description:
-            'Answerlattice keeps tickets as a fallback and signal source. When approved knowledge is missing, tickets capture the issue, safe context, and resolution patterns that can become future support content.',
+            'AnswerLattice keeps tickets as a fallback and signal source. When approved knowledge is missing, tickets capture the issue, safe context, and resolution patterns that can become future support content.',
         heroBullets: [
             'Ticket fallback when coverage is missing',
             'Capped safe debugging context',
@@ -461,7 +461,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Handle unresolved questions without making tickets the center.',
         proofDescription:
-            'Tickets should not become the center of the product. In Answerlattice they are the practical fallback path and the evidence trail for improving canonical coverage.',
+            'Tickets should not become the center of the product. In AnswerLattice they are the practical fallback path and the evidence trail for improving canonical coverage.',
         cards: [
             {
                 title: 'Create fallback tickets',
@@ -500,7 +500,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         connectedTitle: 'Tickets are fallback, not the product.',
         connectedDescription:
-            'Answerlattice uses tickets to improve support knowledge. That keeps the product aligned with answer review rather than becoming another helpdesk.',
+            'AnswerLattice uses tickets to improve support knowledge. That keeps the product aligned with answer review rather than becoming another helpdesk.',
         connectedItems: [
             { title: 'Widget', description: 'Fallback can create a ticket from the same page context.' },
             { title: 'Knowledge Base', description: 'Resolved issues can become article improvements.' },
@@ -509,9 +509,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         faq: [
             {
-                title: 'Is Answerlattice a helpdesk replacement?',
+                title: 'Is AnswerLattice a helpdesk replacement?',
                 description:
-                    'No. Tickets exist as fallback and signal source. Answerlattice stays focused on support knowledge accuracy.',
+                    'No. Tickets exist as fallback and signal source. AnswerLattice stays focused on support knowledge accuracy.',
             },
             {
                 title: 'What debugging context is captured?',
@@ -532,7 +532,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Support Board',
         title: 'A private board for support work that should become knowledge.',
         description:
-            'Track manual support cards, private owner notes, status history, assignee context, related surfaces, and governed answer-proposal handoff without turning Answerlattice into a project-management tool.',
+            'Track manual support cards, private owner notes, status history, assignee context, related surfaces, and governed answer-proposal handoff without turning AnswerLattice into a project-management tool.',
         heroBullets: [
             'Manual support cards and private notes',
             'Status history for owner review',
@@ -631,7 +631,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Feedback should improve support knowledge, not become a noisy public roadmap.',
         proofDescription:
-            'Answerlattice keeps feedback private to the workspace, scoped to the right tenant and product surface, and useful for support improvement only after owner review.',
+            'AnswerLattice keeps feedback private to the workspace, scoped to the right tenant and product surface, and useful for support improvement only after owner review.',
         cards: [
             {
                 title: 'Collect multiple feedback types',
@@ -639,9 +639,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'End users can send general feedback, rate their experience, report product-area confusion, request a feature, or leave a suggestion from the Help Center.',
             },
             {
-                title: 'Review feedback in Answerlattice',
+                title: 'Review feedback in AnswerLattice',
                 description:
-                    'Owners and support staff can inspect feedback inside the Answerlattice workspace without mixing it into MenuList or another product surface.',
+                    'Owners and support staff can inspect feedback inside the AnswerLattice workspace without mixing it into MenuList or another product surface.',
             },
             {
                 title: 'Group by product surface',
@@ -666,7 +666,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Stay scoped and cost-aware',
                 description:
-                    'Feedback rows and signal events are written with Answerlattice product, tenant, and workspace scope, while owner review uses bounded reads and indexed queries.',
+                    'Feedback rows and signal events are written with AnswerLattice product, tenant, and workspace scope, while owner review uses bounded reads and indexed queries.',
             },
         ],
         workflowTitle: 'From user feedback to reviewed support improvement.',
@@ -674,7 +674,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             'Feedback Review gives SaaS owners a clean path from raw end-user input to support follow-up without adding public voting, roadmap management, or helpdesk workflow bloat.',
         workflowSteps: [
             { title: 'User submits feedback', description: 'The Help Center captures the selected feedback type, rating, product area, request, or suggestion.' },
-            { title: 'Answerlattice logs the signal', description: 'The feedback row stays scoped to pId, tId, and sId, and a lightweight signal event is emitted when enabled.' },
+            { title: 'AnswerLattice logs the signal', description: 'The feedback row stays scoped to pId, tId, and sId, and a lightweight signal event is emitted when enabled.' },
             { title: 'Owner reviews the item', description: 'The dashboard shows recent feedback with type, rating, user context, submitted details, and optional Product Surface assignment.' },
             { title: 'Select useful follow-up', description: 'The owner can leave the row as feedback, move it to Support Board, or use it as evidence for answer proposal review.' },
             { title: 'Approve knowledge separately', description: 'Any reusable answer still goes through governance before it becomes official support knowledge.' },
@@ -706,9 +706,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Yes. Selected feedback can become a private Support Board card when it needs follow-up, notes, status tracking, or answer-proposal handoff.',
             },
             {
-                title: 'Why keep this inside Answerlattice?',
+                title: 'Why keep this inside AnswerLattice?',
                 description:
-                    'SaaS feedback often exposes missing support content. Keeping it in Answerlattice lets owners turn user confusion into better help without building a separate feedback platform.',
+                    'SaaS feedback often exposes missing support content. Keeping it in AnswerLattice lets owners turn user confusion into better help without building a separate feedback platform.',
             },
         ],
     },
@@ -727,7 +727,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Notify owners without turning support into alert noise.',
         proofDescription:
-            'Answerlattice keeps workflow notifications tied to governance. Routine drift, gaps, and proposal activity can roll into digest output, while critical failures can alert immediately.',
+            'AnswerLattice keeps workflow notifications tied to governance. Routine drift, gaps, and proposal activity can roll into digest output, while critical failures can alert immediately.',
         cards: [
             {
                 title: 'Configure Slack',
@@ -762,7 +762,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         workflowTitle: 'From support movement to owner attention.',
         workflowDescription:
-            'Notifications should help owners act, not recreate raw logs. Answerlattice keeps configuration, testing, delivery, and health review in one workflow.',
+            'Notifications should help owners act, not recreate raw logs. AnswerLattice keeps configuration, testing, delivery, and health review in one workflow.',
         workflowSteps: [
             { title: 'Choose destinations', description: 'Add Slack or email destinations for the workspace.' },
             { title: 'Pick event filters', description: 'Select the support events that deserve notification.' },
@@ -781,7 +781,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         faq: [
             {
-                title: 'Does Answerlattice send every event immediately?',
+                title: 'Does AnswerLattice send every event immediately?',
                 description:
                     'No. The production default should stay digest-first, with immediate alerts reserved for critical coverage or repeated failure conditions.',
             },
@@ -804,7 +804,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Proactive Help',
         title: 'Show help before users ask, only where it is configured.',
         description:
-            'Answerlattice can use owner-approved, page-aware triggers to suggest relevant help from the widget when active triggers exist for the current app page.',
+            'AnswerLattice can use owner-approved, page-aware triggers to suggest relevant help from the widget when active triggers exist for the current app page.',
         heroBullets: [
             'Owner-approved page triggers',
             'Widget skips calls when disabled',
@@ -812,7 +812,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Proactive help should be helpful, quiet, and bounded.',
         proofDescription:
-            'The widget should not guess or interrupt everywhere. Answerlattice keeps proactive prompts tied to active triggers, safe page context, cached trigger summaries, and approved support content.',
+            'The widget should not guess or interrupt everywhere. AnswerLattice keeps proactive prompts tied to active triggers, safe page context, cached trigger summaries, and approved support content.',
         cards: [
             {
                 title: 'Trigger by product page',
@@ -849,7 +849,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         workflowDescription:
             'Proactive help stays owner-controlled: configure the page trigger, connect it to approved support, let the widget display it only when eligible, and review feedback.',
         workflowSteps: [
-            { title: 'Map the support-heavy page', description: 'Connect the route or workflow to the product surface where users get stuck.' },
+            { title: 'Map the support-heavy page', description: 'Connect the route or workflow to the product surface where users need help.' },
             { title: 'Create an active trigger', description: 'Define when the widget should suggest help for that page context.' },
             { title: 'Resolve the suggestion', description: 'Attach reviewed support content or an approved answer summary.' },
             { title: 'Let runtime gate the call', description: 'The widget checks capability state before requesting proactive help.' },

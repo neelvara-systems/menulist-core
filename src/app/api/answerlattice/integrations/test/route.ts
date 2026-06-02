@@ -15,7 +15,7 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
-import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 
@@ -101,8 +101,8 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             return NextResponse.json({ error: 'Enable at least one event type before sending a test.' }, { status: 400 });
         }
 
-        const now = admin.firestore.Timestamp.now();
-        const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + EVENT_TTL_DAYS * 24 * 60 * 60 * 1000);
+        const now = Timestamp.now();
+        const expiresAt = Timestamp.fromMillis(Date.now() + EVENT_TTL_DAYS * 24 * 60 * 60 * 1000);
         const eventRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTEGRATION_EVENTS).add({
             pId: 'AL',
             eventType,

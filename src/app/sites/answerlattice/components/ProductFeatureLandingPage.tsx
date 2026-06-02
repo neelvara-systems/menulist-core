@@ -50,7 +50,7 @@ function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }
                 </div>
                 <div className="grid gap-4 p-5 sm:p-6">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Answerlattice product layer</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">AnswerLattice product layer</p>
                         <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{feature.label}</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
                             The workspace keeps source material, page context, and approval status connected before support reaches users.
@@ -318,7 +318,7 @@ export default function ProductFeatureLandingPage({
                     Launch {featureName} as part of the full support loop.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                    Answerlattice works best when {featureName} stays connected to widget answers, hosted help, tickets, and answer review.
+                    AnswerLattice works best when {featureName} stays connected to widget answers, hosted help, tickets, and answer review.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink

@@ -7,9 +7,12 @@ import type {
     MessagingOnboardingOpsSession,
     MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatInrAmount } from '@util/formatters';
 import { Alert, Button, Card, Divider, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -39,17 +42,10 @@ const SEVERITY_COLORS: Record<string, string> = {
     critical: 'red',
 };
 
-function formatTimestamp(value: string | null | undefined): string {
+function formatTimestamp(value: string | null | undefined, formatter: IntlFormatter): string {
     if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleString('en-IN', {
-        day: '2-digit',
-        hour: '2-digit',
-        hour12: true,
-        minute: '2-digit',
-        month: 'short',
-    });
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function formatPercent(value: number | undefined): string {
@@ -57,9 +53,11 @@ function formatPercent(value: number | undefined): string {
     return `${(value * 100).toFixed(1)}%`;
 }
 
-function formatInr(value: number | undefined): string {
-    if (typeof value !== 'number') return '-';
-    return `₹${value.toFixed(2)}`;
+function formatInrCost(value: number | undefined): string {
+    return formatInrAmount(value, {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2,
+    });
 }
 
 function formatBytes(value: number | undefined): string {
@@ -89,6 +87,7 @@ function Metric({ label, value, tone }: { label: string; value: string | number;
 }
 
 function MessagingOnboardingMonitor() {
+    const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [snapshot, setSnapshot] = useState<MessagingOnboardingOpsSnapshot | null>(null);
@@ -131,7 +130,7 @@ function MessagingOnboardingMonitor() {
             title: 'Time',
             dataIndex: 'timestamp',
             key: 'timestamp',
-            render: (value) => <Text type="secondary">{formatTimestamp(value)}</Text>,
+            render: (value) => <Text type="secondary">{formatTimestamp(value, formatter)}</Text>,
             width: 130,
         },
         {
@@ -161,14 +160,14 @@ function MessagingOnboardingMonitor() {
                 return <Text type={record.error ? 'danger' : 'secondary'}>{record.error?.message || parts.join(' · ') || '-'}</Text>;
             },
         },
-    ], []);
+    ], [formatter]);
 
     const sessionColumns: ColumnsType<MessagingOnboardingOpsSession> = useMemo(() => [
         {
             title: 'Updated',
             dataIndex: 'updatedAt',
             key: 'updatedAt',
-            render: (value) => <Text type="secondary">{formatTimestamp(value)}</Text>,
+            render: (value) => <Text type="secondary">{formatTimestamp(value, formatter)}</Text>,
             width: 130,
         },
         {
@@ -195,14 +194,14 @@ function MessagingOnboardingMonitor() {
             key: 'processingRuns',
             width: 80,
         },
-    ], []);
+    ], [formatter]);
 
     const alertColumns: ColumnsType<MessagingOnboardingOpsAlert> = useMemo(() => [
         {
             title: 'Time',
             dataIndex: 'timestamp',
             key: 'timestamp',
-            render: (value) => <Text type="secondary">{formatTimestamp(value)}</Text>,
+            render: (value) => <Text type="secondary">{formatTimestamp(value, formatter)}</Text>,
             width: 130,
         },
         {
@@ -223,7 +222,7 @@ function MessagingOnboardingMonitor() {
                 </div>
             ),
         },
-    ], []);
+    ], [formatter]);
 
     if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING_DASHBOARD) {
         return (
@@ -276,7 +275,7 @@ function MessagingOnboardingMonitor() {
                     <div>
                         <Text type="secondary">Snapshot</Text>
                         <br />
-                        <Text>{formatTimestamp(health?.windowEnd)}</Text>
+                        <Text>{formatTimestamp(health?.windowEnd, formatter)}</Text>
                     </div>
                     <div>
                         <Text type="secondary">Provider</Text>
@@ -313,7 +312,7 @@ function MessagingOnboardingMonitor() {
                     <Metric label="Publish Rate" value={formatPercent(metrics.publishRate)} tone={(metrics.publishRate || 0) < 0.6 && (metrics.sessionsStarted || 0) >= 10 ? 'warning' : undefined} />
                     <Metric label="Processing Runs" value={metrics.processingRuns ?? 0} />
                     <Metric label="Failed Events" value={metrics.failedEvents ?? 0} tone={(metrics.failedEvents || 0) > 0 ? 'warning' : undefined} />
-                    <Metric label="Cost / Publish" value={formatInr(costs.estimatedCostPerPublishInr)} tone={(costs.estimatedCostPerPublishInr || 0) >= (costs.alertCostPerPublishInr || 15) ? 'danger' : undefined} />
+                    <Metric label="Cost / Publish" value={formatInrCost(costs.estimatedCostPerPublishInr)} tone={(costs.estimatedCostPerPublishInr || 0) >= (costs.alertCostPerPublishInr || 15) ? 'danger' : undefined} />
                     <Metric label="Source Sample" value={formatBytes(retention.publishedSourceBytesSampled)} />
                 </div>
             </Card>
@@ -384,7 +383,7 @@ function MessagingOnboardingMonitor() {
 
             <Divider />
             <Text type="secondary">
-                Generated {formatTimestamp(snapshot?.generatedAt)}. Reads are platform-only and use server-side Admin SDK; messaging onboarding collections remain denied to client Firestore.
+                Generated {formatTimestamp(snapshot?.generatedAt, formatter)}. Reads are platform-only and use server-side Admin SDK; messaging onboarding collections remain denied to client Firestore.
             </Text>
         </div>
     );

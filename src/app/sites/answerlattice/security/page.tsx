@@ -12,11 +12,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for Answerlattice page-aware support: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+    description: 'Security for AnswerLattice page-aware support: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
-        title: 'Security | Answerlattice',
-        description: 'How Answerlattice protects page-aware support, widget context, and customer workspaces.',
+        title: 'Security | AnswerLattice',
+        description: 'How AnswerLattice protects page-aware support, widget context, and customer workspaces.',
         url: `${ANSWERLATTICE_SITE_URL}/security`,
     },
 };
@@ -32,11 +32,11 @@ function getBasePath(): string {
 const CONTROLS = [
     {
         title: 'Account-scoped data',
-        body: 'Answerlattice documents use product, account, and workspace scope so support knowledge, tickets, widget settings, and summaries stay tied to the correct workspace.',
+        body: 'AnswerLattice documents use product, account, and workspace scope so support knowledge, tickets, widget settings, and summaries stay tied to the correct workspace.',
     },
     {
         title: 'Role-scoped workspace access',
-        body: 'Answerlattice workspace members receive Answerlattice-specific permission claims so team, billing, widget, knowledge, support, and governance controls can be separated by role.',
+        body: 'AnswerLattice workspace members receive AnswerLattice-specific permission claims so team, billing, widget, knowledge, support, and governance controls can be separated by role.',
     },
     {
         title: 'Owner reset and sign-out',
@@ -48,7 +48,7 @@ const CONTROLS = [
     },
     {
         title: 'Explicit screenshot attachments',
-        body: 'Users can attach or paste screenshots when visual context helps. Answerlattice does not automatically capture the host page, scrape the DOM, or write widget images to persistent storage.',
+        body: 'Users can attach or paste screenshots when visual context helps. AnswerLattice does not automatically capture the host page, scrape the DOM, or write widget images to persistent storage.',
     },
     {
         title: 'Bounded source intake',
@@ -60,7 +60,7 @@ const CONTROLS = [
     },
     {
         title: 'Hosted help domain registry',
-        body: 'Hosted help domains resolve through Answerlattice-owned registry documents so anonymous docs, FAQ, changelog, robots, and sitemap pages never depend on client-supplied tenant IDs.',
+        body: 'Hosted help domains resolve through AnswerLattice-owned registry documents so anonymous docs, FAQ, changelog, robots, and sitemap pages never depend on client-supplied tenant IDs.',
     },
     {
         title: 'Ticket debugging context',
@@ -80,15 +80,15 @@ const CONTROLS = [
     },
     {
         title: 'Separate product infrastructure',
-        body: 'Answerlattice uses Answerlattice-owned dashboard routes, constants, schedulers, widget configuration, and workspace data boundaries.',
+        body: 'AnswerLattice uses AnswerLattice-owned dashboard routes, constants, schedulers, widget configuration, and workspace data boundaries.',
     },
 ];
 
 const SECURITY_FACTS = [
-    { label: 'Product data boundary', value: 'Answerlattice workspace scope' },
-    { label: 'Team permissions', value: 'Answerlattice role claims' },
+    { label: 'Product data boundary', value: 'AnswerLattice workspace scope' },
+    { label: 'Team permissions', value: 'AnswerLattice role claims' },
     { label: 'Owner reset path', value: 'Passcode reset + sign-out' },
-    { label: 'Runtime database', value: 'Answerlattice Firebase project' },
+    { label: 'Runtime database', value: 'AnswerLattice Firebase project' },
     { label: 'Widget key storage', value: 'Hashed; encrypted recovery when configured' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
     { label: 'Screenshot input', value: 'Manual attachment only' },
@@ -99,25 +99,25 @@ const SECURITY_FACTS = [
     { label: 'Runtime context', value: 'Versioned approved bundles' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Local EOD + compact summaries' },
-    { label: 'Product boundary', value: 'Answerlattice workspace scope' },
+    { label: 'Product boundary', value: 'AnswerLattice workspace scope' },
 ];
 
 const TRUST_AREAS = [
     {
         title: 'Workspace isolation',
-        body: 'Answerlattice management routes resolve an Answerlattice product account and workspace before reading or writing workspace data.',
+        body: 'AnswerLattice management routes resolve an AnswerLattice product account and workspace before reading or writing workspace data.',
         points: [
-            'Answerlattice documents use product, account, and workspace scope.',
-            'Dashboard APIs check Answerlattice scope before mutations.',
-            'Answerlattice Firebase rules default to deny and allow tenant-scoped access explicitly.',
+            'AnswerLattice documents use product, account, and workspace scope.',
+            'Dashboard APIs check AnswerLattice scope before mutations.',
+            'AnswerLattice Firebase rules default to deny and allow tenant-scoped access explicitly.',
         ],
     },
     {
         title: 'Team permissions',
-        body: 'Answerlattice team access uses product-specific roles for support, knowledge, widget, billing, governance, and workspace controls.',
+        body: 'AnswerLattice team access uses product-specific roles for support, knowledge, widget, billing, governance, and workspace controls.',
         points: [
-            'Owner, Manager, Support Staff, and custom roles map to Answerlattice permission keys.',
-            'Dashboard routes and protected Answerlattice APIs check the active role before exposing controls.',
+            'Owner, Manager, Support Staff, and custom roles map to AnswerLattice permission keys.',
+            'Dashboard routes and protected AnswerLattice APIs check the active role before exposing controls.',
             'Password/passcode reset and force sign-out revoke active sessions for sensitive access changes.',
         ],
     },
@@ -133,7 +133,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Hosted public help',
-        body: 'Answerlattice can publish reviewed support content on support domains without exposing authenticated support operations.',
+        body: 'AnswerLattice can publish reviewed support content on support domains without exposing authenticated support operations.',
         points: [
             'Domain registry docs resolve workspace scope server-side.',
             'Anonymous pages render published docs, FAQ, changelog, robots, and sitemap only.',
@@ -142,7 +142,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Ticket debugging context',
-        body: 'Answerlattice keeps ticket debugging context useful by tying it to the reported issue instead of broad background collection.',
+        body: 'AnswerLattice keeps ticket debugging context useful by tying it to the reported issue instead of broad background collection.',
         points: [
             'Recent browser context is captured only when a ticket is created.',
             'The payload is capped and intended for debugging the reported issue.',
@@ -151,7 +151,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Bounded page context',
-        body: 'Answerlattice treats page context as a hint for support relevance, not as trusted identity or tenant authority.',
+        body: 'AnswerLattice treats page context as a hint for support relevance, not as trusted identity or tenant authority.',
         points: [
             'Context should describe page, route, feature, workflow, role, or plan.',
             'Secrets, tokens, passwords, payment card data, and unrelated personal data should not be sent.',
@@ -169,7 +169,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Knowledge intake boundary',
-        body: 'Intake is designed to teach Answerlattice from selected sources without creating a crawler, private connector, or automatic publishing path.',
+        body: 'Intake is designed to teach AnswerLattice from selected sources without creating a crawler, private connector, or automatic publishing path.',
         points: [
             'Public URL discovery imports only owner-selected pages.',
             'Files are capped before processing; screenshots and short recordings are extracted into support text.',
@@ -188,7 +188,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Cost and abuse controls',
-        body: 'Answerlattice keeps high-cost and public runtime paths bounded so one noisy widget cannot become an uncontrolled backend workload.',
+        body: 'AnswerLattice keeps high-cost and public runtime paths bounded so one noisy widget cannot become an uncontrolled backend workload.',
         points: [
             'Public widget config, search, and feedback endpoints are rate limited.',
             'Repeated canonical hits can use cache with freshness checks.',
@@ -199,11 +199,11 @@ const TRUST_AREAS = [
     },
     {
         title: 'Compiled context separation',
-        body: 'Answerlattice separates governed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
+        body: 'AnswerLattice separates governed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
         points: [
-            'Governed source records remain inside Answerlattice for drafts, tickets, signals, proposals, and audit state.',
+            'Governed source records remain inside AnswerLattice for drafts, tickets, signals, proposals, and audit state.',
             'Public widget bundles include only public-safe product and support context.',
-            'Private server bundles stay behind authenticated Answerlattice APIs.',
+            'Private server bundles stay behind authenticated AnswerLattice APIs.',
             'A stale or failed build does not replace the last ready bundle.',
         ],
     },
@@ -218,11 +218,11 @@ const TRUST_AREAS = [
     },
     {
         title: 'Operational separation',
-        body: 'Answerlattice keeps its product data and support runtime bounded to Answerlattice workspace, widget, hosted help, and governance surfaces.',
+        body: 'AnswerLattice keeps its product data and support runtime bounded to AnswerLattice workspace, widget, hosted help, and governance surfaces.',
         points: [
-            'Answerlattice has product-owned routes, constants, schedulers, and dashboard sections.',
-            'Answerlattice Firebase config can run as dedicated product infrastructure.',
-            'Client products are integrations, not hardcoded Answerlattice dependencies.',
+            'AnswerLattice has product-owned routes, constants, schedulers, and dashboard sections.',
+            'AnswerLattice Firebase config can run as dedicated product infrastructure.',
+            'Client products are integrations, not hardcoded AnswerLattice dependencies.',
         ],
     },
 ];
@@ -240,7 +240,7 @@ export default function AnswerlatticeSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Answerlattice uses safe page hints, explicit screenshot attachments, bounded source intake, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
+                            AnswerLattice uses safe page hints, explicit screenshot attachments, bounded source intake, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink
@@ -287,7 +287,7 @@ export default function AnswerlatticeSecurityPage() {
                         <div className="mb-8 text-center">
                             <h2 className="text-2xl font-bold text-white">Security at a glance</h2>
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
-                                Answerlattice is built around product-owned workspace boundaries, widget runtime controls, and governed support-knowledge access.
+                                AnswerLattice is built around product-owned workspace boundaries, widget runtime controls, and governed support-knowledge access.
                             </p>
                         </div>
                         <AnswerlatticeHubDiagram
@@ -311,7 +311,7 @@ export default function AnswerlatticeSecurityPage() {
                             outputs={[
                                 {
                                     title: 'Workspace scope',
-                                    detail: 'Support knowledge stays tied to the correct Answerlattice workspace.',
+                                    detail: 'Support knowledge stays tied to the correct AnswerLattice workspace.',
                                 },
                                 {
                                     title: 'Hosted help boundary',
@@ -368,7 +368,7 @@ export default function AnswerlatticeSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Source intake boundary</p>
                         <h2 className="text-2xl font-bold text-white">Import selected evidence, not everything.</h2>
                         <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Use public product or docs pages you select, supported files, screenshots, and short recordings that are safe to process. Answerlattice does not crawl an entire private app, retain raw media by default, or make generated intake output official without owner review.
+                            Use public product or docs pages you select, supported files, screenshots, and short recordings that are safe to process. AnswerLattice does not crawl an entire private app, retain raw media by default, or make generated intake output official without owner review.
                         </p>
                     </div>
                     <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
@@ -384,8 +384,8 @@ export default function AnswerlatticeSecurityPage() {
                     <div className="mx-auto max-w-5xl">
                         <SectionHeader
                             eyebrow="Trust controls"
-                            title="What Answerlattice protects by design"
-                            description="These controls map to the implemented Answerlattice runtime: dashboard APIs, widget config, widget search, feedback, tenant-scoped rules, summaries, and owner review queues."
+                            title="What AnswerLattice protects by design"
+                            description="These controls map to the implemented AnswerLattice runtime: dashboard APIs, widget config, widget search, feedback, tenant-scoped rules, summaries, and owner review queues."
                         />
                         <div className="grid gap-4 lg:grid-cols-2">
                             {TRUST_AREAS.map((area) => (
@@ -410,7 +410,7 @@ export default function AnswerlatticeSecurityPage() {
                     <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
                         <h2 className="mb-3 text-xl font-semibold text-white">Security and responsible disclosure</h2>
                         <p className="mb-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Report security, privacy, or data-handling concerns to the Answerlattice team. Do not include secrets, production credentials, or full customer data in the first message.
+                            Report security, privacy, or data-handling concerns to the AnswerLattice team. Do not include secrets, production credentials, or full customer data in the first message.
                         </p>
                         <a href="mailto:hello@answerlattice.com" className="text-sm font-semibold text-teal-200 hover:text-teal-100">
                             hello@answerlattice.com

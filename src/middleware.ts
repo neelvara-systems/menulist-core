@@ -175,6 +175,15 @@ function isLocalDevelopmentHost(hostname: string | null): boolean {
         || normalizedHost.startsWith('192.168.');
 }
 
+function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {
+    const normalizedHost = normalizeHostname(hostname);
+    return normalizedHost === 'canonica.app' || normalizedHost === 'www.canonica.app';
+}
+
+function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: string): string {
+    return publicPath === '/' ? `${basePath}/home` : `${basePath}${publicPath}`;
+}
+
 function buildMyCodexLoginRedirect(request: NextRequest): NextResponse {
     const url = request.nextUrl.clone();
     url.pathname = MYCODEX_LOGIN_PATH;
@@ -230,6 +239,16 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const domainInfo = resolveDomain(hostname);
     const knownProductId = resolveKnownProductIdByHostname(hostname);
+
+    if (
+        isLegacyAnswerlatticePublicHostname(hostname)
+        && !shouldBypassDomainRouting(pathname)
+    ) {
+        const target = getProductDeploymentTarget('answerlattice', 'production');
+        const url = new URL(request.nextUrl.pathname, target.url);
+        url.search = request.nextUrl.search;
+        return NextResponse.redirect(url, 308);
+    }
 
     if (
         process.env.VERCEL === '1'
@@ -327,7 +346,7 @@ export async function middleware(request: NextRequest) {
             const answerlatticeDashboardPath = getAnswerlatticeDashboardRewritePath(pathname);
             const url = request.nextUrl.clone();
             url.pathname = answerlatticeDashboardPath ||
-                `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
+                buildAnswerlatticeWebsiteRewritePath(productConfig.internalBasePath, pathname);
 
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', productConfig.id);
@@ -371,8 +390,11 @@ export async function middleware(request: NextRequest) {
             const answerlatticeDashboardPath = product.id === 'answerlattice'
                 ? getAnswerlatticeDashboardRewritePath(strippedPath)
                 : null;
-            url.pathname = answerlatticeDashboardPath ||
-                `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+            url.pathname = answerlatticeDashboardPath || (
+                product.id === 'answerlattice'
+                    ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
+                    : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`
+            );
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);
             response.headers.set('x-product-name', product.name);
@@ -431,7 +453,9 @@ export async function middleware(request: NextRequest) {
     if (domainInfo.isClient) {
         // Client domain - rewrite to /client route namespace
         const url = request.nextUrl.clone();
-        url.pathname = `/client${pathname === '/' ? '' : pathname}`;
+        url.pathname = pathname === '/robots.txt'
+            ? '/client/robots'
+            : `/client${pathname === '/' ? '' : pathname}`;
 
         response = NextResponse.rewrite(url);
 

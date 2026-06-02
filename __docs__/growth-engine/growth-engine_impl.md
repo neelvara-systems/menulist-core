@@ -48,6 +48,28 @@ When implementation starts:
 
 Do not reuse existing `GROWTH_OS: 'GR'`; it is reserved for GrowthOS/Growth Kits.
 
+## 3A. Implementation Readiness Entry Gate
+
+Before code starts, complete the checklist in [Implementation Readiness](./growth-engine_implementation-readiness.md).
+
+It is the implementation entry gate for:
+
+- internal route inventory
+- UI state contracts
+- RBAC matrix
+- feature flags
+- non-secret environment keys
+- server-only secret refs
+- Firestore rules and index expectations
+- seed config
+- end-to-end use cases
+- API guards
+- UI guards
+- test readiness
+- stop conditions
+
+If implementation discovers a provider, route, rule, screen, or worker not covered there, update the readiness doc before coding around it.
+
 ## 4. Product Modules
 
 Build order is dependency order, not reduced scope.
@@ -56,31 +78,33 @@ Build order is dependency order, not reduced scope.
 | ---: | --- | --- |
 | 1 | Distribution data foundation | Distribution target identity, lead/contact identity, summaries, dedupe, suppressions, events. |
 | 2 | Automation workflow engine | Typed workflows, workflow runs, steps, approvals, retries, idempotency, budgets, and kill-switch checks. |
-| 3 | Source ingestion | Import raw candidates through approved adapters; no outreach or public publishing. |
-| 4 | Enrichment waterfall engine | Ordered source/provider/AI steps for identity, menu gap, contactability, source confidence, and cost-controlled evidence. |
-| 5 | AI worker registry | Typed AI workers, prompt versions, eval thresholds, cache keys, budgets, and blocked-output rules. |
-| 6 | Truth gap intelligence | Typed fit, menu truth gap, contactability, distribution readiness, risk, and human-review decisions. |
-| 7 | Distribution target registry | Business/location/menu target state, claim state, truth state, and surface inventory. |
-| 8 | Decision snapshot ledger | Evidence, rejected facts, scores, blockers, confidence, rule/prompt version, and next action for every material decision. |
-| 9 | Channel identity and eligibility | Email/phone/WhatsApp/social identity states and policy gates. |
-| 10 | Sender assignment and pacing | Sender-domain readiness, one sender per target conversation, target timezone windows, ramp, and reputation limits. |
-| 11 | Canonical surface publisher | MenuList menu/business page readiness, structured data, canonical URL, and freshness state. |
-| 12 | Discovery publisher | Sitemaps, sitemap indexes, IndexNow submissions, changed-URL queue, and crawl health. |
-| 13 | Menu feed exporter | Google-compatible and partner-compatible entity/menu/section/item feed payloads. |
-| 14 | External listing handoff manager | GBP, Apple Business Connect, and Bing Places handoff/sync state for owner-authorized distribution. |
-| 15 | Campaign foundation | Drafts, audiences, caps, stop rules, approvals, summaries. |
-| 16 | Dry-run engine | End-to-end campaign and distribution validation without sending or publishing. |
-| 17 | Template and guardrails | Approved variables, banned claims, safety blocks. |
-| 18 | Onboarding route bridge | Tracked MenuList onboarding links and feedback ingestion. |
-| 19 | Email execution | Automated outbound channel after readiness checks. |
-| 20 | WhatsApp assisted | Operator-reviewed send queue after channel policy approval. |
-| 21 | Unified inbox | Conversations, messages, reply composer, DNC/wrong-number actions. |
-| 22 | Reply classifier | Interested, DNC, unsubscribe, wrong-number, pricing, objection, human review. |
-| 23 | Operator workboard | Queue-first UI for safety, review, replies, handoffs, health, freshness, discovery failures, costs, evals, and incidents. |
-| 24 | Follow-up/NBA | State-aware follow-up and retargeting with cooldowns. |
-| 25 | Attribution and rollups | Source/campaign/channel/template/flow/surface/freshness performance. |
-| 26 | Safety/control room | Kill switches, incidents, budget caps, evals, channel health, surface health. |
-| 27 | Optimizer | Recommendations after enough feedback and distribution health exists. |
+| 3 | Connections and activation control | Adapter IDs, provider secret refs, email pipeline readiness, WhatsApp pipeline readiness, webhooks, budgets, kill switches, validation, and activation gates. |
+| 4 | Source ingestion | Import raw candidates through approved adapters; no outreach or public publishing. |
+| 5 | Enrichment waterfall engine | Ordered source/provider/AI steps for identity, menu gap, contactability, source confidence, and cost-controlled evidence. |
+| 6 | AI worker registry | Typed AI workers, prompt versions, eval thresholds, cache keys, budgets, and blocked-output rules. |
+| 7 | Truth gap intelligence | Typed fit, menu truth gap, contactability, distribution readiness, risk, and human-review decisions. |
+| 8 | Distribution target registry | Business/location/menu target state, claim state, truth state, and surface inventory. |
+| 9 | Decision snapshot ledger | Evidence, rejected facts, scores, blockers, confidence, rule/prompt version, and next action for every material decision. |
+| 10 | Channel identity and eligibility | Email/phone/WhatsApp/social identity states and policy gates. |
+| 11 | Sender assignment and pacing | Sender-domain readiness, one sender per target conversation, target timezone windows, ramp, and reputation limits. |
+| 12 | Canonical surface publisher | MenuList menu/business page readiness, structured data, canonical URL, and freshness state. |
+| 13 | Discovery publisher | Sitemaps, sitemap indexes, IndexNow submissions, changed-URL queue, and crawl health. |
+| 14 | Menu feed exporter | Google-compatible and partner-compatible entity/menu/section/item feed payloads. |
+| 15 | External listing handoff manager | GBP, Apple Business Connect, and Bing Places handoff/sync state for owner-authorized distribution. |
+| 16 | Campaign foundation | Drafts, audiences, caps, stop rules, approvals, summaries. |
+| 17 | Dry-run engine | End-to-end campaign and distribution validation without sending or publishing. |
+| 18 | Template and guardrails | Approved variables, banned claims, safety blocks. |
+| 19 | Onboarding route bridge | Tracked MenuList onboarding links and feedback ingestion. |
+| 20 | Email execution | Automated outbound channel after readiness checks. |
+| 21 | WhatsApp Message Governance Layer | Consent, templates, conversation state, webhook events, reputation, sender identity, pacing, and audit before any WhatsApp API send. |
+| 22 | WhatsApp assisted | Operator-reviewed send queue after channel policy approval. |
+| 23 | Unified inbox | Conversations, messages, reply composer, DNC/wrong-number actions. |
+| 24 | Reply classifier | Interested, DNC, unsubscribe, wrong-number, pricing, objection, human review. |
+| 25 | Operator workboard | Queue-first UI for safety, review, replies, handoffs, health, freshness, discovery failures, costs, evals, and incidents. |
+| 26 | Follow-up/NBA | State-aware follow-up and retargeting with cooldowns. |
+| 27 | Attribution and rollups | Source/campaign/channel/template/flow/surface/freshness performance. |
+| 28 | Safety/control room | Kill switches, incidents, budget caps, evals, channel health, surface health. |
+| 29 | Optimizer | Recommendations after enough feedback and distribution health exists. |
 
 ## 4A. Second-Pass Required Foundations
 
@@ -96,8 +120,11 @@ The first implementation must build these foundations before any send worker is 
 | Sender assignment and pacing | Keeps one sender per target conversation, respects daily caps, target timezone windows, ramp, and health thresholds. |
 | Operator workboard | Converts human-review and incident decisions into auditable work items. |
 | Source policy registry | Defines approved sources, allowed fields, source terms, retention class, raw payload handling, and approval owner. |
+| Connections and activation registry | Defines provider adapters, secret refs, email/WhatsApp pipelines, webhooks, budgets, kill switches, validation runs, and activation state before provider execution. |
+| Implementation readiness contract | Defines internal routes, UI states, RBAC, flags, env keys, rules/index expectations, seed records, API/UI guards, tests, and stop conditions. |
 | Channel compliance policy | Maps country, channel, message type, opt-in requirement, unsubscribe requirement, and launch blockers. |
 | Consent/suppression ledger | Stores opt-in, unsubscribe, DNC, complaint, wrong-contact, bounce, and proof events across all campaigns. |
+| WhatsApp Message Governance Layer | Blocks WhatsApp API sends unless consent, template, conversation-window, suppression, sender, pacing, webhook, reputation, and audit checks pass. |
 | Sender-domain readiness | Tracks DNS/authentication, unsubscribe endpoint, bounce handling, sender identity, ramp limits, and health thresholds. |
 | Provider decision matrix | Records approved provider, cost model, webhook support, data retention, processor/vendor status, and shutdown path. |
 | Onboarding flow inventory | Lists approved MenuList onboarding flows, route payloads, event names, and fallback behavior. |
@@ -222,6 +249,93 @@ type GrowthSourcePolicy = {
 };
 ```
 
+### Connection Adapter And Activation
+
+```ts
+type GrowthConnectionAdapter = {
+  adapterId: string;
+  productCode: 'GE';
+  environment: 'dev' | 'qa' | 'prod';
+  adapterType:
+    | 'source'
+    | 'email'
+    | 'whatsapp'
+    | 'discovery'
+    | 'ai'
+    | 'analytics'
+    | 'storage';
+  provider:
+    | 'manual_csv'
+    | 'google_places'
+    | 'foursquare'
+    | 'ses'
+    | 'resend'
+    | 'meta_whatsapp_cloud_api'
+    | 'indexnow'
+    | 'openai'
+    | 'bigquery'
+    | 'firebase'
+    | 'other';
+  displayName: string;
+  lifecycle: 'draft' | 'needs_validation' | 'ready_for_review' | 'active' | 'paused' | 'blocked' | 'retired';
+  policyIds: string[];
+  secretRefIds: string[];
+  webhookEndpointIds: string[];
+  budgetPolicyId: string;
+  killSwitchScopeId: string;
+  ownerRole: 'growth_manager' | 'admin' | 'compliance_reviewer' | 'incident_owner';
+  allowedPipelineIds: string[];
+  blockers: string[];
+  lastValidatedAt?: string;
+  updatedAt: string;
+};
+
+type GrowthConnectionSecretRef = {
+  secretRefId: string;
+  adapterId: string;
+  provider: string;
+  purpose:
+    | 'api_key'
+    | 'smtp_password'
+    | 'access_token'
+    | 'app_secret'
+    | 'webhook_verify_token'
+    | 'signing_secret';
+  vault: 'secret_manager' | 'approved_server_vault';
+  secretPath: string;
+  fingerprint: string;
+  lastFour?: string;
+  version: string;
+  status: 'active' | 'rotating' | 'retired' | 'blocked';
+  createdBy: string;
+  createdAt: string;
+  rotatesAt?: string;
+  retiredAt?: string;
+};
+
+type GrowthConnectionActivationCheck = {
+  checkId: string;
+  connectionId: string;
+  checkType:
+    | 'policy'
+    | 'secret'
+    | 'dns'
+    | 'webhook'
+    | 'suppression'
+    | 'template'
+    | 'conversation_state'
+    | 'reputation'
+    | 'budget'
+    | 'kill_switch'
+    | 'test_send'
+    | 'compliance_review';
+  status: 'passed' | 'failed' | 'held' | 'not_applicable';
+  evidenceRef?: string;
+  message: string;
+  checkedAt: string;
+};
+```
+
 ### Google Places Source Run
 
 ```ts
@@ -332,6 +446,194 @@ type GrowthChannelCompliancePolicy = {
   templateApprovalRequired: boolean;
   commercialRegistrationRequired: boolean;
   launchBlockers: string[];
+  updatedAt: string;
+};
+```
+
+### WhatsApp Consent And Suppression
+
+```ts
+type GrowthWhatsAppConsentEvent = {
+  consentEventId: string;
+  contactId: string;
+  targetId?: string;
+  channel: 'whatsapp';
+  consentCategory: 'utility' | 'marketing' | 'verification' | 'support';
+  consentSource: 'claim_page' | 'qr' | 'ad_click_to_whatsapp' | 'form' | 'owner_inbound' | 'manual_import';
+  sourceUrl?: string;
+  consentTextShown: string;
+  privacyPolicyVersion: string;
+  capturedAt: string;
+  ipHash?: string;
+  userAgentHash?: string;
+  proofHash: string;
+  revokedAt?: string;
+};
+
+type GrowthWhatsAppSuppressionEvent = {
+  suppressionEventId: string;
+  contactId: string;
+  targetId?: string;
+  channel: 'whatsapp';
+  reason: 'opt_out' | 'complaint' | 'invalid_number' | 'wrong_contact' | 'legal_request' | 'manual_block' | 'quality_block';
+  categoryScope: 'all' | 'marketing' | 'utility' | 'verification' | 'support';
+  source: 'reply' | 'webhook' | 'operator' | 'provider' | 'data_request';
+  createdAt: string;
+};
+```
+
+### WhatsApp Template Registry
+
+```ts
+type GrowthWhatsAppTemplate = {
+  templateId: string;
+  metaTemplateId: string;
+  name: string;
+  language: string;
+  category: 'marketing' | 'utility' | 'authentication';
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'paused' | 'disabled';
+  quality: 'pending' | 'high' | 'medium' | 'low' | 'unknown';
+  allowedUseCase:
+    | 'owner_claim'
+    | 'business_verification'
+    | 'public_info_correction'
+    | 'claim_recovery'
+    | 'stale_data_confirmation'
+    | 'support_handoff';
+  variables: string[];
+  version: string;
+  approvedAt?: string;
+  lastSyncedAt: string;
+  owner: string;
+};
+```
+
+### WhatsApp Conversation State
+
+```ts
+type GrowthWhatsAppConversationState = {
+  conversationStateId: string;
+  contactId: string;
+  targetId?: string;
+  senderIdentityId: string;
+  lastInboundAt?: string;
+  customerServiceWindowExpiresAt?: string;
+  freeEntryPointExpiresAt?: string;
+  lastTemplateSentAt?: string;
+  lastUserReplyAt?: string;
+  state: 'no_window' | 'service_window_open' | 'free_entry_open' | 'template_required' | 'suppressed' | 'blocked';
+  updatedAt: string;
+};
+```
+
+### Message Governance Audit
+
+```ts
+type GrowthMessageGovernanceAudit = {
+  auditId: string;
+  contactId: string;
+  targetId?: string;
+  channel: 'whatsapp' | 'email' | 'sms' | 'instagram' | 'messenger';
+  senderIdentityId: string;
+  templateId?: string;
+  consentEventId?: string;
+  suppressionCheckedAt: string;
+  conversationStateId?: string;
+  eligibility:
+    | 'eligible'
+    | 'needs_opt_in'
+    | 'suppressed'
+    | 'template_required'
+    | 'template_blocked'
+    | 'window_closed'
+    | 'sender_blocked'
+    | 'quality_blocked'
+    | 'human_review';
+  sendReason:
+    | 'owner_claim'
+    | 'business_verification'
+    | 'public_info_correction'
+    | 'claim_recovery'
+    | 'stale_data_confirmation'
+    | 'support_handoff';
+  blockers: string[];
+  createdAt: string;
+};
+```
+
+### WhatsApp Sender And Reputation
+
+```ts
+type GrowthWhatsAppSenderIdentity = {
+  senderIdentityId: string;
+  wabaId: string;
+  phoneNumberId: string;
+  displayName: string;
+  owner: 'menulist' | 'customer_owned';
+  allowedUseCases: GrowthWhatsAppTemplate['allowedUseCase'][];
+  status: 'setup' | 'ready' | 'paused' | 'blocked';
+  quality: 'high' | 'medium' | 'low' | 'unknown';
+  maxSendsPerDay: number;
+  updatedAt: string;
+};
+
+type GrowthWhatsAppReputationSnapshot = {
+  snapshotId: string;
+  senderIdentityId: string;
+  templateId?: string;
+  windowStartAt: string;
+  windowEndAt: string;
+  sent: number;
+  delivered: number;
+  read: number;
+  replied: number;
+  buttonClicks: number;
+  flowSubmissions: number;
+  failed: number;
+  optOuts: number;
+  complaints: number;
+  quality: 'high' | 'medium' | 'low' | 'unknown';
+  decision: 'continue' | 'slow' | 'pause' | 'human_review';
+  createdAt: string;
+};
+```
+
+### WhatsApp Webhook And Flow
+
+```ts
+type GrowthWhatsAppWebhookEvent = {
+  eventId: string;
+  auditId?: string;
+  metaMessageId?: string;
+  eventType:
+    | 'sent'
+    | 'delivered'
+    | 'read'
+    | 'failed'
+    | 'reply'
+    | 'button_clicked'
+    | 'flow_submitted'
+    | 'template_status_changed'
+    | 'sender_quality_changed';
+  signatureValidated: boolean;
+  payloadRef?: string;
+  receivedAt: string;
+  processedAt?: string;
+};
+
+type GrowthWhatsAppFlowDefinition = {
+  flowId: string;
+  name: string;
+  status: 'draft' | 'approved' | 'paused' | 'blocked';
+  allowedUseCase:
+    | 'owner_claim'
+    | 'business_verification'
+    | 'public_info_correction'
+    | 'stale_data_confirmation'
+    | 'support_handoff';
+  allowedFields: string[];
+  outputSchemaVersion: string;
+  writesCandidateTruthOnly: boolean;
   updatedAt: string;
 };
 ```
@@ -631,9 +933,22 @@ Hot operational:
 - `growthEngineExternalListingHandoffs`
 - `growthEngineTruthPackets`
 - `growthEngineSourcePolicies`
+- `growthEngineConnectionAdapters`
+- `growthEnginePipelineConnections`
+- `growthEngineEmailPipelineConnections`
+- `growthEngineWhatsAppPipelineConnections`
+- `growthEngineWebhookEndpoints`
+- `growthEngineConnectionValidationRuns`
+- `growthEngineConnectionHealthSummaries`
+- `growthEngineConnectionSecrets`
 - `growthEngineChannelPolicies`
 - `growthEngineSenderDomains`
 - `growthEngineConsentLedger`
+- `growthEngineWhatsAppTemplates`
+- `growthEngineWhatsAppConversationStates`
+- `growthEngineWhatsAppSenderIdentities`
+- `growthEngineWhatsAppReputationSnapshots`
+- `growthEngineMessageGovernanceAudits`
 - `growthEngineArtifactReviews`
 - `growthEngineOnboardingFlowInventory`
 - `growthEngineProviderRegister`
@@ -656,6 +971,12 @@ Warm/cold:
 - `growthEngineSourceCandidates`
 - `growthEngineSendJobs`
 - `growthEngineMessageEvents`
+- `growthEngineWhatsAppWebhookEvents`
+- `growthEngineWhatsAppFlowDefinitions`
+- `growthEngineWhatsAppTemplateEvents`
+- `growthEngineConnectionAuditEvents`
+- `growthEngineConnectionValidationEvents`
+- `growthEngineConnectionIncidentLinks`
 - `growthEngineFeedbackEvents`
 - `growthEngineAttributionTouches`
 - `growthEngineExperiments`
@@ -682,6 +1003,15 @@ All routes require internal/admin auth, Zod validation, secure logging, rate lim
 | Route | Method | Purpose |
 | --- | --- | --- |
 | `/api/growth-engine/source-runs` | POST/GET | Create/list source runs. |
+| `/api/growth-engine/connections/adapters` | GET/POST/PATCH | Manage adapter metadata and lifecycle. |
+| `/api/growth-engine/connections/secrets` | POST | Store or rotate server-only secret refs; never returns plaintext. |
+| `/api/growth-engine/connections/validate` | POST | Run technical and policy validation for an adapter or pipeline. |
+| `/api/growth-engine/connections/activate` | POST | Activate only after all checks pass and approval exists. |
+| `/api/growth-engine/connections/pause` | POST | Pause adapter, pipeline, provider, sender, or webhook. |
+| `/api/growth-engine/connections/email` | GET/POST/PATCH | Manage email pipeline metadata and readiness. |
+| `/api/growth-engine/connections/whatsapp` | GET/POST/PATCH | Manage WhatsApp pipeline metadata and readiness. |
+| `/api/growth-engine/connections/webhooks` | GET/POST/PATCH | Manage webhook endpoint metadata, signatures, and health. |
+| `/api/growth-engine/connections/audit` | GET | Read bounded connection audit events. |
 | `/api/growth-engine/source-runs/google-places` | POST | Create approved Google Places Text Search seed runs with field-mask and budget validation. |
 | `/api/growth-engine/source-runs/google-places/[sourceRunId]/details` | POST | Run approved Place Details enrichment for filtered targets only. |
 | `/api/growth-engine/source-runs/foursquare` | POST | Create approved Foursquare identity/category/chain source runs with PAYG outreach blocking and field-profile validation. |
@@ -713,6 +1043,12 @@ All routes require internal/admin auth, Zod validation, secure logging, rate lim
 | `/api/growth-engine/inbox` | GET | Bounded inbox summary. |
 | `/api/growth-engine/inbox/[itemId]/action` | POST | Reply, suppress, route, mark done. |
 | `/api/growth-engine/whatsapp-assisted` | GET/POST | Assisted send queue and confirmations. |
+| `/api/growth-engine/whatsapp/governance/check` | POST | Create a message-governance audit before any WhatsApp API send. |
+| `/api/growth-engine/whatsapp/templates` | GET/POST/PATCH | Sync and manage approved WhatsApp templates, quality, category, owner, and version. |
+| `/api/growth-engine/whatsapp/conversations` | GET/PATCH | Inspect conversation-window state, service-window expiry, free-entry expiry, and suppression status. |
+| `/api/growth-engine/whatsapp/sender-identities` | GET/POST/PATCH | Manage WABA/phone identities, allowed use cases, quality, and pause/block state. |
+| `/api/growth-engine/whatsapp/flows` | GET/POST/PATCH | Manage approved WhatsApp Flow definitions for structured owner-confirmed truth capture. |
+| `/api/growth-engine/webhooks/whatsapp` | POST | Verify Meta webhook signatures, normalize WhatsApp events, update outcomes, and create suppression/reputation events. |
 | `/api/growth-engine/feedback` | POST | MenuList route feedback endpoint. |
 | `/api/growth-engine/kill-switches` | GET/POST/PATCH | Emergency controls. |
 | `/api/growth-engine/webhooks/email` | POST | Email reply/bounce/unsubscribe webhooks. |
@@ -733,6 +1069,9 @@ Workers:
 
 - workflow run dispatcher
 - workflow step executor
+- connection validation runner
+- secret rotation reminder
+- connection health summary rollup
 - enrichment waterfall runner
 - AI worker executor
 - decision snapshot builder
@@ -758,6 +1097,13 @@ Workers:
 - freshness monitor
 - dry-run generation
 - email send jobs
+- email DNS and webhook readiness checker
+- WhatsApp governance checker
+- WhatsApp template sync
+- WhatsApp conversation-state updater
+- WhatsApp webhook verifier and normalizer
+- WhatsApp reputation monitor
+- WhatsApp Flow submission processor
 - webhook normalization
 - reply classification
 - follow-up due detection
@@ -780,6 +1126,9 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - No public lead list routes.
 - Provider tokens stored in Secret Manager or approved server-only secret store.
 - No provider tokens in browser.
+- Connections screen stores secret refs, fingerprints, and validation state only; it must not store plaintext credential values in Firestore.
+- Provider execution is blocked unless the adapter lifecycle is `active`.
+- Adapter activation requires policy, secret, budget, kill switch, validation, webhook, and compliance checks where applicable.
 - Full emails/phones hidden from list views.
 - Contact reveal logged.
 - Raw source/webhook payloads stored outside Firestore where appropriate.
@@ -788,6 +1137,10 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - All outbound sends re-check suppression immediately before execution.
 - All webhook handlers validate source/provider signatures where available.
 - All provider webhooks must be idempotent and reject unsigned or replayed payloads where provider support exists.
+- WhatsApp webhook handlers must validate Meta signatures before writing normalized events.
+- WhatsApp API sends must require a governance audit with consent, suppression, template, conversation-window, sender, pacing, and reputation checks.
+- Public phone number availability, source import, Google Places data, Foursquare data, or third-party enrichment must not create WhatsApp opt-in.
+- WhatsApp Flow submissions must write only approved structured business-truth fields and never hidden marketing consent.
 - Artifact review/takedown actions must be audit logged.
 - Data access, correction, and deletion requests must be tracked separately from campaign workflow.
 - Public distribution jobs must read confirmed MenuList truth only.
@@ -802,8 +1155,10 @@ No new MenuList scheduled function should be added for Growth Engine work.
 1. Product constants and feature flags default off.
 2. Growth Engine Firebase client/admin helpers.
 3. Firestore schema constants and Zod types.
-4. Source policy registry.
-5. Distribution target registry.
+4. Implementation readiness checklist accepted.
+5. Source policy registry.
+6. Connections and activation registry.
+7. Distribution target registry.
 6. Business Truth Graph registry.
 7. Automation workflow engine.
 8. Enrichment waterfall registry and runner.
@@ -829,18 +1184,22 @@ No new MenuList scheduled function should be added for Growth Engine work.
 28. Artifact review/takedown if artifacts are used.
 29. Email template renderer and safety checker.
 30. Email execution adapter.
-31. WhatsApp assisted queue guarded by policy.
-32. Tracked route bridge to MenuList onboarding.
-33. Feedback ingestion and campaign/distribution summaries.
-34. DNC/unsubscribe/bounce handling.
-35. Global/channel/campaign/provider/surface/automation kill switches.
-36. Cost summary dashboard.
-37. Eval fixtures and pass/fail thresholds.
-38. Incident runbook and evidence export.
+31. WhatsApp Message Governance Layer.
+32. WhatsApp assisted queue guarded by policy.
+33. Tracked route bridge to MenuList onboarding.
+34. Feedback ingestion and campaign/distribution summaries.
+35. DNC/unsubscribe/bounce handling.
+36. Global/channel/campaign/provider/surface/automation kill switches.
+37. Cost summary dashboard.
+38. Eval fixtures and pass/fail thresholds.
+39. Incident runbook and evidence export.
 
 ## 11. Implementation Non-Negotiables
 
 - No campaign launch without dry-run.
+- No provider execution without active adapter state from Connections And Activation.
+- No plaintext provider credential in Firestore, browser state, logs, AI prompts, or dashboard payloads.
+- No adapter activation without secret ref, policy, budget cap, kill switch, validation run, and required webhook checks.
 - No source import without approved source policy.
 - No Google Places call without approved source policy, field-mask profile, budget cap, and provider register entry.
 - No Google Places wildcard field mask in production.
@@ -863,7 +1222,11 @@ No new MenuList scheduled function should be added for Growth Engine work.
 - No campaign creation without jurisdiction/channel policy.
 - No send without suppression check.
 - No email send without sender-domain readiness, unsubscribe endpoint, and bounce handling.
-- No WhatsApp API outbound without explicit consent proof and approved templates.
+- No WhatsApp API outbound without explicit consent proof, approved template or open service window, governance audit, conversation-window state, sender identity health, pacing, webhook readiness, and reputation check.
+- No WhatsApp send from scraped, enriched, public, Google Places, or Foursquare phone numbers without explicit opt-in.
+- No WhatsApp shared sender pools or number rotation to bypass quality limits.
+- No WhatsApp generic AI assistant distribution.
+- No WhatsApp Flow that collects unapproved fields, hidden marketing consent, or unnecessary personal data.
 - No artifact without noindex, source-rights check, expiry, and takedown path.
 - No public demo sites.
 - No Google Maps photos/reviews/menu/profile rehosting.
@@ -881,6 +1244,7 @@ Before any implementation handoff:
 
 - `npx tsc --noEmit --incremental false`
 - route smoke tests for product-host/dev-prefix routing if routing is added
+- implementation readiness checklist tests for route inventory, RBAC, flags, env keys, seed config, and UI states
 - Firestore rules tests for Growth Engine project
 - function emulator tests for source/send/webhook workers
 - workflow engine idempotency/retry/kill-switch tests
@@ -891,6 +1255,8 @@ Before any implementation handoff:
 - AI worker schema/eval/budget tests
 - decision snapshot evidence tests
 - sender assignment and pacing tests
+- connection adapter, secret-ref, webhook, validation, activation, and pause tests
+- WhatsApp consent, template, conversation-window, governance-audit, webhook-signature, reputation, Flow-output, and opt-out tests
 - operator workboard queue tests
 - dry-run fixture tests
 - DNC/unsubscribe/wrong-number classifier tests

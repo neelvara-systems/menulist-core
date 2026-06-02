@@ -35,6 +35,7 @@ export default function RelatedResources({
                                 slug: currentSlug,
                                 related_slug: article.slug,
                                 cluster: article.cluster,
+                                cta_label: linkLabel,
                             }}
                             className="ws-resource-related__link"
                         >

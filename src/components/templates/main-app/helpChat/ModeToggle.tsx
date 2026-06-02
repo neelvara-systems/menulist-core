@@ -28,7 +28,7 @@ const ModeToggle = ({ value, onChange, disabled }: ModeToggleProps) => {
                 marginBottom: 8,
                 fontSize: 13,
                 fontWeight: 600,
-                color: '#fff'
+                color: token.colorTextLightSolid
             }}>
                 Understanding Chat Modes
             </div>
@@ -43,7 +43,7 @@ const ModeToggle = ({ value, onChange, disabled }: ModeToggleProps) => {
                 </div>
                 <div style={{
                     fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.65)',
+                    color: token.colorTextLightSolid,
                     lineHeight: '16px'
                 }}>
                     Quick, one-time answers from our knowledge base. Perfect for specific questions.
@@ -60,7 +60,7 @@ const ModeToggle = ({ value, onChange, disabled }: ModeToggleProps) => {
                 </div>
                 <div style={{
                     fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.65)',
+                    color: token.colorTextLightSolid,
                     lineHeight: '16px'
                 }}>
                     Step-by-step guidance with context-aware responses. Great for complex tasks.

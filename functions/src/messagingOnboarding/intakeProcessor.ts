@@ -11,6 +11,11 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
+import {
+  buildMenuExtractionRoutingFields,
+  buildMessagingOnboardingMenuExtractionDestination,
+  MENU_EXTRACTION_SOURCES,
+} from "../sharedData/menuExtractionJob";
 import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from "../types";
 import {
   MessagingOnboardingSession,
@@ -618,7 +623,8 @@ async function triggerExtraction(
     action: "IMAGE_PROCESSING",
     businessType: detected.businessType || session.detectedBusinessType || "Restaurant",
     businessCategory: detected.businessCategory || session.detectedBusinessCategory || "food",
-    source: "MESSAGING_ONBOARDING",
+    ...buildMenuExtractionRoutingFields(buildMessagingOnboardingMenuExtractionDestination(session.sessionId)),
+    source: MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING,
     skipProjectSave: true,
     status: "pending",
     progress: 0,

@@ -1,6 +1,8 @@
 'use client';
 
-import { Alert, Button, Card, Collapse, Flex, List, Tag, Typography } from 'antd';
+import { formatDateTime } from '@util/dateTime';
+import { Alert, Button, Card, Collapse, Flex, List, Tag, Typography, theme } from 'antd';
+import { useFormatter } from 'next-intl';
 import { LuAlertCircle, LuRefreshCw, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -41,12 +43,15 @@ export default function ErrorRecoveryAlert({
     onRetryAll,
     onDismiss
 }: ErrorRecoveryAlertProps) {
+    const { token } = theme.useToken();
+    const formatter = useFormatter();
+
     if (failedFiles.length === 0) return null;
 
     return (
         <Card
             style={{
-                borderColor: '#ff4d4f',
+                borderColor: token.colorError,
                 borderWidth: 2,
                 marginBottom: 16
             }}
@@ -55,9 +60,9 @@ export default function ErrorRecoveryAlert({
                 {/* Header */}
                 <Flex justify="space-between" align="center">
                     <Flex align="center" gap={8}>
-                        <LuAlertCircle size={24} style={{ color: '#ff4d4f' }} />
+                        <LuAlertCircle size={24} style={{ color: token.colorError }} />
                         <div>
-                            <Title level={5} style={{ margin: 0, color: '#ff4d4f' }}>
+                            <Title level={5} style={{ margin: 0, color: token.colorError }}>
                                 {failedFiles.length} File{failedFiles.length > 1 ? 's' : ''} Failed to Process
                             </Title>
                             <Text type="secondary" style={{ fontSize: 13 }}>
@@ -105,11 +110,11 @@ export default function ErrorRecoveryAlert({
                                     renderItem={(item) => (
                                         <List.Item
                                             style={{
-                                                background: '#fff1f0',
+                                                background: token.colorErrorBg,
                                                 padding: '12px 16px',
                                                 borderRadius: 8,
                                                 marginBottom: 8,
-                                                border: '1px solid #ffccc7'
+                                                border: `1px solid ${token.colorErrorBorder}`
                                             }}
                                             actions={[
                                                 <Button
@@ -125,7 +130,7 @@ export default function ErrorRecoveryAlert({
                                         >
                                             <Flex vertical gap={4} style={{ flex: 1 }}>
                                                 <Flex align="center" gap={8}>
-                                                    <Text strong style={{ color: '#ff4d4f' }}>
+                                                    <Text strong style={{ color: token.colorError }}>
                                                         {item.name}
                                                     </Text>
                                                     <Tag color="error">Failed</Tag>
@@ -133,8 +138,8 @@ export default function ErrorRecoveryAlert({
                                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                                     Error: {item.error}
                                                 </Text>
-                                                <Text type="secondary" style={{ fontSize: 11, color: '#8c8c8c' }}>
-                                                    Failed at: {new Date(item.timestamp).toLocaleString()}
+                                                <Text type="secondary" style={{ fontSize: 11, color: token.colorTextTertiary }}>
+                                                    Failed at: {formatDateTime(item.timestamp, 'datetime', formatter)}
                                                 </Text>
                                             </Flex>
                                         </List.Item>

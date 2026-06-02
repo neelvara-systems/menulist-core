@@ -52,7 +52,7 @@ export default function SupportKnowledgeMapSection({
                     title={isProduct
                         ? 'One governed source behind every support surface.'
                         : 'Connect sources, app screens, and support answers in one map.'}
-                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. Answerlattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
+                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. AnswerLattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
                 />
 
                 <div className="al-support-map" data-answerlattice-reveal>
@@ -90,7 +90,7 @@ export default function SupportKnowledgeMapSection({
                         ))}
                     </div>
 
-                    <div className="al-support-map__center" aria-label="Answerlattice support layer">
+                    <div className="al-support-map__center" aria-label="AnswerLattice support layer">
                         <div className="al-support-map__core">
                             <span className="al-support-map__ring al-support-map__ring--outer" />
                             <span className="al-support-map__ring al-support-map__ring--inner" />

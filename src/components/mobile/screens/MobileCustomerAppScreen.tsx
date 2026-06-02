@@ -345,7 +345,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     title="Customer App"
                 />
                 <Flex align="center" justify="center" style={{ flex: 1, padding: 24 }} vertical>
-                    <LuSmartphone color="#9ca3af" size={40} />
+                    <LuSmartphone color={token.colorTextTertiary} size={40} />
                     <Text style={{ marginTop: 12, textAlign: 'center' }}>
                         Customer App is not available yet on the platform.
                     </Text>
@@ -688,7 +688,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                             <Button
                                 fill="none"
                                 onClick={() => setIsInstallGuideOpen(false)}
-                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                             >
                                 <LuX size={18} />
                             </Button>

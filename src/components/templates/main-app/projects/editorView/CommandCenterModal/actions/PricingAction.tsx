@@ -10,22 +10,24 @@ import { computePricingPreview, validatePricingConfig } from '../utils/bulkOpera
 
 const { Text } = Typography;
 
-const PRICING_METHODS: Array<{ value: PricingMethod; label: string; symbol: string }> = [
-    { value: 'increasePercent', label: 'Increase by %', symbol: '%' },
-    { value: 'decreasePercent', label: 'Decrease by %', symbol: '%' },
-    { value: 'addFlat', label: 'Add flat amount', symbol: '₹' },
-    { value: 'reduceFlat', label: 'Reduce flat amount', symbol: '₹' },
-    { value: 'setFixed', label: 'Set fixed price', symbol: '₹' },
+const PRICING_METHODS: Array<{ value: PricingMethod; label: string; usesCurrency?: boolean }> = [
+    { value: 'increasePercent', label: 'Increase by %' },
+    { value: 'decreasePercent', label: 'Decrease by %' },
+    { value: 'addFlat', label: 'Add flat amount', usesCurrency: true },
+    { value: 'reduceFlat', label: 'Reduce flat amount', usesCurrency: true },
+    { value: 'setFixed', label: 'Set fixed price', usesCurrency: true },
 ];
 
 interface PricingActionProps {
     selectedItems: SelectedItemInfo[];
+    currencySymbol: string;
     onPreviewChange: (preview: ImpactSummary | null) => void;
     onConfigReady: (config: PricingConfig | null) => void;
 }
 
 export default function PricingAction({
     selectedItems,
+    currencySymbol,
     onPreviewChange,
     onConfigReady,
 }: PricingActionProps) {
@@ -58,7 +60,8 @@ export default function PricingAction({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [config, validation.valid]);
 
-    const currentSymbol = PRICING_METHODS.find((m) => m.value === method)?.symbol || '';
+    const currentMethod = PRICING_METHODS.find((m) => m.value === method);
+    const currentSymbol = currentMethod?.usesCurrency ? currencySymbol : '%';
 
     return (
         <Flex vertical gap={16}>

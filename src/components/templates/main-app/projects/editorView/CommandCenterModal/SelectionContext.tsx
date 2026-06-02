@@ -1,4 +1,5 @@
 import { Button, Checkbox, Collapse, Flex, Input, Tag, Typography, theme } from 'antd';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { useMemo, useState } from 'react';
 import { LuLock } from 'react-icons/lu';
 import type { SelectedItemInfo, SelectionSummary } from '../../types/commandCenter.types';
@@ -11,6 +12,7 @@ interface SelectionContextProps {
     selectedIds: Set<string>;
     onSelectionChange: (ids: Set<string>) => void;
     summary: SelectionSummary;
+    currencySymbol: string;
 }
 
 export default function SelectionContext({
@@ -18,6 +20,7 @@ export default function SelectionContext({
     selectedIds,
     onSelectionChange,
     summary,
+    currencySymbol,
 }: SelectionContextProps) {
     const { token } = theme.useToken();
     const [searchTerm, setSearchTerm] = useState('');
@@ -267,7 +270,7 @@ export default function SelectionContext({
                                                     {item.price && (
                                                         <Text type="secondary" style={{ fontSize: 10 }}>
                                                             {item.active ? '' : '(hidden) '}
-                                                            ₹{item.price}
+                                                            {formatMenuPrice(item.price, currencySymbol)}
                                                             {item.attributes && item.attributes.length > 0
                                                                 ? ` + ${item.attributes.length} variants`
                                                                 : ''}

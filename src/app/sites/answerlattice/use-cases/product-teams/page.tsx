@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Product Teams',
-    description: 'Answerlattice helps SaaS product teams see which product surfaces create support friction, stale answers, and review work after releases.',
+    description: 'AnswerLattice helps SaaS product teams see which product surfaces create support friction, stale answers, and review work after releases.',
     alternates: { canonical: '/use-cases/product-teams' },
 };
 
@@ -23,11 +23,11 @@ export default function ProductTeamsUseCasePage() {
             canonicalPath="/use-cases/product-teams"
             eyebrow="For product teams"
             title="See where product changes break support."
-            description="Answerlattice connects releases, product pages, support gaps, and approved answers so stale support becomes visible after changes."
+            description="AnswerLattice connects releases, product pages, support gaps, and approved answers so stale support becomes visible after changes."
             problem="Fast releases change workflows, limits, roles, and states. Without drift review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
-            answerlatticeAnswer="The usage-limits release affected plan quota answers. Answerlattice flags stale-answer risk until the related approved answer is reviewed."
+            answerlatticeAnswer="The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed."
             ownerReview="Product changes become support-review work through drift, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
             setupSteps={[
                 'Define surfaces for release-heavy areas such as billing, limits, and settings.',

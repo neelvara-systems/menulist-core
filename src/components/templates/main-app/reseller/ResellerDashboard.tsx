@@ -3,8 +3,11 @@
 import { calculateOfflineLocationTopup } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { ResellerTransaction } from "@type/reseller";
+import { formatDateTime, type IntlFormatter } from "@util/dateTime";
+import { formatInrPaise } from "@util/formatters";
 import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
+import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
@@ -25,19 +28,16 @@ const STATUS_LABELS: Record<string, string> = {
     cancelled: 'Cancelled',
 };
 
-function formatMoney(paise?: number) {
-    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
-}
-
-function formatDate(value: any) {
+function formatDate(value: any, formatter: IntlFormatter) {
     if (!value) return 'Auto-renew';
     const date = value?.toDate ? value.toDate() : new Date(value);
     if (Number.isNaN(date.getTime())) return 'Auto-renew';
-    return date.toLocaleDateString();
+    return formatDateTime(date, 'date', formatter);
 }
 
 function ResellerDashboard() {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const { data: session } = useSession();
     const router = useRouter();
     const resellerId = (session as any)?.user?.id || '';
@@ -77,7 +77,7 @@ function ResellerDashboard() {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || 'Failed to add location');
-            message.success(`Location capacity added. Collect ${formatMoney(data.amountExpected)}.`);
+            message.success(`Location capacity added. Collect ${formatInrPaise(data.amountExpected)}.`);
             setSelectedClient(null);
             setLocationCount(1);
             refresh();
@@ -167,7 +167,7 @@ function ResellerDashboard() {
                 const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
                 return (
                     <Text type={daysLeft <= 0 ? 'danger' : isExpiringSoon ? 'warning' : undefined}>
-                        {formatDate(val)}
+                        {formatDate(val, formatter)}
                         {daysLeft > 0 && ` (${daysLeft}d)`}
                     </Text>
                 );
@@ -179,8 +179,7 @@ function ResellerDashboard() {
             key: 'createdOn',
             render: (val: any) => {
                 if (!val) return '-';
-                const date = val?.toDate ? val.toDate() : new Date(val);
-                return <Text type="secondary">{date.toLocaleDateString()}</Text>;
+                return <Text type="secondary">{formatDateTime(val, 'date', formatter)}</Text>;
             },
         },
         {
@@ -272,10 +271,10 @@ function ResellerDashboard() {
                             <Statistic title="Transactions" value={monthlySummary.totals.transactionCount} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <Statistic title="Collected" value={monthlySummary.totals.recognizedRevenuePaise / 100} prefix="₹" precision={0} />
+                            <Statistic title="Collected" value={formatInrPaise(monthlySummary.totals.recognizedRevenuePaise)} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <Statistic title="Pending Online" value={monthlySummary.totals.onlinePendingPaise / 100} prefix="₹" precision={0} />
+                            <Statistic title="Pending Online" value={formatInrPaise(monthlySummary.totals.onlinePendingPaise)} />
                         </Col>
                     </Row>
                 </Card>
@@ -292,7 +291,7 @@ function ResellerDashboard() {
                             Total onboarded: {profile.totalStoresOnboarded}
                         </Text>
                         <Text type="secondary">
-                            Lifetime sales: {formatMoney(profile.totalRevenueCollectedPaise)}
+                            Lifetime sales: {formatInrPaise(profile.totalRevenueCollectedPaise)}
                         </Text>
                     </Flex>
                 </Card>
@@ -345,9 +344,9 @@ function ResellerDashboard() {
                         <Card size="small">
                             <Flex gap={4} vertical>
                                 <Text type="secondary">Collect from client</Text>
-                                <Text strong>{formatMoney(locationTopup?.amountPaise)}</Text>
+                                <Text strong>{formatInrPaise(locationTopup?.amountPaise)}</Text>
                                 <Text type="secondary">
-                                    Valid until {formatDate(selectedClient.validUntil)} ({locationTopup?.daysRemaining || 0} days remaining).
+                                    Valid until {formatDate(selectedClient.validUntil, formatter)} ({locationTopup?.daysRemaining || 0} days remaining).
                                 </Text>
                             </Flex>
                         </Card>

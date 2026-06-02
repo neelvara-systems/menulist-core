@@ -164,6 +164,8 @@ The system architecture is correct. It will only fail if execution violates thes
 | First-pass description generation | Part of initial setup experience    |
 | New item metadata generation      | Structural, not enhancement         |
 
+Free means zero owner-pack units. These operations may still write internal token/cost telemetry for platform reconciliation, but they do not decrement `monthlyCredits` or `topUpCredits`.
+
 ### What Costs Units (Enhancement Territory)
 
 | Operation                                            | Internal Action Type     | Why Paid                                     |
@@ -637,27 +639,26 @@ Client shows calm CTA (not error)
 | ------------------------------------------ | ------------------------------- | ------------------------------------------------- |
 | AI action types (8 types)                  | ✅ Built                        | `src/constants/common.ts`                         |
 | AI model configs (9 operations)            | ✅ Built                        | `src/constants/AI/models.ts`                      |
-| AI operations DAL                          | ✅ Built (but logging disabled) | `src/database/aiOperations/index.tsx`             |
+| AI operation logging                       | ✅ Built server-side            | `src/lib/ai/accounting.ts`, `src/lib/ai/operationLog.ts` |
 | Rate limiting (AI_OPERATION, AI_EXPENSIVE) | ✅ Built                        | `src/lib/rateLimit/configs.ts`                    |
 | Razorpay billing (subscriptions + topups)  | ✅ Built                        | `src/app/api/razorpay/`                           |
 | `TOPUPS` collection                        | ✅ Defined                      | `src/constants/database.ts`                       |
 | `PAYMENT_TOPUP` rate limit                 | ✅ Configured                   | `src/lib/rateLimit/configs.ts`                    |
 | Transactions UI (admin)                    | ✅ Built                        | `src/components/templates/main-app/transactions/` |
 | `TOKENS_PER_CREDIT` / `CHARGE_PER_CREDIT`  | ✅ Defined                      | `src/constants/common.ts`                         |
-| Transaction object computation             | ✅ Built (in all 6 API routes)  | Various API routes                                |
+| Transaction object computation             | ✅ Built in billable AI routes  | Various API routes                                |
 
-### What Needs To Be Built
+### Current Implementation Status
 
-| Component                                                     | Priority | Effort |
-| ------------------------------------------------------------- | -------- | ------ |
-| Uncomment `addAiOperation()` in all 6 API routes              | HIGH     | Small  |
-| Add `unitsConsumed` field to transaction objects              | HIGH     | Small  |
-| Define `AI_UNIT_COSTS` config (calibrated to Gemini)          | HIGH     | Medium |
-| Subscription-level capacity enforcement (decrement on AI use) | HIGH     | Medium |
-| `checkCapacity()` middleware for AI routes                    | HIGH     | Medium |
-| Razorpay product for AI Enhancement Pack                      | HIGH     | Small  |
-| Pack purchase webhook handler                                 | HIGH     | Medium |
-| `ENABLE_AI_ENHANCEMENTS` kill switch in `features.ts`         | HIGH     | Tiny   |
+| Component                                                     | Status | Verification |
+| ------------------------------------------------------------- | ------ | ------------ |
+| Server-side AI operation finalization                         | ✅ Built | `npm run verify:ai-accounting` |
+| `unitsConsumed` field on billable transaction objects          | ✅ Built | `npm run verify:ai-accounting` |
+| Explicit `AI_UNIT_COSTS` + `GEMINI_COST_USD` entries           | ✅ Built | `npm run verify:ai-accounting` |
+| Subscription-level capacity enforcement                       | ✅ Built | `checkAICapacity()` + `consumeAICapacity()` |
+| Browser writes to `menulistAiOperations` disabled             | ✅ Built and deployed | Firestore rules + `npm run verify:ai-accounting` |
+| Razorpay AI Enhancement Pack top-up flow                      | ✅ Built | `create-topup-order` + `verify-topup` |
+| `ENABLE_AI_ENHANCEMENTS` kill switch in `features.ts`         | ✅ Built | Feature flag registry |
 | `OVERDRAFT_BUFFER_PERCENT` config constant                    | HIGH     | Tiny   |
 | Calm upsell CTA component                                     | MEDIUM   | Small  |
 | Admin margin report (internal)                                | MEDIUM   | Medium |

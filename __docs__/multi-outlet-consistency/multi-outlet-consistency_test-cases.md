@@ -1550,7 +1550,7 @@ These cases cover permission enforcement, Firestore security rules, similarity m
 | Guard | Purpose | File |
 | ----- | ------- | ---- |
 | `isValidOutletUpdate()` | Block outlet writes to `files[]` and `masterId` | `firestore.rules` |
-| `menuImageProcessingJobs.sId` create guard | Prevent client-created extraction jobs under another store's id | `firestore.rules` |
+| `/api/menu-extraction/jobs` ownership guard | Prevent extraction jobs under another store's project id | `src/app/api/menu-extraction/jobs/route.ts` |
 | `/api/projects/outlet-save` strict schema | Reject extra override fields and invalid prices before Firebase writes | `src/app/api/projects/outlet-save/route.ts` |
 | Linked outlet AI policy guard | Block disabled outlet description/image generation before provider calls | `src/lib/multiOutlet/serverOutletPolicy.ts` |
 | Linked outlet design policy guard | Block disabled theme, brand, and layout changes before Firebase writes | `src/app/api/projects/outlet-save/route.ts` |

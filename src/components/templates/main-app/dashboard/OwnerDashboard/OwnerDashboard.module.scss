@@ -49,6 +49,9 @@ $spacing-xl: 32px;
 // View Mode Tabs - Primary action area
 .viewModeTabs {
   margin-bottom: $spacing-md;
+  overflow-x: auto;
+  padding-bottom: $spacing-xs;
+  scrollbar-width: thin;
 
   :global(.ant-segmented) {
     background: $background-card;
@@ -56,6 +59,7 @@ $spacing-xl: 32px;
     border-radius: $radius-md;
     box-shadow: $shadow-sm;
     border: 1px solid $border-color;
+    min-width: 720px;
     width: 100%;
   }
 
@@ -82,6 +86,16 @@ $spacing-xl: 32px;
   :global(.ant-segmented-item-label) {
     padding: $spacing-sm $spacing-md;
   }
+
+  @media (max-width: 768px) {
+    :global(.ant-segmented) {
+      min-width: 640px;
+    }
+
+    :global(.ant-segmented-item-label) {
+      padding: $spacing-sm;
+    }
+  }
 }
 
 .primaryTab {
@@ -91,6 +105,8 @@ $spacing-xl: 32px;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .secondaryTab {
@@ -100,6 +116,8 @@ $spacing-xl: 32px;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .activeTab {
@@ -108,6 +126,8 @@ $spacing-xl: 32px;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 // Metric Cards - Key data display

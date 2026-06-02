@@ -202,7 +202,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                         </Flex>
                                     </Flex>
                                     <Flex gap={4}>
-                                        <Button fill="none" onClick={() => openEdit(preset)}><LuPencil color="#64748b" size={16} /></Button>
+                                        <Button fill="none" onClick={() => openEdit(preset)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuPencil color={token.colorTextSecondary} size={16} /></Button>
                                         <Button fill="none" onClick={() => {
                                             void Dialog.confirm({
                                                 cancelText: t('cancel'),
@@ -220,7 +220,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                                     }
                                                 },
                                             });
-                                        }}><LuTrash2 color="#ef4444" size={16} /></Button>
+                                        }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuTrash2 color={token.colorError} size={16} /></Button>
                                     </Flex>
                                 </Flex>
                             </Card>
@@ -236,7 +236,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                             <Button
                                 fill="none"
                                 onClick={() => setIsFormOpen(false)}
-                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                             >
                                 <LuX size={18} />
                             </Button>

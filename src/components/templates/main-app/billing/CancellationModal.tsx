@@ -3,8 +3,7 @@ import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography, t
 import { Timestamp } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { FaCircleStop } from 'react-icons/fa6';
-import { LuArrowLeft, LuArrowRight, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuArrowRight, LuBan, LuX } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -156,7 +155,7 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
                                         block
                                         type="primary"
                                         danger
-                                        icon={<FaCircleStop color={isConfirmed ? token.colorTextLightSolid : token.colorTextSecondary} />}
+                                        icon={<LuBan color={isConfirmed ? token.colorTextLightSolid : token.colorTextSecondary} />}
                                         onClick={handleConfirm}
                                         disabled={!isConfirmed}
                                     >

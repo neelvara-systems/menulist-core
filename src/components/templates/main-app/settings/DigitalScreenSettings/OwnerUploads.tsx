@@ -9,12 +9,13 @@
 import { removePinnedSlide, updatePinnedSlideCaption, uploadScreenSlide } from "@database/campaigns";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
+import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
 import { Button, Flex, Input, List, Popconfirm, Space, theme, Typography, message } from "antd";
 import { useState } from "react";
-import { LuCheck, LuClock, LuPencil, LuTrash2 } from "react-icons/lu";
+import { LuCheck, LuClock, LuImage, LuPencil, LuTrash2 } from "react-icons/lu";
 
 const { Text } = Typography;
 
@@ -61,8 +62,8 @@ export default function OwnerUploads({
                 fileName: file.name,
                 prepared,
             });
-            setPendingSlideCaption(file.name.replace(/\.[^/.]+$/, "") || 'Custom Slide');
-            message.success('Slide ready. Review and save it.');
+            setPendingSlideCaption(normalizeOwnerSlideCaption(file.name.replace(/\.[^/.]+$/, "")));
+            message.success('Slide ready. Frame and save it.');
 
         } catch (error: any) {
             message.error(error.message || 'Failed to upload slide');
@@ -80,7 +81,7 @@ export default function OwnerUploads({
         try {
             const { fileName, prepared } = pendingSlide;
             const preparedName = toPreparedUploadName(fileName, prepared.mimeType, fileName);
-            const caption = pendingSlideCaption.trim() || preparedName.replace(/\.[^/.]+$/, "") || "Custom Slide";
+            const caption = normalizeOwnerSlideCaption(pendingSlideCaption || preparedName.replace(/\.[^/.]+$/, ""));
 
             // Upload via DAL (follows existing pattern from projects/tickets)
             await uploadScreenSlide(
@@ -115,7 +116,7 @@ export default function OwnerUploads({
     const handleSaveSlideCaption = async (slideId: string) => {
         setSavingCaptionId(slideId);
         try {
-            await updatePinnedSlideCaption(slideId, editingSlideCaption.trim() || 'Custom Slide');
+            await updatePinnedSlideCaption(slideId, normalizeOwnerSlideCaption(editingSlideCaption));
             message.success('Slide name updated');
             setEditingSlideId(null);
             setEditingSlideCaption('');
@@ -209,14 +210,14 @@ export default function OwnerUploads({
                                             size="small"
                                             onClick={() => {
                                                 setEditingSlideId(slide.id);
-                                                setEditingSlideCaption(slide.caption || 'Custom Slide');
+                                                setEditingSlideCaption(normalizeOwnerSlideCaption(slide.caption));
                                             }}
                                         />
                                     ),
                                     <Popconfirm
                                         key="delete"
                                         title="Delete this custom slide?"
-                                        description={`"${slide.caption || 'Custom Slide'}" will be removed from Highlights and will stop showing on your digital screens immediately.`}
+                                        description={`"${normalizeOwnerSlideCaption(slide.caption)}" will be removed from Highlights and will stop showing on your digital screens immediately.`}
                                         onConfirm={() => handleDelete(slide.id)}
                                         okText="Delete slide"
                                         cancelText="Cancel"
@@ -235,7 +236,7 @@ export default function OwnerUploads({
                                         slide.imageUrl && !slide.imageUrl.startsWith('data:') ? (
                                             <img
                                                 src={slide.imageUrl}
-                                                alt="Slide"
+                                                alt={normalizeOwnerSlideCaption(slide.caption)}
                                                 style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }}
                                             />
                                         ) : (
@@ -248,7 +249,7 @@ export default function OwnerUploads({
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                                📷
+                                                <LuImage size={20} />
                                             </div>
                                         )
                                     }
@@ -273,7 +274,7 @@ export default function OwnerUploads({
                                                 Cancel
                                             </Button>
                                         </Space.Compact>
-                                    ) : (slide.caption || 'Custom Slide')}
+                                    ) : normalizeOwnerSlideCaption(slide.caption)}
                                     description={
                                         <span style={{ fontSize: 12 }}>
                                             <LuClock style={{ marginRight: 4 }} />

@@ -10,6 +10,7 @@ import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from "../sharedData/platformNotificationRegistry";
 import {
   MessagingOnboardingSession,
   MsgOnboardingEventType,
@@ -346,6 +347,12 @@ function buildAlerts(params: {
 
 async function emitHealthAlerts(alerts: HealthAlert[]): Promise<void> {
   for (const alert of alerts) {
+    const triggerType = alert.key.includes("cost")
+      ? PLATFORM_NOTIFICATION_TRIGGER_TYPES.AI_COST_RUNAWAY
+      : alert.key.includes("failure")
+        ? PLATFORM_NOTIFICATION_TRIGGER_TYPES.WHATSAPP_PROVIDER_FAILURE
+        : PLATFORM_NOTIFICATION_TRIGGER_TYPES.WHATSAPP_ONBOARDING_QUEUE_STUCK;
+
     await createAlert({
       tId: "system",
       sId: "system",
@@ -358,6 +365,9 @@ async function emitHealthAlerts(alerts: HealthAlert[]): Promise<void> {
         alertKey: alert.key,
         ...alert.metadata,
       },
+      triggerType,
+      productId: "ML",
+      category: alert.key.includes("cost") ? "ai" : "extraction",
       actionRequired: alert.severity === "critical",
     });
   }

@@ -1,0 +1,600 @@
+/**
+ * MenuList owner notification processor for Cloud Functions.
+ *
+ * Queue-first model: lifecycle trigger points write ownerNotificationEvents and
+ * process them through shared recipient, formatter, rate-limit, and delivery
+ * logging rules.
+ *
+ * @see __docs__/owner-notifications/
+ */
+
+import * as crypto from 'crypto';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
+import { DB_COLLECTIONS } from '../constants/database';
+import { FUNCTION_FLAGS } from '../constants/features';
+import { firestoreAdmin as db } from '../firebaseAdmin';
+import { createAlert } from '../monitoring/alerts';
+import {
+  getOwnerNotificationRegistryEntry,
+  OWNER_NOTIFICATION_COLLECTIONS,
+  OwnerNotificationChannel,
+} from '../sharedData/ownerNotificationRegistry';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { sendEmailViaSMTP } from '../messaging/providers/resend';
+import { resolveTemplate } from '../messaging/templates';
+import { SendMessagePayload } from '../messaging/types';
+
+const logger = functions.logger;
+const MAX_PER_RECIPIENT_PER_DAY = 20;
+const MAX_PER_STORE_PER_DAY = 10;
+const FLAG_CACHE_TTL = 60_000;
+
+type EventStatus = 'pending' | 'processing' | 'delivered' | 'partial' | 'failed' | 'skipped';
+
+type OwnerNotificationEventDoc = {
+  productId: 'ML';
+  triggerType: string;
+  tenantId: string;
+  storeId: string;
+  referenceId: string;
+  dedupeKey: string;
+  recipientRole: 'primary_owner' | 'billing_owner' | 'support_owner' | 'whatsapp_owner';
+  requestedChannels?: OwnerNotificationChannel[];
+  recipientHints?: {
+    email?: string;
+    name?: string;
+    whatsappNumber?: string;
+  };
+  metadata: Record<string, any>;
+  priority: 'critical' | 'required' | 'advisory' | 'conversational';
+  status: EventStatus;
+  source: {
+    runtime: 'functions';
+    path: string;
+  };
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+type StoreInfo = {
+  email?: string;
+  billingEmail?: string;
+  storeName: string;
+  whatsappNumber?: string;
+  whatsappConsent: boolean;
+  formattingSource: Record<string, any>;
+};
+
+let cachedLifecycleFlag: boolean | null = null;
+let cachedLifecycleFlagAt = 0;
+
+async function isLifecycleMessagingEnabled(): Promise<boolean> {
+  if (cachedLifecycleFlag !== null && Date.now() - cachedLifecycleFlagAt < FLAG_CACHE_TTL) {
+    return cachedLifecycleFlag;
+  }
+
+  try {
+    const doc = await db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();
+    cachedLifecycleFlag = doc.data()?.ENABLE_LIFECYCLE_MESSAGING === true;
+    cachedLifecycleFlagAt = Date.now();
+    return cachedLifecycleFlag;
+  } catch {
+    return false;
+  }
+}
+
+function sha256(input: string): string {
+  return crypto.createHash('sha256').update(input).digest('hex');
+}
+
+function safeId(input: string): string {
+  return sha256(input).slice(0, 40);
+}
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function maskEmail(email: string): string {
+  const [name, domain] = email.split('@');
+  if (!domain) return '***';
+  return `${name.slice(0, 2)}***@${domain}`;
+}
+
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length > 4 ? `***${digits.slice(-4)}` : '***';
+}
+
+function isValidEmail(value?: string): value is string {
+  return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
+}
+
+function cleanPhone(value?: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const phone = value.replace(/[^\d+]/g, '');
+  return phone.length >= 8 ? phone : undefined;
+}
+
+function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
+  if (!settings) return false;
+  const status = String(settings.whatsappConsentStatus || '').toLowerCase();
+  return settings.whatsappConsent === true
+    || settings.whatsappConsented === true
+    || status === 'granted'
+    || status === 'active'
+    || status === 'verified';
+}
+
+function sanitizeForFirestore(value: any): any {
+  if (value === undefined) return null;
+  if (value === null) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(sanitizeForFirestore);
+  if (typeof value === 'object' && typeof value.toDate !== 'function') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, nested]) => nested !== undefined)
+        .map(([key, nested]) => [key, sanitizeForFirestore(nested)]),
+    );
+  }
+  return value;
+}
+
+async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo | null> {
+  const storeDoc = await db
+    .collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)
+    .collection(DB_COLLECTIONS.STORES).doc(event.storeId)
+    .get();
+
+  const data = storeDoc.exists ? storeDoc.data() || {} : {};
+  const settings = data.notificationSettings || {};
+  const primaryEmail = settings.primaryEmail || data.contactPersonEmail || data.email || event.recipientHints?.email;
+
+  return {
+    email: isValidEmail(primaryEmail) ? primaryEmail.trim() : undefined,
+    billingEmail: isValidEmail(settings.billingEmail) ? settings.billingEmail.trim() : undefined,
+    storeName: event.recipientHints?.name || data.name || data.businessName || 'Your Business',
+    whatsappNumber: cleanPhone(settings.whatsappNumber || data.ownerWhatsappNumber || data.whatsappNumber || event.recipientHints?.whatsappNumber),
+    whatsappConsent: hasWhatsAppConsent(settings),
+    formattingSource: data,
+  };
+}
+
+function isValidTimeZone(timeZone?: string): timeZone is string {
+  if (!timeZone) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value?.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const seconds = value.seconds ?? value._seconds;
+  const nanoseconds = value.nanoseconds ?? value._nanoseconds ?? 0;
+  if (typeof seconds === 'number') {
+    const date = new Date(seconds * 1000 + nanoseconds / 1_000_000);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+function formatDate(value: any, source: Record<string, any>, fallback = 'See dashboard'): string {
+  const date = toDate(value);
+  if (!date) return fallback;
+
+  const timeZone = isValidTimeZone(source.timeZone) ? source.timeZone : 'UTC';
+  const dateFormat = String(source.dateFormat || 'numeric|short|numeric');
+  const [day = 'numeric', month = 'short', year = 'numeric'] = dateFormat.split('|');
+  return new Intl.DateTimeFormat('en-IN', {
+    day: day as any,
+    month: month as any,
+    year: year as any,
+    timeZone,
+  }).format(date);
+}
+
+function formatMoney(amount: any, source: Record<string, any>, metadata: Record<string, any>): string {
+  const currencySymbol = String(metadata.currencySymbol || source.currencySymbol || '₹');
+  const numeric = typeof amount === 'number' ? amount : Number(String(amount ?? '').replace(/,/g, ''));
+  if (!Number.isFinite(numeric)) return `${currencySymbol} 0`;
+  const formatted = new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: numeric % 1 === 0 ? 0 : 2,
+  }).format(numeric);
+  return `${currencySymbol} ${formatted}`;
+}
+
+function buildFormattedMetadata(
+  event: OwnerNotificationEventDoc,
+  storeInfo: StoreInfo,
+): Record<string, any> {
+  const metadata = { ...event.metadata };
+  if (metadata.amount !== undefined && metadata.amount !== null) {
+    metadata.amountLabel = formatMoney(metadata.amount, storeInfo.formattingSource, metadata);
+  }
+  if (metadata.nextBillingAt) {
+    metadata.nextBillingDate = formatDate(metadata.nextBillingAt, storeInfo.formattingSource);
+  }
+  if (metadata.renewalAt) {
+    metadata.renewalDate = formatDate(metadata.renewalAt, storeInfo.formattingSource);
+  }
+  metadata.storeName = metadata.storeName || storeInfo.storeName;
+  metadata.currencySymbol = metadata.currencySymbol || storeInfo.formattingSource.currencySymbol || '₹';
+  metadata.currencyCode = metadata.currency || storeInfo.formattingSource.currencyCode || 'INR';
+  return metadata;
+}
+
+function resolveChannels(
+  registryChannels: OwnerNotificationChannel[],
+  requested?: OwnerNotificationChannel[],
+): OwnerNotificationChannel[] {
+  const channels = requested?.length
+    ? registryChannels.filter((channel) => requested.includes(channel))
+    : registryChannels;
+
+  return channels.filter((channel) => {
+    if (channel === 'email') return FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_EMAIL;
+    if (channel === 'whatsapp') return FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP;
+    return false;
+  });
+}
+
+async function incrementRateLimit(
+  event: OwnerNotificationEventDoc,
+  channel: OwnerNotificationChannel,
+  recipientHash: string,
+): Promise<boolean> {
+  const recipientRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
+    .doc(safeId(['ML', channel, recipientHash, todayKey()].join('|')));
+  const storeRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
+    .doc(safeId(['ML', 'store', event.storeId, todayKey()].join('|')));
+
+  return db.runTransaction(async (tx) => {
+    const recipientSnap = await tx.get(recipientRef);
+    const storeSnap = await tx.get(storeRef);
+    if (Number(recipientSnap.data()?.count || 0) >= MAX_PER_RECIPIENT_PER_DAY) return false;
+    if (Number(storeSnap.data()?.count || 0) >= MAX_PER_STORE_PER_DAY) return false;
+
+    tx.set(recipientRef, {
+      productId: 'ML',
+      channel,
+      recipientHash,
+      dateKey: todayKey(),
+      count: FieldValue.increment(1),
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+    tx.set(storeRef, {
+      productId: 'ML',
+      scope: 'store',
+      storeId: event.storeId,
+      dateKey: todayKey(),
+      count: FieldValue.increment(1),
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+
+    return true;
+  });
+}
+
+async function writeDelivery(params: {
+  event: OwnerNotificationEventDoc;
+  eventId: string;
+  channel: OwnerNotificationChannel;
+  recipientRole: string;
+  recipientValue: string;
+  status: 'sent' | 'failed' | 'skipped' | 'rate_limited';
+  subject?: string;
+  templateKey: string;
+  templateVersion: string;
+  providerMessageId?: string;
+  error?: string;
+}): Promise<void> {
+  const recipientHash = sha256(params.recipientValue.toLowerCase());
+  await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .doc(safeId(`${params.eventId}|${params.channel}|${recipientHash}`))
+    .set(sanitizeForFirestore({
+      eventId: params.eventId,
+      productId: 'ML',
+      triggerType: params.event.triggerType,
+      channel: params.channel,
+      recipientRole: params.recipientRole,
+      recipientHash,
+      recipientMasked: params.channel === 'email' ? maskEmail(params.recipientValue) : maskPhone(params.recipientValue),
+      status: params.status,
+      subject: params.subject || null,
+      templateKey: params.templateKey,
+      templateVersion: params.templateVersion,
+      providerMessageId: params.providerMessageId || null,
+      error: params.error || null,
+      attempt: 1,
+      createdAt: Timestamp.now(),
+      sentAt: params.status === 'sent' ? Timestamp.now() : null,
+    }), { merge: true });
+}
+
+async function sendWhatsApp(): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
+  return { success: false, error: 'whatsapp_not_configured' };
+}
+
+function getDedupeKey(payload: SendMessagePayload): string {
+  return ['ML', payload.eventType, payload.tenantId, payload.storeId, payload.referenceId].join('|');
+}
+
+export async function sendOwnerLifecycleNotification(payload: SendMessagePayload): Promise<boolean> {
+  if (!FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+    return false;
+  }
+  if (!(await isLifecycleMessagingEnabled())) return false;
+
+  const registryEntry = getOwnerNotificationRegistryEntry('ML', payload.eventType);
+  if (!registryEntry) {
+    logger.warn('[OwnerNotifications] Unknown MenuList trigger', { eventType: payload.eventType });
+    return false;
+  }
+
+  const dedupeKey = getDedupeKey(payload);
+  const eventId = safeId(dedupeKey);
+  const eventRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
+  const existing = await eventRef.get();
+  const now = Timestamp.now();
+  const eventDoc: OwnerNotificationEventDoc = existing.exists
+    ? existing.data() as OwnerNotificationEventDoc
+    : {
+      productId: 'ML',
+      triggerType: payload.eventType,
+      tenantId: String(payload.tenantId),
+      storeId: String(payload.storeId),
+      referenceId: payload.referenceId,
+      dedupeKey,
+      recipientRole: registryEntry.recipientRole,
+      metadata: sanitizeForFirestore(payload.metadata || {}),
+      priority: registryEntry.priority,
+      status: 'pending',
+      source: {
+        runtime: 'functions',
+        path: 'functions/src/messaging/messagingEngine.ts:sendLifecycleMessage',
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+
+  if (!existing.exists) {
+    await eventRef.set(eventDoc);
+  } else if (eventDoc.status === 'delivered') {
+    return false;
+  }
+
+  return processOwnerNotificationEvent(eventId);
+}
+
+export async function processOwnerNotificationEvent(eventId: string): Promise<boolean> {
+  const eventRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS).doc(eventId);
+  const snap = await eventRef.get();
+  if (!snap.exists) return false;
+
+  const event = snap.data() as OwnerNotificationEventDoc;
+  const registryEntry = getOwnerNotificationRegistryEntry('ML', event.triggerType);
+  if (!registryEntry) {
+    await eventRef.set({ status: 'skipped', error: 'unknown_trigger', updatedAt: Timestamp.now() }, { merge: true });
+    return false;
+  }
+
+  await eventRef.set({
+    status: 'processing',
+    processingStartedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+
+  try {
+    const storeInfo = await getStoreInfo(event);
+    if (!storeInfo) throw new Error('store_not_found');
+
+    const metadata = buildFormattedMetadata(event, storeInfo);
+    const template = resolveTemplate(event.triggerType as any, metadata);
+    if (!template) {
+      await eventRef.set({ status: 'failed', error: 'template_not_found', updatedAt: Timestamp.now() }, { merge: true });
+      return false;
+    }
+
+    const channels = resolveChannels(registryEntry.defaultChannels, event.requestedChannels);
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    for (const channel of channels) {
+      const recipientValue = channel === 'email'
+        ? (event.recipientRole === 'billing_owner' ? storeInfo.billingEmail || storeInfo.email : storeInfo.email)
+        : storeInfo.whatsappNumber;
+
+      if (!recipientValue) {
+        skipped++;
+        await writeDelivery({
+          event,
+          eventId,
+          channel,
+          recipientRole: event.recipientRole,
+          recipientValue: channel === 'email' ? 'missing@email' : 'missing-phone',
+          status: 'skipped',
+          subject: template.subject,
+          templateKey: registryEntry.templateKey,
+          templateVersion: '2026-06-02',
+          error: 'recipient_missing',
+        });
+        continue;
+      }
+
+      if (channel === 'whatsapp' && registryEntry.requiresWhatsAppConsent && !storeInfo.whatsappConsent) {
+        skipped++;
+        await writeDelivery({
+          event,
+          eventId,
+          channel,
+          recipientRole: event.recipientRole,
+          recipientValue,
+          status: 'skipped',
+          subject: template.subject,
+          templateKey: registryEntry.templateKey,
+          templateVersion: '2026-06-02',
+          error: 'whatsapp_consent_missing',
+        });
+        continue;
+      }
+
+      const recipientHash = sha256(recipientValue.toLowerCase());
+      const allowed = event.priority === 'critical'
+        ? true
+        : await incrementRateLimit(event, channel, recipientHash);
+
+      if (!allowed) {
+        skipped++;
+        await writeDelivery({
+          event,
+          eventId,
+          channel,
+          recipientRole: event.recipientRole,
+          recipientValue,
+          status: 'rate_limited',
+          subject: template.subject,
+          templateKey: registryEntry.templateKey,
+          templateVersion: '2026-06-02',
+          error: 'rate_limited',
+        });
+        continue;
+      }
+
+      const result = channel === 'email'
+        ? await sendEmailViaSMTP({ to: recipientValue, subject: template.subject, html: template.html })
+        : await sendWhatsApp();
+
+      if (result.success) sent++;
+      else failed++;
+
+      await writeDelivery({
+        event,
+        eventId,
+        channel,
+        recipientRole: event.recipientRole,
+        recipientValue,
+        status: result.success ? 'sent' : 'failed',
+        subject: template.subject,
+        templateKey: registryEntry.templateKey,
+        templateVersion: '2026-06-02',
+        providerMessageId: result.providerMessageId,
+        error: result.error,
+      });
+    }
+
+    const status: EventStatus = sent > 0 && failed === 0
+      ? 'delivered'
+      : sent > 0
+        ? 'partial'
+        : failed > 0
+          ? 'failed'
+          : 'skipped';
+
+    await eventRef.set({
+      status,
+      processedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      error: failed > 0 ? 'one_or_more_channels_failed' : null,
+    }, { merge: true });
+
+    if (failed > 0) {
+      await createAlert({
+        tId: event.tenantId,
+        sId: event.storeId,
+        type: 'error',
+        severity: event.priority === 'critical' ? 'critical' : 'warning',
+        title: 'Owner Notification Failure',
+        message: `Owner notification ${event.triggerType} failed for ${failed} channel(s). Status: ${status}.`,
+        metadata: {
+          ownerNotificationEventId: eventId,
+          ownerTriggerType: event.triggerType,
+          requestedChannels: event.requestedChannels,
+          failedChannels: failed,
+        },
+        triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.OWNER_NOTIFICATION_FAILURE,
+        productId: 'PLATFORM',
+        category: 'owner_notifications',
+        actionRequired: event.priority === 'critical',
+      }).catch((alertError) => {
+        logger.error('[OwnerNotifications] Failed to create platform alert', {
+          eventId,
+          error: alertError instanceof Error ? alertError.message : String(alertError),
+        });
+      });
+    }
+
+    return sent > 0;
+  } catch (error) {
+    logger.error('[OwnerNotifications] Processing failed', {
+      eventId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await eventRef.set({
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'unknown_error',
+      processedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+    return false;
+  }
+}
+
+export async function retryFailedOwnerNotifications(): Promise<{ retried: number; succeeded: number }> {
+  let retried = 0;
+  let succeeded = 0;
+  const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
+  const snapshot = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.EVENTS)
+    .where('status', '==', 'failed')
+    .limit(20)
+    .get();
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.retryCount && data.retryCount >= 1) continue;
+    const updatedAt = data.updatedAt?.toDate?.();
+    if (updatedAt instanceof Date && updatedAt.getTime() < yesterdayMs) continue;
+    retried++;
+    const ok = await processOwnerNotificationEvent(doc.id);
+    if (ok) succeeded++;
+    await doc.ref.set({ retryCount: 1, retriedAt: Timestamp.now() }, { merge: true });
+  }
+
+  return { retried, succeeded };
+}
+
+export async function getOwnerNotificationDigest(): Promise<{ sent: number; failed: number; total: number }> {
+  const yesterdayMs = Date.now() - 24 * 60 * 60 * 1000;
+  const sentSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .where('status', '==', 'sent')
+    .limit(200)
+    .get();
+  const failedSnap = await db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES)
+    .where('status', '==', 'failed')
+    .limit(200)
+    .get();
+
+  const sent = sentSnap.docs.filter((doc) => {
+    const createdAt = doc.data().createdAt?.toDate?.();
+    return !(createdAt instanceof Date) || createdAt.getTime() >= yesterdayMs;
+  }).length;
+  const failed = failedSnap.docs.filter((doc) => {
+    const createdAt = doc.data().createdAt?.toDate?.();
+    return !(createdAt instanceof Date) || createdAt.getTime() >= yesterdayMs;
+  }).length;
+  return { sent, failed, total: sent + failed };
+}

@@ -36,7 +36,7 @@ export default function PageAwareSupportWidgetPage() {
                 answerlatticeAnswer="You are on Billing. Your plan renews monthly, failed invoice retries follow the configured retry window, and payment can be updated from Settings -> Billing."
                 ownerReview="The widget serves canonical answers first, then matching published owner answers. Missing coverage is marked as fallback and repeated gaps become review work. Screenshots are explicit user input, not automatic runtime capture."
                 setupSteps={[
-                    'Create an Answerlattice workspace.',
+                    'Create an AnswerLattice workspace.',
                     'Add billing, onboarding, settings, or release surfaces.',
                     'Install the widget script.',
                     'Pass safe route and workflow context.',

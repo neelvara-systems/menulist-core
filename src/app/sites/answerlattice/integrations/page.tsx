@@ -22,10 +22,10 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 export const metadata: Metadata = {
     title: 'Integrations',
     description:
-        'Slack and email workflow notifications for Answerlattice support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
+        'Slack and email workflow notifications for AnswerLattice support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
     alternates: { canonical: '/integrations' },
     openGraph: {
-        title: 'Integrations | Answerlattice',
+        title: 'Integrations | AnswerLattice',
         description:
             'Notify owners about support governance movement without turning every support event into alert noise.',
         url: `${ANSWERLATTICE_SITE_URL}/integrations`,
@@ -96,7 +96,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                 Notify owners when support truth needs attention.
                             </h1>
                             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                Answerlattice connects support governance to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
+                                AnswerLattice connects support governance to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
                             </p>
                             <PageProofStrip
                                 className="mt-8 max-w-2xl"
@@ -228,7 +228,7 @@ export default function AnswerlatticeIntegrationsPage() {
                             idPrefix="al-integrations-workflow"
                             splitAfter={3}
                             items={[
-                                { title: 'Connect Slack or email', detail: 'Add the destination in Answerlattice settings.' },
+                                { title: 'Connect Slack or email', detail: 'Add the destination in AnswerLattice settings.' },
                                 { title: 'Choose event filters', detail: 'Select the governance events that deserve notification.' },
                                 { title: 'Send a test', detail: 'Verify delivery before relying on the channel.' },
                                 { title: 'Deliver digest or alert', detail: 'Routine movement stays grouped; critical events can alert quickly.' },
@@ -243,7 +243,7 @@ export default function AnswerlatticeIntegrationsPage() {
                         Keep owners aware without building notification plumbing yourself.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                        Start with Slack or email, verify delivery, and keep support review work connected to the Answerlattice dashboard.
+                        Start with Slack or email, verify delivery, and keep support review work connected to the AnswerLattice dashboard.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink

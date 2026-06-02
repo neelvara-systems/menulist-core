@@ -1,7 +1,6 @@
 import { Button, Card, Flex, Input, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { LuPlus, LuTrash } from 'react-icons/lu';
-import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandYoutube } from 'react-icons/tb';
+import { LuMessageCircle, LuPlus, LuTrash } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -18,11 +17,11 @@ interface SocialMediaTabProps {
 }
 
 const defaultPlatforms: SocialMediaPlatform[] = [
-    { key: 'facebook', icon: TbBrandFacebook, placeholder: 'Facebook profile URL' },
-    { key: 'instagram', icon: TbBrandInstagram, placeholder: 'Instagram profile URL' },
-    { key: 'twitter', icon: TbBrandTwitter, placeholder: 'Twitter profile URL' },
-    { key: 'linkedin', icon: TbBrandLinkedin, placeholder: 'LinkedIn profile URL' },
-    { key: 'youtube', icon: TbBrandYoutube, placeholder: 'YouTube channel URL' }
+    { key: 'facebook', icon: LuMessageCircle, placeholder: 'Facebook profile URL' },
+    { key: 'instagram', icon: LuMessageCircle, placeholder: 'Instagram profile URL' },
+    { key: 'twitter', icon: LuMessageCircle, placeholder: 'Twitter profile URL' },
+    { key: 'linkedin', icon: LuMessageCircle, placeholder: 'LinkedIn profile URL' },
+    { key: 'youtube', icon: LuMessageCircle, placeholder: 'YouTube channel URL' }
 ];
 
 const SocialMediaTab: React.FC<SocialMediaTabProps> = ({ scrollRef, socialMedia, setSocialMedia }) => {

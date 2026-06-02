@@ -2,8 +2,9 @@
 
 import { Line } from '@ant-design/plots';
 import { fetchDateRangeStats } from '@services/analytics';
+import { formatDateKey } from '@util/dateTime';
 import { Spin, Tabs, Typography } from 'antd';
-import dayjs from 'dayjs';
+import { useFormatter } from 'next-intl';
 import React, { useEffect, useState } from 'react';
 
 const { Title } = Typography;
@@ -23,6 +24,7 @@ interface ChartData {
 }
 
 const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ propertyId, dateRange }) => {
+    const formatter = useFormatter();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ChartData[]>([]);
 
@@ -35,7 +37,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ propertyId, dateRange }) 
                 const chartData: ChartData[] = [];
                 response?.rows?.forEach(row => {
                     const date = row.dimensionValues[0].value;
-                    const formattedDate = dayjs(date).format('MMM D, YYYY');
+                    const formattedDate = formatDateKey(date, formatter);
 
                     // Add visitors data
                     chartData.push({
@@ -67,7 +69,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ propertyId, dateRange }) 
         };
 
         fetchData();
-    }, [propertyId, dateRange]);
+    }, [formatter, propertyId, dateRange]);
 
     const renderChart = (metricName: string) => {
         const metricData = data.filter(item => item.metric === metricName);

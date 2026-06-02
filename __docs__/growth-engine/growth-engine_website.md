@@ -37,6 +37,8 @@ Shows:
 
 - distribution targets
 - workflow run failures
+- connection validation failures
+- secret rotation due
 - AI eval failures
 - surface health alerts
 - freshness alerts
@@ -46,8 +48,25 @@ Shows:
 - interested replies
 - DNC/complaint queue
 - channel health
+- WhatsApp consent/template/reputation alerts
 - cost status
 - dry-run approvals
+
+### Connections
+
+Shows:
+
+- adapter registry
+- email pipeline readiness
+- WhatsApp pipeline readiness
+- source adapter readiness
+- webhook health
+- secret reference status
+- validation runs
+- activation blockers
+- provider spend caps
+- connection kill switches
+- audit events
 
 ### Campaigns
 
@@ -96,6 +115,22 @@ Shows:
 - rejected lead reasons
 - cost per accepted lead
 
+### WhatsApp Governance
+
+Shows:
+
+- consent proof coverage
+- suppression queue
+- approved template library
+- template category and quality status
+- sender identity health
+- conversation-window state
+- webhook delivery and signature failures
+- Flow submission review queue
+- opt-out and complaint signals
+- paused campaigns, templates, senders, and countries
+- cost per verified owner conversation
+
 ### Inbox
 
 Shows:
@@ -114,9 +149,13 @@ Do not publish phrases like:
 - "We scrape leads"
 - "1000 leads per day"
 - "automated WhatsApp outreach"
+- "WhatsApp blast"
+- "cold WhatsApp"
 - "AI lead generation"
 - "fully automated sales"
 - "we already built your website"
+- "paste your keys and start sending"
+- "connect WhatsApp and blast leads"
 
 ## 5. SEO Decision
 

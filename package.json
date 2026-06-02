@@ -28,7 +28,10 @@
     "verify:catalog-analytics": "npm --prefix functions run build && node scripts/verification/verify-catalog-analytics-intelligence.js",
     "verify:recycle-bin": "node scripts/verification/verify-recycle-bin.js",
     "verify:menu-export": "node scripts/verification/verify-menu-export.js",
-    "verify:menu-card-export": "node scripts/verification/verify-menu-card-export.js",
+  "verify:menu-extraction-pipeline": "node scripts/verification/verify-menu-extraction-pipeline.js",
+  "verify:menu-extraction-pipeline:dry-run": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/verification/verify-menu-extraction-pipeline-dry-run.ts",
+  "verify:ai-accounting": "node scripts/verification/verify-ai-accounting-hardening.js",
+  "verify:menu-card-export": "node scripts/verification/verify-menu-card-export.js",
     "verify:growthos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-growthos-flow.ts"
   },
   "overrides": {

@@ -2,7 +2,7 @@
 
 **Status:** Light website placement applied
 **Audience:** Public website copy planning
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -19,7 +19,7 @@ Do not use the internal feature name `Menu Card Export` on the public website un
 AI layout suggestion should not be promoted as a public website feature yet. If pricing copy later needs it, use plain plan wording such as `layout suggestion on Pro and Premium`; do not use `AI-powered PDF`.
 
 - **Headline:** Print Your Current Menu
-- **Subheadline:** Create printable menu files from the same menu your customers open online.
+- **Subheadline:** Create printable files from the same menu, service list, or catalog your customers open online.
 - **CTA Text:** Start Free
 - **CTA Link:** `/get-started`
 
@@ -27,7 +27,7 @@ AI layout suggestion should not be promoted as a public website feature yet. If 
 
 ## Problem Statement
 
-Printed menus go stale fast. A price changes online, but the paper menu at the table still shows the old price.
+Printed menus, service lists, and catalog sheets go stale fast. A price changes online, but the paper file still shows the old price.
 
 Owners should not rebuild menu cards every time the menu changes.
 
@@ -35,7 +35,7 @@ Owners should not rebuild menu cards every time the menu changes.
 
 ## Solution Statement
 
-MenuList creates print-ready menu files from the current menu. The printed file can include a QR code back to the latest live menu, so customers always have a path to the current version.
+MenuList creates print-ready files from the current menu, service list, or catalog. The printed file can include a QR code back to the latest live version, so customers always have a path to the current version.
 
 ---
 
@@ -43,7 +43,7 @@ MenuList creates print-ready menu files from the current menu. The printed file 
 
 ### One Menu, More Places
 
-Your QR menu, official page, and printed menu card come from the same menu source.
+Your QR page, official page, and printed file come from the same source.
 
 **Visual:** Route preview showing live menu link, page preview, and export action.
 
@@ -52,6 +52,12 @@ Your QR menu, official page, and printed menu card come from the same menu sourc
 Choose a controlled style and export. The layout is handled by MenuList.
 
 **Visual:** Style cards for Classic, Compact, and Premium.
+
+### Starts With A Picked Layout
+
+MenuList chooses the starting layout from your business type and current content. You can still change it.
+
+**Visual:** Style area with an `Auto picked` label.
 
 ### Catch Print Issues First
 
@@ -70,6 +76,12 @@ Create a print-shop packet with the PDF, printing notes, and QR test checklist.
 The PDF can include a QR code back to the current menu.
 
 **Visual:** Footer close-up with QR and updated date.
+
+### Fits Your Business Type
+
+Restaurants get menu-style files, service businesses get service-list files, and retail businesses get catalog-style files without another setup step.
+
+**Visual:** Three light previews labeled Menu, Services, and Catalog.
 
 ### Old Files Are Easier To Spot
 
@@ -112,11 +124,11 @@ No dedicated SEO page is active for this feature. The live website placement is 
 
 If a dedicated page is deliberately approved later, do not lead with the internal name. Use owner-facing language:
 
-- **Page Title:** Print Menu Files From Your Current Menu | MenuList
-- **Meta Description:** Create PDF and printer handoff files from your current MenuList menu without making the PDF the main public source.
-- **OG Title:** Print Your Current Menu
-- **OG Description:** Create printable menu files from the same menu customers open online.
-- **Target Keywords:** restaurant menu PDF, print menu files, QR menu PDF, restaurant menu print
+- **Page Title:** Print Files From Your Current Menu, Services, Or Catalog | MenuList
+- **Meta Description:** Create PDF and printer handoff files from your current MenuList business page without making the PDF the main public source.
+- **OG Title:** Print Your Current Menu, Services, Or Catalog
+- **OG Description:** Create printable files from the same business information customers open online.
+- **Target Keywords:** print menu files, service list PDF, product catalog PDF, QR menu PDF
 
 ---
 
@@ -126,7 +138,11 @@ Use:
 
 - print-ready menu card
 - print-ready menu files
+- print-ready service list
+- print-ready catalog
 - current menu
+- current services
+- current catalog
 - layout is handled
 - create PDF
 - print-shop packet

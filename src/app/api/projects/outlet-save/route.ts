@@ -58,6 +58,16 @@ const schema = z.object({
 });
 
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const OUTLET_PROJECT_WRITE_FIELDS = [
+    "files",
+    "overrides",
+    "active",
+    "outletStatus",
+    "config",
+    "languages",
+    "defaultLanguage",
+    "menuSettings",
+] as const;
 
 const parseProjectId = (projectId: string): { tId: number; sId: number } | null => {
     const parts = projectId.split("-");
@@ -91,6 +101,15 @@ const sanitizeForFirestore = (value: any): any => {
     });
     return result;
 };
+
+const pickOutletProjectWriteFields = (project: Record<string, any>) => (
+    OUTLET_PROJECT_WRITE_FIELDS.reduce<Record<string, any>>((result, field) => {
+        if (Object.prototype.hasOwnProperty.call(project, field) && project[field] !== undefined) {
+            result[field] = project[field];
+        }
+        return result;
+    }, {})
+);
 
 const collectLocalIds = (files: any[] | undefined) => {
     const categoryIds = new Set<string>();
@@ -428,12 +447,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const previousOutletLocalState = asSafeRecord(existingProject?.outletLocalState);
 
         const safeProject = sanitizeForFirestore({
-            ...project,
+            ...pickOutletProjectWriteFields(project),
             projectId: existingProject.projectId || project.projectId,
             masterProjectId: existingProject.masterProjectId,
-            projectType: existingProject.projectType || project.projectType || "inherited",
-            deleted: existingProject.deleted === true ? true : project.deleted === true,
-            pId: project.pId || session.pId || session.user?.pId,
+            projectType: existingProject.projectType || "inherited",
+            deleted: existingProject.deleted === true,
+            pId: existingProject.pId || session.pId || session.user?.pId,
             tId: tenantId,
             sId: outletStoreId,
             role: session.role || session.user?.role,

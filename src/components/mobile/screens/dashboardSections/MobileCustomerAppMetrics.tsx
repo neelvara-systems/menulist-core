@@ -14,6 +14,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
+import { theme } from 'antd';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
 import { Card, DotLoading, Flex, Text, Title } from '../../antd';
 
@@ -73,6 +74,7 @@ function topShortcutLabel(clicks?: Record<string, number>): { key: string; count
 
 export default function MobileCustomerAppMetrics() {
     const { data, loading } = useCustomerAppDashboard();
+    const { token } = theme.useToken();
 
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) return null;
 
@@ -100,7 +102,7 @@ export default function MobileCustomerAppMetrics() {
         return (
             <Card size="small" title={
                 <Flex align="center" gap={6}>
-                    <LuSmartphone color="#8b5cf6" size={14} />
+                    <LuSmartphone color={token.colorPrimary} size={14} />
                     <Text strong>Customer App</Text>
                 </Flex>
             }>
@@ -124,7 +126,7 @@ export default function MobileCustomerAppMetrics() {
         return (
             <Card size="small" title={
                 <Flex align="center" gap={6}>
-                    <LuSmartphone color="#8b5cf6" size={14} />
+                    <LuSmartphone color={token.colorPrimary} size={14} />
                     <Text strong>Customer App</Text>
                 </Flex>
             }>
@@ -138,35 +140,35 @@ export default function MobileCustomerAppMetrics() {
     return (
         <Card size="small" title={
             <Flex align="center" gap={6}>
-                <LuSmartphone color="#8b5cf6" size={14} />
+                <LuSmartphone color={token.colorPrimary} size={14} />
                 <Text strong>Customer App</Text>
             </Flex>
         }>
             <Flex gap={12} wrap>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuDownload color="#16a34a" size={14} />
+                        <LuDownload color={token.colorSuccess} size={14} />
                         <Text type="secondary">Installed</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{installedCustomers.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuEye color="#0ea5e9" size={14} />
+                        <LuEye color={token.colorInfo} size={14} />
                         <Text type="secondary">App Opens (30d)</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{appOpens30d.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuRocket color="#f97316" size={14} />
+                        <LuRocket color={token.colorWarning} size={14} />
                         <Text type="secondary">Installs (30d)</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{installs30d.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuRocket color={conversionPct >= 20 ? '#16a34a' : conversionPct >= 5 ? '#d48806' : '#cf1322'} size={14} />
+                        <LuRocket color={conversionPct >= 20 ? token.colorSuccess : conversionPct >= 5 ? token.colorWarning : token.colorError} size={14} />
                         <Text type="secondary">Conversion</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{conversionPct}%</Title>
@@ -177,7 +179,7 @@ export default function MobileCustomerAppMetrics() {
             <Flex gap={12} wrap style={{ marginTop: 12 }}>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuStar color="#eab308" size={14} />
+                        <LuStar color={token.colorWarning} size={14} />
                         <Text type="secondary">Top Shortcut</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{top.key}</Title>
@@ -196,7 +198,7 @@ export default function MobileCustomerAppMetrics() {
 
             {/* Shortcut breakdown — per-shortcut rows (matches desktop, adapted for narrow mobile) */}
             {summary?.shortcutClicks && Object.keys(summary.shortcutClicks).length > 0 ? (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                         Shortcut breakdown
                     </Text>
@@ -217,7 +219,7 @@ export default function MobileCustomerAppMetrics() {
 
             {/* Platform breakdown — mirrors desktop, compact row layout */}
             {summary?.installsByPlatform && Object.keys(summary.installsByPlatform).length > 0 ? (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                         Installs by platform
                     </Text>
@@ -238,7 +240,7 @@ export default function MobileCustomerAppMetrics() {
 
             {/* App stickiness — directional retention read */}
             {installedCustomers > 0 ? (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                         App stickiness
                     </Text>

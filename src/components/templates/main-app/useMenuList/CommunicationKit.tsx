@@ -13,8 +13,7 @@ import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/s
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
 import { Button, Card, Flex, message, Typography } from 'antd';
 import { useMemo, useState } from 'react';
-import { FaWhatsapp } from 'react-icons/fa6';
-import { LuCheck, LuCopy, LuMessageSquare } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuMessageCircle, LuMessageSquare } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -141,20 +140,21 @@ function MessageCard({ copyMessage, template, themeToken, whatsappMessage }: Mes
                 </div>
 
                 {/* Actions */}
-                <Flex gap={8}>
+                <Flex gap={8} wrap="wrap">
                     <Button
                         size="small"
                         type="primary"
                         icon={copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
                         onClick={handleCopy}
+                        style={{ flex: '1 1 140px', minHeight: 36 }}
                     >
                         {copied ? 'Copied' : 'Copy Message'}
                     </Button>
                     <Button
                         size="small"
-                        icon={<FaWhatsapp size={14} />}
+                        icon={<LuMessageCircle size={14} />}
                         onClick={handleWhatsApp}
-                        style={{ color: '#25D366', borderColor: '#25D366' }}
+                        style={{ borderColor: themeToken.colorSuccessBorder, color: themeToken.colorSuccess, flex: '1 1 160px', minHeight: 36 }}
                     >
                         Send via WhatsApp
                     </Button>

@@ -34,6 +34,8 @@ Manual lead spreadsheets do not scale. Fully automated outreach is risky. Growth
 - decision snapshots
 - AI worker registry
 - sender assignment and pacing
+- connection activation
+- WhatsApp governance
 - operator workboard
 - suppression-first operations
 - campaign dry-run
@@ -70,6 +72,8 @@ Use:
 - campaign dry-run
 - suppression-first
 - assisted WhatsApp
+- consented owner verification
+- WhatsApp truth-maintenance rail
 - source quality
 - place ID seed discovery
 - cost per completed onboarding
@@ -95,6 +99,7 @@ Avoid:
 | AI SDR tool | Generic outreach and risky channel behavior | MenuList-specific onboarding route and safety gates |
 | Website-demo funnel | Agency positioning and source-rights risk | MenuList claim/audit artifact tied to public truth |
 | Bulk WhatsApp/calling | Complaint and channel-risk heavy | Assisted WhatsApp and suppression-first design |
+| WhatsApp sender tools | Treat WhatsApp as throughput | Consent, template, conversation-window, webhook, reputation, and truth-action governance. |
 | Third-party growth stack | Owns workflow, data model, and attribution outside MenuList | MenuList-owned target registry, channel rails, surface publishing, and attribution |
 | Workflow automation tool | Generic trigger/action automation outside product truth | MenuList-owned workflows, evidence snapshots, and distribution actions |
 
@@ -116,6 +121,7 @@ Growth Engine's edge is MenuList-owned distribution:
 - identify businesses with weak public menu truth
 - use place IDs and approved source handles for candidate discovery
 - build candidate Business Truth Graph edges from approved source evidence
+- use WhatsApp only when the owner expects a verification, correction, claim, support, or truth-maintenance action
 - create rights-safe private evidence
 - route interested owners into approved MenuList onboarding
 - publish canonical MenuList surfaces after confirmation
@@ -127,6 +133,8 @@ Growth Engine's edge is MenuList-owned distribution:
 If a feature is mostly generic CRM, generic enrichment, or generic sequencing, it is not core. Growth Engine should build the owned distribution system and use low-level providers only where infrastructure is required.
 
 The automation system must live inside Growth Engine: workflows, enrichment waterfalls, decision snapshots, AI worker registry, sender assignment, operator work queues, and attribution cannot live in third-party tools.
+
+The connection system must also live inside Growth Engine. API keys, adapter IDs, sender domains, WhatsApp numbers, webhooks, validation runs, budgets, and kill switches cannot be scattered across provider dashboards or operator notes.
 
 ## 7. Internal Rollout Story
 
@@ -152,6 +160,7 @@ Use it for controlled MenuList distribution:
 | Objection | Answer |
 | --- | --- |
 | "Can we just scrape and WhatsApp everyone?" | No. That creates DNC, complaint, telecom, and account-risk problems before we know lead quality. |
+| "Can we use WhatsApp Cloud API for scale?" | Only after message governance exists. WhatsApp is for consented owner verification and truth maintenance, not cold phone outreach. |
 | "Can we build websites for every lead?" | No. That makes MenuList look like a commodity agency and creates source-rights risk. |
 | "Should this be GrowthOS?" | No. GrowthOS/Growth Kits is for existing owners. Growth Engine is internal distribution. |
 | "Should we clone the repo?" | No. Use same repo with separate product folders and runtime boundaries so MenuList onboarding contracts do not drift. |

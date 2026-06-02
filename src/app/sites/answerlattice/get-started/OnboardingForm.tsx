@@ -151,7 +151,7 @@ function OnboardingFormInner() {
             {/* Step 1: Auth */}
             {step === 'auth' && (
                 <div style={styles.card}>
-                    <h2 style={styles.cardTitle}>Create your Answerlattice account</h2>
+                    <h2 style={styles.cardTitle}>Create your AnswerLattice account</h2>
                     <p style={styles.cardSubtext}>Sign in with Google to get started. Free during beta.</p>
                     <button
                         onClick={handleGoogleSignIn}
@@ -176,9 +176,9 @@ function OnboardingFormInner() {
             {status === 'authenticated' && existingAnswerlatticeScope && step !== 'creating' && step !== 'done' && (
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
-                    <h2 style={styles.cardTitle}>Your Answerlattice workspace is ready</h2>
+                    <h2 style={styles.cardTitle}>Your AnswerLattice workspace is ready</h2>
                     <p style={styles.cardSubtext}>
-                        This Google account already has Answerlattice access. Continue to your activation dashboard, or switch accounts if you meant to set up a different workspace.
+                        This Google account already has AnswerLattice access. Continue to your activation dashboard, or switch accounts if you meant to set up a different workspace.
                     </p>
 
                     {session?.user?.email && (
@@ -351,8 +351,8 @@ function OnboardingFormInner() {
             {step === 'done' && result && (
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
-                    <h2 style={styles.cardTitle}>Your Answerlattice account is ready!</h2>
-                    <p style={styles.cardSubtext}>Save your widget key now. Answerlattice stores only the secure hash and will show the prefix later.</p>
+                    <h2 style={styles.cardTitle}>Your AnswerLattice account is ready!</h2>
+                    <p style={styles.cardSubtext}>Save your widget key now. AnswerLattice stores only the secure hash and will show the prefix later.</p>
 
                     <div style={styles.detailsGrid}>
                         <div style={styles.detailItem}>
@@ -369,7 +369,7 @@ function OnboardingFormInner() {
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
                             <li>Check your activation dashboard</li>
-                            <li>Teach Answerlattice from selected links, docs, screenshots, recordings, or starter answers</li>
+                            <li>Teach AnswerLattice from selected links, docs, screenshots, recordings, or starter answers</li>
                             <li>Review generated product topics and answer drafts</li>
                             <li>Add the widget to your product and configure hosted help if needed</li>
                         </ol>

@@ -2,7 +2,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Set up support',
         href: '/product/launch-setup',
-        description: 'Create your workspace, add team access, teach Answerlattice from starter sources, and map the pages where users get stuck.',
+        description: 'Create your workspace, add team access, teach AnswerLattice from starter sources, and map the pages where users need help.',
     },
     {
         label: 'In-app help widget',

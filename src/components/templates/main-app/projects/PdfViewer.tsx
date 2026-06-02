@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Card, Flex, Image, Modal, Popconfirm, Progress, Typography } from 'antd';
+import { Alert, Button, Card, Flex, Image, Modal, Popconfirm, Progress, Typography, theme } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { LuArrowRight, LuFileSearch, LuTrash, LuX } from 'react-icons/lu';
 
@@ -17,6 +17,7 @@ interface PdfViewerProps {
 }
 
 export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCancel }: PdfViewerProps) => {
+    const { token } = theme.useToken();
     const loadingCardRef = useRef<HTMLDivElement>(null);
     const [previewPage, setPreviewPage] = useState<{ url: string; index: number } | null>(null);
 
@@ -139,7 +140,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                     {Boolean(pdfPagesCount) && <Card ref={loadingCardRef} className='animate__animated animate__fadeInLeft' key={"loading"}>
                         <Flex vertical justify='center' align='center' gap={16} style={{ width: '100%', height: '280px', objectFit: 'contain' }}>
                             <div className='animate__animated animate__pulse animate__infinite'>
-                                <LuFileSearch size={48} style={{ color: '#1890ff' }} />
+                                <LuFileSearch size={48} style={{ color: token.colorPrimary }} />
                             </div>
                             <Flex vertical align="center" gap={8}>
                                 <Text strong style={{ fontSize: 16 }}>
@@ -154,7 +155,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                             </Flex>
                             <Progress
                                 percent={Math.round(((pdfFiles?.images?.length || 0) / pdfPagesCount) * 100)}
-                                strokeColor="#1890ff"
+                                strokeColor={token.colorPrimary}
                                 style={{ width: '80%' }}
                             />
                         </Flex>

@@ -1,11 +1,4 @@
 import {
-    CheckCircleOutlined,
-    CompassOutlined,
-    FireOutlined,
-    LockOutlined,
-    ThunderboltOutlined,
-} from '@ant-design/icons';
-import {
     AnalyticsAiEntitlement,
     OwnerActionPlan,
     OwnerConfidence,
@@ -13,6 +6,7 @@ import {
 } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Row, Space, Tag, Typography, theme } from 'antd';
 import React from 'react';
+import { LuCheckCircle, LuCompass, LuFlame, LuLock, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title, Paragraph } = Typography;
@@ -54,7 +48,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
             className={styles.detailCard}
             title={(
                 <Space>
-                    <ThunderboltOutlined />
+                    <LuZap />
                     <span>{title}</span>
                 </Space>
             )}
@@ -63,7 +57,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {isPlanLocked ? (
                     <Empty
-                        image={<LockOutlined style={{ color: token.colorPrimary, fontSize: 32 }} />}
+                        image={<LuLock style={{ color: token.colorPrimary, fontSize: 32 }} />}
                         description={(
                             <Space direction="vertical" size={4}>
                                 <Text strong>Available on Pro</Text>
@@ -114,7 +108,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                                         </Paragraph>
                                         <Text type="secondary">{action.reason}</Text>
                                         <Text strong>
-                                            <CompassOutlined style={{ marginRight: 6 }} />
+                                            <LuCompass style={{ marginRight: 6 }} />
                                             {action.actionLabel}
                                         </Text>
                                     </Space>
@@ -124,7 +118,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                     </Row>
                 ) : !isPlanLocked ? (
                     <Empty
-                        image={<CheckCircleOutlined style={{ color: token.colorSuccess, fontSize: 32 }} />}
+                        image={<LuCheckCircle style={{ color: token.colorSuccess, fontSize: 32 }} />}
                         description="No action needed. Menu state is stable."
                     />
                 ) : null}
@@ -136,7 +130,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                         </Text>
                         <Space wrap>
                             {sourceQuality.slice(0, 4).map((source) => (
-                                <Tag key={source.source} icon={<FireOutlined />}>
+                                <Tag key={source.source} icon={<LuFlame />}>
                                     {`${source.label}: ${source.menuSessions} visits · ${source.actionSessions} action sessions · ${source.actionRate}%`}
                                 </Tag>
                             ))}

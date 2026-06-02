@@ -1,8 +1,7 @@
-import { CheckCircleFilled } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Alert, Button, Card, Flex, Image, Modal, Progress, Tag, Tooltip, Typography, theme } from 'antd';
 import { useState } from 'react';
-import { LuEye, LuFileText, LuSparkles, LuTrash, LuTrash2 } from 'react-icons/lu';
+import { LuCheckCircle, LuEye, LuFileText, LuSparkles, LuTrash, LuTrash2 } from 'react-icons/lu';
 import { ProjectFileType } from './types';
 const { Text } = Typography
 const { useToken } = theme;
@@ -107,7 +106,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                 {Boolean(file.extractedData) && (
                                                     <Tooltip title={`Processed in ${processingSeconds.toFixed(1)} seconds`}>
                                                         <Flex className='animate__animated animate__fadeInLeft animate__faster' vertical align='center' justify='center' gap={10}>
-                                                            <CheckCircleFilled style={{ fontSize: 40, color: token.colorSuccess }} />
+                                                            <LuCheckCircle size={40} style={{ color: token.colorSuccess }} />
                                                             <Tag color={token.colorSuccess}>{processingSeconds.toFixed(1)} s</Tag>
                                                             {/* <Tag color={token.colorPrimary}>{file.inputToken + file.inputToken} Tokens</Tag> */}
                                                         </Flex>
@@ -119,10 +118,10 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                             <LuSparkles size={40} style={{ color: token.colorPrimary }} />
                                                         </div>
                                                         <Flex vertical align="center" gap={4}>
-                                                            <Text strong style={{ color: 'white', fontSize: 14 }}>
+                                                            <Text strong style={{ color: token.colorTextLightSolid, fontSize: 14 }}>
                                                                 Reading file...
                                                             </Text>
-                                                            <Text type="secondary" style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
+                                                            <Text type="secondary" style={{ color: token.colorTextLightSolid, fontSize: 12 }}>
                                                                 Extracting {labels.itemsPlural}
                                                             </Text>
                                                         </Flex>

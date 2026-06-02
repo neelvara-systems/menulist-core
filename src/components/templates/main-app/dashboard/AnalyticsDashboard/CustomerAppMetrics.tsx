@@ -12,10 +12,10 @@
  * populated by the client trackers. No new hooks, no new API endpoints.
  */
 
-import { AppstoreOutlined, DownloadOutlined, EyeOutlined, RocketOutlined, StarOutlined } from '@ant-design/icons';
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography, theme } from 'antd';
 import React from 'react';
+import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 const { useToken } = theme;
@@ -178,7 +178,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     return (
         <Card>
             <Title level={5} style={{ marginBottom: 16 }}>
-                <AppstoreOutlined style={{ marginRight: 8 }} />
+                <LuSmartphone style={{ marginRight: 8 }} />
                 Customer App
             </Title>
 
@@ -187,28 +187,28 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                     <Statistic
                         title="Installed Customers"
                         value={installedCustomers}
-                        prefix={<DownloadOutlined />}
+                        prefix={<LuDownload />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title="App Opens (30d)"
                         value={appOpens30d}
-                        prefix={<EyeOutlined />}
+                        prefix={<LuEye />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title="Installs (30d)"
                         value={installs30d}
-                        prefix={<RocketOutlined />}
+                        prefix={<LuRocket />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
                         title="Install Conversion"
                         value={`${conversionPct}%`}
-                        prefix={<RocketOutlined />}
+                        prefix={<LuRocket />}
                         valueStyle={{
                             color: conversionPct >= 20 ? token.colorSuccess : conversionPct >= 5 ? token.colorWarning : token.colorError,
                         }}
@@ -221,7 +221,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                     <Statistic
                         title="Top Shortcut"
                         value={topShortcutResult.key}
-                        prefix={<StarOutlined />}
+                        prefix={<LuStar />}
                     />
                 </Col>
                 <Col xs={24} sm={12}>

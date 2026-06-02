@@ -1,5 +1,7 @@
+import { getBusinessCatalogKind, getBusinessOfferingKind, resolveBusinessCategory } from '@data/shared/businessTypes';
 import type { MenuCardExportSettings } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
+import { resolveMenuCardBusinessPrintProfile } from '../templates/businessPrintProfiles';
 import { buildBrandTokens } from './buildBrandTokens';
 import { buildQrDestination, buildShortUrl } from './buildQrDestination';
 import { resolveText, sanitizeMenuForPrint } from './sanitizeMenuForPrint';
@@ -33,6 +35,36 @@ function buildAddress(store: any): string | undefined {
 
 function asArray(value: any): any[] {
     return Array.isArray(value) ? value : [];
+}
+
+function resolveBrandColor(project: any, store: any): string | undefined {
+    return store?.publicPresence?.accentColor
+        || store?.primaryColor
+        || store?.brandColor
+        || store?.themeColor
+        || project?.config?.design?.brand?.accentColor
+        || undefined;
+}
+
+function resolveLogoUrl(store: any): string | undefined {
+    return store?.logo
+        || store?.logoUrl
+        || store?.publicPresence?.logoUrl
+        || store?.businessLogo
+        || undefined;
+}
+
+function resolveStoreBusinessType(store: any): string | undefined {
+    return store?.businessType
+        || store?.publicPresence?.businessType
+        || store?.businessIndustry
+        || undefined;
+}
+
+function resolveStoreBusinessCategory(store: any): string | undefined {
+    return store?.businessCategory
+        || store?.publicPresence?.businessCategory
+        || undefined;
 }
 
 function appendUnique(target: any[], seen: Set<string>, entries: any[]) {
@@ -81,7 +113,13 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
         'en';
 
     const sanitized = sanitizeMenuForPrint(extractedData.items, extractedData.categories, language);
-    const brandTokens = buildBrandTokens(store?.primaryColor || store?.brandColor || store?.themeColor);
+    const brandTokens = buildBrandTokens(resolveBrandColor(project, store));
+    const businessType = resolveStoreBusinessType(store);
+    const storedBusinessCategory = resolveStoreBusinessCategory(store);
+    const businessCategory = resolveBusinessCategory(businessType, storedBusinessCategory);
+    const catalogKind = getBusinessCatalogKind(businessType, businessCategory);
+    const offeringKind = getBusinessOfferingKind(businessType, businessCategory);
+    const printProfile = resolveMenuCardBusinessPrintProfile({ businessCategory, catalogKind, offeringKind });
 
     return {
         tenantId: store?.tenantId || store?.tId,
@@ -90,9 +128,13 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
         menuSnapshotId: null,
         business: {
             name: store?.name || store?.storeName || store?.businessName || 'Menu',
-            logoUrl: store?.logo || store?.logoUrl || undefined,
+            logoUrl: resolveLogoUrl(store),
             phone: store?.phone || store?.phoneNumber || undefined,
             address: buildAddress(store),
+            businessType,
+            businessCategory,
+            catalogKind,
+            offeringKind,
             publicMenuUrl: menuUrl,
             brandColor: brandTokens.accentColor,
             brandTokens,
@@ -100,14 +142,15 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
         qr: {
             destinationUrl: buildQrDestination(menuUrl, settings.preset),
             shortUrl: buildShortUrl(menuUrl),
-            label: 'View current menu',
+            label: printProfile.qrLabel,
             errorCorrection: settings.preset === 'print_shop_packet' ? 'Q' : 'M',
         },
         menu: {
-            title: resolveText(project?.name, language, 'Menu'),
+            title: resolveText(project?.name, language, printProfile.fallbackTitle),
             updatedAt: parseDate(project?.modifiedOn || project?.updatedAt || project?.lastPublishedAt),
             language,
-            currency: store?.currencySymbol || store?.currency || '',
+            currency: store?.currencySymbol || store?.currency || store?.currencyCode || '',
+            currencyCode: store?.currencyCode || store?.currency || undefined,
             categories: sanitized.categories,
         },
         flags: {

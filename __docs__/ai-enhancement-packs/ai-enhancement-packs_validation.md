@@ -29,7 +29,7 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 | Follows existing pattern        | ✅     | Same `as const` object, JSDoc comment block                                         |
 | `checkAICapacity()` checks flag | ✅     | `src/lib/ai/capacityCheck.ts:67-74` — returns `reason: "maintenance"`               |
 | Free operations unaffected      | ✅     | `src/lib/ai/capacityCheck.ts:54-61` — free check runs before kill switch            |
-| Client receives calm message    | ✅     | All 6 routes return `"AI enhancements are temporarily unavailable."` on maintenance |
+| Client receives calm message    | ✅     | Billable AI routes return `"AI enhancements are temporarily unavailable."` on maintenance |
 
 ### Task 0.2: Overdraft Buffer (OVERDRAFT_BUFFER_PERCENT)
 
@@ -43,21 +43,28 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 
 | Check                       | Status | Evidence                                                 |
 | --------------------------- | ------ | -------------------------------------------------------- |
-| `AI_UNIT_COSTS` defined     | ✅     | `src/constants/AI/unitCosts.ts:16-30`                    |
+| `AI_UNIT_COSTS` defined     | ✅     | `src/constants/AI/unitCosts.ts`                          |
+| Real-cost map defined       | ✅     | `src/constants/AI/unitCosts.ts`                          |
 | Free operations = 0 units   | ✅     | IMAGE_PROCESSING, ADD_DESCRIPTION, NEW_ITEM_METADATA = 0 |
-| `isFreeTierAction()` helper | ✅     | `src/constants/AI/unitCosts.ts:46-48`                    |
-| `getUnitCost()` helper      | ✅     | `src/constants/AI/unitCosts.ts:53-55`                    |
+| `isFreeTierAction()` helper | ✅     | Fails closed through `getUnitCost()`                     |
+| `getUnitCost()` helper      | ✅     | Unknown actions throw instead of defaulting to 0         |
+| Extraction audit owner units | ✅    | Extraction transaction stores `unitsConsumed: 0` while preserving token/cost telemetry |
 
-### Task 1.2: Uncomment addAiOperation() + Add unitsConsumed
+### Task 1.2: Server Finalizer + unitsConsumed
 
-| Route                                    | Status | Evidence                                                         |
-| ---------------------------------------- | ------ | ---------------------------------------------------------------- |
-| `/api/descriptions`                      | ✅     | `src/app/api/descriptions/route.ts:190-191`                      |
-| `/api/image-generation`                  | ✅     | `src/app/api/image-generation/route.ts:281-282`                  |
-| `/api/image-editing`                     | ✅     | `src/app/api/image-editing/route.ts:154-155`                     |
-| `/api/image-generation/batch-generation` | ✅     | `src/app/api/image-generation/batch-generation/route.ts:280-281` |
-| `/api/translations`                      | ✅     | `src/app/api/translations/route.ts:134-135`                      |
-| `/api/new-item-metadata`                 | ✅     | `src/app/api/new-item-metadata/route.ts:147-148`                 |
+| Route                                    | Status | Evidence |
+| ---------------------------------------- | ------ | -------- |
+| `/api/descriptions`                      | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/image-generation`                  | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/image-editing`                     | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/image-generation/batch-generation` | ✅     | Uses `finalizeAiOperationAccounting()` with direct `tId`/`sId` |
+| `/api/translations`                      | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/new-item-metadata`                 | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/business-copy`                     | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/seo`                               | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/campaigns/caption`                 | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/reviews/suggest`                   | ✅     | Uses `finalizeAiOperationAccounting()` |
+| `/api/menu-card-export/design-advisor`   | ✅     | Uses `finalizeAiOperationAccounting()` |
 
 ### Task 2.1 + 2.2: Capacity Check + Consume
 
@@ -69,7 +76,7 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 | TopUp credits consumed second  | ✅     | `src/lib/ai/capacityCheck.ts:122-124`                         |
 | Uses existing subscription DAL | ✅     | Imports `getActiveSubscriptionForStore`, `updateSubscription` |
 
-### Task 2.3: Capacity Check Integration (All 6 Routes)
+### Task 2.3: Capacity Check Integration (Billable Routes)
 
 | Route                    | Pre-check | Consume | Evidence                                 |
 | ------------------------ | --------- | ------- | ---------------------------------------- |

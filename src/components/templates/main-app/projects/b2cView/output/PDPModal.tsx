@@ -103,7 +103,7 @@ function PDPModal({
     moodConfig,
     projectData,
     showItemPrices = true,
-    currencySymbol = '₹',
+    currencySymbol = '',
     currencyCode = 'INR',
     unavailableLabel,
     trackView = true,

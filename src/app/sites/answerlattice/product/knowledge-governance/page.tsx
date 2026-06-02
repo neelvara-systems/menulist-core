@@ -30,7 +30,7 @@ export default function KnowledgeGovernanceProductPage() {
                 canonicalPath="/product/knowledge-governance"
                 eyebrow="Review approved answers"
                 title="Keep AI support from becoming support chaos."
-                description="Answerlattice keeps approved answers in front, marks fallback clearly, flags stale support, and turns repeated misses into reviewable improvements."
+                description="AnswerLattice keeps approved answers in front, marks fallback clearly, flags stale support, and turns repeated misses into reviewable improvements."
                 activeTab="Review approved answers"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 canvasTitle="Review answer health before users get bad help."
@@ -51,14 +51,14 @@ export default function KnowledgeGovernanceProductPage() {
                 bentoCards={[
                     { title: 'Product structure', description: 'Features, plans, roles, workflows, states, integrations, and errors can be treated as first-class support concepts.' },
                     { title: 'Approved before authority', description: 'Drafts and proposals do not become official answers until a human approves them.' },
-                    { title: 'Drift detection', description: 'Answerlattice makes stale answers visible after releases, scope conflicts, or deprecated product behavior.' },
+                    { title: 'Drift detection', description: 'AnswerLattice makes stale answers visible after releases, scope conflicts, or deprecated product behavior.' },
                     { title: 'Coverage metrics', description: 'Owners can see whether important surfaces have enough approved answers.' },
                     { title: 'Trust readiness', description: 'Summary-backed metrics help the owner understand readiness without scanning raw logs.' },
                 ]}
                 workflowTitle="Turn support misses into approved product knowledge."
                 workflowDescription="Governance is the loop: approved answer first, fallback when needed, signal when weak, owner review, then a better answer for the next user."
                 workflowSteps={[
-                    { title: 'Serve approved answer first', description: 'If approved knowledge matches the page and scope, Answerlattice uses it before fallback.' },
+                    { title: 'Serve approved answer first', description: 'If approved knowledge matches the page and scope, AnswerLattice uses it before fallback.' },
                     { title: 'Mark fallback clearly', description: 'Fallback is useful, but it is not treated as official support guidance.' },
                     { title: 'Cluster repeated signals', description: 'Tickets, low-confidence answers, and negative feedback expose recurring support gaps.' },
                     { title: 'Review the proposal', description: 'Owners approve, refine, or reject draft improvements before publishing.' },

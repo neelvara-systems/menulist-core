@@ -45,6 +45,49 @@ Automated verification script for menu data export normalization and workbook ge
 npm run verify:menu-export
 ```
 
+### verify-menu-extraction-pipeline.js
+Automated contract verification for the centralized menu extraction pipeline.
+
+**Purpose:**
+- Confirms the app and Cloud Functions extraction job contract files are mirrored
+- Checks owner job creation remains server-only and source lineage stays server-owned
+- Verifies public create-menu uses durable jobs instead of inline extraction
+- Checks link import, messaging onboarding, and the worker use the shared routing/limit contract
+
+**Usage:**
+```bash
+npm run verify:menu-extraction-pipeline
+```
+
+### verify-menu-extraction-pipeline-dry-run.ts
+Offline flow simulation for the centralized menu extraction pipeline.
+
+**Purpose:**
+- Builds sample owner upload, owner retry, public image, public link, authenticated link-import, and messaging onboarding jobs using the shared routing builders
+- Checks destination labels, source lineage, skip-project-save behavior, Storage path shape, MIME compatibility, and cancellation rule restrictions
+- Verifies messaging onboarding keeps HEIC/HEIF compatibility while dashboard/public uploads remain narrower
+
+**Usage:**
+```bash
+npm run verify:menu-extraction-pipeline:dry-run
+```
+
+### verify-ai-accounting-hardening.js
+Automated verification for AI operation logging, credit consumption, and cost registry guardrails.
+
+**Purpose:**
+- Confirms billable AI routes use the shared server-side accounting finalizer
+- Ensures legacy client writes to `menulistAiOperations` are disabled
+- Checks Firestore rules keep AI operation writes server/Admin-only
+- Verifies every declared AI action has explicit unit-cost and real-cost entries
+- Verifies owner transaction screens do not expose token/provider-cost internals and platform debug remains gated
+- Verifies extraction monitor cost formatting uses paise-aware INR formatting
+
+**Usage:**
+```bash
+npm run verify:ai-accounting
+```
+
 ## Adding New Verification Scripts
 
 Follow this pattern:

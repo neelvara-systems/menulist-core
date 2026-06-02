@@ -41,6 +41,7 @@ Not:
 - distribution target registry
 - Business Truth Graph registry for business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships
 - owned automation workflow engine
+- Connections And Activation internal screen for adapter IDs, provider credentials, email pipeline readiness, WhatsApp pipeline readiness, webhooks, budgets, kill switches, and activation approvals
 - enrichment waterfalls for target identity, menu gap, contactability, and source confidence
 - decision snapshots explaining every route, hold, reject, send, publish, or block action
 - AI worker registry with typed outputs, prompt versions, eval thresholds, budgets, and approval gates
@@ -63,6 +64,9 @@ Not:
 - campaign creation, dry-run, approval, caps, and stop rules
 - email execution after compliance checks
 - WhatsApp assisted-send queue
+- WhatsApp Message Governance Layer for consent, templates, conversation state, webhook events, reputation, pacing, sender identity, and audit
+- WhatsApp owner-verification and truth-maintenance journeys after explicit opt-in or owner-initiated conversation
+- WhatsApp Flows for structured owner-confirmed business truth capture after policy approval
 - inbound reply ingestion where provider support exists
 - unified internal inbox
 - reply classification
@@ -92,6 +96,13 @@ Not:
 - Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content as public artifacts or MenuList truth
 - Foursquare source content as durable MenuList truth
 - bulk calling/SMS/WhatsApp blasting
+- WhatsApp API outreach from scraped, enriched, or public phone numbers without explicit opt-in
+- WhatsApp shared sender pools for unrelated tenants
+- WhatsApp number rotation to bypass quality or account limits
+- WhatsApp generic AI assistant distribution
+- WhatsApp templates misclassified as utility when the content is marketing
+- WhatsApp Flows that collect unnecessary personal data or hidden marketing consent
+- lead marketplace, lead resale, or buyer/seller routing product outside MenuList distribution
 - generic CRM pipeline management
 - generic lead database/enrichment replacement
 - third-party outreach tool wrapper
@@ -208,10 +219,13 @@ Growth Engine handles personal and business contact data. It must have:
 - retention policy
 - correction and deletion workflow where applicable
 - provider token isolation
+- provider credentials stored as server-only secret references, never plaintext Firestore fields or browser-readable values
 - no raw sensitive payloads in AI prompts
 - no scraped reviews/photos/menu content stored as durable lead facts
 
-Email must have opt-out and sender identity. WhatsApp starts assisted only unless explicit opt-in, approved templates, and legal/channel review are complete.
+Email must have opt-out and sender identity. WhatsApp starts assisted only unless explicit opt-in, approved templates, legal/channel review, conversation-window state, webhook ingestion, reputation monitoring, and message-governance audit are complete.
+
+Phone number is not WhatsApp consent. WhatsApp opt-in must store the consent source, text shown, category, timestamp, source URL where available, privacy policy version, and proof hash. Opt-out, STOP, unsubscribe, wrong-contact, complaint, invalid number, and revoked consent must suppress or quarantine sends automatically.
 
 ## 7. Required Operating Foundations
 
@@ -227,10 +241,13 @@ Web research and the distribution decision make these product gates:
 | AI worker registry | Source cleaning, identity resolution, gap auditing, contactability, artifact drafting, personalization, reply classification, surface validation, feed validation, optimization, and incident summaries need typed outputs and eval thresholds. |
 | Operator workboard | Human-review decisions must be queue-based with owner, severity, due state, and audit trail. |
 | Source policy registry | Every source must record allowed use, allowed fields, source terms, retention class, raw payload policy, and approval owner before import. |
+| Connections And Activation registry | Every provider adapter, email pipeline, WhatsApp pipeline, webhook, secret reference, budget cap, kill-switch scope, validation run, and activation decision must be configured before provider execution. |
+| Implementation readiness contract | Route inventory, screen states, RBAC, flags, env keys, Firestore rules/indexes, seed config, API guards, UI guards, and tests must be covered before code starts. |
 | Jurisdiction/channel matrix | Campaigns must choose jurisdiction before email, WhatsApp, SMS/calling, or social eligibility is calculated. |
 | Consent and suppression ledger | Unsubscribe, DNC, complaint, wrong-contact, bounce, and opt-in evidence must live in one global ledger that overrides every campaign. |
 | Sender-domain readiness | Email launch requires SPF/DKIM/DMARC status, sender identity, unsubscribe endpoint, bounce handling, slow-ramp policy, and spam-rate thresholds. |
-| WhatsApp proof model | WhatsApp remains assisted-only until explicit opt-in proof, approved templates, provider readiness, and local policy review exist. |
+| WhatsApp Message Governance Layer | WhatsApp API sending requires consent ledger, suppression ledger, template registry, conversation state, governance audit, webhook event store, reputation monitor, sender identity policy, pacing policy, and kill switches. |
+| WhatsApp proof model | WhatsApp remains assisted-only until explicit opt-in proof, approved templates, provider readiness, conversation-window handling, webhook verification, reputation monitoring, and local policy review exist. |
 | Onboarding flow inventory | Growth Engine must know the approved MenuList onboarding flows, accepted payloads, tracked route event names, and fallback behavior. |
 | Canonical surface publisher | MenuList-owned public menu/business surfaces need publish state, structured data state, sitemap state, and freshness state. |
 | Discovery publisher | Sitemaps, IndexNow, feed exports, and truth packets need queueing, idempotency, retries, and audit logs. |
@@ -250,6 +267,8 @@ Production-shaped baseline:
 
 ```txt
 source policy registry
+-> Connections And Activation registry
+-> implementation readiness contract
 -> source identity handles
 -> distribution target registry
 -> Business Truth Graph registry
@@ -257,6 +276,7 @@ source policy registry
 -> enrichment waterfall registry
 -> AI worker registry
 -> channel policy matrix
+-> WhatsApp Message Governance Layer
 -> sender readiness
 -> manual CSV or approved source import
 -> normalization/dedupe/suppression
@@ -312,6 +332,11 @@ WhatsApp assisted remains available only when the channel policy, opt-in model, 
 | GBP menu-link/preferred-source completions | Owner-authorized external distribution. |
 | External listing handoff completions | GBP, Apple Business Connect, and Bing Places owner-authorized handoffs completed. |
 | Freshness review overdue rate | Truth decay risk. |
+| WhatsApp opt-in proof coverage | WhatsApp-eligible contacts with auditable opt-in proof. |
+| WhatsApp template health | Approved templates with acceptable quality and no paused/disabled state. |
+| WhatsApp verified-owner conversations | Consented WhatsApp conversations that result in owner verification, correction, or support outcome. |
+| WhatsApp opt-out and complaint rate | Channel trust and account-health risk. |
+| WhatsApp Flow completion rate | Structured truth capture success. |
 
 ## 10. Non-Functional Requirements
 
@@ -331,6 +356,9 @@ WhatsApp assisted remains available only when the channel policy, opt-in model, 
 - All cross-product MenuList integration must be explicit.
 - All source, channel, artifact, and vendor decisions must be policy-backed.
 - All email sends must pass sender-domain readiness and unsubscribe checks.
+- All WhatsApp API sends must pass consent, suppression, template, conversation-window, reputation, sender identity, pacing, and governance-audit checks.
+- All WhatsApp webhooks must be signature-verified, idempotent, and mapped to message outcomes.
+- All WhatsApp Flows must collect only approved business-truth fields and attach proof to the target.
 - All artifacts must have expiry and takedown state.
 - All public distribution must come from owner-confirmed or approved MenuList-verified truth.
 - All public pages must have indexability, structured data, sitemap, canonical URL, and freshness state.
@@ -349,6 +377,7 @@ These decisions are locked for implementation unless an explicit owner override 
 | Firebase projects | Use `growth-engine-qa` and `growth-engine` as separate Firebase projects. |
 | Runtime boundary | Same repo, separate product folders, separate Firebase, separate Cloud Functions package. |
 | Host/routing | Use internal/admin route first. No public Growth Engine website or public host. |
+| Connections screen | Add internal `/growth-engine/connections` control screen before provider execution. It stores adapter metadata and secret references, validates email/WhatsApp/source/discovery/AI connections, and blocks activation when policy, webhook, budget, or kill-switch checks fail. |
 | First email provider | Use Amazon SES as the primary low-level email delivery adapter because it supports production sender control, bounce/complaint handling, and low per-send cost. Keep provider abstraction so Resend can be used for controlled testing if explicitly approved. |
 | First sender domain | Use a dedicated subdomain such as `reach.menulist.ai`; do not send from the root MenuList domain. Require SPF, DKIM, DMARC, one-click unsubscribe, bounce/complaint webhooks, and slow ramp before sends. |
 | Jurisdictions | Support India, US, and `GLOBAL_REVIEW` policy records from the start. A campaign must choose one jurisdiction policy before eligibility is calculated. |
@@ -370,7 +399,11 @@ These decisions are locked for implementation unless an explicit owner override 
 | Source field retention | Retain normalized allowed fields while target is active. Raw source payloads use short TTL. Block photos, reviews, unlicensed menu content, and unsupported profile content from durable facts. |
 | Suppression identity | Suppression keys include normalized email hash, E.164 phone hash, WhatsApp identity hash, business/location target key, source identity, and complaint evidence. |
 | Unsubscribe endpoint | Use `/api/growth-engine/unsubscribe` with one-click List-Unsubscribe handling for email and global suppression write-through. |
-| WhatsApp opt-in | Accept only timestamped explicit opt-in, owner-initiated WhatsApp conversation, or approved first-party form consent. Assisted send remains default. |
+| WhatsApp opt-in | Accept only timestamped explicit opt-in, owner-initiated WhatsApp conversation, click-to-WhatsApp entry, or approved first-party form consent. Store consent text, category, source, source URL where available, privacy version, timestamp, and proof hash. Assisted send remains default. |
+| WhatsApp API posture | API outbound is disabled until the Message Governance Layer, approved templates, conversation-state engine, webhook verification, reputation monitor, sender identity policy, pacing policy, and kill switches are implemented. |
+| WhatsApp use cases | Allow owner claim, business verification, public-info correction, incomplete claim recovery, stale data confirmation, support handoff, and owner referral. Block generic cold prospecting from scraped/enriched phone numbers. |
+| WhatsApp sender identity | Use a MenuList-owned verified identity only for MenuList claim, verification, support, and truth-maintenance messages. Do not use shared sender pools or number rotation. |
+| WhatsApp Flows | Use only for structured owner-confirmed business truth capture after policy approval. Do not use Flows for generic AI chat, hidden consent, or lead resale intake. |
 | Onboarding routes | Use an explicit MenuList onboarding flow inventory table. Growth Engine creates tracked growth routes only from inventory records, never raw URLs. |
 | Artifact ownership | Compliance reviewer owns approval/takedown; admin owns incident escalation. Expiry, noindex, source-rights check, and owner complaint path are mandatory. |
 | AI thresholds | DNC, unsubscribe, complaint, wrong-contact, private-data, blocked-source, pricing-invention, and unverified-truth fixtures need zero critical misses before autonomy. Non-critical classification should meet the documented eval threshold before unattended use. |
@@ -384,8 +417,12 @@ These decisions are locked for implementation unless an explicit owner override 
 Growth Engine is ready for first controlled use only when:
 
 - distribution target registry is configured
+- Connections And Activation registry is configured with adapter IDs, secret refs, webhook endpoints, budgets, kill switches, and validation state
+- implementation readiness checklist is reviewed and all route, RBAC, flag, environment, Firestore rules/index, seed config, API, UI, and test contracts are accepted
 - source policy and channel policy are configured
 - sender domain readiness is green for email
+- email pipeline is active only after sender domain, DNS/authentication, unsubscribe, bounce/complaint webhook, suppression, budget, kill switch, and internal test checks pass
+- WhatsApp pipeline is active only after WABA/phone-number ID, token refs, webhook signature health, opt-in policy, template sync, conversation-state support, sender reputation, budget, kill switch, and governance audit checks pass
 - source candidates can be imported without outreach
 - Google Places source runs use approved field masks, budget caps, and place-ID-only durable storage
 - Foursquare PAYG source runs block outreach eligibility unless separate contract or written permission allows prospecting
@@ -398,6 +435,11 @@ Growth Engine is ready for first controlled use only when:
 - campaign dry-run blocks unsafe launches
 - email sends include unsubscribe and suppression handling
 - WhatsApp is assisted/manual only
+- WhatsApp API sends are blocked unless governance audit, opt-in proof, approved template or open service window, sender health, pacing, and webhook readiness pass
+- WhatsApp templates have approved status, category match, quality status, owner, variables, and version records
+- WhatsApp conversation state tracks customer service window, free entry point window where applicable, last inbound, and template-required state
+- WhatsApp webhooks are signature-verified and update message outcome, reply, suppression, template, and reputation state
+- WhatsApp Flows attach structured owner-confirmed truth to the Business Truth Graph only after validation
 - DNC/complaint detection cancels pending actions
 - tracked routes connect to real MenuList onboarding flows
 - feedback events update attribution summaries

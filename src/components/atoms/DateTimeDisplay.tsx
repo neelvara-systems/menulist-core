@@ -1,8 +1,7 @@
 import {
-    getFormatedDate,
-    getFormatedDateAndTime,
-    getFormatedTime,
+    formatDateTime,
     toDate,
+    type DateLike,
 } from "@util/dateTime";
 import { timeAgo } from "@util/dateTime/timeAgo";
 import { Space, Typography } from "antd";
@@ -15,15 +14,16 @@ const { Text } = Typography;
 type DisplayMode = "date" | "time" | "datetime" | "fromnow";
 
 interface GenericDateTimeDisplayProps {
-    value?: Timestamp | Date | string | null;
+    value?: DateLike;
     mode?: DisplayMode; // default 'date'
     label?: string;
     style?: React.CSSProperties;
+    fallback?: string;
 }
 
-const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = "date", label, style }) => {
+const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = "date", label, style, fallback = "" }) => {
     const formatter = useFormatter();
-    if (!value) return null;
+    if (!value) return fallback ? <Text type="secondary" style={style}>{fallback}</Text> : null;
 
     // Normalize any date-like value into a plain JS Date
     const dateObj = toDate(value as any);
@@ -32,17 +32,17 @@ const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = 
     let displayValue: string | null = null;
     switch (mode) {
         case "datetime":
-            displayValue = getFormatedDateAndTime(formatter, dateObj);
+            displayValue = formatDateTime(dateObj, "datetime", formatter);
             break;
         case "time":
-            displayValue = getFormatedTime(formatter, dateObj);
+            displayValue = formatDateTime(dateObj, "time", formatter);
             break;
         case "fromnow":
             displayValue = timeAgo(dateObj);
             break;
         case "date":
         default:
-            displayValue = getFormatedDate(formatter, dateObj);
+            displayValue = formatDateTime(dateObj, "date", formatter);
             break;
     }
 

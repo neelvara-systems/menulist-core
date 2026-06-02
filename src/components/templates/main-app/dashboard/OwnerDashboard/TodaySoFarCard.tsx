@@ -1,18 +1,20 @@
-import { ClockCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData } from '@template/main-app/projects/types';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import React from 'react';
+import { LuClock, LuInfo } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
 
-function formatUpdatedTime(value?: Date | string): string | null {
+function formatUpdatedTime(value: Date | string | undefined, formatter: IntlFormatter): string | null {
     if (!value) return null;
     const parsed = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(parsed.getTime())) return null;
 
-    return parsed.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    return formatDateTime(parsed, 'time', formatter);
 }
 
 interface TodaySoFarCardProps {
@@ -29,6 +31,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     title = 'Menu',
 }) => {
     const labels = useOfferingLabels();
+    const formatter = useFormatter();
 
     if (loading) {
         return (
@@ -55,7 +58,7 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
         );
     }
 
-    const updatedLabel = formatUpdatedTime(fetchedAt);
+    const updatedLabel = formatUpdatedTime(fetchedAt, formatter);
 
     const hasActions = Object.values(data.menuActions || {}).some((value) => Number(value) > 0);
     const topSearch = data.topSearchTerms?.[0];
@@ -113,13 +116,13 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                             {title}
                         </Title>
                         <Popover content={detailContent} title="Today so far">
-                            <Button icon={<InfoCircleOutlined />} size="small" type="text" />
+                            <Button icon={<LuInfo />} size="small" type="text" />
                         </Popover>
                     </div>
                     <Text type="secondary">Current menu activity for today.</Text>
                 </div>
                 <div className={styles.todayCardMeta}>
-                    <ClockCircleOutlined />
+                    <LuClock />
                     <Text type="secondary">
                         {updatedLabel ? `Updated ${updatedLabel}` : 'Live partial data'}
                     </Text>

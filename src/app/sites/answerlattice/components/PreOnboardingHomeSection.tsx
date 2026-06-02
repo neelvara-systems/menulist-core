@@ -15,7 +15,7 @@ const PRE_ONBOARDING_STEPS = [
     },
     {
         icon: LuShieldCheck,
-        title: 'Review before Answerlattice learns',
+        title: 'Review before AnswerLattice learns',
         description: 'Private data stays out, risky claims stay gated, and blocked sources remain pending.',
     },
 ];

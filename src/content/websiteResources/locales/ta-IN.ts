@@ -22,6 +22,8 @@ export const taINResourceTranslationPack: WebsiteResourceTranslationPack = {
         "backToHub": "வளங்களுக்குத் திரும்பு",
         "checklist": "சரிபார்ப்பு பட்டியல்",
         "comparison": "ஒப்பீடு",
+        "copiedChecklist": "சரிபார்ப்பு பட்டியல் நகலெடுக்கப்பட்டது",
+        "copyChecklist": "சரிபார்ப்பு பட்டியலை நகலெடு",
         "faqTitle": "உரிமையாளர்கள் கேட்கும் கேள்விகள்",
         "onThisPage": "இந்தப் பக்கத்தில்",
         "primaryAction": "அடுத்த படி",
@@ -688,6 +690,196 @@ export const taINResourceTranslationPack: WebsiteResourceTranslationPack = {
                 }
             }
         },
+                  "restaurant-menu-schema": {
+                            "title": "Restaurant menu schema வாடிக்கையாளர்கள் பார்க்கும் உள்ளடக்கத்தையே காட்ட வேண்டும்",
+                            "metaTitle": "Restaurant Menu Schema Guide | MenuList",
+                            "metaDescription": "Public restaurant menu pages க்கான structured-data guide.",
+                            "description": "Public restaurant menu pages க்கான structured-data guide.",
+                            "quickAnswer": "Restaurant menu schema visible public menu content உடன் match ஆக வேண்டும். Restaurant அல்லது LocalBusiness business க்கு, Menu, MenuSection, MenuItem visible menu க்கு. Hidden prices, fake reviews, unavailable details markup செய்ய வேண்டாம்.",
+                            "primaryCtaLabel": "Structured menu page publish செய்யவும்",
+                            "distributionSnippets": [
+                                      "Restaurant menu schema வாடிக்கையாளர்கள் பார்க்கும் உள்ளடக்கத்தையே காட்ட வேண்டும்",
+                                      "Restaurant menu schema visible public menu content உடன் match ஆக வேண்டும். Restaurant அல்லது LocalBusiness business க்கு, Menu, MenuSection, MenuItem visible menu க்கு. Hidden prices, fake reviews, unavailable details markup செய்ய வேண்டாம்."
+                            ],
+                            "sections": {
+                                      "schema-types": {
+                                                "title": "Schema types",
+                                                "body": [
+                                                          "Public restaurant menu pages க்கான structured-data guide."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name உடன் match ஆக வேண்டும்.",
+                                                          "Visible price Offer price உடன் match ஆக வேண்டும்.",
+                                                          "Hidden FAQ answers markup செய்ய வேண்டாம்.",
+                                                          "Use Menu, MenuSection, and MenuItem for visible menu content.",
+                                                          "Use FAQPage only for FAQ content visible on the page."
+                                                ]
+                                      },
+                                      "visible-content": {
+                                                "title": "Visible content match",
+                                                "body": [
+                                                          "Restaurant menu schema visible public menu content உடன் match ஆக வேண்டும். Restaurant அல்லது LocalBusiness business க்கு, Menu, MenuSection, MenuItem visible menu க்கு. Hidden prices, fake reviews, unavailable details markup செய்ய வேண்டாம்."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name உடன் match ஆக வேண்டும்.",
+                                                          "Visible price Offer price உடன் match ஆக வேண்டும்.",
+                                                          "Hidden FAQ answers markup செய்ய வேண்டாம்.",
+                                                          "Mobile data இல் URL open செய்யவும்."
+                                                ]
+                                      },
+                                      "common-mistakes": {
+                                                "title": "Common mistakes",
+                                                "checklist": [
+                                                          "Hidden FAQ answers markup செய்ய வேண்டாம்.",
+                                                          "Old PDFs main customer link ஆக இருக்கக் கூடாது.",
+                                                          "Old prices structured data मध्ये/में/లో रखना ತಪ್ಪు.",
+                                                          "Schema does not guarantee ranking."
+                                                ]
+                                      },
+                                      "how-menulist-fits": {
+                                                "title": "MenuList எப்படி பொருந்தும்",
+                                                "body": [
+                                                          "MenuList keeps public menu pages structured around the owner-approved source.",
+                                                          "External search and AI systems decide what they crawl, show, cite, or ignore."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "schema-guarantee": {
+                                                "question": "Schema ranking guarantee செய்கிறதா?",
+                                                "answer": "இல்லை. Schema page ஐ புரிந்துகொள்ள உதவும்; search systems crawl, rank மற்றும் rich results ஐ தாங்களே முடிவு செய்கின்றன."
+                                      },
+                                      "hidden-menu-items": {
+                                                "question": "Hidden items schema இல் add செய்யலாமா?",
+                                                "answer": "இல்லை. Structured data public page உடன் match ஆக வேண்டும்."
+                                      }
+                            }
+                  },
+                  "official-menu-url-checklist": {
+                            "title": "One stable menu URL ஐ customers பார்க்கும் எல்லா இடங்களிலும் use செய்யவும்",
+                            "metaTitle": "Official Menu URL Checklist for Restaurants | MenuList",
+                            "metaDescription": "Scattered menu links ஐ one approved source URL மூலம் replace செய்யும் checklist.",
+                            "description": "Scattered menu links ஐ one approved source URL மூலம் replace செய்யும் checklist.",
+                            "quickAnswer": "One stable menu URL ஐ customers பார்க்கும் எல்லா இடங்களிலும் use செய்யவும். Stable URL keeps QR, Google, social, website, WhatsApp, print, screens, and branch pages pointed to the current approved menu source.",
+                            "primaryCtaLabel": "Stable menu URL உருவாக்கவும்",
+                            "distributionSnippets": [
+                                      "One stable menu URL ஐ customers பார்க்கும் எல்லா இடங்களிலும் use செய்யவும்",
+                                      "Use one stable URL instead of sending a new file link after every update."
+                            ],
+                            "sections": {
+                                      "choose-source-url": {
+                                                "title": "Source URL தேர்வு செய்யவும்",
+                                                "body": [
+                                                          "Choose a public menu page the owner can keep current. The URL should stay stable when prices, items, photos, or availability change."
+                                                ],
+                                                "checklist": [
+                                                          "Use a short public URL.",
+                                                          "Open on mobile without login.",
+                                                          "Menu is owner-approved.",
+                                                          "Page updates without changing the URL."
+                                                ]
+                                      },
+                                      "update-surfaces": {
+                                                "title": "Customer-facing surfaces update செய்யவும்",
+                                                "checklist": [
+                                                          "QR codes.",
+                                                          "Google Business Profile menu link.",
+                                                          "Instagram and WhatsApp links.",
+                                                          "Website menu buttons.",
+                                                          "Print files and screens.",
+                                                          "Branch pages and branch QR cards."
+                                                ]
+                                      },
+                                      "test-before-printing": {
+                                                "title": "Printing முன் test செய்யவும்",
+                                                "checklist": [
+                                                          "Mobile data இல் URL open செய்யவும்.",
+                                                          "Final print size இல் QR scan செய்யவும்.",
+                                                          "Check title, prices, and availability.",
+                                                          "Ask staff to send the same URL.",
+                                                          "Old PDFs main customer link ஆக இருக்கக் கூடாது."
+                                                ]
+                                      },
+                                      "limits": {
+                                                "title": "URL force செய்ய முடியாதவை",
+                                                "body": [
+                                                          "A clear official URL reduces confusion, but external sites still decide when cached or old information refreshes."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "new-qr-every-update": {
+                                                "question": "ஒவ்வொரு update க்கும் புதிய QR தேவையா?",
+                                                "answer": "இல்லை. Stable menu URL இருந்தால் same printed QR வைத்து menu update செய்யலாம்."
+                                      },
+                                      "delete-old-pdfs": {
+                                                "question": "Old PDFs remove செய்ய வேண்டுமா?",
+                                                "answer": "Old public PDFs main menu link ஆக இருக்கக் கூடாது. Current backup files மட்டும் வைத்திருக்கவும்."
+                                      }
+                            }
+                  },
+                  "restaurant-qr-menu-mistakes": {
+                            "title": "Common QR menu mistakes restaurants தவிர்க்க வேண்டும்",
+                            "metaTitle": "Common QR Menu Mistakes Restaurants Should Avoid | MenuList",
+                            "metaDescription": "Table cards அல்லது packaging print செய்வதற்கு முன் QR menu mistake list.",
+                            "description": "Table cards அல்லது packaging print செய்வதற்கு முன் QR menu mistake list.",
+                            "quickAnswer": "QR code menu அல்ல. அது stable current menu source க்கு access point மட்டும். Readable placement, fallback URL மற்றும் scan testing தேவை.",
+                            "primaryCtaLabel": "Stable QR menu set up செய்யவும்",
+                            "distributionSnippets": [
+                                      "QR code menu அல்ல. அது stable current menu source க்கு access point மட்டும். Readable placement, fallback URL மற்றும் scan testing தேவை.",
+                                      "A QR menu fails when the link, placement, or branch version is wrong."
+                            ],
+                            "sections": {
+                                      "pdf-only": {
+                                                "title": "Mistake 1: QR old PDF திறக்கிறது",
+                                                "body": [
+                                                          "A PDF can be useful for print, but it becomes stale through WhatsApp, old website links, or old QR cards."
+                                                ],
+                                                "checklist": [
+                                                          "Main QR destination mobile-friendly menu page ஆக இருக்க வேண்டும்.",
+                                                          "Keep PDF secondary for print or backup.",
+                                                          "Replace old PDF links when prices change."
+                                                ]
+                                      },
+                                      "unstable-links": {
+                                                "title": "Mistake 2: update தோறும் link மாறுகிறது",
+                                                "body": [
+                                                          "If every update creates a new URL, printed QR material becomes risky. A stable URL is safer."
+                                                ],
+                                                "checklist": [
+                                                          "One stable public menu URL use செய்யவும்.",
+                                                          "Update content behind the URL.",
+                                                          "Keep staff replies and social links on the same source."
+                                                ]
+                                      },
+                                      "placement-testing": {
+                                                "title": "Mistake 3: scan testing இல்லாமல் print செய்கிறார்கள்",
+                                                "checklist": [
+                                                          "Final print size இல் QR scan செய்யவும்.",
+                                                          "iPhone மற்றும் Android cameras test செய்யவும்.",
+                                                          "Test in customer lighting.",
+                                                          "Print a readable fallback URL.",
+                                                          "Mobile data இல் URL open செய்யவும்."
+                                                ]
+                                      },
+                                      "branch-mismatch": {
+                                                "title": "Mistake 4: wrong branch menu",
+                                                "body": [
+                                                          "Branches may have different prices, availability, hours, or service modes. When those differences matter, QR should open the correct branch version."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "biggest-qr-mistake": {
+                                                "question": "Common QR mistake என்ன?",
+                                                "answer": "QR old அல்லது hard-to-read menu file திறக்கிறது; stable current menu page அல்ல."
+                                      },
+                                      "branch-specific-qr": {
+                                                "question": "ஒவ்வொரு branch க்கும் தனி QR menu வேண்டுமா?",
+                                                "answer": "Prices, availability, hours அல்லது service details branch அடிப்படையில் வேறுபட்டால் ஆம்."
+                                      }
+                            }
+                  },
         "multi-location-menu-management": {
             "title": "உள்ளூர் வேறுபாடுகளை மறைக்காமல் அவுட்லெட் மெனுக்களை சீரமைத்து வைக்கவும்",
             "metaTitle": "பல இருப்பிட மெனு மேலாண்மை | MenuList",

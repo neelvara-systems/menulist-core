@@ -78,6 +78,7 @@ export function buildMenuSnapshot(
 export function buildTestPayload(
     storeId: number,
     tenantId: number,
+    currency = 'INR',
 ): PosSyncPayload {
     return {
         event: 'test.ping',
@@ -86,7 +87,7 @@ export function buildTestPayload(
         tenantId,
         projectId: 'test',
         storeId,
-        currency: 'INR',
+        currency: currency || 'INR',
         languages: [{ code: 'en', name: 'English', isPrimary: true }],
         menu: {
             categories: [{

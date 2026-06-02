@@ -199,6 +199,7 @@
         "dateFormatHelper": "This controls how dates are shown to your team inside the app.",
         "timeFormatHelper": "Pick the clock style your team reads most easily, like 12-hour or 24-hour time.",
         "currencyHelper": "Set the currency customers should see on prices for this outlet.",
+        "currency": "العملة",
         "contentLanguageTitle": "Content language",
         "contentLanguageHelper": "Switch the language here to review or edit what customers see in that language. Empty fields mean this language still needs content.",
         "addPlatform": "Add Platform",
@@ -871,7 +872,7 @@
         "reset": "Reset",
         "refresh": "Refresh",
         "totalItems": "Total {total} items",
-        "subtitle": "تتبع استخدام معالجة الذكاء الاصطناعي والطوابع الزمنية ورسوم الفوترة للعمليات الأخيرة."
+        "subtitle": "تتبع نشاط تحسين القائمة والتوقيت واستخدام الرصيد."
     },
     "Users": {
         "title": "Users",

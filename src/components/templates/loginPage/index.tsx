@@ -2,6 +2,7 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
 import { EMPTY_ERROR } from "@constant/common";
+import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
@@ -86,16 +87,31 @@ function LoginPage() {
       : `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;
   };
 
+  const isAnswerlatticeRedirectTarget = (target: string, isAnswerlatticeHost = false) => (
+    target === '/answerlattice'
+    || target.startsWith('/answerlattice/')
+    || target === ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX
+    || target.startsWith(`${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/`)
+    || (isAnswerlatticeHost && (target === CLIENT_DASHBOARD_ROUTING || target.startsWith('/dashboard')))
+  );
+
+  const shouldRequestAnswerlatticeClaims = () => {
+    if (typeof window === 'undefined') return false;
+    const isAnswerlatticeHost = isAnswerlatticeProductHostname(window.location.hostname);
+    return isAnswerlatticeHost || isAnswerlatticeRedirectTarget(getPostLoginRedirect(), isAnswerlatticeHost);
+  };
+
+  const getSetClaimsBody = (payload: Record<string, unknown> = {}) => ({
+    ...payload,
+    ...(shouldRequestAnswerlatticeClaims() ? { productId: PRODUCT_IDS.ANSWERLATTICE } : {}),
+  });
+
   const getSafePostLoginRedirect = () => {
     const target = getPostLoginRedirect();
     if (typeof window === 'undefined') return target;
 
     const isAnswerlatticeHost = isAnswerlatticeProductHostname(window.location.hostname);
-    const isAnswerlatticeTarget = target === '/answerlattice'
-      || target.startsWith('/answerlattice/')
-      || target === ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX
-      || target.startsWith(`${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/`)
-      || (isAnswerlatticeHost && (target === CLIENT_DASHBOARD_ROUTING || target.startsWith('/dashboard')));
+    const isAnswerlatticeTarget = isAnswerlatticeRedirectTarget(target, isAnswerlatticeHost);
     const hasAnswerlatticeAccess = Boolean(resolveAnswerlatticeSessionScope(sessionData)) || canUseAnswerlatticeManagement(sessionData);
 
     if (isAnswerlatticeTarget && !hasAnswerlatticeAccess) {
@@ -163,7 +179,7 @@ function LoginPage() {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}) // No UID - will create token
+                body: JSON.stringify(getSetClaimsBody({})) // No UID - will create token
               });
 
               if (setClaimsResponse.ok) {
@@ -191,7 +207,7 @@ function LoginPage() {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uid: currentUser.uid })
+                body: JSON.stringify(getSetClaimsBody({ uid: currentUser.uid }))
               });
 
               if (setClaimsResponse.ok) {
@@ -210,7 +226,7 @@ function LoginPage() {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify(getSetClaimsBody({}))
               });
 
               if (setClaimsResponse.ok) {
@@ -384,7 +400,7 @@ function LoginPage() {
           const setClaimsResponse = await fetch('/api/auth/set-claims', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: userCredential.user.uid })
+            body: JSON.stringify(getSetClaimsBody({ uid: userCredential.user.uid }))
           });
 
           if (setClaimsResponse.ok) {

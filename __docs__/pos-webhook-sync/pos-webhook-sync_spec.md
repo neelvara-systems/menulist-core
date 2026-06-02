@@ -268,6 +268,8 @@ The payload mirrors the actual `ExtractedDataItem` and `ExtractedDataCategory` s
 
 This follows the same pattern as the existing `getOutputJson()` in `ShareModal.tsx` — but includes ALL fields instead of the Excel-friendly subset.
 
+`currency` is the store-level `currencyCode` selected in Business Settings / Mobile Language & Region. Test payloads, downloadable samples, public pull responses, and live webhook deliveries must use the same store currency code.
+
 ```json
 {
   "event": "menu.full.sync",

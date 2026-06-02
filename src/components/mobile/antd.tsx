@@ -217,7 +217,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
-    const touchMinHeight = antSize === 'large' ? 50 : antSize === 'small' ? 40 : 46;
+    const touchMinHeight = antSize === 'large' ? 50 : antSize === 'small' ? 44 : 46;
     const touchSafeStyle = fill !== 'none'
         ? { minHeight: touchMinHeight, paddingInline: (block || antSize !== 'small') ? 14 : undefined }
         : undefined;

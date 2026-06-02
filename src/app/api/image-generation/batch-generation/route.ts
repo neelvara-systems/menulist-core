@@ -2,11 +2,11 @@ export const dynamic = 'force-dynamic';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PER_CREDIT, TOKENS_PER_IMAGEN_IMAGE } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { getImageBatchProcessingJobById, updateImageBatchProcessingJob } from "@database/imageBatchProcessing";
 import { uploadFile } from "@database/projects";
 import { GenerateContentResponse } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { logger } from "@lib/monitoring/logger";
 import { BatchImageGenerationJobType, GenerateImageViaApiPayloadBatchType } from "@template/main-app/projects/types";
 import { getISOStringDate } from "@util/dateTime";
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
             totalTokenCount: 0,
             candidatesTokenCount: 0,
             promptTokenCount: 0,
-            transactionId: "test" // Default/fallback ID
+            transactionId: null
         };
 
         if (generatedImagesResponse?.length > 0) {
@@ -172,18 +172,22 @@ export async function POST(request: Request) {
                 realCostPaise: getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION),
                 ourChargePaise: getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION),
                 marginPaise: getOurChargePaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) - getRealCostPaise(AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION),
+                sId: Number(sId),
+                tId: Number(tId),
+                uId: userIdForLog === 'N/A' ? undefined : userIdForLog,
             };
 
-            // Add the operation to the database
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-            const transactionId = await addAiOperation(transactionObject);
-            logger.debug('Batch image generation transaction recorded', { transactionId });
-            transactionObject.transactionId = transactionId; // Update transaction ID
-            // Consume capacity after successful operation
-            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                const remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-                logger.debug('Batch generation capacity consumed', { remainingBalance });
-            }
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: { jobId, projectId, itemId: itemDetails.id, action: transactionObject.action, tId, sId },
+                input: transactionObject,
+                logLabel: 'Batch image generation',
+            });
+            logger.debug('Batch image generation transaction recorded', { transactionId: accounting.transactionId });
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+            transactionObject.transactionId = accounting.transactionId;
+            logger.debug('Batch generation capacity consumed', { remainingBalance: accounting.remainingBalance });
         }
 
         const updatedItems = [...currentJobData.itemsList];

@@ -15,6 +15,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { createAlert } from './alerts';
 
 // ================================================================
@@ -148,6 +149,9 @@ export async function updateStoreHealth(
           consecutiveFailures,
           checks: verificationResult.checks,
         },
+        triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PUBLISH_VERIFICATION_FAILED,
+        productId: 'ML',
+        category: 'public_output',
         actionRequired: true,
       });
     } catch (alertError) {

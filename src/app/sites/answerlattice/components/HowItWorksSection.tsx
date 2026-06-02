@@ -11,7 +11,7 @@ const STEPS = [
     {
         step: '2',
         title: 'Import starter knowledge',
-        description: 'Upload docs, starter articles, FAQs, and repeated owner Q&A. Answerlattice keeps support working through fallback while it prepares governed answer and FAQ drafts.',
+        description: 'Upload docs, starter articles, FAQs, and repeated owner Q&A. AnswerLattice keeps support working through fallback while it prepares governed answer and FAQ drafts.',
         visual: '✓',
     },
     {

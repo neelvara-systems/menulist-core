@@ -87,6 +87,7 @@ service cloud.firestore {
         && (isPlatformAdmin() || belongsToTenantById(tenantId));
       allow create: if isAuthenticated() && isPlatformAdmin();
       allow update: if isAuthenticated()
+        && isValidStoreUrlAnchorUpdate()
         && (
           isPlatformAdmin()
           || (
@@ -765,11 +766,8 @@ service cloud.firestore {
     }
 
     match /menulistAiOperations/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
-      allow write: if isAuthenticated()
-        && belongsToTenant(tId)
-        && belongsToStoreById(sId);
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -900,20 +898,10 @@ service cloud.firestore {
                     || isPlatformAdmin()
                   );
       
-      // Create: Must include tenant context, match user's tenant, and start as pending
-      // Security: Validates tId/sId match authenticated user's claims
-      //           to prevent cross-tenant project injection via crafted projectId
-      allow create: if isAuthenticated()
-                    && (
-                      request.resource.data.uId == request.auth.uid
-                      || request.resource.data.uId == request.auth.token.uId
-                    )
-                    && request.resource.data.status == 'pending'
-                    && request.resource.data.tId is string
-                    && request.resource.data.sId is string
-                    && request.resource.data.tId == string(request.auth.token.tenantId)
-                    && request.resource.data.sId == string(request.auth.token.storeId)
-                    && request.resource.data.projectId is string;
+      // Create: server-only. Authenticated owner surfaces queue extraction through
+      // /api/menu-extraction/jobs so project existence, upload URLs, rate limits,
+      // and menu-intake identity checks are enforced before the job exists.
+      allow create: if false;
       
       // Update: Only allow cancellation from client
       // pending → cancelled or processing → cancelling
@@ -1019,6 +1007,12 @@ service cloud.firestore {
         );
     }
 
+    function isValidStoreUrlAnchorUpdate() {
+      let changingSubdomain = request.resource.data.diff(resource.data).affectedKeys().hasAny(['subdomain']);
+      let wasPublished = resource.data.keys().hasAny(['lastPublishedAt']) && resource.data.lastPublishedAt != null;
+      return !(wasPublished && changingSubdomain);
+    }
+
     function docIdMatchesCurrentTenantStore(docId) {
       return request.auth != null
         && request.auth.token.tenantId != null
@@ -1113,10 +1107,22 @@ service cloud.firestore {
       return (
         request.resource.data.status == 'cancelling'
         && resource.data.status == 'processing'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt'
+        ])
+        && request.resource.data.updatedAt is timestamp
       )
       || (
         request.resource.data.status == 'cancelled'
         && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'completedAt',
+          'updatedAt'
+        ])
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
       );
     }
 

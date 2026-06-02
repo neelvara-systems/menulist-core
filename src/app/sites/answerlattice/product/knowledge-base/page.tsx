@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('knowledge-base');
 
 if (!feature) {
-    throw new Error('Answerlattice Knowledge Base feature configuration is missing.');
+    throw new Error('AnswerLattice Knowledge Base feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

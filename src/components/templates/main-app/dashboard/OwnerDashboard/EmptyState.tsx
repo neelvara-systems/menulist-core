@@ -5,9 +5,9 @@
  * Non-alarming, encouraging tone.
  */
 
-import { LineChartOutlined } from '@ant-design/icons';
 import { Card, Empty, Typography, theme } from 'antd';
 import React from 'react';
+import { LuLineChart } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
@@ -29,7 +29,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     return (
         <Card className={styles.emptyStateCard}>
             <Empty
-                image={icon || <LineChartOutlined className={styles.emptyIcon} />}
+                image={icon || <LuLineChart className={styles.emptyIcon} />}
                 imageStyle={{ height: 60, fontSize: 48, color: token.colorTextQuaternary }}
                 description={
                     <div className={styles.emptyContent}>

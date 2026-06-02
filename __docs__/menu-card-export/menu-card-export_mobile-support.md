@@ -1,6 +1,6 @@
 # Menu Card Export — Mobile Support Assessment
 
-**Status:** Production-ready route entry and responsive owner workflow
+**Status:** Production-ready route entry with dedicated mobile Print Menu screen
 **Route:** `/use-menulist/menu-card-export`
 **Last Updated:** June 2, 2026
 
@@ -42,12 +42,13 @@ Implemented behavior:
 - Mobile Share opens `/use-menulist/menu-card-export?projectId=...` when the feature flag is enabled.
 - Mobile Menu command sheet exposes `Print Menu` and saves pending local edits before opening the route: `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/components/MobileMenuCommandSheet.tsx:185`.
 - More > Modules exposes `Print Menu` beside Dashboard for owners who look for tools from More; the analytics dashboard screen stays metric-only: `src/components/mobile/screens/MobileMoreScreen.tsx:442`.
-- The main owner layout treats `/use-menulist/menu-card-export` as a handheld shell-bypass route, so the responsive export workflow renders on phones instead of falling back into the generic Mobile Share tab.
-- The routed workflow is responsive and uses the same shared export library as desktop.
+- The main owner layout treats `/use-menulist/menu-card-export` as a handheld shell-bypass route, so the route can render the dedicated mobile Print Menu screen instead of falling back into the generic Mobile Share tab.
+- The mobile screen uses `MobileMenuCardExportScreen` and the shared `useMenuCardExportController`, so mobile has its own UI without a separate DAL or export system.
 - Multi-menu stores use the same shared project selector pattern as other owner/mobile project surfaces.
 - The route gates preview/export by the loaded project id so a project switch cannot mix old menu data with the newly selected menu URL.
+- The shared controller auto-picks a business-aware starting layout, density, and safe toggles from the current menu before any owner action or AI call.
 - Default generation remains client-side with no Firebase writes.
-- Pro/Premium layout suggestion is available from the same responsive route and uses the same plan/capacity-gated API as desktop.
+- Pro/Premium layout suggestion is available from the dedicated mobile screen and uses the same plan/capacity-gated API as desktop.
 
 ---
 
@@ -61,7 +62,7 @@ Required behavior:
 - Mobile Menu must save pending local edits before opening the export route.
 - Project selector appears only when more than one menu exists.
 - Job preset selector appears before style selection.
-- Style selector is a horizontal scroller.
+- Style selector is a horizontal scroller and shows the auto-picked option.
 - Settings are switches/segmented controls.
 - Preflight summary appears before page preview when there are blockers.
 - Preview pages are swipeable.
@@ -90,8 +91,9 @@ Mobile uses:
 - Same API routes as desktop.
 - Same `MenuCardPrintSource`.
 - Same template registry.
-- Same export records.
+- Same device-local export history model.
 - Same artifact download flow.
+- Same `createArtifact` controller action for dashboard and mobile outputs.
 - Same Pro/Premium layout suggestion API.
 - Same preflight engine.
 - Same print-shop packet builder.
@@ -99,6 +101,8 @@ Mobile uses:
 - Same permission checks.
 
 Mobile does not use a separate export collection or separate renderer.
+Mobile does not render the desktop Ant Design layout on phones; the route branches to the dedicated mobile screen after device detection.
+Mobile and dashboard screens must not call `renderPdf`, `buildPrintShopPacket`, `buildPrintSource`, or local history writes directly. The shared controller owns the output pipeline so the same project/settings/source hash create the same PDF or packet from either surface.
 
 ---
 
@@ -141,5 +145,5 @@ Avoid:
 | Failure | Failed export shows retry without technical error text. |
 | Freshness | Old exports show whether the menu changed. |
 | Performance | Style browsing does not generate server PDFs. |
-| Parity | Desktop and mobile create the same export record for the same settings. |
+| Parity | Dashboard and mobile call the same controller output action and create the same PDF/packet for the same project, preset, style, density, toggles, and source hash. |
 | Edited menu | Opening Print Menu from the mobile Menu command sheet waits for pending menu saves before route navigation. |

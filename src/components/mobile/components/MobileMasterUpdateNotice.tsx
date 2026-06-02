@@ -4,6 +4,7 @@ import useMasterUpdateAwareness from '@hook/useMasterUpdateAwareness';
 import { buildSummaryText } from '@lib/multiOutlet/masterUpdateDiff';
 import type { Project } from '@template/main-app/projects/types/project.types';
 import type { MasterUpdateDiff, OperationalChange } from '@type/multiOutlet.types';
+import { theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuBell, LuCheck, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Popup, Tag, Text, Title } from '../antd';
@@ -30,6 +31,7 @@ export default function MobileMasterUpdateNotice({
     project,
     onProjectUpdate,
 }: MobileMasterUpdateNoticeProps) {
+    const { token } = theme.useToken();
     const [detailOpen, setDetailOpen] = useState(false);
     const {
         acknowledge,
@@ -60,8 +62,8 @@ export default function MobileMasterUpdateNotice({
             <Card
                 size="small"
                 style={{
-                    backgroundColor: showBanner ? '#eef6ff' : undefined,
-                    borderColor: showBanner ? '#91caff' : undefined,
+                    backgroundColor: showBanner ? token.colorPrimaryBg : undefined,
+                    borderColor: showBanner ? token.colorPrimaryBorder : undefined,
                     marginBottom: 0,
                 }}
             >
@@ -93,8 +95,8 @@ export default function MobileMasterUpdateNotice({
                         align="center"
                         justify="space-between"
                         style={{
-                            backgroundColor: '#fff',
-                            borderBottom: '1px solid #f0f0f0',
+                            backgroundColor: token.colorBgContainer,
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
                             minHeight: 52,
                             padding: '6px 12px',
                         }}
@@ -106,7 +108,7 @@ export default function MobileMasterUpdateNotice({
                         <Button
                             fill="none"
                             onClick={() => setDetailOpen(false)}
-                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >
                             <LuX size={18} />
                         </Button>
@@ -117,7 +119,7 @@ export default function MobileMasterUpdateNotice({
                             <div
                                 key={`${change.type}-${change.entityId}`}
                                 style={{
-                                    border: '1px solid #f0f0f0',
+                                    border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 8,
                                     padding: '10px 12px',
                                 }}
@@ -151,7 +153,7 @@ export default function MobileMasterUpdateNotice({
                         ) : null}
                     </Flex>
 
-                    <Flex gap={8} style={{ borderTop: '1px solid #f0f0f0', padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }}>
+                    <Flex gap={8} style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, padding: '12px 12px calc(12px + env(safe-area-inset-bottom))' }}>
                         <Button block fill="outline" onClick={() => setDetailOpen(false)}>
                             Close
                         </Button>

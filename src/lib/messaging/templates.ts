@@ -41,17 +41,17 @@ const TEMPLATES: Record<string, TemplateFn> = {
 
   PAYMENT_SUCCESS: (m) => ({
     subject: `Payment received — ${m.storeName || 'MenuList'}`,
-    html: wrap(`<h2 style="${S.h2}">Payment received</h2><p style="${S.p}">Your subscription payment for <strong>${m.storeName || 'your business'}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${m.currency || 'INR'} ${m.amount || '0'}<br><strong>Plan:</strong> ${m.planName || 'Subscription'}<br><strong>Next billing date:</strong> ${m.nextBillingDate || 'See dashboard'}</div><p style="${S.p}">No action required. Your service continues uninterrupted.</p>`),
+    html: wrap(`<h2 style="${S.h2}">Payment received</h2><p style="${S.p}">Your subscription payment for <strong>${m.storeName || 'your business'}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${m.amountLabel || `${m.currency || 'INR'} ${m.amount || '0'}`}<br><strong>Plan:</strong> ${m.planName || 'Subscription'}<br><strong>Next billing date:</strong> ${m.nextBillingDate || 'See dashboard'}</div><p style="${S.p}">No action required. Your service continues uninterrupted.</p>`),
   }),
 
   PAYMENT_FAILED: (m) => ({
     subject: `Payment failed — Action needed — ${m.storeName || 'MenuList'}`,
-    html: wrap(`<h2 style="${S.h2}">Payment could not be processed</h2><p style="${S.p}">We were unable to process the payment of <strong>${m.currency || 'INR'} ${m.amount || '0'}</strong> for <strong>${m.storeName || 'your business'}</strong>.</p><div style="${S.crit}"><strong>What to do:</strong><br>Please ensure your payment method has sufficient funds. The system will retry automatically.</div><p style="${S.p}">Your menu remains accessible to customers during this period.</p>`),
+    html: wrap(`<h2 style="${S.h2}">Payment could not be processed</h2><p style="${S.p}">We were unable to process the payment of <strong>${m.amountLabel || `${m.currency || 'INR'} ${m.amount || '0'}`}</strong> for <strong>${m.storeName || 'your business'}</strong>.</p><div style="${S.crit}"><strong>What to do:</strong><br>Please ensure your payment method has sufficient funds. The system will retry automatically.</div><p style="${S.p}">Your menu remains accessible to customers during this period.</p>`),
   }),
 
   RENEWAL_REMINDER: (m) => ({
     subject: `Upcoming renewal — ${m.storeName || 'MenuList'}`,
-    html: wrap(`<h2 style="${S.h2}">Subscription renewal in 3 days</h2><p style="${S.p}">Your <strong>${m.planName || 'subscription'}</strong> for <strong>${m.storeName || 'your business'}</strong> will renew on <strong>${m.renewalDate || 'soon'}</strong>.</p><div style="${S.info}"><strong>Amount:</strong> ${m.currency || 'INR'} ${m.amount || '0'}<br><strong>Renewal date:</strong> ${m.renewalDate || 'See dashboard'}</div><p style="${S.p}">Please ensure your payment method has sufficient funds.</p>`),
+    html: wrap(`<h2 style="${S.h2}">Subscription renewal in 3 days</h2><p style="${S.p}">Your <strong>${m.planName || 'subscription'}</strong> for <strong>${m.storeName || 'your business'}</strong> will renew on <strong>${m.renewalDate || 'soon'}</strong>.</p><div style="${S.info}"><strong>Amount:</strong> ${m.amountLabel || `${m.currency || 'INR'} ${m.amount || '0'}`}<br><strong>Renewal date:</strong> ${m.renewalDate || 'See dashboard'}</div><p style="${S.p}">Please ensure your payment method has sufficient funds.</p>`),
   }),
 
   GRACE_PERIOD_STARTED: (m) => ({
@@ -66,7 +66,7 @@ const TEMPLATES: Record<string, TemplateFn> = {
 
   CREDIT_PURCHASE_SUCCESS: (m) => ({
     subject: `Credits added — ${m.storeName || 'MenuList'}`,
-    html: wrap(`<h2 style="${S.h2}">Credits added to your account</h2><p style="${S.p}">A credit pack has been added to <strong>${m.storeName || 'your business'}</strong>.</p><div style="${S.info}"><strong>Credits added:</strong> ${m.creditsAdded || '0'}<br><strong>New balance:</strong> ${m.newBalance || 'See dashboard'}<br>${m.amount ? `<strong>Amount paid:</strong> ${m.currency || 'INR'} ${m.amount}` : ''}</div><p style="${S.p}">Credits are available immediately for AI features.</p>`),
+    html: wrap(`<h2 style="${S.h2}">Credits added to your account</h2><p style="${S.p}">A credit pack has been added to <strong>${m.storeName || 'your business'}</strong>.</p><div style="${S.info}"><strong>Credits added:</strong> ${m.creditsAdded || '0'}<br><strong>New balance:</strong> ${m.newBalance || 'See dashboard'}<br>${m.amount ? `<strong>Amount paid:</strong> ${m.amountLabel || `${m.currency || 'INR'} ${m.amount}`}` : ''}</div><p style="${S.p}">Credits are available immediately for AI features.</p>`),
   }),
 
   CREDITS_EXHAUSTED: (m) => ({

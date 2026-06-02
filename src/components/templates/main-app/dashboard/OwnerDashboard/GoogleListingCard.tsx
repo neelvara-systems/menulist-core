@@ -19,10 +19,11 @@ import { StoreDataType } from '@type/platform/store';
 import { updateStore } from '@database/stores';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
 import { useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink } from 'react-icons/lu';
-import { SiGooglemybusiness } from 'react-icons/si';
+import { LuCheck, LuCopy, LuExternalLink, LuStore } from 'react-icons/lu';
 
 const { Text } = Typography;
+// Google Business Profile blue is a brand cue; surrounding card chrome uses Ant tokens.
+const GOOGLE_BUSINESS_PROFILE_BLUE = '#4285F4';
 
 interface GoogleListingCardProps {
     storeDetails: StoreDataType;
@@ -122,7 +123,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         flexShrink: 0,
                     }}
                 >
-                    <SiGooglemybusiness size={16} style={{ color: '#4285F4' }} />
+                    <LuStore size={16} style={{ color: GOOGLE_BUSINESS_PROFILE_BLUE }} />
                 </Flex>
                 <Flex vertical style={{ flex: 1, minWidth: 0 }}>
                     <Text strong style={{ fontSize: 13 }}>Set your official link on Google</Text>
@@ -138,11 +139,12 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         Update your Google Business Profile website to {obpUrl}
                     </Text>
                 </Flex>
-                <Flex gap={6}>
+                <Flex gap={6} wrap="wrap" justify="flex-end">
                     <Button
                         size="small"
                         icon={copied ? <LuCheck size={12} /> : <LuCopy size={12} />}
                         onClick={handleCopy}
+                        style={{ minHeight: 32 }}
                     >
                         {copied ? 'Copied' : 'Copy'}
                     </Button>
@@ -150,6 +152,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         size="small"
                         icon={<LuExternalLink size={12} />}
                         onClick={() => window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')}
+                        style={{ minHeight: 32 }}
                     >
                         Open Google
                     </Button>
@@ -158,6 +161,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         type="primary"
                         onClick={handleMarkDone}
                         loading={saving}
+                        style={{ minHeight: 32 }}
                     >
                         Done
                     </Button>

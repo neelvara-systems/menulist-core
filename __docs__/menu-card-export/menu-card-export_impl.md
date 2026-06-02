@@ -56,6 +56,7 @@ src/lib/menu-card-export/
   source/buildBrandTokens.ts
   source/buildQrDestination.ts
   templates/registry.ts
+  templates/autoPrintDesign.ts
   templates/classic.template.ts
   templates/compact.template.ts
   templates/premium.template.ts
@@ -245,6 +246,52 @@ export type MenuCardSafeOverrides = {
 
 No custom CSS, arbitrary page coordinates, uploaded fonts, or free text boxes are accepted in this model.
 
+Brand source rules:
+
+- `buildPrintSource()` must prefer `store.publicPresence.accentColor`, matching OBP.
+- Logo comes from the existing store logo fields, primarily `store.logo`.
+- Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
+- The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices.
+- The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
+
+Business-type source rules:
+
+- `buildPrintSource()` must resolve `store.businessType` and `store.businessCategory` through `src/data/shared/businessTypes.ts`.
+- Stored `businessCategory` wins; derived category from `businessType` is fallback only.
+- `catalogKind` and `offeringKind` are copied into the print source so renderer and PDF metadata can distinguish food menus, product catalogs, and service lists.
+- `src/lib/menu-card-export/templates/businessPrintProfiles.ts` maps that metadata to quiet output labels and visual tone.
+- QR labels must say current menu, current services, or current catalog based on the resolved profile.
+- This is automatic. Do not add an owner-facing theme picker for vertical type inside Print Menu.
+
+Font and currency rules:
+
+- Font sizes are density-driven: compact, balanced, and comfortable each use fixed print-safe item, description, category, and spacing values.
+- Price column width is measured from the rendered price text so longer currency codes or ranges do not overlap item names.
+- Currency comes from store settings: `currencySymbol` first, then `currency`, then `currencyCode`.
+- PDF output must avoid unsupported currency glyphs in built-in PDF fonts. INR/`₹` renders as `Rs 120`; whole-number prices do not force `.00`; decimal prices keep two decimals; ranges and text prices are preserved.
+
+Physical-menu renderer rules:
+
+- `renderPdf()` owns the physical output look through `getVisualStyle()`, not through owner-provided CSS or custom layout input.
+- `getVisualStyle()` receives both the selected template family and the resolved business profile tone.
+- Every page gets a warm paper background and print border before content is drawn.
+- Classic uses a centered brand plaque, double border, ribbon-style category labels, and dotted price leaders.
+- Premium uses a quieter editorial header, serif/italic category hierarchy, and no dotted leaders.
+- Compact uses a warm card sheet, boxed category headings, and price leaders for dense menus.
+- Retail/product profiles use catalog-style boxed sections and price leaders.
+- Service/professional/health profiles use calmer service-list styling and avoid restaurant-only ornamentation.
+- New pages redraw the same paper/border base before continuing content.
+- This remains client-side CPU work and does not add Firebase reads/writes or Storage uploads.
+
+Auto print design rules:
+
+- `src/lib/menu-card-export/templates/autoPrintDesign.ts` resolves the first style, density, and safe toggles from the already-built print source.
+- Inputs are business profile, item count, category count, description coverage, variant presence, and selected preset.
+- The shared controller applies the auto design once per project/job/content shape, then stops if the owner manually changes style, density, or toggles.
+- Changing the job preset resets the auto-design key so the route can pick the right layout for Home Print, WhatsApp, Table Menu, or Print-shop Packet.
+- Auto print design is not the Pro/Premium AI advisor. It is deterministic browser logic and never consumes AI capacity.
+- The Pro/Premium advisor payload includes `autoDesignLabel`, `autoDesignReason`, `businessCategory`, `businessProfile`, and `offeringKind` so paid advice can refine the deterministic baseline instead of starting from scratch.
+
 ---
 
 ## Print Source Contract
@@ -263,6 +310,10 @@ export type MenuCardPrintSource = {
     logoUrl?: string;
     phone?: string;
     address?: string;
+    businessType?: string;
+    businessCategory?: string;
+    catalogKind: "menu" | "offerCatalog";
+    offeringKind: "menuItem" | "product" | "service";
     publicMenuUrl: string;
     brandColor?: string;
     brandTokens: MenuCardBrandTokens;
@@ -368,7 +419,7 @@ Use existing authenticated owner page context and DAL access for export. The Pro
 - Rate-limit before provider call.
 - Check plan and AI capacity before provider call.
 - Do not expose public Storage URLs because no Storage object is created.
-- Validate image URLs before embedding logo/photos into output.
+- Validate image URLs before embedding logo/photos into output; if a remote logo cannot be loaded safely, skip the image and keep the branded color output.
 - Generate QR from approved live-menu URL builders only; do not accept arbitrary owner-provided QR destination in launch scope.
 - Do not accept custom CSS or owner-supplied template code.
 
@@ -486,7 +537,7 @@ Rejected for this feature:
 - confidentiality labels
 - visible AI model/tool provenance
 
-Reason: Menu Card Export is a restaurant menu output workflow, not a report/deck exporter.
+Reason: Menu Card Export is an SMB menu/service/catalog output workflow, not a report/deck exporter.
 
 ---
 
@@ -533,8 +584,9 @@ Desktop layout:
 
 Mobile layout:
 
-- Full-screen route or sheet.
-- `/use-menulist/menu-card-export` bypasses the generic mobile shell so Mobile Share, Mobile Menu, and More open the responsive route itself.
+- Dedicated `MobileMenuCardExportScreen` with mobile-native cards, sheets, large controls, and sticky export actions.
+- `/use-menulist/menu-card-export` bypasses the generic mobile shell so the route can choose the mobile Print Menu screen instead of being absorbed by Mobile Share.
+- Desktop and mobile renderers both use `useMenuCardExportController` for project loading, source building, auto print design, preflight, export generation, local history, and Pro/Premium layout suggestion.
 - Mobile Menu command sheet flushes pending local menu edits before route navigation.
 - More > Modules exposes Print Menu beside Dashboard for discoverability; the analytics dashboard screen remains metric-only.
 - Horizontal preset/style cards.
@@ -586,7 +638,7 @@ npx tsc --noEmit --incremental false
 npm run verify:menu-card-export
 ```
 
-`npm run verify:menu-card-export` verifies route/library files, feature flags, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, and the absence of export-storage API routes.
+`npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, and the absence of export-storage API routes.
 
 Verifier must also assert:
 

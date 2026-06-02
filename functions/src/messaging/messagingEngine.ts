@@ -18,6 +18,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { sendEmailViaSMTP } from './providers/resend';
 import { resolveTemplate } from './templates';
@@ -157,6 +158,15 @@ async function logMessage(log: MessageLogDoc): Promise<void> {
 export async function sendLifecycleMessage(payload: SendMessagePayload): Promise<boolean> {
   const { storeId, tenantId, eventType, referenceId, metadata = {} } = payload;
 
+  if (FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+    try {
+      const { sendOwnerLifecycleNotification } = await import('../ownerNotifications/processor');
+      return await sendOwnerLifecycleNotification(payload);
+    } catch (error) {
+      console.error('[Messaging] Owner notification path failed, using legacy sender:', error);
+    }
+  }
+
   // 1. Feature flag
   const enabled = await isMessagingEnabled();
   if (!enabled) {
@@ -272,7 +282,7 @@ export async function checkRenewalReminders(): Promise<void> {
             amount: sub.amount,
             currency: sub.currency,
             planName: sub.planName,
-            renewalDate: sub.renewsOn?.toDate?.()?.toLocaleDateString?.() || 'soon',
+            renewalAt: sub.renewsOn?.toDate?.()?.toISOString?.() || null,
           },
         });
       } catch (err) {
@@ -338,6 +348,15 @@ export async function checkSuspensionWarnings(): Promise<void> {
  * Industry best practice: transient SMTP failures should be retried once.
  */
 export async function retryFailedMessages(): Promise<{ retried: number; succeeded: number }> {
+  if (FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+    try {
+      const { retryFailedOwnerNotifications } = await import('../ownerNotifications/processor');
+      return await retryFailedOwnerNotifications();
+    } catch (error) {
+      console.error('[Messaging] Owner notification retry failed, using legacy retry:', error);
+    }
+  }
+
   let retried = 0;
   let succeeded = 0;
 
@@ -390,6 +409,15 @@ export async function retryFailedMessages(): Promise<{ retried: number; succeede
  * Used by nightly scheduler to log a digest for founder visibility.
  */
 export async function getDailyMessageDigest(): Promise<{ sent: number; failed: number; total: number }> {
+  if (FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+    try {
+      const { getOwnerNotificationDigest } = await import('../ownerNotifications/processor');
+      return await getOwnerNotificationDigest();
+    } catch (error) {
+      console.error('[Messaging] Owner notification digest failed, using legacy digest:', error);
+    }
+  }
+
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 

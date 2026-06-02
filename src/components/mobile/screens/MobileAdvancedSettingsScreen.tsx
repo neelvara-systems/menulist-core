@@ -5,8 +5,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuExternalLink, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
-import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandYoutube } from 'react-icons/tb';
+import { LuExternalLink, LuMessageCircle, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -141,11 +140,11 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
     }, [mode, pageSubtitle, pageTitle]);
 
     const SOCIAL_PLATFORMS = [
-        { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL', icon: TbBrandFacebook },
-        { key: 'instagram', label: 'Instagram', placeholder: 'Instagram profile URL', icon: TbBrandInstagram },
-        { key: 'twitter', label: 'X (Twitter)', placeholder: 'Twitter profile URL', icon: TbBrandTwitter },
-        { key: 'youtube', label: 'YouTube', placeholder: 'YouTube channel URL', icon: TbBrandYoutube },
-        { key: 'linkedin', label: 'LinkedIn', placeholder: 'LinkedIn profile URL', icon: TbBrandLinkedin },
+        { key: 'facebook', label: 'Facebook', placeholder: 'Facebook profile URL', icon: LuMessageCircle },
+        { key: 'instagram', label: 'Instagram', placeholder: 'Instagram profile URL', icon: LuMessageCircle },
+        { key: 'twitter', label: 'X (Twitter)', placeholder: 'Twitter profile URL', icon: LuMessageCircle },
+        { key: 'youtube', label: 'YouTube', placeholder: 'YouTube channel URL', icon: LuMessageCircle },
+        { key: 'linkedin', label: 'LinkedIn', placeholder: 'LinkedIn profile URL', icon: LuMessageCircle },
     ];
 
     const knownPlatformMap = useMemo(
@@ -453,7 +452,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                             <Flex align="center" justify="space-between" gap={12}>
                                                 <Flex gap={2} style={{ minWidth: 0, flex: 1 }} vertical>
                                                     <Flex align="center" gap={8}>
-                                                        <platform.icon color="var(--adm-color-weak)" size={16} />
+                                                        <platform.icon color={token.colorTextTertiary} size={16} />
                                                         <Text strong>{platform.label}</Text>
                                                     </Flex>
                                                 </Flex>
@@ -462,7 +461,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                                         fill="outline"
                                                         onClick={() => openSocialLink(platform.value)}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuExternalLink size={12} />}
                                                     />
                                                     <Button
@@ -470,7 +469,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                                         fill="outline"
                                                         onClick={() => handleOpenEditSheet(platform.key)}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuPencil size={12} />}
                                                     />
                                                     <Button
@@ -482,7 +481,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                                             persistSocialMedia(nextSocialMedia);
                                                         }}
                                                         size="small"
-                                                        style={{ borderRadius: 10, minWidth: 36, paddingInline: 0 }}
+                                                        style={{ borderRadius: 10, minWidth: 44, paddingInline: 0 }}
                                                         icon={<LuTrash size={12} />}
                                                     />
                                                 </Flex>
@@ -502,7 +501,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                             </Flex>
                         ) : (
                             <Flex align="center" gap={10}>
-                                <LuShare2 color="#94a3b8" size={20} />
+                                <LuShare2 color={token.colorTextTertiary} size={20} />
                                 <Flex gap={2} vertical>
                                     <Text strong>No social profiles added</Text>
                                     <Text type="secondary">Add the links customers should use to find and trust your business.</Text>
@@ -529,7 +528,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                         <Text type="secondary">Turn this on to collect guest feedback from your public menu and feedback links.</Text>
                         <List>
                             <List.Item
-                                prefix={<LuMessageSquare color="#16a34a" size={18} />}
+                                prefix={<LuMessageSquare color={token.colorSuccess} size={18} />}
                                 extra={<Switch checked={feedbackEnabled} onChange={handleToggleFeedback} />}
                                 title={<Text>{t('enableFeedback')}</Text>}
                             />
@@ -636,7 +635,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                             <Button
                                 fill="none"
                                 onClick={() => setIsSocialPickerOpen(false)}
-                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                             >
                                 <LuX size={18} />
                             </Button>
@@ -656,14 +655,14 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                             setIsSocialPickerOpen(false);
                                             handleOpenEditSheet(platform.key);
                                         }}
-                                        prefix={<platform.icon color="#94a3b8" size={18} />}
+                                        prefix={<platform.icon color={token.colorTextTertiary} size={18} />}
                                         title={<Text strong>{platform.label}</Text>}
                                     />
                                 ))}
                                 <List.Item
                                     arrow
                                     onClick={handleAddCustomPlatform}
-                                    prefix={<LuPlus color="#94a3b8" size={18} />}
+                                    prefix={<LuPlus color={token.colorTextTertiary} size={18} />}
                                     title={<Text strong>Other Platform</Text>}
                                 />
                             </List>
@@ -672,7 +671,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                 <List.Item
                                     arrow
                                     onClick={handleAddCustomPlatform}
-                                    prefix={<LuPlus color="#94a3b8" size={18} />}
+                                    prefix={<LuPlus color={token.colorTextTertiary} size={18} />}
                                     title={<Text strong>Other Platform</Text>}
                                 />
                             </List>
@@ -705,7 +704,7 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
                                     setEditingPlatformValue('');
                                     setEditingPlatformLabel('');
                                 }}
-                                style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                             >
                                 <LuX size={18} />
                             </Button>

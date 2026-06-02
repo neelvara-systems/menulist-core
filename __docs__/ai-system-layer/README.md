@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** ✅ PHASE 1 COMPLETE — Key rotation + AI Gateway implemented globally  
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
-**Last Updated:** March 13, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -131,6 +131,18 @@ Gemini API (via @google/genai SDK)
 | `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_4` | Optional | Vercel + Firebase Secrets |
 
+### Accounting Guardrails
+
+Billable AI routes must finalize successful provider output through `src/lib/ai/accounting.ts`. The finalizer writes operation telemetry with Admin SDK access, then consumes paid capacity. Operation logging is best-effort; credit consumption is not. `menulistAiOperations/{tId}/{sId}` is read-scoped to the store/admin and write-denied to browser clients.
+
+Every declared `AI_ACTIONS_TYPES` value must be present in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`. Unknown AI actions throw during capacity/logging instead of defaulting to a free operation.
+
+Regression command:
+
+```bash
+npm run verify:ai-accounting
+```
+
 ---
 
-_Last Updated: March 13, 2026_
+_Last Updated: June 2, 2026_

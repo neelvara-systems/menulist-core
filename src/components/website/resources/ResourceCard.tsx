@@ -40,6 +40,7 @@ export default function ResourceCard({
                 eventName={eventName}
                 eventProps={{
                     cluster: article.cluster,
+                    cta_label: linkLabel,
                     slug: article.slug,
                     source_page: sourcePage,
                 }}

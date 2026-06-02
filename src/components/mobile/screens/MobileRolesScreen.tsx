@@ -6,6 +6,7 @@ import RolesPermissionInitialData, { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LA
 import { deleteRoleDefinition, saveRoleDefinition } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreRoleDataType } from '@type/platform/roles';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuCheck, LuPencil, LuPlus, LuShield, LuTrash2, LuX } from 'react-icons/lu';
@@ -18,6 +19,7 @@ interface MobileRolesScreenProps {
 
 export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
     const t = useTranslations('MobileRoles');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const [selectedRole, setSelectedRole] = useState<StoreRoleDataType | null>(null);
     const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
@@ -160,7 +162,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                     />
                                 </Flex>
 
-                                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                                     <Flex align="center" justify="space-between">
                                         <Text strong>{t('active')}</Text>
                                         <Switch
@@ -274,7 +276,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                     return (
                                         <List.Item
                                             key={permKey}
-                                            prefix={isEnabled ? <LuCheck color="#16a34a" size={16} /> : <LuX color="#cbd5e1" size={16} />}
+                                            prefix={isEnabled ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorTextTertiary} size={16} />}
                                             title={<Text>{PERMISSION_LABELS[permKey as PermissionKey] || permKey}</Text>}
                                         />
                                     );
@@ -300,7 +302,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                 {roles.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuShield color="#cbd5e1" size={40} />
+                            <LuShield color={token.colorTextTertiary} size={40} />
                             <Empty description={t('noRolesYet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                             <Button color="primary" disabled={!canAssignRoles} onClick={handleAddRole} size="large">
                                 <Flex align="center" gap={6}>
@@ -321,7 +323,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                         description={<Text type="secondary">{role.description || t('noDescription')}</Text>}
                                         extra={!role.active ? <Tag color="warning">Off</Tag> : null}
                                         onClick={() => setSelectedRole(role)}
-                                        prefix={<LuShield color={role.active ? '#1677ff' : '#cbd5e1'} size={20} />}
+                                        prefix={<LuShield color={role.active ? token.colorPrimary : token.colorTextTertiary} size={20} />}
                                         title={<Text strong>{role.name}</Text>}
                                     />
                                 ))}

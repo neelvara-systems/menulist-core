@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Answerlattice product updates that affect knowledge intake, setup, team access, page-aware support, owner Q&A, feedback review, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
+    description: 'AnswerLattice product updates that affect knowledge intake, setup, team access, page-aware support, owner Q&A, feedback review, Support Board, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -25,7 +25,7 @@ const UPDATES = [
         date: 'May 31, 2026',
         title: 'Feedback Review added to the public product story',
         items: [
-            'Answerlattice now has a dedicated Feedback Review product page for ratings, product-area feedback, feature requests, suggestions, Product Surface sorting, owner review, and Support Board handoff.',
+            'AnswerLattice now has a dedicated Feedback Review product page for ratings, product-area feedback, feature requests, suggestions, Product Surface sorting, owner review, and Support Board handoff.',
             'The homepage and Product preview now include a Feedback review tab so visitors can see how raw user feedback becomes private support work.',
             'The public story keeps feedback private and governed: feature requests are support signals, not a public voting board or automatic roadmap commitment.',
         ],
@@ -34,7 +34,7 @@ const UPDATES = [
         date: 'May 31, 2026',
         title: 'Knowledge Intake added to the public product story',
         items: [
-            'Answerlattice now has a dedicated Knowledge Intake product page for selected public links, supported files, screenshots, short recordings, and source-backed review drafts.',
+            'AnswerLattice now has a dedicated Knowledge Intake product page for selected public links, supported files, screenshots, short recordings, and source-backed review drafts.',
             'Homepage, Product, Pricing, Get Started, FAQ, Resources, Security, route metadata, and the intake website doc now explain intake as an owner-reviewed setup path, not as a crawler or auto-publish shortcut.',
             'Public copy calls out the cost boundary: text sources and normal widget/help usage are separate from paid OCR/transcription work, which is capped and support-credit logged.',
         ],
@@ -61,9 +61,9 @@ const UPDATES = [
         date: 'May 26, 2026',
         title: 'Team access and workspace roles added to the product story',
         items: [
-            'Answerlattice now has a dedicated Team Access product page for workspace members, Answerlattice roles, custom permissions, owner reset, and force sign-out.',
+            'AnswerLattice now has a dedicated Team Access product page for workspace members, AnswerLattice roles, custom permissions, owner reset, and force sign-out.',
             'Launch Setup, Product, Get Started, FAQ, Pricing, Resources, Security, and Privacy copy now include team access where it affects buyer evaluation and production readiness.',
-            'The public story keeps team access inside Answerlattice workspace controls, with email setup, owner-managed passcodes, reset, and force sign-out.',
+            'The public story keeps team access inside AnswerLattice workspace controls, with email setup, owner-managed passcodes, reset, and force sign-out.',
         ],
     },
     {
@@ -71,7 +71,7 @@ const UPDATES = [
         title: 'Widget screenshot support clarified across the website',
         items: [
             'The widget story now includes user-initiated screenshot upload or paste for visual support context.',
-            'Install, Security, FAQ, Quickstarts, and widget pages clarify that Answerlattice does not automatically capture the host app screen or scrape DOM.',
+            'Install, Security, FAQ, Quickstarts, and widget pages clarify that AnswerLattice does not automatically capture the host app screen or scrape DOM.',
             'Public copy keeps screenshot support inside the existing page-aware widget and safety story instead of adding a separate product page.',
         ],
     },
@@ -99,7 +99,7 @@ const UPDATES = [
         title: 'Website reframed for AI-built SaaS founders',
         items: [
             'Homepage now starts from the post-launch problem: users need correct answers after a founder ships an app quickly with AI.',
-            'The page-aware demo now appears as the first proof, showing generic AI vs Answerlattice before deeper product architecture.',
+            'The page-aware demo now appears as the first proof, showing generic AI vs AnswerLattice before deeper product architecture.',
             'A new AI-built SaaS use-case page explains the setup path, while the vibe-coded SaaS URL stays a canonicalized campaign/search alias.',
         ],
     },
@@ -107,8 +107,8 @@ const UPDATES = [
         date: 'May 22, 2026',
         title: 'Final product-suite website polish',
         items: [
-            'The header Product menu now opens into the four main Answerlattice product areas: Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance.',
-            'Homepage, resources, SEO landing pages, and role use-case pages now cross-link those product areas so buyers can evaluate Answerlattice by capability.',
+            'The header Product menu now opens into the four main AnswerLattice product areas: Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance.',
+            'Homepage, resources, SEO landing pages, and role use-case pages now cross-link those product areas so buyers can evaluate AnswerLattice by capability.',
             'The polish stays static and adds no Firestore reads, Cloud Function calls, or runtime dependencies to normal website browsing.',
         ],
     },
@@ -118,7 +118,7 @@ const UPDATES = [
         items: [
             'Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance now each have their own product page.',
             'Each page includes a hero, product-area tabs, large browser-style product canvas, bento benefit grid, workflow steps, and conversion CTA.',
-            'The product overview now links to those pages so buyers can evaluate each major Answerlattice capability independently.',
+            'The product overview now links to those pages so buyers can evaluate each major AnswerLattice capability independently.',
         ],
     },
     {
@@ -126,7 +126,7 @@ const UPDATES = [
         title: 'Homepage product proof redesigned',
         items: [
             'The page-aware demo now uses a horizontal product-page tab row with one large product canvas below it, so the aha moment is easier to scan.',
-            'The product proof section now presents Answerlattice like a real dashboard screenshot with clearer operator tabs before the framed interface.',
+            'The product proof section now presents AnswerLattice like a real dashboard screenshot with clearer operator tabs before the framed interface.',
             'The widget section is now a bento-style grid covering runtime answer, install script, allowed origins, blocked routes, hosted help, page context, and support-gap review.',
         ],
     },
@@ -135,8 +135,8 @@ const UPDATES = [
         title: 'Founder-facing support accuracy positioning',
         items: [
             'Homepage copy moved toward founder-facing support accuracy before deeper architecture.',
-            'The claim stays scoped to Answerlattice truth: approved page-aware answers before fallback, reviewable fixes for missed questions, and human approval before authoritative publishing.',
-            'Copy avoids "we handle your support" because Answerlattice is not a helpdesk replacement, outsourcing service, or AI autopilot.',
+            'The claim stays scoped to AnswerLattice truth: approved page-aware answers before fallback, reviewable fixes for missed questions, and human approval before authoritative publishing.',
+            'Copy avoids "we handle your support" because AnswerLattice is not a helpdesk replacement, outsourcing service, or AI autopilot.',
         ],
     },
     {
@@ -145,7 +145,7 @@ const UPDATES = [
         items: [
             'Hero now leads with approved page-aware support and makes the page-aware demo the primary action.',
             'Homepage now includes a closed-loop visual: product-page question, approved answer, fallback signal, human-reviewed proposal, and future approved answer.',
-            'Comparison now separates AI chatbot, helpdesk, knowledge base, and Answerlattice so the product is not misread as another support chatbot.',
+            'Comparison now separates AI chatbot, helpdesk, knowledge base, and AnswerLattice so the product is not misread as another support chatbot.',
             'FAQ now defines canonical answers, missing-answer behavior, non-chatbot positioning, and human approval before authoritative publishing.',
             'Role-specific use-case pages added for founders, support teams, product teams, and engineering without adding Firebase reads.',
         ],
@@ -154,7 +154,7 @@ const UPDATES = [
         date: 'May 22, 2026',
         title: 'Product proof moved into the homepage decision path',
         items: [
-            'Homepage now shows a large Answerlattice workflow scene directly after the hero, covering activation, product surfaces, page-aware widget output, and signal-to-knowledge review.',
+            'Homepage now shows a large AnswerLattice workflow scene directly after the hero, covering activation, product surfaces, page-aware widget output, and signal-to-knowledge review.',
             'The product page now reuses the same visual proof before the architecture sections so buyers see the owner workflow before reading the control-plane details.',
             'The scene is responsive HTML/CSS rather than a static screenshot, so it avoids private workspace data, stays mobile-friendly, and keeps website browsing at zero Firebase cost.',
         ],
@@ -164,7 +164,7 @@ const UPDATES = [
         title: 'Homepage conversion flow rebuilt around buyer questions',
         items: [
             'Hero now leads with page-aware support from the exact product page where the user is stuck.',
-            'Homepage now includes an embedded generic-vs-Answerlattice demo, best-fit/not-fit guidance, 10-minute setup path, security-at-a-glance controls, pricing preview, and top founder objections.',
+            'Homepage now includes an embedded generic-vs-AnswerLattice demo, best-fit/not-fit guidance, 10-minute setup path, security-at-a-glance controls, pricing preview, and top founder objections.',
             'Pricing, install, get-started, and use-case pages now explain support credits, developer handoff, first-session checklist, and concrete before/after support examples.',
             'Three static SEO pages added for page-aware widget, hosted help center, and solo-founder support use cases without adding Firebase reads.',
         ],
@@ -184,7 +184,7 @@ const UPDATES = [
         items: [
             'Hosted Help added for docs, FAQ, changelog, robots, and sitemap on support domains such as help.yourapp.com.',
             'Article-backed FAQ generation and FAQ management are now part of the public product story.',
-            'Answerlattice billing now uses product-scoped plans, support credits, transactions, and Razorpay flows from the Answerlattice dashboard.',
+            'AnswerLattice billing now uses product-scoped plans, support credits, transactions, and Razorpay flows from the AnswerLattice dashboard.',
             'Website copy refreshed around Launch Setup, Support Control, Knowledge Governance, and the cost-conscious runtime layer.',
         ],
     },
@@ -199,9 +199,9 @@ const UPDATES = [
     },
     {
         date: 'May 21, 2026',
-        title: 'Answerlattice system inventory and product website map',
+        title: 'AnswerLattice system inventory and product website map',
         items: [
-            'Codebase-first Answerlattice system inventory added under docs.',
+            'Codebase-first AnswerLattice system inventory added under docs.',
             'Homepage now shows Launch Setup, Support Control, Knowledge Governance, and Runtime Layer.',
             'Website claims now focus on enabled core flows and keep rollout-only API and adapter work out of buyer copy.',
         ],
@@ -212,7 +212,7 @@ const UPDATES = [
         items: [
             'Public demo, security, FAQ, privacy, and terms pages added.',
             'Starter, Growth, and Studio pricing copy aligned for small SaaS buyers.',
-            'Answerlattice sitemap, robots, manifest, icons, and structured data added.',
+            'AnswerLattice sitemap, robots, manifest, icons, and structured data added.',
         ],
     },
     {
@@ -245,7 +245,7 @@ export default function AnswerlatticeUpdatesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Updates</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Answerlattice product updates.
+                        AnswerLattice product updates.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Changes that affect knowledge intake, setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.
@@ -284,7 +284,7 @@ export default function AnswerlatticeUpdatesPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
                     <h2 className="text-3xl font-bold">Want to see the product instead?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        The static demo shows how Answerlattice changes support by product page without using production data.
+                        The static demo shows how AnswerLattice changes support by product page without using production data.
                     </p>
                     <AnswerlatticeLink
                         basePath={basePath}

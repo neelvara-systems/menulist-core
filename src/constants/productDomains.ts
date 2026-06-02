@@ -67,7 +67,7 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
     },
     {
         id: 'answerlattice',
-        name: 'Answerlattice',
+        name: 'AnswerLattice',
         domains: getActiveProductDomains('answerlattice'),
         devPathPrefix: getProductDeploymentTarget('answerlattice', 'local').devPathPrefix,
         internalBasePath: '/sites/answerlattice',

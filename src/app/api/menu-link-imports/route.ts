@@ -5,6 +5,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import GlobalLanguagesList from '@data/languages';
+import {
+    buildMenuExtractionRoutingFields,
+    buildProjectMenuExtractionDestination,
+    MENU_EXTRACTION_SOURCES,
+} from '@data/shared/menuExtractionJob';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { acquireMenuLinkSource, MenuLinkImportError } from '@lib/menu-link-import/sourceAcquisition';
 import { checkSafeMode } from '@lib/ops/safeMode';
@@ -202,6 +207,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             action: AI_ACTIONS_TYPES.IMAGE_PROCESSING,
             createdAt: now,
             currentStep: 'Queued',
+            ...buildMenuExtractionRoutingFields(buildProjectMenuExtractionDestination(projectId, 'review')),
             files: [{
                 uid: fileUid,
                 name: fileName,
@@ -216,7 +222,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...(businessCategory ? { businessCategory } : {}),
             ...(businessType ? { businessType } : {}),
             sId: ids.sId,
-            source: 'menu_link_import',
+            source: MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT,
             sourceMetadata: {
                 acquisitionProvider: 'direct-http',
                 artifactId: artifactRef.id,

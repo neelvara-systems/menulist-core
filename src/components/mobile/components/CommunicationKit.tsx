@@ -5,8 +5,7 @@ import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageT
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
-import { FaWhatsapp } from 'react-icons/fa';
-import { LuCheck, LuCopy, LuShare2 } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuMessageCircle, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Text, Toast } from '../antd';
 
 interface MobileCommunicationKitProps {
@@ -166,7 +165,7 @@ function MobileMessageCard({
                     ) : null}
                     <ActionTile
                         iconColor={token.colorSuccess}
-                        icon={<FaWhatsapp size={18} />}
+                        icon={<LuMessageCircle size={18} />}
                         onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`, '_blank')}
                     />
                 </Flex>

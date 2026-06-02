@@ -61,7 +61,7 @@ export default function AnswerlatticeRoiCalculator() {
                         <input className={inputClass} inputMode="numeric" value={coverageRate} onInput={(event) => setCoverageRate((event.target as HTMLInputElement).value)} onChange={(event) => setCoverageRate(event.target.value)} />
                     </label>
                     <label className="text-sm font-semibold text-[#d6d6ef] sm:col-span-2">
-                        Monthly Answerlattice plan estimate
+                        Monthly AnswerLattice plan estimate
                         <input className={inputClass} inputMode="numeric" value={monthlyPlan} onInput={(event) => setMonthlyPlan((event.target as HTMLInputElement).value)} onChange={(event) => setMonthlyPlan(event.target.value)} />
                     </label>
                 </div>

@@ -1,45 +1,21 @@
-# Explicitly allow AI crawlers (GEO/AEO discovery infrastructure)
+# Public discovery policy for MenuList.
 # Keep crawler and disallow policy in sync with src/lib/seo/discoveryPolicy.ts.
 # Agent context: https://menulist.ai/llms.txt
 # Extended agent context: https://menulist.ai/llms-full.txt.
+
 User-agent: OAI-SearchBot
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
 User-agent: GPTBot
-Allow: /
-
 User-agent: ClaudeBot
-Allow: /
-
 User-agent: Claude-User
-Allow: /
-
 User-agent: Claude-SearchBot
-Allow: /
-
 User-agent: PerplexityBot
-Allow: /
-
 User-agent: Perplexity-User
-Allow: /
-
 User-agent: Google-Extended
-Allow: /
-
 User-agent: Googlebot
-Allow: /
-
 User-agent: Bingbot
+User-agent: CCBot
 Allow: /
-
-# Allow all other user agents
-User-agent: *
-Allow: /
-
-# Disallow crawling of internal surfaces
 Disallow: /admin/
 Disallow: /login/
 Disallow: /register/
@@ -47,6 +23,19 @@ Disallow: /dashboard/
 Disallow: /api/
 Disallow: /editor/
 Disallow: /preview/
+Disallow: /auth/
+Disallow: /internal/
 
-# Path to the sitemap
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /login/
+Disallow: /register/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /editor/
+Disallow: /preview/
+Disallow: /auth/
+Disallow: /internal/
+
 Sitemap: https://menulist.ai/sitemap.xml

@@ -6,11 +6,15 @@ const root = process.cwd();
 const requiredFiles = [
   'src/app/(main)/use-menulist/menu-card-export/page.tsx',
   'src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx',
+  'src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx',
+  'src/hooks/useMenuCardExportController.ts',
   'src/lib/menu-card-export/index.ts',
   'src/lib/menu-card-export/navigation.ts',
   'src/lib/menu-card-export/render/artifactMetadata.ts',
   'src/lib/menu-card-export/render/renderPdf.ts',
   'src/lib/menu-card-export/render/renderPreviewModel.ts',
+  'src/lib/menu-card-export/templates/autoPrintDesign.ts',
+  'src/lib/menu-card-export/templates/businessPrintProfiles.ts',
   'src/lib/menu-card-export/preflight/runPrintPreflight.ts',
   'src/lib/menu-card-export/printShop/buildPrintShopPacket.ts',
   'src/lib/menu-card-export/ai/designAdvisor.ts',
@@ -47,26 +51,93 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
 
 const route = fs.readFileSync(path.join(root, 'src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx'), 'utf8');
 [
-  'getExistingProjectsListWithoutLoader',
+  'MobileMenuCardExportScreen',
+  'useDeviceType',
+  'useMenuCardExportController',
   'ProjectSelectorTrigger',
   'ProjectSelectorList',
+  'businessProfile?.documentLabel',
+  'autoDesign',
+  'Auto picked',
+  'Pro layout suggestion',
+  'No Firebase writes are used',
+].forEach((token) => {
+  if (!route.includes(token)) failures.push(`Route missing token: ${token}`);
+});
+
+const controller = fs.readFileSync(path.join(root, 'src/hooks/useMenuCardExportController.ts'), 'utf8');
+[
+  'getExistingProjectsListWithoutLoader',
   'loadedProjectId',
   'renderPreviewModel',
   'buildPrintShopPacket',
   'listLocalMenuCardExports',
   'getMenuCardDesignAdviceViaAPI',
   'adviceCacheRef',
-  'Pro layout suggestion',
-  'isPresetAvailable',
+  'autoDesignKeyRef',
+  'manualSettingsTouchedRef',
+  'resolveAutoPrintDesign',
+  'resolveMenuCardBusinessPrintProfile',
+  'autoDesignLabel',
+  'autoDesignReason',
+  'isMenuCardPresetAvailable',
   'visiblePresets',
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY',
-  'No Firebase writes are used',
+  'saveLocalMenuCardExport',
 ].forEach((token) => {
-  if (!route.includes(token)) failures.push(`Route missing token: ${token}`);
+  if (!controller.includes(token)) failures.push(`Shared controller missing token: ${token}`);
 });
-if (route.includes('getProjectsListWithoutLoader')) {
-  failures.push('Cost guard failed: route must not use the auto-creating project list helper');
+if (controller.includes('getProjectsListWithoutLoader')) {
+  failures.push('Cost guard failed: controller must not use the auto-creating project list helper');
 }
+
+const mobileExportScreen = fs.readFileSync(path.join(root, 'src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx'), 'utf8');
+[
+  'useMenuCardExportController',
+  'MobileAntdAppBridge',
+  'NavBar',
+  'Popup',
+  'Create print file',
+  'businessProfile?.documentLabel',
+  'autoDesign',
+  'Auto picked',
+  'Pro layout suggestion',
+  'No Firebase writes are used',
+  'position: \'fixed\'',
+].forEach((token) => {
+  if (!mobileExportScreen.includes(token)) failures.push(`Mobile export screen missing token: ${token}`);
+});
+
+const parityForbiddenSurfaceCalls = [
+  'renderPdf(',
+  'buildPrintShopPacket(',
+  'buildPrintSource(',
+  'buildPrintSourceHash(',
+  'downloadMenuCardArtifact(',
+  'saveLocalMenuCardExport(',
+  'shareMenuCardArtifact(',
+];
+[
+  { label: 'Dashboard export surface', source: route },
+  { label: 'Mobile export surface', source: mobileExportScreen },
+].forEach(({ label, source }) => {
+  [
+    'useMenuCardExportController',
+    'createArtifact(false)',
+    'createArtifact(true)',
+    'updatePreset',
+    'updateStyle',
+    'updateDensity',
+    "updateToggle('includeDescriptions'",
+    "updateToggle('includeQr'",
+    "updateToggle('includeContactBlock'",
+  ].forEach((token) => {
+    if (!source.includes(token)) failures.push(`${label} missing shared-output token: ${token}`);
+  });
+  parityForbiddenSurfaceCalls.forEach((token) => {
+    if (source.includes(token)) failures.push(`${label} must not call output pipeline directly: ${token}`);
+  });
+});
 
 const layoutWrapper = fs.readFileSync(path.join(root, 'src/components/antdComponent/layoutWrapper/index.tsx'), 'utf8');
 [
@@ -134,6 +205,9 @@ const artifactMetadata = fs.readFileSync(path.join(root, 'src/lib/menu-card-expo
   'buildPdfDocumentProperties',
   'shortSourceReference',
   'formatArtifactDate',
+  'resolveMenuCardBusinessPrintProfile',
+  'source.business.businessCategory',
+  'source.business.offeringKind',
 ].forEach((token) => {
   if (!artifactMetadata.includes(token)) failures.push(`Artifact metadata helper missing token: ${token}`);
 });
@@ -142,6 +216,24 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
 [
   'doc.setCreationDate(generatedAt)',
   'doc.setProperties(buildPdfDocumentProperties',
+  'logoDataUrlCache',
+  'imageUrlToPngDataUrl(source.business.logoUrl)',
+  'doc.addImage(',
+  'source.business.brandTokens.accentColor',
+  'getVisualStyle',
+  'businessProfile.tone',
+  'resolveMenuCardBusinessPrintProfile',
+  'businessTone === \'product-catalog\'',
+  'businessTone === \'service-list\'',
+  'getHeaderSubtitle',
+  'drawPageBase',
+  'paperColor',
+  'categoryMode',
+  'itemTone',
+  'drawDottedLeader',
+  'readableCurrencyPrefix',
+  'Number.isInteger(numericPrice)',
+  'doc.getTextWidth(price)',
   'Generated: ${formatArtifactDate(generatedAt)}',
   'buildArtifactFilename({ source, settings, template, sourceHash, extension: \'pdf\', generatedAt })',
 ].forEach((token) => {
@@ -155,16 +247,112 @@ const printInstructions = fs.readFileSync(path.join(root, 'src/lib/menu-card-exp
 [
   'Source summary:',
   'Source reference:',
-  'Live menu:',
+  'resolveMenuCardBusinessPrintProfile',
+  'profile.documentLabel',
   'MENU_CARD_EXPORT_RENDERER_VERSION',
   'shortSourceReference',
 ].forEach((token) => {
   if (!printInstructions.includes(token)) failures.push(`Print instructions missing provenance token: ${token}`);
 });
 
+const qrTestChecklist = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/printShop/buildQrTestChecklist.ts'), 'utf8');
+[
+  'resolveMenuCardBusinessPrintProfile',
+  'profile.documentLabel.toLowerCase()',
+  'current ${label}',
+].forEach((token) => {
+  if (!qrTestChecklist.includes(token)) failures.push(`QR checklist missing business profile token: ${token}`);
+});
+
 const printSource = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildPrintSource.ts'), 'utf8');
 ['project?.files', 'file?.extractedData?.data', 'project?.extractedData?.data'].forEach((token) => {
   if (!printSource.includes(token)) failures.push(`Print source missing real project data shape support: ${token}`);
+});
+[
+  'resolveBusinessCategory',
+  'getBusinessCatalogKind',
+  'getBusinessOfferingKind',
+  'resolveMenuCardBusinessPrintProfile',
+  'store?.businessType',
+  'store?.businessCategory',
+  'printProfile.qrLabel',
+  'printProfile.fallbackTitle',
+  'store?.publicPresence?.accentColor',
+  'store?.logo',
+  'store?.logoUrl',
+  'store?.currencyCode',
+  'brandTokens',
+].forEach((token) => {
+  if (!printSource.includes(token)) failures.push(`Print source missing OBP brand reuse token: ${token}`);
+});
+
+const brandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildBrandTokens.ts'), 'utf8');
+[
+  '[0-9a-fA-F]{3}',
+  'expanded',
+  'toLowerCase()',
+].forEach((token) => {
+  if (!brandTokens.includes(token)) failures.push(`Brand token helper missing hex normalization token: ${token}`);
+});
+
+const printSourceHash = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildPrintSourceHash.ts'), 'utf8');
+[
+  'logoUrl: source.business.logoUrl || null',
+  'brandColor: source.business.brandColor || null',
+  'businessType: source.business.businessType || null',
+  'businessCategory: source.business.businessCategory || null',
+  'catalogKind: source.business.catalogKind || null',
+  'offeringKind: source.business.offeringKind || null',
+  'currency: source.menu.currency || null',
+  'currencyCode: source.menu.currencyCode || null',
+].forEach((token) => {
+  if (!printSourceHash.includes(token)) failures.push(`Print source hash missing brand freshness token: ${token}`);
+});
+
+const businessPrintProfiles = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/templates/businessPrintProfiles.ts'), 'utf8');
+[
+  'food-menu',
+  'service-list',
+  'product-catalog',
+  'professional-guide',
+  'wellness-list',
+  'documentLabel',
+  'qrLabel',
+  'fallbackTitle',
+].forEach((token) => {
+  if (!businessPrintProfiles.includes(token)) failures.push(`Business print profile missing token: ${token}`);
+});
+
+const autoPrintDesign = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/templates/autoPrintDesign.ts'), 'utf8');
+[
+  'resolveAutoPrintDesign',
+  'getMenuShape',
+  'product-catalog',
+  'service-list',
+  'professional-guide',
+  'whatsapp',
+  'buildDefaultSettings(preset, styleId)',
+].forEach((token) => {
+  if (!autoPrintDesign.includes(token)) failures.push(`Auto print design missing token: ${token}`);
+});
+
+const apiSchemas = fs.readFileSync(path.join(root, 'src/lib/validation/apiSchemas.ts'), 'utf8');
+[
+  'autoDesignLabel',
+  'autoDesignReason',
+  'businessProfile',
+  'offeringKind',
+].forEach((token) => {
+  if (!apiSchemas.includes(token)) failures.push(`AI advisor schema missing auto-design token: ${token}`);
+});
+
+const advisorPrompt = fs.readFileSync(path.join(root, 'src/app/api/menu-card-export/design-advisor/prompt.ts'), 'utf8');
+[
+  'autoDesignLabel',
+  'autoDesignReason',
+  'businessProfile',
+].forEach((token) => {
+  if (!advisorPrompt.includes(token)) failures.push(`AI advisor prompt missing auto-design token: ${token}`);
 });
 
 const projectDal = fs.readFileSync(path.join(root, 'src/database/projects/index.ts'), 'utf8');
@@ -222,8 +410,8 @@ const advisorRoute = fs.readFileSync(path.join(root, 'src/app/api/menu-card-expo
   'checkAICapacity',
   'genAIClient.models.generateContent',
   'normalizeMenuCardDesignAdvice',
-  'recordAiOperationForSession',
-  'consumeAICapacity',
+  'finalizeAiOperationAccounting',
+  'capacitySubscription: capacityCheck.subscription',
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_PRINT_SHOP',
 ].forEach((token) => {
   if (!advisorRoute.includes(token)) failures.push(`AI advisor route missing token: ${token}`);
@@ -239,8 +427,16 @@ console.log('Menu Card Export verification passed.');
 console.log('- Route exists');
 console.log('- Client-side preflight exists');
 console.log('- Client-side PDF/packet generation exists');
+console.log('- PDF output reuses OBP brand color, store logo, and brand-aware local hashes');
+console.log('- PDF output uses store currency with PDF-safe symbols and dynamic price width');
+console.log('- PDF output uses business-type-aware labels and visual profiles for food, service, retail, professional, and wellness SMBs');
+console.log('- Auto print design picks a style, density, and safe toggles before any AI/provider call');
+console.log('- PDF output uses physical-menu page styling, borders, section treatments, and price leaders');
 console.log('- PDF metadata, deterministic filenames, and print-shop source summary exist');
 console.log('- Local history exists');
+console.log('- Desktop and mobile screens use the shared export controller');
+console.log('- Dashboard and mobile output actions use the same controller pipeline');
+console.log('- Dedicated mobile Print Menu screen exists');
 console.log('- Mobile Share, Menu, and More entry points route through the shared Print Menu URL');
 console.log('- Pro/Premium AI advisor is guarded by plan, capacity, and operation logging');
 console.log('- No export-storage API route or artifact Firebase write path was added');

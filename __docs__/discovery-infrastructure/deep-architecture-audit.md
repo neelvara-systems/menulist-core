@@ -164,7 +164,7 @@ Tenant (tId: number)
 - `buildAmenityFeatures()` → LocationFeatureSpecification (14 attributes) ✅
 - `getSchemaType()` → consumes `src/data/shared/businessTypes.ts` category defaults plus type-level schema overrides ✅
 - `buildBreadcrumbList()` → BreadcrumbList ✅
-- `buildFaqSchema()` → FAQPage (auto-generated Q&A) ✅
+- `buildFaqSchema()` → FAQPage utility retained for visible reviewed FAQ content; OBP runtime stopped emitting generated hidden FAQPage JSON-LD on June 2, 2026 ✅
 - `buildTempStatusSchema()` → specialOpeningHoursSpecification ✅
 - `getMenuSchemaType()` → Food catalog type resolution while preserving non-food SMB schema types ✅
 - `buildPublicCatalogUrlSchema()` → `hasMenu` for food, `hasOfferCatalog` for non-food ✅

@@ -16,7 +16,7 @@ Current validated baseline:
 - `npx tsc --noEmit --incremental false`
 - active multi-project owner data generated PDFs and print-shop packet ZIPs from two non-empty menus
 
-Local unauthenticated route smoke is currently blocked by a shared Next dev runtime issue that also affects `/use-menulist`; do not count it as feature-specific failure evidence.
+Local unauthenticated HTTP route smoke returned `200 OK` for `/use-menulist/menu-card-export`. Visual Browser inspection was blocked by the local Browser webview attach issue, not by a feature-specific HTTP/runtime failure.
 
 Authenticated browser click-through remains a useful manual smoke before a Vercel release, but authenticated real-data source extraction, PDF rendering, ZIP generation, and cost-path validation passed.
 
@@ -116,6 +116,31 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | Visible footer | Does not print the full internal source hash. |
 | Link annotation support | QR destination/short URL is present where renderer supports links. |
 | PDF/UA claim | No public/support claim exists unless tagged PDF verification is implemented. |
+| OBP brand color | Header, category dividers, and prices use `store.publicPresence.accentColor` when present. |
+| Store logo | Existing store logo appears in the PDF header when the logo URL can be loaded safely. |
+| Brand fallback | If the logo image cannot be embedded, PDF still renders with the store accent color and no broken image placeholder. |
+| Light brand color | Header text and small accent text remain readable when the stored accent color is light. |
+| Density font sizes | Compact, balanced, and comfortable presets use stable item/category/description font sizes and do not resize unpredictably. |
+| Dynamic price width | Long prices, currency codes, and ranges do not overlap item names. |
+| Currency source | PDF uses store `currencySymbol`, falling back to `currency` and then `currencyCode`. |
+| INR PDF fallback | Store `₹`/`INR` prices render as readable `Rs 120` instead of a broken PDF glyph. |
+| Price decimals | Whole-number prices do not force `.00`; decimal prices keep two decimals. |
+| Price ranges/text | Ranges such as `120/140` and text such as `Market price` are preserved. |
+| Physical page base | Every PDF page has the selected template's paper tone and border before content is drawn. |
+| Classic physical style | Classic output uses a centered plaque, ribbon/section treatment, and dotted price leaders. |
+| Premium physical style | Premium output uses an editorial hierarchy and readable whitespace. |
+| Compact physical style | Compact output uses a warm dense card sheet with boxed sections and QR-friendly layout. |
+| Multi-page physical style | Added pages redraw the same paper/border base and do not revert to plain white pages. |
+| Food business profile | Food businesses use menu labels, menu-style physical styling, and QR text for the current menu. |
+| Service business profile | Service businesses use service labels and calmer service-list styling without restaurant-only ornamentation. |
+| Retail business profile | Retail/product businesses use catalog labels, boxed catalog sections, and product price-list treatment. |
+| Health/professional profile | Health and professional businesses use service labels and quieter service-guide styling. |
+| Auto design food dense | Long food menus start on Compact with compact density and descriptions off where needed for readability. |
+| Auto design food short | Short descriptive food menus start on Premium with comfortable density. |
+| Auto design service | Service/professional/wellness menus start on Premium or Compact by length, not restaurant ribbon styling. |
+| Auto design retail | Retail/product catalogs start on Compact/catalog treatment with QR and contact enabled. |
+| Manual override guard | After owner changes style, density, or toggles, auto design does not overwrite that manual choice. |
+| Preset reset | Changing job preset allows auto design to pick a preset-appropriate style/density again. |
 
 ---
 
@@ -147,6 +172,11 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | Menu switch, then switch back | Previously opened project data is reused from route-session cache. |
 | Final export | No Firestore export record and no Storage artifact upload. |
 | Duplicate export | Matching local source/settings hash is detected. |
+| Brand change | Changing store logo URL or OBP accent color creates a different source hash instead of reusing an old export. |
+| Business type/category change | Changing store business type/category creates a different source hash instead of reusing an old menu-style, service-style, or catalog-style export. |
+| Currency change | Changing store currency symbol or code creates a different source hash instead of reusing a wrong-currency export. |
+| Repeat logo export | Same logo URL is converted from in-memory cache during the route session instead of refetching for every export. |
+| Auto design cost | No provider call, AI credit consumption, Firestore write, Storage upload, Cloud Function, rule, or index. |
 | History flag off | Local history UI is hidden and no browser history record is written. |
 | History flag on | Reads local browser history only, max 20 records per project. |
 | Print-shop flag off | Preset is hidden and no print-shop artifact is generated. |
@@ -166,8 +196,8 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 
 | Case | Expected Result |
 | --- | --- |
-| Open from Mobile Share | `/use-menulist/menu-card-export?projectId=...` renders the export workflow with the selected project; the generic mobile shell does not replace it with the Share tab. |
-| Open from Mobile Menu | Command sheet `Print Menu` saves pending local edits, then opens `/use-menulist/menu-card-export?projectId=...`. If the save is still pending after retry, owner sees a retry-later message instead of exporting stale data. |
+| Open from Mobile Share | `/use-menulist/menu-card-export?projectId=...` renders the dedicated mobile Print Menu screen with the selected project; the generic mobile shell does not replace it with the Share tab. |
+| Open from Mobile Menu | Command sheet `Print Menu` saves pending local edits, then opens the dedicated mobile Print Menu screen at `/use-menulist/menu-card-export?projectId=...`. If the save is still pending after retry, owner sees a retry-later message instead of exporting stale data. |
 | Open from More | More > Modules `Print Menu` opens the route with the current mobile project selection; it does not create a separate dashboard export surface. |
 | Style picker | Horizontal cards are thumb-safe. |
 | Settings | Controls are at least 44px high. |
@@ -176,6 +206,9 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | WhatsApp PDF | Native share works where browser supports Web Share files. |
 | Print-shop packet | Mobile can download/share packet without desktop-only UI. |
 | Failed export | Retry is visible without technical text. |
+| Dashboard/mobile PDF parity | Dashboard and mobile both call `createArtifact(false)` from `useMenuCardExportController`; neither surface calls `renderPdf` or the source/hash/history helpers directly. |
+| Dashboard/mobile share parity | Dashboard and mobile both call `createArtifact(true)` from `useMenuCardExportController`; share fallback/download behavior remains controller-owned. |
+| Same settings, same source hash | For the same project, preset, style, density, and toggles, dashboard and mobile produce the same source hash and route through the same PDF or packet builder. |
 
 ---
 
@@ -193,6 +226,9 @@ Script responsibilities at freeze:
 - Verify feature flags and AI accounting tokens exist.
 - Verify the route uses the read-only project helper, project selector, preview renderer, local history, AI advisor, history flag, and print-shop flag guard.
 - Verify print-source support for top-level and file-based extracted menu data.
+- Verify print-source support for OBP accent color, existing store logo, renderer logo embedding, and brand-aware source hashes.
+- Verify PDF currency fallback, whole-number price formatting, and dynamic price-width handling.
+- Verify physical output page styling, page borders, category treatments, dotted price leaders, business-type-aware visual profiles, and auto print design remain wired.
 - Verify no export-storage API route or artifact Firebase write path was added.
 - Verify unused placeholder modules stay removed.
 - Verify the Pro/Premium AI advisor route uses auth, tenant access, rate limit, plan gate, capacity check, provider call, output normalization, operation logging, and credit consumption.

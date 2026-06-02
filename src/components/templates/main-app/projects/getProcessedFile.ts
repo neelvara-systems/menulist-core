@@ -40,6 +40,7 @@ async function createProcessingJob({
   projectId,
   businessCategory,
   businessType,
+  identityOverrideConfirmed,
   action = AI_ACTIONS_TYPES.IMAGE_PROCESSING
 }: ProcessedFileAPIParams): Promise<CreateJobResult> {
 
@@ -73,6 +74,7 @@ async function createProcessingJob({
       action,
       businessCategory,
       businessType,
+      identityOverrideConfirmed,
     });
 
     logger.debug('[createProcessingJob] Job created', { jobId, projectId, filesCount: files.length });

@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'React Install',
-    description: 'Answerlattice v1 install guidance for React SPAs.',
+    description: 'AnswerLattice v1 install guidance for React SPAs.',
     alternates: { canonical: '/install/frameworks/react' },
 };
 

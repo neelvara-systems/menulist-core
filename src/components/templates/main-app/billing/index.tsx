@@ -22,8 +22,7 @@ import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { FaBoltLightning } from 'react-icons/fa6';
-import { LuBuilding2, LuHelpCircle, LuMapPin, LuPlusCircle, LuStore } from 'react-icons/lu';
+import { LuBuilding2, LuHelpCircle, LuMapPin, LuPlusCircle, LuStore, LuZap } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
 import BillingHistory from './BillingHistory';
 import CreditsPackModal from './CreditsPackModal';
@@ -339,7 +338,7 @@ function BillingPage() {
                             description={<Text type="secondary">{t('noSubscriptionFound')}</Text>}
                         >
                             <Flex justify="center" style={{ marginTop: '24px', width: '100%' }}>
-                                <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })} icon={<FaBoltLightning />}>
+                                <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })} icon={<LuZap />}>
                                     {t('viewPlans')}
                                 </Button>
                             </Flex>

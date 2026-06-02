@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Proof Pack',
-    description: 'Example Answerlattice workloads for SaaS and digital-product support: billing, onboarding, releases, errors, and support-gap review.',
+    description: 'Example AnswerLattice workloads for SaaS and digital-product support: billing, onboarding, releases, errors, and support-gap review.',
     alternates: { canonical: '/proof' },
 };
 
@@ -65,7 +65,7 @@ export default function AnswerlatticeProofPage() {
                         Example workloads for support that improves after launch.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        These are anonymized example workloads, not inflated customer claims. They show how Answerlattice should be evaluated on day one.
+                        These are anonymized example workloads, not inflated customer claims. They show how AnswerLattice should be evaluated on day one.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
@@ -102,7 +102,7 @@ export default function AnswerlatticeProofPage() {
                                         <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">{example.situation}</p>
                                     </div>
                                     <div>
-                                        <div className="text-[10px] font-semibold uppercase tracking-widest text-teal-200">Answerlattice setup</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-widest text-teal-200">AnswerLattice setup</div>
                                         <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">{example.answerlattice}</p>
                                     </div>
                                     <div>
@@ -118,7 +118,7 @@ export default function AnswerlatticeProofPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold text-white">The first proof is operational, not a sales deck.</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        A real Answerlattice evaluation should prove install, context, first surfaces, first imported knowledge, and first owner-approved answers.
+                        A real AnswerLattice evaluation should prove install, context, first surfaces, first imported knowledge, and first owner-approved answers.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
                         <AnswerlatticeLink basePath={basePath} href="/demo" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">

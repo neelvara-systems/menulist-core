@@ -79,6 +79,26 @@ export const formatCurrency = (amount: number | undefined, currency = 'USD', loc
   }).format(amount / 100);
 };
 
+export const formatInrAmount = (
+  amount: number | undefined,
+  options: Intl.NumberFormatOptions = {},
+): string => {
+  if (amount === undefined || amount === null || Number.isNaN(Number(amount))) return '-';
+
+  return new Intl.NumberFormat('en-IN', {
+    currency: 'INR',
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    style: 'currency',
+    ...options,
+  }).format(Number(amount));
+};
+
+export const formatInrPaise = (
+  paise: number | undefined,
+  options: Intl.NumberFormatOptions = {},
+): string => formatInrAmount((paise || 0) / 100, options);
+
 /**
  * Get user's date format preference or fall back to default
  * @returns The date format options based on user preferences

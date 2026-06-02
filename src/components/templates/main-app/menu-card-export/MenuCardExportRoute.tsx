@@ -1,424 +1,105 @@
 'use client';
 
-import { FEATURE_FLAGS } from '@config/features';
-import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
-import { getStoreContextName } from '@lib/businessIdentity/names';
-import {
-    buildDefaultSettings,
-    buildPrintShopPacket,
-    buildPrintSource,
-    buildPrintSourceHash,
-    downloadMenuCardArtifact,
-    exposedMenuCardTemplates,
-    findReusableExport,
-    getFreshnessState,
-    listLocalMenuCardExports,
-    menuCardPresetRegistry,
-    renderPdf,
-    renderPreviewModel,
-    saveLocalMenuCardExport,
-    shareMenuCardArtifact,
-    type MenuCardExportPreset,
-    type MenuCardExportSettings,
-    type MenuCardLocalHistoryRecord,
-    type MenuCardPrintSource,
-    type MenuCardSafeOverrides,
-} from '@lib/menu-card-export';
-import type { MenuCardDesignAdvisorRecommendation } from '@lib/menu-card-export/ai/designAdvisor';
-import type { MenuCardDesignAdvisorRequest } from '@lib/validation/apiSchemas';
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { generateProjectUrl } from '@lib/utils/slugify';
-import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { AICapacityError } from '@services/ai/capacityError';
-import getMenuCardDesignAdviceViaAPI, { MenuCardDesignAdvisorPlanError } from '@services/ai/menuCardExport/getDesignAdviceViaAPI';
+import MobileMenuCardExportScreen from '@/components/mobile/menu-card-export/MobileMenuCardExportScreen';
+import useDeviceType from '@hook/useDeviceType';
+import useMenuCardExportController, {
+    resolveMenuCardProjectName,
+    type MenuCardExportNotice,
+} from '@hook/useMenuCardExportController';
+import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Empty, Flex, List, message, Modal, Segmented, Skeleton, Space, Switch, Tag, theme, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuDownload, LuHistory, LuPackage, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import styles from './menu-card-export.module.scss';
 
 const { Paragraph, Text, Title } = Typography;
 
-type ProjectOption = {
-    projectId: string;
-    name: string | Record<string, string>;
-    isDefault?: boolean;
-    active?: boolean;
-    deleted?: boolean;
-    isSpecialMenu?: boolean;
-    projectImage?: string | null;
-    specialMenuBaseProjectId?: string;
-    specialMenuEndsAt?: string;
-    specialMenuStatus?: 'scheduled' | 'active' | 'expired' | 'cancelled';
-    url: string;
-};
-
-function resolveName(name: string | Record<string, string> | undefined, fallback = 'Menu'): string {
-    return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
-}
-
-function buildMenuUrl(storeDetails: any, project: ProjectOption): string {
-    return generateProjectUrl(
-        storeDetails?.subdomain || '',
-        storeDetails?.customDomain,
-        resolveName(project.name, 'Menu'),
-        false,
-    );
-}
-
-function makeSettings(preset: MenuCardExportPreset, styleId: string): MenuCardExportSettings {
-    return buildDefaultSettings(preset, styleId);
-}
-
-function isPresetAvailable(preset: MenuCardExportPreset): boolean {
-    if (preset === 'print_shop_packet') {
-        return FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_PRINT_SHOP;
-    }
-    return true;
-}
-
 export default function MenuCardExportRoute() {
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { hasMounted, isHandheld } = useDeviceType();
+
+    if (!hasMounted) {
+        return (
+            <div className={styles.route}>
+                <Skeleton active paragraph={{ rows: 6 }} />
+            </div>
+        );
+    }
+
+    if (hasMounted && isHandheld) {
+        return <MobileMenuCardExportScreen />;
+    }
+
+    return <DesktopMenuCardExportRoute />;
+}
+
+function DesktopMenuCardExportRoute() {
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
-    const [projects, setProjects] = useState<ProjectOption[]>([]);
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(searchParams.get('projectId'));
-    const [projectData, setProjectData] = useState<any | null>(null);
-    const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [rendering, setRendering] = useState(false);
-    const [history, setHistory] = useState<MenuCardLocalHistoryRecord[]>([]);
+    const formatter = useFormatter();
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
-    const [settings, setSettings] = useState<MenuCardExportSettings>(() => makeSettings('home_print', 'classic'));
-    const [overrides] = useState<MenuCardSafeOverrides>({});
-    const projectDataCacheRef = useRef<Record<string, any>>({});
-    const adviceCacheRef = useRef<Record<string, MenuCardDesignAdvisorRecommendation>>({});
-    const [designAdvice, setDesignAdvice] = useState<MenuCardDesignAdvisorRecommendation | null>(null);
-    const [adviceLoading, setAdviceLoading] = useState(false);
-    const [adviceError, setAdviceError] = useState<string | null>(null);
-
-    const storeName = useMemo(() => getStoreContextName(storeDetails as any, 'Your Business'), [storeDetails]);
-    const storeUrlContext = useMemo(() => ({
-        subdomain: (storeDetails as any)?.subdomain || '',
-        customDomain: (storeDetails as any)?.customDomain,
-    }), [(storeDetails as any)?.subdomain, (storeDetails as any)?.customDomain]);
-    const storeRouteKey = useMemo(() => {
-        if (!storeDetails) return '';
-        const tenantId = (storeDetails as any)?.tenantId || (storeDetails as any)?.tId || '';
-        const storeId = (storeDetails as any)?.storeId || (storeDetails as any)?.sId || '';
-        const subdomain = (storeDetails as any)?.subdomain || '';
-        const customDomain = (storeDetails as any)?.customDomain || '';
-        if (!tenantId && !storeId && !subdomain && !customDomain) return '';
-        return [tenantId, storeId, subdomain, customDomain].join('|');
-    }, [
-        (storeDetails as any)?.tenantId,
-        (storeDetails as any)?.tId,
-        (storeDetails as any)?.storeId,
-        (storeDetails as any)?.sId,
-        (storeDetails as any)?.subdomain,
-        (storeDetails as any)?.customDomain,
-    ]);
-
-    useEffect(() => {
-        let mounted = true;
-
-        async function loadProjects() {
-            if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT) {
-                setLoading(false);
-                return;
-            }
-
-            if (!storeRouteKey) {
-                setLoading(false);
-                return;
-            }
-
-            projectDataCacheRef.current = {};
-            adviceCacheRef.current = {};
-            setProjectData(null);
-            setLoadedProjectId(null);
-            setHistory([]);
-            setDesignAdvice(null);
-            setAdviceError(null);
-            const result = await getExistingProjectsListWithoutLoader(true);
-            if (!mounted) return;
-            const list = (result?.projects || [])
-                .filter((project: any) => project.deleted !== true && project.active !== false)
-                .map((project: any) => ({
-                    projectId: project.projectId,
-                    name: project.name,
-                    isDefault: project.isDefault,
-                    active: project.active,
-                    deleted: project.deleted,
-                    isSpecialMenu: project.isSpecialMenu,
-                    projectImage: project.projectImage || null,
-                    specialMenuBaseProjectId: project.specialMenuBaseProjectId,
-                    specialMenuEndsAt: project.specialMenuEndsAt,
-                    specialMenuStatus: project.specialMenuStatus,
-                    url: buildMenuUrl(storeUrlContext, project),
-                }));
-            setProjects(list);
-            setSelectedProjectId((current) => {
-                if (current && list.some((project) => project.projectId === current)) return current;
-                return list.find((project) => project.isDefault)?.projectId || list[0]?.projectId || null;
-            });
-            setLoading(false);
+    const notify = useCallback((notice: MenuCardExportNotice) => {
+        if (notice.type === 'success') {
+            message.success(notice.content);
+            return;
         }
-
-        loadProjects().catch(() => {
-            if (mounted) {
-                setProjects([]);
-                setLoading(false);
-            }
-        });
-
-        return () => {
-            mounted = false;
-        };
-    }, [storeRouteKey, storeUrlContext]);
-
-    const selectedProject = useMemo(
-        () => projects.find((project) => project.projectId === selectedProjectId) || projects[0] || null,
-        [projects, selectedProjectId],
-    );
-    const visiblePresets = useMemo(
-        () => menuCardPresetRegistry.filter((preset) => preset.exposed && isPresetAvailable(preset.id)),
-        [],
-    );
-
-    useEffect(() => {
-        let mounted = true;
-
-        async function loadProject() {
-            if (!selectedProject?.projectId) {
-                setProjectData(null);
-                setLoadedProjectId(null);
-                setHistory([]);
-                setLoading(false);
-                return;
-            }
-            setLoading(true);
-            setProjectData(null);
-            setLoadedProjectId(null);
-            const cachedProject = projectDataCacheRef.current[selectedProject.projectId];
-            if (cachedProject) {
-                setProjectData(cachedProject);
-                setLoadedProjectId(selectedProject.projectId);
-                setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
-                    ? listLocalMenuCardExports(selectedProject.projectId)
-                    : []);
-                setLoading(false);
-                return;
-            }
-
-            const data = await getProjectDataWithoutLoader(selectedProject.projectId);
-            if (!mounted) return;
-            projectDataCacheRef.current[selectedProject.projectId] = data;
-            setProjectData(data);
-            setLoadedProjectId(selectedProject.projectId);
-            setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
-                ? listLocalMenuCardExports(selectedProject.projectId)
-                : []);
-            setLoading(false);
+        if (notice.type === 'warning') {
+            message.warning(notice.content);
+            return;
         }
-
-        loadProject().catch(() => {
-            if (mounted) {
-                setProjectData(null);
-                setLoading(false);
-            }
-        });
-
-        return () => {
-            mounted = false;
-        };
-    }, [selectedProject?.projectId]);
-
-    const source = useMemo<MenuCardPrintSource | null>(() => {
-        if (!projectData || !selectedProject || !storeDetails) return null;
-        if (loadedProjectId !== selectedProject.projectId) return null;
-        return buildPrintSource({
-            project: projectData,
-            store: { ...storeDetails, name: storeName },
-            menuUrl: selectedProject.url,
-            settings,
-        });
-    }, [loadedProjectId, projectData, selectedProject, settings, storeDetails, storeName]);
-
-    const preview = useMemo(() => {
-        if (!source) return null;
-        return renderPreviewModel(source, settings, overrides);
-    }, [source, settings, overrides]);
-
-    const sourceHash = useMemo(() => {
-        if (!source) return '';
-        return buildPrintSourceHash(source, settings, overrides);
-    }, [source, settings, overrides]);
-
-    const reusableExport = useMemo(
-        () => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY ? findReusableExport(history, sourceHash) : null,
-        [history, sourceHash],
-    );
-
-    useEffect(() => {
-        setDesignAdvice(null);
-        setAdviceError(null);
-    }, [sourceHash, selectedProject?.projectId]);
-
-    const updatePreset = (preset: MenuCardExportPreset) => {
-        if (!isPresetAvailable(preset)) return;
-        setSettings(makeSettings(preset, settings.styleId));
-    };
-
-    const updateStyle = (styleId: string) => {
-        setSettings((current) => ({ ...current, styleId }));
-    };
-
-    const updateToggle = (key: keyof MenuCardExportSettings, value: boolean) => {
-        setSettings((current) => ({ ...current, [key]: value }));
-    };
+        if (notice.type === 'error') {
+            message.error(notice.content);
+            return;
+        }
+        message.info(notice.content);
+    }, []);
+    const {
+        adviceError,
+        adviceLoading,
+        applyDesignAdvice,
+        autoDesign,
+        businessProfile,
+        blockers,
+        createArtifact,
+        designAdvice,
+        getFreshnessState,
+        history,
+        isAiAdvisorEnabled,
+        isEnabled,
+        isHistoryEnabled,
+        loading,
+        preview,
+        projects,
+        rendering,
+        requestDesignAdvice,
+        reusableExport,
+        selectProject,
+        selectedProject,
+        settings,
+        source,
+        sourceHash,
+        templates,
+        updateDensity,
+        updatePreset,
+        updateStyle,
+        updateToggle,
+        visiblePresets,
+        warnings,
+    } = useMenuCardExportController({
+        initialProjectId: searchParams.get('projectId'),
+        notify,
+    });
+    const documentLabel = businessProfile?.documentLabel || 'Menu';
+    const documentLabelLower = documentLabel.toLowerCase();
 
     const handleSelectProject = (projectId: string) => {
-        setSelectedProjectId(projectId);
+        selectProject(projectId);
         setIsProjectSelectorOpen(false);
     };
 
-    const buildDesignAdvisorPayload = useCallback((): MenuCardDesignAdvisorRequest | null => {
-        if (!source || !preview || !selectedProject || !sourceHash) return null;
-        const itemCount = source.menu.categories.reduce((total, category) => total + category.items.length, 0);
-
-        return {
-            projectId: selectedProject.projectId,
-            sourceHash,
-            currentSettings: {
-                preset: settings.preset as any,
-                styleId: settings.styleId as any,
-                density: settings.density as any,
-                includeDescriptions: settings.includeDescriptions,
-                includeQr: settings.includeQr,
-                includeContactBlock: settings.includeContactBlock,
-            },
-            sourceSummary: {
-                businessName: source.business.name,
-                menuTitle: source.menu.title,
-                categoryCount: source.menu.categories.length,
-                itemCount,
-                pageCount: preview.plan.pageCount,
-                hasDescriptions: source.flags.hasDescriptions,
-                hasVariants: source.flags.hasVariants,
-                hasDietaryTags: source.flags.hasDietaryTags,
-                hasMissingPrices: source.flags.hasMissingPrices,
-                categoryNames: source.menu.categories.map((category) => category.name).filter(Boolean).slice(0, 20),
-            },
-            preflightWarnings: preview.preflight.warnings.map((warning) => ({
-                code: warning.code,
-                severity: warning.severity,
-                message: warning.message,
-            })).slice(0, 20),
-        };
-    }, [preview, selectedProject, settings, source, sourceHash]);
-
-    const requestDesignAdvice = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_AI_ADVISOR) {
-            setAdviceError('Layout suggestions are not enabled.');
-            return;
-        }
-
-        const payload = buildDesignAdvisorPayload();
-        if (!payload) return;
-
-        const cached = adviceCacheRef.current[payload.sourceHash];
-        if (cached) {
-            setDesignAdvice(cached);
-            setAdviceError(null);
-            return;
-        }
-
-        setAdviceLoading(true);
-        setAdviceError(null);
-        try {
-            const response = await getMenuCardDesignAdviceViaAPI(payload);
-            if (!response?.recommendation) {
-                setAdviceError('Could not prepare a layout suggestion.');
-                return;
-            }
-            adviceCacheRef.current[payload.sourceHash] = response.recommendation;
-            setDesignAdvice(response.recommendation);
-            message.success('Layout suggestion ready');
-        } catch (error) {
-            if (error instanceof MenuCardDesignAdvisorPlanError) {
-                setAdviceError(error.message);
-                return;
-            }
-            if (error instanceof AICapacityError) {
-                setAdviceError(error.message);
-                return;
-            }
-            setAdviceError('Could not prepare a layout suggestion.');
-        } finally {
-            setAdviceLoading(false);
-        }
-    }, [buildDesignAdvisorPayload]);
-
-    const applyDesignAdvice = useCallback(() => {
-        if (!designAdvice) return;
-        const preset = isPresetAvailable(designAdvice.preset) ? designAdvice.preset : 'home_print';
-        setSettings({
-            ...makeSettings(preset, designAdvice.styleId),
-            density: designAdvice.density,
-            includeDescriptions: designAdvice.includeDescriptions,
-            includeQr: designAdvice.includeQr,
-            includeContactBlock: designAdvice.includeContactBlock,
-        });
-        message.success('Layout suggestion applied');
-    }, [designAdvice]);
-
-    const handleCreate = useCallback(async (share = false) => {
-        if (!source || !selectedProject) return;
-        if (!isPresetAvailable(settings.preset)) {
-            message.error('This export option is not enabled');
-            return;
-        }
-        if (preview?.preflight.status === 'blocked') {
-            message.error('Fix the blocking warning before export');
-            return;
-        }
-
-        setRendering(true);
-        try {
-            const artifact = settings.preset === 'print_shop_packet'
-                ? await buildPrintShopPacket(source, settings, overrides)
-                : await renderPdf(source, settings, overrides);
-
-            if (share) {
-                const shared = await shareMenuCardArtifact(artifact as any, 'Menu file');
-                if (!shared) downloadMenuCardArtifact(artifact as any);
-            } else {
-                downloadMenuCardArtifact(artifact as any);
-            }
-
-            if (FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY) {
-                const nextHistory = saveLocalMenuCardExport({
-                    projectId: selectedProject.projectId,
-                    projectName: resolveName(selectedProject.name, 'Menu'),
-                    storeName,
-                    preset: settings.preset,
-                    styleId: settings.styleId,
-                    artifact: artifact as any,
-                });
-                setHistory(nextHistory);
-            }
-
-            message.success(settings.preset === 'print_shop_packet' ? 'Print-shop packet created' : 'PDF created');
-        } catch (error) {
-            message.error('Could not create file');
-        } finally {
-            setRendering(false);
-        }
-    }, [overrides, preview?.preflight.status, selectedProject, settings, source, storeName]);
-
-    if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT) {
+    if (!isEnabled) {
         return (
             <div className={styles.route}>
                 <Empty description="Print menu is not enabled" />
@@ -442,18 +123,15 @@ export default function MenuCardExportRoute() {
         );
     }
 
-    const blockers = preview.preflight.warnings.filter((warning) => warning.severity === 'blocker');
-    const warnings = preview.preflight.warnings.filter((warning) => warning.severity !== 'blocker');
-
     return (
         <div className={styles.route}>
             <Flex className={styles.header} justify="space-between" gap={16} wrap="wrap">
                 <div>
-                    <Title level={3} style={{ marginBottom: 4 }}>Print Menu</Title>
-                    <Text type="secondary">Create a PDF or print-shop packet from the current menu.</Text>
+                    <Title level={3} style={{ marginBottom: 4 }}>Print {documentLabel}</Title>
+                    <Text type="secondary">Create a PDF or print-shop packet from the current {documentLabelLower}.</Text>
                 </div>
                 <Space>
-                    <Tag icon={<LuQrCode size={12} />} color="blue">QR to live menu</Tag>
+                    <Tag icon={<LuQrCode size={12} />} color="blue">QR to live {documentLabelLower}</Tag>
                     <Tag color="default">{preview.plan.pageCount} page{preview.plan.pageCount === 1 ? '' : 's'}</Tag>
                 </Space>
             </Flex>
@@ -461,7 +139,7 @@ export default function MenuCardExportRoute() {
             <div className={styles.grid}>
                 <Card className={styles.panel} title="Setup" styles={{ body: { display: 'grid', gap: 14 } }}>
                     <div>
-                        <Text strong>Menu</Text>
+                        <Text strong>{documentLabel}</Text>
                         <div style={{ marginTop: 8 }}>
                             <ProjectSelectorTrigger
                                 clickable={projects.length > 1}
@@ -475,7 +153,7 @@ export default function MenuCardExportRoute() {
                                     projectImage: selectedProject.projectImage || null,
                                     specialMenuBaseProjectId: selectedProject.specialMenuBaseProjectId,
                                     specialMenuBaseProjectName: selectedProject.specialMenuBaseProjectId
-                                        ? resolveName(
+                                        ? resolveMenuCardProjectName(
                                             projects.find((project) => project.projectId === selectedProject.specialMenuBaseProjectId)?.name,
                                             'Menu',
                                         )
@@ -510,23 +188,29 @@ export default function MenuCardExportRoute() {
                     </div>
 
                     <div>
-                        <Text strong>Style</Text>
+                        <Flex align="center" justify="space-between" gap={8}>
+                            <Text strong>Style</Text>
+                            {autoDesign && settings.styleId === autoDesign.settings.styleId ? <Tag color="green">Auto picked</Tag> : null}
+                        </Flex>
                         <Segmented
                             block
                             style={{ marginTop: 8 }}
                             value={settings.styleId}
                             onChange={(value) => updateStyle(String(value))}
-                            options={exposedMenuCardTemplates.map((template) => ({ label: template.name, value: template.id }))}
+                            options={templates.map((template) => ({ label: template.name, value: template.id }))}
                         />
                     </div>
 
                     <div>
-                        <Text strong>Density</Text>
+                        <Flex align="center" justify="space-between" gap={8}>
+                            <Text strong>Density</Text>
+                            {autoDesign && settings.density === autoDesign.settings.density ? <Tag color="green">{autoDesign.label}</Tag> : null}
+                        </Flex>
                         <Segmented
                             block
                             style={{ marginTop: 8 }}
                             value={settings.density}
-                            onChange={(value) => setSettings((current) => ({ ...current, density: value as any }))}
+                            onChange={(value) => updateDensity(value as any)}
                             options={[
                                 { label: 'Comfort', value: 'comfortable' },
                                 { label: 'Balanced', value: 'balanced' },
@@ -535,7 +219,7 @@ export default function MenuCardExportRoute() {
                         />
                     </div>
 
-                    {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_AI_ADVISOR ? (
+                    {isAiAdvisorEnabled ? (
                         <div className={styles.advisorBox}>
                             <Flex align="flex-start" justify="space-between" gap={12} wrap="wrap">
                                 <div className={styles.advisorCopy}>
@@ -640,7 +324,7 @@ export default function MenuCardExportRoute() {
                                 <Alert key={`${warning.code}-${index}`} type={warning.severity === 'info' ? 'info' : 'warning'} showIcon message={warning.message} />
                             ))}
                         </Flex>
-                        {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY && reusableExport ? (
+                        {isHistoryEnabled && reusableExport ? (
                             <Alert style={{ marginTop: 12 }} type="info" showIcon message="A matching export was created before. Creating again will reuse the same menu state." />
                         ) : null}
                         <Flex gap={8} style={{ marginTop: 16 }} wrap>
@@ -649,7 +333,7 @@ export default function MenuCardExportRoute() {
                                 icon={<LuDownload />}
                                 loading={rendering}
                                 disabled={blockers.length > 0}
-                                onClick={() => void handleCreate(false)}
+                                onClick={() => void createArtifact(false)}
                             >
                                 {settings.preset === 'print_shop_packet' ? 'Create packet' : 'Create PDF'}
                             </Button>
@@ -657,14 +341,14 @@ export default function MenuCardExportRoute() {
                                 icon={<LuShare2 />}
                                 loading={rendering}
                                 disabled={blockers.length > 0}
-                                onClick={() => void handleCreate(true)}
+                                onClick={() => void createArtifact(true)}
                             >
                                 Share
                             </Button>
                         </Flex>
                     </Card>
 
-                    {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY ? (
+                    {isHistoryEnabled ? (
                         <Card className={styles.panel} title={<Space><LuHistory /> History</Space>}>
                             {history.length === 0 ? (
                                 <Paragraph type="secondary">Exports created on this device appear here. No Firebase writes are used.</Paragraph>
@@ -675,7 +359,7 @@ export default function MenuCardExportRoute() {
                                             <Flex justify="space-between" gap={8}>
                                                 <Flex vertical>
                                                     <Text strong>{record.fileName}</Text>
-                                                    <Text type="secondary" style={{ fontSize: 12 }}>{new Date(record.generatedAt).toLocaleString()}</Text>
+                                                    <Text type="secondary" style={{ fontSize: 12 }}>{formatDateTime(record.generatedAt, 'datetime', formatter)}</Text>
                                                 </Flex>
                                                 <Tag color={getFreshnessState(record, sourceHash) === 'Current' ? 'green' : 'orange'}>
                                                     {getFreshnessState(record, sourceHash)}
@@ -711,7 +395,7 @@ export default function MenuCardExportRoute() {
                         secondaryLabel: project.url.replace(/^https?:\/\//, ''),
                         specialMenuBaseProjectId: project.specialMenuBaseProjectId,
                         specialMenuBaseProjectName: project.specialMenuBaseProjectId
-                            ? resolveName(
+                            ? resolveMenuCardProjectName(
                                 projects.find((candidate) => candidate.projectId === project.specialMenuBaseProjectId)?.name,
                                 'Menu',
                             )

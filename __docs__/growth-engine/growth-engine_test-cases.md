@@ -9,11 +9,29 @@
 
 | Test | Expected |
 | --- | --- |
+| Implementation starts without reviewing implementation-readiness checklist | Blocked. |
 | Growth Engine lead data is queried from MenuList Firestore | Fails; lead data must use Growth Engine Firebase. |
 | Growth Engine writes MenuList menu/business truth directly | Fails; only approved bridge contracts are allowed. |
 | Growth Engine uses GrowthOS folders or `GR` product ID | Fails; GrowthOS/Growth Kits is separate. |
 | Growth Engine creates a public lead demo page by default | Fails; artifacts are private/noindex unless separately approved. |
 | Growth Engine uses a third-party CRM/outreach tool as system of record | Fails; owned target registry, distribution queue, and attribution are required. |
+
+## 1A. Implementation Readiness Tests
+
+| Test | Expected |
+| --- | --- |
+| Route inventory is missing for an implemented screen | Blocked until docs are updated. |
+| UI mutation lacks role mapping | Blocked. |
+| UI state lacks empty, blocked, paused, incident, stale, or validation-failed behavior | Blocked. |
+| Feature flag is enabled by default | Test fails. |
+| Provider secret is represented as environment variable or plaintext Firestore field | Test fails. |
+| Firestore collection lacks rules posture | Blocked. |
+| Query requires broad raw-event index | Test fails. |
+| Seed config missing for provider execution | Provider execution blocked. |
+| API route lacks Zod validation, role check, secure log context, or audit write for mutation | Test fails. |
+| Webhook route lacks signature/idempotency/event allowlist where provider supports it | Test fails. |
+| Screen exposes send action from configuration surface | Test fails. |
+| New provider or route is needed but not covered in readiness doc | Implementation stops until docs are updated. |
 
 ## 2. Source Import Tests
 
@@ -77,6 +95,9 @@
 
 | Test | Expected |
 | --- | --- |
+| Provider call requested while adapter is not active | Blocked. |
+| Provider credential is stored as plaintext in Firestore | Test fails. |
+| Provider credential appears in browser payload, logs, AI prompt, or work item note | Test fails. |
 | Campaign created without jurisdiction | Blocked. |
 | Channel selected without matching channel policy | Blocked. |
 | Email selected while sender domain has missing SPF/DKIM/DMARC readiness | Blocked. |
@@ -93,6 +114,31 @@
 | Campaign changes sender halfway through target conversation | Blocked unless incident-owner override exists. |
 | Send outside target timezone window | Held until eligible window. |
 | Sender ramp would exceed daily cap | Send held or rescheduled. |
+
+## 2F. Connections And Activation Tests
+
+| Test | Expected |
+| --- | --- |
+| Adapter ID is missing or unstable random provider ID | Blocked. |
+| Adapter is created without provider register or policy link | Held. |
+| Secret value is returned after submit | Test fails. |
+| Secret ref has no fingerprint, version, or status | Blocked. |
+| Secret rotation happens without validation run | Adapter remains held or paused. |
+| Email pipeline activates with missing SPF/DKIM/DMARC checks | Blocked. |
+| Email pipeline activates without unsubscribe endpoint | Blocked. |
+| Email pipeline activates without bounce and complaint webhooks | Blocked. |
+| WhatsApp pipeline activates without WABA ID or phone-number ID | Blocked. |
+| WhatsApp pipeline activates without access-token and webhook secret refs | Blocked. |
+| WhatsApp pipeline activates without opt-in policy | Blocked. |
+| WhatsApp pipeline activates without template sync and conversation-state support | Blocked. |
+| Webhook endpoint has failing signature validation | Connection is blocked or paused. |
+| Activation requested without budget cap | Blocked. |
+| Activation requested without kill-switch scope | Blocked. |
+| Operator tries to activate connection | Blocked by role. |
+| Incident owner tries to activate blocked connection | Blocked. |
+| Admin activates connection with failed compliance check | Blocked. |
+| Connection is paused | Source runs, sends, AI calls, and discovery jobs using it are held. |
+| Mobile tries to add adapter, rotate secret, or activate pipeline | Not available. |
 
 ## 2C. Automation Workflow Tests
 
@@ -157,6 +203,30 @@
 | API send attempted without opt-in evidence | Blocked. |
 | API send attempted without approved template | Blocked. |
 | Assisted queue exceeds daily cap | New tasks held. |
+
+## 6A. WhatsApp Governance Tests
+
+| Test | Expected |
+| --- | --- |
+| WhatsApp API send is requested without explicit opt-in proof | Blocked. |
+| Phone number came only from public listing, scraping, Google Places, Foursquare, or enrichment | WhatsApp API send is blocked. |
+| Consent exists for verification but template is marketing | Blocked. |
+| Consent text, source, timestamp, privacy version, or proof hash is missing | Blocked. |
+| Contact has STOP, unsubscribe, complaint, wrong-contact, invalid-number, or revoked-consent suppression | Pending WhatsApp work is cancelled or quarantined. |
+| Customer service window is closed and no approved template is selected | Blocked. |
+| Free-form WhatsApp message is attempted outside an open service window | Blocked. |
+| Template is pending, rejected, paused, disabled, wrong category, or low quality | Blocked or human review required by policy. |
+| Governance audit is missing before provider send | Provider send is blocked. |
+| Webhook signature validation fails | Event is rejected, incident/work item is created, and no state mutation happens. |
+| Duplicate webhook event arrives | Event processing is idempotent. |
+| WhatsApp sender identity is shared across unrelated tenants | Blocked. |
+| Sender identity changes in the same target conversation | Blocked unless incident-owner recovery exists. |
+| Pacing policy would exceed sender, template, recipient, country, or campaign limit | Send is held. |
+| Template or sender quality drops outside policy | Affected sends pause and work item is created. |
+| WhatsApp Flow collects hidden marketing consent or unapproved fields | Flow is blocked. |
+| WhatsApp Flow output writes public truth directly | Test fails; output can create candidate graph edges only until confirmation. |
+| AI writes unrestricted WhatsApp copy | Blocked; AI may fill approved variables only. |
+| Reply says HELP or HUMAN | Support handoff work item is created. |
 
 ## 7. Inbox And Classifier Tests
 

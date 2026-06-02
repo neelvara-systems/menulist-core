@@ -274,6 +274,31 @@ export const FUNCTION_FLAGS = {
      */
     ENABLE_MENU_LINK_IMPORT: true,
 
+    /**
+     * Owner Notifications
+     *
+     * Shared owner/account notification core for MenuList lifecycle messages.
+     * Runs inside existing trigger/scheduler paths; no new standalone scheduled
+     * Cloud Function is introduced.
+     *
+     * @see __docs__/owner-notifications/
+     */
+    ENABLE_OWNER_NOTIFICATIONS: true,
+    ENABLE_OWNER_NOTIFICATION_EMAIL: true,
+    ENABLE_OWNER_NOTIFICATION_WHATSAPP: false,
+    ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION: true,
+
+    /**
+     * Platform-owner alert delivery.
+     *
+     * Uses systemAlerts as the event source. Email sends through SMTP when
+     * PLATFORM_ALERT_EMAIL_TO or INTERNAL_NOTIFICATION_EMAIL is configured.
+     * WhatsApp sends through Meta outbound config when PLATFORM_ALERT_WHATSAPP_TO
+     * and either a template or active-session flag is configured.
+     */
+    ENABLE_PLATFORM_ALERT_EMAIL: true,
+    ENABLE_PLATFORM_ALERT_WHATSAPP: true,
+
 } as const;
 
 /**

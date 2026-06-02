@@ -6,9 +6,9 @@
  * Mobile-responsive with touch-friendly sizing.
  */
 
-import { QuestionCircleOutlined } from '@ant-design/icons';
 import { Card, Space, Statistic, Tooltip, theme } from 'antd';
 import React from 'react';
+import { LuHelpCircle } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 interface MetricCardProps {
@@ -52,7 +52,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <span>{title}</span>
             {tooltip && (
                 <Tooltip title={tooltip} placement="top">
-                    <QuestionCircleOutlined className={styles.tooltipIcon} />
+                    <LuHelpCircle className={styles.tooltipIcon} />
                 </Tooltip>
             )}
         </Space>

@@ -1,8 +1,8 @@
 # Digital Screens — Firebase Cost Tracking
 
 **Feature:** In-Store Digital Menu Screens (TV/Tablet Display)  
-**Status:** 🔒 **v2.2 LOCKED** (v2.1 UI + v2.2 metadata + v2.2.1 hardening = $0.00 additional Firebase cost)  
-**Last Updated:** February 8, 2026  
+**Status:** 🔒 **v2.2 LOCKED** (readability/reliability/owner-trust hardening only)
+**Last Updated:** June 2, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 ---
@@ -14,6 +14,8 @@
 - **Storage Buckets:** `MenuListAi/platform_summary/screen_slides/` (owner uploads only)
 - **Cloud Functions:** None — all screen logic is SSR + client-side
 - **Real-time:** Firebase `onSnapshot` doc listener (not polling)
+- **Screen invalidation:** Public client cache invalidation touches `screen.contentVersion` only when an initialized screen token exists.
+- **Content normalization:** Text, price, category, tag, caption, and dedupe logic is CPU-only in the existing DAL/render path.
 - **Estimated Monthly Cost:** **~$0.41/month for 1000 screens**
 - **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same data pipeline, different client render)
 
@@ -33,6 +35,7 @@
 | Daily seen signal      | `platformSummary` | 1x/day/screen         | 1x/day         | 1 (direct doc get)            | `api/screen/seen/route.ts:44-53`      |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
+| Screen version touch   | `platformSummary` | Public menu cache invalidation | Per menu/store change where screen exists | 1 (direct doc get) | `lib/screen/screenInvalidation.ts` |
 
 ### Writes
 
@@ -44,6 +47,7 @@
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 1                             | `database/campaigns/index.ts:725` |
 | Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 1                             | `database/campaigns/index.ts:659` |
 | bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 1                             | `database/campaigns/index.ts:757` |
+| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 1 | `lib/screen/screenInvalidation.ts` |
 
 ### Deletes
 
@@ -130,8 +134,12 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 | Client-side localStorage cache      | Survives offline, no extra reads | `ScreenDisplay.tsx:59-87`               |
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
 | **Vercel `unstable_cache` (OPT-6)** | **SSR reads cached 60s at edge** | `screen/[token]/page.tsx:31-41`         |
+| Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts` |
+| Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
 
 > **OPT-6 (Added Feb 19, 2026):** Screen SSR data reads (`getScreenDataByToken` + `getMenuItemsForScreen`) are now wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share 1 cached Firestore result instead of 4 raw reads each. At 1000 screens doing 4 SSR/day, this reduces raw reads from ~16,000/day to near-zero on cache hits. Estimated savings: ~5.8M reads/year for 1000 screens.
+
+> **June 2026 invalidation note:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion` and updates `screen.lastContentChangeAt`, adding one read and one write per public menu/cache invalidation event.
 
 ---
 
@@ -205,3 +213,5 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 | 3.0     | 2026-02-08 | Cascade | **v2.0 Menu Board cost analysis** — confirmed $0.00 additional cost, two-screen scenario, rejected features cost comparison                                                             |
 | 4.0     | 2026-02-08 | Cascade | **🔒 v2.2 LOCKED** — v2.1 UI, v2.2 metadata enrichment, v2.2.1 hardening = $0.00 additional Firebase cost. All changes were client-side CSS/logic only. No new reads/writes/collections |
 | 4.1     | 2026-02-08 | Cascade | v2.2.2 REFACTOR — type consolidation + `guardedReload` extraction. `ScreenStoreInfo` now used in DAL return type. Zero Firebase cost impact (import-only changes)                       |
+| 4.2     | 2026-06-02 | Codex   | Added public-cache-linked screen content-version touch and screen SSR cache tag invalidation. No new collections, functions, rules, indexes, schedulers, or Storage paths.              |
+| 4.3     | 2026-06-02 | Codex   | Added content normalization for screen text, prices, categories, tags, captions, and dedupe. CPU-only; no Firebase cost impact.                                                           |

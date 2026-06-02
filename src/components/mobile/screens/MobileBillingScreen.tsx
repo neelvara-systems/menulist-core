@@ -11,11 +11,12 @@ import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter
 import { logger } from '@lib/monitoring/logger';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { toDate } from '@util/dateTime';
+import { formatDateTime, toDate } from '@util/dateTime';
 import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
+import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useState } from 'react';
 import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
@@ -28,6 +29,8 @@ interface MobileBillingScreenProps {
 
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
+    const formatter = useFormatter();
+    const { token } = theme.useToken();
     const {
         activeSubscription,
         activeSubscriptionLoading,
@@ -127,7 +130,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         try {
             const date = toDate(timestamp);
             if (isNaN(date.getTime())) return 'N/A';
-            return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            return formatDateTime(date, 'date', formatter);
         } catch {
             return 'N/A';
         }
@@ -319,6 +322,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             ? `${formatCurrency(sub.amount, sub.currency)} / one-time prepaid${sub.commitmentPeriodMonths ? ` (${sub.commitmentPeriodMonths} months)` : ''}`
             : `${formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / ${sub.planType === 'YEAR' ? 'year' : 'month'}`
         : '';
+    const manualBillingTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -333,7 +341,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     <Card onClick={() => setShowStorePicker(true)}>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={10}>
-                                {selectedStore?.isMaster ? <LuBuilding2 color="#9333ea" size={18} /> : <LuStore color="#9333ea" size={18} />}
+                                {selectedStore?.isMaster ? <LuBuilding2 color={token.colorPrimary} size={18} /> : <LuStore color={token.colorPrimary} size={18} />}
                                 <Flex gap={2} vertical>
                                     <Text strong>{selectedStore?.name || t('title')}</Text>
                                     <Text type="secondary">
@@ -343,7 +351,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     </Text>
                                 </Flex>
                             </Flex>
-                            <LuChevronRight color="#9ca3af" size={16} />
+                            <LuChevronRight color={token.colorTextTertiary} size={16} />
                         </Flex>
                     </Card>
                 ) : null}
@@ -394,7 +402,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     />
                                     <List.Item
                                         title={<Text>Payment type</Text>}
-                                        extra={<Tag color={isManualBilling ? 'purple' : 'processing'}>{isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
+                                        extra={<Tag color={isManualBilling ? undefined : 'processing'} style={isManualBilling ? manualBillingTagStyle : undefined}>{isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
                                     />
                                     <List.Item
                                         title={<Text>Paid locations</Text>}
@@ -420,10 +428,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Card>
 
                             {sub.status === 'active' && !isManualBilling && !isInheritedBilling ? (
-                                <Card size="small" style={{ backgroundColor: '#f8fafc' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                                     <Flex gap={8} vertical>
                                         <Flex align="center" gap={8}>
-                                            <LuMapPin color="#9333ea" size={16} />
+                                            <LuMapPin color={token.colorPrimary} size={16} />
                                             <Text strong>Paid locations</Text>
                                         </Flex>
                                         <Text type="secondary">
@@ -447,7 +455,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             ) : null}
 
                             {sub.status === 'past_due' ? (
-                                <Card size="small" style={{ backgroundColor: '#fefce8' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                     <Flex gap={6} vertical>
                                         <Text>{`${t('paymentFailed')}`}</Text>
                                         <Text type="secondary">
@@ -466,7 +474,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             ) : null}
 
                             {isPaymentPending ? (
-                                <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorPrimaryBg }}>
                                     <Flex gap={8} vertical>
                                         <Text>Payment is pending. Complete the Razorpay checkout to activate this store.</Text>
                                         {sub.shortUrl ? (
@@ -479,7 +487,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             ) : null}
 
                             {isManualBilling ? (
-                                <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                     <Text>
                                         Offline payment was confirmed by the reseller. This is prepaid access for the selected duration, not lifetime access.
                                     </Text>
@@ -487,7 +495,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             ) : null}
 
                             {sub.status === 'paused' ? (
-                                <Card size="small" style={{ backgroundColor: '#fff7ed' }}>
+                                <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                     <Text>
                                         {canPauseSubscriptions
                                             ? (!hasValidSubscriptionAccess(sub) ? t('pausedCycleEnded') : t('pausedAccessAvailable'))
@@ -576,7 +584,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 ) : !activeSubscriptionLoading ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuCreditCard color="#d1d5db" size={36} />
+                            <LuCreditCard color={token.colorTextTertiary} size={36} />
                             <Text type="secondary">{t('noActiveSubscription2')}</Text>
                             <Button color="primary" onClick={() => setShowPlans(true)} size="large">
                                 <Flex align="center" gap={6}>
@@ -593,7 +601,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex gap={12} vertical>
                             <Flex align="center" justify="space-between">
                                 <Flex align="center" gap={8}>
-                                    <LuZap color="#f59e0b" size={16} />
+                                    <LuZap color={token.colorWarning} size={16} />
                                     <Text strong>{t('aiFeatures')}</Text>
                                 </Flex>
                                 <Tag color={totalCredits > 0 ? 'success' : 'warning'}>
@@ -601,7 +609,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Tag>
                             </Flex>
                             <Text type="secondary">{t('aiIncludesDesc')}</Text>
-                            <Card size="small" style={{ backgroundColor: isLowOnEnhancements ? '#fef3c7' : '#f8fafc' }}>
+                            <Card size="small" style={{ backgroundColor: isLowOnEnhancements ? token.colorWarningBg : token.colorFillQuaternary }}>
                                 <Flex align="center" justify="space-between">
                                     <Flex gap={2} vertical>
                                         <Text strong>{totalCredits}</Text>
@@ -631,16 +639,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 <Card onClick={fetchHistory}>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={8}>
-                            <LuReceipt color="#3b82f6" size={18} />
+                            <LuReceipt color={token.colorPrimary} size={18} />
                             <Text strong>{t('billingHistory')}</Text>
                         </Flex>
-                        <LuChevronRight color="#9ca3af" size={16} />
+                        <LuChevronRight color={token.colorTextTertiary} size={16} />
                     </Flex>
                 </Card>
 
                 <Card onClick={() => router.push('/help-center/ticket')}>
                     <Flex align="center" gap={12}>
-                        <LuMessageCircle color="#22c55e" size={20} />
+                        <LuMessageCircle color={token.colorSuccess} size={20} />
                         <Flex gap={2} vertical>
                             <Text strong>{t('needBillingHelp')}</Text>
                             <Text type="secondary">Open a support ticket in Help Center.</Text>
@@ -714,7 +722,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     }
                                     key={store.storeId}
                                     onClick={() => handleBillingStoreChange(Number(store.storeId))}
-                                    prefix={store.isMaster ? <LuBuilding2 color="#9333ea" size={18} /> : <LuStore color="#9333ea" size={18} />}
+                                    prefix={store.isMaster ? <LuBuilding2 color={token.colorPrimary} size={18} /> : <LuStore color={token.colorPrimary} size={18} />}
                                     title={<Text strong>{store.name || `Store ${store.storeId}`}</Text>}
                                 />
                             ))}
@@ -770,7 +778,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 <Text>{formatCurrency(item.amount, item.currency)}</Text>
                                                 {item.invoiceUrl ? (
                                                     <Button onClick={() => window.open(item.invoiceUrl, '_blank')} size="small">
-                                                        <LuExternalLink size={16} color="#3b82f6" />
+                                                        <LuExternalLink size={16} color={token.colorPrimary} />
                                                     </Button>
                                                 ) : null}
                                             </Flex>
@@ -778,7 +786,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         title={<Text>{item.type}</Text>}
                                         description={
                                             <Text type="secondary">
-                                                {new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                {formatDate(item.date)}
                                             </Text>
                                         }
                                     />

@@ -11,7 +11,7 @@
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { answerlatticeFirestoreDatabaseId, shouldUseSharedAnswerlatticeFirebase } from './answerlatticeConfig';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
@@ -176,6 +176,16 @@ const answerlatticeFirestoreAdmin = answerlatticeAdminApp
 const answerlatticeStorageAdmin = answerlatticeAdminApp ? answerlatticeAdminApp.storage() : (null as unknown as admin.storage.Storage);
 const answerlatticeAuthAdmin = answerlatticeAdminApp ? answerlatticeAdminApp.auth() : (null as unknown as admin.auth.Auth);
 
-const AnswerlatticeVector = (admin.firestore as any).VectorValue;
+type AnswerlatticeVectorValue = ReturnType<typeof FieldValue.vector> & {
+    values?: number[];
+    _values?: number[];
+};
+type AnswerlatticeVectorFactory = {
+    new(values?: number[]): AnswerlatticeVectorValue;
+    (values?: number[]): AnswerlatticeVectorValue;
+};
+const AnswerlatticeVector = (function AnswerlatticeVector(values?: number[]) {
+    return FieldValue.vector(values) as AnswerlatticeVectorValue;
+}) as AnswerlatticeVectorFactory;
 
 export { AnswerlatticeVector, answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin, answerlatticeStorageAdmin };

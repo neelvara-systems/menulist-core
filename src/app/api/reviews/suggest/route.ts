@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
-import { checkAICapacity, consumeAICapacity } from '@lib/ai/capacityCheck';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
+import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
 import { buildSecurityContext } from '@lib/security/securityContext';
@@ -198,38 +198,48 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let remainingBalance = null;
         let transactionId: string | null = null;
         try {
-            transactionId = await recordAiOperationForSession(session, {
-                action: ACTION,
-                billingMode: 'billable',
-                businessType: businessType || null,
-                chargePerCredit: CHARGE_PER_CREDIT,
-                clientResponse: {
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: {
+                    endpoint: '/api/reviews/suggest',
                     rating,
-                    reply,
-                    source: usedFallback ? 'fallback' : 'ai',
+                    userId: session.uId,
                 },
-                generationConfig: {
-                    maxOutputTokens: 200,
-                    temperature: 0.7,
+                input: {
+                    action: ACTION,
+                    billingMode: 'billable',
+                    businessType: businessType || null,
+                    chargePerCredit: CHARGE_PER_CREDIT,
+                    clientResponse: {
+                        rating,
+                        reply,
+                        source: usedFallback ? 'fallback' : 'ai',
+                    },
+                    generationConfig: {
+                        maxOutputTokens: 200,
+                        temperature: 0.7,
+                    },
+                    geminiResponse: result,
+                    model: 'gemini-2.0-flash',
+                    processingTime,
+                    rating,
+                    reviewLength: reviewText.length,
+                    tokenPerCredit: TOKENS_PER_CREDIT,
+                    unitsConsumed,
+                    realCostPaise: getRealCostPaise(ACTION),
+                    ourChargePaise: getOurChargePaise(ACTION),
                 },
-                geminiResponse: result,
-                model: 'gemini-2.0-flash',
-                processingTime,
-                rating,
-                reviewLength: reviewText.length,
-                tokenPerCredit: TOKENS_PER_CREDIT,
-                unitsConsumed,
-                realCostPaise: getRealCostPaise(ACTION),
-                ourChargePaise: getOurChargePaise(ACTION),
+                logLabel: 'Review reply suggestion',
+                session,
             });
-            if (capacityCheck.subscription && unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, unitsConsumed);
-            }
+            transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record review reply AI transaction', transactionError, {
                 endpoint: '/api/reviews/suggest',
                 userId: session.uId,
             });
+            return NextResponse.json({ error: 'Review reply accounting failed' }, { status: 500 });
         }
 
         return NextResponse.json({

@@ -19,19 +19,14 @@ import { Button, Card, Col, Divider, Flex, message, Progress, Row, Space, Statis
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FaBolt, FaCreditCard } from 'react-icons/fa';
-import { LuHeartCrack, LuHeartOff, LuHeartPulse, LuHistory, LuPause, LuPlay, LuXCircle } from 'react-icons/lu';
-import { RiMastercardFill } from 'react-icons/ri';
-import { TbBrandVisa } from 'react-icons/tb';
+import { LuCreditCard, LuHeartCrack, LuHeartOff, LuHeartPulse, LuHistory, LuPause, LuPlay, LuXCircle, LuZap } from 'react-icons/lu';
 import { formatCurrency } from '../../../../utils/formatters';
 import CancellationModal from './CancellationModal';
 const { Title, Text, Paragraph } = Typography;
 
 const PaymentMethodIcon = ({ brand }: { brand?: string }) => {
     const lowerBrand = brand?.toLowerCase();
-    if (lowerBrand === "visa") return <TbBrandVisa />;
-    if (lowerBrand === "mastercard" || lowerBrand === "mc") return <RiMastercardFill />;
-    return <FaCreditCard />;
+    return <LuCreditCard aria-label={lowerBrand ? `${lowerBrand} card` : 'card'} />;
 };
 
 interface ActiveSubscriptionCardProps {
@@ -155,7 +150,7 @@ function ActiveSubscriptionCard({
             && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
         if (isPaymentPending) {
             return activeSubscription.shortUrl ? (
-                <Button type="primary" icon={<FaCreditCard />} href={activeSubscription.shortUrl} target="_blank">
+                <Button type="primary" icon={<LuCreditCard />} href={activeSubscription.shortUrl} target="_blank">
                     Pay Now
                 </Button>
             ) : (
@@ -173,7 +168,7 @@ function ActiveSubscriptionCard({
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
                         <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
                     {canPauseSubscriptions && <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>}
-                    {(canUpgradePlan ?? activeSubscription.planId !== 'premium') && <Button icon={<FaBolt />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
+                    {(canUpgradePlan ?? activeSubscription.planId !== 'premium') && <Button icon={<LuZap />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
             );
         }
@@ -201,7 +196,7 @@ function ActiveSubscriptionCard({
             return <Space>
                 {!isFinalCycle && <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
                 {activeSubscription.shortUrl ? (
-                    <Button type="primary" icon={<FaCreditCard />} href={activeSubscription.shortUrl} target="_blank">
+                    <Button type="primary" icon={<LuCreditCard />} href={activeSubscription.shortUrl} target="_blank">
                         Retry Payment
                     </Button>
                 ) : (
@@ -229,7 +224,7 @@ function ActiveSubscriptionCard({
             return <Tag style={styles} icon={<LuHeartCrack />} color="warning">Payment Failed</Tag>;
         }
         if (activeSubscription.status === 'pending') {
-            return <Tag style={styles} icon={<FaCreditCard />} color="processing">Payment Pending</Tag>;
+            return <Tag style={styles} icon={<LuCreditCard />} color="processing">Payment Pending</Tag>;
         }
         if (activeSubscription.status === 'expired') {
             return <Tag style={styles} icon={<LuHeartOff />} color="default">Expired</Tag>;
@@ -463,7 +458,7 @@ function ActiveSubscriptionCard({
 
                             <Flex align='end' style={{ width: '100%' }} gap={16}>
                                 <Button block icon={<LuHistory />} onClick={() => router.push(usageRoute)}>View Usage</Button>
-                                <Button type="primary" ghost block icon={<FaBolt />} onClick={() => setIsCreditsModalOpen(true)}>
+                                <Button type="primary" ghost block icon={<LuZap />} onClick={() => setIsCreditsModalOpen(true)}>
                                     {creditPackButtonLabel || (totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements')}
                                 </Button>
                             </Flex>

@@ -2,9 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getModelName } from "@constant/AI/models";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
@@ -232,13 +232,20 @@ export const POST = withAuth(async (request, session) => {
 
         let remainingBalance = null;
         try {
-            transactionObject.transactionId = await addAiOperation(transactionObject);
-            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-            }
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: { userId, requestId, action, storeId: session.sId, tenantId: session.tId },
+                input: transactionObject,
+                logLabel: 'SEO generation',
+                session,
+            });
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+            transactionObject.transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record SEO generation transaction', transactionError, { userId });
             await writeLogEntry({ logFileName: LOG_FILE, userId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            throw transactionError;
         }
 
         logger.info('SEO generation completed', {

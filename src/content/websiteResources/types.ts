@@ -78,6 +78,8 @@ export type WebsiteResourcesLabels = {
     backToHub: string;
     checklist: string;
     comparison: string;
+    copiedChecklist: string;
+    copyChecklist: string;
     faqTitle: string;
     onThisPage: string;
     primaryAction: string;

@@ -6,10 +6,12 @@
  * Read-only, simple presentation.
  */
 
-import { TrophyOutlined } from '@ant-design/icons';
 import { OverallData } from '@template/main-app/projects/types';
+import { formatDateKey, formatDateTime } from '@util/dateTime';
 import { Card, Col, Divider, Row, Statistic, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import React from 'react';
+import { LuTrophy } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
@@ -20,21 +22,19 @@ interface OverallFooterProps {
 
 const OverallFooter: React.FC<OverallFooterProps> = ({ data }) => {
     const { lifetimeMetrics, firstDataDate, lastUpdated } = data;
+    const formatter = useFormatter();
 
     const formatDate = (date?: string | Date) => {
         if (!date) return 'N/A';
-        const d = typeof date === 'string' ? new Date(date) : date;
-        return d.toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-        });
+        return typeof date === 'string'
+            ? formatDateKey(date, formatter)
+            : formatDateTime(date, 'date', formatter);
     };
 
     return (
         <Card className={styles.overallFooter} variant="borderless">
             <div className={styles.overallHeader}>
-                <TrophyOutlined className={styles.overallIcon} />
+                <LuTrophy className={styles.overallIcon} />
                 <Title level={5} className={styles.overallTitle}>
                     All Time Summary
                 </Title>

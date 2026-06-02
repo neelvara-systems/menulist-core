@@ -127,6 +127,7 @@ function useFirebaseAuthSync(): {
      body: JSON.stringify({})
    })
    ```
+   MenuList sync omits `productId`. Answerlattice separate-Firebase sync must pass `productId: 'AL'` so `/api/auth/set-claims` mints the Answerlattice custom token only for Answerlattice-scoped requests.
 
 3. **Gets Custom Token:**
    - Server uses Firebase Admin SDK

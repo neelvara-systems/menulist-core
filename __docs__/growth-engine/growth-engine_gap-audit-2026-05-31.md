@@ -16,6 +16,9 @@ This audit used current public/official sources for channel rules, cost shape, a
 | Gmail sender requirements | https://support.google.com/a/answer/81126 |
 | CAN-SPAM commercial email rules | https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business |
 | WhatsApp Business policy | https://whatsappbusiness.com/policy/ |
+| WhatsApp Business Terms | https://www.whatsapp.com/legal/business-terms/ |
+| WhatsApp Business Platform pricing | https://whatsappbusiness.com/products/platform-pricing/ |
+| WhatsApp Flows | https://whatsappbusiness.com/products/whatsapp-flows/ |
 | TRAI UCC 2025 amendments | https://www.trai.gov.in/sites/default/files/2025-02/PR_No.11of2025.pdf |
 | India DPDP Act 2023 | https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf |
 | Firestore billing | https://firebase.google.com/docs/firestore/pricing |
@@ -37,7 +40,7 @@ This audit used current public/official sources for channel rules, cost shape, a
 
 Growth Engine is a valid product direction, but the first-pass docs were not yet build-ready.
 
-The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness, automation readiness, graph readiness, and distribution readiness: source permission, Business Truth Graph state, automation workflows, enrichment waterfalls, decision snapshots, AI worker evals, sender assignment, operator work queues, sender readiness, consent, suppression, canonical surfaces, structured data, sitemaps, menu feed exports, truth packets, provider cost, legal posture, artifact QA, and incident handling need to be first-class product modules before the first send or public publish.
+The product should still live in the same repo as a separate product-scoped module with separate Firebase/functions/data. The gap is not repo strategy. The gap is operating readiness, connection readiness, automation readiness, graph readiness, messaging-governance readiness, and distribution readiness: source permission, adapter activation, provider secret refs, webhook health, Business Truth Graph state, automation workflows, enrichment waterfalls, decision snapshots, AI worker evals, sender assignment, operator work queues, sender readiness, consent, suppression, WhatsApp governance, canonical surfaces, structured data, sitemaps, menu feed exports, truth packets, provider cost, legal posture, artifact QA, and incident handling need to be first-class product modules before the first send or public publish.
 
 Implementation can start from the current docs, but no sending or public publishing is allowed until these gates are implemented:
 
@@ -50,17 +53,19 @@ Implementation can start from the current docs, but no sending or public publish
 7. AI worker registry with eval dataset and pass thresholds.
 8. Sender assignment and pacing model.
 9. Operator workboard and exception queues.
-10. Canonical MenuList surface publishing contract.
-11. Structured data, sitemap, feed export, and truth-packet contracts.
-12. External listing handoff contract for GBP, Apple Business Connect, and Bing Places.
-13. Channel compliance matrix by country and channel.
-14. Sender-domain readiness and warm-up policy.
-15. Consent, unsubscribe, DNC, and complaint ledger.
-16. MenuList onboarding flow inventory.
-17. Artifact review and takedown workflow.
-18. Provider decision matrix and vendor register.
-19. Incident severity and rollback runbook.
-20. Cost caps for source, email, AI, Firestore, automation, discovery publishing, and analytics.
+10. WhatsApp Message Governance Layer.
+11. Connections And Activation registry.
+12. Canonical MenuList surface publishing contract.
+13. Structured data, sitemap, feed export, and truth-packet contracts.
+14. External listing handoff contract for GBP, Apple Business Connect, and Bing Places.
+15. Channel compliance matrix by country and channel.
+16. Sender-domain readiness and warm-up policy.
+17. Consent, unsubscribe, DNC, and complaint ledger.
+18. MenuList onboarding flow inventory.
+19. Artifact review and takedown workflow.
+20. Provider decision matrix and vendor register.
+21. Incident severity and rollback runbook.
+22. Cost caps for source, email, AI, Firestore, automation, discovery publishing, and analytics.
 
 ## 3. If I Used This Tomorrow
 
@@ -81,6 +86,7 @@ Implementation can start from the current docs, but no sending or public publish
 | Pick a campaign country | I would not know whether India, US, or both are in scope and which channel rules apply. | Add jurisdiction/channel matrix before any campaign creation. |
 | Send email | I would not know whether sender DNS, DMARC, unsubscribe headers, bounce handling, and spam-rate monitoring are ready. | Add sender-domain readiness module and block email until ready. |
 | Use WhatsApp | I would not know whether the contact opted in, what template is allowed, or whether the first message can be sent. | Keep WhatsApp assisted-only until explicit opt-in evidence, template approval, and policy review exist. |
+| Use WhatsApp API | I would not know the conversation window, template quality, webhook health, sender quality, pacing policy, or governance audit. | Add WhatsApp Message Governance Layer before API sends. |
 | Approve a private artifact | I would not know who checked source rights, noindex, accuracy, or owner complaint handling. | Add artifact QA, approval, expiry, and takedown workflow. |
 | Route interested leads | I would not know which MenuList onboarding flow matches the offer and what event payload comes back. | Inventory approved MenuList onboarding routes and feedback events. |
 | Read a lead score | I would not know which facts drove the score or whether AI made unsupported assumptions. | Require typed score reasons, confidence, rejected facts, and eval-tested scoring prompts. |
@@ -125,6 +131,8 @@ That means the product should optimize for owner-confirmed MenuList truth covera
 | Decision snapshot ledger | Operators cannot explain why a target was sent, held, published, or blocked. | Store evidence, rejected facts, scores, blockers, confidence, and next action. |
 | AI worker registry | Heavy AI use becomes unsafe and hard to measure. | Typed output schemas, prompt versions, eval thresholds, budgets, and blocked-output rules. |
 | Sender assignment and pacing | Deliverability and conversation continuity can break. | Preserve one sender per target conversation, target timezone windows, ramp, and sender-health blocks. |
+| Connections And Activation | Provider keys, adapter IDs, webhooks, and activation state can become scattered and unsafe. | Add one internal screen and registry for adapter IDs, server-only secret refs, email pipeline, WhatsApp pipeline, webhooks, budgets, kill switches, validation, and activation audit. |
+| WhatsApp Message Governance Layer | WhatsApp can become account-risky cold outreach infrastructure. | Require consent ledger, suppression ledger, template registry, conversation state, webhook verification, reputation monitor, sender identity policy, pacing policy, Flow definitions, governance audit, and kill switches. |
 | Operator workboard | Human review becomes hidden in ad hoc chats/spreadsheets. | Queue every review, handoff, reply, health, freshness, cost, eval, and incident exception. |
 | Canonical surface publisher | MenuList cannot become distribution truth if it does not own public surfaces. | Public menu/business surfaces need indexability, canonical URL, structured data, sitemap state, and freshness state. |
 | Discovery publisher | Search and AI crawlers may not discover or refresh MenuList truth efficiently. | Own sitemaps, changed-URL queue, IndexNow, feed exports, and truth packets. |
@@ -160,6 +168,7 @@ policy registry
 -> GBP handoff manager
 -> Apple/Bing handoff manager
 -> sender readiness
+-> WhatsApp governance
 -> onboarding flow inventory
 -> dry-run
 -> sample artifact QA
@@ -172,11 +181,13 @@ policy registry
 
 WhatsApp assisted should remain disabled until the channel policy, opt-in model, and suppression checks pass.
 
-## 7. Launch Blockers
+## 7. Runtime Blockers If Code Omits Them
 
-These are launch blockers:
+These are runtime blockers, not remaining documentation gaps. The implementation must block controlled use if code omits any item:
 
+- No implementation readiness checklist acceptance.
 - No approved source policy.
+- No Connections And Activation registry.
 - No distribution target registry.
 - No Business Truth Graph registry.
 - No automation workflow engine.
@@ -184,6 +195,7 @@ These are launch blockers:
 - No decision snapshot ledger.
 - No AI worker eval gate.
 - No sender assignment and pacing model.
+- No WhatsApp Message Governance Layer.
 - No canonical surface publisher.
 - No structured data validation.
 - No sitemap inventory and changed-URL policy.

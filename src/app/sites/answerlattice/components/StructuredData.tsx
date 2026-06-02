@@ -18,7 +18,7 @@ export default function AnswerlatticeStructuredData() {
             {
                 '@type': 'Organization',
                 '@id': `${ANSWERLATTICE_SITE_URL}/#organization`,
-                name: 'Answerlattice',
+                name: 'AnswerLattice',
                 url: ANSWERLATTICE_SITE_URL,
                 email: 'hello@answerlattice.com',
                 logo: {
@@ -29,7 +29,7 @@ export default function AnswerlatticeStructuredData() {
             {
                 '@type': 'WebSite',
                 '@id': `${ANSWERLATTICE_SITE_URL}/#website`,
-                name: 'Answerlattice',
+                name: 'AnswerLattice',
                 url: ANSWERLATTICE_SITE_URL,
                 publisher: { '@id': `${ANSWERLATTICE_SITE_URL}/#organization` },
                 hasPart: ANSWERLATTICE_PUBLIC_PAGES.map((page) => ({
@@ -43,7 +43,7 @@ export default function AnswerlatticeStructuredData() {
             {
                 '@type': 'SoftwareApplication',
                 '@id': `${ANSWERLATTICE_SITE_URL}/#software`,
-                name: 'Answerlattice',
+                name: 'AnswerLattice',
                 applicationCategory: 'CustomerSupportApplication',
                 operatingSystem: 'Web',
                 url: ANSWERLATTICE_SITE_URL,

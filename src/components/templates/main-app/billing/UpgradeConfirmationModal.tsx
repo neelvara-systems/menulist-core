@@ -3,8 +3,7 @@ import { Currency, FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatCurrency } from '@util/formatters';
 import { Button, Divider, Flex, Modal, theme, Typography } from 'antd';
 import { useEffect, useState } from 'react';
-import { FaBolt } from 'react-icons/fa';
-import { LuX } from 'react-icons/lu';
+import { LuX, LuZap } from 'react-icons/lu';
 import RemainingCreditNote from './RemainingCreditNote';
 
 const { Title, Text, Paragraph } = Typography;
@@ -54,7 +53,7 @@ const UpgradeConfirmationModal = ({ isOpen, onClose, onConfirm, newPlan, activeS
 
             <Flex justify="end" gap={8} style={{ marginTop: 24 }}>
                 <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
-                <Button type="primary" icon={<FaBolt />} onClick={onConfirm}>Confirm {isUpgrade ? "Upgrade" : "Purchase"}</Button>
+                <Button type="primary" icon={<LuZap />} onClick={onConfirm}>Confirm {isUpgrade ? "Upgrade" : "Purchase"}</Button>
             </Flex>
         </Modal>
     );

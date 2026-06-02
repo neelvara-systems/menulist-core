@@ -13,6 +13,7 @@ import {
     TodayCampaignSummary
 } from "@type/campaigns";
 import { generateBrandFallback, generateEvergreenSlides } from "./evergreenSlides";
+import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "./screenContent";
 import { filterExpiredSlides } from "./utils";
 
 // Re-export for backward compatibility (MenuBoardDisplay imports from here)
@@ -40,12 +41,25 @@ interface SlideGeneratorInput {
 export function generateScreenSlides(input: SlideGeneratorInput): ScreenSlide[] {
     const { screenState, todayCampaign, menuItems, storeInfo } = input;
     const slides: ScreenSlide[] = [];
+    const validPinnedSlides = filterExpiredSlides(screenState.pinnedSlides || [])
+        .filter((slide) => Boolean(normalizeScreenImageUrl(slide.imageUrl)))
+        .map((slide) => ({
+            ...slide,
+            caption: normalizeOwnerSlideCaption(slide.caption),
+        }));
+    const brandSlide = generateBrandFallback(storeInfo);
 
     // Layer 1: Owner Pinned (highest priority)
     // Per spec: Always included when present (14-day default expiry)
-    if (screenState.pinnedSlides.length > 0) {
-        const validPinnedSlides = filterExpiredSlides(screenState.pinnedSlides);
+    if (validPinnedSlides.length > 0) {
         slides.push(...validPinnedSlides);
+    }
+
+    // Owner-only mode is an exception path for temporary custom slides.
+    // It must not mix in campaign or evergreen slides after the owner toggles it on.
+    if (screenState.ownerOverrideEnabled) {
+        const overrideSlides = validPinnedSlides.length > 0 ? [...validPinnedSlides] : [brandSlide];
+        return normalizeSlideCount(overrideSlides);
     }
 
     // Layer 2: Campaign Slides
@@ -65,21 +79,30 @@ export function generateScreenSlides(input: SlideGeneratorInput): ScreenSlide[] 
 
     // Layer 4: Brand Fallback
     // Per spec: Last resort, never empty
-    const brandSlide = generateBrandFallback(storeInfo);
     slides.push(brandSlide);
 
     // Enforce minimum slides (FR-11)
     // If we still don't have enough, duplicate evergreen/brand
-    while (slides.length < MINIMUM_SLIDES) {
-        slides.push(brandSlide);
-    }
-
-    // Enforce maximum slides
-    const finalSlides = slides.slice(0, MAXIMUM_SLIDES);
+    const finalSlides = normalizeSlideCount(slides);
 
     // Apply monotonicity check (FR-13)
     // Per spec: Screen never downgrades content quality mid-day
     return applyMonotonicity(finalSlides, screenState.currentMinConfidence);
+}
+
+function normalizeSlideCount(slides: ScreenSlide[]): ScreenSlide[] {
+    if (slides.length === 0) return [];
+    const normalized = [...slides];
+
+    while (normalized.length < MINIMUM_SLIDES) {
+        const source = slides[normalized.length % slides.length];
+        normalized.push({
+            ...source,
+            id: `${source.id}-repeat-${normalized.length}`,
+        });
+    }
+
+    return normalized.slice(0, MAXIMUM_SLIDES);
 }
 
 /**
@@ -118,12 +141,12 @@ function createCampaignSlide(
  */
 function getCampaignCaption(campaignType: string): string {
     const captions: Record<string, string> = {
-        meal_push: "Today's Pick",
-        bestseller_boost: "Popular Choice",
-        todays_special: "Today's Special",
-        weekend_pick: "Weekend Pick",
-        new_item: "New Arrival",
-        menu_highlight: "Chef's Pick"
+        meal_push: "Today",
+        bestseller_boost: "Popular",
+        todays_special: "Today",
+        weekend_pick: "Featured",
+        new_item: "New item",
+        menu_highlight: "Featured"
     };
     return captions[campaignType] || "Featured";
 }

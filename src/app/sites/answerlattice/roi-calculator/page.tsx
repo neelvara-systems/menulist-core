@@ -9,7 +9,7 @@ import AnswerlatticeRoiCalculator from './AnswerlatticeRoiCalculator';
 
 export const metadata: Metadata = {
     title: 'Support ROI Calculator',
-    description: 'Estimate repeated support questions, founder time saved, and Answerlattice plan fit for SaaS and digital-product support.',
+    description: 'Estimate expected or recurring support questions, founder time saved, and AnswerLattice plan fit for SaaS and digital-product support.',
     alternates: { canonical: '/roi-calculator' },
 };
 
@@ -35,13 +35,13 @@ export default function AnswerlatticeRoiCalculatorPage() {
                         Estimate the cost of repeated support questions.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Answerlattice is most useful when the same billing, onboarding, settings, release, or error questions keep returning. Use this static calculator to plan the first support layer.
+                        ROI is easiest to estimate when the same billing, onboarding, settings, release, or error questions are expected or keep returning. Use this static calculator to plan the first support layer.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
                             { label: 'Model type', value: 'Planning estimate, not a guaranteed deflection claim' },
-                            { label: 'Inputs', value: 'Repeated questions, founder time, support volume' },
+                            { label: 'Inputs', value: 'Expected questions, founder time, support volume' },
                             { label: 'Next step', value: 'Map pages and review which questions deserve approved answers' },
                         ]}
                     />

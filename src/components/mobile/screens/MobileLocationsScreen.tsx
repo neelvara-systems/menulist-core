@@ -11,6 +11,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuShieldCheck, LuStar, LuX } from 'react-icons/lu';
@@ -40,6 +41,7 @@ const getChangedPolicy = (basePolicy: OutletPolicy, nextPolicy: OutletPolicy): P
 
 export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
+    const { token } = theme.useToken();
     const {
         tenantDetails,
         storeDetails,
@@ -423,7 +425,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                             <Text type="secondary">{t('totalStores')}</Text>
                         </Flex>
                         <Flex gap={2} vertical>
-                            <Title level={4} style={{ margin: 0, color: '#0051d1' }}>
+                            <Title level={4} style={{ margin: 0, color: token.colorPrimary }}>
                                 {outletCount}
                             </Title>
                             <Text type="secondary">{t('outlets')}</Text>
@@ -443,7 +445,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                             <List.Item
                                 key={store.storeId}
                                 onClick={() => handleSwitchStore(store.storeId)}
-                                prefix={store.isMaster ? <LuStar color="#eab308" size={18} /> : <LuMapPin color="#60a5fa" size={18} />}
+                                prefix={store.isMaster ? <LuStar color={token.colorWarning} size={18} /> : <LuMapPin color={token.colorInfo} size={18} />}
                                 extra={
                                     store.isMaster ? (
                                         <Flex align="center" gap={6}>
@@ -548,7 +550,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                             (() => {
                                 const proration = calculateProration(activeSubscription);
                                 return (
-                                    <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                                    <Card size="small" style={{ backgroundColor: token.colorPrimaryBg }}>
                                         <Flex gap={4} vertical>
                                             <Text>{`${t('proratedCharge')} ${formatCurrency(proration.proratedAmount, currency)}`}</Text>
                                             <Text type="secondary">{t('daysLeftInCycle', { days: proration.daysRemaining })}</Text>
@@ -559,13 +561,13 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                         ) : null}
 
                         {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && !activeSubscription ? (
-                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                            <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                 <Text>Choose an active plan before adding another location.</Text>
                             </Card>
                         ) : null}
 
                         {isManualBilling ? (
-                            <Card size="small" style={{ backgroundColor: hasManualCapacity ? '#ecfdf5' : '#fff7e6' }}>
+                            <Card size="small" style={{ backgroundColor: hasManualCapacity ? token.colorSuccessBg : token.colorWarningBg }}>
                                 <Flex gap={4} vertical>
                                     <Text>{prepaidCapacity} prepaid location{prepaidCapacity > 1 ? 's' : ''} included</Text>
                                     <Text type="secondary">
@@ -578,10 +580,10 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                         ) : null}
 
                         {needsCheckoutBeforeOutlet ? (
-                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                            <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                 <Flex gap={8} vertical>
                                     <Flex align="center" gap={8}>
-                                        <LuCreditCard color="#d97706" size={16} />
+                                        <LuCreditCard color={token.colorWarning} size={16} />
                                         <Text strong>Paid location needed</Text>
                                     </Flex>
                                     <Text type="secondary">
@@ -627,7 +629,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                     </NavBar>
 
                     <Flex gap={14} style={{ overflowY: 'auto', padding: 12 }} vertical>
-                        <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                        <Card size="small" style={{ backgroundColor: token.colorPrimaryBg }}>
                             <Flex gap={4} vertical>
                                 <Text strong>Old URLs keep working</Text>
                                 <Text type="secondary">
@@ -697,9 +699,9 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                     </NavBar>
 
                     <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: 12 }} vertical>
-                        <Card size="small" style={{ backgroundColor: '#f8fafc' }}>
+                        <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Flex gap={10}>
-                                <LuShieldCheck color="#2563eb" size={20} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                <LuShieldCheck color={token.colorPrimary} size={20} style={{ flex: '0 0 auto', marginTop: 2 }} />
                                 <Flex gap={4} vertical>
                                     <Text strong>Rules for every outlet</Text>
                                     <Text type="secondary">
@@ -710,7 +712,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                         </Card>
 
                         {hasPolicyChanges ? (
-                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                            <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                 <Text>
                                     {policyChangeCount} unsaved change{policyChangeCount === 1 ? '' : 's'}
                                 </Text>
@@ -762,8 +764,8 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                             gap={12}
                             style={{
                                 backdropFilter: 'blur(10px)',
-                                backgroundColor: '#ffffff',
-                                borderTop: '1px solid #f3f4f6',
+                                backgroundColor: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorBorderSecondary}`,
                                 bottom: 0,
                                 marginInline: -12,
                                 marginTop: 'auto',

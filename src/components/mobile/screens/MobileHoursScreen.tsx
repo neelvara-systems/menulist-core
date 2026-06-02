@@ -20,6 +20,7 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
+import { fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -388,10 +389,10 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     }
 
     const status = todayStatus === 'open'
-        ? { color: '#16a34a', icon: <LuPower color="#16a34a" size={18} />, label: t('open'), sublabel: 'Customers can currently view your menu.' }
+        ? { color: token.colorSuccess, icon: <LuPower color={token.colorSuccess} size={18} />, label: t('open'), sublabel: 'Customers can currently view your menu.' }
         : todayStatus === 'closed_after_hours'
-            ? { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
-        : { color: '#dc2626', icon: <LuPowerOff color="#dc2626" size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
+            ? { color: token.colorError, icon: <LuPowerOff color={token.colorError} size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
+        : { color: token.colorError, icon: <LuPowerOff color={token.colorError} size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
     const closeTodayCtaLabel = 'Mark Closed for Today';
     const editRegularHoursCtaLabel = `Edit ${todayLabel} Hours`;
     const isTemporaryClosedToday = Boolean(isTempActive && TEMP_CLOSED_TYPES.has(String(currentTempStatus?.type)));
@@ -489,7 +490,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
 
     const handleSetTempStatus = async () => {
-        const exactExpiryDate = new Date(exactTempStatusExpiryAt);
+        const expiresAt = fromNativeDateTimeInputValue(exactTempStatusExpiryAt);
+        const exactExpiryDate = toDate(expiresAt);
         if (!exactTempStatusExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
             Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
             return;
@@ -497,7 +499,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
         setIsTempStatusLoading(true);
         const message = tempStatusPreviewMessage;
-        const expiresAt = exactExpiryDate.toISOString();
         const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
         const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
@@ -600,7 +601,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     fill="none"
                     onClick={() => setIsTodayGuideOpen(true)}
                     size="small"
-                    style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                    style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}
                 >
                     <Flex align="center" gap={6}>
                         <LuInfo size={16} />
@@ -661,7 +662,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                     size="small"
                                     style={{
                                         borderRadius: 999,
-                                        minHeight: 30,
+                                        minHeight: 44,
                                         paddingInline: 12,
                                     }}
                                 >
@@ -735,7 +736,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                 setIsTodayHoursSheetOpen(false);
                             }}
                             size="small"
-                            style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}
                         >
                             ✕
                         </Button>
@@ -897,7 +898,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                 <Text type="secondary">{nudgeMessage}</Text>
                             </Flex>
                         </Flex>
-                        <Button fill="none" onClick={handleDismissNudge} size="small" style={{ paddingInline: 6 }}>
+                        <Button fill="none" onClick={handleDismissNudge} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}>
                             <LuX size={14} />
                         </Button>
                     </Flex>
@@ -928,7 +929,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             block
                             fill="none"
                             onClick={() => void handleSkipCampaign(primaryCampaign.campaignId, primaryCampaign.type)}
-                            style={{ color: '#94a3b8' }}
+                            style={{ color: token.colorTextTertiary, minHeight: 44 }}
                         >
                             <Text type="secondary">{tToday('skip')}</Text>
                         </Button>
@@ -1021,7 +1022,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                             fill="none"
                             onClick={() => setIsTodayGuideOpen(false)}
                             size="small"
-                            style={{ minHeight: 32, minWidth: 32, paddingInline: 6 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}
                         >
                             ✕
                         </Button>

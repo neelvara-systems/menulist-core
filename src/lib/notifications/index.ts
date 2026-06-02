@@ -29,6 +29,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS, ProductId } from '@constant/product';
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
+import { isOwnerNotificationTrigger } from '@data/shared/ownerNotificationRegistry';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -263,6 +264,40 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
 
         // 2. Basic validation
         if (!recipientEmail || !eventType || !referenceId) return false;
+
+        if (
+            FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS
+            && FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_ANSWERLATTICE_MIGRATION
+            &&
+            productId === PRODUCT_IDS.ANSWERLATTICE
+            && isOwnerNotificationTrigger(PRODUCT_IDS.ANSWERLATTICE, eventType)
+        ) {
+            const { enqueueOwnerNotification } = await import('@lib/owner-notifications');
+            const result = await enqueueOwnerNotification({
+                productId: PRODUCT_IDS.ANSWERLATTICE,
+                triggerType: eventType,
+                tenantId: String(metadata.tenantId || metadata.tId || '0'),
+                storeId: metadata.storeId || metadata.sId ? String(metadata.storeId || metadata.sId) : undefined,
+                workspaceId: metadata.workspaceId ? String(metadata.workspaceId) : undefined,
+                referenceId,
+                recipientHints: {
+                    email: recipientEmail,
+                    name: recipientName,
+                },
+                metadata: {
+                    ...metadata,
+                    recipientName,
+                },
+                source: {
+                    runtime: 'next',
+                    path: 'src/lib/notifications/index.ts:sendNotification',
+                },
+            }, { processImmediately: true });
+
+            return 'sent' in result
+                ? result.sent > 0
+                : result.status === 'pending';
+        }
 
         const logTarget = getNotificationLogTarget(productId);
         if (!logTarget) {

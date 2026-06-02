@@ -1,7 +1,7 @@
-import { GlobalOutlined } from '@ant-design/icons';
 import { AnalyticsData } from '@lib/analytics/types';
 import { Card, Empty, Radio, Table, Typography } from 'antd';
 import React, { useState } from 'react';
+import { LuGlobe } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
@@ -110,7 +110,7 @@ const LocationBreakdown: React.FC<LocationBreakdownProps> = ({ data }) => {
       key: 'country',
       render: (text: string) => (
         <span>
-          <GlobalOutlined style={{ marginRight: 8 }} />
+          <LuGlobe style={{ marginRight: 8 }} />
           {text}
         </span>
       ),

@@ -104,18 +104,32 @@ export const AI_UNIT_COSTS: Record<string, number> = {
  */
 export const OVERDRAFT_BUFFER_PERCENT = 20; // 20% overdraft allowed at launch
 
+const hasOwnCostEntry = (registry: Record<string, number>, actionType: string) =>
+    Object.prototype.hasOwnProperty.call(registry, actionType);
+
+export function assertKnownAiAction(actionType: string): void {
+    if (!actionType || !hasOwnCostEntry(AI_UNIT_COSTS, actionType)) {
+        throw new Error(`AI action "${actionType || 'unknown'}" is missing an explicit unit cost entry.`);
+    }
+
+    if (!hasOwnCostEntry(GEMINI_COST_USD, actionType)) {
+        throw new Error(`AI action "${actionType}" is missing an explicit real-cost entry.`);
+    }
+}
+
 /**
  * Check if an AI action is free (0 units)
  */
 export function isFreeTierAction(actionType: string): boolean {
-    return (AI_UNIT_COSTS[actionType] ?? 0) === 0;
+    return getUnitCost(actionType) === 0;
 }
 
 /**
  * Get unit cost for an AI action
  */
 export function getUnitCost(actionType: string): number {
-    return AI_UNIT_COSTS[actionType] ?? 0;
+    assertKnownAiAction(actionType);
+    return AI_UNIT_COSTS[actionType];
 }
 
 /**
@@ -123,7 +137,8 @@ export function getUnitCost(actionType: string): number {
  * Used for internal margin tracking in transaction logs.
  */
 export function getRealCostPaise(actionType: string): number {
-    const costUSD = GEMINI_COST_USD[actionType] ?? 0;
+    assertKnownAiAction(actionType);
+    const costUSD = GEMINI_COST_USD[actionType];
     return Math.round(costUSD * USD_TO_INR * 100); // Convert to paise
 }
 

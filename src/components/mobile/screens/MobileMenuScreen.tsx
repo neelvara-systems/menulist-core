@@ -2868,7 +2868,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     fill="outline"
                                     onClick={() => setIsFilterSheetOpen(true)}
                                     size="middle"
-                                    style={{ height: 32, justifyContent: 'flex-start', minHeight: 32 }}
+                                    style={{ justifyContent: 'flex-start', minHeight: 44 }}
                                 >
                                     <Flex align="center" gap={8}>
                                         <LuFilter size={16} />
@@ -2891,7 +2891,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                 fill="none"
                                                 onClick={() => setSearchQuery('')}
                                                 size="mini"
-                                                style={{ minWidth: 20, paddingInline: 0 }}
+                                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                             >
                                                 <LuX size={12} />
                                             </Button>
@@ -2906,7 +2906,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                 fill="none"
                                                 onClick={chip.onRemove}
                                                 size="mini"
-                                                style={{ minWidth: 20, paddingInline: 0 }}
+                                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                             >
                                                 <LuX size={12} />
                                             </Button>
@@ -3108,7 +3108,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 fill="none"
                                 onClick={() => setIsStatusLegendSheetOpen(true)}
                                 size="mini"
-                                style={{ flexShrink: 0, minWidth: 24, paddingInline: 0 }}
+                                style={{ flexShrink: 0, minHeight: 44, minWidth: 44, paddingInline: 0 }}
                             >
                                 <LuInfo size={14} />
                             </Button>
@@ -3134,7 +3134,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     setExpandedCategoryKeys((current) => current.length === orderedCategorySections.length ? [] : orderedCategorySections.map((section) => section.id));
                                 }}
                                 size="small"
-                                style={{ alignSelf: isCompactHandheld ? 'flex-end' : undefined, minHeight: 28, paddingInline: 4 }}
+                                style={{ alignSelf: isCompactHandheld ? 'flex-end' : undefined, minHeight: 44, paddingInline: 4 }}
                             >
                                 {expandedCategoryKeys.length === orderedCategorySections.length ? t('collapseAll') : t('expandAll')}
                             </Button>
@@ -3357,8 +3357,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                                         backgroundColor: token.colorBgContainer,
                                                                         borderColor: token.colorBorderSecondary,
                                                                         borderRadius: 12,
-                                                                        minHeight: 38,
-                                                                        minWidth: 38,
+                                                                        minHeight: 44,
+                                                                        minWidth: 44,
                                                                         paddingInline: 0,
                                                                     }}
                                                                 >
@@ -3412,7 +3412,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                                                                     setEditingItem(item);
                                                                                 }}
                                                                                 size="small"
-                                                                                style={{ minHeight: 34, minWidth: 34, paddingInline: 0 }}
+                                                                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                                                             >
                                                                                 <LuPencil size={14} />
                                                                             </Button>
@@ -3606,7 +3606,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         <Button
                             fill="none"
                             onClick={() => setIsStatusLegendSheetOpen(false)}
-                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >
                             <LuX size={18} />
                         </Button>
@@ -3699,7 +3699,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     >
                         <div style={{ minHeight: 40, minWidth: 40 }} />
                         <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('findAndFix')}</Title>
-                        <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                        <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuX size={18} />
                         </Button>
                     </Flex>

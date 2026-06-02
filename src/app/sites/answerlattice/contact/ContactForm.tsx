@@ -217,7 +217,7 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
                         required
                     />
                     <span>
-                        Answerlattice can contact me about this request. I agree to the{' '}
+                        AnswerLattice can contact me about this request. I agree to the{' '}
                         <a href={linkTo('/privacy-policy')} className="font-semibold text-teal-300 hover:text-teal-200">privacy policy</a>
                         {' '}and{' '}
                         <a href={linkTo('/terms-of-service')} className="font-semibold text-teal-300 hover:text-teal-200">terms</a>.

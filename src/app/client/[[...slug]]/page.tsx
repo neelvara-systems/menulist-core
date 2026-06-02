@@ -52,7 +52,7 @@ import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { sanitizeForClient } from "@lib/mce/utils";
-import { resolveProjectForRender } from "@lib/multiOutlet";
+import { populateMasterCache, resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import {
     deriveCustomerAppShortName,
@@ -62,6 +62,7 @@ import {
 } from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
+import { buildPublicTruthRobots, evaluatePublicTruthIndexability } from "@lib/seo/publicTruthIndexing";
 import {
     buildAddress,
     buildBreadcrumbList,
@@ -294,16 +295,32 @@ async function getProjectBySlugOrDefault(
     // This ensures customers see the complete menu with inherited items + local overrides
     if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && projectData.masterProjectId) {
         try {
+            const masterProjectData = await getProjectData(projectData.masterProjectId);
+            if (!masterProjectData?.files?.length) {
+                console.error(
+                    "[Multi-outlet] Linked project missing master project for customer view:",
+                    projectData.masterProjectId,
+                );
+                return null;
+            }
+            populateMasterCache(projectData.masterProjectId, masterProjectData);
             const resolved = await resolveProjectForRender({
                 storeProject: projectData,
             });
+            if (resolved?._resolved?.isMasterLinked !== true) {
+                console.error(
+                    "[Multi-outlet] Linked project missing master data for customer view:",
+                    projectData.masterProjectId,
+                );
+                return null;
+            }
             projectData = resolved;
         } catch (error) {
             console.error(
                 "[Multi-outlet] Failed to resolve project for customer view:",
                 error,
             );
-            // Graceful degradation: show raw store data if resolution fails
+            return null;
         }
     }
 
@@ -508,6 +525,35 @@ function buildProjectCanonicalUrl({
     return `${baseUrl}${outletPrefix}/${projectSlug}`;
 }
 
+function getUrlHostname(value?: string | null): string {
+    if (!value || typeof value !== 'string') return '';
+    try {
+        return new URL(value).hostname.toLowerCase();
+    } catch {
+        return '';
+    }
+}
+
+function resolveSafeStoreCanonicalUrl(
+    storedCanonicalUrl: unknown,
+    fallbackUrl: string,
+    canonicalBase: string,
+): string {
+    if (typeof storedCanonicalUrl !== 'string') return fallbackUrl;
+    const trimmed = storedCanonicalUrl.trim();
+    if (!trimmed) return fallbackUrl;
+
+    const storedHost = getUrlHostname(trimmed);
+    if (!storedHost) return fallbackUrl;
+
+    const allowedHosts = new Set([
+        getUrlHostname(fallbackUrl),
+        getUrlHostname(canonicalBase),
+    ].filter(Boolean));
+
+    return allowedHosts.has(storedHost) ? trimmed : fallbackUrl;
+}
+
 // Generate metadata for SEO
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
@@ -526,6 +572,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         return {
             title: "Menu Not Found",
             description: "The requested menu could not be found.",
+            robots: {
+                index: false,
+                follow: false,
+            },
         };
     }
 
@@ -536,13 +586,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         ? getBrandName(storeData, "Restaurant Menu")
         : getStoreContextName(storeData, "Restaurant Menu");
     if (isStarterPublicSurfaceExpired(storeData)) {
+        const starterIndexDecision = evaluatePublicTruthIndexability(storeData, {
+            surface: FEATURE_FLAGS.ENABLE_OBP && isRootRequest ? 'obp' : 'menu',
+            hasPublishedMenu: Boolean(storeData?.lastPublishedAt || storeData?.primaryProjectId),
+        });
         return {
             title: `${storeName} menu is being finalized`,
             description: `${storeName}'s MenuList page is being finalized. Please contact the business directly for the current menu.`,
-            robots: {
-                index: false,
-                follow: false,
-            },
+            robots: buildPublicTruthRobots(starterIndexDecision),
         };
     }
     const storeMetaTitle = getLocalizedText(
@@ -717,6 +768,13 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         : getPublicLanguageOptions(metadataStore);
     const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
     const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject;
+    const publicTruthIndexDecision = evaluatePublicTruthIndexability(metadataStore, {
+        surface: isOBPMetadata ? 'obp' : 'menu',
+        hasPublishedMenu: Boolean(metadataStore?.lastPublishedAt || metadataStore?.primaryProjectId || metadataProject),
+        projectData: metadataProject,
+        projectSummary: metadataProjectRecord,
+    });
+    const publicTruthRobots = buildPublicTruthRobots(publicTruthIndexDecision);
     const projectCanonicalUrl = metadataProject
         ? (metadataProjectRecord?.isDefault && !projectSlugForLookup && !metadataOutletSlug && !FEATURE_FLAGS.ENABLE_OBP
             ? canonicalBase
@@ -729,7 +787,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             }))
         : undefined;
     const canonicalWithoutLanguage = isOBPMetadata
-        ? (metadataStore.canonicalUrl || currentUrl)
+        ? resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase)
         : menuAliasCanonical || projectCanonicalUrl || canonicalBase;
     const canonicalWithLanguage = isOBPMetadata && requestedLanguage && metadataLanguageOptions.length > 1
         ? appendPublicLanguageParam(canonicalWithoutLanguage, metadataLanguage)
@@ -808,10 +866,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     description,
                     images: contextMetadata.twitter?.images,
                 },
-                robots: {
-                    index: true,
-                    follow: true,
-                },
+                robots: publicTruthRobots,
                 ...(appleTouchIconUrl
                     ? {
                         appleWebApp: {
@@ -862,10 +917,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             description,
             images: resolvedImageUrl ? [resolvedImageUrl] : undefined,
         },
-        robots: {
-            index: true,
-            follow: true,
-        },
+        robots: publicTruthRobots,
         // Per-tenant PWA metadata — overrides defaults from client/layout.tsx
         ...(appleTouchIconUrl
             ? {
@@ -1546,6 +1598,10 @@ async function MenuContent({
         notFound();
     }
 
+    const requestedPublicPath = slugSegments.length > 0
+        ? `/${slugSegments.join('/')}`
+        : '';
+
     // T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier rename chain.
     // If the customer arrived via a legacy subdomain that differs from the
     // store's current subdomain, 301 to the canonical subdomain. This is
@@ -1557,7 +1613,7 @@ async function MenuContent({
         && storeData.subdomain
         && storeData.subdomain.toLowerCase() !== subdomain.toLowerCase()
     ) {
-        const canonical = `https://${storeData.subdomain}.menulist.ai${slug ? `/${slug}` : ''}`;
+        const canonical = `https://${storeData.subdomain}.menulist.ai${requestedPublicPath}`;
         redirect(appendPublicLanguageParam(canonical, requestedLanguage));
     }
 
@@ -1565,7 +1621,7 @@ async function MenuContent({
     // When store has a verified custom domain and visitor arrives via subdomain,
     // redirect to custom domain to consolidate SEO authority on the canonical URL
     if (tenantType === "subdomain" && storeData.customDomain && storeData.domainVerified) {
-        const customUrl = `https://${storeData.customDomain}${slug ? `/${slug}` : ''}`;
+        const customUrl = `https://${storeData.customDomain}${requestedPublicPath}`;
         redirect(appendPublicLanguageParam(customUrl, requestedLanguage));
     }
 
@@ -1707,7 +1763,7 @@ async function MenuContent({
 
     // URL Routing Architecture — ADR-3: 301 redirect from old slug to current slug
     // Preserves QR codes and shared links when project is renamed
-    if (redirectSlug && slug && redirectSlug !== slug.toLowerCase()) {
+    if (redirectSlug && resolvedSlug && redirectSlug !== resolvedSlug.toLowerCase()) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
             : origin || `https://${subdomain}.menulist.ai`;

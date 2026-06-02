@@ -22,6 +22,8 @@ export const bnINResourceTranslationPack: WebsiteResourceTranslationPack = {
         "backToHub": "সম্পদে ফিরে যান",
         "checklist": "চেকলিস্ট",
         "comparison": "তুলনা",
+        "copiedChecklist": "চেকলিস্ট কপি হয়েছে",
+        "copyChecklist": "চেকলিস্ট কপি করুন",
         "faqTitle": "প্রশ্ন মালিকদের জিজ্ঞাসা",
         "onThisPage": "এই পৃষ্ঠায়",
         "primaryAction": "পরবর্তী ধাপ",
@@ -688,6 +690,196 @@ export const bnINResourceTranslationPack: WebsiteResourceTranslationPack = {
                 }
             }
         },
+                  "restaurant-menu-schema": {
+                            "title": "Restaurant menu schema customers page এ দেখা content-ই দেখাবে",
+                            "metaTitle": "Restaurant Menu Schema Guide | MenuList",
+                            "metaDescription": "Public restaurant menu pages এর জন্য structured-data guide.",
+                            "description": "Public restaurant menu pages এর জন্য structured-data guide.",
+                            "quickAnswer": "Restaurant menu schema visible public menu content এর সঙ্গে match করতে হবে. Business এর জন্য Restaurant বা LocalBusiness, visible menu এর জন্য Menu, MenuSection, MenuItem ব্যবহার করুন. Hidden prices, fake reviews, unavailable details markup করবেন না.",
+                            "primaryCtaLabel": "Structured menu page publish করুন",
+                            "distributionSnippets": [
+                                      "Restaurant menu schema customers page এ দেখা content-ই দেখাবে",
+                                      "Restaurant menu schema visible public menu content এর সঙ্গে match করতে হবে. Business এর জন্য Restaurant বা LocalBusiness, visible menu এর জন্য Menu, MenuSection, MenuItem ব্যবহার করুন. Hidden prices, fake reviews, unavailable details markup করবেন না."
+                            ],
+                            "sections": {
+                                      "schema-types": {
+                                                "title": "Schema types",
+                                                "body": [
+                                                          "Public restaurant menu pages এর জন্য structured-data guide."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name এর সঙ্গে match করতে হবে.",
+                                                          "Visible price Offer price এর সঙ্গে match করতে হবে.",
+                                                          "Hidden FAQ answers markup করবেন না.",
+                                                          "Use Menu, MenuSection, and MenuItem for visible menu content.",
+                                                          "Use FAQPage only for FAQ content visible on the page."
+                                                ]
+                                      },
+                                      "visible-content": {
+                                                "title": "Visible content match",
+                                                "body": [
+                                                          "Restaurant menu schema visible public menu content এর সঙ্গে match করতে হবে. Business এর জন্য Restaurant বা LocalBusiness, visible menu এর জন্য Menu, MenuSection, MenuItem ব্যবহার করুন. Hidden prices, fake reviews, unavailable details markup করবেন না."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name এর সঙ্গে match করতে হবে.",
+                                                          "Visible price Offer price এর সঙ্গে match করতে হবে.",
+                                                          "Hidden FAQ answers markup করবেন না.",
+                                                          "Mobile data দিয়ে URL open করুন."
+                                                ]
+                                      },
+                                      "common-mistakes": {
+                                                "title": "Common mistakes",
+                                                "checklist": [
+                                                          "Hidden FAQ answers markup করবেন না.",
+                                                          "Old PDFs main customer link থাকা উচিত নয়.",
+                                                          "Old prices structured data मध्ये/में/లో रखना ತಪ್ಪు.",
+                                                          "Schema does not guarantee ranking."
+                                                ]
+                                      },
+                                      "how-menulist-fits": {
+                                                "title": "MenuList কীভাবে fit করে",
+                                                "body": [
+                                                          "MenuList keeps public menu pages structured around the owner-approved source.",
+                                                          "External search and AI systems decide what they crawl, show, cite, or ignore."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "schema-guarantee": {
+                                                "question": "Schema ranking guarantee করে?",
+                                                "answer": "না. Schema page বুঝতে সাহায্য করে; search systems crawl, rank ও rich results নিজে ঠিক করে."
+                                      },
+                                      "hidden-menu-items": {
+                                                "question": "Hidden items schema তে add করা যাবে?",
+                                                "answer": "না. Structured data public page এর সঙ্গে match করতে হবে."
+                                      }
+                            }
+                  },
+                  "official-menu-url-checklist": {
+                            "title": "Customers যেখানে দেখে সেখানে one stable menu URL ব্যবহার করুন",
+                            "metaTitle": "Official Menu URL Checklist for Restaurants | MenuList",
+                            "metaDescription": "Scattered menu links one approved source URL দিয়ে replace করার checklist.",
+                            "description": "Scattered menu links one approved source URL দিয়ে replace করার checklist.",
+                            "quickAnswer": "Customers যেখানে দেখে সেখানে one stable menu URL ব্যবহার করুন. Stable URL keeps QR, Google, social, website, WhatsApp, print, screens, and branch pages pointed to the current approved menu source.",
+                            "primaryCtaLabel": "Stable menu URL তৈরি করুন",
+                            "distributionSnippets": [
+                                      "Customers যেখানে দেখে সেখানে one stable menu URL ব্যবহার করুন",
+                                      "Use one stable URL instead of sending a new file link after every update."
+                            ],
+                            "sections": {
+                                      "choose-source-url": {
+                                                "title": "Source URL বেছে নিন",
+                                                "body": [
+                                                          "Choose a public menu page the owner can keep current. The URL should stay stable when prices, items, photos, or availability change."
+                                                ],
+                                                "checklist": [
+                                                          "Use a short public URL.",
+                                                          "Open on mobile without login.",
+                                                          "Menu is owner-approved.",
+                                                          "Page updates without changing the URL."
+                                                ]
+                                      },
+                                      "update-surfaces": {
+                                                "title": "Customer-facing surfaces update করুন",
+                                                "checklist": [
+                                                          "QR codes.",
+                                                          "Google Business Profile menu link.",
+                                                          "Instagram and WhatsApp links.",
+                                                          "Website menu buttons.",
+                                                          "Print files and screens.",
+                                                          "Branch pages and branch QR cards."
+                                                ]
+                                      },
+                                      "test-before-printing": {
+                                                "title": "Printing এর আগে test করুন",
+                                                "checklist": [
+                                                          "Mobile data দিয়ে URL open করুন.",
+                                                          "Final print size থেকে QR scan করুন.",
+                                                          "Check title, prices, and availability.",
+                                                          "Ask staff to send the same URL.",
+                                                          "Old PDFs main customer link থাকা উচিত নয়."
+                                                ]
+                                      },
+                                      "limits": {
+                                                "title": "URL যা force করতে পারে না",
+                                                "body": [
+                                                          "A clear official URL reduces confusion, but external sites still decide when cached or old information refreshes."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "new-qr-every-update": {
+                                                "question": "প্রতিটি update এ new QR দরকার?",
+                                                "answer": "না. Stable menu URL থাকলে same printed QR রেখে menu update করা যায়."
+                                      },
+                                      "delete-old-pdfs": {
+                                                "question": "Old PDFs remove করা উচিত?",
+                                                "answer": "Old public PDFs main menu link থাকা উচিত নয়. Current backup files রাখুন."
+                                      }
+                            }
+                  },
+                  "restaurant-qr-menu-mistakes": {
+                            "title": "Restaurants যে common QR menu mistakes এড়াবে",
+                            "metaTitle": "Common QR Menu Mistakes Restaurants Should Avoid | MenuList",
+                            "metaDescription": "Table cards বা packaging print করার আগে QR menu mistake list.",
+                            "description": "Table cards বা packaging print করার আগে QR menu mistake list.",
+                            "quickAnswer": "QR code menu নয়. এটি stable current menu source এর access point মাত্র. Readable placement, fallback URL ও scan testing দরকার.",
+                            "primaryCtaLabel": "Stable QR menu set up করুন",
+                            "distributionSnippets": [
+                                      "QR code menu নয়. এটি stable current menu source এর access point মাত্র. Readable placement, fallback URL ও scan testing দরকার.",
+                                      "A QR menu fails when the link, placement, or branch version is wrong."
+                            ],
+                            "sections": {
+                                      "pdf-only": {
+                                                "title": "Mistake 1: QR old PDF খোলে",
+                                                "body": [
+                                                          "A PDF can be useful for print, but it becomes stale through WhatsApp, old website links, or old QR cards."
+                                                ],
+                                                "checklist": [
+                                                          "Main QR destination mobile-friendly menu page রাখুন.",
+                                                          "Keep PDF secondary for print or backup.",
+                                                          "Replace old PDF links when prices change."
+                                                ]
+                                      },
+                                      "unstable-links": {
+                                                "title": "Mistake 2: update এর পরে link বদলায়",
+                                                "body": [
+                                                          "If every update creates a new URL, printed QR material becomes risky. A stable URL is safer."
+                                                ],
+                                                "checklist": [
+                                                          "One stable public menu URL use করুন.",
+                                                          "Update content behind the URL.",
+                                                          "Keep staff replies and social links on the same source."
+                                                ]
+                                      },
+                                      "placement-testing": {
+                                                "title": "Mistake 3: scan testing ছাড়া print করা",
+                                                "checklist": [
+                                                          "Final print size থেকে QR scan করুন.",
+                                                          "iPhone এবং Android cameras test করুন.",
+                                                          "Test in customer lighting.",
+                                                          "Print a readable fallback URL.",
+                                                          "Mobile data দিয়ে URL open করুন."
+                                                ]
+                                      },
+                                      "branch-mismatch": {
+                                                "title": "Mistake 4: wrong branch menu",
+                                                "body": [
+                                                          "Branches may have different prices, availability, hours, or service modes. When those differences matter, QR should open the correct branch version."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "biggest-qr-mistake": {
+                                                "question": "Common QR mistake কী?",
+                                                "answer": "QR old বা hard-to-read menu file খোলে; stable current menu page নয়."
+                                      },
+                                      "branch-specific-qr": {
+                                                "question": "প্রতিটি branch এর নিজস্ব QR menu দরকার?",
+                                                "answer": "Prices, availability, hours বা service details branch-wise আলাদা হলে হ্যাঁ."
+                                      }
+                            }
+                  },
         "multi-location-menu-management": {
             "title": "স্থানীয় পার্থক্য না লুকিয়ে আউটলেট মেনু সারিবদ্ধ রাখুন",
             "metaTitle": "মাল্টি-অবস্থান মেনু ব্যবস্থাপনা | MenuList",

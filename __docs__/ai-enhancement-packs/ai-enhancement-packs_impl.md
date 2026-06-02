@@ -2,20 +2,36 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** Implemented and hardened
-**Last Updated:** May 20, 2026
+**Last Updated:** June 2, 2026
 **Audience:** Developers only
+
+## June 2, 2026 Accounting Hardening Contract
+
+Billable AI route accounting is now centralized in `src/lib/ai/accounting.ts`. Successful provider calls finalize through `finalizeAiOperationAccounting()`, which writes the operation with the Admin SDK and then consumes paid capacity. Operation logging is best-effort, but credit consumption is mandatory for billable actions; a log failure must not skip deduction, and a credit-consumption failure fails the paid request instead of returning usable output for free.
+
+Browser/client access to full `menulistAiOperations/{tId}/{sId}` documents is disabled for owners. The old `addAiOperation()` client helper now throws immediately, Firestore rules deny all client writes, and full document reads are platform-only. Desktop and mobile owner transaction screens read through `GET /api/ai-operations`, which returns an owner-visible allowlisted activity shape; platform-role sessions can receive the full transaction payload for support/debug.
+
+`AI_UNIT_COSTS` and `GEMINI_COST_USD` are now fail-closed. Every `AI_ACTIONS_TYPES` value must have an explicit unit-cost and real-cost entry; unknown AI actions throw instead of silently defaulting to a free operation. This protects future AI features from accidentally bypassing credits or internal margin tracking.
+
+Dashboard visibility is split by audience. Owner-facing desktop/mobile Transactions show operation date, action, project/menu when available, processing time, owner credits used, no-credit setup actions, and the owner-relevant generated/extracted output summary. They do not receive raw token counts, provider cost, model names, provider payloads, generation config, tenant/store IDs, file IDs, or margin fields. Desktop pagination is cursor-based with Previous/Next controls because exact totals are not read from Firestore. The transaction API is protected by the shared `DATA_READ` rate limit before Firestore reads, and the desktop owner page only loads the read-only projects summary when the current page has project IDs; it does not use the project-list helper that can create a default menu. Platform-role users get a gated debug section with the full AI transaction object, token counts, model, provider cost, owner-charge fields, margin, and IDs for support investigation.
+
+Regression command:
+
+```bash
+npm run verify:ai-accounting
+```
 
 ## May 13, 2026 Runtime Contract
 
 AI enhancement accounting is now enabled end to end for owner-billable AI operations and auditable for free/internal AI operations.
 
-Billable owner actions call `checkAICapacity()` before Gemini, write a `menulistAiOperations/{tId}/{sId}/{operationId}` event after a successful provider call, then call `consumeAICapacity()` to deduct `monthlyCredits` first and `topUpCredits` second. API responses return `remainingBalance`, and desktop/mobile frontend services sync that balance through `syncBalanceFromResponse()` without an extra subscription read.
+Billable owner actions call `checkAICapacity()` before Gemini, finalize accounting through `finalizeAiOperationAccounting()` after a successful provider call, and deduct `monthlyCredits` first and `topUpCredits` second. API responses return `remainingBalance`, and desktop/mobile frontend services sync that balance through `syncBalanceFromResponse()` without an extra subscription read.
 
 Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Answerlattice widget search, Help Center article embedding, and Answerlattice translation.
 
 Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
 
-Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used, token counts, and normalized operation dates so owners and support can trace usage without exposing internal margin math.
+Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used and normalized operation dates so owners can trace activity without exposing internal token/cost details; platform-role debug surfaces retain raw tokens, model, cost, IDs, and full transaction payloads for support.
 
 May 20 hardening: Transactions render `createdOn` through the shared date normalization utility so live Firestore `Timestamp`, serialized `{ seconds, nanoseconds }`, ISO string, and `Date` values display consistently on desktop, mobile, and the transaction details modal. Billing mutation failure paths now report through the monitored logger instead of browser `console.error`.
 
@@ -28,7 +44,7 @@ May 20 hardening: Transactions render `createdOn` through the shared date normal
 | Suggestion                               | Codebase Evidence                                                                                                           |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Internal credits, external outcome packs | `TOKENS_PER_CREDIT`, `CHARGE_PER_CREDIT` in `src/constants/common.ts:138-141`                                               |
-| Append-only usage event logging          | `addAiOperation()` in `src/database/aiOperations/index.tsx:217-228`                                                         |
+| Append-only usage event logging          | `finalizeAiOperationAccounting()` + Admin SDK operation logging in `src/lib/ai/accounting.ts` and `src/lib/ai/operationLog.ts` |
 | Rate limiting for AI ops                 | `AI_OPERATION` (20/min), `AI_EXPENSIVE` (5/min) in `src/lib/rateLimit/configs.ts:22-37`                                     |
 | Top-up billing infrastructure            | `TOPUPS` collection in `src/constants/database.ts:16`, `PAYMENT_TOPUP` rate limit in `src/lib/rateLimit/configs.ts:148-152` |
 | Free/paid boundary                       | `ADD_DESCRIPTION` vs `REWRITE_DESCRIPTION` in `src/constants/common.ts:131-132`                                             |
@@ -209,8 +225,8 @@ SessionProvider: event listener
 - `src/services/ai/balanceSync.ts` — dispatches CustomEvent
 - `src/providers/sessionProvider.tsx` — listens for event, updates state
 - `src/lib/ai/capacityCheck.ts` — `consumeAICapacity()` returns `RemainingBalance`
-- All 6 AI API routes — include `remainingBalance` in JSON response
-- All 5 frontend services — call `syncBalanceFromResponse()` after parsing response
+- Billable AI API routes — include `remainingBalance` in JSON response when credits are consumed
+- Frontend AI services — call `syncBalanceFromResponse()` after parsing responses that include `remainingBalance`
 
 **Firebase cost saved:** 1 Firestore read per AI operation (frontend no longer needs to re-fetch subscription after each AI call).
 
@@ -357,15 +373,12 @@ Changes from showing credit math to simple reassurance:
 
 | File                                                             | What It Does                                                    | What To Change                                                                                |
 | ---------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `src/constants/common.ts:123-141`                                | AI action types + credit constants                              | Add `AI_UNIT_COSTS` config alongside existing constants                                       |
+| `src/constants/common.ts:123-141`                                | AI action types + credit constants                              | Keep action registry aligned with `AI_UNIT_COSTS` and `GEMINI_COST_USD`                       |
 | `src/constants/database.ts:9,16,90-98`                           | `MENULIST_AI_OPERATIONS`, `TOPUPS`, `AI_OPERATIONS_COLLECTIONS` | No changes needed — collections already defined                                               |
-| `src/database/aiOperations/index.tsx:217-228`                    | `addAiOperation()` DAL function                                 | Add `unitsConsumed` field to data shape                                                       |
-| `src/app/api/descriptions/route.ts:172`                          | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
-| `src/app/api/image-generation/route.ts:264`                      | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
-| `src/app/api/image-generation/batch-generation/route.ts:260`     | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
-| `src/app/api/image-editing/route.ts:136`                         | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
-| `src/app/api/translations/route.ts:116`                          | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
-| `src/app/api/new-item-metadata/route.ts:129`                     | Transaction logging (commented out)                             | Uncomment `addAiOperation()`, add capacity check                                              |
+| `src/lib/ai/accounting.ts`                                       | Server-side accounting finalizer                                | Shared finalization for billable AI operation logs and credit consumption                     |
+| `src/lib/ai/operationLog.ts`                                     | Admin SDK operation logger                                      | Server-only `menulistAiOperations/{tId}/{sId}` writes                                        |
+| `src/database/aiOperations/index.tsx`                            | Client transaction-history reader                               | Read scoped operation history only; `addAiOperation()` is disabled                           |
+| Billable AI API routes                                           | Successful AI provider calls                                    | Call `finalizeAiOperationAccounting()` after provider success                                |
 | `src/lib/rateLimit/configs.ts:148-152`                           | `PAYMENT_TOPUP` rate limit (10/hr)                              | No changes needed                                                                             |
 | `src/data/PlatformPlansList.ts:109-134`                          | Credit packs list                                               | Rename to `aiEnhancementPacksList`, update interface                                          |
 | `src/data/common.ts:63-70`                                       | `CreditPack` interface                                          | Rename to `AIEnhancementPack` interface                                                       |
@@ -439,8 +452,8 @@ if (!FEATURE_FLAGS.ENABLE_AI_ENHANCEMENTS && !isFreeTierAction(actionType)) {
 **Validation:**
 
 - [ ] Flag added to `src/config/features.ts` following existing pattern
-- [ ] Free operations (extraction, ADD_DESCRIPTION) unaffected when flag is OFF
-- [ ] `checkAICapacity()` checks flag before capacity check
+- [ ] Free operations (extraction, ADD_DESCRIPTION) return `reason: "free"` and remain unaffected when paid enhancements are OFF
+- [ ] `checkAICapacity()` checks free actions before the paid-enhancement flag
 - [ ] Client receives calm message, not error, when flag is OFF
 
 ---
@@ -532,118 +545,41 @@ export function getUnitCost(actionType: string): number {
 
 ---
 
-#### Task 1.2: Uncomment `addAiOperation()` in All 6 API Routes
+#### Task 1.2: Server-Side Accounting Finalization
 
-Each route has the same pattern — a commented-out `addAiOperation()` call. Uncomment and enhance with `unitsConsumed`.
-
-**Route 1: `src/app/api/descriptions/route.ts:172`**
-
-Current:
+Current billable AI routes use `finalizeAiOperationAccounting()` after the provider succeeds. The helper records an operation through the Admin SDK and then consumes credits through `consumeAICapacity()`.
 
 ```typescript
-transactionObject.transactionId = new Date().getTime().toString(); //await addAiOperation(transactionObject);;
+const accounting = await finalizeAiOperationAccounting({
+  capacitySubscription: capacityCheck.subscription,
+  context: { userId, projectId, action },
+  input: transactionObject,
+  logLabel: 'Description generation',
+  session,
+});
+
+transactionObject.unitsConsumed = accounting.unitsConsumed;
+transactionObject.transactionId = accounting.transactionId;
+remainingBalance = accounting.remainingBalance;
 ```
 
-Change to:
-
-```typescript
-transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-transactionObject.transactionId = await addAiOperation(transactionObject);
-```
-
-**Route 2: `src/app/api/image-generation/route.ts:264`**
-
-Current:
-
-```typescript
-const transactionId = "test"; //||await addAiOperation(transactionObject);
-```
-
-Change to:
-
-```typescript
-transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-const transactionId = await addAiOperation(transactionObject);
-```
-
-**Route 3: `src/app/api/image-generation/batch-generation/route.ts:260`**
-
-Current:
-
-```typescript
-const transactionId = "test"; //||await addAiOperation(transactionObject);
-```
-
-Change to:
-
-```typescript
-transactionObject.unitsConsumed =
-  getUnitCost(transactionObject.action) * generatedImagesResponse.length;
-const transactionId = await addAiOperation(transactionObject);
-```
-
-**Route 4: `src/app/api/image-editing/route.ts:136`**
-
-Current:
-
-```typescript
-transactionObject.transactionId = crypto.randomUUID(); //await addAiOperation(transactionObject);
-```
-
-Change to:
-
-```typescript
-transactionObject.unitsConsumed = getUnitCost(
-  AI_ACTIONS_TYPES.IMAGE_GENERATION,
-);
-transactionObject.transactionId = await addAiOperation(transactionObject);
-```
-
-**Route 5: `src/app/api/translations/route.ts:116`**
-
-Current:
-
-```typescript
-transactionObject.transactionId = new Date().getTime().toString(); //await addAiOperation(transactionObject);;
-```
-
-Change to:
-
-```typescript
-transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-transactionObject.transactionId = await addAiOperation(transactionObject);
-```
-
-**Route 6: `src/app/api/new-item-metadata/route.ts:129`**
-
-Current:
-
-```typescript
-transactionObject.transactionId = new Date().getTime().toString(); //await addAiOperation(transactionObject);;
-```
-
-Change to:
-
-```typescript
-transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-transactionObject.transactionId = await addAiOperation(transactionObject);
-```
+For Cloud Task workers without a browser session, pass `tId` and `sId` in the operation input and omit `session`. Operation-log failure is best-effort and monitored; credit-consumption failure fails the paid response.
 
 **Validation:**
 
-- [ ] All 6 routes have `addAiOperation()` uncommented
-- [ ] All transaction objects include `unitsConsumed` field
-- [ ] Batch operations multiply unit cost by item count
-- [ ] Free operations (extraction, ADD_DESCRIPTION, NEW_ITEM_METADATA) log 0 units
-- [ ] No regressions in API response structure (client still receives `transaction` object)
+- [x] Billable routes use `finalizeAiOperationAccounting()`
+- [x] Transaction objects include `unitsConsumed`
+- [x] Batch worker passes tenant/store scope directly
+- [x] Free/internal operations log 0 units only when explicitly configured
+- [x] Client response structure still includes `transaction` and `remainingBalance` where applicable
 
 ---
 
-#### Task 1.3: Enhance `addAiOperation` DAL
+#### Task 1.3: Disable Client Operation Writes
 
 **File:** `src/database/aiOperations/index.tsx`
 
-The existing `addAiOperation` at line 217-228 is functional and follows DAL patterns correctly. The only enhancement needed is ensuring the data shape includes `unitsConsumed`. Since `addAiOperation` accepts `data: any` and uses `requestBodyComposer`, no structural changes are needed — just ensure callers pass `unitsConsumed`.
+The browser DAL remains for paginated transaction-history reads. `addAiOperation()` is intentionally disabled and Firestore rules deny client writes to `menulistAiOperations/{tId}/{sId}`. New AI routes must use the server accounting finalizer instead.
 
 **Optional improvement:** Add TypeScript interface for transaction data:
 
@@ -924,15 +860,15 @@ Each paid AI route gets the same enforcement pattern:
 | `image-generation/batch-generation/route.ts` | `BATCH_IMAGE_GENERATION` | `items.length`             |
 | `image-editing/route.ts`                     | `IMAGE_GENERATION`       | 1 per call                 |
 | `translations/route.ts`                      | `LANGUAGE_ADDITION`      | 1 per language             |
-| `new-item-metadata/route.ts`                 | `NEW_ITEM_METADATA`      | 0 (free) — no check needed |
+| `new-item-metadata/route.ts`                 | `NEW_ITEM_METADATA`      | 0 (free) — allowed by free short-circuit |
 
-**Note:** `image-processor/route.ts` (extraction) is always free — no capacity check.
+**Note:** Menu extraction (`IMAGE_PROCESSING`) is always free for owner-pack usage. Extraction jobs still keep internal token/cost audit telemetry, but they stamp `unitsConsumed: 0` and never call owner credit consumption.
 
 **Validation:**
 
 - [ ] All paid routes check capacity before Gemini call
 - [ ] All paid routes consume capacity after successful Gemini call
-- [ ] Free routes (`IMAGE_PROCESSING`, `ADD_DESCRIPTION`, `NEW_ITEM_METADATA`) skip capacity check
+- [ ] Free actions (`IMAGE_PROCESSING`, `ADD_DESCRIPTION`, `NEW_ITEM_METADATA`) return `unitsRequired: 0` and do not require subscription balance
 - [ ] Batch operations multiply by quantity
 - [ ] 402 response triggers upsell CTA on client (not error message)
 
@@ -1201,14 +1137,14 @@ AI_ADMIN_DASHBOARD: false,
 
 | Requirement                                           | Implementation                               | Status |
 | ----------------------------------------------------- | -------------------------------------------- | ------ |
-| `withAuth()` on all AI routes                         | Already done on all 6 routes                 | ✅     |
+| `withAuth()` on all owner AI routes                   | Required on authenticated owner AI routes    | ✅     |
 | `withAuth()` on pack purchase route                   | `create-topup-order/route.ts`                | ✅     |
 | `withAuth()` on pack status route                     | `GET /api/ai-packs/status`                   | ✅     |
 | Zod validation on pack purchase input                 | `validateAPIInput()` in create-topup-order   | ✅     |
 | Rate limit on pack purchase                           | `PAYMENT_TOPUP` (10/hr) — already configured | ✅     |
-| Capacity check server-side only                       | `checkAICapacity()` in all 6 API routes      | ✅     |
+| Capacity check server-side only                       | `checkAICapacity()` in billable AI routes    | ✅     |
 | No capacity data in client responses                  | See audit note below ⚠️                      | ⚠️     |
-| `sanitizeForFirestore()` on all writes                | Uses `requestBodyComposer` in DAL            | ✅     |
+| Sanitized server writes                               | Admin operation logger sanitizes AI payloads | ✅     |
 | Firestore rules: deny client reads on capacity fields | Not possible in Firestore (field-level)      | N/A    |
 | Razorpay webhook signature verification               | Already done in `webhook/route.ts`           | ✅     |
 | Store isolation on capacity                           | Per-store subscription fields — verified     | ✅     |
@@ -1222,19 +1158,19 @@ AI_ADMIN_DASHBOARD: false,
 
 | Check                                    | Expected                   | Evidence                                          | Status |
 | ---------------------------------------- | -------------------------- | ------------------------------------------------- | ------ |
-| AI action types defined                  | 8 types                    | `src/constants/common.ts:123-136`                 | ✅     |
+| AI action types defined                  | Current registry           | `src/constants/common.ts`                         | ✅     |
 | AI model configs centralized             | 9 operations               | `src/constants/AI/models.ts:59-219`               | ✅     |
-| `addAiOperation` DAL exists              | Functional                 | `src/database/aiOperations/index.tsx:217-228`     | ✅     |
-| `addAiOperation` commented out in routes | 6 routes                   | All 6 confirmed via grep                          | ✅     |
+| Server accounting finalizer exists       | Functional                 | `src/lib/ai/accounting.ts`                        | ✅     |
+| Client AI operation writes disabled      | Server/Admin writes only   | `src/database/aiOperations/index.tsx`, `firestore.rules` | ✅     |
 | `TOPUPS` collection defined              | In DB_COLLECTIONS          | `src/constants/database.ts:16`                    | ✅     |
 | `PAYMENT_TOPUP` rate limit               | 10/hr                      | `src/lib/rateLimit/configs.ts:148-152`            | ✅     |
 | Razorpay billing infrastructure          | Full CRUD                  | `src/app/api/razorpay/`                           | ✅     |
 | Transactions UI                          | Built                      | `src/components/templates/main-app/transactions/` | ✅     |
 | `TOKENS_PER_CREDIT` constant             | 500                        | `src/constants/common.ts:138`                     | ✅     |
 | `CHARGE_PER_CREDIT` constant             | 100 (paise)                | `src/constants/common.ts:139`                     | ✅     |
-| Multi-tenant DAL pattern                 | `{collection}/{tId}/{sId}` | `src/database/aiOperations/index.tsx:14`          | ✅     |
-| `requestBodyComposer` used               | Auto timestamps            | `src/database/aiOperations/index.tsx:221`         | ✅     |
-| `apiCallComposer` used                   | Error handling             | `src/database/aiOperations/index.tsx:218`         | ✅     |
+| Multi-tenant log pattern                 | `{collection}/{tId}/{sId}` | `src/lib/ai/operationLog.ts`                      | ✅     |
+| Admin SDK operation writes               | Server-only timestamps     | `src/lib/ai/operationLog.ts`                      | ✅     |
+| Verification script                      | Accounting regression guard | `npm run verify:ai-accounting`                   | ✅     |
 
 ---
 
@@ -1282,11 +1218,11 @@ AI_ADMIN_DASHBOARD: false,
 | Task                                                | Week | Status | Notes                                                      |
 | --------------------------------------------------- | ---- | ------ | ---------------------------------------------------------- |
 | Define `AI_UNIT_COSTS` config                       | 1    | ✅     | `src/constants/AI/unitCosts.ts` — built                    |
-| Uncomment `addAiOperation()` in 6 routes            | 1    | ✅     | All 6 routes wired with `getUnitCost()`                    |
-| Add `unitsConsumed` to transaction objects          | 1    | ✅     | Via `getUnitCost()` call in each route                     |
+| Server-side accounting finalizer                    | 1    | ✅     | Billable routes use `finalizeAiOperationAccounting()`      |
+| Add `unitsConsumed` to transaction objects          | 1    | ✅     | Via fail-closed `getUnitCost()` lookup                     |
 | Create capacity check + consume helpers             | 2    | ✅     | `src/lib/ai/capacityCheck.ts` — built                      |
 | Create `checkAICapacity()` middleware               | 2    | ✅     | Server-side enforcement — built                            |
-| Wire capacity check into 6 routes                   | 2    | ✅     | All 6 paid routes enforce capacity                         |
+| Wire capacity check into billable routes            | 2    | ✅     | Paid routes enforce capacity before provider work          |
 | Add feature flags                                   | 2    | ✅     | `ENABLE_AI_ENHANCEMENTS` in `features.ts`                  |
 | Rename `CreditPack` → `AIEnhancementPack`           | 3    | ✅     | `common.ts` + all 13 consumers (Session 14, Feb 24 2026)   |
 | Rename `creditPacksList` → `aiEnhancementPacksList` | 3    | ✅     | `PlatformPlansList.ts` + consumers (deprecated alias kept) |

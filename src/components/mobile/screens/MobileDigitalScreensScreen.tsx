@@ -6,6 +6,7 @@ import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, typ
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { normalizeOwnerSlideCaption } from '@lib/screen/screenContent';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { ScreenSlide } from '@type/campaigns';
@@ -13,7 +14,8 @@ import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuTrash2 } from 'react-icons/lu';
+import type { ReactNode } from 'react';
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuTrash2, LuWifi } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -29,6 +31,19 @@ type AdjustableUploadedFile = UserUploadedFileType & {
     sourceName?: string;
 };
 
+type ScreenMode = 'menu' | 'highlights';
+
+interface MobileScreenLinkCardProps {
+    compactUrl: string;
+    copied: boolean;
+    description: string;
+    icon: ReactNode;
+    mode: ScreenMode;
+    onCopy: () => void;
+    onOpen: () => void;
+    title: string;
+}
+
 const MAX_UPLOADS = 3;
 const UPLOAD_EXPIRY_DAYS = 14;
 
@@ -37,6 +52,115 @@ function getDaysRemaining(validUntil?: any): number {
     const expiryMs = validUntil?.toMillis ? validUntil.toMillis() : validUntil;
     const daysMs = expiryMs - Date.now();
     return Math.max(0, Math.ceil(daysMs / (1000 * 60 * 60 * 24)));
+}
+
+function timestampToDate(value?: any): Date | null {
+    if (!value) return null;
+    try {
+        if (typeof value.toDate === 'function') return value.toDate();
+        if (typeof value.toMillis === 'function') return new Date(value.toMillis());
+        if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+        return null;
+    }
+}
+
+function formatLastSeen(value?: any): string {
+    const date = timestampToDate(value);
+    if (!date) return 'Waiting for first TV connection';
+
+    const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+    if (minutes < 1) return 'Seen just now';
+    if (minutes < 60) return `Seen ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Seen ${hours} hour${hours === 1 ? '' : 's'} ago`;
+
+    const days = Math.floor(hours / 24);
+    return `Seen ${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function compactScreenUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+        return `${parsed.host}${parsed.pathname}${parsed.search}`;
+    } catch {
+        return url.replace(/^https?:\/\//, '');
+    }
+}
+
+function MobileScreenPreview({ mode }: { mode: ScreenMode }) {
+    if (mode === 'menu') {
+        return (
+            <div className="mobile-screen-preview menu" aria-hidden="true">
+                <span className="preview-title" />
+                <span className="preview-category" />
+                <span className="preview-row" />
+                <span className="preview-row short" />
+                <span className="preview-row" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="mobile-screen-preview highlights" aria-hidden="true">
+            <span className="preview-image" />
+            <span className="preview-caption" />
+            <span className="preview-price" />
+        </div>
+    );
+}
+
+function MobileScreenLinkCard({
+    compactUrl,
+    copied,
+    description,
+    icon,
+    mode,
+    onCopy,
+    onOpen,
+    title,
+}: MobileScreenLinkCardProps) {
+    return (
+        <Card>
+            <Flex gap={12} vertical>
+                <Flex align="center" justify="space-between">
+                    <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                        <span className="mobile-screen-icon">{icon}</span>
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Title level={5} style={{ margin: 0 }}>{title}</Title>
+                            <Text type="secondary">{description}</Text>
+                        </Flex>
+                    </Flex>
+                    <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <LuExternalLink size={17} />
+                    </Button>
+                </Flex>
+
+                <MobileScreenPreview mode={mode} />
+
+                <div className="mobile-screen-url">
+                    <Text style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
+                        {compactUrl}
+                    </Text>
+                </div>
+
+                <Flex gap={8}>
+                    <Button block fill="outline" onClick={onCopy}>
+                        <Flex align="center" gap={6} justify="center">
+                            {copied ? <LuCheck size={14} /> : <LuCopy size={14} />}
+                            <Text>{copied ? 'Copied' : 'Copy link'}</Text>
+                        </Flex>
+                    </Button>
+                    <Button block onClick={onOpen}>
+                        Open
+                    </Button>
+                </Flex>
+            </Flex>
+        </Card>
+    );
 }
 
 export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScreensScreenProps) {
@@ -50,6 +174,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [screenUrl, setScreenUrl] = useState('');
+    const [screenLastSeenAt, setScreenLastSeenAt] = useState<any>(null);
     const [ownerOverride, setOwnerOverride] = useState(false);
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
     const [pendingSlide, setPendingSlide] = useState<AdjustableUploadedFile | null>(null);
@@ -62,6 +187,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [savingCaptionId, setSavingCaptionId] = useState<string | null>(null);
 
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
+    const compactMenuUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
+    const compactHighlightsUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
+    const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
+    const hasSeenSignal = Boolean(timestampToDate(screenLastSeenAt));
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
     const sortedSlides = useMemo(
         () => [...pinnedSlides].sort((left, right) => {
@@ -98,6 +227,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             let state = await getScreenState();
             if (!state) state = await initializeScreenState();
             setScreenUrl(buildScreenUrl(state.screenToken, publicBaseUrl));
+            setScreenLastSeenAt(state.screenLastSeenAt || null);
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
         } catch {
@@ -144,8 +274,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
 
         setPendingSlide(file);
-        setPendingSlideCaption(file.sourceName?.replace(/\.[^/.]+$/, '') || file.name?.replace(/\.[^/.]+$/, '') || 'Custom Slide');
-        Toast.show({ content: 'Slide ready. Review and save it.', duration: 1400 });
+        setPendingSlideCaption(normalizeOwnerSlideCaption(file.sourceName?.replace(/\.[^/.]+$/, '') || file.name?.replace(/\.[^/.]+$/, '')));
+        Toast.show({ content: 'Slide ready. Frame and save it.', duration: 1400 });
     };
 
     const handleSelectSlideFile = async (file: File) => {
@@ -176,7 +306,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         if (!pendingSlide) return;
         setUploading(true);
         try {
-            await uploadScreenSlide(pendingSlide, pendingSlideCaption.trim() || 'Custom Slide');
+            await uploadScreenSlide(pendingSlide, normalizeOwnerSlideCaption(pendingSlideCaption));
             Toast.show({ content: `Slide uploaded. Expires in ${UPLOAD_EXPIRY_DAYS} days.`, duration: 1800 });
             setPendingSlide(null);
             setPendingSlideCaption('');
@@ -191,7 +321,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const handleSaveSlideCaption = async (slideId: string) => {
         setSavingCaptionId(slideId);
         try {
-            const nextCaption = editingSlideCaption.trim() || 'Custom Slide';
+            const nextCaption = normalizeOwnerSlideCaption(editingSlideCaption);
             await updatePinnedSlideCaption(slideId, nextCaption);
             setPinnedSlides((previous) => previous.map((slide) => (
                 slide.id === slideId ? { ...slide, caption: nextCaption } : slide
@@ -241,68 +371,49 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" justify="space-between">
-                            <Flex align="center" gap={8}>
-                                <LuMonitor color={token.colorPrimary} size={18} />
-                                <Title level={5} style={{ margin: 0 }}>{t('menuBoard')}</Title>
+                    <Flex align="center" justify="space-between">
+                        <Flex align="center" gap={10} style={{ minWidth: 0 }}>
+                            <span className="mobile-screen-icon">
+                                <LuWifi size={18} />
+                            </span>
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text strong>TV status</Text>
+                                <Text type="secondary">{lastSeenLabel}</Text>
                             </Flex>
-                            <Button fill="none" onClick={() => window.open(screenUrl, '_blank', 'noopener,noreferrer')} size="small" style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}>
-                                <LuExternalLink size={16} />
-                            </Button>
                         </Flex>
-                        <Text type="secondary">{t('menuBoardDesc')}</Text>
-                        <Card size="small" style={{ background: token.colorFillAlter }}>
-                            <Text style={{ wordBreak: 'break-all' }}>{screenUrl}</Text>
-                        </Card>
-                        <Flex gap={8}>
-                            <Button block fill="outline" onClick={() => void handleCopy(screenUrl, 'menu')}>
-                                <Flex align="center" gap={6}>
-                                    {copiedMenu ? <LuCheck size={14} /> : <LuCopy size={14} />}
-                                    <Text>{copiedMenu ? t('copied') : t('copyLink')}</Text>
-                                </Flex>
-                            </Button>
-                            <Button block onClick={() => window.open(screenUrl, '_blank', 'noopener,noreferrer')}>
-                                Open
-                            </Button>
-                        </Flex>
+                        <Tag color={hasSeenSignal ? 'success' : 'default'}>
+                            {hasSeenSignal ? 'Connected' : 'Not connected'}
+                        </Tag>
                     </Flex>
                 </Card>
 
-                <Card>
-                    <Flex gap={12} vertical>
-                        <Flex align="center" justify="space-between">
-                            <Flex align="center" gap={8}>
-                                <LuPlay color={token.colorInfo} size={18} />
-                                <Title level={5} style={{ margin: 0 }}>{t('highlights')}</Title>
-                            </Flex>
-                            <Button fill="none" onClick={() => window.open(highlightsUrl, '_blank', 'noopener,noreferrer')} size="small" style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}>
-                                <LuExternalLink size={16} />
-                            </Button>
-                        </Flex>
-                        <Text type="secondary">{t('highlightsDesc')}</Text>
-                        <Card size="small" style={{ background: token.colorFillAlter }}>
-                            <Text style={{ wordBreak: 'break-all' }}>{highlightsUrl}</Text>
-                        </Card>
-                        <Flex gap={8}>
-                            <Button block fill="outline" onClick={() => void handleCopy(highlightsUrl, 'highlights')}>
-                                <Flex align="center" gap={6}>
-                                    {copiedHighlights ? <LuCheck size={14} /> : <LuCopy size={14} />}
-                                    <Text>{copiedHighlights ? t('copied') : t('copyLink')}</Text>
-                                </Flex>
-                            </Button>
-                            <Button block onClick={() => window.open(highlightsUrl, '_blank', 'noopener,noreferrer')}>
-                                Open
-                            </Button>
-                        </Flex>
-                    </Flex>
-                </Card>
+                <MobileScreenLinkCard
+                    compactUrl={compactMenuUrl}
+                    copied={copiedMenu}
+                    description={t('menuBoardDesc')}
+                    icon={<LuMonitor color={token.colorPrimary} size={18} />}
+                    mode="menu"
+                    onCopy={() => void handleCopy(screenUrl, 'menu')}
+                    onOpen={() => window.open(screenUrl, '_blank', 'noopener,noreferrer')}
+                    title={t('menuBoard')}
+                />
+
+                <MobileScreenLinkCard
+                    compactUrl={compactHighlightsUrl}
+                    copied={copiedHighlights}
+                    description={t('highlightsDesc')}
+                    icon={<LuPlay color={token.colorInfo} size={18} />}
+                    mode="highlights"
+                    onCopy={() => void handleCopy(highlightsUrl, 'highlights')}
+                    onOpen={() => window.open(highlightsUrl, '_blank', 'noopener,noreferrer')}
+                    title={t('highlights')}
+                />
 
                 <Card>
                     <Flex align="center" justify="space-between">
                         <Flex gap={2} vertical>
-                            <Text strong>{t('useMyDesignsOnly')}</Text>
-                            <Text type="secondary">{t('useMyDesignsOnlyDesc')}</Text>
+                            <Text strong>Only custom slides</Text>
+                            <Text type="secondary">Highlights will show uploaded slides only. Menu Board is unchanged.</Text>
                         </Flex>
                         <Switch checked={ownerOverride} onChange={(value) => void handleOverrideToggle(value)} />
                     </Flex>
@@ -353,13 +464,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                         {sortedSlides.length > 0 ? (
                             <Flex gap={10} vertical>
                                 {sortedSlides.map((slide) => (
-                                    <Card key={slide.id} size="small" style={{ background: token.colorBgContainer }}>
+                                    <div key={slide.id} className="mobile-slide-row">
                                         <Flex align="center" gap={12}>
                                             <img
-                                                alt={slide.caption || 'Custom slide'}
+                                                alt={normalizeOwnerSlideCaption(slide.caption)}
                                                 src={slide.imageUrl}
                                                 style={{
-                                                    borderRadius: 10,
+                                                    borderRadius: 8,
                                                     height: 56,
                                                     objectFit: 'cover',
                                                     width: 56,
@@ -396,7 +507,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                 </Flex>
                                             ) : (
                                                 <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                    <Text strong>{slide.caption || 'Custom Slide'}</Text>
+                                                    <Text strong>{normalizeOwnerSlideCaption(slide.caption)}</Text>
                                                     <Text type="secondary">{getDaysRemaining(slide.validUntil)} days remaining</Text>
                                                 </Flex>
                                             )}
@@ -405,10 +516,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                     fill="none"
                                                     onClick={() => {
                                                         setEditingSlideId(slide.id);
-                                                        setEditingSlideCaption(slide.caption || 'Custom Slide');
+                                                        setEditingSlideCaption(normalizeOwnerSlideCaption(slide.caption));
                                                     }}
                                                     size="small"
-                                                    style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
+                                                    style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                                 >
                                                     <LuPencil size={16} />
                                                 </Button>
@@ -420,28 +531,28 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                     void Dialog.confirm({
                                                         cancelText: 'Cancel',
                                                         confirmText: 'Delete slide',
-                                                        content: `Delete "${slide.caption || 'Custom Slide'}" from Highlights? This removes it from your custom slides list and it will stop showing on digital screens right away.`,
+                                                        content: `Delete "${normalizeOwnerSlideCaption(slide.caption)}" from Highlights? This removes it from your custom slides list and it will stop showing on digital screens right away.`,
                                                         onConfirm: () => void handleDeleteSlide(slide.id),
                                                     });
                                                 }}
                                                 size="small"
-                                                style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
+                                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                             >
                                                 <LuTrash2 size={16} />
                                             </Button>
                                         </Flex>
-                                    </Card>
+                                    </div>
                                 ))}
                             </Flex>
                         ) : (
-                            <Card size="small" style={{ background: token.colorFillAlter }}>
+                            <div className="mobile-slide-empty">
                                 <Flex gap={6} vertical>
                                     <Text strong>No custom slides yet</Text>
                                     <Text type="secondary">
                                         Upload posters, offers, or brand slides. They will also appear in Highlights automatically.
                                     </Text>
                                 </Flex>
-                            </Card>
+                            </div>
                         )}
 
                         {!canUpload ? (
@@ -450,6 +561,108 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                     </Flex>
                 </Card>
             </Flex>
+
+            <style jsx global>{`
+                .mobile-screen-icon {
+                    display: inline-flex;
+                    width: 36px;
+                    height: 36px;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    color: ${token.colorPrimary};
+                }
+                .mobile-screen-url {
+                    min-height: 42px;
+                    display: flex;
+                    align-items: center;
+                    min-width: 0;
+                    padding: 9px 10px;
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    overflow: hidden;
+                }
+                .mobile-screen-url span {
+                    display: block;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .mobile-screen-preview {
+                    position: relative;
+                    height: 92px;
+                    overflow: hidden;
+                    border-radius: 8px;
+                    background: #07101f;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .mobile-screen-preview.menu {
+                    padding: 13px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .mobile-screen-preview .preview-title,
+                .mobile-screen-preview .preview-category,
+                .mobile-screen-preview .preview-row {
+                    display: block;
+                    border-radius: 4px;
+                }
+                .mobile-screen-preview .preview-title {
+                    width: 46%;
+                    height: 8px;
+                    background: #ffffff;
+                }
+                .mobile-screen-preview .preview-category {
+                    width: 34%;
+                    height: 7px;
+                    background: #fbbf24;
+                }
+                .mobile-screen-preview .preview-row {
+                    height: 8px;
+                    background: rgba(255, 255, 255, 0.48);
+                }
+                .mobile-screen-preview .preview-row.short {
+                    width: 72%;
+                }
+                .mobile-screen-preview.highlights {
+                    background: linear-gradient(135deg, #111827 0%, #273449 100%);
+                }
+                .mobile-screen-preview .preview-image {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(135deg, rgba(251, 191, 36, 0.54), rgba(96, 165, 250, 0.44));
+                }
+                .mobile-screen-preview .preview-caption {
+                    position: absolute;
+                    left: 14px;
+                    right: 50px;
+                    bottom: 25px;
+                    height: 11px;
+                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 0.92);
+                }
+                .mobile-screen-preview .preview-price {
+                    position: absolute;
+                    left: 14px;
+                    bottom: 11px;
+                    width: 60px;
+                    height: 8px;
+                    border-radius: 4px;
+                    background: #86efac;
+                }
+                .mobile-slide-row,
+                .mobile-slide-empty {
+                    padding: 12px;
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    border: 1px solid ${token.colorBorderSecondary};
+                }
+            `}</style>
 
             <MediaImageAdjustModal
                 fileName={pendingSlide?.sourceName || pendingSlide?.name}

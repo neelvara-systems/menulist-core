@@ -91,7 +91,8 @@ export const getISOStringDate = (d: Date | string = new Date()): string => {
 // FORMATTING  (all use next-intl formatter → timezone-aware)
 // ═══════════════════════════════════════════════════════════════
 
-type IntlFormatter = { dateTime: (date: Date, preset: string) => string };
+export type IntlFormatter = { dateTime: (date: Date, preset: string) => string };
+export type DateTimeDisplayMode = 'date' | 'time' | 'datetime';
 
 /**
  * Format date + time using next-intl formatter (respects user prefs)
@@ -129,7 +130,7 @@ export const getFormatedTime = (formatter: IntlFormatter, date: DateLike): strin
  */
 export const formatDateTime = (
     value?: DateLike,
-    mode: 'date' | 'time' | 'datetime' = 'date',
+    mode: DateTimeDisplayMode = 'date',
     formatter?: IntlFormatter,
 ): string => {
     if (!value) return 'N/A';
@@ -150,6 +151,61 @@ export const formatDateTime = (
     }
 };
 
+export const formatDateRange = (
+    start?: DateLike,
+    end?: DateLike,
+    formatter?: IntlFormatter,
+    fallback = 'N/A',
+): string => {
+    const startLabel = formatDateTime(start, 'date', formatter);
+    const endLabel = formatDateTime(end, 'date', formatter);
+    if (startLabel === 'N/A' && endLabel === 'N/A') return fallback;
+    if (startLabel === 'N/A') return endLabel;
+    if (endLabel === 'N/A' || startLabel === endLabel) return startLabel;
+    return `${startLabel} - ${endLabel}`;
+};
+
+export const formatDateTimeRange = (
+    start?: DateLike,
+    end?: DateLike,
+    formatter?: IntlFormatter,
+    fallback = 'N/A',
+): string => {
+    const startDate = formatDateTime(start, 'date', formatter);
+    const startTime = formatDateTime(start, 'time', formatter);
+    const endDate = formatDateTime(end, 'date', formatter);
+    const endTime = formatDateTime(end, 'time', formatter);
+
+    if (startDate === 'N/A' && endDate === 'N/A') return fallback;
+    if (startDate === 'N/A') return `${endDate} ${endTime}`;
+    if (endDate === 'N/A') return `${startDate} ${startTime}`;
+    if (startDate === endDate) return `${startDate} ${startTime} - ${endTime}`;
+    return `${startDate} ${startTime} - ${endDate} ${endTime}`;
+};
+
+export const dateKeyToStorageInstant = (value: string, timeZone?: string): string => {
+    const trimmed = value.trim();
+    const dashedMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+    if (dashedMatch) return fromNativeDateInputValue(trimmed, timeZone);
+
+    const compactMatch = /^(\d{4})(\d{2})(\d{2})$/.exec(trimmed);
+    if (compactMatch) {
+        return fromNativeDateInputValue(`${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}`, timeZone);
+    }
+
+    return trimmed;
+};
+
+export const formatDateKey = (
+    value?: string | null,
+    formatter?: IntlFormatter,
+    fallback = 'N/A',
+): string => {
+    if (!value) return fallback;
+    const label = formatDateTime(dateKeyToStorageInstant(value), 'date', formatter);
+    return label === 'N/A' ? fallback : label;
+};
+
 /**
  * Format a date in the user's timezone using native Intl.DateTimeFormat.
  * Useful outside React components where next-intl formatter isn't available.
@@ -161,6 +217,82 @@ export const formatInUserTimezone = (
 ): string => {
     const tz = specificTimezone || getUserTimezone();
     return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: tz }).format(d);
+};
+
+const getZonedParts = (date: Date, timeZone?: string): Record<string, string> => {
+    const tz = timeZone || getUserTimezone();
+    return Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+        day: '2-digit',
+        hour: '2-digit',
+        hour12: false,
+        minute: '2-digit',
+        month: '2-digit',
+        second: '2-digit',
+        timeZone: tz,
+        year: 'numeric',
+    }).formatToParts(date).map((part) => [part.type, part.value]));
+};
+
+const getTimeZoneOffsetMs = (date: Date, timeZone?: string): number => {
+    const parts = getZonedParts(date, timeZone);
+    const asUtc = Date.UTC(
+        Number(parts.year),
+        Number(parts.month) - 1,
+        Number(parts.day),
+        Number(parts.hour === '24' ? '0' : parts.hour),
+        Number(parts.minute),
+        Number(parts.second),
+    );
+    return asUtc - date.getTime();
+};
+
+const zonedDateTimeToUtc = (
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+    timeZone?: string,
+): Date => {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const firstOffset = getTimeZoneOffsetMs(new Date(utcGuess), timeZone);
+    const firstResult = new Date(utcGuess - firstOffset);
+    const secondOffset = getTimeZoneOffsetMs(firstResult, timeZone);
+    return new Date(utcGuess - secondOffset);
+};
+
+export const toNativeDateInputValue = (value?: DateLike, timeZone?: string): string => {
+    const date = toDate(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = getZonedParts(date, timeZone);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
+export const toNativeDateTimeInputValue = (value?: DateLike, timeZone?: string): string => {
+    const date = toDate(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = getZonedParts(date, timeZone);
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour === '24' ? '00' : parts.hour}:${parts.minute}`;
+};
+
+export const fromNativeDateInputValue = (value: string, timeZone?: string): string => {
+    if (!value) return '';
+    const [year, month, day] = value.split('-').map(Number);
+    if ([year, month, day].some(Number.isNaN)) return '';
+    return zonedDateTimeToUtc(year, month, day, 0, 0, timeZone).toISOString();
+};
+
+export const fromNativeDateTimeInputValue = (value: string, timeZone?: string): string => {
+    if (!value) return '';
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+    if (!match) return '';
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    if ([year, month, day, hour, minute].some(Number.isNaN)) return '';
+    return zonedDateTimeToUtc(year, month, day, hour, minute, timeZone).toISOString();
 };
 
 // ═══════════════════════════════════════════════════════════════

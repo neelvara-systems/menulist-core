@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { GenerateContentResponse, Modality } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getImageAsBase64 } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -155,7 +155,7 @@ export const POST = withAuth(async (request, session) => {
 
         // Update the transaction object with calculated values and other details
         const transactionObject = {
-            transactionId: "test",
+            transactionId: null,
             action: AI_ACTIONS_TYPES.IMAGE_EDITING,
             unitsConsumed: 0,
             itemDetails,
@@ -182,14 +182,20 @@ export const POST = withAuth(async (request, session) => {
         let remainingBalance = null;
         try {
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-            transactionObject.transactionId = await addAiOperation(transactionObject);
-            // Consume capacity after successful operation
-            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-            }
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: { userId, projectId, fileId, action: transactionObject.action },
+                input: transactionObject,
+                logLabel: 'Image editing',
+                session,
+            });
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+            transactionObject.transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record transaction', transactionError);
             await writeLogEntry({ logFileName: LOG_FILE, userId: "N/A", projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            throw transactionError;
         }
 
         // Log successful response to file using the new generic function
@@ -210,6 +216,6 @@ export const POST = withAuth(async (request, session) => {
     } catch (error) {
         logger.error('Image editing API error', error);
         await writeErrorLogEntry(LOG_FILE, error);
-        return NextResponse.json({ error: 'Image editing failed', message: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: 'Image editing failed' }, { status: 500 });
     }
 });

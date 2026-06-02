@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support for Vibe-Coded SaaS Apps',
-    description: 'Answerlattice helps vibe-coded and AI-built SaaS products launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps.',
+    description: 'AnswerLattice helps vibe-coded and AI-built SaaS products launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps.',
     alternates: { canonical: '/use-cases/ai-built-saas' },
 };
 
@@ -23,15 +23,15 @@ export default function VibeCodedSaasUseCasePage() {
             canonicalPath="/use-cases/ai-built-saas"
             eyebrow="Campaign guide"
             title="Support for apps built fast with AI."
-            description="If your SaaS came together quickly with AI coding tools, Answerlattice helps you support real users before docs, tickets, and approved answers fall behind."
+            description="If your SaaS came together quickly with AI coding tools, AnswerLattice helps you prepare support before first users arrive and before tickets or approved answers fall behind."
             problem="Fast AI-assisted launches create a support gap. Users still need help with setup, billing, settings, integrations, releases, and errors, even when the product was built before a full help center existed."
             question="Users are asking questions before my support docs are ready. What should I launch first?"
             genericAnswer="Create a documentation site and add a chatbot later."
-            answerlatticeAnswer="Start with the product pages where users get stuck, import your notes and repeated questions, install the widget, and review missing-answer signals as real users ask for help."
-            ownerReview="Answerlattice is not a generic chatbot for prototypes. It is the support layer for live or near-live AI-built SaaS apps where repeated questions need approved answers and reviewable gaps."
+            answerlatticeAnswer="Start with the product pages where users are likely to need help, import your notes and expected questions, install the widget, and review missing-answer signals as first users ask for help."
+            ownerReview="AnswerLattice is not a generic chatbot for idea-only prototypes. It is the support layer for working, beta, or near-launch AI-built SaaS apps where expected and recurring questions need approved answers and reviewable gaps."
             setupSteps={[
-                'Create your Answerlattice workspace.',
-                'Pick the first pages where users get stuck.',
+                'Create your AnswerLattice workspace.',
+                'Pick the first pages where users will need help.',
                 'Import docs, FAQs, owner answers, release notes, setup notes, or recurring questions.',
                 'Install the in-app widget and pass safe page context.',
                 'Review repeated misses before publishing official answers.',

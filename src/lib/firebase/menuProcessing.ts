@@ -12,8 +12,12 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import type {
+    MenuExtractionDestinationType,
+    MenuExtractionJobDestination,
+} from '@data/shared/menuExtractionJob';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { Timestamp, addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { Timestamp, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firebaseClient } from './firebaseClient';
 
@@ -57,9 +61,8 @@ export interface CreateJobParams {
     retryCount?: number;
     /** Force review even if project has no existing menu items. */
     forceReview?: boolean;
-    /** Optional source marker for non-upload intake flows. */
-    source?: string;
-    sourceMetadata?: Record<string, unknown>;
+    /** Owner confirmed the menu-intake identity warning before extraction. */
+    identityOverrideConfirmed?: boolean;
 }
 
 export interface MenuProcessingJobStatus {
@@ -76,12 +79,26 @@ export interface MenuProcessingJobStatus {
     expiresAt?: any;
     forceReview?: boolean;
     source?: string;
+    destination?: MenuExtractionJobDestination;
+    destinationType?: MenuExtractionDestinationType;
+    skipProjectSave?: boolean;
     sourceMetadata?: Record<string, unknown>;
     result?: {
         combinedData: any;
         qualityScore: number;
         qualityDetails: any;
         processingTime: number;
+        batchResults?: Array<{ batchIndex: number; success: boolean; filesProcessed: number }>;
+        confidenceSummary?: {
+            highConfidenceCount: number;
+            mediumConfidenceCount: number;
+            lowConfidenceCount: number;
+            averageConfidenceScore: number;
+        };
+        model?: string;
+        promptVersion?: string;
+        rawBatchResponses?: Array<{ batchIndex: number; rawText: string; truncated: boolean }>;
+        redistributedFiles?: Record<string, unknown>;
     };
     error?: {
         code: string;
@@ -133,8 +150,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         retriedFromJobId,
         retryCount,
         forceReview,
-        source,
-        sourceMetadata,
+        identityOverrideConfirmed,
     } = params;
 
     // Get session for tenant context
@@ -143,52 +159,53 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         throw new Error('User not authenticated');
     }
 
-    const userId = session.uId;
+    const response = await fetch('/api/menu-extraction/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            projectId,
+            files: files.map(f => ({
+                uid: f.uid,
+                name: f.name,
+                size: f.size,
+                type: f.type,
+                url: f.url,
+            })),
+            targetLanguages: targetLanguages.map(l => ({
+                code: l.code,
+                name: l.name,
+            })),
+            action,
+            ...(businessCategory ? { businessCategory } : {}),
+            ...(businessType ? { businessType } : {}),
+            jobMode,
+            ...(forceReview ? { forceReview: true } : {}),
+            ...(identityOverrideConfirmed ? { identityOverrideConfirmed: true } : {}),
+            ...(retriedFromJobId ? { retriedFromJobId } : {}),
+            ...(retryCount != null ? { retryCount } : {}),
+        }),
+    });
 
-    // Build job document
-    const jobData = {
-        projectId,
-        files: files.map(f => ({
-            uid: f.uid,
-            name: f.name,
-            size: f.size,
-            type: f.type,
-            url: f.url,
-        })),
-        targetLanguages: targetLanguages.map(l => ({
-            code: l.code,
-            name: l.name,
-        })),
-        action,
-        ...(businessCategory ? { businessCategory } : {}),
-        ...(businessType ? { businessType } : {}),
-        jobMode,
-        ...(forceReview ? { forceReview: true } : {}),
-        ...(source ? { source } : {}),
-        ...(sourceMetadata ? { sourceMetadata } : {}),
-        status: 'pending',
-        progress: 0,
-        currentStep: 'Queued',
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        // Tenant context
-        sId: String(session.sId),
-        tId: String(session.tId),
-        uId: userId,
-        // Retry tracking (only present on retried jobs)
-        ...(retriedFromJobId ? { retriedFromJobId } : {}),
-        ...(retryCount != null ? { retryCount } : {}),
-    };
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(payload?.error || 'Could not start menu extraction.');
+    }
 
-    // Create job document
-    const jobRef = await addDoc(collection(firebaseClient, COLLECTION), jobData);
-    const jobId = jobRef.id;
+    const jobId = payload?.jobId;
+    if (!jobId) {
+        throw new Error('Could not start menu extraction.');
+    }
 
     console.log(`[createMenuProcessingJob] Created job ${jobId}`, {
         projectId,
         filesCount: files.length,
         jobMode,
+        reusedExistingJob: payload?.reusedExistingJob === true,
     });
+
+    if (payload?.reusedExistingJob === true) {
+        return jobId;
+    }
 
     // In development, manually trigger the function
     // (Firestore triggers don't work in emulator without manual intervention)
@@ -204,7 +221,6 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             activeTriggers.add(jobId);
 
             // Check if job is already being processed to avoid duplicate triggers
-            const { doc, getDoc } = await import('firebase/firestore');
             const jobDocRef = doc(firebaseClient, COLLECTION, jobId);
             const jobDoc = await getDoc(jobDocRef);
             const jobStatus = jobDoc.data()?.status;
@@ -226,10 +242,9 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             const triggerFn = httpsCallable(functions, 'dev_triggerProcessMenuImages');
             await triggerFn({
                 jobId,
-                jobData: {
-                    ...jobData,
-                    id: jobId,
-                },
+                jobData: jobDoc.exists()
+                    ? { ...jobDoc.data(), id: jobId }
+                    : { id: jobId },
             });
             console.log(`[createMenuProcessingJob] Dev trigger called for job ${jobId}`);
 

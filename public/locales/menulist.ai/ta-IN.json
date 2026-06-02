@@ -199,6 +199,7 @@
         "dateFormatHelper": "This controls how dates are shown to your team inside the app.",
         "timeFormatHelper": "Pick the clock style your team reads most easily, like 12-hour or 24-hour time.",
         "currencyHelper": "Set the currency customers should see on prices for this outlet.",
+        "currency": "நாணயம்",
         "contentLanguageTitle": "Content language",
         "contentLanguageHelper": "Switch the language here to review or edit what customers see in that language. Empty fields mean this language still needs content.",
         "addPlatform": "Add Platform",
@@ -871,7 +872,7 @@
         "reset": "Reset",
         "refresh": "Refresh",
         "totalItems": "Total {total} items",
-        "subtitle": "சமீபத்திய செயல்பாடுகளுக்கான AI செயலாக்க பயன்பாடு, நேர முத்திரைகள் மற்றும் பில்லிங் கட்டணங்களை கண்காணிக்கவும்."
+        "subtitle": "மெனு மேம்பாட்டு செயல்பாடு, நேரம் மற்றும் கிரெடிட் பயன்பாட்டைக் கண்காணிக்கவும்."
     },
     "Users": {
         "title": "Users",

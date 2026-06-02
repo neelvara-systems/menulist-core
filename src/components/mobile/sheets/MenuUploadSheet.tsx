@@ -53,9 +53,9 @@ type PreparedFile = {
 };
 
 type MenuIntakeDecisionResult =
-    | { action: 'continue'; files: PreparedFile[]; ignoredFiles: PreparedFile[] }
+    | { action: 'continue'; files: PreparedFile[]; ignoredFiles: PreparedFile[]; identityOverrideConfirmed?: boolean }
     | { action: 'cancel' }
-    | { action: 'create_new_project'; projectId: string; files: PreparedFile[]; ignoredFiles: PreparedFile[] };
+    | { action: 'create_new_project'; projectId: string; files: PreparedFile[]; ignoredFiles: PreparedFile[]; identityOverrideConfirmed?: boolean };
 
 type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
@@ -387,7 +387,7 @@ export default function MenuUploadSheet({
             });
             if (confirmed) {
                 await maybeAcceptBusinessIdentitySuggestions(result);
-                return { action: 'continue', files: filesForExtraction, ignoredFiles };
+                return { action: 'continue', files: filesForExtraction, ignoredFiles, identityOverrideConfirmed: true };
             }
             if (!canCreateNewProject) return { action: 'cancel' };
 
@@ -416,6 +416,7 @@ export default function MenuUploadSheet({
                     projectId: newProject.projectId,
                     files: filesForExtraction,
                     ignoredFiles,
+                    identityOverrideConfirmed: true,
                 };
             } catch (createError: any) {
                 Toast.show({
@@ -540,6 +541,7 @@ export default function MenuUploadSheet({
                 projectId: targetProjectId,
                 businessCategory: storeDetails?.businessCategory,
                 businessType: storeDetails?.businessType,
+                identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
             });
 
             setProgress(100);

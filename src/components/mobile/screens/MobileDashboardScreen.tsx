@@ -5,8 +5,9 @@ import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
+import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
@@ -46,12 +47,12 @@ const FULL_WIDTH_TAG_STYLE = {
     width: '100%',
 };
 
-function formatUpdatedTime(value?: Date | string): string | null {
+function formatUpdatedTime(value: Date | string | undefined, formatter: IntlFormatter): string | null {
     if (!value) return null;
     const parsed = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(parsed.getTime())) return null;
 
-    return parsed.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    return formatDateTime(parsed, 'time', formatter);
 }
 
 function resolveDashboardText(value: unknown, language: string, fallback = ''): string {
@@ -98,6 +99,7 @@ function buildProjectAnalyticsLabels(project: any, language: string) {
 
 export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
+    const formatter = useFormatter();
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
@@ -437,7 +439,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             );
         }
 
-        const updatedLabel = formatUpdatedTime(data?.lastFetched);
+        const updatedLabel = formatUpdatedTime(data?.lastFetched, formatter);
         const hasActions = Object.values(today.menuActions || {}).some((value) => Number(value) > 0);
         const topSearch = today.topSearchTerms?.[0];
         const topUnavailable = today.unavailableItems?.[0];
@@ -556,11 +558,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         }
 
         const dateLabel = viewMode === 'daily' && periodData.date
-            ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+            ? formatDateKey(periodData.date, formatter)
             : viewMode === 'weekly' && periodData.weekStart && periodData.weekEnd
-                ? `${new Date(periodData.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${new Date(periodData.weekEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                ? `${formatDateKey(periodData.weekStart, formatter)} - ${formatDateKey(periodData.weekEnd, formatter)}`
                 : viewMode === 'monthly' && periodData.monthStart
-                    ? new Date(periodData.monthStart).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                    ? formatDateKey(periodData.monthStart, formatter)
                     : viewModeLabel;
 
         return (
@@ -602,7 +604,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     </Flex>
                     {overall.firstDataDate ? (
                         <Text type="secondary">
-                            {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                            {`Since ${formatDateKey(overall.firstDataDate, formatter)}`}
                         </Text>
                     ) : null}
                 </Card>
@@ -616,7 +618,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
     const dailyHeaderData = viewMode === 'daily' ? currentViewData as any : null;
     const dailyHeaderDateLabel = dailyHeaderData?.date
-        ? new Date(dailyHeaderData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+        ? formatDateKey(dailyHeaderData.date, formatter)
         : null;
     const dailyHeaderLabel = dailyHeaderDateLabel && dailyHeaderData?.isLowActivity
         ? `${dailyHeaderDateLabel} · ${t('lowActivity')}`
@@ -838,7 +840,19 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                                     <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'right', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
                                                         {(week.metrics?.menuVisits || 0).toLocaleString()}
                                                     </Text>
-                                                    {week.isCurrentWeek ? <Tag color="blue" style={{ fontSize: 10, padding: '0 4px' }}>Now</Tag> : null}
+                                                    {week.isCurrentWeek ? (
+                                                        <Tag
+                                                            style={{
+                                                                backgroundColor: token.colorPrimaryBg,
+                                                                borderColor: token.colorPrimaryBorder,
+                                                                color: token.colorPrimaryText,
+                                                                fontSize: 10,
+                                                                padding: '0 4px',
+                                                            }}
+                                                        >
+                                                            Now
+                                                        </Tag>
+                                                    ) : null}
                                                 </Flex>
                                             );
                                         })}

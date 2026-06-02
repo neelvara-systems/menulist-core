@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Answerlattice plans for small SaaS and digital-product teams.',
+    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for small SaaS and digital-product teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -104,7 +104,7 @@ export default function AnswerlatticePricingPage() {
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Beta setup</p>
                                 <h2 className="text-2xl font-bold text-white">Create the workspace first. Upgrade when the support layer is ready.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                    Public onboarding currently creates the Answerlattice beta workspace, product account bridge, subscription summary, and one-time widget key. Paid plans and top-ups run through the Answerlattice Billing screen with product-scoped Razorpay requests.
+                                    Public onboarding currently creates the AnswerLattice beta workspace, product account bridge, subscription summary, and one-time widget key. Paid plans and top-ups run through the AnswerLattice Billing screen with product-scoped Razorpay requests.
                                 </p>
                             </div>
                             <AnswerlatticeLink
@@ -211,19 +211,19 @@ export default function AnswerlatticePricingPage() {
                                     <div className="text-sm text-[#6b6b8a]">{supportCreditPack.creditAmount} credits, one-time purchase</div>
                                 </div>
                                 <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[#a0a0c0]">
-                                    Bought inside Answerlattice Billing
+                                    Bought inside AnswerLattice Billing
                                 </span>
                             </div>
                         </div>
                     </div>
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Public packaging stays monthly and INR-first. Usage limits protect infrastructure, but Answerlattice is not priced as a punishment for successful support deflection.
+                        Public packaging stays monthly and INR-first. Usage limits protect infrastructure, but AnswerLattice is not priced as a punishment for successful support deflection.
                     </p>
                 </section>
                 <section className="border-b border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold">Not sure which plan fits?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        Start with the free setup. Upgrade when your users, pages, and repeated questions grow.
+                        Start with the free setup before launch or early support volume. Upgrade when users, pages, and support questions grow.
                     </p>
                     <AnswerlatticeLink
                         basePath={basePath}

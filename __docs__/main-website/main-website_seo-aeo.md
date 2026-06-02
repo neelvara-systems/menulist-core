@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -16,6 +16,10 @@
 > June 1, 2026 Indian resource localization note: reviewed Hindi, Tamil, Telugu, Marathi, and Bengali resource packs were exposed through locale-prefixed URLs, localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, and LLM context coverage in the first language rollout. English remains the non-prefixed canonical source. Future languages must stay out of discovery until full source-versioned packs pass `verify:website-resource-locales`.
 
 > June 1, 2026 full resource locale coverage note: Arabic and Spanish resource packs are now reviewed and exposed through the same locale-prefixed URL, metadata, JSON-LD, sitemap, `hreflang`, and LLM context system. `verify:website-resource-locales` now enforces full reviewed resource coverage for every active non-default language in the public website switcher.
+
+> June 2, 2026 resource discovery hardening note: named search/AI crawlers now share the same private-route disallows as the generic crawler group in `public/robots.txt`, `CCBot` is explicitly listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` include MenuList's preferred official-source positioning plus claim limits. The Resources navigation/footer/homepage links now point crawlers and readers into the same resource cluster, while analytics measures resource-to-upload and resource-to-pricing clicks without tenant/customer identifiers.
+
+> June 2, 2026 resource expansion and industry note: the public discovery layer now includes 15 resource articles, reviewed active-locale coverage for every resource article, and four industry pages under `/industries/`. Industry pages use WebPage/BreadcrumbList structured data and connect back to resources/product CTAs; they must describe fit and public-menu correctness only, without revenue, ranking, Google refresh, POS, delivery-marketplace, or AI-visibility guarantees.
 
 ---
 
@@ -36,6 +40,7 @@
 | Create Menu      | Create Your Official Menu Source — MenuList                           | `(website)/create-menu/page.tsx`      |
 | Resources        | Resources — MenuList \| Keep One Public Menu Current                  | `(website)/resources/page.tsx`        |
 | Resource Article | Dynamic per article from `src/content/websiteResources/en-US.ts` and reviewed locale packs | `(website)/resources/[slug]/page.tsx`, `(website)/[locale]/resources/[slug]/page.tsx` |
+| Industry Pages   | Dynamic per industry from `src/content/websiteIndustries.ts`          | `(website)/industries/*/page.tsx`     |
 | Trust & Security | Trust & Security — MenuList \| How We Keep Your Data Safe             | `(website)/trust-security/page.tsx`   |
 | Privacy          | Privacy Policy — MenuList                                             | `(website)/privacy-policy/page.tsx`   |
 | Terms            | Terms of Service — MenuList                                           | `(website)/terms-of-service/page.tsx` |
@@ -284,9 +289,9 @@ Agent boundaries:
 | Mobile responsive     | ✅         | Mobile-first design implemented                             |
 | Page speed < 2.5s LCP | ✅         | Static rendering for all marketing pages                    |
 | Sitemap.xml           | ✅         | Active platform pages only; redirected `/product` omitted   |
-| Robots.txt            | ✅         | AI/search crawlers allowed, protected app paths excluded, non-www sitemap/LLM links |
-| llms.txt              | ✅         | Platform agent context with public fact and action boundaries |
-| llms-full.txt         | ✅         | Extended agent-readable schema, URL, freshness, and boundary docs |
+| Robots.txt            | ✅         | Named search/AI crawlers and the generic crawler group allowed for public pages, with protected app paths excluded in both rule groups and non-www sitemap/LLM links |
+| llms.txt              | ✅         | Platform agent context with public fact boundaries, action boundaries, preferred description, and claim limits |
+| llms-full.txt         | ✅         | Extended agent-readable schema, URL, freshness, resource inventory, preferred positioning, and boundary docs |
 | Canonical URLs        | ✅         | Self-referencing on active platform pages                   |
 | Schema.org            | ✅         | Homepage Organization/WebSite/SoftwareApplication/WebPage/BreadcrumbList plus page-level WebPage/BreadcrumbList |
 | OG tags               | ✅         | Per-page titles + descriptions on active platform pages     |

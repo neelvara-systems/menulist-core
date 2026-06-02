@@ -1,5 +1,5 @@
 /**
- * Answerlattice Help Widget — Public Contract v1
+ * AnswerLattice Help Widget — Public Contract v1
  *
  * Usage:
  *   <script src="https://answerlattice.com/widget/v1/answerlattice-widget.js"
@@ -24,8 +24,8 @@
  *   window.AnswerlatticeWidget.on('open', function () {})
  *
  * Options:
- *   data-answerlattice-key  (required) Your Answerlattice widget key
- *   data-api-key       (legacy alias) Your Answerlattice widget key
+ *   data-answerlattice-key  (required) Your AnswerLattice widget key
+ *   data-api-key       (legacy alias) Your AnswerLattice widget key
  *   data-position      (optional) "bottom-right" | "bottom-left" | "top-right" | "top-left"
  *   data-accent-color  (optional) Hex color (default: #6366f1)
  *   data-shape         (optional) "rounded" (circle) | "pill" (rectangle)
@@ -61,10 +61,10 @@
         return null;
     })();
 
-    if (!script) { console.warn('[Answerlattice] Widget script tag not found.'); return; }
+    if (!script) { console.warn('[AnswerLattice] Widget script tag not found.'); return; }
 
     var apiKey = script.getAttribute('data-answerlattice-key') || script.getAttribute('data-api-key');
-    if (!apiKey) { console.warn('[Answerlattice] Missing data-answerlattice-key attribute.'); return; }
+    if (!apiKey) { console.warn('[AnswerLattice] Missing data-answerlattice-key attribute.'); return; }
 
     // ===== CONFIG =====
     var defaultConfig = {

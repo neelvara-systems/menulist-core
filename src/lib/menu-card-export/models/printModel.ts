@@ -1,3 +1,5 @@
+import type { BusinessCatalogKind, BusinessOfferingKind } from '@data/shared/businessTypes';
+
 export type LocalizedText = string | Record<string, string> | undefined | null;
 
 export type PrintAttribute = {
@@ -39,6 +41,10 @@ export type MenuCardPrintSource = {
         logoUrl?: string;
         phone?: string;
         address?: string;
+        businessType?: string;
+        businessCategory?: string;
+        catalogKind: BusinessCatalogKind;
+        offeringKind: BusinessOfferingKind;
         publicMenuUrl: string;
         brandColor?: string;
         brandTokens: MenuCardBrandTokens;
@@ -54,6 +60,7 @@ export type MenuCardPrintSource = {
         updatedAt: string | null;
         language: string;
         currency: string;
+        currencyCode?: string;
         categories: PrintCategory[];
     };
     flags: {

@@ -65,8 +65,8 @@ export default function ComparisonSection() {
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     className="mb-12"
-                    eyebrow="Why Answerlattice"
-                    title="Chatbots answer. Helpdesks route. Answerlattice keeps approved support correct."
+                    eyebrow="Why AnswerLattice"
+                    title="Chatbots answer. Helpdesks route. AnswerLattice keeps approved support correct."
                     description="It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer."
                 />
 
@@ -88,7 +88,7 @@ export default function ComparisonSection() {
                                 Knowledge base
                             </div>
                             <div className="border-l border-white/[0.06] bg-teal-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-teal-300">
-                                Answerlattice
+                                AnswerLattice
                             </div>
                         </div>
 

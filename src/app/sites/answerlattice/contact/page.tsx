@@ -9,12 +9,12 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Contact',
-    description: 'Contact Answerlattice for setup help, demos, pricing, security questions, or partnership requests for your SaaS app or digital product.',
+    description: 'Contact AnswerLattice for setup help, demos, pricing, security questions, or partnership requests for your SaaS app or digital product.',
     alternates: { canonical: '/contact' },
 };
 
 const fitPoints = [
-    'Share where users get stuck and which pages need support first.',
+    'Share where users will need help and which pages need support first.',
     'Check setup fit before you add a full support team.',
     'Ask about security, allowed origins, team access, and rollout paths.',
 ];
@@ -65,16 +65,16 @@ export default function AnswerlatticeContactPage() {
                             <div className="text-center">
                                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Contact</p>
                                 <h1 className="mx-auto max-w-2xl text-4xl font-bold leading-tight text-white sm:text-5xl">
-                                    Talk to Answerlattice before support gets noisy.
+                                    Talk to AnswerLattice before support gets noisy.
                                 </h1>
                                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                    Send your product URL, the questions users repeat, and where support breaks today. We will help you decide whether Answerlattice fits your launch.
+                                    Send your product URL, expected or recurring questions, and the pages that need support first. We will help you decide whether AnswerLattice fits your launch.
                                 </p>
                                 <PageProofStrip
                                     className="mt-8 text-left"
                                     items={[
-                                        { label: 'Best inquiry', value: 'SaaS or digital product with repeated support questions' },
-                                        { label: 'Useful context', value: 'Product URL, first stuck page, top recurring questions' },
+                                        { label: 'Best inquiry', value: 'SaaS or digital product preparing support for launch or early users' },
+                                        { label: 'Useful context', value: 'Product URL, first support page, expected or recurring questions' },
                                         { label: 'Avoid sending', value: 'Passwords, tokens, customer datasets, raw logs' },
                                     ]}
                                 />

@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Vue Install',
-    description: 'Answerlattice v1 install guidance for Vue and Nuxt apps.',
+    description: 'AnswerLattice v1 install guidance for Vue and Nuxt apps.',
     alternates: { canonical: '/install/frameworks/vue' },
 };
 

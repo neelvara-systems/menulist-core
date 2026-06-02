@@ -51,6 +51,12 @@ Growth Engine will not:
 40. Treat Foursquare source content as MenuList truth.
 41. Rehost Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content.
 42. Publish Business Truth Graph candidate or low-confidence edges as public truth.
+43. Use WhatsApp API outreach from scraped, enriched, public, Google Places, or Foursquare phone numbers without explicit opt-in.
+44. Treat a phone number as WhatsApp consent.
+45. Use shared WhatsApp sender pools or number rotation to bypass quality limits.
+46. Send fake utility templates for marketing content.
+47. Use WhatsApp as a generic AI assistant channel.
+48. Use WhatsApp Flows for hidden consent, lead resale intake, or unapproved personal-data collection.
 
 ## Rejection Rule
 
@@ -63,6 +69,8 @@ Email can be the first automated channel only when unsubscribe, bounce, suppress
 Email also requires sender-domain readiness: SPF/DKIM/DMARC status, unsubscribe endpoint health, bounce webhook health, sender identity, ramp limits, and spam-rate thresholds.
 
 WhatsApp starts assisted. API/template sends require opt-in proof, policy review, and provider readiness.
+
+WhatsApp API sending also requires a Message Governance Layer: consent ledger, suppression ledger, template registry, conversation state, governance audit, webhook verification, reputation monitor, sender identity policy, pacing policy, and kill switches.
 
 Instagram and Messenger stay inbound/warm unless policy review approves another mode.
 
@@ -83,6 +91,8 @@ Google Places place IDs may be stored as provider identity handles. Broader Plac
 Foursquare place IDs, category IDs, and chain IDs may be stored as provider identity handles when source policy allows it. Foursquare Places API pay-as-you-go data must not be used for prospect outreach unless a separate contract or written permission explicitly allows it. Foursquare source content must not become MenuList truth, public artifact content, sitemap content, feed content, or truth-packet content.
 
 The Business Truth Graph is a state model, not a shortcut around verification. Candidate edges describe where to inspect next. Confirmed truth edges require owner confirmation or approved MenuList verification.
+
+WhatsApp consent is its own evidence. Public phone availability, owner website phone display, Google Places, Foursquare, CSV import, or enrichment data cannot create WhatsApp eligibility.
 
 ## Distribution Rule
 

@@ -54,9 +54,9 @@ const TRUST_CONTROLS = [
     {
         status: 'workspace scope',
         title: 'Product data stays separated',
-        detail: 'Answerlattice keeps product, workspace, and user boundaries separate for every client product.',
+        detail: 'AnswerLattice keeps product, workspace, and user boundaries separate for every client product.',
         tone: 'neutral' as const,
-        rows: [['boundary', 'Answerlattice workspace']] as Array<[string, string]>,
+        rows: [['boundary', 'AnswerLattice workspace']] as Array<[string, string]>,
     },
 ];
 
@@ -67,7 +67,7 @@ export default function HomeTrustSection() {
                 <SectionHeader
                     eyebrow="Security at a glance"
                     title="Safe page context, not secret data."
-                    description="Answerlattice only needs safe context like page, feature, workflow, plan, or role. Approved runtime context can be served from compiled bundles, while secrets, tokens, card data, private customer records, and unrelated personal data stay out."
+                    description="AnswerLattice only needs safe context like page, feature, workflow, plan, or role. Approved runtime context can be served from compiled bundles, while secrets, tokens, card data, private customer records, and unrelated personal data stay out."
                 />
                 <AnswerlatticeStatusBoard items={TRUST_CONTROLS} />
             </div>

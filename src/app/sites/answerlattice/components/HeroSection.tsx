@@ -49,7 +49,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </h1>
 
                     <p className="relative mx-auto mt-6 w-full max-w-[18rem] text-base leading-relaxed text-[#a0a0c0] sm:max-w-2xl sm:text-lg lg:mx-0">
-                        Answerlattice turns product docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved answers for your in-product widget, hosted help, and support review queue.
+                        AnswerLattice turns product docs, FAQs, release notes, screenshots, recordings, support notes, and recurring questions into approved answers for your in-product widget, hosted help, and support review queue.
                     </p>
 
                     <div className="relative mx-auto mt-8 flex w-full max-w-[16rem] flex-col items-stretch justify-center gap-4 sm:max-w-none sm:flex-row sm:items-center lg:justify-start">
@@ -96,7 +96,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </p>
                 </div>
 
-                <article className="relative mx-auto min-w-0 w-full max-w-full rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:max-w-2xl lg:max-w-none" aria-label="Sample Answerlattice workspace preview">
+                <article className="relative mx-auto min-w-0 w-full max-w-full rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:max-w-2xl lg:max-w-none" aria-label="Sample AnswerLattice workspace preview">
                     <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[#0d0d22]">
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] bg-white/[0.025] px-4 py-3">
                             <div className="flex items-center gap-2">

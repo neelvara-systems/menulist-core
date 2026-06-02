@@ -9,7 +9,7 @@ Menu Link Import reuses the existing extraction infrastructure instead of adding
 3. The API fetches the source directly with DNS/IP validation, pinned request lookup, redirect re-checks, size caps, and a bounded acquisition budget.
 4. HTML/text/JSON sources are converted into a text artifact; PDF/image sources are stored as-is. HTML acquisition can follow bounded same-origin menu/catalog links, Schema.org `hasMenu` URLs, linked PDF/image catalog assets, and rendered client-routed menu pages such as `/#/menu`; otherwise it is rejected before job creation.
 5. The API stores one private source artifact and writes a `menuLinkImportArtifacts` document.
-6. The API creates a `menuImageProcessingJobs` document with `source: "menu_link_import"` and `forceReview: true`.
+6. The API creates a `menuImageProcessingJobs` document with `source: "menu_link_import"`, `forceReview: true`, and `destination.type = "project"`.
 7. Cloud Functions first try deterministic text extraction for link-import text artifacts that already contain structured names/prices. If that parser cannot produce a reliable draft, the job falls through to the existing Gemini file extraction pipeline.
 8. `forceReview` makes the job land in `preview_ready`.
 9. Existing review UI creates the apply plan.

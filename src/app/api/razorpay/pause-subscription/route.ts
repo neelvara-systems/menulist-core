@@ -158,6 +158,26 @@ export const POST = withAuth(async (request, session) => {
             'api:pause-subscription',
         );
 
+        if (!isAnswerlatticeBillingProduct(productId)) {
+            try {
+                const { sendLifecycleMessage } = await import('@lib/messaging');
+                sendLifecycleMessage({
+                    storeId: String(internalSub.storeId),
+                    tenantId: String(internalSub.tenantId),
+                    eventType: 'SUBSCRIPTION_PAUSED',
+                    referenceId: `subscription-paused-${internalSub.id}`,
+                    recipientEmail: internalSub.email || session.user.email || '',
+                    storeName: internalSub.name || '',
+                    metadata: {
+                        amount: internalSub.amount,
+                        currency: internalSub.currency || 'INR',
+                        planName: internalSub.planName || 'Subscription',
+                        sentAt: new Date().toISOString(),
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+        }
+
         logger.info('Subscription paused successfully', {
             subscriptionId: internalSub.id,
             userId: session.user.id,

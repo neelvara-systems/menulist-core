@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('proactive-help');
 
 if (!feature) {
-    throw new Error('Answerlattice Proactive Help feature configuration is missing.');
+    throw new Error('AnswerLattice Proactive Help feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

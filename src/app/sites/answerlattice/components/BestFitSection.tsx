@@ -3,14 +3,14 @@ import SectionHeader from './SectionHeader';
 
 const FIT_DECISIONS = [
     {
-        title: 'Live product',
-        detail: 'Your SaaS app or digital product is live or close to launch, and users are already finding confusing screens.',
+        title: 'Live or launch-ready product',
+        detail: 'Your SaaS app or digital product is live, in beta, or close to launch, and the key user flows need clear support.',
         label: 'fit',
         tone: 'good' as const,
     },
     {
-        title: 'Repeated questions',
-        detail: 'The same billing, onboarding, settings, release, or error questions appear more than once.',
+        title: 'Expected support questions',
+        detail: 'You already see recurring questions, or you can predict the setup, billing, onboarding, settings, release, or error questions users will ask.',
         label: 'fit',
         tone: 'good' as const,
     },
@@ -28,13 +28,13 @@ const FIT_DECISIONS = [
     },
     {
         title: 'Helpdesk replacement',
-        detail: 'Answerlattice does not replace a full human inbox, agent routing system, or helpdesk workflow suite.',
+        detail: 'AnswerLattice does not replace a full human inbox, agent routing system, or helpdesk workflow suite.',
         label: 'not fit',
         tone: 'caution' as const,
     },
     {
         title: 'No support source yet',
-        detail: 'A product with no live app and no starter knowledge has nothing useful to govern yet.',
+        detail: 'A product with no working app, launch path, docs, notes, screenshots, FAQs, or starter knowledge has nothing useful to govern yet.',
         label: 'not fit',
         tone: 'caution' as const,
     },
@@ -58,8 +58,8 @@ export default function BestFitSection() {
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
                     eyebrow="Best fit"
-                    title="Best for founders with real users and repeated questions."
-                    description="Answerlattice fits SaaS apps and digital products where users get stuck on billing, onboarding, settings, integrations, releases, or errors."
+                    title="Best for founders preparing support early."
+                    description="AnswerLattice fits live, beta, and near-launch SaaS apps or digital products where users need clear help for billing, onboarding, settings, integrations, releases, or errors."
                 />
                 <AnswerlatticeDecisionGrid items={FIT_DECISIONS} />
             </div>

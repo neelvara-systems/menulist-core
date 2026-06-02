@@ -1,8 +1,9 @@
 import type { MenuCardExportSettings } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
 import type { MenuCardTemplate } from '../models/templateTypes';
+import { resolveMenuCardBusinessPrintProfile } from '../templates/businessPrintProfiles';
 
-export const MENU_CARD_EXPORT_RENDERER_VERSION = 'menu-card-export-jspdf-v1';
+export const MENU_CARD_EXPORT_RENDERER_VERSION = 'menu-card-export-jspdf-v2';
 
 export function safeArtifactFilename(value: string, maxLength = 120): string {
     const normalized = (value || 'menu')
@@ -56,15 +57,23 @@ export function buildPdfDocumentProperties(params: {
     sourceHash: string;
 }) {
     const { source, settings, template, sourceHash } = params;
+    const profile = resolveMenuCardBusinessPrintProfile({
+        businessCategory: source.business.businessCategory,
+        catalogKind: source.business.catalogKind,
+        offeringKind: source.business.offeringKind,
+    });
+
     return {
         title: `${source.business.name} - ${source.menu.title}`,
-        subject: `${presetFilenameToken(settings.preset)} menu export from current MenuList menu data`,
+        subject: `${presetFilenameToken(settings.preset)} ${profile.documentLabel.toLowerCase()} export from current MenuList data`,
         author: source.business.name || 'MenuList',
         keywords: [
             'MenuList',
-            'print menu',
+            `print ${profile.documentLabel.toLowerCase()}`,
             source.business.name,
             source.menu.title,
+            source.business.businessCategory,
+            source.business.offeringKind,
             settings.preset,
             settings.paperSize,
             settings.orientation,

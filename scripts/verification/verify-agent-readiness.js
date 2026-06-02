@@ -264,10 +264,46 @@ function verifyMenuListDiscovery() {
 
 function verifyAnswerlatticeDiscovery() {
   const { ANSWERLATTICE_PUBLIC_PAGES } = require('../../src/app/sites/answerlattice/siteConfig');
+  const answerlatticeInstallContract = require('../../src/lib/answerlattice/installContract/contract');
+  const {
+    ANSWERLATTICE_PUBLIC_BRAND,
+    ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS,
+    ANSWERLATTICE_PUBLIC_DOMAIN_DECISION,
+    ANSWERLATTICE_RESOURCE_ARTICLES,
+  } = require('../../src/app/sites/answerlattice/publicContent');
   const robotsRoute = read('src/app/sites/answerlattice/robots.txt/route.ts');
   const homepageStructuredData = read('src/app/sites/answerlattice/components/StructuredData.tsx');
   const pageStructuredData = read('src/app/sites/answerlattice/components/PageStructuredData.tsx');
+  const resourceStructuredData = read('src/app/sites/answerlattice/resources/ResourceStructuredData.tsx');
+  const resourceArticlePage = read('src/app/sites/answerlattice/resources/ResourceArticlePage.tsx');
+  const resourceAnalytics = read('src/app/sites/answerlattice/components/AnswerlatticeResourceAnalytics.tsx');
   const productFeatureRoute = read('src/app/sites/answerlattice/product/ProductFeatureRoutePage.tsx');
+  const siteConfig = read('src/app/sites/answerlattice/siteConfig.ts');
+  const layout = read('src/app/sites/answerlattice/layout.tsx');
+  const middleware = read('src/middleware.ts');
+  const productDomains = read('src/constants/productDomains.ts');
+  const llmsContract = read('src/lib/answerlattice/installContract/contract.ts');
+  const renderedLlms = answerlatticeInstallContract.renderAnswerlatticeLlmsTxt();
+  const renderedLlmsFull = answerlatticeInstallContract.renderAnswerlatticeLlmsFullTxt();
+
+  assert(ANSWERLATTICE_PUBLIC_BRAND === 'AnswerLattice', 'AnswerLattice public brand casing must stay locked');
+  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.canonicalHost === 'answerlattice.com', 'AnswerLattice production canonical host must remain answerlattice.com');
+  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.previewHost === 'ecomsai.com', 'AnswerLattice preview host must remain ecomsai.com');
+  assertIncludes(siteConfig, 'ANSWERLATTICE_COMPARISONS', 'AnswerLattice site registry comparisons');
+  assertIncludes(siteConfig, 'ANSWERLATTICE_DEVELOPER_DOCS', 'AnswerLattice site registry developer docs');
+  assertIncludes(siteConfig, 'ANSWERLATTICE_RESOURCE_ARTICLES', 'AnswerLattice site registry resource articles');
+  assertIncludes(layout, "applicationName: 'AnswerLattice'", 'AnswerLattice layout metadata brand casing');
+  assertIncludes(productDomains, "name: 'AnswerLattice'", 'AnswerLattice product domain display name');
+  assertIncludes(middleware, 'buildAnswerlatticeWebsiteRewritePath', 'AnswerLattice homepage internal rewrite helper');
+  assertIncludes(middleware, "`${basePath}/home`", 'AnswerLattice homepage internal rewrite target');
+  assertIncludes(middleware, 'isLegacyAnswerlatticePublicHostname', 'AnswerLattice legacy public host redirect');
+  assertIncludes(middleware, "'canonica.app'", 'AnswerLattice legacy public host redirect');
+  assertIncludes(middleware, "getProductDeploymentTarget('answerlattice', 'production')", 'AnswerLattice legacy public host canonical target');
+  assertIncludes(llmsContract, '/developers', 'AnswerLattice llms.txt developer hub');
+  assertIncludes(llmsContract, '/comparisons', 'AnswerLattice llms.txt comparisons hub');
+  assertIncludes(renderedLlms, '/resources', 'AnswerLattice llms.txt resources hub');
+  assertIncludes(renderedLlmsFull, '/resources/launch-support-checklist', 'AnswerLattice llms-full.txt resource articles');
+  assertIncludes(renderedLlmsFull, '/resources/support-runtime-safety', 'AnswerLattice llms-full.txt resource articles');
 
   assertIncludes(robotsRoute, 'DISCOVERY_CRAWLERS', 'Answerlattice robots');
   assertIncludes(robotsRoute, '/llms.txt', 'Answerlattice robots');
@@ -277,15 +313,41 @@ function verifyAnswerlatticeDiscovery() {
   assertIncludes(homepageStructuredData, 'buildAnswerlatticePageId', 'Answerlattice homepage structured data ID helper');
   assertIncludes(pageStructuredData, 'BreadcrumbList', 'Answerlattice page structured data');
   assertIncludes(pageStructuredData, 'buildPageId', 'Answerlattice page structured data ID helper');
+  assertIncludes(resourceStructuredData, "'Article'", 'AnswerLattice resource article schema');
+  assertIncludes(resourceStructuredData, "'FAQPage'", 'AnswerLattice resource FAQ schema');
+  assertIncludes(resourceStructuredData, 'ANSWERLATTICE_RESOURCE_ARTICLES', 'AnswerLattice resource hub item list');
+  assertIncludes(resourceArticlePage, 'AnswerlatticeResourceStructuredData', 'AnswerLattice resource article renderer structured data');
+  assertIncludes(resourceArticlePage, 'AnswerlatticeResourceAnalytics', 'AnswerLattice resource article analytics');
+  assertIncludes(resourceAnalytics, 'answerlattice_resource_page_view', 'AnswerLattice resource analytics page view');
+  assertIncludes(resourceAnalytics, 'chat.openai.com', 'AnswerLattice resource analytics AI referrer coverage');
   assertIncludes(productFeatureRoute, 'AnswerlatticePageStructuredData', 'Answerlattice product feature route wrapper');
 
+  for (const article of ANSWERLATTICE_RESOURCE_ARTICLES) {
+    assert(article.path.startsWith('/resources/'), `AnswerLattice resource article path must stay under /resources: ${article.path}`);
+    assert(article.title.includes('Answerlattice') === false, `AnswerLattice resource article title must use public brand casing: ${article.path}`);
+  }
+
   for (const page of ANSWERLATTICE_PUBLIC_PAGES) {
+    for (const privatePrefix of ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS.privateRoutePrefixes) {
+      assert(
+        !page.path.startsWith(privatePrefix),
+        `AnswerLattice public registry must not include private/runtime route ${page.path}`,
+      );
+    }
+
     const routeFile = answerlatticePagePathToFile(page.path);
     assert(exists(routeFile), `Answerlattice route file missing for ${page.path}: ${routeFile}`);
 
     const content = read(routeFile);
     if (page.path === '/') {
       assertIncludes(content, '<AnswerlatticeStructuredData />', 'Answerlattice homepage structured data');
+      continue;
+    }
+
+    if (page.path === '/resources') {
+      assertIncludes(content, 'AnswerlatticeResourceStructuredData', 'AnswerLattice resources hub structured data');
+      assertIncludes(content, 'type="hub"', 'AnswerLattice resources hub structured data');
+      assertIncludes(content, 'AnswerlatticeResourceAnalytics', 'AnswerLattice resources hub analytics');
       continue;
     }
 
@@ -298,8 +360,48 @@ function verifyAnswerlatticeDiscovery() {
       continue;
     }
 
+    if (content.includes('AnswerlatticeComparisonDetailPage')) {
+      assertIncludes(content, `const comparisonPath = '${page.path}'`, `AnswerLattice comparison structured data path ${page.path}`);
+      continue;
+    }
+
+    if (content.includes('AnswerlatticeDeveloperDocPage')) {
+      assertIncludes(content, `const docPath = '${page.path}'`, `AnswerLattice developer structured data path ${page.path}`);
+      continue;
+    }
+
+    if (content.includes('AnswerlatticeResourceArticlePage')) {
+      assertIncludes(content, `const articlePath = '${page.path}'`, `AnswerLattice resource structured data path ${page.path}`);
+      continue;
+    }
+
     assertIncludes(content, 'AnswerlatticePageStructuredData', `Answerlattice page structured data ${page.path}`);
     assertIncludes(content, `path="${page.path}"`, `Answerlattice structured data path ${page.path}`);
+  }
+
+  const publicClaimFiles = [
+    ...fs.readdirSync(path.join(ROOT, 'src/app/sites/answerlattice'), { recursive: true })
+      .filter((file) => /\.(ts|tsx)$/.test(file))
+      .filter((file) => file !== 'publicContent.ts')
+      .map((file) => `src/app/sites/answerlattice/${file}`),
+    ...fs.readdirSync(path.join(ROOT, 'src/content/answerlatticePublic'), { recursive: true })
+      .filter((file) => /\.(ts|tsx)$/.test(file))
+      .filter((file) => file !== 'guardrails.ts')
+      .map((file) => `src/content/answerlatticePublic/${file}`),
+    'src/lib/answerlattice/installContract/contract.ts',
+    'public/answerlattice.webmanifest',
+    'public/widget/answerlattice-widget.js',
+    'src/app/widget/v1/answerlattice-widget.js/route.ts',
+  ].filter((file) => exists(file));
+  const publicClaimCopy = publicClaimFiles.map((file) => read(file)).join('\n');
+
+  assert(!/\bCanonica\b/.test(publicClaimCopy), 'AnswerLattice public copy must not use Canonica as the standalone public brand');
+  assert(!/\bAnswerlattice\b/.test(publicClaimCopy), 'AnswerLattice public copy must use AnswerLattice as the standalone public brand');
+  for (const phrase of ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS.forbiddenPhrases.filter((phrase) => phrase !== 'Canonica')) {
+    assertNotIncludes(publicClaimCopy.toLowerCase(), phrase.toLowerCase(), `AnswerLattice public forbidden claim ${phrase}`);
+  }
+  for (const schemaType of ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS.forbiddenSchemaTypes) {
+    assert(!new RegExp(`['"]@type['"]\\s*:\\s*['"]${schemaType}['"]`).test(publicClaimCopy), `AnswerLattice public schema must not include ${schemaType}`);
   }
 }
 
@@ -326,8 +428,8 @@ function verifyAnswerlatticeInstallContract() {
   assert(contract.ANSWERLATTICE_AGENT_FILE_TARGETS.includes('.cursor/rules/answerlattice.mdc'), 'Answerlattice agent file targets must include Cursor .mdc fallback');
   assert(contract.ANSWERLATTICE_PUBLIC_DOC_ROUTES.includes('/install/contracts.md'), 'Answerlattice public docs routes must include contracts Markdown');
   assertIncludes(widgetV1Route, 'ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL', 'Answerlattice v1 widget route cache policy');
-  assertIncludes(widgetV1Route, 'X-Answerlattice-Widget-Contract', 'Answerlattice v1 widget route contract header');
-  assertIncludes(publicWidget, 'Answerlattice Help Widget — Public Contract v1', 'Answerlattice public widget script');
+  assertIncludes(widgetV1Route, 'X-AnswerLattice-Widget-Contract', 'Answerlattice v1 widget route contract header');
+  assertIncludes(publicWidget, 'AnswerLattice Help Widget — Public Contract v1', 'Answerlattice public widget script');
   assertIncludes(publicWidget, 'data-answerlattice-key', 'Answerlattice public widget key attribute');
   assertIncludes(publicWidget, 'setContext', 'Answerlattice public widget global API');
   assertIncludes(publicWidget, 'page:', 'Answerlattice public widget page API');

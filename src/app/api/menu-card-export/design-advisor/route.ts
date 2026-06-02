@@ -6,8 +6,8 @@ import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/u
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
 import { getActiveSubscriptionForStore } from '@database/subscriptions/server';
 import { HarmBlockThreshold, HarmCategory } from '@google/genai';
-import { checkAICapacity, consumeAICapacity } from '@lib/ai/capacityCheck';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
+import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from '@lib/google/genAi/diagnostics';
 import { genAIClient } from '@lib/google/genAi';
 import { logger } from '@lib/monitoring/logger';
@@ -217,31 +217,43 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let transactionId: string | null = null;
 
         try {
-            transactionId = await recordAiOperationForSession(session, {
-                action: ACTION,
-                billingMode: 'billable',
-                chargePerCredit: CHARGE_PER_CREDIT,
-                clientResponse: recommendation,
-                generationConfig: { responseMimeType: 'application/json', temperature: 0.35, topP: 0.8, topK: 30 },
-                geminiResponse: response,
-                model: AI_MODEL,
-                processingTime,
-                projectId: payload.projectId,
-                promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
-                candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 0,
-                totalTokenCount: response.usageMetadata?.totalTokenCount || 0,
-                tokenPerCredit: TOKENS_PER_CREDIT,
-                totalCredits: ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
-                totalCharge: CHARGE_PER_CREDIT * ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
-                unitsConsumed,
-                realCostPaise: getRealCostPaise(ACTION),
-                ourChargePaise: getOurChargePaise(ACTION),
-                source: 'menu_card_export_design_advisor',
-                sourceHash: payload.sourceHash,
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: {
+                    endpoint: ENDPOINT,
+                    projectId: payload.projectId,
+                    requestId,
+                    storeId,
+                    tenantId,
+                    userId,
+                },
+                input: {
+                    action: ACTION,
+                    billingMode: 'billable',
+                    chargePerCredit: CHARGE_PER_CREDIT,
+                    clientResponse: recommendation,
+                    generationConfig: { responseMimeType: 'application/json', temperature: 0.35, topP: 0.8, topK: 30 },
+                    geminiResponse: response,
+                    model: AI_MODEL,
+                    processingTime,
+                    projectId: payload.projectId,
+                    promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
+                    candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 0,
+                    totalTokenCount: response.usageMetadata?.totalTokenCount || 0,
+                    tokenPerCredit: TOKENS_PER_CREDIT,
+                    totalCredits: ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
+                    totalCharge: CHARGE_PER_CREDIT * ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
+                    unitsConsumed,
+                    realCostPaise: getRealCostPaise(ACTION),
+                    ourChargePaise: getOurChargePaise(ACTION),
+                    source: 'menu_card_export_design_advisor',
+                    sourceHash: payload.sourceHash,
+                },
+                logLabel: 'Menu card design advisor',
+                session,
             });
-            if (capacityCheck.subscription && unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, unitsConsumed);
-            }
+            transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record menu card design advisor transaction', transactionError, {
                 endpoint: ENDPOINT,
@@ -251,6 +263,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 tenantId,
                 userId,
             });
+            throw transactionError;
         }
 
         return NextResponse.json({

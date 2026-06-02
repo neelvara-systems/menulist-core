@@ -14,9 +14,10 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { createAlert } from '../monitoring/alerts';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
-import { sendTelegramAlert } from '../monitoring/telegramAlert';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { resolveBusinessCategory } from '../sharedData/businessTypes';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
@@ -94,7 +95,10 @@ function buildPublicMenuUrl(storeData: Record<string, any> | undefined): string 
  * Called from the frontend after publish completes.
  */
 export const verifyMenuPublish = onCall(
-    FUNCTION_OPTIONS.callableLight,
+    {
+        ...FUNCTION_OPTIONS.callableLight,
+        secrets: SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+    },
     async (request) => {
         const logger = functions.logger;
         const { storeId, tenantId, publicMenuUrl } = request.data;
@@ -133,6 +137,19 @@ export const verifyMenuPublish = onCall(
                         metadata: { publicUrl: publicMenuUrl, dashboardUrl: 'https://menulist.ai' },
                     }).catch(() => { /* non-blocking */ });
                 } catch { /* non-blocking */ }
+            } else {
+                try {
+                    const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
+                    sendLifecycleMessage({
+                        storeId, tenantId,
+                        eventType: 'MENU_PUBLISH_FAILED',
+                        referenceId: `menu-publish-failed-${storeId}-${Date.now()}`,
+                        metadata: {
+                            publicUrl: publicMenuUrl,
+                            failureReason: result.failureReason || result.status || 'The public menu check failed.',
+                        },
+                    }).catch(() => { /* non-blocking */ });
+                } catch { /* non-blocking */ }
             }
 
             return {
@@ -164,7 +181,10 @@ export const gcpBudgetAlertWebhook = onRequest(
         timeoutSeconds: 10,
         memory: '256MiB' as const,
         maxInstances: 2,
-        secrets: SECRET_GROUPS.BUDGET_ALERT,
+        secrets: Array.from(new Set([
+            ...SECRET_GROUPS.BUDGET_ALERT,
+            ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ])),
     },
     async (req, res) => {
         const logger = functions.logger;
@@ -227,11 +247,18 @@ export const gcpBudgetAlertWebhook = onRequest(
                 'budget_alert',
             );
 
-            await sendTelegramAlert({
+            await createAlert({
+                tId: 'system',
+                sId: 'system',
+                type: 'usage',
                 severity: 'critical',
                 title: 'GCP Budget Alert — SAFE_MODE Auto-Activated',
                 message: `Cost: ₹${costAmount} | Budget: ₹${budgetAmount} | Threshold: ${threshold * 100}%\n\nSAFE_MODE has been automatically activated. AI generation, bulk operations, and expensive queries are blocked.\n\nTo deactivate: /ops dashboard → Deactivate SAFE_MODE`,
                 metadata: { costAmount, budgetAmount, threshold },
+                triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.GCP_BUDGET_ALERT,
+                productId: 'PLATFORM',
+                category: 'cost',
+                actionRequired: true,
             });
 
             res.status(200).json({ received: true, safeModeActivated: true });
@@ -257,6 +284,7 @@ export const forceRepublish = onCall(
         timeoutSeconds: 60,
         memory: '256MiB' as const,
         maxInstances: FUNCTION_MAX_INSTANCES.callableLight,
+        secrets: SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     },
     async (request) => {
         const logger = functions.logger;

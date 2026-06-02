@@ -37,6 +37,8 @@ Growth Engine = evidence, scoring, routing, and distribution automation
 MenuList = confirmed public menu truth
 ```
 
+Provider setup belongs in [Connections And Activation Screen](./growth-engine_connections-activation-screen.md). Google Places source runs require an active `google_places` adapter, server-only API key secret ref, source policy, field-mask profile, provider budget cap, kill switch, validation run, and audit state before any request is queued.
+
 ## 2. Current Official Constraints
 
 | Constraint | Source | Product impact |
@@ -257,4 +259,3 @@ Use AI to score opportunity from allowed evidence.
 Use MenuList confirmation to create truth.
 Never turn Google Places content into public MenuList truth.
 ```
-

@@ -1212,7 +1212,7 @@ function DownloadTile({
                 <Text strong style={{ color, fontSize: compact ? 12 : 13, lineHeight: 1.2, textAlign: 'center' }}>
                     {title}
                 </Text>
-                <Text style={{ color: highlighted ? 'rgba(255,255,255,0.76)' : token.colorTextSecondary, fontSize: 11, lineHeight: 1.2, textAlign: 'center' }}>
+                <Text style={{ color: highlighted ? token.colorTextLightSolid : token.colorTextSecondary, fontSize: 11, lineHeight: 1.2, opacity: highlighted ? 0.78 : 1, textAlign: 'center' }}>
                     {description}
                 </Text>
             </Flex>

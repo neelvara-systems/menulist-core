@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -208,12 +208,19 @@ export const POST = withAuth(async (request, session) => {
 
         let remainingBalance = null;
         try {
-            transactionObject.transactionId = await addAiOperation(transactionObject);
-            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-            }
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: { userId, projectId, action: ACTION, storeId: session.sId, tenantId: session.tId },
+                input: transactionObject,
+                logLabel: 'Campaign caption',
+                session,
+            });
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+            transactionObject.transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record campaign caption transaction', transactionError, { userId, projectId });
+            throw transactionError;
         }
 
         return NextResponse.json({
@@ -236,8 +243,7 @@ export const POST = withAuth(async (request, session) => {
     } catch (error) {
         logger.error('Campaign Caption API error', error, { userId });
         return NextResponse.json({
-            error: 'Caption generation failed',
-            message: (error as Error).message
+            error: 'Caption generation failed'
         }, { status: 500 });
     }
 });

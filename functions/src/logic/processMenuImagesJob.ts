@@ -22,6 +22,15 @@ import { isFunctionFeatureEnabled } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
+import {
+    MENU_EXTRACTION_DESTINATION_TYPES,
+    MENU_EXTRACTION_JOB_LIMITS,
+    MENU_EXTRACTION_SOURCES,
+    MENU_LINK_IMPORT_MIME_TYPES,
+    MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES,
+    OWNER_MENU_UPLOAD_MIME_TYPES,
+    PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
+} from "../sharedData/menuExtractionJob";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { hardenExtractedData } from "./extractionHardening";
 import { tryExtractMenuLinkTextFromJob } from "./menuLinkTextExtraction";
@@ -40,6 +49,12 @@ const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low
 const DEFAULT_OUTLET_EXTRACTION_POLICY = {
     canUseMenuExtraction: false,
 };
+const DEFAULT_STORAGE_BUCKET = "ecomsai.appspot.com";
+const OWNER_JOB_FILE_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
+const PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
+const LINK_IMPORT_JOB_FILE_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
+const MESSAGING_JOB_FILE_TYPES = new Set<string>(MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES);
+const CANONICAL_SOURCE_LANGUAGE = "en";
 
 function resolveJobBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
     return resolveBusinessCategory(businessType, businessCategory) || normalizeBusinessCategory(businessType);
@@ -50,6 +65,290 @@ function parseStoreIdFromProjectId(projectId?: string): string | null {
     const parts = projectId.split("-");
     const storeId = parts[parts.length - 1];
     return storeId && Number.isSafeInteger(Number(storeId)) ? storeId : null;
+}
+
+function shouldSkipProjectSave(job: MenuImageProcessingJob): boolean {
+    return job.skipProjectSave === true ||
+        job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT ||
+        job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING ||
+        job.projectId?.startsWith("msg-onboarding-");
+}
+
+function getAllowedStorageBucket(): string {
+    return process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_STORAGE_BUCKET;
+}
+
+function getStoragePathFromDownloadUrl(value: string): string | null {
+    try {
+        const url = new URL(value);
+        if (process.env.FUNCTIONS_EMULATOR === "true" && ["localhost", "127.0.0.1"].includes(url.hostname)) {
+            return "local-dev";
+        }
+        if (url.protocol !== "https:") return null;
+
+        const allowedBucket = getAllowedStorageBucket();
+        if (url.hostname === "firebasestorage.googleapis.com") {
+            const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^?]+)$/);
+            if (decodeURIComponent(match?.[1] || "") !== allowedBucket) return null;
+            return match?.[2] ? decodeURIComponent(match[2]) : null;
+        }
+
+        if (url.hostname === "storage.googleapis.com") {
+            const parts = url.pathname.split("/").filter(Boolean);
+            const bucket = decodeURIComponent(parts[0] || "");
+            if (bucket !== allowedBucket) return null;
+            return parts.length >= 2 ? decodeURIComponent(parts.slice(1).join("/")) : null;
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function isAllowedJobStoragePath(job: MenuImageProcessingJob, storagePath: string): boolean {
+    if (storagePath === "local-dev") return process.env.FUNCTIONS_EMULATOR === "true";
+
+    if (job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) {
+        return storagePath.startsWith(`publicMenuDrafts/${job.destination.draftId}/`);
+    }
+
+    if (job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING) {
+        return storagePath.startsWith(`messagingOnboarding/${job.destination.sessionId}/`);
+    }
+
+    if (job.source === MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING && job.projectId?.startsWith("msg-onboarding-")) {
+        const sessionId = job.projectId.replace(/^msg-onboarding-/, "");
+        return storagePath.startsWith(`messagingOnboarding/${sessionId}/`);
+    }
+
+    if (job.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT) {
+        return storagePath.startsWith(`menuLinkImports/${job.tId}/${job.sId}/${job.projectId}/`);
+    }
+
+    return storagePath.startsWith(`projects/files/${job.tId}/${job.sId}/`);
+}
+
+function isSupportedJobFileType(job: MenuImageProcessingJob, type: string): boolean {
+    if (
+        job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING ||
+        job.source === MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING
+    ) {
+        return MESSAGING_JOB_FILE_TYPES.has(type);
+    }
+
+    if (
+        job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT &&
+        job.destination.sourceType === "image_upload"
+    ) {
+        return PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES.has(type);
+    }
+
+    if (
+        job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT &&
+        job.destination.sourceType === "menu_link_import"
+    ) {
+        return LINK_IMPORT_JOB_FILE_TYPES.has(type);
+    }
+
+    if (job.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT) {
+        return LINK_IMPORT_JOB_FILE_TYPES.has(type);
+    }
+
+    return OWNER_JOB_FILE_TYPES.has(type);
+}
+
+function validateJobFiles(job: MenuImageProcessingJob): void {
+    if (!Array.isArray(job.files) || job.files.length === 0) {
+        throw new Error("No files found in extraction job.");
+    }
+    if (job.files.length > MENU_EXTRACTION_JOB_LIMITS.MAX_FILES) {
+        throw new Error("Too many files in extraction job.");
+    }
+
+    for (const file of job.files) {
+        if (!file?.uid || !file?.name || !file?.url) {
+            throw new Error("Invalid extraction file metadata.");
+        }
+        if (!isSupportedJobFileType(job, String(file.type || ""))) {
+            throw new Error(`Unsupported extraction file type: ${file.type || "unknown"}`);
+        }
+        if (Number(file.size || 0) > MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES) {
+            throw new Error("Extraction file is too large.");
+        }
+
+        const storagePath = getStoragePathFromDownloadUrl(file.url);
+        if (!storagePath || !isAllowedJobStoragePath(job, storagePath)) {
+            throw new Error("Extraction file URL is not allowed for this job.");
+        }
+    }
+}
+
+function normalizeDraftExtractionLanguages(languages: any): Array<{ code: string; name: string; isPrimary?: boolean }> {
+    const normalized = Array.isArray(languages)
+        ? languages
+            .map((language) => typeof language === "string"
+                ? { code: language, name: language === CANONICAL_SOURCE_LANGUAGE ? "English" : language, isPrimary: language === CANONICAL_SOURCE_LANGUAGE }
+                : {
+                    code: String(language?.code || "").trim().toLowerCase(),
+                    name: String(language?.name || "").trim(),
+                    isPrimary: Boolean(language?.isPrimary),
+                })
+            .filter((language) => language.code)
+        : [];
+
+    const deduped = Array.from(new Map(normalized.map((language) => [language.code, language])).values());
+    const hasPrimary = deduped.some((language) => language.isPrimary);
+    const withPrimary = hasPrimary
+        ? deduped
+        : deduped.map((language, index) => ({ ...language, isPrimary: index === 0 }));
+
+    if (withPrimary.some((language) => language.code === CANONICAL_SOURCE_LANGUAGE)) {
+        return withPrimary;
+    }
+
+    return [
+        ...withPrimary,
+        { code: CANONICAL_SOURCE_LANGUAGE, name: "English", isPrimary: false },
+    ];
+}
+
+function getIdentityBusinessName(job: MenuImageProcessingJob): string | null {
+    const identity = (job.sourceMetadata?.identityCheck as any)?.identity;
+    return typeof identity?.businessName === "string" && identity.businessName.trim()
+        ? identity.businessName.trim()
+        : null;
+}
+
+function getIdentityBusinessType(job: MenuImageProcessingJob): string | null {
+    const identity = (job.sourceMetadata?.identityCheck as any)?.identity;
+    return typeof identity?.businessType === "string" && identity.businessType.trim()
+        ? identity.businessType.trim()
+        : null;
+}
+
+function normalizeDraftCategory(category: any): any | null {
+    if (category?.id === undefined || category?.id === null || !category?.name || typeof category.name !== "object") return null;
+    const { sourceFileIndex: _sourceFileIndex, ...rest } = category;
+    return {
+        ...rest,
+        id: String(category.id),
+        active: category.active !== false,
+    };
+}
+
+function normalizeDraftItem(item: any): any | null {
+    if (item?.id === undefined || item?.id === null || !item?.name || typeof item.name !== "object") return null;
+    const {
+        sourceFileIndex: _sourceFileIndex,
+        categoryId,
+        attributes: rawAttributes,
+        price: rawPrice,
+        ...rest
+    } = item;
+    const normalizedAttributes = Array.isArray(rawAttributes)
+        ? rawAttributes.map((attribute: any) => ({
+            ...attribute,
+            id: String(attribute?.id || ""),
+            name: attribute?.name && typeof attribute.name === "object" ? attribute.name : {},
+            price: attribute?.price != null ? String(attribute.price) : "",
+            active: attribute?.active !== false,
+        })).filter((attribute: any) => attribute.id && Object.keys(attribute.name).length > 0)
+        : [];
+
+    return {
+        ...rest,
+        id: String(item.id),
+        category: String(item.category ?? categoryId ?? ""),
+        name: item.name,
+        price: rawPrice != null ? String(rawPrice) : "",
+        active: item.active !== false,
+        available: item.available !== false,
+        attributes: normalizedAttributes,
+    };
+}
+
+function buildPublicDraftExtractedData(menuData: any, redistributedFiles?: Record<string, any>) {
+    const fileData = Object.values(redistributedFiles || {})
+        .map((file: any) => file?.data)
+        .filter((data: any) => data && typeof data === "object");
+    const sourceData = fileData.length > 0
+        ? {
+            categories: fileData.flatMap((data: any) => Array.isArray(data.categories) ? data.categories : []),
+            items: fileData.flatMap((data: any) => Array.isArray(data.items) ? data.items : []),
+            languages: fileData.find((data: any) => Array.isArray(data.languages) && data.languages.length > 0)?.languages || menuData?.languages,
+        }
+        : menuData;
+
+    return {
+        categories: (Array.isArray(sourceData?.categories) ? sourceData.categories : [])
+            .map(normalizeDraftCategory)
+            .filter((category: any) => category !== null),
+        items: (Array.isArray(sourceData?.items) ? sourceData.items : [])
+            .map(normalizeDraftItem)
+            .filter((item: any) => item !== null),
+        languages: normalizeDraftExtractionLanguages(sourceData?.languages),
+    };
+}
+
+async function updatePublicDraftFromExtraction(
+    jobId: string,
+    job: MenuImageProcessingJob,
+    menuData: any,
+    redistributedFiles?: Record<string, any>,
+): Promise<void> {
+    if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
+
+    const draftRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+        .doc(job.destination.draftId);
+    const extractedData = buildPublicDraftExtractedData(menuData, redistributedFiles);
+
+    await draftRef.update({
+        extractionStatus: "completed",
+        extractedData,
+        detectedBusinessName: getIdentityBusinessName(job),
+        detectedBusinessType: getIdentityBusinessType(job) || job.businessType || null,
+        extractionJobId: jobId,
+        updatedAt: Timestamp.now(),
+    });
+}
+
+async function markPublicDraftExtractionFailed(job: MenuImageProcessingJob, message: string): Promise<void> {
+    if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
+    await firestoreAdmin
+        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+        .doc(job.destination.draftId)
+        .update({
+            extractionStatus: "failed",
+            extractionError: message,
+            updatedAt: Timestamp.now(),
+        })
+        .catch(() => undefined);
+}
+
+async function markPublicDraftExtractionProcessing(job: MenuImageProcessingJob): Promise<void> {
+    if (job.destination?.type !== MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) return;
+    await firestoreAdmin
+        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+        .doc(job.destination.draftId)
+        .update({
+            extractionStatus: "processing",
+            updatedAt: Timestamp.now(),
+        })
+        .catch(() => undefined);
+}
+
+function getExtractionShapeError(menuData: any): string | null {
+    const categories = Array.isArray(menuData?.categories) ? menuData.categories : [];
+    const items = Array.isArray(menuData?.items) ? menuData.items : [];
+    if (categories.length === 0 && items.length === 0) {
+        return "No menu items were found in this upload.";
+    }
+    if (items.length === 0) {
+        return "No menu items were found in this upload.";
+    }
+    return null;
 }
 
 async function getOutletExtractionPolicyBlockReason(job: MenuImageProcessingJob, existingProject: any | null): Promise<string | null> {
@@ -134,7 +433,7 @@ export async function processMenuImagesJobLogic(
     const jobRef = firestoreAdmin
         .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
         .doc(jobId);
-    const skipProjectSave = job.skipProjectSave === true || job.projectId?.startsWith("msg-onboarding-");
+    const skipProjectSave = shouldSkipProjectSave(job);
     let existingProjectCache: any | null | undefined;
     const loadExistingProject = async () => {
         if (skipProjectSave) return null;
@@ -151,7 +450,7 @@ export async function processMenuImagesJobLogic(
     });
 
     try {
-        if (job.source === 'menu_link_import' && !isFunctionFeatureEnabled('ENABLE_MENU_LINK_IMPORT')) {
+        if (job.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT && !isFunctionFeatureEnabled('ENABLE_MENU_LINK_IMPORT')) {
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.FAILED,
                 completedAt: Timestamp.now(),
@@ -164,6 +463,8 @@ export async function processMenuImagesJobLogic(
             });
             return;
         }
+
+        validateJobFiles(job);
 
         // ─────────────────────────────────────────────────────────────
         // Step 0: Validate tenant isolation (server-side defense-in-depth)
@@ -239,6 +540,8 @@ export async function processMenuImagesJobLogic(
         if (!updated) {
             return; // Job already being processed
         }
+
+        await markPublicDraftExtractionProcessing(job);
 
         logger.info(`[processMenuImagesJob] === STEP 1 COMPLETE - Transaction updated ===`, {
             jobId,
@@ -353,6 +656,11 @@ export async function processMenuImagesJobLogic(
                 jobId,
                 error: hardeningError.message,
             });
+        }
+
+        const extractionShapeError = getExtractionShapeError(result.data.data);
+        if (extractionShapeError) {
+            throw new Error(extractionShapeError);
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -585,6 +893,7 @@ export async function processMenuImagesJobLogic(
                     projectId: job.projectId,
                     source: job.source || null,
                 });
+                await updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles);
             }
 
             // Compute confidence summary (Infrastructure Compounding 10.1)
@@ -622,6 +931,7 @@ export async function processMenuImagesJobLogic(
                     transactionId: result.transaction.transactionId,
                     totalCredits: result.transaction.totalCredits,
                     totalCharge: result.transaction.totalCharge,
+                    unitsConsumed: result.transaction.unitsConsumed || 0,
                     tokenUsage: {
                         promptTokenCount: (result.transaction as any).promptTokenCount || 0,
                         candidatesTokenCount: (result.transaction as any).candidatesTokenCount || 0,
@@ -681,6 +991,7 @@ export async function processMenuImagesJobLogic(
                     transactionId: result.transaction.transactionId,
                     totalCredits: result.transaction.totalCredits,
                     totalCharge: result.transaction.totalCharge,
+                    unitsConsumed: result.transaction.unitsConsumed || 0,
                     tokenUsage: {
                         promptTokenCount: (result.transaction as any).promptTokenCount || 0,
                         candidatesTokenCount: (result.transaction as any).candidatesTokenCount || 0,
@@ -714,6 +1025,12 @@ export async function processMenuImagesJobLogic(
         });
 
         try {
+            await markPublicDraftExtractionFailed(
+                job,
+                job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT && job.destination.sourceType === "menu_link_import"
+                    ? "We could not read this menu link. Upload a photo or try another public menu link."
+                    : "Extraction failed. Please try again with a clearer photo.",
+            );
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.FAILED,
                 completedAt: Timestamp.now(),

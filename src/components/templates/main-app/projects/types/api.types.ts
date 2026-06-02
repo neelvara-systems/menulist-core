@@ -95,4 +95,5 @@ export interface ProcessedFileAPIParams {
     action?: string;
     businessCategory?: string;
     businessType?: string;
+    identityOverrideConfirmed?: boolean;
 }

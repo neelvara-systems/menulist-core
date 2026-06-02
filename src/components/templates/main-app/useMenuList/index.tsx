@@ -389,6 +389,30 @@ export default function UseMenuList() {
 
     const shortMenuLink = data.menuLink.replace(/^https?:\/\//, '');
     const activeProject = data.allProjects.find((project) => project.projectId === data.projectId) || data.allProjects[0] || null;
+    const quickActionButtonStyle = {
+        minHeight: 48,
+        whiteSpace: 'normal' as const,
+    };
+    const primaryTagStyle = {
+        backgroundColor: themeToken.colorPrimaryBg,
+        borderColor: themeToken.colorPrimaryBorder,
+        color: themeToken.colorPrimaryText,
+    };
+    const infoTagStyle = {
+        backgroundColor: themeToken.colorInfoBg,
+        borderColor: themeToken.colorInfoBorder,
+        color: themeToken.colorInfoText,
+    };
+    const successTagStyle = {
+        backgroundColor: themeToken.colorSuccessBg,
+        borderColor: themeToken.colorSuccessBorder,
+        color: themeToken.colorSuccessText,
+    };
+    const errorTagStyle = {
+        backgroundColor: themeToken.colorErrorBg,
+        borderColor: themeToken.colorErrorBorder,
+        color: themeToken.colorErrorText,
+    };
 
     const handleSelectProject = (projectId: string) => {
         const project = data.allProjects.find((item) => item.projectId === projectId);
@@ -408,7 +432,7 @@ export default function UseMenuList() {
     // ── Main render ──────────────────────────────────────────────
 
     return (
-        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ margin: '0 auto', maxWidth: 1080, padding: '24px clamp(16px, 3vw, 32px)', width: '100%' }}>
             {activeProject ? (
                 <div style={{ marginBottom: 16 }}>
                     <ProjectSelectorTrigger
@@ -452,7 +476,7 @@ export default function UseMenuList() {
                 styles={{ body: { padding: 16 } }}
             >
                 <Row gutter={[12, 12]}>
-                    <Col xs={12} sm={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
                             type="primary"
@@ -463,21 +487,23 @@ export default function UseMenuList() {
                                 STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
                             )}
                             size="large"
+                            style={quickActionButtonStyle}
                         >
                             Copy {labels.offeringTitle} Link
                         </Button>
                     </Col>
-                    <Col xs={12} sm={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
                             icon={<LuExternalLink size={16} />}
                             onClick={() => handleOpen(withEntrySource(data.menuLink, 'direct'))}
                             size="large"
+                            style={quickActionButtonStyle}
                         >
                             Open {labels.offeringTitle}
                         </Button>
                     </Col>
-                    <Col xs={12} sm={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
                             icon={<LuMonitor size={16} />}
@@ -487,17 +513,19 @@ export default function UseMenuList() {
                             }
                             size="large"
                             disabled={!data.menuBoardLink}
+                            style={quickActionButtonStyle}
                         >
                             Copy Screen Link
                         </Button>
                     </Col>
-                    <Col xs={12} sm={6}>
+                    <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
                             icon={<LuPackage size={16} />}
                             onClick={handleDownloadMenuKit}
                             loading={generatingKit}
                             size="large"
+                            style={quickActionButtonStyle}
                         >
                             {generatingKit ? 'Generating...' : 'Download Menu Kit'}
                         </Button>
@@ -600,7 +628,7 @@ export default function UseMenuList() {
              */}
             <Title level={5} style={{ marginBottom: 12 }}>{t('qrSectionTitle')}</Title>
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={12} lg={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title={t('storeMenuQrTitle')}
@@ -619,7 +647,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={12} lg={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title={t('businessProfileQrTitle')}
@@ -634,7 +662,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={12} lg={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title={t('projectMenuQrTitle')}
@@ -681,8 +709,10 @@ export default function UseMenuList() {
                                         align="center"
                                         justify="space-between"
                                         gap={12}
+                                        wrap="wrap"
                                         style={{
                                             background: themeToken.colorBgLayout,
+                                            border: `1px solid ${themeToken.colorBorderSecondary}`,
                                             borderRadius: 8,
                                             padding: '10px 14px',
                                         }}
@@ -699,6 +729,7 @@ export default function UseMenuList() {
                                             size="small"
                                             icon={<LuDownload size={14} />}
                                             loading={generatingAsset === assetLabel}
+                                            style={{ flexShrink: 0 }}
                                             onClick={() => handleDownloadQr(
                                                 outletUrl,
                                                 assetLabel,
@@ -766,7 +797,7 @@ export default function UseMenuList() {
                                 <Flex gap={8} align="center">
                                     <LuMonitor size={18} />
                                     <Text strong>Menu Board</Text>
-                                    <Tag color="blue">Main TV</Tag>
+                                    <Tag style={primaryTagStyle}>Main TV</Tag>
                                 </Flex>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                     Full {labels.offeringLower} with categories, items, and prices
@@ -784,11 +815,11 @@ export default function UseMenuList() {
                                 >
                                     {data.menuBoardLink?.replace(/^https?:\/\//, '')}
                                 </Text>
-                                <Flex gap={8}>
-                                    <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.menuBoardLink!, 'Menu Board link')}>
+                                <Flex gap={8} wrap="wrap">
+                                    <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.menuBoardLink!, 'Menu Board link')} style={{ flex: '1 1 96px' }}>
                                         Copy
                                     </Button>
-                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.menuBoardLink!)}>
+                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.menuBoardLink!)} style={{ flex: '1 1 96px' }}>
                                         Open
                                     </Button>
                                 </Flex>
@@ -801,7 +832,7 @@ export default function UseMenuList() {
                                 <Flex gap={8} align="center">
                                     <LuPlaySquare size={18} />
                                     <Text strong>Highlights</Text>
-                                    <Tag color="purple">Second TV</Tag>
+                                    <Tag style={infoTagStyle}>Second TV</Tag>
                                 </Flex>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                     Rotating promotional slides with featured items
@@ -819,11 +850,11 @@ export default function UseMenuList() {
                                 >
                                     {data.highlightsLink?.replace(/^https?:\/\//, '')}
                                 </Text>
-                                <Flex gap={8}>
-                                    <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.highlightsLink!, 'Highlights link')}>
+                                <Flex gap={8} wrap="wrap">
+                                    <Button size="small" icon={<LuClipboard size={14} />} onClick={() => handleCopy(data.highlightsLink!, 'Highlights link')} style={{ flex: '1 1 96px' }}>
                                         Copy
                                     </Button>
-                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.highlightsLink!)}>
+                                    <Button size="small" icon={<LuExternalLink size={14} />} onClick={() => handleOpen(data.highlightsLink!)} style={{ flex: '1 1 96px' }}>
                                         Open
                                     </Button>
                                 </Flex>
@@ -833,7 +864,7 @@ export default function UseMenuList() {
                 </Row>
             ) : (
                 <Card size="small" style={{ marginBottom: 24 }} styles={{ body: { padding: 16 } }}>
-                    <Flex gap={12} align="center">
+                    <Flex gap={12} align="center" wrap="wrap">
                         <LuMonitor size={20} style={{ color: themeToken.colorTextSecondary }} />
                         <Flex vertical gap={2} style={{ flex: 1 }}>
                             <Text>Digital screens not set up yet</Text>
@@ -841,7 +872,7 @@ export default function UseMenuList() {
                                 Show your {labels.offeringLower} on TVs or wall displays
                             </Text>
                         </Flex>
-                        <Button size="small" href="/business-settings">
+                        <Button size="small" href="/business-settings" style={{ flexShrink: 0 }}>
                             Set Up
                         </Button>
                     </Flex>
@@ -873,7 +904,7 @@ export default function UseMenuList() {
             {/* ─── Print for Your Restaurant ─────────────────────── */}
             <Title level={5} style={{ marginBottom: 12 }}>Print for Your Restaurant</Title>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title="Table Tent"
@@ -883,7 +914,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title="Counter Sticker"
@@ -893,7 +924,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title="Entrance Poster"
@@ -903,7 +934,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     {data.hasFeedbackEnabled ? (
                         <AssetCard
                             icon={<LuMessageSquare size={20} />}
@@ -931,7 +962,7 @@ export default function UseMenuList() {
                             themeToken={themeToken}
                         />
                     ) : (
-                        <Card size="small" styles={{ body: { padding: 14 } }} style={{ height: '100%' }}>
+                        <Card size="small" styles={{ body: { height: '100%', padding: 14 } }} style={{ height: '100%', minHeight: 174 }}>
                             <Flex vertical gap={8} align="center" justify="center" style={{ textAlign: 'center', height: '100%' }}>
                                 <div style={{ color: themeToken.colorTextSecondary }}>
                                     <LuMessageSquare size={20} />
@@ -942,7 +973,7 @@ export default function UseMenuList() {
                         </Card>
                     )}
                 </Col>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuFileText size={20} />}
                         title="Print Menu"
@@ -953,7 +984,7 @@ export default function UseMenuList() {
                         themeToken={themeToken}
                     />
                 </Col>
-                <Col xs={12} sm={8}>
+                <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuPackage size={20} />}
                         title="Complete Menu Kit"
@@ -976,7 +1007,15 @@ export default function UseMenuList() {
                             <Flex gap={8} align="center">
                                 <LuShield size={18} style={{ color: themeToken.colorPrimary }} />
                                 <Text strong>Connected system</Text>
-                                <Tag color={data.posSyncStatus === 'healthy' ? 'green' : data.posSyncStatus === 'connection_issue' ? 'red' : 'default'}>
+                                <Tag
+                                    style={
+                                        data.posSyncStatus === 'healthy'
+                                            ? successTagStyle
+                                            : data.posSyncStatus === 'connection_issue'
+                                                ? errorTagStyle
+                                                : undefined
+                                    }
+                                >
                                     {data.posSyncStatus === 'healthy' ? 'Connected' : data.posSyncStatus === 'connection_issue' ? 'Issue' : 'Active'}
                                 </Tag>
                             </Flex>
@@ -987,6 +1026,7 @@ export default function UseMenuList() {
                                 <Button
                                     size="small"
                                     icon={<LuCopy size={14} />}
+                                    style={{ minHeight: 36, whiteSpace: 'normal' }}
                                     onClick={() => {
                                         const summary = [
                                             'MenuList External Menu Sync — Setup Info',
@@ -1003,7 +1043,7 @@ export default function UseMenuList() {
                                 >
                                     Copy Setup Info for Provider
                                 </Button>
-                                <Button size="small" href="/business-settings">
+                                <Button size="small" href="/business-settings" style={{ minHeight: 36 }}>
                                     External Sync Settings
                                 </Button>
                             </Flex>
@@ -1019,6 +1059,7 @@ export default function UseMenuList() {
             <Flex gap={12} wrap="wrap" style={{ marginBottom: 24 }}>
                 <Button
                     icon={<LuBookOpen size={14} />}
+                    style={{ minHeight: 40 }}
                     onClick={() => setGuideModal({
                         title: 'Setup Guide',
                         content: (
@@ -1037,6 +1078,7 @@ export default function UseMenuList() {
                 </Button>
                 <Button
                     icon={<LuPrinter size={14} />}
+                    style={{ minHeight: 40 }}
                     onClick={() => setGuideModal({
                         title: 'Printing Guide',
                         content: (
@@ -1064,6 +1106,7 @@ export default function UseMenuList() {
                 </Button>
                 <Button
                     icon={<LuExternalLink size={14} />}
+                    style={{ minHeight: 40 }}
                     onClick={() => setGuideModal({
                         title: `Sharing Guide`,
                         content: (
@@ -1174,17 +1217,18 @@ function AssetCard({ icon, title, description, loading, onDownload, actionLabel 
     return (
         <Card
             size="small"
-            styles={{ body: { padding: 14 } }}
+            styles={{ body: { height: '100%', padding: 14 } }}
             style={{
                 height: '100%',
+                minHeight: 174,
                 borderColor: highlight ? themeToken.colorPrimary : undefined,
                 borderWidth: highlight ? 2 : 1,
             }}
         >
-            <Flex vertical gap={8} align="center" style={{ textAlign: 'center' }}>
+            <Flex vertical gap={8} align="center" style={{ height: '100%', textAlign: 'center' }}>
                 <div style={{ color: themeToken.colorPrimary }}>{icon}</div>
                 <Text strong style={{ fontSize: 13 }}>{title}</Text>
-                <Text type="secondary" style={{ fontSize: 11 }}>{description}</Text>
+                <Text type="secondary" style={{ flex: 1, fontSize: 11, lineHeight: 1.35 }}>{description}</Text>
                 <Button
                     size="small"
                     icon={<LuDownload size={14} />}
@@ -1192,6 +1236,7 @@ function AssetCard({ icon, title, description, loading, onDownload, actionLabel 
                     loading={loading}
                     disabled={disabled}
                     block
+                    style={{ minHeight: 34 }}
                 >
                     {loading ? 'Generating...' : actionLabel}
                 </Button>

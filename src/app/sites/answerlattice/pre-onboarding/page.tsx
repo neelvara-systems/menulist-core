@@ -18,9 +18,9 @@ import SectionHeader from '../components/SectionHeader';
 import AnswerlatticePreOnboardingPromptModal from './PromptModal';
 
 export const metadata: Metadata = {
-    title: 'Pre-Onboarding Kit | Answerlattice',
+    title: 'Pre-Onboarding Kit | AnswerLattice',
     description:
-        'Use an AI coding agent to prepare product website links, docs, owner notes, policies, support questions, and screenshot rules before Answerlattice onboarding.',
+        'Use an AI coding agent to prepare product website links, docs, owner notes, policies, support questions, and screenshot rules before AnswerLattice onboarding.',
     alternates: { canonical: '/pre-onboarding' },
 };
 
@@ -42,12 +42,12 @@ const OUTPUTS = [
     },
     {
         title: 'Upload skeletons',
-        description: 'Manifest and Answerlattice add-source payloads that match the generated source files.',
+        description: 'Manifest and AnswerLattice add-source payloads that match the generated source files.',
         icon: LuDatabase,
     },
     {
         title: 'Support tests',
-        description: 'Owner-style questions that prove Answerlattice can answer routine support and escalate risky topics.',
+        description: 'Owner-style questions that prove AnswerLattice can answer routine support and escalate risky topics.',
         icon: LuBookOpen,
     },
     {
@@ -88,10 +88,10 @@ export default function AnswerlatticePreOnboardingPage() {
                         <div>
                             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">Pre-Onboarding Kit</p>
                             <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-                                Prepare Answerlattice before setup starts.
+                                Prepare AnswerLattice before setup starts.
                             </h1>
                             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                Give your AI coding agent one prompt. It turns the product sources you actually have - repo, docs, website links, API specs, support exports, owner notes, policies, recordings, or screenshots - into an Answerlattice-ready upload package.
+                                Give your AI coding agent one prompt. It turns the product sources you actually have - repo, docs, website links, API specs, support exports, owner notes, policies, recordings, or screenshots - into an AnswerLattice-ready upload package.
                             </p>
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                                 <AnswerlatticeLink
@@ -111,7 +111,7 @@ export default function AnswerlatticePreOnboardingPage() {
                                     href="/get-started"
                                     className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                                 >
-                                    Start Answerlattice setup
+                                    Start AnswerLattice setup
                                 </AnswerlatticeLink>
                             </div>
                             <PageProofStrip
@@ -159,8 +159,8 @@ export default function AnswerlatticePreOnboardingPage() {
                     <div className="mx-auto max-w-7xl">
                         <SectionHeader
                             eyebrow="What it prepares"
-                            title="Structured source truth before Answerlattice intake."
-                            description="The prompt does the preparation work outside Answerlattice, then leaves the owner with a reviewed package to upload."
+                            title="Structured source truth before AnswerLattice intake."
+                            description="The prompt does the preparation work outside AnswerLattice, then leaves the owner with a reviewed package to upload."
                         />
                         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                             {OUTPUTS.map((item) => {
@@ -205,7 +205,7 @@ export default function AnswerlatticePreOnboardingPage() {
                         <SectionHeader
                             eyebrow="Workflow"
                             title="From scattered product material to reviewed intake inputs."
-                            description="The agent prepares the package. Answerlattice still reviews drafts before anything becomes live support."
+                            description="The agent prepares the package. AnswerLattice still reviews drafts before anything becomes live support."
                         />
                         <AnswerlatticeSequenceDiagram
                             idPrefix="al-pre-onboarding-flow"
@@ -214,8 +214,8 @@ export default function AnswerlatticePreOnboardingPage() {
                                 { title: 'Paste prompt', detail: 'Run the master prompt in a repo, docs workspace, website brief, or owner-notes workspace.' },
                                 { title: 'Inspect sources', detail: 'Check website pages, docs, app routes, policies, support flows, and screenshots.' },
                                 { title: 'Create package', detail: 'Generate source files, payloads, product surfaces, support tests, and asset rules.' },
-                                { title: 'Owner review', detail: 'Remove private data, fix inaccuracies, and approve what can enter Answerlattice.' },
-                                { title: 'Upload to Answerlattice', detail: 'Use Knowledge Intake to create review drafts from the prepared source set.' },
+                                { title: 'Owner review', detail: 'Remove private data, fix inaccuracies, and approve what can enter AnswerLattice.' },
+                                { title: 'Upload to AnswerLattice', detail: 'Use Knowledge Intake to create review drafts from the prepared source set.' },
                                 { title: 'Enable support', detail: 'Go live only after answers, surfaces, widget context, and test questions pass.' },
                             ]}
                         />
@@ -227,7 +227,7 @@ export default function AnswerlatticePreOnboardingPage() {
                         <SectionHeader
                             eyebrow="Source modes"
                             title="It adapts to the product material you have."
-                            description="A full repo is useful, but not mandatory. The prompt keeps Answerlattice inputs structured while marking unavailable sources instead of guessing."
+                            description="A full repo is useful, but not mandatory. The prompt keeps AnswerLattice inputs structured while marking unavailable sources instead of guessing."
                         />
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                             {SOURCE_MODES.map((mode) => (
@@ -245,7 +245,7 @@ export default function AnswerlatticePreOnboardingPage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Safety boundary</p>
                             <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">The prompt prepares inputs. It does not publish authority.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                                Pre-onboarding makes the first Answerlattice intake cleaner, but it only covers sources the agent can actually read. Answerlattice still requires source review, owner approval, and production checks before answering live users.
+                                Pre-onboarding makes the first AnswerLattice intake cleaner, but it only covers sources the agent can actually read. AnswerLattice still requires source review, owner approval, and production checks before answering live users.
                             </p>
                         </div>
                         <div className="grid gap-3">
@@ -262,9 +262,9 @@ export default function AnswerlatticePreOnboardingPage() {
                 <section className="px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-5xl rounded-[2rem] border border-teal-500/20 bg-teal-500/[0.055] p-6 text-center sm:p-10">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-200">Start before onboarding</p>
-                        <h2 className="text-3xl font-bold text-white sm:text-4xl">Give Answerlattice better source truth on day one.</h2>
+                        <h2 className="text-3xl font-bold text-white sm:text-4xl">Give AnswerLattice better source truth on day one.</h2>
                         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-[#d6d6ef]">
-                            Use the prompt first, review the output, then upload the selected sources into Answerlattice Knowledge Intake.
+                            Use the prompt first, review the output, then upload the selected sources into AnswerLattice Knowledge Intake.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticePreOnboardingPromptModal

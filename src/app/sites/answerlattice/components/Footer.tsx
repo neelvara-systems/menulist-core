@@ -20,7 +20,9 @@ const FOOTER_LINKS = {
         { label: 'Pre-Onboarding Kit', href: '/pre-onboarding' },
         { label: 'Pre-Onboarding Guide', href: '/pre-onboarding/guide' },
         { label: 'Widget Install', href: '/install' },
+        { label: 'Developer Docs', href: '/developers' },
         { label: 'Developer Quickstarts', href: '/quickstarts' },
+        { label: 'Comparisons', href: '/comparisons' },
         { label: 'Integrations', href: '/integrations' },
         { label: 'ROI Calculator', href: '/roi-calculator' },
         { label: 'Proof Pack', href: '/proof' },
@@ -49,7 +51,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                     <div>
                         <div className="flex items-center gap-2">
                             <AnswerlatticeLogoMark idPrefix="answerlattice-footer" height={32} />
-                            <span className="text-lg font-semibold text-white">Answerlattice</span>
+                            <span className="text-lg font-semibold text-white">AnswerLattice</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
                             Support layer for SaaS and digital products.
@@ -83,7 +85,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                 {/* Bottom bar */}
                 <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/[0.06] pt-8 sm:flex-row">
                     <p className="text-xs text-[#505070]">
-                        &copy; {new Date().getFullYear()} Answerlattice. All rights reserved.
+                        &copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.
                     </p>
                     <p className="text-xs text-[#505070]">
                         Governed answer infrastructure for SaaS and digital-product support.

@@ -1,6 +1,6 @@
 # Digital Screens — Help Documentation
 
-**Last Updated:** February 8, 2026
+**Last Updated:** June 2, 2026
 
 ## Quick Summary
 
@@ -24,20 +24,22 @@ Both update automatically. You never manage screen content separately — it com
 ### How to Set Up (One TV)
 
 1. Go to **Settings** → **Digital Screen** in your MenuList dashboard
-2. Copy the **Menu Board** link (this is your default — shows your full menu)
+2. In **TV setup**, copy the **Menu Board** link (this is your default — shows your full menu)
 3. Open that link in the browser on your TV
 4. Press **F11** for fullscreen
 5. Bookmark it so it opens automatically when the TV turns on
 6. Your full menu with prices appears immediately. Done.
+
+After the TV sends its daily signal, the Digital Screen page shows when the screen was last seen.
 
 ### How to Set Up Two TVs (Menu Board + Highlights)
 
 If you have two screens — e.g., one above the counter and one in the waiting area:
 
 1. Go to **Settings** → **Digital Screen**
-2. You'll see two links:
-   - **Menu Board** — `yourstore.menulist.com/screen/abc123`
-   - **Highlights** — `yourstore.menulist.com/screen/abc123?mode=highlights`
+2. In **TV setup**, you'll see two screen cards:
+   - **Menu Board** — for your counter TV
+   - **Highlights** — for your entrance or waiting-area TV
 3. Open the **Menu Board** link on your **counter TV** (shows full menu with prices)
 4. Open the **Highlights** link on your **waiting area TV** (shows rotating promotions)
 5. Bookmark both. Press F11 for fullscreen on each.
@@ -55,7 +57,7 @@ The Menu Board displays your **full menu** automatically:
 
 - **Categories** — from your menu structure in the Editor
 - **Items** — all available items, grouped by category
-- **Prices** — from your menu data
+- **Prices** — from your menu data. If a price is missing or unclear, the board shows `Ask`.
 - **Availability** — sold-out items disappear automatically
 - **Pages** — if your menu is large, pages rotate automatically
 
@@ -70,7 +72,7 @@ The Highlights screen shows rotating promotional slides:
 - **Your uploads** — custom images you add (max 3, expire after 14 days)
 - **QR code** — so customers can scan and see your full digital menu
 
-**You don't choose the rotation order.** The system handles it.
+**You don't choose the rotation order.** The system handles it. Labels stay simple and factual, such as `Today`, `Popular`, `Featured`, a category name, or `On menu`.
 
 ### How to update what's on screen
 
@@ -103,9 +105,11 @@ Bookmark the one you need on each TV. That's it.
 
 1. Go to **Settings** → **Digital Screen**
 2. Click **Upload Image** (max 3 custom images)
-3. Your image will appear in the Highlights rotation
-4. Custom images automatically expire after 14 days
-5. Menu Board is not affected — it always shows your full menu
+3. Add a slide name so you can recognize it in your dashboard
+4. Your image will appear in the Highlights rotation
+5. The slide name is for your dashboard list. It is not placed over your poster on the TV.
+6. Custom images automatically expire after 14 days
+7. Menu Board is not affected — it always shows your full menu
 
 ### How to remove a custom image
 
@@ -116,7 +120,7 @@ Bookmark the one you need on each TV. That's it.
 ### How to use only your own designs (Highlights only)
 
 1. Go to **Settings** → **Digital Screen**
-2. Toggle **"Use my designs only"** to ON
+2. Toggle **Only custom slides** to ON
 3. Only your uploaded images will show on the Highlights screen
 4. Menu Board is not affected by this toggle
 

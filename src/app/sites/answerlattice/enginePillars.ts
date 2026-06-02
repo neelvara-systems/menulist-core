@@ -2,7 +2,7 @@ export const ANSWERLATTICE_ENGINE_PILLARS = [
     {
         number: '01',
         title: 'Your product structure',
-        description: 'Answerlattice understands your features, plans, roles, workflows, states, integrations, and errors so support is tied to the product, not only to loose documents.',
+        description: 'AnswerLattice understands your features, plans, roles, workflows, states, integrations, and errors so support is tied to the product, not only to loose documents.',
         highlight: 'Foundation layer',
     },
     {

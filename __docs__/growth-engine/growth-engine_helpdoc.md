@@ -19,6 +19,7 @@ It is not a place to send random messages manually. Every outbound or discovery 
 You need:
 
 - internal admin access
+- reviewed implementation readiness checklist before coding or configuring runtime
 - an approved source
 - approved source policy
 - approved Google Places field-mask profile when using Places
@@ -31,6 +32,11 @@ You need:
 - approved canonical surface contract
 - approved structured data, sitemap, feed, and truth-packet contract
 - approved country/channel policy
+- configured Connections And Activation registry
+- active adapter for any provider being used
+- server-only secret references for provider credentials
+- healthy webhook endpoints where the provider needs webhooks
+- approved WhatsApp governance policy if WhatsApp is used
 - ready sender domain if using email
 - an approved campaign template
 - an approved onboarding flow
@@ -39,6 +45,7 @@ You need:
 - active budget policy
 - active suppression checks
 - active sender assignment policy if using email
+- active WhatsApp template, conversation-state, webhook, reputation, and governance checks if WhatsApp API is used
 - no active kill switch for the channel
 
 ### Before Distribution
@@ -46,41 +53,56 @@ You need:
 Confirm these items before any outreach or public distribution:
 
 1. Source is approved for candidate discovery and the allowed fields are clear.
-2. Distribution target identity is complete.
-3. Business Truth Graph nodes and edges have provenance, confidence, and truth state.
-4. Candidate or low-confidence graph edges are blocked from public publishing.
-5. Enrichment waterfall evidence is present for identity, menu gap, contactability, and source confidence.
-6. Decision snapshot explains the next action and blockers.
-7. Jurisdiction is selected and channel policy allows the campaign.
-8. Sender domain is ready for email, including DNS/authentication, unsubscribe, and bounce handling.
-9. Sender assignment exists and preserves one sender per target conversation.
-10. WhatsApp is assisted-only unless opt-in proof and approved templates are already reviewed.
-11. Onboarding flow is from the approved inventory.
-12. Canonical MenuList surface contract is ready.
-13. Structured data, sitemap, feed export, and truth-packet checks are ready.
-14. External listing handoff is owner-authorized before GBP, Apple Business Connect, or Bing Places work.
-15. Private artifact, if used, has noindex, expiry, source-rights check, accuracy check, and takedown path.
-16. Dry-run passes with costs, exclusions, samples, sender capacity, surface readiness, risks, and blockers reviewed.
-17. Global/channel/campaign/surface/automation kill switches are available.
+2. Required provider adapter is active in Connections And Activation.
+3. Secret refs, webhooks, budgets, validation runs, and kill switches are attached.
+4. Distribution target identity is complete.
+5. Business Truth Graph nodes and edges have provenance, confidence, and truth state.
+6. Candidate or low-confidence graph edges are blocked from public publishing.
+7. Enrichment waterfall evidence is present for identity, menu gap, contactability, and source confidence.
+8. Decision snapshot explains the next action and blockers.
+9. Jurisdiction is selected and channel policy allows the campaign.
+10. Sender domain is ready for email, including DNS/authentication, unsubscribe, and bounce handling.
+11. Sender assignment exists and preserves one sender per target conversation.
+12. WhatsApp is assisted-only unless opt-in proof, approved templates, conversation state, webhook verification, reputation monitor, sender identity, pacing policy, and governance audit are already reviewed.
+13. Onboarding flow is from the approved inventory.
+14. Canonical MenuList surface contract is ready.
+15. Structured data, sitemap, feed export, and truth-packet checks are ready.
+16. External listing handoff is owner-authorized before GBP, Apple Business Connect, or Bing Places work.
+17. Private artifact, if used, has noindex, expiry, source-rights check, accuracy check, and takedown path.
+18. Dry-run passes with costs, exclusions, samples, sender capacity, surface readiness, risks, and blockers reviewed.
+19. Global/channel/campaign/surface/automation/provider kill switches are available.
 
 ### Daily Order
 
 1. Open **Today**.
 2. Check safety alerts.
-3. Check DNC/complaint queue.
-4. Check interested replies.
-5. Check human-review items.
-6. Check workflow and AI eval failures.
-7. Check sender-domain and sender-assignment alerts.
-8. Check surface health alerts.
-9. Check freshness alerts.
-10. Check discovery publish failures.
-11. Check external listing handoffs.
-12. Check WhatsApp assisted queue if enabled.
-13. Check campaign health.
-14. Check cost status.
+3. Check connection validation and webhook failures.
+4. Check DNC/complaint queue.
+5. Check interested replies.
+6. Check human-review items.
+7. Check workflow and AI eval failures.
+8. Check sender-domain and sender-assignment alerts.
+9. Check surface health alerts.
+10. Check freshness alerts.
+11. Check discovery publish failures.
+12. Check external listing handoffs.
+13. Check WhatsApp assisted queue if enabled.
+14. Check campaign health.
+15. Check cost status.
 
 Safety comes before growth.
+
+## How To Run Implementation Readiness Review
+
+1. Open [Implementation Readiness](./growth-engine_implementation-readiness.md).
+2. Confirm product boundary and internal route inventory.
+3. Confirm UI states and role matrix.
+4. Confirm feature flags are default off.
+5. Confirm non-secret environment keys and secret refs are defined.
+6. Confirm Firestore rules and index expectations.
+7. Confirm seed config exists for policies, providers, connections, budgets, kill switches, onboarding inventory, and evals.
+8. Confirm each end-to-end use case has a matching doc, data contract, API guard, UI guard, and test.
+9. Stop if a provider, route, worker, or screen is not covered.
 
 ## How To Review A Source Run
 
@@ -133,6 +155,74 @@ Safety comes before growth.
 5. Approve only after legal/source-rights review is complete.
 
 Do not import from a source before policy approval.
+
+## How To Configure A Provider Adapter
+
+1. Open **Connections And Activation**.
+2. Select **Add adapter**.
+3. Enter a stable adapter ID such as `ge_email_ses_primary` or `ge_whatsapp_menulist_primary`.
+4. Choose adapter type, provider, environment, owner role, and allowed pipeline use.
+5. Attach source policy, channel policy, or provider register record where applicable.
+6. Attach budget policy and kill-switch scope.
+7. Add server-only secret refs through the credential submit flow.
+8. Add webhook endpoint records where the provider needs events.
+9. Run validation.
+10. Request activation review only after validation passes.
+
+Do not use provider dashboard IDs as Growth Engine adapter IDs. Adapter IDs should be stable internal handles.
+
+## How To Activate The Email Pipeline
+
+1. Open **Connections And Activation**.
+2. Open **Email Pipeline**.
+3. Confirm adapter ID, sender domain, from address, reply-to address, return-path domain, and provider account reference.
+4. Confirm API key or SMTP credential is stored as a secret ref.
+5. Confirm SPF, DKIM, DMARC, PTR, and TLS checks.
+6. Confirm one-click unsubscribe endpoint and visible unsubscribe policy.
+7. Confirm bounce and complaint webhooks.
+8. Confirm daily send cap, ramp policy, spam-rate warning, and spam-rate block.
+9. Send an internal test message only after suppression and policy checks pass.
+10. Request activation review.
+
+Email is not active just because the API key works.
+
+## How To Activate The WhatsApp Pipeline
+
+1. Open **Connections And Activation**.
+2. Open **WhatsApp Pipeline**.
+3. Confirm adapter ID, WABA ID, phone-number ID, display phone, and business display name.
+4. Confirm access-token, app-secret, and webhook verify-token refs.
+5. Confirm webhook callback URL and signature health.
+6. Confirm opt-in policy and suppression ledger.
+7. Confirm approved templates for the intended use cases.
+8. Confirm conversation-state support.
+9. Confirm sender identity, quality state, pacing, and daily cap.
+10. Confirm approved Flow definitions if Flows are used.
+11. Run validation and request activation review.
+
+Phone number availability is not WhatsApp opt-in.
+
+## How To Review Webhook Health
+
+1. Open **Connections And Activation**.
+2. Open **Webhooks**.
+3. Confirm endpoint ID, adapter ID, provider, expected events, and signing-secret ref.
+4. Confirm latest accepted event and latest rejected event.
+5. Confirm signature status is valid.
+6. Review dead-letter count and replay availability.
+7. Keep the connection paused if signatures fail, event shape is invalid, or raw payload retention is missing.
+
+## How To Rotate Provider Credentials
+
+1. Open **Connections And Activation**.
+2. Select the adapter.
+3. Choose **Rotate secret**.
+4. Submit the new credential through the secure credential flow.
+5. Run validation.
+6. Keep the old secret ref audit-visible but retired.
+7. Resume only after validation passes and provider workers use the new secret version.
+
+Never paste credentials into notes, work items, AI prompts, or support tickets.
 
 ## How To Review A Google Places Run
 
@@ -191,9 +281,40 @@ Do not import from a source before policy approval.
 4. Confirm bounce webhook status.
 5. Confirm sender assignment and one-sender-per-target policy.
 6. Confirm target timezone send window and pacing.
+
+## How To Review WhatsApp Governance
+
+1. Open **WhatsApp Governance**.
+2. Confirm the contact has explicit WhatsApp opt-in for the message category.
+3. Confirm phone number came from claim page, owner inbound, click-to-WhatsApp, approved form, or another approved first-party consent path.
+4. Confirm the source did not come only from public phone availability, Google Places, Foursquare, scraping, or enrichment.
+5. Confirm suppression is clear.
+6. Confirm the conversation state allows a service reply or requires an approved template.
+7. Confirm the template is approved, correct category, correct use case, not paused, not disabled, and not low quality.
+8. Confirm sender identity belongs to MenuList for MenuList claim, verification, support, or truth-maintenance messages.
+9. Confirm webhook signature verification is healthy.
+10. Confirm reputation and pacing checks pass.
+11. Confirm a governance audit exists before send.
+
+## How To Review WhatsApp Templates
+
+1. Open **WhatsApp Templates**.
+2. Check template status, category, language, variables, version, owner, quality, and approved use case.
+3. Block pending, rejected, paused, disabled, wrong-category, or low-quality templates from unattended sends.
+4. Confirm utility templates are not hiding marketing content.
+5. Confirm each template asks for a useful owner action tied to MenuList truth.
+
+## How To Review WhatsApp Flows
+
+1. Open **WhatsApp Flows**.
+2. Confirm the Flow is approved for owner claim, verification, public-info correction, stale-data confirmation, or support handoff.
+3. Confirm allowed fields are business-truth fields only.
+4. Confirm no hidden marketing consent or unnecessary personal data is collected.
+5. Confirm Flow submissions validate against the output schema.
+6. Confirm Flow output updates candidate graph state for review before public truth changes.
 7. Confirm daily cap and ramp status.
-8. Check spam-rate warning and block thresholds.
-9. Pause the email channel if any readiness item is failing.
+8. Check WhatsApp sender, template, and Flow health.
+9. Pause the WhatsApp pipeline if any readiness item is failing.
 
 ## How To Launch A Campaign
 
@@ -277,6 +398,9 @@ Most common reasons:
 - missing stop rules
 - missing approved template
 - missing unsubscribe endpoint or bounce webhook
+- provider adapter inactive
+- provider secret ref missing or validation failed
+- webhook endpoint unhealthy
 - channel is paused
 - source has low quality
 - suppression exclusion is too high
@@ -312,12 +436,19 @@ Pause non-critical jobs. Review source run size, lead intelligence runs, dashboa
 ## Rules To Remember
 
 - No send without suppression check.
+- No provider execution without active connection.
+- No plaintext provider credentials in Firestore, browser state, logs, AI prompts, or notes.
 - No campaign without dry-run.
 - No full contact reveal unless needed.
 - No public demo websites.
 - No Google Maps content rehosting.
 - No invented facts.
 - No WhatsApp bulk behavior.
+- No WhatsApp API send from scraped, enriched, public, Google Places, or Foursquare phone numbers without explicit opt-in.
+- No WhatsApp API send without governance audit.
+- No WhatsApp template send outside category/use-case approval.
+- No WhatsApp generic AI assistant.
+- No WhatsApp Flow with hidden consent or unapproved fields.
 - No manual lead messages outside the system.
 - No source import before policy approval.
 - No Google Places run without approved field-mask profile and budget cap.

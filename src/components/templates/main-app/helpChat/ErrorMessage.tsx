@@ -42,7 +42,7 @@ const ErrorMessage = ({ message, onRetry }: ErrorMessageProps) => {
                         boxShadow: `0 4px 12px ${token.colorError}30`
                     }}
                 >
-                    <LuAlertCircle size={18} color="#fff" />
+                    <LuAlertCircle size={18} color={token.colorTextLightSolid} />
                 </div>
 
                 {/* Error Card */}

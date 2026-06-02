@@ -3,9 +3,9 @@
 > **Purpose**: Production-grade audit of every AI touchpoint across the MenuList codebase.
 > **Goal**: Enable output/credit-based pricing + internal AI usage tracking with zero gaps.
 > **Date**: February 9, 2026
-> **Status**: Historical audit. See May 13 runtime status below for current implementation.
+> **Status**: Historical audit. See June 2 runtime status below for current implementation.
 
-## May 13, 2026 Runtime Status
+## June 2, 2026 Runtime Status
 
 The original February audit found missing usage tracking across the billable AI routes. The current runtime has the implementation alignment in place:
 
@@ -29,9 +29,11 @@ The original February audit found missing usage tracking across the billable AI 
 
 Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.
 
+June 2 hardening centralizes billable app-route accounting in `finalizeAiOperationAccounting()`. Operation logging is best-effort, credit consumption is mandatory for billable actions, browser writes to `menulistAiOperations` are denied, and unknown AI actions throw unless explicitly listed in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`.
+
 Cost optimization: Help Center and widget search write AI operation audit rows only when the shared search core actually reaches an AI provider (`image_query_generation`, `embedding_generation`, or `answer_generation`). Canonical hits, instant-cache hits, and ordinary cached answers do not create `menulistAiOperations` writes.
 
-Rows below this status section are retained as February audit evidence. Any `COMMENTED OUT` or `ZERO TRACKING` labels below should be read as historical findings unless they are explicitly repeated in this May 13 runtime status section.
+Rows below this status section are retained as February audit evidence. Any `COMMENTED OUT` or `ZERO TRACKING` labels below should be read as historical findings unless they are explicitly repeated in this June 2 runtime status section.
 
 ---
 

@@ -1,15 +1,15 @@
 export const ANSWERLATTICE_SYSTEM_COVERAGE = [
     {
         mode: 'Launch Setup',
-        summary: 'Everything a small software team needs to start using Answerlattice without a custom implementation project.',
+        summary: 'Everything a small software team needs to start using AnswerLattice without a custom implementation project.',
         items: [
             {
                 title: 'Workspace activation',
-                detail: 'Onboarding creates the Answerlattice workspace, subscription summary, product profile, team access layer, and first launch checklist.',
+                detail: 'Onboarding creates the AnswerLattice workspace, subscription summary, product profile, team access layer, and first launch checklist.',
             },
             {
                 title: 'Team access',
-                detail: 'Owners can add workspace members, assign Answerlattice-specific roles, reset temporary passcodes, and force sign-out while keeping access scoped to the Answerlattice workspace.',
+                detail: 'Owners can add workspace members, assign AnswerLattice-specific roles, reset temporary passcodes, and force sign-out while keeping access scoped to the AnswerLattice workspace.',
             },
             {
                 title: 'Knowledge import',
@@ -25,7 +25,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Billing and credits',
-                detail: 'Beta setup starts immediately; paid plans, invoices, transactions, and support credit top-ups live inside Answerlattice billing.',
+                detail: 'Beta setup starts immediately; paid plans, invoices, transactions, and support credit top-ups live inside AnswerLattice billing.',
             },
         ],
     },
@@ -61,7 +61,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
     },
     {
         mode: 'Knowledge Governance',
-        summary: 'Answerlattice treats support knowledge as product truth that must be reviewed, versioned, and kept current.',
+        summary: 'AnswerLattice treats support knowledge as product truth that must be reviewed, versioned, and kept current.',
         items: [
             {
                 title: 'Product ontology',
@@ -99,7 +99,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Workspace-local governance',
-                detail: 'A centralized Answerlattice scheduler checks due workspaces by their local support-day end time, then repairs stale compiled context and governance summaries.',
+                detail: 'A centralized AnswerLattice scheduler checks due workspaces by their local support-day end time, then repairs stale compiled context and governance summaries.',
             },
             {
                 title: 'Cache freshness',
@@ -111,7 +111,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Separate Firebase mode',
-                detail: 'Answerlattice can run against its own Firebase project, rules, indexes, storage, and Cloud Functions while sharing the web deployment.',
+                detail: 'AnswerLattice can run against its own Firebase project, rules, indexes, storage, and Cloud Functions while sharing the web deployment.',
             },
         ],
     },

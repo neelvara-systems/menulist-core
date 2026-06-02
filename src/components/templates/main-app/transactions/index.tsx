@@ -1,9 +1,9 @@
 
 'use client'
-import { SyncOutlined } from '@ant-design/icons';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
-import { getMetadataProjectsList } from '@database/projects';
+import { getExistingProjectsListWithoutLoader } from '@database/projects';
+import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { logger } from '@lib/monitoring/logger';
 import { getFormatedDateAndTime, toDate, type DateLike } from '@util/dateTime';
@@ -11,8 +11,8 @@ import { formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
-import { LuArrowRight } from 'react-icons/lu';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LuArrowLeft, LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 import { ProjectMetadata } from '../projects/types';
 import TransactionDetailsModal, { TransactionDetails } from './TransactionDetailsModal';
 
@@ -21,24 +21,24 @@ const { RangePicker } = DatePicker;
 
 interface TransactionData {
     id: string;
-    projectId: string;
-    fileId: string;
-    action: string;
-    clientResponse: any;
-    geminiResponse: string;
-    generationConfig: any;
-    model: string;
-    promptTokenCount: number;
-    candidatesTokenCount: number;
-    totalTokenCount: number;
-    processingTime: number;
-    tokenPerCredit: number;
-    chargePerCredit: number;
-    totalCredits: number;
-    totalCharge: number;
+    projectId?: string;
+    fileId?: string;
+    action?: string;
+    clientResponse?: any;
+    geminiResponse?: string;
+    generationConfig?: any;
+    model?: string;
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+    processingTime?: number;
+    tokenPerCredit?: number;
+    chargePerCredit?: number;
+    totalCredits?: number;
+    totalCharge?: number;
     unitsConsumed?: number;
     createdOn: DateLike;
-    storeId: string;
+    storeId?: string;
     // Fields for language operations
     inputStrings?: Record<string, string>;
     targetLang?: { code: string; name: string };
@@ -48,166 +48,110 @@ interface TransactionData {
     targetLanguages?: Array<{ code: string; name: string }>;
 }
 
-// Define the pagination state interface
 interface PaginationState {
     current: number;
     pageSize: number;
-    total: number;
-    hasMore?: boolean;
+    hasMore: boolean;
 }
 
 function TransactionPage() {
     const t = useTranslations('Transactions');
     const [transactions, setTransactions] = useState<TransactionData[]>([]);
-    const [filteredTransactions, setFilteredTransactions] = useState<TransactionData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
     const [actionFilter, setActionFilter] = useState<string | null>(null);
     const [pagination, setPagination] = useState<PaginationState>({
         current: 1,
-        pageSize: 10,
-        total: 0,
-        hasMore: false
+        pageSize: 15,
+        hasMore: false,
     });
 
     const formatter = useFormatter();
 
-    // Modal state
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetails | null>(null);
     const [projectsList, setProjectsList] = useState<ProjectMetadata[]>([])
-    // Reference to the last document for pagination
-    const lastVisibleRef = useRef<any>(null);
+    const [projectsLoaded, setProjectsLoaded] = useState(false);
+    const pageCursorsRef = useRef<Record<number, { id?: string } | null>>({ 1: null });
+    const requestIdRef = useRef(0);
 
-
-    // Fetch transactions with pagination and filters
-    const fetchTransactions = async (page = 1, filters = { dateRange: null, action: null }) => {
-
+    const fetchTransactions = useCallback(async (page = 1, options?: { resetCursors?: boolean }) => {
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
         try {
             setLoading(true);
-
-            // Always reset when filters change
-            if (page === 1) {
-                lastVisibleRef.current = null;
+            if (options?.resetCursors) {
+                pageCursorsRef.current = { 1: null };
                 setTransactions([]);
-                setFilteredTransactions([]);
             }
 
-            // Call our paginated API function
             const response = await getPaginatedAiOperations({
                 pageSize: pagination.pageSize,
                 pageNumber: page,
-                lastVisibleDoc: lastVisibleRef.current,
-                dateRange: filters.dateRange,
-                action: filters.action
+                lastVisibleDoc: page <= 1 ? null : pageCursorsRef.current[page] || null,
+                dateRange,
+                action: actionFilter
             });
 
-            // Update the last visible document reference for next pagination
-            lastVisibleRef.current = response.lastVisibleDoc;
+            if (requestId !== requestIdRef.current) return;
 
-            // If no results on first page
-            if (response.data.length === 0 && page === 1) {
-                setTransactions([]);
-                setFilteredTransactions([]);
-                setPagination({
-                    ...pagination,
-                    current: 1,
-                    total: 0,
-                });
-                setLoading(false);
-                return;
+            if (response.hasMore && response.lastVisibleDoc) {
+                pageCursorsRef.current[page + 1] = response.lastVisibleDoc;
+            } else {
+                delete pageCursorsRef.current[page + 1];
             }
 
-            // If no results on a subsequent page, we've reached the end
             if (response.data.length === 0 && page > 1) {
                 message.info(t('noMoreTransactions'));
-                setPagination({
-                    ...pagination,
-                    current: page - 1, // Stay on current page
-                });
-                setLoading(false);
+                setPagination((previous) => ({
+                    ...previous,
+                    current: Math.max(1, page - 1),
+                    hasMore: false,
+                }));
                 return;
             }
 
-            // Process results
-            const newTransactions: TransactionData[] = response.data;
-            // For the first page, replace transactions
-            if (page === 1) {
-                setTransactions(newTransactions);
-                setFilteredTransactions(newTransactions);
-            } else {
-                // For subsequent pages, append to existing transactions
-                setTransactions(prev => [...prev, ...newTransactions]);
-                setFilteredTransactions(prev => [...prev, ...newTransactions]);
-            }
-
-            // Update pagination with more accurate total calculation
-            // For server-side pagination in Ant Design, three approaches:
-
-            // Option 1: Don't specify total at all, which enables simple "previous/next" navigation
-            // Option 2: Set total to exact count of items we have (but this limits to current data)
-            // Option 3: Use a reasonable estimate that avoids the warning
-
-            if (response.hasMore) {
-                // If we have more data, set total to current items plus one more page
-                // This prevents the warning while allowing pagination to work
-                setPagination({
-                    ...pagination,
-                    current: page,
-                    hasMore: true,
-                    total: Math.max(
-                        transactions.length + newTransactions.length, // Total items we've fetched
-                        page * pagination.pageSize // At least current page * items per page
-                    )
-                });
-            } else {
-                // If we don't have more data, set total to exactly what we have
-                setPagination({
-                    ...pagination,
-                    current: page,
-                    hasMore: false,
-                    total: page === 1 ?
-                        newTransactions.length : // First page, just what we loaded
-                        transactions.length + newTransactions.length // All pages combined
-                });
-            }
-
-            setLoading(false);
+            setTransactions(response.data);
+            setPagination((previous) => ({
+                ...previous,
+                current: page,
+                hasMore: response.hasMore,
+            }));
         } catch (error) {
+            if (requestId !== requestIdRef.current) return;
             logger.error('Error fetching transactions', error);
             message.error(t('failedToLoad'));
-            setLoading(false);
+        } finally {
+            if (requestId === requestIdRef.current) {
+                setLoading(false);
+            }
         }
-    };
+    }, [actionFilter, dateRange, pagination.pageSize, t]);
 
-    const fetchProjectsList = async () => {
-        const fetchedProjects = await getMetadataProjectsList();
-        setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
-    }
+    const fetchProjectsList = useCallback(async () => {
+        try {
+            const fetchedProjects = await getExistingProjectsListWithoutLoader();
+            setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
+        } catch (error) {
+            logger.error('Error fetching projects for transactions', error);
+        } finally {
+            setProjectsLoaded(true);
+        }
+    }, []);
 
-    // Apply filters when they change
     useEffect(() => {
+        void fetchTransactions(1, { resetCursors: true });
+    }, [fetchTransactions]);
 
-        if (projectsList.length === 0) {
-            fetchProjectsList()
+    useEffect(() => {
+        const pageHasProjectIds = transactions.some((transaction) => Boolean(transaction.projectId));
+        if (!projectsLoaded && pageHasProjectIds) {
+            void fetchProjectsList();
         }
-        // Reset pagination to first page and apply filters
-        setPagination({ ...pagination, current: 1 });
-
-        // Fetch with new filters
-        fetchTransactions(1, { dateRange, action: actionFilter });
-    }, [dateRange, actionFilter]);
+    }, [fetchProjectsList, projectsLoaded, transactions]);
 
     const handleDateRangeChange = (dates: any) => {
         setDateRange(dates);
-    };
-
-    const handleTableChange = (newPagination: any) => {
-        // Fetch the next page of data when pagination changes
-        fetchTransactions(newPagination.current, {
-            dateRange,
-            action: actionFilter
-        });
     };
 
     const handleActionFilterChange = (value: string | null) => {
@@ -215,19 +159,54 @@ function TransactionPage() {
     };
 
     const resetFilters = () => {
+        const hasFilters = Boolean(dateRange || actionFilter);
         setDateRange(null);
         setActionFilter(null);
 
-        // Reset to page 1 with no filters
-        fetchTransactions(1);
+        if (!hasFilters) {
+            void fetchTransactions(1, { resetCursors: true });
+        }
     };
 
     const refreshData = () => {
-        // Reset to page 1 with current filters
-        fetchTransactions(1, {
-            dateRange,
-            action: actionFilter
-        });
+        void fetchTransactions(1, { resetCursors: true });
+    };
+
+    const goToPreviousPage = () => {
+        if (pagination.current <= 1) return;
+        void fetchTransactions(pagination.current - 1);
+    };
+
+    const goToNextPage = () => {
+        if (!pagination.hasMore) return;
+        void fetchTransactions(pagination.current + 1);
+    };
+
+    const pageCreditsUsed = useMemo(() => (
+        transactions.reduce((total, transaction) => total + Math.max(0, Number(transaction.unitsConsumed || 0)), 0)
+    ), [transactions]);
+
+    const freeOperationsOnPage = useMemo(() => (
+        transactions.filter((transaction) => Number(transaction.unitsConsumed || 0) <= 0).length
+    ), [transactions]);
+
+    const hasActiveFilters = Boolean(dateRange || actionFilter);
+
+    const getActionTagColor = (action?: string) => {
+        const tone = getAiOperationTone(action);
+        if (tone === 'extraction') return 'blue';
+        if (tone === 'language') return 'green';
+        if (tone === 'image') return 'purple';
+        if (tone === 'content') return 'cyan';
+        return 'default';
+    };
+
+    const getProjectName = (projectId?: string) => {
+        if (!projectId) return t('unknownProject');
+        const project = projectsList.find(p => p.projectId === projectId);
+        return project
+            ? getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('unknownProject'))
+            : t('unknownProject');
     };
 
     const columns = [
@@ -248,23 +227,20 @@ function TransactionPage() {
             title: t('action'),
             dataIndex: 'action',
             key: 'action',
-            render: (action: string) => {
-                let color = 'blue';
-                if (action === 'translation') color = 'green';
-                if (action === 'generation') color = 'purple';
-                return <Tag color={color}>{action}</Tag>;
-            },
+            render: (action: string) => <Tag color={getActionTagColor(action)}>{formatAiOperationActionLabel(action)}</Tag>,
         },
         {
             title: t('project'),
             dataIndex: 'projectId',
             key: 'projectId',
-            render: (projectId: string) => {
-                const project = projectsList.find(p => p.projectId === projectId);
-                return project
-                    ? getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), t('unknownProject'))
-                    : t('unknownProject');
-            },
+            render: (projectId: string) => getProjectName(projectId),
+        },
+        {
+            title: 'Result',
+            key: 'result',
+            render: (_: any, record: TransactionData) => (
+                <Text>{getAiOperationOwnerSummary(record)}</Text>
+            ),
         },
         {
             title: 'Credits Used',
@@ -273,27 +249,18 @@ function TransactionPage() {
             render: (units: number) => {
                 const consumed = Number(units ?? 0);
                 if (consumed <= 0) {
-                    return <Tag color="default">No credits used</Tag>;
+                    return <Tag color="default">{formatAiOperationCredits(consumed)}</Tag>;
                 }
-                return <Text type="success">{consumed}</Text>;
+                return <Tag color="green">{formatAiOperationCredits(consumed)}</Tag>;
             },
             sorter: (a: TransactionData, b: TransactionData) => Number(a.unitsConsumed || 0) - Number(b.unitsConsumed || 0),
-        },
-        {
-            title: 'Tokens',
-            dataIndex: 'totalTokenCount',
-            key: 'totalTokenCount',
-            render: (tokens: number) => (
-                <Text>{Number(tokens || 0).toLocaleString()}</Text>
-            ),
-            sorter: (a: TransactionData, b: TransactionData) => Number(a.totalTokenCount || 0) - Number(b.totalTokenCount || 0),
         },
         {
             title: t('processingTime'),
             dataIndex: 'processingTime',
             key: 'processingTime',
-            render: (time: number) => formatProcessingTime(time),
-            sorter: (a: TransactionData, b: TransactionData) => a.processingTime - b.processingTime,
+            render: (time: number) => formatProcessingTime(Number(time || 0)),
+            sorter: (a: TransactionData, b: TransactionData) => Number(a.processingTime || 0) - Number(b.processingTime || 0),
         },
         {
             title: t('details'),
@@ -302,17 +269,19 @@ function TransactionPage() {
                 <Button
                     type="text"
                     icon={<LuArrowRight />}
-                    onClick={() => showTransactionDetails(record)}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        showTransactionDetails(record);
+                    }}
                 />
             ),
         },
     ];
 
-    // Use predefined action types from constants
-    const actionOptions = Object.entries(AI_ACTIONS_TYPES).map(([key, value]: [string, string]) => ({
-        value: value,
-        label: value.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-    }));
+    const actionOptions = useMemo(() => Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
+        value,
+        label: formatAiOperationActionLabel(value),
+    })), []);
 
     // Show transaction details in modal
     const showTransactionDetails = (transaction: TransactionData) => {
@@ -329,7 +298,7 @@ function TransactionPage() {
         <Card variant="borderless" className="transaction-page" title={t('title')}
             extra={<Button
                 type="primary"
-                icon={<SyncOutlined />}
+                icon={<LuRefreshCw />}
                 onClick={refreshData}
                 loading={loading}
             >
@@ -337,7 +306,7 @@ function TransactionPage() {
             </Button>}>
 
             <Row gutter={[16, 24]} style={{ marginBottom: 24 }}>
-                <Flex style={{ width: '100%' }} gap={16} justify='flex-end'>
+                <Flex style={{ width: '100%' }} gap={12} justify='flex-end' wrap="wrap">
                     <RangePicker
                         style={{ width: 300 }}
                         onChange={handleDateRangeChange}
@@ -357,37 +326,59 @@ function TransactionPage() {
                     >
                         {t('reset')}
                     </Button>
+                    {hasActiveFilters ? <Tag color="blue">Filtered</Tag> : null}
                 </Flex>
             </Row>
+
+            {!loading && transactions.length > 0 ? (
+                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 16 }}>
+                    <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                        <Text type="secondary">Shown on this page</Text>
+                        <div><Text strong style={{ fontSize: 20 }}>{transactions.length.toLocaleString()}</Text></div>
+                    </div>
+                    <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                        <Text type="secondary">Credits used on page</Text>
+                        <div><Text strong style={{ fontSize: 20 }}>{pageCreditsUsed.toLocaleString()}</Text></div>
+                    </div>
+                    <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                        <Text type="secondary">No-credit actions</Text>
+                        <div><Text strong style={{ fontSize: 20 }}>{freeOperationsOnPage.toLocaleString()}</Text></div>
+                    </div>
+                </div>
+            ) : null}
 
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                     <Spin size="large" />
                 </div>
-            ) : filteredTransactions.length === 0 ? (
+            ) : transactions.length === 0 ? (
                 <Empty description={t('noTransactions')} />
             ) : (
-                <Table
-                    dataSource={filteredTransactions}
-                    columns={columns}
-                    rowKey="id"
-                    onRow={(record) => ({
-                        onClick: () => showTransactionDetails(record)
-                    })}
-                    pagination={{
-                        ...pagination,
-                        showTotal: (total) => `Total ${total} items`,
-                        showSizeChanger: false,
-                        // Always show pagination if we have data or if there might be more data
-                        total: pagination.hasMore ?
-                            // If there might be more data, use our estimate
-                            Math.max(pagination.total, filteredTransactions.length + pagination.pageSize) :
-                            // Otherwise use the exact count of items we have
-                            Math.max(filteredTransactions.length, pagination.pageSize + 1)
-                    }}
-                    onChange={handleTableChange}
-                    scroll={{ x: 'max-content' }}
-                />
+                <>
+                    <Table
+                        dataSource={transactions}
+                        columns={columns}
+                        rowKey="id"
+                        onRow={(record) => ({
+                            onClick: () => showTransactionDetails(record)
+                        })}
+                        pagination={false}
+                        scroll={{ x: 'max-content' }}
+                    />
+                    <Flex align="center" justify="space-between" style={{ marginTop: 16 }} wrap="wrap" gap={12}>
+                        <Text type="secondary">
+                            Page {pagination.current.toLocaleString()} · {transactions.length.toLocaleString()} shown{pagination.hasMore ? ' · More available' : ''}
+                        </Text>
+                        <Flex gap={8}>
+                            <Button icon={<LuArrowLeft />} onClick={goToPreviousPage} disabled={loading || pagination.current <= 1}>
+                                Previous
+                            </Button>
+                            <Button type="primary" icon={<LuArrowRight />} onClick={goToNextPage} disabled={loading || !pagination.hasMore}>
+                                Next
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </>
             )}
             <TransactionDetailsModal
                 isOpen={isModalOpen}

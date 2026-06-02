@@ -1,6 +1,6 @@
 # MenuList Main Website Resources Plan
 
-**Status:** Implemented - website resources layer shipped in code
+**Status:** Implemented - website resources layer, industry pages, and June 2 discovery/navigation hardening applied
 **Created:** June 1, 2026
 **Implemented:** June 1, 2026
 **Owner:** Main website
@@ -27,9 +27,12 @@ Implemented files:
 ```text
 src/app/(website)/resources/page.tsx
 src/app/(website)/resources/[slug]/page.tsx
+src/app/(website)/industries/*/page.tsx
 src/components/website/resources/
+src/components/website/industries/
 src/components/website/home/ResourcesSection.tsx
 src/content/websiteResources/
+src/content/websiteIndustries.ts
 src/lib/website/resourceSchema.ts
 src/lib/seo/discoveryPolicy.ts
 public/sitemap.xml
@@ -39,6 +42,8 @@ public/llms-full.txt
 scripts/verification/verify-agent-readiness.js
 ```
 
+June 2, 2026 update: the resource layer was hardened after live-site review and current crawler/source-control research. The website now uses a desktop Resources dropdown, mobile nested resource links, the requested eight-card homepage resources block, footer links aligned to the core resource set, grouped robots rules for named search/AI crawlers plus generic crawlers, `CCBot` in the discovery allowlist, LLM positioning limits, and GA4-only resource conversion/referrer events. The complete release scope now includes 15 resource articles, four industry landing pages, reviewed locale coverage for the expanded resource set, and checklist-copy measurement where visible checklist UI exists.
+
 ---
 
 ## Ground Truth Evidence
@@ -46,7 +51,7 @@ scripts/verification/verify-agent-readiness.js
 | Area | Current repo truth | Evidence |
 | --- | --- | --- |
 | Canonical website host | Production discovery canonical is `https://menulist.ai`; `menulist.online` is preview/alias context, not the canonical sitemap target. | `__docs__/main-website/main-website_seo-aeo.md:12`, `src/lib/seo/discoveryPolicy.ts:128` |
-| Current website routes | Active platform routes are registered in `PLATFORM_DISCOVERY_PAGES`; resources do not exist yet. | `src/lib/seo/discoveryPolicy.ts:34` |
+| Current website routes | Active platform routes, resource routes, and industry pages are registered through `PLATFORM_DISCOVERY_PAGES` and resource/locale route registries. | `src/lib/seo/discoveryPolicy.ts`, `src/content/websiteResources/`, `src/content/websiteIndustries.ts` |
 | Sitemap architecture | Platform sitemap is generated from `PLATFORM_DISCOVERY_PAGES`; client menus stay out of the platform sitemap. | `src/app/sitemap.ts:20`, `src/app/sitemap.ts:30` |
 | Static discovery file | `public/sitemap.xml` is also verified directly by the agent-readiness script. | `scripts/verification/verify-agent-readiness.js:134`, `scripts/verification/verify-agent-readiness.js:176` |
 | Robots policy | `public/robots.txt` already allows core AI/search crawlers and points to `https://menulist.ai/sitemap.xml`. | `public/robots.txt:1`, `public/robots.txt:43` |
@@ -55,7 +60,7 @@ scripts/verification/verify-agent-readiness.js
 | Existing agent boundary | Agents may read public facts and route to official handoffs, but must not edit business truth or infer sensitive/missing claims. | `__docs__/main-website/main-website_seo-aeo.md:250`, `__docs__/main-website/main-website_seo-aeo.md:260` |
 | Header architecture | Header is a client component with a simple `navItemKeys` array, no existing dropdown system. | `src/components/website/Header.tsx:22` |
 | Footer resources | Footer currently labels a Resources column but links only About, Contact, and Trust & Security. | `src/components/website/Footer.tsx:25` |
-| Homepage composition | Homepage is compressed and currently has no resource section. | `src/components/website/home/HomePage.tsx:15` |
+| Homepage composition | Homepage remains compressed and product-led, with a lower-page resource bridge instead of a blog index. | `src/components/website/home/HomePage.tsx`, `src/components/website/home/ResourcesSection.tsx` |
 | Website i18n rule | Website copy uses the `Website` namespace through `useTranslations`. | `.codex/workflows/website.md:16` |
 | Website validation | Agent-readiness verification is a first-class check for discovery changes. | `__docs__/main-website/main-website_seo-aeo.md:292` |
 
@@ -142,10 +147,10 @@ These additions are now part of the recommended plan because they directly suppo
 | Add AI search and crawler readiness | Accept with corrections | The repo already has robots, sitemap, `llms.txt`, `llms-full.txt`, schema, and verifier. Extend those systems instead of creating duplicates. |
 | Add `/robots.txt`, `/sitemap.xml`, `/llms.txt` from scratch | Reject as written | Update current `public/robots.txt`, `public/llms.txt`, `public/llms-full.txt`, `public/sitemap.xml`, `src/app/sitemap.ts`, and `src/lib/seo/discoveryPolicy.ts`. |
 | Use `www.menulist.online` in sitemap and LLM files | Reject | Canonical discovery must stay `https://menulist.ai`. |
-| Add a header Resources dropdown | Partial | Header has no dropdown system and is already dense. Prefer a simple `/resources` nav link first; footer and hub can carry deep links. |
+| Add a header Resources dropdown | Accept after June 2 review | Implement a compact desktop dropdown plus mobile nested resource links. Keep the top navigation product-led and do not add a blog-style mega menu. |
 | Add resource CTAs to homepage | Accept | Add one compact lower-page section. Do not turn the homepage into a blog index. |
 | Track resource CTA and AI/search referrals | Accept with scope | Use GA4-only public marketing events where possible. Do not write tenant/customer analytics or sensitive data for public resource traffic. |
-| Publish resource routes in one complete scope | Accept with one addition | Ship the hub plus 12 article routes, including `/resources/menu-source-audit` as the clearest MenuList-native conversion asset. |
+| Publish resource routes in one complete scope | Accept with additions | Ship the hub plus 15 article routes, including `/resources/menu-source-audit`, schema guidance, official URL checklist, and QR mistake cleanup as MenuList-native conversion assets. |
 
 ---
 
@@ -153,7 +158,7 @@ These additions are now part of the recommended plan because they directly suppo
 
 This should be one complete release scope, not a staged roadmap. The work can be executed in dependency order, but all selected surfaces should ship together.
 
-The implemented release is 13 public routes total: the `/resources` hub plus 12 resource article routes, including the MenuList-native Menu Source Audit page.
+The implemented release includes 20 public English content routes: the `/resources` hub, 15 resource article routes, and four industry landing pages. Reviewed localized resource URLs also cover all 15 articles for Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish.
 
 ### Routes
 
@@ -171,13 +176,25 @@ The implemented release is 13 public routes total: the `/resources` hub plus 12 
 | `/resources/menu-update-checklist` | Checklist before changing prices, availability, sections, photos, and links. | Review your menu source |
 | `/resources/qr-code-placement-checklist` | Practical QR placement and scan-testing checklist. | Create one QR menu source |
 | `/resources/menu-engineering-worksheet` | Worksheet-style article for item review; can later support a downloadable asset. | Start from your current menu |
+| `/resources/restaurant-menu-schema` | Explain visible-content-aligned menu structured data without rich-result promises. | Publish a crawlable menu source |
+| `/resources/official-menu-url-checklist` | Checklist for one stable menu URL across QR, Google, WhatsApp, social, print, and screens. | Create one official menu URL |
+| `/resources/restaurant-qr-menu-mistakes` | Common QR menu mistakes and stable-link cleanup guidance. | Fix your QR menu source |
 | `/resources/multi-location-menu-management` | Explain master menu, outlet overrides, price drift, and branch consistency. | Set up your first location |
+
+### Industry Routes
+
+| Route | Purpose | Primary CTA |
+| --- | --- | --- |
+| `/industries/restaurants` | Explain MenuList as the official menu source layer for restaurants. | Upload your restaurant menu |
+| `/industries/cafes-bakeries` | Explain current menu control for cafes, bakeries, dessert shops, and beverage counters. | Upload your current menu |
+| `/industries/takeaway-cloud-kitchens` | Explain public menu consistency for takeaways, pickup kitchens, and cloud kitchens. | Create one public menu source |
+| `/industries/multi-location-food-businesses` | Explain branch/outlet menu governance for multi-location food businesses. | Set up location menu control |
 
 ### Explicit Non-Scope
 
 - No `/blog` route in this first execution.
-- No industry pages yet.
 - No compare pages yet.
+- No downloadable template assets until real files are designed and QA'd.
 - No CMS or new dependency.
 - No tenant/customer route changes.
 - No owner dashboard changes.
@@ -349,20 +366,19 @@ Planned additions:
 
 Header:
 
-- Add one simple `Resources` link to `/resources`.
-- Avoid dropdown unless design review confirms it will not crowd desktop nav or mobile drawer.
+- Use the product-led order: Features, How it works, Multi-location, Pricing, Resources.
+- Keep `Resources` as a compact dropdown on desktop, backed by nested mobile links in the drawer.
+- Dropdown links: Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, All Resources.
 
 Footer:
 
-- Replace the current generic Resources column with resource links.
-- Keep Trust & Security in either Resources or Source, but avoid duplicate clutter.
+- Resource links: Menu Engineering, QR Menu for Restaurants, Digital Menu vs PDF, Google Business Profile Menu, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, Trust & Security.
 
 Homepage:
 
 - Add a compact section near the lower half, before FAQ or final CTA.
 - Proposed title: `Learn how to keep your public menu current`
 - Cards:
-  - Menu source audit
   - Menu engineering
   - QR menu setup
   - Digital menu vs PDF
@@ -381,21 +397,32 @@ Proposed events:
 
 - `resource_page_view`
 - `resource_primary_cta_click`
+- `resource_secondary_cta_click`
 - `resource_related_click`
 - `resources_hub_card_click`
 - `homepage_resource_card_click`
-- `resource_checklist_copy` if checklist copy UI exists
+- `ai_crawler_referral_detected`
+- `upload_menu_click_from_resource`
+- `pricing_click_from_resource`
+- `resource_checklist_copy` for visible checklist sections with copy UI
 - `resource_template_download` only when a real downloadable asset exists
 
 Properties:
 
 - `slug`
 - `cluster`
+- `category`
 - `cta_label`
 - `source_page`
 - `destination`
+- `target_url`
+- `locale`
+- `referrer`
 - `referrer_host`
 - `utm_source`
+- `utm_medium`
+- `entry_page`
+- `session_id`
 
 Do not store:
 
@@ -698,7 +725,8 @@ Required sections:
 Implementation should not be considered ready until all items pass:
 
 - `/resources` loads.
-- The hub plus all 12 resource article routes load.
+- The hub plus all 15 resource article routes load.
+- The four industry landing pages load.
 - Invalid slugs route to the global not-found surface with `noindex`. Local `next dev` may report `200` for streamed not-found responses, which is a documented Next.js App Router behavior, so invalid-slug verification must check both rendered noindex metadata and the absence of resource article content.
 - Resource text is server-rendered enough for crawler readability.
 - Every resource has a visible quick answer.
@@ -713,22 +741,22 @@ Implementation should not be considered ready until all items pass:
 - `FAQPage` is emitted only where FAQ is visible.
 - No hidden schema content.
 - No fake reviews, fake ratings, fake testimonials, or invented metrics.
-- Resource routes are in `PLATFORM_DISCOVERY_PAGES`.
-- Resource routes are in `src/app/sitemap.ts` output.
-- Resource routes are in `public/sitemap.xml`.
-- Resource routes are in `public/llms.txt`.
+- Resource routes and industry routes are in `PLATFORM_DISCOVERY_PAGES` where relevant.
+- Resource routes and industry routes are in `src/app/sitemap.ts` output.
+- Resource routes and industry routes are in `public/sitemap.xml`.
+- Resource routes and industry routes are in `public/llms.txt`.
 - `public/llms-full.txt` summarizes resource coverage and claim boundaries.
-- `public/robots.txt` and `DISCOVERY_CRAWLERS` stay in sync.
-- Header has a usable Resources entry.
-- Mobile drawer has a usable Resources entry.
+- `public/robots.txt` and `DISCOVERY_CRAWLERS` stay in sync, including private-route disallows in the specific named-crawler group and the generic `*` group.
+- Header has a usable desktop Resources dropdown.
+- Mobile drawer has a usable Resources entry plus nested resource links.
 - Footer Resources links point to resource pages.
-- Homepage resource section is mounted in the lower half.
+- Homepage resource section is mounted in the lower half with the eight strategic resource cards.
 - Homepage does not become a blog index.
-- Distribution snippets are prepared for the launch resources.
+- Distribution snippets are prepared for the launch resources where needed.
 - The Menu Source Audit page can be shared as a standalone acquisition asset.
 - Analytics events are GA4-only unless explicitly approved otherwise.
 - No sensitive data is tracked.
-- English and Hindi website content coverage is present.
+- English resource source content and reviewed active-locale resource packs are present.
 - `npm run verify:website-resource-locales` passes for reviewed resource locale packs.
 - Other website locales fall back safely.
 - `npm run verify:agent-readiness` passes.
@@ -748,9 +776,9 @@ See `main-website_resources-localization-plan.md` for the reviewed resource tran
 
 | Decision | Recommended default |
 | --- | --- |
-| Add `CCBot` to allowlist? | Decide explicitly. Not required for discovery. |
-| Header dropdown or simple Resources link? | Simple link first. |
-| Full Hindi translation for all 13 pages now? | Implemented for the existing cookie/header locale path. Hindi now has a reviewed structured resource pack for the hub and all 12 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Do not market Hindi SEO/AEO coverage as complete until locale-prefixed URLs and hreflang are added. |
+| Add `CCBot` to allowlist? | Allowed in the public discovery policy as of June 2, 2026; still document that Common Crawl inclusion is not a ranking or AI-visibility guarantee. |
+| Header dropdown or simple Resources link? | Compact dropdown on desktop, nested links in the mobile drawer. |
+| Full reviewed translations for current resource pages? | Implemented for Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish across the hub and all 15 articles, with locale-prefixed URLs, metadata, `hreflang`, sitemap, and LLM context coverage. |
 | Downloadable worksheet assets now? | Keep worksheet as HTML first unless a real generated file is designed and QA'd. |
 | Static or interactive Menu Source Audit? | Static HTML checklist first. Add client-side interaction only if it stays anonymous and does not create backend cost. |
 | Gated templates or ungated resources? | Ungated first. Do not add an email gate until there is a separate consent and follow-up plan. |

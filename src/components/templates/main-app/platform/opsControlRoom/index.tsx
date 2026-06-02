@@ -4,8 +4,10 @@ import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState 
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { secureError } from '@lib/security/secureLogger';
+import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -24,6 +26,7 @@ const { Title, Text } = Typography;
  */
 function OpsControlRoom() {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const { data: session } = useSession();
     const [loading, setLoading] = useState(true);
     const [systemState, setSystemState] = useState<SystemState | null>(null);
@@ -150,7 +153,7 @@ function OpsControlRoom() {
             });
             if (res.ok) {
                 const data = await res.json();
-                message.success(`Alerts muted until ${new Date(data.mutedUntil).toLocaleTimeString()}`);
+                message.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
                 await loadData();
             } else {
                 message.error('Failed to mute alerts');
@@ -179,6 +182,8 @@ function OpsControlRoom() {
                     <Button type="default" href="/ops/scheduler">Scheduler Monitor</Button>
                     <Button type="default" href="/ops/extraction">Extraction Monitor</Button>
                     <Button type="default" href="/ops/messaging-onboarding">Messaging Onboarding</Button>
+                    <Button type="default" href="/ops/platform-notifications">Platform Notifications</Button>
+                    <Button type="default" href="/ops/owner-notifications">Owner Notifications</Button>
                 </div>
             </div>
 
@@ -255,7 +260,7 @@ function OpsControlRoom() {
                                 <Text>{alert.title}</Text>
                                 <Text type="secondary" style={{ marginLeft: 'auto', fontSize: 12 }}>
                                     {alert.timestamp?.toDate
-                                        ? alert.timestamp.toDate().toLocaleString()
+                                        ? formatDateTime(alert.timestamp, 'datetime', formatter)
                                         : ''}
                                 </Text>
                             </div>

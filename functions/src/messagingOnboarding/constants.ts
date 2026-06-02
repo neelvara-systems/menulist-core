@@ -6,6 +6,7 @@
  */
 
 import { MessagingOnboardingState } from "../types/messagingOnboarding.types";
+import { MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES } from "../sharedData/menuExtractionJob";
 
 // ═══════════════════════════════════════════════════════════════
 // RATE LIMITS & SAFETY
@@ -43,14 +44,7 @@ export const TIMING = {
 export const UPLOAD_LIMITS = {
   MAX_IMAGES_PER_SESSION: 15,
   MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024, // 10 MB (spec §Media Limits — WhatsApp limit)
-  ALLOWED_MIME_TYPES: [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-    "application/pdf",
-  ],
+  ALLOWED_MIME_TYPES: MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES,
 } as const;
 
 // ═══════════════════════════════════════════════════════════════

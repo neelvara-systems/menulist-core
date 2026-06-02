@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Next.js Install',
-    description: 'Answerlattice v1 install guidance for Next.js App Router and Pages Router.',
+    description: 'AnswerLattice v1 install guidance for Next.js App Router and Pages Router.',
     alternates: { canonical: '/install/frameworks/nextjs' },
 };
 

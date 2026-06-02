@@ -103,7 +103,7 @@ Send your menu photos on WhatsApp. MenuList reads them, creates your digital men
 - **Page Title:** Go Live on WhatsApp — Digital Menu in Minutes | MenuList
 - **Meta Description:** Send menu photos on WhatsApp and get a live digital menu in minutes. No signup, no software.
 - **OG Title:** Your Menu. Live in Minutes. Just Send It on WhatsApp.
-- **OG Description:** MenuList reads your menu photos, creates a digital menu, and publishes it — all via WhatsApp. No signup needed.
+- **OG Description:** MenuList reads your menu photos, creates a digital menu preview, and publishes after approval — all via WhatsApp. No signup needed.
 - **Target Keywords:** whatsapp menu, digital menu whatsapp, online menu without signup, qr menu free, restaurant menu online, whatsapp business menu
 
 ---
@@ -113,7 +113,7 @@ Send your menu photos on WhatsApp. MenuList reads them, creates your digital men
 ### USE:
 
 - "Send your menu"
-- "Goes live automatically"
+- "Preview before publishing"
 - "No signup needed"
 - "Preview before publishing"
 - "Your official menu link"

@@ -34,7 +34,7 @@ MenuList Messaging Onboarding removes the wall entirely.
 
 The owner doesn't sign up. Doesn't create an account. Doesn't learn a dashboard.
 
-They send menu photos on WhatsApp — the app they already use every day — and MenuList handles everything silently. Menu extraction, structuring, preview, approval, and publishing happen automatically.
+They send menu photos on WhatsApp — the app they already use every day — and MenuList handles extraction, structuring, preview, and approval without a dashboard. Publishing happens only after the owner approves the preview.
 
 After a few minutes of effort, the owner has:
 
@@ -95,7 +95,7 @@ Average time to live: **2-7 days** with significant human effort.
 **"Send menu. Get live."**
 
 - Owner sends menu photos on WhatsApp
-- MenuList extracts, structures, and publishes automatically
+- MenuList extracts, structures, and asks for approval before publishing
 - Live digital presence in minutes
 - No signup, no training, no dashboard required
 
@@ -217,7 +217,7 @@ Average time to live: **2-7 days** with significant human effort.
 ### USE:
 
 - "Send your menu"
-- "Goes live automatically"
+- "Preview before publishing"
 - "Preview before publishing"
 - "Your official menu link"
 - "Handled for you"

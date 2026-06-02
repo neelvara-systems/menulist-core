@@ -1,6 +1,6 @@
 # MenuList Main Website Resources Validation
 
-**Status:** Passed - implementation verification
+**Status:** Passed - resource expansion verification
 **Last Verified:** June 2, 2026
 **Scope:** MenuList public website resources layer
 
@@ -13,9 +13,10 @@ This validation covers the MenuList main website Resources + AI discovery layer 
 Included:
 
 - `/resources` hub
-- 12 `/resources/[slug]` article routes
+- 15 `/resources/[slug]` article routes
+- four `/industries/*` landing pages
 - `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, `/bn-IN/resources`, `/ar-SA/resources`, and `/es-ES/resources` hubs
-- 12 localized article routes each for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`
+- 15 localized article routes each for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`
 - resource content registry
 - resource JSON-LD builders
 - homepage, header, and footer resource links
@@ -50,7 +51,14 @@ The working tree contains unrelated edits outside this website-resource scope. T
 | `/resources/menu-update-checklist` | Article | Registry/discovery verified |
 | `/resources/qr-code-placement-checklist` | Article | Registry/discovery verified |
 | `/resources/menu-engineering-worksheet` | Article | Registry/discovery verified |
+| `/resources/restaurant-menu-schema` | Article | Registry/discovery verified |
+| `/resources/official-menu-url-checklist` | Article | Registry/discovery verified |
+| `/resources/restaurant-qr-menu-mistakes` | Article | Registry/discovery verified |
 | `/resources/multi-location-menu-management` | Article | Registry/discovery verified |
+| `/industries/restaurants` | Industry page | Registry/discovery verified |
+| `/industries/cafes-bakeries` | Industry page | Registry/discovery verified |
+| `/industries/takeaway-cloud-kitchens` | Industry page | Registry/discovery verified |
+| `/industries/multi-location-food-businesses` | Industry page | Registry/discovery verified |
 | `/hi-IN/resources` | Hindi hub | Verified locally |
 | `/hi-IN/resources/menu-source-audit` | Hindi article | Verified locally |
 | `/hi-IN/resources/[slug]` remaining 11 articles | Hindi articles | Registry/discovery verified |
@@ -95,7 +103,7 @@ Invalid resource slugs call `notFound()` and return explicit noindex metadata. I
 
 Additional checks and fixes after implementation:
 
-- Resource slugs were rechecked against `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`: 12 article slugs, no duplicates, no missing discovery entries.
+- Resource slugs were rechecked against `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`: 12 article slugs at that point, no duplicates, no missing discovery entries.
 - Resource-scope language was scanned for forbidden public-content phrases from the website language-governance list: no remaining matches in the resource implementation scope.
 - Article cluster labels now come from the localized resource copy registry instead of one English-only constant.
 - Article JSON-LD breadcrumbs now include `Home -> Resources -> Article`.
@@ -115,6 +123,86 @@ Follow-up verification commands:
 | invalid slug evidence | rendered not-found title and `noindex, nofollow` metadata |
 
 Browser automation note: the in-app Browser tool was not available in this tool session, so the cross-check used the local Next.js dev server plus HTTP, metadata, schema, and locale smoke checks.
+
+---
+
+## Resource Navigation And Discovery Hardening Pass
+
+**Date:** June 2, 2026
+
+Additional implementation:
+
+- Header navigation now uses the product-led order with a compact desktop Resources dropdown.
+- Mobile drawer exposes nested links for the same resource cluster.
+- Homepage `ResourcesSection` now shows the eight strategic cards from the release brief.
+- Footer Resources links now point to Menu Engineering, QR Menu for Restaurants, Digital Menu vs PDF, Google Business Profile Menu, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and Trust & Security.
+- `public/robots.txt` now applies protected-route disallows to named search/AI crawlers and the generic crawler group.
+- `DISCOVERY_CRAWLERS` now includes `CCBot`.
+- `public/llms.txt` and `public/llms-full.txt` now include the preferred MenuList description and claim limits.
+- Resource analytics now includes secondary CTA, upload-menu, pricing, and AI/search referrer events through GA4-only public website events.
+- Resource analytics event payloads now include the reshared brief's property contract: `slug`, `category`, `cta_label`, `target_url`, `locale`, `referrer`, `utm_source`, `utm_medium`, `entry_page`, and an anonymous session-scoped `session_id`, while preserving existing compatibility fields such as `cluster`, `destination`, `source_page`, and `referrer_host`.
+- AI/search referrer classification includes both `chatgpt.com` and legacy `chat.openai.com`.
+- The search/discovery-ready website copy was revised from certain answer-source wording to a modest claim about giving crawlers a clearer public source when they choose to crawl or show menu details.
+
+Verification:
+
+| Check | Result |
+| --- | --- |
+| `npm run verify:website-resource-locales` | Passed: `Website resource locale packs verified: hi-IN, ta-IN, te-IN, mr-IN, bn-IN, ar-SA, es-ES` |
+| `npm run verify:agent-readiness` | Passed: `Agent-readiness discovery surfaces verified` |
+| `npx tsc --noEmit --incremental false` | Passed |
+| `npm run lint` | Passed: no ESLint warnings or errors |
+| `git diff --check` | Passed |
+
+Browser smoke:
+
+- Local dev server started on `http://localhost:3002` without using the project `npm run dev` port-kill script.
+- Homepage rendered with the resource section and all eight strategic cards visible in the DOM.
+- Header resource dropdown links were present in the DOM for Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources.
+- `/resources` rendered with the resource hub H1, article cards, and one JSON-LD script.
+- Footer resource links were checked in-browser after removing duplicate Trust & Security from the Source column.
+- During mobile-drawer follow-up, local Next dev hit a hot-reload/auth route issue around `/api/auth/[...nextauth]` and began returning the not-found shell for `/resources`; the scripted route/discovery checks above still passed, and the temporary dev server was stopped. This issue was not introduced by the website resource files touched in this pass.
+
+No owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, or KitStamp surfaces were changed in this pass.
+
+---
+
+## Resource Expansion And Industry Pages Pass
+
+**Date:** June 2, 2026
+
+Additional implementation:
+
+- Added `/resources/restaurant-menu-schema`, `/resources/official-menu-url-checklist`, and `/resources/restaurant-qr-menu-mistakes`.
+- Added reviewed active-locale coverage for the three new resource articles across Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish packs.
+- Added `/industries/restaurants`, `/industries/cafes-bakeries`, `/industries/takeaway-cloud-kitchens`, and `/industries/multi-location-food-businesses`.
+- Added `src/content/websiteIndustries.ts` and `src/components/website/industries/IndustryLandingPage.tsx`.
+- Added checklist copy UI for visible checklist sections and `resource_checklist_copy` GA4 event wiring. `resource_template_download` remains intentionally absent because no downloadable assets exist.
+- Updated sitemap, `llms.txt`, `llms-full.txt`, and platform discovery policy for the added resource and industry URLs.
+- Added `generateStaticParams()` to the localized website resource layout so reviewed locale segments register before child resource slug routes.
+
+Verification:
+
+| Check | Result |
+| --- | --- |
+| `npm run verify:website-resource-locales` | Passed: `Website resource locale packs verified: hi-IN, ta-IN, te-IN, mr-IN, bn-IN, ar-SA, es-ES` |
+| `npm run verify:agent-readiness` | Passed: `Agent-readiness discovery surfaces verified` |
+| `npm run lint` | Passed: no ESLint warnings or errors |
+| `npx tsc --noEmit --incremental false` | Passed |
+| `git diff --check` | Passed |
+| `/resources/restaurant-menu-schema` local smoke | `200` |
+| `/resources/official-menu-url-checklist` local smoke | `200` |
+| `/resources/restaurant-qr-menu-mistakes` local smoke | `200` |
+| `/industries/restaurants` local smoke | `200` |
+| `/hi-IN/resources/official-menu-url-checklist` local smoke | `200`, localized content and JSON-LD present |
+| `/ar-SA/resources/restaurant-qr-menu-mistakes` local smoke | `200`, localized content, canonical/hreflang metadata, and JSON-LD present |
+| Browser smoke through Chrome extension backend | `/resources` hub, three new English article pages, and `/industries/restaurants` rendered with expected H1 text, JSON-LD, and no not-found body; checklist pages exposed copy buttons |
+
+Implementation note: the first localized route smoke showed not-found responses until the parent localized resource layout exposed reviewed locale static params. After that patch and a clean `.next` restart, the Hindi and Arabic expanded resource URLs returned `200`.
+
+The final TypeScript run also required a one-line generic reducer type annotation in `src/lib/ai/operationPresentation.ts`, an unrelated untracked helper already present in the dirty worktree. No AI accounting behavior was changed.
+
+No owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, or KitStamp surfaces were changed in this pass.
 
 ---
 

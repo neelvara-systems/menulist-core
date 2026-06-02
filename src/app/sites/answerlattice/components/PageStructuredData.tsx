@@ -28,7 +28,7 @@ function buildBreadcrumb(path: string, title: string) {
         items.push({
             '@type': 'ListItem',
             position: 2,
-            name: title.replace(/\s+\|\s+Answerlattice$/, ''),
+            name: title.replace(/\s+\|\s+AnswerLattice$/, ''),
             item: buildAnswerlatticeUrl(path),
         });
     }
@@ -42,8 +42,8 @@ function buildPageId(path: string): string {
 
 export default function AnswerlatticePageStructuredData({ path }: { path: string }) {
     const page = getAnswerlatticePublicPage(path);
-    const title = page?.title || `${labelFromPath(path)} | Answerlattice`;
-    const description = page?.description || 'Answerlattice public product page.';
+    const title = page?.title || `${labelFromPath(path)} | AnswerLattice`;
+    const description = page?.description || 'AnswerLattice public product page.';
     const url = buildAnswerlatticeUrl(path);
 
     const graph = {

@@ -7,6 +7,11 @@
  * @see __docs__/ai-extraction-monitoring/
  */
 
+import type {
+    MenuExtractionDestinationType,
+    MenuExtractionJobDestination,
+} from '@data/shared/menuExtractionJob';
+
 // ═══════════════════════════════════════════════════════════════
 // JOB SUMMARY (for job feed table)
 // ═══════════════════════════════════════════════════════════════
@@ -23,6 +28,8 @@ export interface ExtractionJobSummary {
     createdAt: any;
     completedAt: any;
     isFirstExtraction: boolean | null;
+    destinationType?: MenuExtractionDestinationType;
+    source?: string | null;
     hasError: boolean;
     errorMessage: string | null;
 }
@@ -35,8 +42,13 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
     tId: string;
     sId: string;
     uId: string;
+    destination: MenuExtractionJobDestination | null;
+    destinationType: MenuExtractionDestinationType | null;
     files: Array<{ uid: string; name: string; type: string; size: number }>;
     targetLanguages: Array<{ code: string; name: string }>;
+    skipProjectSave: boolean;
+    source: string | null;
+    sourceMetadata: Record<string, unknown> | null;
     result: {
         combinedData: any;
         qualityScore: number;
@@ -57,10 +69,21 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
         rawBatchResponses?: Array<{ batchIndex: number; rawText: string; truncated: boolean }>;
         promptVersion?: string;
         model?: string;
+        redistributedFiles?: Record<string, unknown>;
     } | null;
     error: { code: string; message: string; retryable: boolean } | null;
     fileResults: Record<string, { categoriesCount: number; itemsCount: number }> | null;
-    transaction: { transactionId: string; totalCredits: number; totalCharge: number } | null;
+    transaction: {
+        transactionId: string;
+        totalCredits: number;
+        totalCharge: number;
+        unitsConsumed?: number;
+        tokenUsage?: {
+            promptTokenCount: number;
+            candidatesTokenCount: number;
+            totalTokenCount: number;
+        };
+    } | null;
 }
 
 // ═══════════════════════════════════════════════════════════════

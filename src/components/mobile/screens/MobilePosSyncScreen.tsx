@@ -268,6 +268,11 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     const statusDescription = syncDisabled
         ? t('disabledStatusDesc')
         : t('version', { version: currentPosSync.menuVersion });
+    const truthTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
     const trustBullets = [
         t('trustBullet1'),
         t('trustBullet2'),
@@ -292,7 +297,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex gap={8} vertical>
-                            <Tag color="blue" style={{ alignSelf: 'flex-start' }}>{t('truthProtected')}</Tag>
+                            <Tag style={{ ...truthTagStyle, alignSelf: 'flex-start' }}>{t('truthProtected')}</Tag>
                             <Text strong style={{ fontSize: 16 }}>{t('connectIntroTitle')}</Text>
                             <Text type="secondary">{t('connectIntroDesc')}</Text>
                         </Flex>
@@ -302,21 +307,21 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             gap={8}
                             justify="space-between"
                             style={{
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
+                                background: token.colorFillQuaternary,
+                                border: `1px solid ${token.colorBorderSecondary}`,
                                 borderRadius: 8,
                                 padding: 12,
                             }}
                         >
                             <Text strong style={{ flex: 1 }}>{t('diagramSource')}</Text>
-                            <LuArrowRight color="#0051d1" size={18} />
+                            <LuArrowRight color={token.colorPrimary} size={18} />
                             <Text strong style={{ flex: 1, textAlign: 'right' }}>{t('diagramDestination')}</Text>
                         </Flex>
 
                         <Flex gap={8} vertical>
                             {trustBullets.map((bullet) => (
                                 <Flex align="flex-start" gap={8} key={bullet}>
-                                    <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                    <LuCheck color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
                                     <Text>{bullet}</Text>
                                 </Flex>
                             ))}
@@ -328,7 +333,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                                     <Text>{t('whoUseIntro')}</Text>
                                     {useCases.map((useCase) => (
                                         <Flex align="flex-start" gap={8} key={useCase}>
-                                            <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                            <LuCheck color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
                                             <Text>{useCase}</Text>
                                         </Flex>
                                     ))}
@@ -344,8 +349,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 <Card>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10}>
-                            <Flex align="center" justify="center" style={{ background: '#eff6ff', borderRadius: 12, height: 40, width: 40 }}>
-                                {currentPosSync.status === 'healthy' ? <LuWifi color="#0051d1" size={20} /> : <LuWifiOff color="#f59e0b" size={20} />}
+                            <Flex align="center" justify="center" style={{ background: token.colorPrimaryBg, borderRadius: 12, height: 40, width: 40 }}>
+                                {currentPosSync.status === 'healthy' ? <LuWifi color={token.colorPrimary} size={20} /> : <LuWifiOff color={token.colorWarning} size={20} />}
                             </Flex>
                             <Flex gap={2} vertical>
                                 <Text strong>{statusLabel}</Text>
@@ -383,7 +388,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     <Flex gap={10} vertical>
                         <Flex align="center" justify="space-between">
                             <Flex align="center" gap={8}>
-                                <LuShield color="#475569" size={18} />
+                                <LuShield color={token.colorTextSecondary} size={18} />
                                 <Text strong>{t('signingSecret')}</Text>
                             </Flex>
                             <Tag>{webhookSecret ? 'Ready' : 'Missing'}</Tag>
@@ -422,7 +427,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             </Flex>
                         </Button>
                         {testResult ? (
-                            <Tag color={testResult.success ? 'success' : 'danger'}>
+                            <Tag color={testResult.success ? 'success' : 'error'}>
                                 {testResult.message}
                             </Tag>
                         ) : null}

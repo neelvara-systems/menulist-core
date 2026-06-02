@@ -3,7 +3,9 @@
 import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuRefreshCw, LuShieldAlert, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
@@ -13,20 +15,10 @@ interface MobileOpsControlRoomScreenProps {
     onBack: () => void;
 }
 
-function formatTimestamp(value: any): string {
+function formatTimestamp(value: any, formatter: IntlFormatter): string {
     if (!value) return '-';
-    try {
-        const date = value.toDate ? value.toDate() : new Date(value.seconds ? value.seconds * 1000 : value);
-        return date.toLocaleString('en-IN', {
-            day: '2-digit',
-            hour: '2-digit',
-            hour12: true,
-            minute: '2-digit',
-            month: 'short',
-        });
-    } catch {
-        return '-';
-    }
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function severityColor(severity?: string): 'success' | 'warning' | 'danger' | 'primary' | 'default' {
@@ -37,6 +29,7 @@ function severityColor(severity?: string): 'success' | 'warning' | 'danger' | 'p
 }
 
 export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlRoomScreenProps) {
+    const formatter = useFormatter();
     const { data: session, status } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
@@ -213,7 +206,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                         <LuZap size={16} />
                                         <Text>SAFE_MODE</Text>
                                     </Flex>
-                                    <Tag color={systemState?.safeModeActive ? 'danger' : 'success'}>
+                                    <Tag color={systemState?.safeModeActive ? 'error' : 'success'}>
                                         {systemState?.safeModeActive ? 'ACTIVE' : 'OFF'}
                                     </Tag>
                                 </Flex>
@@ -259,7 +252,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                     {alerts.slice(0, 6).map((alert) => (
                                         <List.Item
                                             key={alert.id}
-                                            description={<Text type="secondary">{formatTimestamp(alert.timestamp)}</Text>}
+                                            description={<Text type="secondary">{formatTimestamp(alert.timestamp, formatter)}</Text>}
                                             extra={<Tag color={severityColor(alert.severity)}>{alert.severity}</Tag>}
                                             prefix={<LuAlertTriangle size={16} />}
                                             title={<Text>{alert.title}</Text>}

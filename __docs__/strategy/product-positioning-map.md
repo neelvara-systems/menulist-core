@@ -7,7 +7,7 @@
 **Status:** 🔒 LOCKED — Separation rules are permanent  
 **Governance:** `__docs__/constitution/12-product-separation-doctrine.md`
 **May 31, 2026 Addendum:** GrowthOS implementation planning now uses `__docs__/growthos-addon/README.md`. GrowthOS is planned as a MenuList higher-tier add-on labelled Growth Kits, not as a standalone product.
-**June 1, 2026 Growth Engine Addendum:** Growth Engine is separate internal MenuList-owned distribution automation infrastructure documented at `__docs__/growth-engine/README.md`. Lead generation is one input; the system's job is target acquisition, Business Truth Graph candidate edges, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not part of the owner-facing MenuList/GrowthOS/KitStamp stack and must not reuse GrowthOS product identity.
+**June 1, 2026 Growth Engine Addendum:** Growth Engine is separate internal MenuList-owned distribution automation infrastructure documented at `__docs__/growth-engine/README.md`. Lead generation is one input; the system's job is target acquisition, Business Truth Graph candidate edges, owner claim routing, canonical MenuList truth activation, owned workflows, enrichment waterfalls, decision snapshots, surface publishing, discovery publishing, WhatsApp/message governance, freshness monitoring, and attribution. `MenuNexus` is the recommended name only after purchase and company-name checks. It is not part of the owner-facing MenuList/GrowthOS/KitStamp stack and must not reuse GrowthOS product identity.
 
 ---
 

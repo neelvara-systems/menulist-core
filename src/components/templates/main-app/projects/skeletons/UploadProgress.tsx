@@ -1,5 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Alert, Card, Flex, Progress, Typography } from 'antd';
+import { Alert, Card, Flex, Progress, Typography, theme } from 'antd';
 import { LuCheckCircle, LuClock, LuUploadCloud } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -19,32 +19,33 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
     errorMessage,
     estimatedTime
 }) => {
+    const { token } = theme.useToken();
     const labels = useOfferingLabels();
 
     const getStatusConfig = () => {
         switch (status) {
             case 'uploading':
                 return {
-                    icon: <LuUploadCloud size={32} style={{ color: '#1890ff' }} />,
+                    icon: <LuUploadCloud size={32} style={{ color: token.colorPrimary }} />,
                     title: 'Uploading...',
                     description: 'Sending your file to our servers',
-                    color: '#1890ff',
+                    color: token.colorPrimary,
                     showProgress: true
                 };
             case 'processing':
                 return {
-                    icon: <LuClock size={32} style={{ color: '#faad14' }} />,
+                    icon: <LuClock size={32} style={{ color: token.colorWarning }} />,
                     title: 'Processing...',
                     description: `We're reading your ${labels.offeringLower} and extracting ${labels.itemsPlural}`,
-                    color: '#faad14',
+                    color: token.colorWarning,
                     showProgress: true
                 };
             case 'complete':
                 return {
-                    icon: <LuCheckCircle size={32} style={{ color: '#52c41a' }} />,
+                    icon: <LuCheckCircle size={32} style={{ color: token.colorSuccess }} />,
                     title: 'Complete!',
                     description: `Your ${labels.offeringLower} is ready to edit`,
-                    color: '#52c41a',
+                    color: token.colorSuccess,
                     showProgress: false
                 };
             case 'error':
@@ -52,7 +53,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                     icon: null,
                     title: 'Something went wrong',
                     description: errorMessage || 'Please try uploading again',
-                    color: '#ff4d4f',
+                    color: token.colorError,
                     showProgress: false
                 };
         }
@@ -87,7 +88,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 </Flex>
 
                 {/* File Name */}
-                <Card size="small" style={{ background: '#fafafa' }}>
+                <Card size="small" style={{ background: token.colorFillQuaternary }}>
                     <Text
                         strong
                         style={{
@@ -140,7 +141,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                         description={`We're reading your ${labels.offeringLower} and automatically extracting ${labels.itemsPlural}, prices, and descriptions. This saves you hours of manual typing.`}
                         type="info"
                         showIcon={false}
-                        style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}
+                        style={{ background: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}` }}
                     />
                 )}
 
@@ -150,7 +151,7 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                         description={`Your ${labels.offeringLower} has been processed. You can now review and edit the extracted ${labels.itemsPlural}.`}
                         type="success"
                         showIcon={false}
-                        style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}
+                        style={{ background: token.colorSuccessBg, border: `1px solid ${token.colorSuccessBorder}` }}
                     />
                 )}
             </Flex>

@@ -36,7 +36,7 @@ export default function HostedHelpCenterForSaasPage() {
                 answerlatticeAnswer="Publish reviewed articles, owner FAQs, and changelog entries on help.yourapp.com while tickets, conversations, and workspace internals stay private."
                 ownerReview="Hosted help content stays part of the same reviewed support knowledge. Owners can connect articles to custom Q&A, surfaces, changelogs, and approved answers instead of maintaining a separate support site."
                 setupSteps={[
-                    'Create your Answerlattice workspace.',
+                    'Create your AnswerLattice workspace.',
                     'Import docs, FAQs, custom answers, and release notes.',
                     'Map content to product surfaces.',
                     'Configure hosted help domain settings.',

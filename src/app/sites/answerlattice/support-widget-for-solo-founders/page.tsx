@@ -29,12 +29,12 @@ export default function SupportWidgetForSoloFoundersPage() {
                 canonicalPath="/support-widget-for-solo-founders"
                 eyebrow="Support widget for solo founders"
                 title="Support widget for solo founders shipping with AI."
-                description="Launch a support layer from existing docs, FAQs, owner answers, release notes, recurring questions, and user-attached screenshots before support becomes your full-time job."
-                problem="A solo founder cannot answer every repeated setup, billing, permission, or visual-error question manually. But unreviewed generated support and automatic screen capture can create more risk than they remove."
+                description="Launch a support layer from existing docs, FAQs, owner answers, release notes, recurring questions, and user-attached screenshots before support takes over your launch."
+                problem="A solo founder cannot answer every expected or recurring setup, billing, permission, or visual-error question manually. But unreviewed generated support and automatic screen capture can create more risk than they remove."
                 question="What should I upload first?"
                 genericAnswer="Upload your documentation and check the setup guide."
-                answerlatticeAnswer="Start with your setup guide, top recurring questions, release notes, and billing or onboarding pages. Answerlattice prepares drafts and gaps for owner review."
-                ownerReview="Answerlattice keeps the founder in control of authority: generated drafts, fallback gaps, user-attached screenshots, and mutation proposals stay bounded review inputs before they become approved answers."
+                answerlatticeAnswer="Start with your setup guide, top recurring questions, release notes, and billing or onboarding pages. AnswerLattice prepares drafts and gaps for owner review."
+                ownerReview="AnswerLattice keeps the founder in control of authority: generated drafts, fallback gaps, user-attached screenshots, and mutation proposals stay bounded review inputs before they become approved answers."
                 setupSteps={[
                     'Sign in and create the beta workspace.',
                     'Add product name, support email, and important pages.',

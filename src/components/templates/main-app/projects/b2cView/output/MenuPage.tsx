@@ -55,7 +55,7 @@ export default function MenuPageOutput({
     showImages = true,
     showCategoryIcons = true,
     backgroundImage,
-    currency = '$',
+    currency = '',
     onItemClick,
 }: MenuPageOutputProps) {
     const moodConfig = MENU_MOODS[mood];

@@ -84,7 +84,7 @@ function ActionTile({ compact, icon, onClick }: { compact?: boolean; icon: React
                 borderColor: token.colorBorderSecondary,
                 borderRadius: compact ? 14 : 16,
                 flex: 1,
-                minHeight: compact ? 42 : 48,
+                minHeight: compact ? 44 : 48,
                 minWidth: 0,
                 paddingBlock: 0,
                 paddingInline: 0,

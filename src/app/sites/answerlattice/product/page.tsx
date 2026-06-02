@@ -15,7 +15,7 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Answerlattice is the support layer for SaaS and digital products: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
+    description: 'AnswerLattice is the support layer for SaaS and digital products: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -32,10 +32,10 @@ const FEATURES = [
         id: 'launch-setup',
         badge: 'Launch Setup',
         title: 'Set up support before users start asking',
-        description: 'Create a workspace, add your app details, invite the right team members, teach Answerlattice from selected links, files, screenshots, and short recordings, map important pages, and verify the widget before support goes live.',
+        description: 'Create a workspace, add your app details, invite the right team members, teach AnswerLattice from selected links, files, screenshots, and short recordings, map important pages, and verify the widget before support goes live.',
         capabilities: [
             'Product profile, support email, billing model, workspace subscription, team access, and main product pages',
-            'Answerlattice roles for workspace owners, managers, support staff, and custom permission sets',
+            'AnswerLattice roles for workspace owners, managers, support staff, and custom permission sets',
             'Knowledge intake for selected product links, docs, FAQs, release notes, setup notes, support macros, files, screenshots, and short recordings',
             'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
@@ -47,7 +47,7 @@ const FEATURES = [
         id: 'page-aware-support',
         badge: 'Support Control',
         title: 'Show help that matches the page the user is on',
-        description: 'Answerlattice receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help. Users can attach screenshots explicitly when visual context helps. Configured proactive prompts can appear only where active triggers exist.',
+        description: 'AnswerLattice receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help. Users can attach screenshots explicitly when visual context helps. Configured proactive prompts can appear only where active triggers exist.',
         capabilities: [
             'Widget install script with allowed-origin and blocked-route controls',
             'Hosted help center for docs, FAQ, and changelog on help/docs/support domains like help.yourapp.com',
@@ -63,7 +63,7 @@ const FEATURES = [
         id: 'canonical-answers',
         badge: 'Knowledge Governance',
         title: 'Approve answers before they become official',
-        description: 'Answerlattice treats approved answers as durable product knowledge. Fallback can help while coverage grows, but repeated fallback becomes a visible gap.',
+        description: 'AnswerLattice treats approved answers as durable product knowledge. Fallback can help while coverage grows, but repeated fallback becomes a visible gap.',
         capabilities: [
             'Approved-answer retrieval before fallback',
             'Owner-approved answer drafts and mutation proposals',
@@ -90,10 +90,10 @@ const FEATURES = [
         id: 'support-gap-loop',
         badge: 'Support Gap Loop',
         title: 'Use missed questions to create better answers',
-        description: 'Tickets, low-confidence answers, ratings, feature requests, suggestions, and negative feedback become signals. Answerlattice clusters those signals and routes the useful ones into owner-reviewed improvements.',
+        description: 'Tickets, low-confidence answers, ratings, feature requests, suggestions, and negative feedback become signals. AnswerLattice clusters those signals and routes the useful ones into owner-reviewed improvements.',
         capabilities: [
             'Fire-and-forget signal writes with bounded payloads',
-            'Answerlattice-scoped feedback review for ratings, product-area issues, feature requests, and suggestions',
+            'AnswerLattice-scoped feedback review for ratings, product-area issues, feature requests, and suggestions',
             'Signal-to-knowledge queue for recurring gaps',
             'Private Support Board cards for selected owner follow-up and internal notes',
             'Draft approved answers for owner review',
@@ -125,7 +125,7 @@ export default function AnswerlatticeProductPage() {
                         The support layer for SaaS and digital products.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Answerlattice connects your product pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
+                        AnswerLattice connects your product pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -184,8 +184,8 @@ export default function AnswerlatticeProductPage() {
                     <div className="mx-auto max-w-6xl">
                         <SectionHeader
                             eyebrow="Product areas"
-                            title="Each part of Answerlattice has its own job."
-                            description="Answerlattice is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, feedback review, Support Board follow-up, and answer review."
+                            title="Each part of AnswerLattice has its own job."
+                            description="AnswerLattice is easier to evaluate when each capability can stand on its own: setup, team access, widget, hosted help with tickets, feedback review, Support Board follow-up, and answer review."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {ANSWERLATTICE_PRODUCT_AREAS.map((area) => (
@@ -217,7 +217,7 @@ export default function AnswerlatticeProductPage() {
                         <SectionHeader
                             eyebrow="Support features"
                             title="Core product features get their own pages."
-                            description="Each Answerlattice feature page explains its outcome, workflow, and how it connects back to controlled support knowledge."
+                            description="Each AnswerLattice feature page explains its outcome, workflow, and how it connects back to controlled support knowledge."
                         />
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => (
@@ -246,7 +246,7 @@ export default function AnswerlatticeProductPage() {
                         <SectionHeader
                             eyebrow="Runtime readiness"
                             title="Approved support context is prepared before runtime needs it."
-                            description="Answerlattice keeps governed source records separate, then prepares approved public widget context and private server context into versioned runtime bundles. That keeps user-facing support fast without exposing drafts, tickets, audit logs, or workspace internals."
+                            description="AnswerLattice keeps governed source records separate, then prepares approved public widget context and private server context into versioned runtime bundles. That keeps user-facing support fast without exposing drafts, tickets, audit logs, or workspace internals."
                         />
                         <div className="grid gap-3 md:grid-cols-2">
                             {[
@@ -272,7 +272,7 @@ export default function AnswerlatticeProductPage() {
                             className="mb-12"
                             eyebrow="Behind the support layer"
                             title="Not only a chatbot."
-                            description="Answerlattice keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center."
+                            description="AnswerLattice keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {ANSWERLATTICE_ENGINE_PILLARS.map((pillar) => (

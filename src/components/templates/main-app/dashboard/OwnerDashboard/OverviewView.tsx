@@ -13,17 +13,6 @@
  * - Expandable sections for detail
  */
 
-import {
-    CalendarOutlined,
-    CheckCircleOutlined,
-    ClockCircleOutlined,
-    EyeOutlined,
-    FireOutlined,
-    HistoryOutlined,
-    RiseOutlined,
-    ThunderboltOutlined,
-    WarningOutlined,
-} from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import {
     HistoricalWeek,
@@ -32,6 +21,7 @@ import {
 } from '@template/main-app/projects/types';
 import { Card, Col, Collapse, Empty, Progress, Row, Statistic, Tag, Typography, theme } from 'antd';
 import React from 'react';
+import { LuAlertTriangle, LuCalendar, LuCheckCircle, LuClock, LuEye, LuFlame, LuHistory, LuTrendingUp, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 import OwnerActionPlanCard from './OwnerActionPlanCard';
 
@@ -46,6 +36,16 @@ interface OverviewViewProps {
 const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot }) => {
     const labels = useOfferingLabels();
     const { token } = useToken();
+    const primaryTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
+    const successTagStyle = {
+        backgroundColor: token.colorSuccessBg,
+        borderColor: token.colorSuccessBorder,
+        color: token.colorSuccessText,
+    };
 
     if (!data) {
         return (
@@ -69,12 +69,12 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
     const getStatusIcon = () => {
         switch (status) {
             case 'working':
-                return <CheckCircleOutlined style={{ fontSize: 48, color: token.colorSuccess }} />;
+                return <LuCheckCircle size={48} style={{ color: token.colorSuccess }} />;
             case 'low_activity':
-                return <WarningOutlined style={{ fontSize: 48, color: token.colorWarning }} />;
+                return <LuAlertTriangle size={48} style={{ color: token.colorWarning }} />;
             case 'no_data':
             default:
-                return <ClockCircleOutlined style={{ fontSize: 48, color: token.colorTextTertiary }} />;
+                return <LuClock size={48} style={{ color: token.colorTextTertiary }} />;
         }
     };
 
@@ -120,7 +120,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                                     {week.metrics.menuVisits.toLocaleString()}
                                 </Text>
                                 {week.isCurrentWeek && (
-                                    <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>
+                                    <Tag style={{ ...primaryTagStyle, marginLeft: 4, fontSize: 10 }}>
                                         Current
                                     </Tag>
                                 )}
@@ -203,10 +203,10 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
             key: 'wtd',
             label: (
                 <span>
-                    <ThunderboltOutlined style={{ marginRight: 8 }} />
+                    <LuZap style={{ marginRight: 8 }} />
                     Last 7 Days
                     {wtd && (
-                        <Tag color="blue" style={{ marginLeft: 8 }}>
+                        <Tag style={{ ...primaryTagStyle, marginLeft: 8 }}>
                             {wtd.metrics.menuVisits.toLocaleString()} scans
                         </Tag>
                     )}
@@ -218,14 +218,14 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                         <Statistic
                             title={labels.scansLabel}
                             value={wtd.metrics.menuVisits}
-                            prefix={<EyeOutlined />}
+                            prefix={<LuEye />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
                             title="Item Taps"
                             value={wtd.metrics.itemClicks}
-                            prefix={<FireOutlined />}
+                            prefix={<LuFlame />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
@@ -246,14 +246,14 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                         <Statistic
                             title="Suggestions Shown"
                             value={wtd.metrics.smartPicksRendered}
-                            prefix={<ThunderboltOutlined />}
+                            prefix={<LuZap />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
                             title="Suggestions Selected"
                             value={wtd.metrics.smartPicksClicks}
-                            prefix={<RiseOutlined />}
+                            prefix={<LuTrendingUp />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
@@ -347,10 +347,10 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
             key: 'mtd',
             label: (
                 <span>
-                    <CalendarOutlined style={{ marginRight: 8 }} />
+                    <LuCalendar style={{ marginRight: 8 }} />
                     {mtd?.monthName || 'This Month'}
                     {mtd && (
-                        <Tag color="green" style={{ marginLeft: 8 }}>
+                        <Tag style={{ ...successTagStyle, marginLeft: 8 }}>
                             {mtd.metrics.menuVisits.toLocaleString()} scans ({mtd.daysWithData} days)
                         </Tag>
                     )}
@@ -362,7 +362,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                         <Statistic
                             title="Total Scans"
                             value={mtd.metrics.menuVisits}
-                            prefix={<EyeOutlined />}
+                            prefix={<LuEye />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
@@ -383,7 +383,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                         <Statistic
                             title="Item Taps"
                             value={mtd.metrics.itemClicks}
-                            prefix={<FireOutlined />}
+                            prefix={<LuFlame />}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
@@ -459,7 +459,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
             key: 'history',
             label: (
                 <span>
-                    <HistoryOutlined style={{ marginRight: 8 }} />
+                    <LuHistory style={{ marginRight: 8 }} />
                     Last 4 Weeks Comparison
                 </span>
             ),
@@ -558,7 +558,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                     className={styles.aiSummaryCard}
                     title={
                         <span>
-                            <ThunderboltOutlined style={{ marginRight: 8 }} />
+                            <LuZap style={{ marginRight: 8 }} />
                             Weekly Insights
                         </span>
                     }

@@ -3,6 +3,8 @@
 import { RESELLER_CAPS } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_PASSWORD, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import type { ResellerProfile } from '@type/reseller';
+import { formatInrPaise } from '@util/formatters';
+import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuLock, LuPencil, LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu';
@@ -80,11 +82,8 @@ function draftFromProfile(profile: ResellerProfile): ResellerDraft {
     };
 }
 
-function formatMoney(paise?: number) {
-    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
-}
-
 export default function MobileResellerManagementScreen({ onBack }: { onBack: () => void }) {
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
@@ -225,7 +224,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 <Flex gap={12} style={{ padding: 16 }} vertical>
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuLock color="#7c3aed" size={42} />
+                            <LuLock color={token.colorPrimary} size={42} />
                             <Title level={5} style={{ margin: 0 }}>Platform admin access</Title>
                             <Input onChange={setPasswordInput} placeholder="Enter platform password" type="password" value={passwordInput} />
                             <Button block onClick={() => {
@@ -295,7 +294,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 description="Create and manage reseller profiles."
                 onBack={onBack}
                 right={(
-                    <Button fill="none" loading={loading || monthlyLoading} onClick={() => { void loadProfiles(); void loadMonthlySummary(); }} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                    <Button fill="none" loading={loading || monthlyLoading} onClick={() => { void loadProfiles(); void loadMonthlySummary(); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                         <LuRefreshCw size={18} />
                     </Button>
                 )}
@@ -313,7 +312,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                         ['Total', stats.total],
                         ['Active', stats.active],
                         ['Stores', stats.stores],
-                        ['Revenue', formatMoney(stats.revenue)],
+                        ['Revenue', formatInrPaise(stats.revenue)],
                     ].map(([label, value]) => (
                         <Card key={label as string}>
                             <Flex gap={2} vertical>
@@ -330,8 +329,8 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                             {[
                                 ['Clients', monthlySummary?.totals.clientCount || 0],
                                 ['Txns', monthlySummary?.totals.transactionCount || 0],
-                                ['Offline collected', formatMoney(monthlySummary?.totals.offlineCollectedPaise)],
-                                ['Online pending', formatMoney(monthlySummary?.totals.onlinePendingPaise)],
+                                ['Offline collected', formatInrPaise(monthlySummary?.totals.offlineCollectedPaise)],
+                                ['Online pending', formatInrPaise(monthlySummary?.totals.onlinePendingPaise)],
                             ].map(([label, value]) => (
                                 <Flex key={label as string} gap={2} vertical>
                                     <Text type="secondary">{label}</Text>
@@ -349,7 +348,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                                             <Text strong>{row.resellerName}</Text>
                                             <Text type="secondary">{row.clientCount} clients · {row.transactionCount} txns</Text>
                                         </Flex>
-                                        <Text strong>{formatMoney(row.totalExpectedPaise)}</Text>
+                                        <Text strong>{formatInrPaise(row.totalExpectedPaise)}</Text>
                                     </Flex>
                                 ))}
                             </Flex>
@@ -379,9 +378,9 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                                     <Flex gap={8} wrap="wrap">
                                         <Tag>{profile.totalStoresOnboarded || 0} stores</Tag>
                                         <Tag>{profile.currentActiveOfflineStores || 0}/{profile.maxOfflineActivations || 0} offline</Tag>
-                                        <Tag>{formatMoney(profile.totalRevenueCollectedPaise)}</Tag>
+                                        <Tag>{formatInrPaise(profile.totalRevenueCollectedPaise)}</Tag>
                                     </Flex>
-                                    <Button fill="outline" onClick={() => openEdit(profile)} style={{ minHeight: 40 }}>
+                                    <Button fill="outline" onClick={() => openEdit(profile)} style={{ minHeight: 44 }}>
                                         <Flex align="center" gap={6} justify="center"><LuPencil size={16} /> Edit</Flex>
                                     </Button>
                                 </Flex>

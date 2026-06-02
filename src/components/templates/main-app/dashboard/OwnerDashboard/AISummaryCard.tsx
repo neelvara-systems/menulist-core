@@ -10,10 +10,10 @@
  * - Monthly: Calm, reassuring, 3 bullets
  */
 
-import { BulbOutlined } from '@ant-design/icons';
 import { AISummary } from '@template/main-app/projects/types';
 import { Card, List, Typography } from 'antd';
 import React from 'react';
+import { LuLightbulb } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
@@ -37,7 +37,7 @@ const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, period }) => {
     return (
         <Card className={styles.aiSummaryCard} variant="borderless">
             <div className={styles.aiSummaryHeader}>
-                <BulbOutlined className={styles.aiIcon} />
+                <LuLightbulb className={styles.aiIcon} />
                 <Title level={5} className={styles.aiTitle}>
                     {periodTitles[period]}
                 </Title>

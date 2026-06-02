@@ -1,7 +1,9 @@
 import { useTranslations } from 'next-intl';
 import {
+  LuBadgeCheck,
   LuBot,
-  LuClipboardCheck,
+  LuBookOpen,
+  LuBuilding2,
   LuFileText,
   LuMapPin,
   LuQrCode,
@@ -12,12 +14,14 @@ import SectionWrapper from '../shared/SectionWrapper';
 import ResourceTrackedLink from '../resources/ResourceTrackedLink';
 
 const resourceCards = [
-  { href: '/resources/menu-source-audit', icon: LuClipboardCheck, key: 'card0' },
+  { href: '/resources/menu-engineering', icon: LuBookOpen, key: 'card0' },
   { href: '/resources/qr-menu-for-restaurants', icon: LuQrCode, key: 'card1' },
-  { href: '/resources/google-business-profile-menu', icon: LuMapPin, key: 'card2' },
-  { href: '/resources/digital-menu-vs-pdf-menu', icon: LuFileText, key: 'card3' },
+  { href: '/resources/digital-menu-vs-pdf-menu', icon: LuFileText, key: 'card2' },
+  { href: '/resources/google-business-profile-menu', icon: LuMapPin, key: 'card3' },
   { href: '/resources/restaurant-menu-seo', icon: LuSearch, key: 'card4' },
   { href: '/resources/ai-search-menu-discovery', icon: LuBot, key: 'card5' },
+  { href: '/resources/official-menu-source', icon: LuBadgeCheck, key: 'card6' },
+  { href: '/resources/multi-location-menu-management', icon: LuBuilding2, key: 'card7' },
 ];
 
 export default function ResourcesSection() {

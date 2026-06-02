@@ -7,13 +7,16 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LuArrowRight,
+  LuBadgeCheck,
   LuBookOpen,
-  LuEye,
+  LuBot,
   LuFileText,
   LuLayoutGrid,
   LuLogOut,
   LuMapPin,
   LuMenu,
+  LuQrCode,
+  LuSearch,
   LuUser,
   LuX,
   LuZap,
@@ -22,14 +25,24 @@ import BrandWordmark from "./shared/BrandWordmark";
 import { FEATURE_FLAGS } from "@config/features";
 
 const navItemKeys = [
-  { href: "/how-it-works", key: "howItWorks", icon: LuZap },
-  { href: "/#customer-demo", key: "demo", icon: LuEye },
   { href: "/features", key: "features", icon: LuLayoutGrid },
+  { href: "/how-it-works", key: "howItWorks", icon: LuZap },
+  { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
+  { href: "/pricing", key: "pricing", icon: LuFileText },
   ...(FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
     ? [{ href: "/resources", key: "resources", icon: LuBookOpen }]
     : []),
-  { href: "/pricing", key: "pricing", icon: LuFileText },
-  { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
+];
+
+const resourceDropdownLinks = [
+  { href: "/resources/menu-engineering", key: "resourceMenuEngineering", icon: LuBookOpen },
+  { href: "/resources/qr-menu-for-restaurants", key: "resourceQrMenuGuide", icon: LuQrCode },
+  { href: "/resources/digital-menu-vs-pdf-menu", key: "resourceDigitalVsPdf", icon: LuFileText },
+  { href: "/resources/google-business-profile-menu", key: "resourceGoogleMenuGuide", icon: LuMapPin },
+  { href: "/resources/restaurant-menu-seo", key: "resourceRestaurantMenuSeo", icon: LuSearch },
+  { href: "/resources/ai-search-menu-discovery", key: "resourceAiSearchDiscovery", icon: LuBot },
+  { href: "/resources/official-menu-source", key: "resourceOfficialMenuSource", icon: LuBadgeCheck },
+  { href: "/resources", key: "resourceAllResources", icon: LuLayoutGrid },
 ];
 
 export default function Header() {
@@ -44,6 +57,11 @@ export default function Header() {
   const closeDrawer = () => {
     setIsOpen(false);
   };
+
+  const isResourcesPath = Boolean(
+    pathname?.startsWith("/resources")
+    || /^\/[a-z]{2}-[A-Z]{2}\/resources/.test(pathname || ""),
+  );
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -101,7 +119,47 @@ export default function Header() {
             className="ws-desktop-nav"
           >
             {navItemKeys.map((item) => {
-              const isActive = pathname === item.href || (item.href === "/resources" && pathname?.startsWith("/resources"));
+              const isActive = pathname === item.href || (item.href === "/resources" && isResourcesPath);
+              if (item.key === "resources") {
+                return (
+                  <div key={item.href} className="ws-header-resource-menu">
+                    <Link
+                      href="/resources"
+                      className="ws-header-resource-menu__trigger"
+                      aria-label={t("Header.resourcesMenuAria")}
+                      aria-haspopup="true"
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 500,
+                        color: isResourcesPath
+                          ? "var(--ws-text-primary)"
+                          : "var(--ws-text-secondary)",
+                        textDecoration: "none",
+                        transition: "color var(--ws-transition-fast)",
+                      }}
+                    >
+                      {t("Header.resources")}
+                    </Link>
+                    <div className="ws-header-resource-menu__panel" role="menu" aria-label={t("Header.resourcesMenuTitle")}>
+                      {resourceDropdownLinks.map((resourceLink) => {
+                        const ResourceIcon = resourceLink.icon;
+                        return (
+                          <Link
+                            key={resourceLink.href}
+                            href={resourceLink.href}
+                            role="menuitem"
+                            className="ws-header-resource-menu__item"
+                          >
+                            <ResourceIcon size={16} aria-hidden="true" />
+                            <span>{t(`Header.${resourceLink.key}`)}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -283,47 +341,66 @@ export default function Header() {
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || (item.href === "/resources" && pathname?.startsWith("/resources"));
+                const isActive = pathname === item.href || (item.href === "/resources" && isResourcesPath);
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={closeDrawer}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 12px",
-                      fontSize: "0.9375rem",
-                      fontWeight: isActive ? 600 : 500,
-                      color: isActive
-                        ? "var(--ws-brand-secondary)"
-                        : "var(--ws-text-primary)",
-                      textDecoration: "none",
-                      borderRadius: "10px",
-                      backgroundColor: isActive ? "var(--ws-bg-accent)" : "transparent",
-                      transition: "background-color 0.15s",
-                      marginBottom: "2px",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive)
-                        e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive)
-                        e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                  >
-                    <Icon
-                      size={18}
-                      color={
-                        isActive
+                  <div key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={closeDrawer}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "14px 12px",
+                        fontSize: "0.9375rem",
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive
                           ? "var(--ws-brand-secondary)"
-                          : "var(--ws-text-muted)"
-                      }
-                    />
-                    {t(`Header.${item.key}`)}
-                  </Link>
+                          : "var(--ws-text-primary)",
+                        textDecoration: "none",
+                        borderRadius: "10px",
+                        backgroundColor: isActive ? "var(--ws-bg-accent)" : "transparent",
+                        transition: "background-color 0.15s",
+                        marginBottom: "2px",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive)
+                          e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive)
+                          e.currentTarget.style.backgroundColor = "transparent";
+                      }}
+                    >
+                      <Icon
+                        size={18}
+                        color={
+                          isActive
+                            ? "var(--ws-brand-secondary)"
+                            : "var(--ws-text-muted)"
+                        }
+                      />
+                      {t(`Header.${item.key}`)}
+                    </Link>
+                    {item.key === "resources" && (
+                      <div className="ws-mobile-resource-links" aria-label={t("Header.resourcesMenuTitle")}>
+                        {resourceDropdownLinks.map((resourceLink) => {
+                          const ResourceIcon = resourceLink.icon;
+                          return (
+                            <Link
+                              key={resourceLink.href}
+                              href={resourceLink.href}
+                              onClick={closeDrawer}
+                              className="ws-mobile-resource-link"
+                            >
+                              <ResourceIcon size={15} aria-hidden="true" />
+                              {t(`Header.${resourceLink.key}`)}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
 

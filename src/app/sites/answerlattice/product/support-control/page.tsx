@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Help Center and Tickets',
-    description: 'Operate Answerlattice help center, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, conversations, Support Board, weekly support review, and workflow notifications from one support control layer.',
+    description: 'Operate AnswerLattice help center, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, conversations, Support Board, weekly support review, and workflow notifications from one support control layer.',
     alternates: { canonical: '/product/support-control' },
 };
 
@@ -30,7 +30,7 @@ export default function SupportControlProductPage() {
                 canonicalPath="/product/support-control"
                 eyebrow="Help center and tickets"
                 title="Keep docs, FAQs, owner answers, releases, widget answers, tickets, and feedback connected."
-                description="Answerlattice gives you a practical support layer for hosted help, page-aware answers, custom Q&A, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
+                description="AnswerLattice gives you a practical support layer for hosted help, page-aware answers, custom Q&A, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
                 activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 canvasTitle="Support operations without support chaos"
@@ -50,7 +50,7 @@ export default function SupportControlProductPage() {
                     { label: 'Board', value: 'Private' },
                 ]}
                 bentoTitle="Your support surfaces stay connected."
-                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, Answerlattice keeps customer support connected by product surface."
+                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice keeps customer support connected by product surface."
                 bentoCards={[
                     { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content and hosted help.' },
                     { title: 'FAQ management', description: 'Owner-written Q&A and article-backed FAQs give users short answers and keep related article context nearby.' },

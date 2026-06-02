@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Manual Widget Install',
-    description: 'Human-readable Answerlattice v1 widget install steps.',
+    description: 'Human-readable AnswerLattice v1 widget install steps.',
     alternates: { canonical: '/install/manual' },
 };
 

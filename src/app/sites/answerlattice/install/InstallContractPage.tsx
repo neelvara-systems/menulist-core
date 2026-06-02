@@ -35,7 +35,7 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
             <main className="al-page-flow">
                 <section className="px-6 py-20">
                     <div className="mx-auto max-w-6xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Answerlattice Agent Install Layer</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">AnswerLattice Agent Install Layer</p>
                         <div className="grid gap-8 lg:grid-cols-[0.8fr_0.2fr] lg:items-end">
                             <div>
                                 <h1 className="max-w-4xl text-4xl font-bold leading-tight text-white sm:text-5xl">

@@ -1,6 +1,6 @@
 # Menu Card Export — Validation Report
 
-**Status:** Production ready after Pro/Premium layout suggestion hardening
+**Status:** Production ready after deterministic auto-design and Pro/Premium layout suggestion hardening
 **Validated:** June 2, 2026
 
 ---
@@ -11,37 +11,54 @@
 | --- | --- | --- |
 | Dedicated route exists | PASS | `src/app/(main)/use-menulist/menu-card-export/page.tsx:1` |
 | Feature flags added | PASS | `src/config/features.ts:1683` |
-| Firebase cost optimized by default | PASS | `src/config/features.ts:1677`, `scripts/verification/verify-menu-card-export.js:63`, `scripts/verification/verify-menu-card-export.js:67` |
+| Firebase cost optimized by default | PASS | `src/config/features.ts:1677`, `scripts/verification/verify-menu-card-export.js:63`, `scripts/verification/verify-menu-card-export.js:65` |
 | AI advisor is Pro/Premium only | PASS | `src/config/features.ts:1687`, `src/config/features.ts:1688`, `src/app/api/menu-card-export/design-advisor/route.ts:144` |
 | AI advisor blocks before provider for non-Pro/Premium | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:145`, `src/app/api/menu-card-export/design-advisor/route.ts:146` |
 | AI advisor validates bounded request/response | PASS | `src/lib/validation/apiSchemas.ts:422`, `src/lib/menu-card-export/ai/designAdvisor.ts:32`, `src/lib/menu-card-export/ai/designAdvisor.ts:71` |
-| AI advisor is capacity-gated and metered after success | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:220`, `src/app/api/menu-card-export/design-advisor/route.ts:243` |
+| AI advisor is capacity-gated and metered after success | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176`, `src/app/api/menu-card-export/design-advisor/route.ts:220`, `src/app/api/menu-card-export/design-advisor/route.ts:221` |
 | AI advisor reuses plan-gate subscription for capacity | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/lib/ai/capacityCheck.ts:118` |
-| AI advisor UI requires owner apply action | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:322`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:364`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:572` |
-| Project summary read is no-create | PASS | `src/database/projects/index.ts:1273`, `src/database/projects/index.ts:1308`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:126` |
-| Shared project selector is used for multi-menu stores | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:466`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:700` |
-| Route caches selected project reads per session | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:95`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:204`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:217` |
-| Route blocks stale project/menu mixing while switching | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:88`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:240` |
-| Route reads selected menu once and computes preview client-side | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:137`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:215`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:238` |
-| Preflight exists before export | PASS | `src/lib/menu-card-export/preflight/runPrintPreflight.ts:13`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:251` |
-| PDF generation is client-side | PASS | `src/lib/menu-card-export/render/renderPdf.ts:186` |
-| PDF metadata and deterministic filenames are set in browser | PASS | `src/lib/menu-card-export/render/artifactMetadata.ts:32`, `src/lib/menu-card-export/render/artifactMetadata.ts:52`, `src/lib/menu-card-export/render/renderPdf.ts:190`, `src/lib/menu-card-export/render/renderPdf.ts:244` |
+| AI advisor UI requires owner apply action | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:222`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:256`, `src/hooks/useMenuCardExportController.ts:446` |
+| Project summary read is no-create | PASS | `src/database/projects/index.ts:1267`, `src/database/projects/index.ts:1308`, `src/hooks/useMenuCardExportController.ts:157` |
+| Shared project selector is used for multi-menu stores | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:144`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:145` |
+| Route caches selected project reads per session | PASS | `src/hooks/useMenuCardExportController.ts:106`, `src/hooks/useMenuCardExportController.ts:217`, `src/hooks/useMenuCardExportController.ts:230` |
+| Route blocks stale project/menu mixing while switching | PASS | `src/hooks/useMenuCardExportController.ts:98`, `src/hooks/useMenuCardExportController.ts:251`, `src/hooks/useMenuCardExportController.ts:253` |
+| Route reads selected menu once and computes preview client-side | PASS | `src/hooks/useMenuCardExportController.ts:228`, `src/hooks/useMenuCardExportController.ts:254`, `src/hooks/useMenuCardExportController.ts:307` |
+| Auto print design chooses style, density, and safe toggles before owner action | PASS | `src/lib/menu-card-export/templates/autoPrintDesign.ts:31`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:47`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:54`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:73`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:81` |
+| Auto print design is applied once per content/business shape and preserves manual edits | PASS | `src/hooks/useMenuCardExportController.ts:104`, `src/hooks/useMenuCardExportController.ts:276`, `src/hooks/useMenuCardExportController.ts:293`, `src/hooks/useMenuCardExportController.ts:336`, `src/hooks/useMenuCardExportController.ts:343` |
+| Auto-picked state is visible on desktop and mobile | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:193`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:207`, `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:215`, `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:237` |
+| AI advisor receives deterministic baseline and business profile context | PASS | `src/hooks/useMenuCardExportController.ts:385`, `src/hooks/useMenuCardExportController.ts:388`, `src/lib/validation/apiSchemas.ts:436`, `src/app/api/menu-card-export/design-advisor/prompt.ts:17` |
+| Preflight exists before export | PASS | `src/lib/menu-card-export/preflight/runPrintPreflight.ts:13`, `src/hooks/useMenuCardExportController.ts:322`, `src/hooks/useMenuCardExportController.ts:466`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:315` |
+| PDF generation is client-side | PASS | `src/lib/menu-card-export/render/renderPdf.ts:579` |
+| PDF source reuses OBP brand color and store logo | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:40`, `src/lib/menu-card-export/source/buildPrintSource.ts:49`, `src/lib/menu-card-export/source/buildPrintSource.ts:116`, `src/lib/menu-card-export/source/buildPrintSource.ts:131` |
+| PDF source resolves business type/category from shared taxonomy | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:1`, `src/lib/menu-card-export/source/buildPrintSource.ts:117`, `src/lib/menu-card-export/source/buildPrintSource.ts:122`, `src/lib/menu-card-export/source/buildPrintSource.ts:134` |
+| Business print profiles cover food, service, retail, professional, and wellness output | PASS | `src/lib/menu-card-export/templates/businessPrintProfiles.ts:3`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:17`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:26`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:35`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:44`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:53` |
+| PDF renderer embeds logo and applies brand color | PASS | `src/lib/menu-card-export/render/renderPdf.ts:12`, `src/lib/menu-card-export/render/renderPdf.ts:78`, `src/lib/menu-card-export/render/renderPdf.ts:647`, `src/lib/menu-card-export/render/renderPdf.ts:652`, `src/lib/menu-card-export/render/renderPdf.ts:660` |
+| PDF physical output styling is renderer-owned | PASS | `src/lib/menu-card-export/render/renderPdf.ts:78`, `src/lib/menu-card-export/render/renderPdf.ts:95`, `src/lib/menu-card-export/render/renderPdf.ts:276`, `src/lib/menu-card-export/render/renderPdf.ts:298`, `src/lib/menu-card-export/render/renderPdf.ts:647` |
+| PDF header subtitle follows business profile | PASS | `src/lib/menu-card-export/render/renderPdf.ts:276`, `src/lib/menu-card-export/render/renderPdf.ts:283`, `src/lib/menu-card-export/render/renderPdf.ts:413`, `src/lib/menu-card-export/render/renderPdf.ts:432`, `src/lib/menu-card-export/render/renderPdf.ts:448` |
+| PDF font scale and currency formatting are renderer-owned | PASS | `src/lib/menu-card-export/render/renderPdf.ts:105`, `src/lib/menu-card-export/render/renderPdf.ts:127`, `src/lib/menu-card-export/render/renderPdf.ts:148`, `src/lib/menu-card-export/render/renderPdf.ts:276`, `src/lib/menu-card-export/render/renderPdf.ts:281` |
+| Print source carries store currency code fallback | PASS | `src/lib/menu-card-export/models/printModel.ts:62`, `src/lib/menu-card-export/models/printModel.ts:63`, `src/lib/menu-card-export/source/buildPrintSource.ts:152`, `src/lib/menu-card-export/source/buildPrintSource.ts:153` |
+| Brand/currency/business-profile changes invalidate local export reuse | PASS | `src/lib/menu-card-export/source/buildPrintSourceHash.ts:33`, `src/lib/menu-card-export/source/buildPrintSourceHash.ts:35`, `src/lib/menu-card-export/source/buildPrintSourceHash.ts:36`, `src/lib/menu-card-export/source/buildPrintSourceHash.ts:37`, `src/lib/menu-card-export/source/buildPrintSourceHash.ts:39` |
+| Brand/currency/physical/business-profile output regression guard exists | PASS | `scripts/verification/verify-menu-card-export.js:171`, `scripts/verification/verify-menu-card-export.js:223`, `scripts/verification/verify-menu-card-export.js:254`, `scripts/verification/verify-menu-card-export.js:268`, `scripts/verification/verify-menu-card-export.js:356` |
+| PDF metadata and deterministic filenames are set in browser | PASS | `src/lib/menu-card-export/render/artifactMetadata.ts:53`, `src/lib/menu-card-export/render/artifactMetadata.ts:60`, `src/lib/menu-card-export/render/artifactMetadata.ts:68`, `src/lib/menu-card-export/render/renderPdf.ts:643`, `src/lib/menu-card-export/render/renderPdf.ts:644` |
 | Print-shop packet is client-side ZIP | PASS | `src/lib/menu-card-export/printShop/buildPrintShopPacket.ts:16` |
-| Print-shop instructions include source summary and live menu destination | PASS | `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:26`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:37`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:39` |
+| Print-shop instructions and QR checklist follow business profile labels | PASS | `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:23`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:34`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:45`, `src/lib/menu-card-export/printShop/buildQrTestChecklist.ts:5`, `src/lib/menu-card-export/printShop/buildQrTestChecklist.ts:20` |
 | Real project file extraction shape is supported | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:48`, `src/lib/menu-card-export/source/buildPrintSource.ts:57` |
 | Local export history exists without Firestore | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:10`, `src/lib/menu-card-export/repository/menuCardExportRepository.ts:49` |
-| History flag controls local history UI/write path | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:208`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:401`, `scripts/verification/verify-menu-card-export.js:62` |
-| Print-shop flag controls preset visibility and stale state | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:74`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:379`, `src/app/api/menu-card-export/design-advisor/route.ts:194` |
+| History flag controls local history UI/write path | PASS | `src/hooks/useMenuCardExportController.ts:221`, `src/hooks/useMenuCardExportController.ts:484`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:351`, `scripts/verification/verify-menu-card-export.js:85` |
+| Print-shop flag controls preset visibility and stale state | PASS | `src/hooks/useMenuCardExportController.ts:80`, `src/hooks/useMenuCardExportController.ts:408`, `src/app/api/menu-card-export/design-advisor/route.ts:194` |
 | Unused placeholder modules removed before freeze | PASS | `src/lib/menu-card-export/index.ts:1`, `__docs__/menu-card-export/menu-card-export_impl.md:32` |
 | Use MenuList routes to Print Menu | PASS | `src/components/templates/main-app/useMenuList/index.tsx:251`, `src/components/templates/main-app/useMenuList/index.tsx:951` |
 | Share modal routes to Print Menu | PASS | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:250`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` |
-| Shared entry URL helper exists | PASS | `src/lib/menu-card-export/navigation.ts:1`, `scripts/verification/verify-menu-card-export.js:79` |
+| Shared entry URL helper exists | PASS | `src/lib/menu-card-export/navigation.ts:1`, `scripts/verification/verify-menu-card-export.js:105` |
+| Shared export controller exists | PASS | `src/hooks/useMenuCardExportController.ts:87`, `scripts/verification/verify-menu-card-export.js:63` |
+| Dashboard/mobile output parity is enforced | PASS | `src/hooks/useMenuCardExportController.ts:460`, `src/hooks/useMenuCardExportController.ts:473`, `src/hooks/useMenuCardExportController.ts:475`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:336`, `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:392`, `scripts/verification/verify-menu-card-export.js:111` |
+| Dedicated mobile Print Menu screen exists | PASS | `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:59`, `scripts/verification/verify-menu-card-export.js:83` |
 | Mobile Share routes to Print Menu | PASS | `src/components/mobile/screens/MobileShareScreen.tsx:461`, `src/components/mobile/screens/MobileShareScreen.tsx:889` |
 | Mobile Menu routes to Print Menu after pending-edit save | PASS | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/screens/MobileMenuScreen.tsx:3954` |
 | Mobile Menu command sheet exposes Print Menu | PASS | `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` |
 | More > Modules exposes Print Menu beside Dashboard | PASS | `src/components/mobile/screens/MobileMoreScreen.tsx:399`, `src/components/mobile/screens/MobileMoreScreen.tsx:442` |
-| Mobile shell does not absorb Print Menu route | PASS | `src/components/antdComponent/layoutWrapper/index.tsx:45`, `scripts/verification/verify-menu-card-export.js:71` |
-| Verification command added | PASS | `package.json:31`, `scripts/verification/verify-menu-card-export.js:238` |
+| Mobile shell does not absorb Print Menu route | PASS | `src/components/antdComponent/layoutWrapper/index.tsx:45`, `scripts/verification/verify-menu-card-export.js:97` |
+| Verification command added | PASS | `package.json:31`, `scripts/verification/verify-menu-card-export.js:299` |
 
 ---
 
@@ -52,9 +69,9 @@
 | Route-level workflow | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:317` |
 | Preset registry | PASS | `src/lib/menu-card-export/presets/presetRegistry.ts:15` |
 | Template registry | PASS | `src/lib/menu-card-export/templates/registry.ts:8` |
-| Print source builder | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:48`, `src/lib/menu-card-export/source/buildPrintSource.ts:72` |
-| Deterministic hash | PASS | `src/lib/menu-card-export/source/buildPrintSourceHash.ts:22` |
-| Renderer adapter boundary | PASS | `src/lib/menu-card-export/render/renderPdf.ts:186` |
+| Print source builder | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:70`, `src/lib/menu-card-export/source/buildPrintSource.ts:89` |
+| Deterministic hash | PASS | `src/lib/menu-card-export/source/buildPrintSourceHash.ts:24` |
+| Renderer adapter boundary | PASS | `src/lib/menu-card-export/render/renderPdf.ts:579` |
 
 ---
 
@@ -63,11 +80,14 @@
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | No export Firestore write | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:3`, `scripts/verification/verify-menu-card-export.js:63` |
-| No export-storage API route | PASS | `scripts/verification/verify-menu-card-export.js:182` |
+| No export-storage API route | PASS | `scripts/verification/verify-menu-card-export.js:243` |
 | No Storage upload | PASS | `src/lib/menu-card-export/repository/artifactStorage.ts:3`, `src/lib/menu-card-export/printShop/buildPrintShopPacket.ts:24` |
 | History is local only | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:3` |
-| Empty stores do not create a default menu | PASS | `src/database/projects/index.ts:1273`, `scripts/verification/verify-menu-card-export.js:67` |
-| Style/preset browsing does not re-read or write Firebase | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:235`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:239` |
+| Empty stores do not create a default menu | PASS | `src/database/projects/index.ts:1273`, `scripts/verification/verify-menu-card-export.js:79` |
+| Style/preset browsing does not re-read or write Firebase | PASS | `src/hooks/useMenuCardExportController.ts:336`, `src/hooks/useMenuCardExportController.ts:343`, `src/hooks/useMenuCardExportController.ts:348`, `src/hooks/useMenuCardExportController.ts:353` |
+| Logo embedding is final-render only and cached in memory | PASS | `src/lib/menu-card-export/render/renderPdf.ts:12`, `src/lib/menu-card-export/render/renderPdf.ts:152`, `src/lib/menu-card-export/render/renderPdf.ts:156`, `src/lib/menu-card-export/render/renderPdf.ts:160`, `src/lib/menu-card-export/render/renderPdf.ts:660` |
+| Business profile selection reuses loaded store context only | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:117`, `src/lib/menu-card-export/source/buildPrintSource.ts:119`, `src/lib/menu-card-export/source/buildPrintSource.ts:122`, `src/lib/menu-card-export/render/renderPdf.ts:647` |
+| Auto print design uses loaded browser source only | PASS | `src/lib/menu-card-export/templates/autoPrintDesign.ts:12`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:31`, `src/hooks/useMenuCardExportController.ts:262`, `src/hooks/useMenuCardExportController.ts:293` |
 | Non-Pro/Premium suggestions avoid provider cost | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176` |
 | AI credits are not consumed before validated recommendation | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:183`, `src/app/api/menu-card-export/design-advisor/route.ts:205`, `src/app/api/menu-card-export/design-advisor/route.ts:235` |
 
@@ -78,10 +98,18 @@
 | Command | Result |
 | --- | --- |
 | `npm run verify:menu-card-export` | PASS |
+| Static dashboard/mobile output parity guard | PASS |
+| Direct OBP brand/currency source/hash smoke with `ts-node` | PASS |
+| Direct rendered INR price text smoke with `ts-node` | PASS |
+| Direct business-type source/hash smoke with `ts-node` | PASS |
+| Direct service-list PDF and print-shop text smoke with `ts-node` | PASS |
+| Direct auto-design food/service/retail smoke with `ts-node` | PASS |
 | `npx next lint --file ...` focused touched-file lint | PASS |
+| Focused `npx eslint ...` for auto-design/controller/UI/schema/prompt/verifier | PASS |
 | `npx tsc --noEmit --incremental false` | PASS |
 | `git diff --check -- ...` touched files | PASS |
-| Local unauthenticated route smoke | BLOCKED by app-level Next dev runtime issue also affecting `/use-menulist` |
+| Local unauthenticated route HTTP smoke | PASS. `curl -I http://localhost:3000/use-menulist/menu-card-export` returned `200 OK` and HTML included the menu-card-export page chunk. |
+| In-app browser visual smoke | BLOCKED by local Browser webview attach timeout; no feature-specific runtime error was observed in HTTP smoke. |
 
 ---
 
@@ -111,23 +139,29 @@ QA fixes found and completed before marking ready:
 - Real menu data may store items under `project.files[].extractedData.data`; the print source now normalizes top-level and file-based shapes before sanitizing.
 - JSZip is given the rendered PDF as an `ArrayBuffer`, making packet generation reliable in runtime validation.
 
-Browser smoke:
+Browser and route smoke:
 
-- June 2, 2026 local unauthenticated `curl` smoke starts compilation but returns 500 before route render because the dev server hits an app-level webpack runtime issue in shared `(main)` layout/auth/Sentry chunks. The same failure affects `/use-menulist`, so it is not specific to Menu Card Export mobile entry links.
+- June 2, 2026 local unauthenticated HTTP smoke returned `200 OK` for `/use-menulist/menu-card-export`, with the route HTML loading the menu-card-export page chunk.
+- In-app browser visual inspection could not be captured because the local Browser webview did not attach during two attempts.
 - Real authenticated data/runtime PDF and ZIP generation passed separately against the demo multi-project account.
 
 Freeze hardening completed on June 2, 2026:
 
 - History feature flag now controls the local history UI, matching-export notice, and browser history write path.
 - Print-shop feature flag now hides the packet preset and blocks stale flagged state from creating packets.
-- Mobile shell routing guard keeps the responsive export route from being replaced by the generic Mobile Share tab.
+- Mobile shell routing guard keeps the Print Menu route from being replaced by the generic Mobile Share tab, and the route now branches to a dedicated mobile Print Menu screen on handheld devices.
 - Mobile Share, Mobile Menu command sheet, and More > Modules now route through the same Print Menu URL helper.
 - Mobile Menu saves pending local edits before opening Print Menu.
+- Dashboard and mobile output buttons now have an automated guard proving both call the same controller output action, with no direct renderer/source/history calls inside either UI surface.
+- Branded output now reuses the store logo and OBP `publicPresence.accentColor`, with logo conversion cached by URL during the route session.
+- Business-type output now uses the existing store business type/category to choose menu, services, or catalog labels and visual tone without adding an owner setting or Firebase cost.
+- Auto print design now chooses the starting style, density, descriptions, QR, and contact block from business type and menu shape before any paid AI/provider path.
+- Pro/Premium layout suggestion now receives the deterministic auto-design baseline and business profile, so it can refine only when warnings or content shape justify a safer choice.
 
 ---
 
 ## Final Verdict
 
-Ready for production release from code, cost, route, real-data runtime, and artifact validation. Current local unauthenticated dev smoke is blocked by a shared Next dev runtime issue outside the Menu Card Export route.
+Ready for production release from code, cost, route, real-data runtime, and artifact validation. Local unauthenticated HTTP smoke returns `200 OK`; only visual browser automation was blocked by the local Browser webview attach issue.
 
-The implementation delivers the route, preview, preflight, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Premium layout suggestion, and verification without adding export artifact Firebase write cost.
+The implementation delivers the route, preview, preflight, auto-picked print design, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Premium layout suggestion, and verification without adding export artifact Firebase write cost.

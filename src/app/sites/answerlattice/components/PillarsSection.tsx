@@ -10,7 +10,7 @@ export default function PillarsSection() {
                     className="mb-16"
                     eyebrow="Behind the scenes"
                     title="What happens behind the scenes."
-                    description="Answerlattice knows your product structure, serves approved answers before fallback, flags stale guidance, and turns repeated misses into review tasks."
+                    description="AnswerLattice knows your product structure, serves approved answers before fallback, flags stale guidance, and turns repeated misses into review tasks."
                 />
 
                 <AnswerlatticeSequenceDiagram

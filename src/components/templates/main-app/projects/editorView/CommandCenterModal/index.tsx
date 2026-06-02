@@ -96,6 +96,7 @@ export default function CommandCenterModal({
 }: CommandCenterModalProps) {
     const { token } = theme.useToken();
     const activeLang = getProjectDefaultLanguage(projectData);
+    const currencySymbol = storeDetails?.currencySymbol || '₹';
 
     // ─── Selection state ───
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -691,6 +692,7 @@ export default function CommandCenterModal({
                         selectedIds={selectedIds}
                         onSelectionChange={setSelectedIds}
                         summary={summary}
+                        currencySymbol={currencySymbol}
                     />
                 </Panel>
 
@@ -714,6 +716,7 @@ export default function CommandCenterModal({
                             onBack={handleBack}
                             selectedItems={selectedItems}
                             projectData={internalProject}
+                            currencySymbol={currencySymbol}
                             hasSelection={selectedIds.size > 0}
                             repairSummary={repairSummary}
                             repairLanguageIssues={repairLanguageIssues}
@@ -746,6 +749,7 @@ export default function CommandCenterModal({
                         availabilityPreview={availabilityPreview}
                         moveCategoryPreview={moveCategoryPreview}
                         activeInactivePreview={activeInactivePreview}
+                        currencySymbol={currencySymbol}
                         repairSummary={repairSummary}
                         textCasePreview={textCasePreview}
                         lastApplyMessage={lastApplyMessage}

@@ -1,8 +1,8 @@
 # Ops Alerting Delivery — Implementation Blueprint
 
-**Status:** ✅ IMPLEMENTED — Feature flag OFF by default  
+**Status:** ✅ IMPLEMENTED — Ops alerts plus platform notification dashboard
 **Created:** February 20, 2026  
-**Last Updated:** February 20, 2026  
+**Last Updated:** June 2, 2026
 **Audience:** Developers
 
 ---
@@ -12,12 +12,105 @@
 ```
 createAlert() [EXISTING in alerts.ts]
   └─→ Write alert to systemAlerts collection [EXISTING]
-  └─→ NEW: sendTelegramAlert(alert)
+  └─→ Check deploy mute window
+  └─→ sendTelegramAlert(alert)
       ├─ Check ENABLE_OPS_ALERTS flag
-      ├─ Check deploy mute window
       ├─ Format message (severity + title + details)
       └─ HTTP POST to Telegram Bot API
+  └─→ sendPlatformAlertDelivery(alert)
+      ├─ Classify alert by metadata.platformTriggerType or registry fallback
+      ├─ Send email when trigger defaults include email
+      └─ Send WhatsApp template/text when trigger defaults include whatsapp_web
 ```
+
+## Current Platform Notification Layer
+
+Platform notifications are internal founder/operator alerts, separate from owner notifications and customer-facing messages.
+
+### Trigger Registry
+
+`src/data/shared/platformNotificationRegistry.ts` defines the platform-owner trigger catalog:
+
+- Cost: SAFE_MODE activated/deactivated and GCP budget alerts.
+- Public output: public menu, OBP, and publish verification failures.
+- Schedulers: scheduler failure, missing dead-man signals, and unresolved critical alerts.
+- Payments: webhook failures and payment/subscription state mismatches.
+- Owner notification delivery: owner notification failure plus email/WhatsApp provider failures.
+- Security: critical tenant isolation, auth, webhook signature, or abuse events.
+- AI/extraction: AI cost runaway, accounting failure, extraction spikes, stuck jobs, and WhatsApp onboarding queue stalls.
+- POS: repeated sync or connector delivery failure.
+- Answerlattice: widget/runtime failure, critical coverage gaps, and integration delivery failure.
+- Manual/system: manual platform alerts and unclassified legacy alerts.
+
+The file is mirrored to `functions/src/sharedData/platformNotificationRegistry.ts` for future Cloud Functions emitters. App-side emitters can already attach `metadata.platformTriggerType`, `metadata.productId`, and `metadata.category` through `src/lib/ops/alerts.ts`.
+
+### Dashboard
+
+`/ops/platform-notifications` is platform-role only and uses `src/app/api/ops/platform-notifications/route.ts`.
+
+Capabilities:
+
+- Manual refresh, no realtime listener.
+- Filters by active/acknowledged/all, severity, and trigger type.
+- Detail drawer for runbook, channels, metadata preview, scope, and status.
+- Acknowledge button writes `acknowledged`, `acknowledgedAt`, and `acknowledgedBy`.
+- Email and WhatsApp Web buttons open a prefilled message for manual sending.
+- Record Manual marks `actionTaken` and stores masked handoff metadata on the alert document.
+- Manual Alert can create a classified alert for operator-created incidents.
+
+### SAFE_MODE Wiring
+
+`POST /api/ops/safe-mode` now writes a classified platform notification after successful SAFE_MODE activation or deactivation:
+
+- `SAFE_MODE_ACTIVATED` is critical, product `PLATFORM`, category `cost`.
+- `SAFE_MODE_DEACTIVATED` is warning, product `PLATFORM`, category `cost`.
+
+The route is rate limited and remains protected by `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`.
+
+## Automatic Platform Email/WhatsApp Delivery
+
+Platform-owner delivery now runs from both alert helpers:
+
+- App-side alerts use `src/lib/ops/platformNotificationDelivery.ts`.
+- Cloud Functions alerts use `functions/src/monitoring/platformNotificationDelivery.ts`.
+- Both helpers resolve trigger metadata from `metadata.platformTriggerType`, `metadata.productId`, and `metadata.category`.
+- Unknown legacy alerts stay visible in `systemAlerts` but are not automatically sent to Email/WhatsApp.
+- `metadata.platformDeliverySuppressed: true` keeps low-value events, such as scheduler heartbeats, out of automatic delivery while preserving the alert record when needed.
+
+Required runtime configuration:
+
+| Purpose | Variable |
+|---------|----------|
+| Platform email recipient | `PLATFORM_ALERT_EMAIL_TO` or `INTERNAL_NOTIFICATION_EMAIL` |
+| Platform WhatsApp recipient | `PLATFORM_ALERT_WHATSAPP_TO` or `INTERNAL_NOTIFICATION_WHATSAPP` |
+| WhatsApp template delivery | `PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME` and optional `PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE` |
+| Session text fallback | `PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE=true` |
+| SMTP provider | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` |
+| WhatsApp provider | Existing WhatsApp secrets in `SECRET_GROUPS.WHATSAPP_OUTBOUND` |
+
+Feature flags:
+
+- App: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
+- Functions: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
+
+Deployment note: `functions/src/config/secrets.ts` keeps `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` limited to deploy-safe WhatsApp secrets until Telegram/SMTP Secret Manager values exist in `ecomsai`. Functions Email delivery is implemented and runtime-gated, but it requires the SMTP secrets to be created and added to the platform delivery secret group before production Functions can send email automatically.
+
+Before production launch, complete [Step 7B in the Launch Prerequisites guide](../production-readiness/launch-prerequisites.md#step-7b-platform-alert-emailwhatsapp-go-live-checklist-10-minutes): set the missing Secret Manager values, platform recipient envs, WhatsApp template/session config, redeploy the affected Functions, and verify dashboard, Email, WhatsApp, and manual fallback delivery.
+
+## Direct Trigger Wiring
+
+The registry is wired into the main platform alert emitters so the dashboard and automatic delivery no longer depend only on title/message heuristics:
+
+- SAFE_MODE activation/deactivation.
+- Razorpay payment/subscription failures and webhook processing failures.
+- SMTP/email provider failures.
+- Owner notification delivery failures.
+- Publish verification failures.
+- Extraction stuck jobs and extraction failure spikes.
+- WhatsApp onboarding health failures and AI cost warnings.
+- MenuList maintenance scheduler failures and unresolved critical alert escalation.
+- Decision Blocks scheduler failure runs, with successful hourly heartbeats suppressed from automatic delivery.
+- GCP budget webhook alerts.
 
 ## Telegram Bot Setup (Prerequisites)
 

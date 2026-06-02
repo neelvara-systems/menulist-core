@@ -174,7 +174,7 @@ export default function ProductCapabilityLandingPage({
                                     <div className="mb-6 flex items-center gap-3">
                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-800 text-sm font-bold text-white">C</div>
                                         <div>
-                                            <div className="text-sm font-bold text-white">Answerlattice</div>
+                                            <div className="text-sm font-bold text-white">AnswerLattice</div>
                                             <div className="text-xs text-[#8f8faa]">Workspace</div>
                                         </div>
                                     </div>

@@ -15,6 +15,19 @@ import { LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, Lu
 import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
 type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
+type AntThemeToken = ReturnType<typeof theme.useToken>['token'];
+
+// Social platform colors are brand cues; surrounding dashboard chrome uses Ant tokens.
+const SOCIAL_BRAND_COLORS = {
+    facebook: '#0051d1',
+    instagram: '#ec4899',
+} as const;
+
+const getSectionDividerStyle = (token: AntThemeToken) => ({
+    borderTop: `1px solid ${token.colorBorderSecondary}`,
+    marginTop: 12,
+    paddingTop: 12,
+});
 
 interface MobileOBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -23,19 +36,19 @@ interface MobileOBPMetricsCardProps {
     mode: OBPCardMode;
 }
 
-function renderActionRows(actions: OBPActionBreakdown) {
+function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken) {
     const rows = [
-        { key: 'call', label: 'Call', value: actions.call, icon: <LuPhone color="#16a34a" size={14} /> },
-        { key: 'whatsapp', label: 'WhatsApp', value: actions.whatsapp, icon: <LuMessageSquare color="#16a34a" size={14} /> },
-        { key: 'directions', label: 'Directions', value: actions.directions, icon: <LuMapPin color="#f59e0b" size={14} /> },
-        { key: 'reserve', label: 'Reserve', value: actions.reserve, icon: <LuMessageSquare color="#7c3aed" size={14} /> },
-        { key: 'order', label: 'Order', value: actions.order, icon: <LuExternalLink color="#1d4ed8" size={14} /> },
+        { key: 'call', label: 'Call', value: actions.call, icon: <LuPhone color={token.colorSuccess} size={14} /> },
+        { key: 'whatsapp', label: 'WhatsApp', value: actions.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
+        { key: 'directions', label: 'Directions', value: actions.directions, icon: <LuMapPin color={token.colorWarning} size={14} /> },
+        { key: 'reserve', label: 'Reserve', value: actions.reserve, icon: <LuMessageSquare color={token.colorPrimary} size={14} /> },
+        { key: 'order', label: 'Order', value: actions.order, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                 Action breakdown
             </Text>
@@ -54,17 +67,17 @@ function renderActionRows(actions: OBPActionBreakdown) {
     );
 }
 
-function renderShareRows(shares: OBPShareBreakdown) {
+function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken) {
     const rows = [
-        { key: 'whatsapp', label: 'WhatsApp shares', value: shares.whatsapp, icon: <LuMessageSquare color="#16a34a" size={14} /> },
-        { key: 'copy_link', label: 'Copy link', value: shares.copy_link, icon: <LuExternalLink color="#1d4ed8" size={14} /> },
-        { key: 'copy_message', label: 'Copy message', value: shares.copy_message, icon: <LuExternalLink color="#7c3aed" size={14} /> },
+        { key: 'whatsapp', label: 'WhatsApp shares', value: shares.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
+        { key: 'copy_link', label: 'Copy link', value: shares.copy_link, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
+        { key: 'copy_message', label: 'Copy message', value: shares.copy_message, icon: <LuExternalLink color={token.colorPrimary} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                 Share breakdown
             </Text>
@@ -83,18 +96,18 @@ function renderShareRows(shares: OBPShareBreakdown) {
     );
 }
 
-function renderLinkRows(links: OBPLinkBreakdown) {
+function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken) {
     const rows = [
-        { key: 'google_review', label: 'Google reviews', value: links.google_review, icon: <LuGlobe color="#1d4ed8" size={14} /> },
-        { key: 'instagram', label: 'Instagram', value: links.instagram, icon: <LuExternalLink color="#ec4899" size={14} /> },
-        { key: 'facebook', label: 'Facebook', value: links.facebook, icon: <LuExternalLink color="#0051d1" size={14} /> },
-        { key: 'website', label: 'Website', value: links.website, icon: <LuExternalLink color="#27a8e3" size={14} /> },
+        { key: 'google_review', label: 'Google reviews', value: links.google_review, icon: <LuGlobe color={token.colorInfo} size={14} /> },
+        { key: 'instagram', label: 'Instagram', value: links.instagram, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.instagram} size={14} /> },
+        { key: 'facebook', label: 'Facebook', value: links.facebook, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.facebook} size={14} /> },
+        { key: 'website', label: 'Website', value: links.website, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                 Link taps
             </Text>
@@ -113,14 +126,14 @@ function renderLinkRows(links: OBPLinkBreakdown) {
     );
 }
 
-function renderSourceRows(sources?: OBPSourceBreakdown[]) {
+function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntThemeToken) {
     const rows = (sources || []).filter((source) => (
         source.views > 0 || source.actionClicks > 0 || source.menuClicks > 0 || source.linkClicks > 0
     ));
     if (rows.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                 Visitor sources
             </Text>
@@ -141,14 +154,14 @@ function renderSourceRows(sources?: OBPSourceBreakdown[]) {
     );
 }
 
-function renderLanguageRows(languages?: OBPLanguageUsage[]) {
+function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: AntThemeToken) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
     ));
     if (rows.length === 0) return null;
 
     return (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                 OBP languages
             </Text>
@@ -167,27 +180,27 @@ function renderLanguageRows(languages?: OBPLanguageUsage[]) {
     );
 }
 
-function renderMetricCards(metrics: OBPPeriodMetrics) {
+function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken) {
     return (
         <>
             <Flex gap={12} wrap>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuGlobe color="#1d4ed8" size={14} />
+                        <LuGlobe color={token.colorInfo} size={14} />
                         <Text type="secondary">Page Views</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.views.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuExternalLink color="#0ea5e9" size={14} />
+                        <LuExternalLink color={token.colorPrimary} size={14} />
                         <Text type="secondary">View Menu Clicks</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.menuClicks.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuTrendingUp color="#16a34a" size={14} />
+                        <LuTrendingUp color={token.colorSuccess} size={14} />
                         <Text type="secondary">Actions</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.actionClicks.toLocaleString()}</Title>
@@ -198,18 +211,18 @@ function renderMetricCards(metrics: OBPPeriodMetrics) {
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuExternalLink color="#27a8e3" size={14} />
+                        <LuExternalLink color={token.colorInfo} size={14} />
                         <Text type="secondary">Link Taps</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.linkClicks.toLocaleString()}</Title>
                 </Card>
             </Flex>
 
-            {renderActionRows(metrics.actions)}
-            {renderLinkRows(metrics.links)}
-            {renderShareRows(metrics.shareMethods)}
-            {renderSourceRows(metrics.sources)}
-            {renderLanguageRows(metrics.topLanguages)}
+            {renderActionRows(metrics.actions, token)}
+            {renderLinkRows(metrics.links, token)}
+            {renderShareRows(metrics.shareMethods, token)}
+            {renderSourceRows(metrics.sources, token)}
+            {renderLanguageRows(metrics.topLanguages, token)}
         </>
     );
 }
@@ -282,7 +295,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     </Flex>
                 )}
             >
-                {today ? renderMetricCards(today) : (
+                {today ? renderMetricCards(today, token) : (
                     <Text type="secondary">No OBP activity yet today.</Text>
                 )}
             </Card>
@@ -306,7 +319,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 size="small"
                 title={(
                     <Flex align="center" gap={8}>
-                        <LuGlobe color="#1d4ed8" size={16} />
+                        <LuGlobe color={token.colorInfo} size={16} />
                         <Text strong>{title}</Text>
                     </Flex>
                 )}
@@ -342,7 +355,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
             title={(
                 <Flex align="center" justify="space-between">
                     <Flex align="center" gap={8}>
-                        <LuGlobe color="#1d4ed8" size={16} />
+                        <LuGlobe color={token.colorInfo} size={16} />
                         <Text strong>{title}</Text>
                     </Flex>
                     <Flex align="center" gap={8}>
@@ -365,29 +378,29 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
                                 Last 7 Days
                             </Text>
-                            {renderMetricCards(overview.wtd)}
+                            {renderMetricCards(overview.wtd, token)}
                         </>
                     ) : (
                         <Text type="secondary">No settled OBP activity yet.</Text>
                     )}
 
                     {overview?.mtd ? (
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                        <div style={getSectionDividerStyle(token)}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                                 {overview.mtd.monthName}
                             </Text>
-                            {renderMetricCards(overview.mtd)}
+                            {renderMetricCards(overview.mtd, token)}
                         </div>
                     ) : null}
                 </>
             ) : selectedMetrics ? (
-                renderMetricCards(selectedMetrics)
+                renderMetricCards(selectedMetrics, token)
             ) : (
                 <Text type="secondary">No settled OBP activity yet for this period.</Text>
             )}
 
             {mode === 'overall' && overall ? (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={getSectionDividerStyle(token)}>
                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
                         {`Lifetime: ${overall.lifetimeViews.toLocaleString()} views, ${overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, ${overall.lifetimeActionClicks.toLocaleString()} actions, ${overall.lifetimeLinkClicks.toLocaleString()} link taps, ${overall.lifetimeShares.toLocaleString()} shares`}
                     </Text>
@@ -396,11 +409,11 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                             {`Since ${overall.firstDataDate}`}
                         </Text>
                     ) : null}
-                    {renderActionRows(overall.lifetimeActions)}
-                    {renderLinkRows(overall.lifetimeLinks)}
-                    {renderShareRows(overall.lifetimeShareMethods)}
-                    {renderSourceRows(overall.lifetimeSources)}
-                    {renderLanguageRows(overall.lifetimeLanguages)}
+                    {renderActionRows(overall.lifetimeActions, token)}
+                    {renderLinkRows(overall.lifetimeLinks, token)}
+                    {renderShareRows(overall.lifetimeShareMethods, token)}
+                    {renderSourceRows(overall.lifetimeSources, token)}
+                    {renderLanguageRows(overall.lifetimeLanguages, token)}
                 </div>
             ) : null}
         </Card>

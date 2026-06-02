@@ -1,8 +1,8 @@
 'use client';
 
-import { LinkOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { Button, List, Modal, Space, Steps, Tabs, Typography } from 'antd';
 import React from 'react';
+import { LuExternalLink, LuHelpCircle } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
 const { Step } = Steps;
@@ -175,59 +175,59 @@ const CompleteGuide = () => (
 
         <Title level={5} style={{ marginTop: '16px' }}>Google Analytics</Title>
         <Space direction="vertical">
-            <Button type="link" icon={<LinkOutlined />} href="https://support.google.com/analytics" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://support.google.com/analytics" target="_blank" rel="noopener noreferrer">
                 Google Analytics Help Center
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://analytics.google.com/analytics/academy" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://analytics.google.com/analytics/academy" target="_blank" rel="noopener noreferrer">
                 Analytics Academy (Free Courses)
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://support.google.com/analytics/answer/9304153" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://support.google.com/analytics/answer/9304153" target="_blank" rel="noopener noreferrer">
                 E-commerce Tracking Guide
             </Button>
         </Space>
 
         <Title level={5} style={{ marginTop: '16px' }}>Google Search Console</Title>
         <Space direction="vertical">
-            <Button type="link" icon={<LinkOutlined />} href="https://support.google.com/webmasters" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://support.google.com/webmasters" target="_blank" rel="noopener noreferrer">
                 Search Console Help Center
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://developers.google.com/search/docs" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://developers.google.com/search/docs" target="_blank" rel="noopener noreferrer">
                 SEO Best Practices Guide
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://support.google.com/webmasters/answer/9128668" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://support.google.com/webmasters/answer/9128668" target="_blank" rel="noopener noreferrer">
                 Performance Report Guide
             </Button>
         </Space>
 
         <Title level={5} style={{ marginTop: '16px' }}>Facebook Pixel</Title>
         <Space direction="vertical">
-            <Button type="link" icon={<LinkOutlined />} href="https://www.facebook.com/business/help/952192354843755" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://www.facebook.com/business/help/952192354843755" target="_blank" rel="noopener noreferrer">
                 Facebook Pixel Setup Guide
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://www.facebook.com/business/help/402791146561655" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://www.facebook.com/business/help/402791146561655" target="_blank" rel="noopener noreferrer">
                 Events Manager Guide
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://www.facebook.com/business/help/1021909254506499" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://www.facebook.com/business/help/1021909254506499" target="_blank" rel="noopener noreferrer">
                 Conversion Tracking Guide
             </Button>
         </Space>
 
         <Title level={5} style={{ marginTop: '16px' }}>Enhanced E-commerce</Title>
         <Space direction="vertical">
-            <Button type="link" icon={<LinkOutlined />} href="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" target="_blank" rel="noopener noreferrer">
                 GA4 E-commerce Implementation
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://support.google.com/analytics/answer/9268036" target="_blank" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://support.google.com/analytics/answer/9268036" target="_blank" rel="noopener noreferrer">
                 E-commerce Reports Guide
             </Button>
         </Space>
 
         <Title level={5} style={{ marginTop: '16px' }}>MenuListAI Support</Title>
         <Space direction="vertical">
-            <Button type="link" icon={<LinkOutlined />} href="mailto:support@menulistai.com" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="mailto:support@menulistai.com" rel="noopener noreferrer">
                 Contact Support Team
             </Button>
-            <Button type="link" icon={<LinkOutlined />} href="https://docs.menulistai.com/analytics" rel="noopener noreferrer">
+            <Button type="link" icon={<LuExternalLink />} href="https://docs.menulistai.com/analytics" rel="noopener noreferrer">
                 MenuListAI Analytics Docs
             </Button>
         </Space>
@@ -239,7 +239,7 @@ const AnalyticsGuideModal: React.FC<AnalyticsGuideModalProps> = ({ open, onClose
         <Modal
             title={
                 <Space>
-                    <QuestionCircleOutlined />
+                    <LuHelpCircle />
                     <span>Analytics Guide</span>
                 </Space>
             }

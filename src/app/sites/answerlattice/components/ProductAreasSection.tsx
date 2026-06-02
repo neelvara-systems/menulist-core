@@ -15,7 +15,7 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
         <section className="border-t border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="What Answerlattice gives you"
+                    eyebrow="What AnswerLattice gives you"
                     title="Support for the parts founders actually need first."
                     description="Start with setup, add the widget, publish help, and review missing answers. The deeper control-plane language stays available after the value is clear."
                 />

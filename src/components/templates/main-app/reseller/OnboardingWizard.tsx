@@ -2,6 +2,7 @@
 
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@constant/common";
+import { formatInrPaise } from "@util/formatters";
 import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -124,13 +125,13 @@ function OnboardingWizard() {
         if (!selectedTier) return '';
         if (paymentMode === 'offline' && commitmentMonths) {
             const total = calculateOfflineAmount(selectedTier.id, commitmentMonths, locationCount);
-            return `₹${(total / 100).toLocaleString()} one-time prepaid (${commitmentMonths} months, ${locationCount} location${locationCount > 1 ? 's' : ''})`;
+            return `${formatInrPaise(total)} one-time prepaid (${commitmentMonths} months, ${locationCount} location${locationCount > 1 ? 's' : ''})`;
         }
         const quantitySuffix = locationCount > 1 ? ` × ${locationCount} locations` : '';
         if (billingInterval === 'YEAR') {
-            return `₹${((selectedTier.yearlyPriceINR * locationCount) / 100).toLocaleString()}/year (recurring${quantitySuffix})`;
+            return `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year (recurring${quantitySuffix})`;
         }
-        return `₹${((selectedTier.monthlyPriceINR * locationCount) / 100).toLocaleString()}/month (recurring${quantitySuffix})`;
+        return `${formatInrPaise(selectedTier.monthlyPriceINR * locationCount)}/month (recurring${quantitySuffix})`;
     };
 
     // Step 1: Business Details
@@ -165,7 +166,7 @@ function OnboardingWizard() {
                                 <Radio.Button value={tier.id} style={{ width: '100%', height: 'auto', padding: 16, textAlign: 'center' }}>
                                     <Flex vertical align="center" gap={4}>
                                         <Text strong>{tier.name}</Text>
-                                        <Text>₹{(tier.monthlyPriceINR / 100).toLocaleString()}/mo</Text>
+                                        <Text>{formatInrPaise(tier.monthlyPriceINR)}/mo</Text>
                                         <Text type="secondary" style={{ fontSize: 12 }}>{tier.description}</Text>
                                     </Flex>
                                 </Radio.Button>

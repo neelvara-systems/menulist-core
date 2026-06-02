@@ -178,6 +178,29 @@ export const POST = withAuth(async (request, session) => {
             userId: session.user.id,
             remainingCredits
         });
+
+        if (!isAnswerlatticeBillingProduct(productId)) {
+            try {
+                const { sendLifecycleMessage } = await import('@lib/messaging');
+                sendLifecycleMessage({
+                    storeId: String(internalSub.storeId),
+                    tenantId: String(internalSub.tenantId),
+                    eventType: 'SUBSCRIPTION_UPGRADED',
+                    referenceId: `subscription-upgraded-${oldSubscriptionId}-${newSubscriptionId}`,
+                    recipientEmail: internalSub.email || session.user.email || '',
+                    storeName: internalSub.name || '',
+                    metadata: {
+                        amount: internalSub.amount,
+                        currency: internalSub.currency || 'INR',
+                        planName: internalSub.planName || 'Subscription',
+                        newSubscriptionId,
+                        remainingCredits,
+                        sentAt: new Date().toISOString(),
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+        }
+
         return NextResponse.json({ success: true, message: "Subscription upgraded successfully." });
     } catch (error) {
         logger.error('Subscription upgrade failed', error, {

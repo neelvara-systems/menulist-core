@@ -6,6 +6,10 @@
  */
 
 import { Timestamp } from "firebase-admin/firestore";
+import type {
+    MenuExtractionDestinationType,
+    MenuExtractionJobDestination,
+} from "../sharedData/menuExtractionJob";
 import { FileMessage } from "./fileMessages.types";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -24,6 +28,8 @@ export const MENU_PROCESSING_STATUS = {
 
 export type MenuProcessingStatusType =
     (typeof MENU_PROCESSING_STATUS)[keyof typeof MENU_PROCESSING_STATUS];
+
+export type { MenuExtractionJobDestination };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JOB DOCUMENT
@@ -72,6 +78,10 @@ export interface MenuImageProcessingJob {
     forceReview?: boolean;
     /** Optional source marker for cross-flow diagnostics. */
     source?: string;
+    /** Server-owned destination for the extracted output. */
+    destination?: MenuExtractionJobDestination;
+    /** Denormalized destination label for ops dashboards and cheap filtering. */
+    destinationType?: MenuExtractionDestinationType;
     /** Optional source metadata for importer/audit flows. */
     sourceMetadata?: {
         acquisitionProvider?: string;
@@ -188,6 +198,7 @@ export interface MenuImageProcessingJob {
         transactionId: string;
         totalCredits: number;
         totalCharge: number;
+        unitsConsumed?: number;
         tokenUsage: {
             promptTokenCount: number;
             candidatesTokenCount: number;

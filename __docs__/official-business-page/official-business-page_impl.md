@@ -350,7 +350,7 @@ Primary implementation files:
 
 ## 11. Schema.org Structured Data
 
-**Updated May 9, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts`, resolves `businessCategory` from `src/data/shared/businessTypes.ts`, and only emits a public catalog link when OBP has an active published project.
+**Updated June 2, 2026** — Schema remains focused on visible public business facts. OBP uses shared utilities from `src/lib/schema/index.ts`, resolves `businessCategory` from `src/data/shared/businessTypes.ts`, and only emits a public catalog link when OBP has an active published project. OBP runtime no longer emits generated hidden FAQPage JSON-LD; FAQ schema is reserved for pages where FAQ content is visibly rendered and reviewed as useful content.
 
 ```typescript
 // src/app/client/obp/schema.ts — uses shared utilities
@@ -406,7 +406,15 @@ The runtime implementation also accepts the resolved render language so localize
 - `buildPaymentAccepted()` — paymentAccepted from businessAttributes (Cash, Credit Card, UPI)
 - `acceptsReservations` — Reservation URL (per schema.org spec: Boolean | Text | URL)
 
+**Public truth indexing gate** (`src/lib/seo/publicTruthIndexing.ts`):
+
+- OBP metadata uses `index, follow` only when the public page has identity plus enough visible business facts.
+- Expired starter, blocked, inactive, weak, or incomplete public records receive `noindex, follow`.
+- Per-tenant sitemap output includes OBP roots only after the same public-facts gate passes.
+- This prevents empty or weak business records from being advertised as search-discovery pages.
+
 **@see** `__docs__/discovery-infrastructure/` for full SEO/AEO strategy
+**@see** `__docs__/discovery-infrastructure/public-truth-indexing-policy.md` for sitemap and metadata gate rules
 **@see** `__docs__/business-truth-graph/` for BTG layer context
 
 ---

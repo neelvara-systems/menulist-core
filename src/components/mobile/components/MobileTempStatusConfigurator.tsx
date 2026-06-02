@@ -1,8 +1,9 @@
 'use client'
 
 import { theme } from 'antd';
-import dayjs from 'dayjs';
+import { useFormatter } from 'next-intl';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
+import { formatDateTime, toNativeDateTimeInputValue } from '@util/dateTime';
 import { Button, Card, Flex, Input, Tag, Text } from '../antd';
 
 export type TempStatusOption = {
@@ -38,13 +39,13 @@ export const MOBILE_TEMP_STATUS_EXPIRY_OPTIONS: TempStatusExpiryOption[] = [
 export function getDefaultTempStatusDateTime(hoursFromNow: number): string {
     const date = new Date(Date.now() + (hoursFromNow * 60 * 60 * 1000));
     date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0);
-    return date.toISOString().slice(0, 16);
+    return toNativeDateTimeInputValue(date);
 }
 
 function getMinTempStatusDateTime(): string {
     const date = new Date();
     date.setMinutes(Math.ceil(date.getMinutes() / 15) * 15, 0, 0);
-    return date.toISOString().slice(0, 16);
+    return toNativeDateTimeInputValue(date);
 }
 
 type ActiveStatus = {
@@ -121,6 +122,7 @@ export default function MobileTempStatusConfigurator({
     expiryOptions = MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
 }: MobileTempStatusConfiguratorProps) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const minExpiryAt = getMinTempStatusDateTime();
     const activeCardStyle = activeCardVariant === 'warning'
         ? {
@@ -148,7 +150,7 @@ export default function MobileTempStatusConfigurator({
                         <Text strong>{`${statusOptions.find((option) => option.value === currentStatus.type)?.icon || 'ℹ️'} ${currentStatus.message || 'Temporary notice'}`}</Text>
                         <Flex align="center" gap={6}>
                             <LuClock color={token.colorWarningText} size={12} />
-                            <Text type="secondary">{`${expiresLabel} ${dayjs(currentStatus.expiresAt).format('MMM D, h:mm A')}`}</Text>
+                            <Text type="secondary">{`${expiresLabel} ${formatDateTime(currentStatus.expiresAt, 'datetime', formatter)}`}</Text>
                         </Flex>
                     </Flex>
                 </Card>
@@ -193,7 +195,7 @@ export default function MobileTempStatusConfigurator({
                                 cursor: 'pointer',
                                 display: 'block',
                                 marginInlineEnd: 0,
-                                minHeight: 40,
+                                minHeight: 44,
                                 padding: '9px 12px',
                                 textAlign: 'center',
                                 width: '100%',
@@ -239,7 +241,7 @@ export default function MobileTempStatusConfigurator({
                         <Input
                             min={minExpiryAt}
                             onChange={onExactExpiryAtChange}
-                            style={{ minHeight: 40, width: '100%' }}
+                            style={{ minHeight: 44, width: '100%' }}
                             type="datetime-local"
                             value={exactExpiryAt}
                         />

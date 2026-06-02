@@ -19,7 +19,6 @@ import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
-import { buildFaqSchema } from "@lib/schema";
 import { formatClockTime } from "@util/dateTime";
 import type { ReactNode } from "react";
 import {
@@ -657,12 +656,6 @@ export default function OBPResolvedSurface({
             menuUrl,
         })
         : null;
-    const faqSchema = includeRuntime
-        ? buildFaqSchema(store, obpUrl, t, storeName, {
-            hasPublishedCatalog: hasMenu,
-            catalogUrl: menuUrl,
-        })
-        : null;
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const runtimeTrackingEnabled = includeRuntime && analyticsPreferences.trackOfficialBusinessPage;
     const includeLocation = analyticsPreferences.trackLocation;
@@ -692,12 +685,6 @@ export default function OBPResolvedSurface({
                         type="application/ld+json"
                         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
                     />
-                    {faqSchema && (
-                        <script
-                            type="application/ld+json"
-                            dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-                        />
-                    )}
                 </>
             ) : null}
             <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
@@ -967,7 +954,7 @@ export default function OBPResolvedSurface({
                                     )}
                                     {priceRange && (
                                         <div className={styles.infoRow}>
-                                            <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuIndianRupee, '₹', 16)}</span>
+                                            <span className={styles.infoIcon}>{renderDisplayIcon(iconVariant, LuBanknote, store?.currencySymbol || '₹', 16)}</span>
                                             <span>{t('publicPriceRange', { value: priceRange })}</span>
                                         </div>
                                     )}

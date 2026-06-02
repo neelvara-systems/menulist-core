@@ -8,8 +8,8 @@ import PageProofStrip from '../components/PageProofStrip';
 import AnswerlatticePublicDemo from './AnswerlatticePublicDemo';
 
 export const metadata: Metadata = {
-    title: 'Answerlattice Demo',
-    description: 'See page-aware support in 60 seconds with static Answerlattice examples for billing, onboarding, settings, fallback, and support gaps.',
+    title: 'AnswerLattice Demo',
+    description: 'See page-aware support in 60 seconds with static AnswerLattice examples for billing, onboarding, settings, fallback, and support gaps.',
     alternates: { canonical: '/demo' },
 };
 
@@ -37,7 +37,7 @@ export default function AnswerlatticeDemoPage() {
                                 See page-aware support in 60 seconds.
                             </h1>
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                Switch product pages and ask the same kind of question. Answerlattice changes the answer using safe page context and approved support knowledge.
+                                Switch product pages and ask the same kind of question. AnswerLattice changes the answer using safe page context and approved support knowledge.
                             </p>
                             <PageProofStrip
                                 className="mt-8 text-left"
@@ -52,7 +52,7 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                The generic answer stays broad. Answerlattice knows the page, links related help, and marks uncovered questions as gaps. This static demo does not call Firebase or an AI provider.
+                                The generic answer stays broad. AnswerLattice knows the page, links related help, and marks uncovered questions as gaps. This static demo does not call Firebase or an AI provider.
                             </p>
                         </div>
 

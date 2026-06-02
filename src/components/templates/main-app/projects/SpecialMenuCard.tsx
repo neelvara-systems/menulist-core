@@ -9,7 +9,9 @@
 import { FEATURE_FLAGS } from "@config/features";
 import type { SpecialMenuListItem } from "@hook/useSpecialMenus";
 import { useSpecialMenus } from "@hook/useSpecialMenus";
-import { Button, Card, Empty, Flex, Modal, Popconfirm, Space, Typography } from "antd";
+import { formatDateTime } from "@util/dateTime";
+import { Button, Card, Empty, Flex, Modal, Popconfirm, Space, Typography, theme } from "antd";
+import { useFormatter } from "next-intl";
 import { useState } from "react";
 import { LuCalendar, LuPause, LuPlus, LuSparkles, LuX } from "react-icons/lu";
 import CreateSpecialMenuModal from "./CreateSpecialMenuModal";
@@ -23,27 +25,6 @@ interface SpecialMenuCardProps {
     baseProjectName?: string;
 }
 
-function formatDate(iso: string): string {
-    if (!iso) return "";
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
-}
-
-function formatDateTime(iso: string): string {
-    if (!iso) return "";
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-}
-
 function SpecialMenuItem({
     item,
     onDeactivate,
@@ -53,6 +34,9 @@ function SpecialMenuItem({
     onDeactivate: (id: string) => void;
     onCancel: (id: string) => void;
 }) {
+    const { token } = theme.useToken();
+    const formatter = useFormatter();
+
     return (
         <Flex
             justify="space-between"
@@ -60,8 +44,8 @@ function SpecialMenuItem({
             style={{
                 padding: "10px 12px",
                 borderRadius: 8,
-                background: item.status === "active" ? "#f6ffed" : "#fafafa",
-                border: item.status === "active" ? "1px solid #b7eb8f" : "1px solid #f0f0f0",
+                background: item.status === "active" ? token.colorSuccessBg : token.colorFillQuaternary,
+                border: item.status === "active" ? `1px solid ${token.colorSuccessBorder}` : `1px solid ${token.colorBorderSecondary}`,
                 marginBottom: 8,
             }}
         >
@@ -75,7 +59,7 @@ function SpecialMenuItem({
                 <Flex align="center" gap={4}>
                     <LuCalendar size={12} />
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatDate(item.startsAt)} → {formatDate(item.endsAt)}
+                        {formatDateTime(item.startsAt, "date", formatter)} → {formatDateTime(item.endsAt, "date", formatter)}
                     </Text>
                 </Flex>
                 <Text type="secondary" style={{ fontSize: 11 }}>

@@ -1,10 +1,10 @@
 'use client';
 
-import { QuestionCircleOutlined, RocketOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Collapse, Form, Input, Space, Switch, Tooltip, Typography } from 'antd';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
+import { LuHelpCircle, LuRocket, LuSettings } from 'react-icons/lu';
 import AnalyticsGuideModal from './AnalyticsGuideModal';
 import AnalyticsSetupWizard from './AnalyticsSetupWizard';
 
@@ -36,7 +36,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         <Space align="center" style={{ justifyContent: 'space-between', width: '100%' }}>
                             <Title level={4} style={{ margin: 0 }}>
                                 <Space>
-                                    <SettingOutlined />
+                                    <LuSettings />
                                     {t('title')}
                                 </Space>
                             </Title>
@@ -44,7 +44,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                                 <Tooltip title={t('setupWizardTooltip')}>
                                     <Button
                                         type="primary"
-                                        icon={<RocketOutlined />}
+                                        icon={<LuRocket />}
                                         onClick={() => setShowSetupWizard(true)}
                                     >
                                         {t('setupWizard')}
@@ -52,7 +52,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                                 </Tooltip>
                                 <Button
                                     type="link"
-                                    icon={<QuestionCircleOutlined />}
+                                    icon={<LuHelpCircle />}
                                     onClick={() => setShowGuide(true)}
                                 >
                                     {t('viewGuide')}
@@ -89,7 +89,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>{t('googleAnalyticsId')}</span>
                                 <Tooltip title={t('googleAnalyticsIdTooltip')}>
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -105,7 +105,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>{t('googleSearchConsole')}</span>
                                 <Tooltip title={t('googleSearchConsoleTooltip')}>
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -120,7 +120,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>{t('facebookPixelId')}</span>
                                 <Tooltip title={t('facebookPixelIdTooltip')}>
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -173,7 +173,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>{t('enhancedEcommerce')}</span>
                                 <Tooltip title={t('enhancedEcommerceTooltip')}>
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -189,7 +189,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>Menu activity</span>
                                 <Tooltip title="Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu.">
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -205,7 +205,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>Featured section analytics</span>
                                 <Tooltip title="Tracks Featured section impressions and taps when Featured choices appear on the customer menu.">
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -221,7 +221,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>Official business page activity</span>
                                 <Tooltip title="Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions.">
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -237,7 +237,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>Customer app activity</span>
                                 <Tooltip title="Tracks customer app install prompts, installs, standalone opens, and shortcut launches.">
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}
@@ -253,7 +253,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                             <Space>
                                 <span>Approximate location</span>
                                 <Tooltip title="Adds approximate location to analytics reports using rounded geolocation or timezone region when available.">
-                                    <QuestionCircleOutlined />
+                                    <LuHelpCircle />
                                 </Tooltip>
                             </Space>
                         )}

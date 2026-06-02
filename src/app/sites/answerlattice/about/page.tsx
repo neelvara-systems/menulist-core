@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Answerlattice helps SaaS and digital-product teams keep support answers correct as products change.',
+    description: 'AnswerLattice helps SaaS and digital-product teams keep support answers correct as products change.',
     alternates: { canonical: '/about' },
 };
 
@@ -35,10 +35,10 @@ export default function AnswerlatticeAboutPage() {
                             AI can build apps fast. Support still has to be correct.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Answerlattice exists because solo founders and small product teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
+                            AnswerLattice exists because solo founders and small product teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Answerlattice keeps approved support knowledge connected to product surfaces. Founders get launch setup, hosted help, widget support, changelog binding, ticket fallback, and a governance queue without having to run a large support operation.
+                            AnswerLattice keeps approved support knowledge connected to product surfaces. Founders get launch setup, hosted help, widget support, changelog binding, ticket fallback, and a governance queue without having to run a large support operation.
                         </p>
                         <div className="flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink
@@ -59,7 +59,7 @@ export default function AnswerlatticeAboutPage() {
                         <PageProofStrip
                             className="mt-8 text-left"
                             items={[
-                                { label: 'Audience', value: 'Live or near-live product teams with repeated support questions' },
+                                { label: 'Audience', value: 'Live, beta, and near-launch product teams preparing approved support' },
                                 { label: 'Belief', value: 'Correct approved answers beat more support channels' },
                                 { label: 'Boundary', value: 'Not a helpdesk replacement or autopilot' },
                             ]}
@@ -72,10 +72,10 @@ export default function AnswerlatticeAboutPage() {
                         <h2 className="mb-8 text-2xl font-bold">What we believe</h2>
                         <div className="space-y-6">
                             {[
-                                { title: 'Correct answers beat more channels', body: 'Answerlattice is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
+                                { title: 'Correct answers beat more channels', body: 'AnswerLattice is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
                                 { title: 'Page context should reduce user effort', body: 'A billing question from the billing screen should not get the same generic answer as a settings or onboarding question.' },
                                 { title: 'Fallback should create learning', body: 'Fallback can help while coverage grows. Repeated fallback becomes a support gap, not hidden automation.' },
-                                { title: 'Founders should approve official answers', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. Answerlattice does not silently rewrite product guidance.' },
+                                { title: 'Founders should approve official answers', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. AnswerLattice does not silently rewrite product guidance.' },
                                 { title: 'Coverage should be visible', body: 'The main operating metric is whether product surfaces have enough approved answers for real user questions.' },
                             ].map((belief, i) => (
                                 <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
@@ -91,7 +91,7 @@ export default function AnswerlatticeAboutPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-4 text-2xl font-bold">Built for teams shipping fast</h2>
                         <p className="mb-6 text-lg text-[#a0a0c0]">
-                            Answerlattice is built for SaaS teams that need support accuracy without building a full support team. It treats product pages, help content, fallback tickets, and approved answers as one governed support layer.
+                            AnswerLattice is built for SaaS teams that need support accuracy without building a full support team. It treats product pages, help content, fallback tickets, and approved answers as one governed support layer.
                         </p>
                         <AnswerlatticeLink
                             basePath={basePath}

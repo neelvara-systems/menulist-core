@@ -2,9 +2,12 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
-import { getFormatedDateAndTime, type DateLike } from '@util/dateTime';
-import { formatCurrency, formatProcessingTime } from '@util/formatters';
+import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary } from '@lib/ai/operationPresentation';
+import { formatDateRange, getFormatedDateAndTime, type DateLike } from '@util/dateTime';
+import { formatInrPaise, formatProcessingTime } from '@util/formatters';
+import { theme } from 'antd';
 import dayjs from 'dayjs';
+import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuFilter, LuReceipt, LuRefreshCw, LuX } from 'react-icons/lu';
@@ -30,9 +33,12 @@ interface TransactionItem {
     inputStrings?: Record<string, string>;
     itemsList?: Array<{ id?: string; name?: string; description?: Record<string, string> }>;
     model?: string;
+    marginPaise?: number;
+    ourChargePaise?: number;
     processingTime: number;
     promptTokenCount?: number;
     projectId?: string;
+    realCostPaise?: number;
     sourceLang?: LanguageValue;
     storeId?: string;
     targetLang?: LanguageValue | LanguageValue[];
@@ -50,8 +56,6 @@ type LanguageValue = {
 } | string | null | undefined;
 
 const PAGE_SIZE = 15;
-
-const formatActionLabel = (action: string) => action.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
 const formatLanguage = (language: LanguageValue) => {
     if (!language) return 'Not recorded';
@@ -102,6 +106,7 @@ const getExtractedCategories = (tx: TransactionItem) => {
 
 export default function MobileTransactionsScreen({ onBack }: MobileTransactionsScreenProps) {
     const t = useTranslations('Transactions');
+    const { token } = theme.useToken();
     const [transactions, setTransactions] = useState<TransactionItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasMore, setHasMore] = useState(true);
@@ -115,6 +120,9 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     const lastVisibleRef = useRef<any>(null);
     const pageRef = useRef(1);
     const formatter = useFormatter();
+    const { data: session } = useSession();
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
 
     const fetchPage = useCallback(async (reset = false) => {
         try {
@@ -156,24 +164,33 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const actionOptions = useMemo(() => (
         Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
-            label: formatActionLabel(value),
+            label: formatAiOperationActionLabel(value),
             value,
         }))
     ), []);
 
     const hasActiveFilters = Boolean(actionFilter || dateRange);
+    const loadedCreditsUsed = useMemo(() => (
+        transactions.reduce((total, tx) => total + Math.max(0, Number(tx.unitsConsumed || 0)), 0)
+    ), [transactions]);
+    const loadedNoCreditActions = useMemo(() => (
+        transactions.filter((tx) => Number(tx.unitsConsumed || 0) <= 0).length
+    ), [transactions]);
 
     const getActionColor = (action: string) => {
-        if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING) return '#3b82f6';
-        if (action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) return '#22c55e';
-        if (action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) return '#a855f7';
-        return '#6b7280';
+        if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING) return token.colorPrimary;
+        if (action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) return token.colorSuccess;
+        if (action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) return token.colorInfo;
+        return token.colorTextSecondary;
     };
 
     const formatCreditsUsed = (tx: TransactionItem) => {
-        const units = Number(tx.unitsConsumed || 0);
-        return units > 0 ? `${units} used` : 'No credits';
+        return formatAiOperationCredits(Number(tx.unitsConsumed || 0));
     };
+
+    const formatOptionalPaise = (value?: number) => (
+        value === undefined || value === null ? 'Not recorded' : formatInrPaise(value)
+    );
 
     const openFilterSheet = () => {
         setDraftActionFilter(actionFilter);
@@ -229,7 +246,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         {rows.length === 0 ? (
                             <Text type="secondary">No descriptions recorded.</Text>
                         ) : rows.slice(0, 8).map((row) => (
-                            <Card key={`${row.itemId}-${row.language}`} style={{ backgroundColor: '#f8fafc' }}>
+                            <Card key={`${row.itemId}-${row.language}`} style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex gap={4} vertical>
                                     <Text strong>{row.itemName}</Text>
                                     <Text type="secondary">{row.language}</Text>
@@ -258,7 +275,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         {rows.length === 0 ? (
                             <Text type="secondary">No translation rows recorded.</Text>
                         ) : rows.slice(0, 8).map((row) => (
-                            <Card key={row.key} style={{ backgroundColor: '#f8fafc' }}>
+                            <Card key={row.key} style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex gap={4} vertical>
                                     <Text strong>{row.key}</Text>
                                     <Text>{row.sourceText}</Text>
@@ -322,23 +339,40 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     <Card>
                         <Flex gap={12} vertical>
                             <Flex align="center" gap={8} justify="space-between">
-                                <Tag color="primary">{formatActionLabel(tx.action)}</Tag>
-                                <Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? '#16a34a' : '#64748b' }}>{formatCreditsUsed(tx)}</Text>
+                                <Tag color="primary">{formatAiOperationActionLabel(tx.action)}</Tag>
+                                <Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? token.colorSuccess : token.colorTextSecondary }}>{formatCreditsUsed(tx)}</Text>
                             </Flex>
+                            <Text>{getAiOperationOwnerSummary(tx)}</Text>
                             <List>
                                 <List.Item title="Created on" extra={<Text>{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>} />
                                 <List.Item title="Processing time" extra={<Text>{formatProcessingTime(tx.processingTime)}</Text>} />
-                                <List.Item title="Total charge" extra={<Text>{formatCurrency(tx.totalCharge, 'INR')}</Text>} />
-                                <List.Item title="Tokens" extra={<Text>{Number(tx.totalTokenCount || 0).toLocaleString()}</Text>} />
-                                {tx.promptTokenCount !== undefined ? <List.Item title="Prompt tokens" extra={<Text>{Number(tx.promptTokenCount || 0).toLocaleString()}</Text>} /> : null}
-                                {tx.candidatesTokenCount !== undefined ? <List.Item title="Output tokens" extra={<Text>{Number(tx.candidatesTokenCount || 0).toLocaleString()}</Text>} /> : null}
-                                {tx.model ? <List.Item title="Model" extra={<Text>{tx.model}</Text>} /> : null}
-                                {tx.projectId ? <List.Item title="Project ID" extra={<Text>{tx.projectId}</Text>} /> : null}
-                                {tx.fileId ? <List.Item title="File ID" extra={<Text>{tx.fileId}</Text>} /> : null}
                             </List>
                         </Flex>
                     </Card>
                     {renderDetailRows(tx)}
+                    {isPlatform ? (
+                        <Card>
+                            <Flex gap={10} vertical>
+                                <Title level={5} style={{ margin: 0 }}>Platform Debug</Title>
+                                <List>
+                                    <List.Item title="Owner charge recorded" extra={<Text>{formatOptionalPaise(tx.totalCharge)}</Text>} />
+                                    <List.Item title="Actual provider cost" extra={<Text>{formatOptionalPaise(tx.realCostPaise)}</Text>} />
+                                    <List.Item title="Configured owner charge" extra={<Text>{formatOptionalPaise(tx.ourChargePaise)}</Text>} />
+                                    <List.Item title="Configured margin" extra={<Text>{formatOptionalPaise(tx.marginPaise)}</Text>} />
+                                    <List.Item title="Token credits" extra={<Text>{Number(tx.totalCredits || 0).toLocaleString()}</Text>} />
+                                    <List.Item title="Tokens" extra={<Text>{Number(tx.totalTokenCount || 0).toLocaleString()}</Text>} />
+                                    <List.Item title="Prompt tokens" extra={<Text>{Number(tx.promptTokenCount || 0).toLocaleString()}</Text>} />
+                                    <List.Item title="Output tokens" extra={<Text>{Number(tx.candidatesTokenCount || 0).toLocaleString()}</Text>} />
+                                    {tx.model ? <List.Item title="Model" extra={<Text>{tx.model}</Text>} /> : null}
+                                    {tx.projectId ? <List.Item title="Project ID" extra={<Text>{tx.projectId}</Text>} /> : null}
+                                    {tx.fileId ? <List.Item title="File ID" extra={<Text>{tx.fileId}</Text>} /> : null}
+                                </List>
+                                <pre style={{ backgroundColor: token.colorFillQuaternary, borderRadius: 6, fontSize: 11, margin: 0, maxHeight: 260, overflow: 'auto', padding: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {JSON.stringify(tx, null, 2)}
+                                </pre>
+                            </Flex>
+                        </Card>
+                    ) : null}
                 </Flex>
             </Popup>
         );
@@ -351,11 +385,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 onBack={onBack}
                 right={(
                     <Flex align="center" gap={4}>
-                        <Button fill="none" onClick={openFilterSheet}>
-                            <LuFilter color={hasActiveFilters ? '#0051d1' : '#64748b'} size={18} />
+                        <Button fill="none" onClick={openFilterSheet} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                            <LuFilter color={hasActiveFilters ? token.colorPrimary : token.colorTextSecondary} size={18} />
                         </Button>
-                        <Button fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }}>
-                            <LuRefreshCw color="#64748b" size={18} />
+                        <Button fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                            <LuRefreshCw color={token.colorTextSecondary} size={18} />
                         </Button>
                     </Flex>
                 )}
@@ -367,10 +401,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     <Card>
                         <Flex align="center" justify="space-between">
                             <Flex gap={6} wrap="wrap">
-                                {actionFilter ? <Tag color="primary">{formatActionLabel(actionFilter)}</Tag> : null}
-                                {dateRange ? <Tag>{`${dateRange[0]?.format('DD MMM YYYY')} - ${dateRange[1]?.format('DD MMM YYYY')}`}</Tag> : null}
+                                {actionFilter ? <Tag color="primary">{formatAiOperationActionLabel(actionFilter)}</Tag> : null}
+                                {dateRange ? <Tag>{formatDateRange(dateRange[0]?.toDate(), dateRange[1]?.toDate(), formatter)}</Tag> : null}
                             </Flex>
-                            <Button fill="none" onClick={resetFilters} size="small">
+                            <Button fill="none" onClick={resetFilters} size="small" style={{ minHeight: 44 }}>
                                 {t('reset')}
                             </Button>
                         </Flex>
@@ -384,33 +418,49 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 ) : transactions.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuReceipt color="#d1d5db" size={36} />
+                            <LuReceipt color={token.colorTextTertiary} size={36} />
                             <Title level={5} style={{ margin: 0 }}>No enhancement activity yet.</Title>
                         </Flex>
                     </Card>
                 ) : (
                     <>
                         <Card>
+                            <Flex gap={8} vertical>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">Loaded</Text>
+                                    <Text strong>{transactions.length.toLocaleString()}</Text>
+                                </Flex>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">Credits used</Text>
+                                    <Text strong>{loadedCreditsUsed.toLocaleString()}</Text>
+                                </Flex>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">No-credit actions</Text>
+                                    <Text strong>{loadedNoCreditActions.toLocaleString()}</Text>
+                                </Flex>
+                            </Flex>
+                        </Card>
+                        <Card>
                             <List>
                                 {transactions.map((tx) => (
                                     <List.Item
                                         arrow
                                         description={(
-                                            <Flex gap={8} wrap="wrap">
-                                                <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
-                                                <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
-                                                {typeof tx.totalTokenCount === 'number' ? (
-                                                    <Text type="secondary">{tx.totalTokenCount.toLocaleString()} tokens</Text>
-                                                ) : null}
+                                            <Flex gap={4} vertical>
+                                                <Text type="secondary">{getAiOperationOwnerSummary(tx)}</Text>
+                                                <Flex gap={8} wrap="wrap">
+                                                    <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
+                                                    <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
+                                                </Flex>
                                             </Flex>
                                         )}
-                                        extra={<Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? '#16a34a' : '#64748b' }}>{formatCreditsUsed(tx)}</Text>}
+                                        extra={<Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? token.colorSuccess : token.colorTextSecondary }}>{formatCreditsUsed(tx)}</Text>}
                                         key={tx.id}
                                         onClick={() => setSelectedTransaction(tx)}
                                         title={(
                                             <Flex align="center" gap={8}>
-                                                <Card style={{ backgroundColor: getActionColor(tx.action), borderRadius: '50%', height: 8, minWidth: 8, padding: 0, width: 8 }} />
-                                                <Text strong>{formatActionLabel(tx.action)}</Text>
+                                                <span style={{ backgroundColor: getActionColor(tx.action), borderRadius: '50%', display: 'inline-block', height: 8, minWidth: 8, width: 8 }} />
+                                                <Text strong>{formatAiOperationActionLabel(tx.action)}</Text>
                                             </Flex>
                                         )}
                                     />

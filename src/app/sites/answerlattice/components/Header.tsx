@@ -45,6 +45,8 @@ const NAV_LINKS = [
 const MOBILE_OTHER_LINKS = [
     ...NAV_LINKS.filter((link) => link.href !== '/product' && link.href !== '/updates'),
     { label: 'Install', href: '/install' },
+    { label: 'Developers', href: '/developers' },
+    { label: 'Comparisons', href: '/comparisons' },
     { label: 'Updates', href: '/updates' },
     { label: 'Contact', href: '/contact' },
 ];
@@ -69,6 +71,8 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/install': LuDownload,
     '/pricing': LuCreditCard,
     '/resources': LuBookOpen,
+    '/comparisons': LuFileText,
+    '/developers': LuFileText,
     '/pre-onboarding': LuFileInput,
     '/updates': LuBell,
     '/contact': LuMail,
@@ -182,7 +186,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                 <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
                     <L href="/" className="flex items-center gap-2">
                         <AnswerlatticeLogoMark idPrefix="answerlattice-header" height={32} />
-                        <span className="text-lg font-semibold tracking-tight text-white">Answerlattice</span>
+                        <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                     </L>
 
                     <nav className="hidden items-center gap-5 md:flex">
@@ -327,7 +331,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         onClick={closeDrawer}
                     />
                     <aside
-                        aria-label="Answerlattice navigation"
+                        aria-label="AnswerLattice navigation"
                         aria-modal="true"
                         className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[#0a0a1a] shadow-2xl shadow-black/60 ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
                         role="dialog"
@@ -335,7 +339,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] px-5 pt-[env(safe-area-inset-top)]">
                             <L href="/" className="flex items-center gap-2" onClick={closeDrawer}>
                                 <AnswerlatticeLogoMark idPrefix="answerlattice-drawer" height={30} />
-                                <span className="text-lg font-semibold tracking-tight text-white">Answerlattice</span>
+                                <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                             </L>
                             <button
                                 aria-label="Close navigation"

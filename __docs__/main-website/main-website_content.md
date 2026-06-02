@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 31, 2026
+**Last Updated:** June 2, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -16,6 +16,12 @@
 5. **Language:** Operational words only. No AI-hype, no jargon, no marketing buzzwords.
 
 > Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
+
+> Resources hardening note (June 2, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, four industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled "Learn how to keep your public menu current." The homepage remains product-led; resource links support discovery and owner education without becoming a blog index.
+
+> Marketing feedback note (June 2, 2026): The priority English resource and restaurant industry pages now use `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation. The accepted WhatsApp, price-change, cleanup, and comparison-page candidates remain documented for later content work; they are not part of the live route set until marketing has reviewed content depth and CTA fit.
+
+> Public truth indexing note (June 2, 2026): The business-page strategy is handled in the customer-facing tenant/OBP/menu discovery layer, not by creating more website articles. Existing public tenant pages now use a central indexability gate for metadata and sitemap inclusion. Marketing should not request keyword-variant restaurant pages, AI-written business pages, or city/category directory pages until owner-approval, source-confidence, and claim/update rules are documented.
 
 ---
 
@@ -45,7 +51,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
-**Print files placement policy (June 1, 2026):** do not add a separate Menu Card Export homepage section. The homepage may show `Print files` as one output of the approved menu source, while the Features page and `/resources/digital-menu-vs-pdf-menu` carry the fuller PDF/printer handoff explanation.
+**Print files placement policy (June 2, 2026):** do not add a separate Menu Card Export homepage section. The homepage may show `Print files` as one output of the approved menu source, while the Features page and `/resources/digital-menu-vs-pdf-menu` carry the fuller PDF/printer handoff explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination accepts a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -71,11 +77,35 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 10. `/resources/menu-update-checklist`
 11. `/resources/qr-code-placement-checklist`
 12. `/resources/menu-engineering-worksheet`
-13. `/resources/multi-location-menu-management`
+13. `/resources/restaurant-menu-schema`
+14. `/resources/official-menu-url-checklist`
+15. `/resources/restaurant-qr-menu-mistakes`
+16. `/resources/multi-location-menu-management`
 
-**Content rule:** Each resource page needs a visible quick answer, practical checklist/comparison/worksheet where relevant, owner-readable caveats, related-resource links, and one intent-matched CTA. Resource copy must not promise ranking, citation, AI answer placement, Google refresh timing, revenue lift, or automatic external-platform sync.
+**Content rule:** Each resource page needs a visible quick answer, practical checklist/comparison/worksheet where relevant, owner-readable caveats, related-resource links, and one intent-matched CTA. Resource copy must not promise ranking, citation, AI answer placement, Google refresh timing, revenue lift, or automatic external-platform sync. Checklist copy controls are allowed only where the page already renders visible checklist content; downloadable template CTAs must stay absent until a real asset exists.
 
-**Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 12 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
+**Navigation rule:** Header navigation is product-led: Features, How it works, Multi-location, Pricing, Resources. Desktop Resources opens a compact dropdown for Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources. Mobile navigation exposes the same resource links under the Resources entry.
+
+**Homepage resource cards:** The mounted `ResourcesSection` uses eight cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Keep Menu Source Audit as a high-intent resource page and hub/tool card, not as a homepage card, so the homepage follows the requested strategic cluster.
+
+**Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 15 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
+
+---
+
+## Page 1B: Industry Landing Pages
+
+### Canonical Implementation Scope
+
+Industry pages explain how the same official-source layer applies to common food-business types without turning MenuList into a marketplace, POS replacement, or ranking tool.
+
+**Current route set:**
+
+1. `/industries/restaurants`
+2. `/industries/cafes-bakeries`
+3. `/industries/takeaway-cloud-kitchens`
+4. `/industries/multi-location-food-businesses`
+
+**Content rule:** Industry pages may describe fit, common public-menu problems, how MenuList helps, and related resource links. They must not claim category-specific revenue lift, automatic Google updates, delivery-marketplace replacement, POS replacement, or guaranteed search/AI visibility.
 
 ---
 

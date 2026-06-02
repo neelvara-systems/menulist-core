@@ -91,9 +91,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             referenceId: `notification-test-${scope.tenantId}-${scope.storeId}-${Date.now()}`,
             skipDedup: true,
             metadata: {
+                tenantId: scope.tenantId,
+                storeId: scope.storeId,
                 productName: storeData.productName || storeData.name || 'your product',
                 workspaceName: storeData.companyName || storeData.businessName || storeData.tenantName || 'Answerlattice workspace',
-                sentAt: new Date().toLocaleString(),
+                sentAt: new Date().toISOString(),
             },
         });
 

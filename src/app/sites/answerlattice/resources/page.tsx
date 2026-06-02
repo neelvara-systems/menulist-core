@@ -3,15 +3,21 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
+import AnswerlatticeResourceAnalytics from '../components/AnswerlatticeResourceAnalytics';
 import { AnswerlatticeSequenceDiagram } from '../components/AnswerlatticeFlowDiagram';
-import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import PageProofStrip from '../components/PageProofStrip';
 import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
+import {
+    ANSWERLATTICE_RESOURCE_ARTICLES,
+    ANSWERLATTICE_RESOURCE_GROUPS,
+    ANSWERLATTICE_RESOURCE_PATH_DETAILS,
+} from '../publicContent';
+import AnswerlatticeResourceStructuredData from './ResourceStructuredData';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Answerlattice resources for founders launching support for SaaS apps and digital products: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'AnswerLattice resources for founders launching support for SaaS apps and digital products: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -23,71 +29,13 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-const RESOURCE_GROUPS = [
-    {
-        title: 'Evaluate Answerlattice',
-        description: 'Start with proof, pricing, and common buying questions.',
-        items: [
-            ['See the demo', '/demo', 'Watch how the answer changes by page.'],
-            ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
-            ['ROI calculator', '/roi-calculator', 'Estimate repeated-question time saved and plan fit.'],
-            ['Proof pack', '/proof', 'Review example workloads for launch, release, and studio use.'],
-            ['FAQ', '/faq', 'Answers for setup, knowledge intake, widget context, screenshots, fallback, pricing, and data handling.'],
-        ],
-    },
-    {
-        title: 'Understand the fit',
-        description: 'Match Answerlattice to the support problem your product has today.',
-        items: [
-            ['Use cases', '/use-cases', 'Map Answerlattice to billing, onboarding, settings, releases, and tickets.'],
-            ['AI-built SaaS', '/use-cases/ai-built-saas', 'See the launch support path for apps built quickly with AI.'],
-            ['Page-aware support widget', '/page-aware-support-widget', 'See how product-page context and optional screenshots change the answer.'],
-        ],
-    },
-    {
-        title: 'Plan the rollout',
-        description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
-        items: [
-            ['Pre-Onboarding Kit', '/pre-onboarding', 'Use your AI coding agent to prepare Answerlattice-ready source inputs before setup.'],
-            ['Pre-Onboarding Guide', '/pre-onboarding/guide', 'Follow the owner and agent runbook before uploading prepared sources.'],
-            ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
-            ['Team access', '/product/team-access', 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.'],
-            ['Knowledge Intake', '/product/knowledge-intake', 'Teach Answerlattice from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.'],
-            ['Knowledge Base', '/product/knowledge-base', 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.'],
-            ['Feedback Review', '/product/feedback-review', 'Plan how ratings, feature requests, and suggestions are sorted by Product Surface before becoming private support signals.'],
-            ['Support Board', '/product/support-board', 'Plan private support cards, internal notes, status history, and answer proposal handoff.'],
-            ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
-            ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, or vanilla script examples.'],
-            ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
-            ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
-            ['Security and runtime safety', '/security', 'Review tenant isolation, widget origin controls, screenshot input, compiled context boundaries, and owner-approved authority.'],
-            ['Security one-pager', '/security-one-pager', 'Share the concise security and ops summary with developers or buyers, including the manual screenshot boundary.'],
-        ],
-    },
-    {
-        title: 'Track product movement',
-        description: 'Follow updates or move into setup when the product is ready.',
-        items: [
-            ['Updates', '/updates', 'Read recent Answerlattice product and website changes.'],
-            ['Get started', '/get-started', 'Create a workspace and land in the Activation Command Center.'],
-            ['Contact', '/contact', 'Ask for setup help or partnership details.'],
-        ],
-    },
-];
-
-const RESOURCE_PATH_DETAILS = [
-    'Begin with buyer proof and plan checks before moving into setup.',
-    'Use fit pages to confirm the support problem matches Answerlattice.',
-    'Prepare source inputs, install boundaries, and runtime checks before implementation.',
-    'Move into workspace setup or contact once the rollout decision is clear.',
-];
-
 export default function AnswerlatticeResourcesPage() {
     const basePath = getBasePath();
 
     return (
         <>
-            <AnswerlatticePageStructuredData path="/resources" />
+            <AnswerlatticeResourceStructuredData type="hub" />
+            <AnswerlatticeResourceAnalytics pageType="hub" />
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
                 <section className="px-6 py-24 text-center">
@@ -155,7 +103,7 @@ export default function AnswerlatticeResourcesPage() {
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Product pages</p>
-                                <h2 className="text-2xl font-bold text-white">Understand Answerlattice in order.</h2>
+                                <h2 className="text-2xl font-bold text-white">Understand AnswerLattice in order.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">
                                 Start with setup, then understand the widget, hosted help with ticket fallback, and answer review.
@@ -214,16 +162,53 @@ export default function AnswerlatticeResourcesPage() {
                         <AnswerlatticeSequenceDiagram
                             idPrefix="al-resources-path"
                             splitAfter={2}
-                            items={RESOURCE_GROUPS.map((group, index) => ({
+                            items={ANSWERLATTICE_RESOURCE_GROUPS.map((group, index) => ({
                                 title: group.title,
-                                detail: RESOURCE_PATH_DETAILS[index],
+                                detail: ANSWERLATTICE_RESOURCE_PATH_DETAILS[index],
                                 meta: `${group.items.length} links`,
                             }))}
                         />
                     </div>
 
                     <div className="mx-auto max-w-6xl space-y-4">
-                        {RESOURCE_GROUPS.map((group, index) => (
+                        <div className="mb-12">
+                            <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+                                <div>
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Resource articles</p>
+                                    <h2 className="text-2xl font-bold text-white">Use focused guides when you need more than a link.</h2>
+                                </div>
+                                <p className="text-sm leading-relaxed text-[#a0a0c0]">
+                                    These guides are static, public, and scoped to implemented AnswerLattice behavior. They avoid private dashboard routes and unsupported runtime claims.
+                                </p>
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {ANSWERLATTICE_RESOURCE_ARTICLES.map((article) => (
+                                    <AnswerlatticeLink
+                                        key={article.path}
+                                        basePath={basePath}
+                                        href={article.path}
+                                        data-answerlattice-event="answerlattice_resource_article_clicked"
+                                        data-answerlattice-category={article.cluster}
+                                        data-answerlattice-label={article.title}
+                                        className="flex min-h-[16rem] flex-col justify-between rounded-[1.5rem] border border-white/[0.06] bg-white/[0.025] p-5 transition hover:border-teal-300/25 hover:bg-teal-400/[0.045]"
+                                    >
+                                        <div>
+                                            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-teal-200">
+                                                {article.cluster.replace(/-/g, ' ')}
+                                            </p>
+                                            <h3 className="text-xl font-semibold leading-tight text-white">{article.title}</h3>
+                                            <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{article.description}</p>
+                                        </div>
+                                        <div className="mt-5 flex items-center justify-between gap-3 text-xs font-semibold text-teal-200">
+                                            <span>{article.readingTime}</span>
+                                            <span>Open guide</span>
+                                        </div>
+                                    </AnswerlatticeLink>
+                                ))}
+                            </div>
+                        </div>
+
+                        {ANSWERLATTICE_RESOURCE_GROUPS.map((group, index) => (
                             <article
                                 key={group.title}
                                 className="grid gap-5 border-t border-white/[0.06] py-6 first:border-t-0 first:pt-0 lg:grid-cols-[16rem_1fr] lg:items-stretch"
@@ -240,11 +225,13 @@ export default function AnswerlatticeResourcesPage() {
                                     </p>
                                 </div>
                                 <div className="grid gap-3 md:grid-cols-3">
-                                    {group.items.map(([label, href, description]) => (
+                                    {group.items.map(({ label, href, description, eventName }) => (
                                         <AnswerlatticeLink
                                             key={href}
                                             basePath={basePath}
                                             href={href}
+                                            data-answerlattice-event={eventName || 'resource_link_clicked'}
+                                            data-answerlattice-label={label}
                                             className="flex min-h-[8.75rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-teal-500/30 hover:bg-white/[0.04]"
                                         >
                                             <div>

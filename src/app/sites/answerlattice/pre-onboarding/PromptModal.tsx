@@ -131,7 +131,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
                                 </span>
                                 <div className="min-w-0">
                                     <h2 id={dialogTitleId} className="text-lg font-bold text-white">
-                                        Answerlattice pre-onboarding prompt
+                                        AnswerLattice pre-onboarding prompt
                                     </h2>
                                     <p className="mt-1 text-sm leading-relaxed text-[#9a9ab8]">
                                         Copy this into Codex, Cursor, Windsurf, Antigravity, Claude Code, or download it as a Markdown file.

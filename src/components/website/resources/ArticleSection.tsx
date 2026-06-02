@@ -1,14 +1,61 @@
+'use client';
+
+import { useState } from 'react';
+import { LuCopy } from 'react-icons/lu';
 import type { WebsiteResourceSection } from '@/content/websiteResources/types';
 
 interface ArticleSectionProps {
+    articleCluster: string;
+    articleSlug: string;
     labels: {
         checklist: string;
         comparison: string;
+        copiedChecklist: string;
+        copyChecklist: string;
     };
     section: WebsiteResourceSection;
 }
 
-export default function ArticleSection({ labels, section }: ArticleSectionProps) {
+type WebsiteGtagWindow = Window & {
+    gtag?: (...args: unknown[]) => void;
+};
+
+function trackChecklistCopy(articleSlug: string, articleCluster: string, sectionId: string) {
+    const analyticsWindow = window as WebsiteGtagWindow;
+    if (typeof analyticsWindow.gtag !== 'function') return;
+
+    analyticsWindow.gtag('event', 'resource_checklist_copy', {
+        category: articleCluster,
+        checklist_id: sectionId,
+        cluster: articleCluster,
+        section: sectionId,
+        slug: articleSlug,
+        target_url: window.location.href,
+    });
+}
+
+export default function ArticleSection({
+    articleCluster,
+    articleSlug,
+    labels,
+    section,
+}: ArticleSectionProps) {
+    const [copied, setCopied] = useState(false);
+    const checklistText = section.checklist?.join('\n');
+
+    async function handleCopyChecklist() {
+        if (!checklistText) return;
+
+        try {
+            await navigator.clipboard.writeText(checklistText);
+            setCopied(true);
+            trackChecklistCopy(articleSlug, articleCluster, section.id);
+            window.setTimeout(() => setCopied(false), 1800);
+        } catch {
+            setCopied(false);
+        }
+    }
+
     return (
         <section id={section.id} className="ws-resource-article-section">
             <h2>{section.title}</h2>
@@ -25,13 +72,26 @@ export default function ArticleSection({ labels, section }: ArticleSectionProps)
             ) : null}
 
             {section.checklist?.length ? (
-                <div className="ws-resource-checklist" aria-label={labels.checklist}>
-                    {section.checklist.map((item) => (
-                        <div key={item} className="ws-resource-checklist__item">
-                            <span aria-hidden="true" />
-                            <p>{item}</p>
-                        </div>
-                    ))}
+                <div className="ws-resource-checklist-block">
+                    <div className="ws-resource-checklist-block__header">
+                        <span>{labels.checklist}</span>
+                        <button
+                            type="button"
+                            className="ws-resource-copy-button"
+                            onClick={handleCopyChecklist}
+                        >
+                            <LuCopy size={15} />
+                            {copied ? labels.copiedChecklist : labels.copyChecklist}
+                        </button>
+                    </div>
+                    <div className="ws-resource-checklist" aria-label={labels.checklist}>
+                        {section.checklist.map((item) => (
+                            <div key={item} className="ws-resource-checklist__item">
+                                <span aria-hidden="true" />
+                                <p>{item}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ) : null}
 

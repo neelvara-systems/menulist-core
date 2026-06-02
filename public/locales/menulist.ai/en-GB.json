@@ -199,6 +199,7 @@
         "dateFormatHelper": "This controls how dates are shown to your team inside the app.",
         "timeFormatHelper": "Pick the clock style your team reads most easily, like 12-hour or 24-hour time.",
         "currencyHelper": "Set the currency customers should see on prices for this outlet.",
+        "currency": "Currency",
         "contentLanguageTitle": "Content language",
         "contentLanguageHelper": "Switch the language here to review or edit what customers see in that language. Empty fields mean this language still needs content.",
         "addPlatform": "Add Platform",
@@ -871,7 +872,7 @@
         "reset": "Reset",
         "refresh": "Refresh",
         "totalItems": "Total {total} items",
-        "subtitle": "Track AI processing usage, timestamps, and billing charges for recent operations."
+        "subtitle": "Track menu enhancement activity, timing, and credit use."
     },
     "Users": {
         "title": "Users",
@@ -2847,7 +2848,7 @@
             "obp3Title": "Conversation-Ready Sharing",
             "obp3Desc": "Copy a ready-to-send message for WhatsApp. When customers ask for your menu, just paste — link included.",
             "obp4Title": "Search & discovery ready",
-            "obp4Desc": "Structured business data helps search engines and discovery tools understand your page clearly. When customers look for hours, contact, or menu details, the answer comes from your official page.",
+            "obp4Desc": "Structured business data helps search engines and discovery tools understand your page clearly. Your official page gives them a clearer source to read when they choose to crawl or show public menu details.",
             "obp5Title": "Always Correct",
             "obp5Desc": "Hours, prices, availability, and recent updates stay on the same official page. Customers see what's real, not what's outdated.",
             "ctaTitle": "Your menu deserves one official home.",

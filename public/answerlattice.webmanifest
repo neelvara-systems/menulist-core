@@ -1,6 +1,6 @@
 {
-  "name": "Answerlattice",
-  "short_name": "Answerlattice",
+  "name": "AnswerLattice",
+  "short_name": "AnswerLattice",
   "description": "Page-aware support knowledge infrastructure for small SaaS teams.",
   "start_url": "https://answerlattice.com/",
   "scope": "https://answerlattice.com/",

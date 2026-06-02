@@ -98,7 +98,7 @@ export const POST = withAuth(async (request, session) => {
             storeId,
             tenantId,
             newVersion,
-            store?.currency || 'INR',
+            store?.currencyCode || store?.currency || 'INR',
         );
 
         const rawBody = JSON.stringify(payload);

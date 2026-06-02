@@ -5,6 +5,7 @@
  */
 
 import { MenuItemForSlide, ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
+import { getScreenCategoryCaption } from "./screenContent";
 
 /**
  * Generate evergreen slides from available menu items
@@ -13,8 +14,9 @@ import { MenuItemForSlide, ScreenSlide, ScreenStoreInfo } from "@type/campaigns"
  * Selection criteria:
  * 1. Must have image
  * 2. Must be available
- * 3. Prefer bestsellers
- * 4. Max 3 evergreen items to leave room for variety
+ * 3. Prefer bestsellers, priced items, and source menu order
+ * 4. Prefer category variety before repeating categories
+ * 5. Max 3 evergreen items to leave room for variety
  */
 export function generateEvergreenSlides(
     items: MenuItemForSlide[],
@@ -29,15 +31,38 @@ export function generateEvergreenSlides(
         return slides;
     }
 
-    // Sort: bestsellers first, then by name for consistency
+    // Sort: bestsellers first, then priced items, then source menu order.
     const sortedItems = [...eligibleItems].sort((a, b) => {
         if (a.isBestSeller && !b.isBestSeller) return -1;
         if (!a.isBestSeller && b.isBestSeller) return 1;
+        if (a.price != null && b.price == null) return -1;
+        if (a.price == null && b.price != null) return 1;
+        const categoryOrder = (a.categoryOrderIndex ?? Number.MAX_SAFE_INTEGER) - (b.categoryOrderIndex ?? Number.MAX_SAFE_INTEGER);
+        if (categoryOrder !== 0) return categoryOrder;
+        const itemOrder = (a.orderIndex ?? Number.MAX_SAFE_INTEGER) - (b.orderIndex ?? Number.MAX_SAFE_INTEGER);
+        if (itemOrder !== 0) return itemOrder;
         return a.name.localeCompare(b.name);
     });
 
-    // Take top 3 items
-    const selectedItems = sortedItems.slice(0, 3);
+    const selectedItems: MenuItemForSlide[] = [];
+    const usedCategories = new Set<string>();
+
+    for (const item of sortedItems) {
+        const categoryKey = (item.categoryName || "Menu").toLowerCase();
+        if (usedCategories.has(categoryKey) && selectedItems.length < Math.min(3, sortedItems.length)) {
+            continue;
+        }
+        selectedItems.push(item);
+        usedCategories.add(categoryKey);
+        if (selectedItems.length >= 3) break;
+    }
+
+    for (const item of sortedItems) {
+        if (selectedItems.length >= 3) break;
+        if (!selectedItems.some((selected) => selected.id === item.id)) {
+            selectedItems.push(item);
+        }
+    }
 
     for (const item of selectedItems) {
         slides.push({
@@ -50,7 +75,7 @@ export function generateEvergreenSlides(
             price: item.price, // v2.0: Propagate price to slide
             description: item.description, // v2.2: For poster-style slides
             tags: item.tags, // v2.2: Dietary badges
-            caption: item.isBestSeller ? "Popular" : "Always Available",
+            caption: getEvergreenCaption(item),
             qrUrl: menuQrUrl,
             confidenceScore: 1.0, // Evergreen = maximum trust
             availabilityLinked: true,
@@ -88,7 +113,7 @@ export function getEvergreenCaption(item: MenuItemForSlide): string {
         return "Popular";
     }
     if (item.categoryName) {
-        return item.categoryName;
+        return getScreenCategoryCaption(item.categoryName);
     }
-    return "Always Available";
+    return "On menu";
 }

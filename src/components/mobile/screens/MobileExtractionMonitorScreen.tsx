@@ -10,7 +10,10 @@ import type {
     ExtractionJobSummary,
     ExtractionQualityMetrics,
 } from '@lib/ops/extractionTypes';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatInrPaise } from '@util/formatters';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuClock, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
@@ -30,20 +33,10 @@ function statusColor(status?: string): 'success' | 'warning' | 'danger' | 'prima
     return 'primary';
 }
 
-function formatTimestamp(value: any): string {
+function formatTimestamp(value: any, formatter: IntlFormatter): string {
     if (!value) return '-';
-    try {
-        const date = value.toDate ? value.toDate() : new Date(value.seconds ? value.seconds * 1000 : value);
-        return date.toLocaleString('en-IN', {
-            day: '2-digit',
-            hour: '2-digit',
-            hour12: true,
-            minute: '2-digit',
-            month: 'short',
-        });
-    } catch {
-        return '-';
-    }
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function formatDuration(ms?: number | null): string {
@@ -59,7 +52,15 @@ function filterToStatus(filter: JobFilter): string | undefined {
     return filter;
 }
 
+function formatInrCost(value: number | undefined): string {
+    return formatInrPaise(value, {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2,
+    });
+}
+
 export default function MobileExtractionMonitorScreen({ onBack }: MobileExtractionMonitorScreenProps) {
+    const formatter = useFormatter();
     const { data: session, status } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
@@ -179,9 +180,9 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
                         <Card size="small" title={<Text strong>Cost Today</Text>}>
                             <Flex gap={12} wrap>
                                 <Metric label="Calls" value={cost?.callsToday ?? 0} />
-                                <Metric label="Spend" value={`₹${cost?.dailySpend ?? 0}`} />
-                                <Metric label="Avg / Job" value={`₹${cost?.avgCostPerExtraction ?? 0}`} />
-                                <Metric label="Highest Job" value={`₹${cost?.mostExpensiveJobCost ?? 0}`} />
+                                <Metric label="Spend" value={formatInrCost(cost?.dailySpend)} />
+                                <Metric label="Avg / Job" value={formatInrCost(cost?.avgCostPerExtraction)} />
+                                <Metric label="Highest Job" value={formatInrCost(cost?.mostExpensiveJobCost)} />
                             </Flex>
                         </Card>
 
@@ -218,7 +219,7 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
                                                 <Flex gap={4} vertical>
                                                     <Flex align="center" gap={6}>
                                                         <LuClock size={12} />
-                                                        <Text type="secondary">{formatTimestamp(job.createdAt)} · {formatDuration(job.processingTime)}</Text>
+                                                        <Text type="secondary">{formatTimestamp(job.createdAt, formatter)} · {formatDuration(job.processingTime)}</Text>
                                                     </Flex>
                                                     <Text type="secondary">
                                                         {job.filesCount} files · {job.itemsExtracted || 0} items · {job.categoriesExtracted || 0} categories

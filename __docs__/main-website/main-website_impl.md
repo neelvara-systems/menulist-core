@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.20 Full Resource Locale Coverage
-**Last Updated:** June 1, 2026
+**Status:** IMPLEMENTED — v3.6.24 Public Truth Indexing Guardrail
+**Last Updated:** June 2, 2026
 **Audience:** Developers
 
 ---
@@ -40,19 +40,23 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/resources/[slug]` | `(website)/resources/[slug]/page.tsx` | `ArticleLayout` | Server static params | Dynamic per article |
 | `/{locale}/resources` | `(website)/[locale]/resources/page.tsx` | `ResourceHubPageShell` | Server static params | Localized per-page for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
 | `/{locale}/resources/[slug]` | `(website)/[locale]/resources/[slug]/page.tsx` | `ResourceArticlePageShell` | Server static params | Localized per article for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
+| `/industries/restaurants` | `(website)/industries/restaurants/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/cafes-bakeries` | `(website)/industries/cafes-bakeries/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/takeaway-cloud-kitchens` | `(website)/industries/takeaway-cloud-kitchens/page.tsx` | `IndustryLandingPage` | Server | Per-page |
+| `/industries/multi-location-food-businesses` | `(website)/industries/multi-location-food-businesses/page.tsx` | `IndustryLandingPage` | Server | Per-page |
 | `/product` | `(website)/product/page.tsx` | **Permanent redirect → `/how-it-works`** | Server | — |
 | `/privacy-policy` | `(website)/privacy-policy/page.tsx` | `PrivacyPolicyPage` | Server | Per-page |
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 120 routes (8 core + 3 create-menu + 13 English resources + 91 reviewed localized resources + 1 redirect + 3 legal + 1 trust)**
+**Total: 148 routes (8 core + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
 - `/resources` and resource article routes are feature-gated by `ENABLE_WEBSITE_RESOURCES`.
-- Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 12 article slugs.
+- Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
 - Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
 - `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes.
@@ -143,6 +147,14 @@ The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DO
 
 **Full resource locale coverage:** v3.6.20 adds reviewed Arabic (`ar-SA`) and Spanish (`es-ES`) resource packs for the hub and all 12 articles. The localized resource layout now loads all active website locale JSON files and applies RTL direction for Arabic. `verify:website-resource-locales` now fails if any active non-default website-switcher language lacks a reviewed resource pack, route, sitemap, hreflang, and LLM context coverage.
 
+**Resource navigation and discovery hardening:** v3.6.21 updates the website to match the complete resource strategy without changing product runtime. Header navigation is now Features -> How it works -> Multi-location -> Pricing -> Resources, with a compact desktop Resources dropdown and mobile nested resource links. The homepage Resources section now uses the eight strategic cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Footer Resources links now point to the core resource set plus Trust & Security. `public/robots.txt` now groups named search/AI crawlers with the same private-route disallows as the generic crawler group, `CCBot` is listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` now include preferred positioning and claim limits. Resource analytics remains GA4-only and now includes secondary CTA, upload-menu, pricing, AI/search referrer events including `chat.openai.com`, UTM/referrer properties, locale, entry page, target URL, and anonymous session-scoped IDs. The search/discovery-ready product copy was softened so it describes a clearer public source for crawlers rather than implying search or AI systems must answer from MenuList. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Resource expansion and industry pages:** v3.6.22 adds three resource articles for restaurant menu schema, official menu URL checks, and common QR menu mistakes; updates every reviewed resource locale pack to the new source version; adds four industry landing pages for restaurants, cafes/bakeries, takeaway/cloud kitchens, and multi-location food businesses; extends sitemap, LLM context, and discovery-policy coverage; and adds a real checklist-copy button/event for visible checklist sections. `resource_template_download` remains intentionally absent because there are no downloadable assets to track. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Marketing feedback quality pass:** v3.6.23 sharpens the highest-value English resource and industry pages after marketing review. The live copy now uses `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation across `/resources/official-menu-source`, `/resources/menu-source-audit`, `/resources/google-business-profile-menu`, `/resources/qr-menu-for-restaurants`, `/resources/multi-location-menu-management`, and `/industries/restaurants`. The pass intentionally does not add comparison pages, bars/pubs, food trucks, or additional generic resources until there is enough reviewed content depth. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+**Public truth indexing guardrail:** v3.6.24 implements the long-term business-page strategy without adding directory pages. `src/lib/seo/publicTruthIndexing.ts` centralizes the indexability policy for public tenant OBP/menu pages. `src/app/client/[[...slug]]/page.tsx` applies `index, follow` or `noindex, follow` metadata from that policy, and `src/app/client/sitemap.ts` uses the same gate before adding OBP, menu, outlet, or outlet-menu URLs to a tenant sitemap. `src/app/client/obp/OBPResolvedSurface.tsx` no longer emits generated hidden FAQPage JSON-LD; OBP discovery now stays on visible LocalBusiness/Restaurant/Menu-style business records. This guardrail does not create unclaimed business pages, city/category pages, keyword-variant restaurant pages, owner dashboard changes, auth changes, Firebase changes, Cloud Function changes, Canonica changes, Answerlattice changes, MyCodex changes, GrowthOS changes, or KitStamp changes.
+
 **Default resource route stability:** The unprefixed `/resources` and `/resources/[slug]` routes are the English public source routes. They render through `DefaultWebsiteResourceLocaleBoundary` with `WEBSITE_RESOURCE_DEFAULT_LOCALE` so a visitor's locale cookie cannot change canonical English resource content. Locale-specific content must live on reviewed locale-prefixed routes such as `/hi-IN/resources/[slug]`, `/ar-SA/resources/[slug]`, and `/es-ES/resources/[slug]`.
 
 **POS Sync operations proof:** Stage 7.10 added one POS Sync proof point to `SmartFeaturesSection.tsx` and one Operations card to `FeaturesPage.tsx`. This is intentionally low prominence because POS Sync is an advanced operations capability, not the first-screen buying promise for a non-technical SMB owner. Copy uses signed full-menu snapshot and connected store POS webhook language and does not claim universal POS support, real-time sync, or a POS integration suite. POS Sync runtime, APIs, settings behavior, pricing/payment/auth, and create-menu runtime logic were not changed.
@@ -177,6 +189,7 @@ src/components/website/
 ├── multi-location/MultiLocationPage.tsx — Multi-Location page
 ├── product/ProductPage.tsx     — How It Works page (used by /how-it-works route)
 ├── resources/                   — Resources hub, article layout, resource cards, schema wrapper, and GA4-only link tracking
+├── industries/                   — Shared industry landing-page renderer
 ├── legal/                      — PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage
 ├── trust-security/TrustSecurityPage.tsx — Trust & Security page
 ├── pricing/PricingWrapper.tsx  — Pricing page wrapper
@@ -228,7 +241,7 @@ src/pages/
 - Pattern: `useTranslations('Website')` with `t('Section.keyName')`
 - **Fully translated:** en-US + hi-IN (all sections)
 - **Core sections translated:** ar-SA, es-ES, ta-IN, te-IN, mr-IN, bn-IN (Header/Footer/Hero; rest falls back to English via deepMerge)
-- **Long-form resources:** Resource articles use `src/content/websiteResources/`. `en-US` is the source, and `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` are reviewed full packs that pass `npm run verify:website-resource-locales`.
+- **Long-form resources:** Resource articles use `src/content/websiteResources/`. `en-US` is the source, and `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` are reviewed full packs for the current 15-article registry that pass `npm run verify:website-resource-locales`.
 - **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
   (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
 - **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer dropdown and persists through the existing `ThemeProvider` localStorage contract.

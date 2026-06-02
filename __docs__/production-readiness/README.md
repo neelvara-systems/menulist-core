@@ -102,6 +102,7 @@ Each must:
 | Error emails configured in Sentry | ☐ | Set up alert rules |
 | Telegram alert bot created | ☐ | See `__docs__/ops-alerting-delivery/` |
 | Telegram alerts working | ☐ | Test with manual alert trigger |
+| Platform alert Email/WhatsApp configured | ☐ | Complete `launch-prerequisites.md` Step 7B before production |
 | Menu health monitor deployed | ☐ | See `__docs__/menu-health-monitor/` |
 | SAFE_MODE mechanism ready | ☐ | Core built; complete `launch-prerequisites.md` Step 2C before production |
 | GCP budget alerts configured | ☐ | Set progressive thresholds |

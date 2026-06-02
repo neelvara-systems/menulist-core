@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
-import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
-import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
+import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
+import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -443,11 +443,24 @@ export const POST = withAuth(async (request, session) => {
         let remainingBalance = null;
         try {
             transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
-            transactionObject.transactionId = await addAiOperation(transactionObject);
-            // Consume capacity after successful operation
-            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
-                remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
-            }
+            const accounting = await finalizeAiOperationAccounting({
+                capacitySubscription: capacityCheck.subscription,
+                context: {
+                    action,
+                    fileId,
+                    projectId,
+                    requestId,
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                    userId,
+                },
+                input: transactionObject,
+                logLabel: 'Translation',
+                session,
+            });
+            transactionObject.unitsConsumed = accounting.unitsConsumed;
+            transactionObject.transactionId = accounting.transactionId;
+            remainingBalance = accounting.remainingBalance;
         } catch (transactionError) {
             logger.error('Failed to record translation transaction', transactionError, {
                 action,
@@ -459,6 +472,7 @@ export const POST = withAuth(async (request, session) => {
                 userId,
             });
             await writeLogEntry({ logFileName: LOG_FILE, userId, projectId, fileId, logType: 'TRANSACTION_DB_ERROR', data: transactionObject, error: transactionError });
+            throw transactionError;
         }
 
         await writeLogEntry({
@@ -532,7 +546,7 @@ export const POST = withAuth(async (request, session) => {
         }
         await writeErrorLogEntry(LOG_FILE, error);
         return NextResponse.json(
-            { error: 'Translation failed', message: (error as Error).message },
+            { error: 'Translation failed' },
             { status: 500 }
         );
     }

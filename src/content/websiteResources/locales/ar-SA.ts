@@ -22,6 +22,8 @@ export const arSAResourceTranslationPack: WebsiteResourceTranslationPack = {
         "backToHub": "العودة إلى الموارد",
         "checklist": "قائمة التحقق",
         "comparison": "مقارنة",
+        "copiedChecklist": "تم نسخ قائمة التحقق",
+        "copyChecklist": "انسخ قائمة التحقق",
         "faqTitle": "أسئلة يطرحها أصحابها",
         "onThisPage": "في هذه الصفحة",
         "primaryAction": "الخطوة التالية",
@@ -688,6 +690,196 @@ export const arSAResourceTranslationPack: WebsiteResourceTranslationPack = {
                 }
             }
         },
+                  "restaurant-menu-schema": {
+                            "title": "يجب أن يصف مخطط قائمة المطعم ما يراه العملاء على الصفحة",
+                            "metaTitle": "Restaurant Menu Schema Guide | MenuList",
+                            "metaDescription": "دليل عملي للبيانات المنظمة في صفحات قوائم المطاعم العامة.",
+                            "description": "دليل عملي للبيانات المنظمة في صفحات قوائم المطاعم العامة.",
+                            "quickAnswer": "يجب أن يطابق مخطط قائمة المطعم محتوى القائمة العامة المرئي. استخدم Restaurant أو LocalBusiness للنشاط، وMenu وMenuSection وMenuItem للقائمة المرئية. لا تضف الأسعار المخفية أو المراجعات غير الحقيقية أو التفاصيل غير المتاحة.",
+                            "primaryCtaLabel": "انشر صفحة قائمة منظمة",
+                            "distributionSnippets": [
+                                      "يجب أن يصف مخطط قائمة المطعم ما يراه العملاء على الصفحة",
+                                      "يجب أن يطابق مخطط قائمة المطعم محتوى القائمة العامة المرئي. استخدم Restaurant أو LocalBusiness للنشاط، وMenu وMenuSection وMenuItem للقائمة المرئية. لا تضف الأسعار المخفية أو المراجعات غير الحقيقية أو التفاصيل غير المتاحة."
+                            ],
+                            "sections": {
+                                      "schema-types": {
+                                                "title": "أنواع schema",
+                                                "body": [
+                                                          "دليل عملي للبيانات المنظمة في صفحات قوائم المطاعم العامة."
+                                                ],
+                                                "checklist": [
+                                                          "اسم العنصر المرئي يطابق اسم MenuItem.",
+                                                          "السعر المرئي يطابق سعر Offer.",
+                                                          "لا تضع أسئلة مخفية في markup.",
+                                                          "Use Menu, MenuSection, and MenuItem for visible menu content.",
+                                                          "Use FAQPage only for FAQ content visible on the page."
+                                                ]
+                                      },
+                                      "visible-content": {
+                                                "title": "مطابقة المحتوى المرئي",
+                                                "body": [
+                                                          "يجب أن يطابق مخطط قائمة المطعم محتوى القائمة العامة المرئي. استخدم Restaurant أو LocalBusiness للنشاط، وMenu وMenuSection وMenuItem للقائمة المرئية. لا تضف الأسعار المخفية أو المراجعات غير الحقيقية أو التفاصيل غير المتاحة."
+                                                ],
+                                                "checklist": [
+                                                          "اسم العنصر المرئي يطابق اسم MenuItem.",
+                                                          "السعر المرئي يطابق سعر Offer.",
+                                                          "لا تضع أسئلة مخفية في markup.",
+                                                          "افتح الرابط على بيانات الهاتف."
+                                                ]
+                                      },
+                                      "common-mistakes": {
+                                                "title": "أخطاء شائعة",
+                                                "checklist": [
+                                                          "لا تضع أسئلة مخفية في markup.",
+                                                          "يجب ألا تبقى ملفات PDF القديمة كرابط العميل الرئيسي.",
+                                                          "Old prices structured data मध्ये/में/లో रखना ತಪ್ಪు.",
+                                                          "Schema does not guarantee ranking."
+                                                ]
+                                      },
+                                      "how-menulist-fits": {
+                                                "title": "كيف يناسب MenuList",
+                                                "body": [
+                                                          "MenuList keeps public menu pages structured around the owner-approved source.",
+                                                          "External search and AI systems decide what they crawl, show, cite, or ignore."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "schema-guarantee": {
+                                                "question": "هل يضمن schema الترتيب؟",
+                                                "answer": "لا. يمكن أن يوضح الصفحة، لكن أنظمة البحث تقرر الزحف والترتيب والنتائج المحسنة."
+                                      },
+                                      "hidden-menu-items": {
+                                                "question": "هل يمكن إضافة عناصر مخفية إلى schema؟",
+                                                "answer": "لا. يجب أن تطابق البيانات المنظمة الصفحة العامة."
+                                      }
+                            }
+                  },
+                  "official-menu-url-checklist": {
+                            "title": "استخدم رابط قائمة ثابتًا في كل مكان يراه العملاء",
+                            "metaTitle": "Official Menu URL Checklist for Restaurants | MenuList",
+                            "metaDescription": "قائمة تحقق لاستبدال روابط القائمة المتناثرة برابط مصدر واحد معتمد.",
+                            "description": "قائمة تحقق لاستبدال روابط القائمة المتناثرة برابط مصدر واحد معتمد.",
+                            "quickAnswer": "استخدم رابط قائمة ثابتًا في كل مكان يراه العملاء. Stable URL keeps QR, Google, social, website, WhatsApp, print, screens, and branch pages pointed to the current approved menu source.",
+                            "primaryCtaLabel": "أنشئ رابط قائمة ثابتًا",
+                            "distributionSnippets": [
+                                      "استخدم رابط قائمة ثابتًا في كل مكان يراه العملاء",
+                                      "Use one stable URL instead of sending a new file link after every update."
+                            ],
+                            "sections": {
+                                      "choose-source-url": {
+                                                "title": "اختر رابط المصدر",
+                                                "body": [
+                                                          "Choose a public menu page the owner can keep current. The URL should stay stable when prices, items, photos, or availability change."
+                                                ],
+                                                "checklist": [
+                                                          "Use a short public URL.",
+                                                          "Open on mobile without login.",
+                                                          "Menu is owner-approved.",
+                                                          "Page updates without changing the URL."
+                                                ]
+                                      },
+                                      "update-surfaces": {
+                                                "title": "حدّث الأسطح التي يراها العملاء",
+                                                "checklist": [
+                                                          "QR codes.",
+                                                          "Google Business Profile menu link.",
+                                                          "Instagram and WhatsApp links.",
+                                                          "Website menu buttons.",
+                                                          "Print files and screens.",
+                                                          "Branch pages and branch QR cards."
+                                                ]
+                                      },
+                                      "test-before-printing": {
+                                                "title": "اختبر قبل الطباعة",
+                                                "checklist": [
+                                                          "افتح الرابط على بيانات الهاتف.",
+                                                          "امسح QR بالحجم النهائي للطباعة.",
+                                                          "Check title, prices, and availability.",
+                                                          "Ask staff to send the same URL.",
+                                                          "يجب ألا تبقى ملفات PDF القديمة كرابط العميل الرئيسي."
+                                                ]
+                                      },
+                                      "limits": {
+                                                "title": "ما لا يفرضه الرابط",
+                                                "body": [
+                                                          "A clear official URL reduces confusion, but external sites still decide when cached or old information refreshes."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "new-qr-every-update": {
+                                                "question": "هل يحتاج كل تحديث إلى QR جديد؟",
+                                                "answer": "لا. عند وجود رابط قائمة ثابت، يمكن تحديث القائمة خلف نفس QR المطبوع."
+                                      },
+                                      "delete-old-pdfs": {
+                                                "question": "هل يجب إزالة ملفات PDF القديمة؟",
+                                                "answer": "يجب ألا تكون ملفات PDF العامة القديمة هي رابط القائمة الرئيسي. احتفظ فقط بملفات النسخ الحالية."
+                                      }
+                            }
+                  },
+                  "restaurant-qr-menu-mistakes": {
+                            "title": "أخطاء شائعة في قوائم QR يجب على المطاعم تجنبها",
+                            "metaTitle": "Common QR Menu Mistakes Restaurants Should Avoid | MenuList",
+                            "metaDescription": "قائمة أخطاء QR قبل طباعة بطاقات الطاولات أو التغليف.",
+                            "description": "قائمة أخطاء QR قبل طباعة بطاقات الطاولات أو التغليف.",
+                            "quickAnswer": "رمز QR ليس القائمة. إنه نقطة وصول إلى مصدر القائمة الحالي الثابت. يحتاج إلى موضع واضح ورابط بديل واختبار مسح قبل الاستخدام.",
+                            "primaryCtaLabel": "قم بإعداد قائمة QR ثابتة",
+                            "distributionSnippets": [
+                                      "رمز QR ليس القائمة. إنه نقطة وصول إلى مصدر القائمة الحالي الثابت. يحتاج إلى موضع واضح ورابط بديل واختبار مسح قبل الاستخدام.",
+                                      "A QR menu fails when the link, placement, or branch version is wrong."
+                            ],
+                            "sections": {
+                                      "pdf-only": {
+                                                "title": "الخطأ 1: توجيه QR إلى PDF قديم",
+                                                "body": [
+                                                          "A PDF can be useful for print, but it becomes stale through WhatsApp, old website links, or old QR cards."
+                                                ],
+                                                "checklist": [
+                                                          "اجعل وجهة QR الرئيسية صفحة قائمة مناسبة للجوال.",
+                                                          "Keep PDF secondary for print or backup.",
+                                                          "Replace old PDF links when prices change."
+                                                ]
+                                      },
+                                      "unstable-links": {
+                                                "title": "الخطأ 2: تغيير الرابط بعد كل تحديث",
+                                                "body": [
+                                                          "If every update creates a new URL, printed QR material becomes risky. A stable URL is safer."
+                                                ],
+                                                "checklist": [
+                                                          "استخدم رابط قائمة عام ثابت واحد.",
+                                                          "Update content behind the URL.",
+                                                          "Keep staff replies and social links on the same source."
+                                                ]
+                                      },
+                                      "placement-testing": {
+                                                "title": "الخطأ 3: الطباعة قبل اختبار المسح",
+                                                "checklist": [
+                                                          "امسح QR بالحجم النهائي للطباعة.",
+                                                          "اختبر كاميرات iPhone وAndroid.",
+                                                          "Test in customer lighting.",
+                                                          "Print a readable fallback URL.",
+                                                          "افتح الرابط على بيانات الهاتف."
+                                                ]
+                                      },
+                                      "branch-mismatch": {
+                                                "title": "الخطأ 4: قائمة فرع غير صحيحة",
+                                                "body": [
+                                                          "Branches may have different prices, availability, hours, or service modes. When those differences matter, QR should open the correct branch version."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "biggest-qr-mistake": {
+                                                "question": "ما أكثر خطأ شائع في QR؟",
+                                                "answer": "فتح ملف قائمة قديم أو صعب القراءة بدل صفحة قائمة حالية ثابتة."
+                                      },
+                                      "branch-specific-qr": {
+                                                "question": "هل يحتاج كل فرع إلى QR خاص؟",
+                                                "answer": "نعم عندما تختلف الأسعار أو التوفر أو الساعات أو تفاصيل الخدمة حسب الفرع."
+                                      }
+                            }
+                  },
         "multi-location-menu-management": {
             "title": "حافظ على محاذاة قوائم المنافذ دون إخفاء الاختلافات المحلية",
             "metaTitle": "إدارة القائمة متعددة المواقع | MenuList",

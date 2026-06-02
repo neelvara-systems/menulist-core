@@ -1,10 +1,10 @@
 'use client';
 
-import { DollarOutlined, EyeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { fetchMenuItemStats } from '@services/analytics';
-import { Card, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Card, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { LuDollarSign, LuEye, LuShoppingCart } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -26,8 +26,14 @@ interface MenuItem {
 
 const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange }) => {
     const labels = useOfferingLabels();
+    const { token } = theme.useToken();
     const [loading, setLoading] = useState(true);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const categoryTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -61,7 +67,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             render: (text: string, record: MenuItem) => (
                 <Space direction="vertical" size={0}>
                     <Text strong>{text}</Text>
-                    <Tag color="blue">{record.category}</Tag>
+                    <Tag style={categoryTagStyle}>{record.category}</Tag>
                 </Space>
             )
         },
@@ -69,7 +75,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             title: (
                 <Tooltip title="Number of times this item was viewed">
                     <Space>
-                        <EyeOutlined />
+                        <LuEye />
                         Views
                     </Space>
                 </Tooltip>
@@ -85,7 +91,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             title: (
                 <Tooltip title="Number of times this item was ordered">
                     <Space>
-                        <ShoppingCartOutlined />
+                        <LuShoppingCart />
                         Orders
                     </Space>
                 </Tooltip>
@@ -101,7 +107,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             title: (
                 <Tooltip title="Total revenue from this item">
                     <Space>
-                        <DollarOutlined />
+                        <LuDollarSign />
                         Revenue
                     </Space>
                 </Tooltip>

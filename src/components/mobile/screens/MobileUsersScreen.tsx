@@ -4,6 +4,7 @@ import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFro
 import { buildStaffLoginDetailsText, copyTextToClipboard, openWhatsAppWebShare, shareStaffLoginDetails, type StaffLoginDetailsShareInput } from '@lib/staffManagement/shareLoginDetails';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuMessageCircle, LuPhone, LuPlus, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
@@ -57,6 +58,7 @@ function StaffLoginDetailsPanel({
     staffLoginId: string;
     temporaryPasscode: string;
 }) {
+    const { token } = theme.useToken();
     const details = { countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
 
@@ -99,7 +101,7 @@ function StaffLoginDetailsPanel({
             <Card>
                 <Flex gap={6} vertical>
                     <StaffLoginCopyRow label="Staff ID" onCopy={() => void copyValue(staffLoginId, 'Staff ID')} value={staffLoginId} />
-                    <div style={{ borderTop: '1px solid #f1f5f9' }} />
+                    <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }} />
                     <StaffLoginCopyRow label="Passcode" onCopy={() => void copyValue(temporaryPasscode, 'Passcode')} value={temporaryPasscode} />
                 </Flex>
             </Card>
@@ -117,6 +119,7 @@ function StaffLoginDetailsPanel({
 
 export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const t = useTranslations('MobileUsers');
+    const { token } = theme.useToken();
     const { usersList, setUsersList, storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const [showAddUser, setShowAddUser] = useState(false);
     const [newUserName, setNewUserName] = useState('');
@@ -385,7 +388,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 {users.length === 0 ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
-                            <LuUser color="#d1d5db" size={40} />
+                            <LuUser color={token.colorTextTertiary} size={40} />
                             <Text type="secondary">{t('noStaffYet')}</Text>
                             <Button onClick={() => setShowAddUser(true)}><Flex align="center" gap={6}><LuPlus size={16} /><Text>{t('addStaff')}</Text></Flex></Button>
                         </Flex>
@@ -433,12 +436,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
                             <Card>
                                 <List>
-                                    <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).staffAuthMode === 'owner_passcode' ? `Staff ID: ${(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}` : (selectedUser as any).displayEmail || (selectedUser as any).email || 'No email'}</Text>} />
+                                    <List.Item prefix={<LuMail color={token.colorTextTertiary} size={16} />} title={<Text>{(selectedUser as any).staffAuthMode === 'owner_passcode' ? `Staff ID: ${(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}` : (selectedUser as any).displayEmail || (selectedUser as any).email || 'No email'}</Text>} />
                                     {(selectedUser as any).staffAuthMode !== 'owner_passcode' && ((selectedUser as any).staffLoginId || (selectedUser as any).loginUsername) ? (
-                                        <List.Item prefix={<LuKeyRound color="#9ca3af" size={16} />} title={<Text>Staff ID: {(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}</Text>} />
+                                        <List.Item prefix={<LuKeyRound color={token.colorTextTertiary} size={16} />} title={<Text>Staff ID: {(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}</Text>} />
                                     ) : null}
-                                    <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</Text>} />
-                                    <List.Item prefix={(selectedUser as any).active ? <LuUserCheck color="#22c55e" size={16} /> : <LuUserX color="#f87171" size={16} />} title={<Text>{(selectedUser as any).active ? t('active') : t('deactivated')}</Text>} />
+                                    <List.Item prefix={<LuPhone color={token.colorTextTertiary} size={16} />} title={<Text>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</Text>} />
+                                    <List.Item prefix={(selectedUser as any).active ? <LuUserCheck color={token.colorSuccess} size={16} /> : <LuUserX color={token.colorError} size={16} />} title={<Text>{(selectedUser as any).active ? t('active') : t('deactivated')}</Text>} />
                                 </List>
                             </Card>
 
@@ -460,6 +463,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
                             <Button
                                 block
+                                color={(selectedUser as any).active ? 'danger' : undefined}
                                 fill="outline"
                                 loading={isUpdatingUser}
                                 onClick={() => {
@@ -524,13 +528,13 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                     });
                                 }}
                                 size="large"
-                                style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}
                             >
                                 {(selectedUser as any).active ? t('deactivate') : t('activate')}
                             </Button>
 
                             <Button
                                 block
+                                color="danger"
                                 fill="outline"
                                 loading={isUpdatingUser}
                                 onClick={() => {
@@ -545,7 +549,6 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                     });
                                 }}
                                 size="large"
-                                style={{ borderColor: '#dc2626', color: '#dc2626' }}
                             >
                                 <Flex align="center" gap={6} justify="center">
                                     <LuTrash2 size={14} />
@@ -564,7 +567,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                             align="center"
                             justify="space-between"
                             style={{
-                                borderBottom: '1px solid #f1f5f9',
+                                borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                 padding: '14px 12px 10px 16px',
                             }}
                         >

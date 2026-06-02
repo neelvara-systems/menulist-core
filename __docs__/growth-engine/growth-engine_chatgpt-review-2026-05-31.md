@@ -40,6 +40,7 @@ ChatGPT was right that personalized evidence artifacts convert better than gener
 | Cloud Tasks | Firebase task queues support async, resource-intensive, bandwidth-limited work with rate limiting and retry controls. Source: https://firebase.google.com/docs/functions/task-functions | Use task queues for source imports, AI scoring, sends, webhook processing, and follow-ups. |
 | Email compliance | FTC CAN-SPAM covers commercial email including B2B, requires address/opt-out handling, and prompt opt-out honoring. Source: https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Email must include opt-out, sender identity, physical address, suppression, bounce handling, and audit logs. |
 | WhatsApp | WhatsApp Business policy can limit or remove access for violations and reviews opt-in flows/user feedback. Source: https://whatsappbusiness.com/policy/ | WhatsApp starts assisted. API/template outbound requires consent proof and policy review. |
+| WhatsApp Cloud API governance | WhatsApp Business Terms require consent/permission and opt-out honoring; pricing docs define message categories, the 24-hour service window, and 72-hour free entry points; Flows can collect structured customer actions. Sources: https://www.whatsapp.com/legal/business-terms/, https://whatsappbusiness.com/products/platform-pricing/, and https://whatsappbusiness.com/products/whatsapp-flows/ | WhatsApp API sending requires governance: consent, suppression, templates, conversation state, webhook verification, reputation, sender identity, pacing, and audit. |
 | India telecom outreach | TRAI 2025 UCC amendments tighten action against unsolicited commercial communications and restrict normal 10-digit numbers for telemarketing. Source: https://www.trai.gov.in/sites/default/files/2025-02/PR_No.11of2025.pdf | No bulk calling/SMS/WhatsApp blast posture. Get legal/compliance review before scale. |
 | India personal data | DPDP Act applies to digital personal data processing in India and requires lawful purpose, notice, consent or legitimate use, rights, and erasure/correction handling. Source: https://www.meity.gov.in/static/uploads/2024/02/Digital-Personal-Data-Protection-Act-2023.pdf | Store minimum PII, mask by default, retain suppression evidence, and document purpose/retention. |
 
@@ -52,6 +53,7 @@ After reviewing current channel, cost, and market sources, the original docs nee
 | Gmail sender guidance requires sender authentication, spam-rate discipline, and one-click unsubscribe for larger marketing/subscribed sends. | Email cannot be a simple provider call. Add sender-domain readiness, unsubscribe endpoint, bounce handling, ramp limits, and health thresholds. |
 | CAN-SPAM requires commercial email identity and opt-out handling. | Every email campaign needs sender identity, physical address policy, unsubscribe, suppression, and audit evidence. |
 | WhatsApp Business policy and ecosystem controls make unsolicited proactive messaging high risk. | Keep WhatsApp assisted-first. API/template outbound requires opt-in proof, approved templates, and legal/channel review. |
+| WhatsApp is strongest as an expected owner-verification and truth-maintenance rail. | Add WhatsApp Message Governance Layer and reserve API sends for owner claim, verification, correction, stale-data confirmation, support, and owner referral journeys. |
 | TRAI 2025 UCC amendments tighten commercial communication accountability in India. | India outreach needs jurisdiction/channel policy before scale, especially for calling, SMS, and WhatsApp-like behavior. |
 | DPDP requires lawful purpose, notice/consent or legitimate use, rights handling, and personal data minimization. | Add data subject request workflow, vendor register, retention classes, masking, and proof ledger. |
 | Firestore and BigQuery costs can grow through reads, index reads, event scans, and bytes processed. | Dashboards must use summaries; analytics must use partitioning, clustering, and max-bytes-billed controls. |
@@ -89,6 +91,7 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | Place pages as moat | Replace page-first thinking with Business Truth Graph nodes and edges. Pages are outputs of confirmed truth, not the asset itself. |
 | AI can write messages | AI writes only inside approved templates, variables, offer angles, and safety guardrails. |
 | Omnichannel from day one | Build owned distribution spine first; enable channels only when policy and readiness pass. |
+| WhatsApp as a sender | Make WhatsApp a governed owner-verification and truth-maintenance rail. Do not build direct WhatsApp API sending before consent, templates, conversation state, webhooks, reputation, sender identity, pacing, and audit exist. |
 | Internal "Growth Engine" in MenuList | Keep same repo but separate product code, Firebase, functions, and route groups. |
 
 ## 6. Rejected Ideas
@@ -101,6 +104,9 @@ New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-a
 | Rehost Foursquare tips/photos/ratings/menu/profile content | Source-rights, cost, and public-claim risk. |
 | Publish candidate graph edges as truth | Candidate edges are inspection signals. Public MenuList truth requires owner confirmation or approved MenuList verification. |
 | Fully automate WhatsApp/calls early | Channel, complaint, DNC, and India UCC risk are too high. |
+| Use WhatsApp from scraped/enriched phone numbers | Phone number availability is not WhatsApp opt-in. |
+| Use WhatsApp as generic AI assistant | WhatsApp should carry bounded business workflows, not an open-ended AI surface. |
+| Use shared WhatsApp sender pools or number rotation | Creates pooled reputation and platform-risk behavior. |
 | Store scraped data as business truth | MenuList truth must be owner-confirmed or system-verified, not scraped. |
 | Submit private artifacts to search/feed systems | Private artifacts are noindex and expiring; public distribution starts only from confirmed MenuList truth. |
 | Use Google Indexing API for menu pages | Official scope is not restaurant menu pages. |

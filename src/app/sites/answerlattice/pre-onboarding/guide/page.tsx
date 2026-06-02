@@ -19,9 +19,9 @@ import SectionHeader from '../../components/SectionHeader';
 import AnswerlatticePreOnboardingPromptModal from '../PromptModal';
 
 export const metadata: Metadata = {
-    title: 'Pre-Onboarding Guide | Answerlattice',
+    title: 'Pre-Onboarding Guide | AnswerLattice',
     description:
-        'End-to-end guide for using the Answerlattice pre-onboarding prompt with a product repo, docs, public website, owner notes, screenshots, and owner review.',
+        'End-to-end guide for using the AnswerLattice pre-onboarding prompt with a product repo, docs, public website, owner notes, screenshots, and owner review.',
     alternates: { canonical: '/pre-onboarding/guide' },
 };
 
@@ -148,7 +148,7 @@ const LIVE_GATES = [
     'Risky answers are escalation-gated.',
     'Product surfaces are mapped.',
     'Widget key, allowed origins, and blocked routes are configured.',
-    'Runtime widget context is seen in Answerlattice.',
+    'Runtime widget context is seen in AnswerLattice.',
     'Live support test questions pass.',
     'Owner signs off on screenshots and public asset use.',
 ];
@@ -164,7 +164,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                 <section className="border-b border-white/[0.06] px-4 py-20 text-center sm:px-6 lg:py-24">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pre-Onboarding Guide</p>
                     <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Use the prompt with the right source material, then review the package before Answerlattice intake.
+                        Use the prompt with the right source material, then review the package before AnswerLattice intake.
                     </h1>
                     <p className="mx-auto mt-6 max-w-3xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
                         This guide is for product owners and the AI agents helping them. It explains what to prepare, how to run the prompt, what the agent should inspect, and what must be checked before live support.
@@ -211,7 +211,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                         <SectionHeader
                             eyebrow="Market patterns"
                             title="Handle repo-to-doc, FAQ, demo, and website requests safely."
-                            description="Some teams expect the agent to turn product sources into support docs, FAQs, walkthroughs, or website asset briefs. Answerlattice keeps those outputs source-backed and review-gated."
+                            description="Some teams expect the agent to turn product sources into support docs, FAQs, walkthroughs, or website asset briefs. AnswerLattice keeps those outputs source-backed and review-gated."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {MARKET_PATTERN_RULES.map((item) => (
@@ -250,7 +250,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Multi-product repos</p>
                             <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Target one product before collecting source truth.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                                Some clients keep several products in one codebase. In that case, the agent must map the repo first, then prepare Answerlattice inputs only for the product named in the prompt.
+                                Some clients keep several products in one codebase. In that case, the agent must map the repo first, then prepare AnswerLattice inputs only for the product named in the prompt.
                             </p>
                         </div>
                         <div className="grid gap-3">
@@ -312,7 +312,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner review</p>
                             <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Do not upload the folder blindly.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                                The AI agent prepares structure. The owner still reviews accuracy, privacy, support boundaries, and production facts before Answerlattice intake.
+                                The AI agent prepares structure. The owner still reviews accuracy, privacy, support boundaries, and production facts before AnswerLattice intake.
                             </p>
                         </div>
                         <div className="grid gap-3">
@@ -331,7 +331,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                         <SectionHeader
                             eyebrow="For the AI agent"
                             title="What the agent needs to know before starting."
-                            description="When the owner gives the AI IDE the Answerlattice link, the agent should follow the source-first operating contract and avoid unsupported certainty."
+                            description="When the owner gives the AI IDE the AnswerLattice link, the agent should follow the source-first operating contract and avoid unsupported certainty."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {[
@@ -356,7 +356,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Live support gate</p>
                             <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Prepared inputs are not the same as live readiness.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                                Use the generated package to start Answerlattice faster. Turn on live support only after the runtime checks and owner approvals are complete.
+                                Use the generated package to start AnswerLattice faster. Turn on live support only after the runtime checks and owner approvals are complete.
                             </p>
                         </div>
                         <div className="grid gap-3">

@@ -73,8 +73,11 @@ Growth Engine may generate a lead preview or audit artifact, but that artifact i
 | [ChatGPT Review](./growth-engine_chatgpt-review-2026-05-31.md) | Review of the attached conversation, accepted/rejected points, and risks. |
 | [Distribution Architecture](./growth-engine_distribution-architecture.md) | New direction lock: lead gen becomes MenuList-owned distribution infrastructure. |
 | [Automation Workflow Blueprint](./growth-engine_automation-workflow-blueprint.md) | Implementation-ready automation model based on researched GTM workflows and MenuList-specific distribution needs. |
+| [Connections And Activation Screen](./growth-engine_connections-activation-screen.md) | Internal control screen for adapter IDs, provider credentials, email pipeline, WhatsApp pipeline, webhooks, budgets, kill switches, and activation gates. |
+| [Implementation Readiness](./growth-engine_implementation-readiness.md) | Final implementation-entry contract covering route inventory, UI states, RBAC, flags, env keys, Firestore rules/indexes, seed config, use cases, API/UI/test checklists, and stop conditions. |
 | [Google Places Source Policy](./growth-engine_google-places-source-policy.md) | Controlled use of Google Places as a cost-gated candidate source and place identity adapter. |
 | [Foursquare Source Policy](./growth-engine_foursquare-source-policy.md) | Controlled use of Foursquare as an identity/category/chain graph signal, with PAYG outreach restrictions blocked by default. |
+| [WhatsApp Governance Policy](./growth-engine_whatsapp-governance-policy.md) | Controlled use of WhatsApp as a consented owner-verification and truth-maintenance rail, not bulk outreach. |
 | [Naming Shortlist](./growth-engine_naming-shortlist.md) | Recommended product name after preliminary domain, search, and company-name availability signals. |
 | [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md) | Second-pass web-researched gap review from the perspective of operating the product. |
 | [Specification](./growth-engine_spec.md) | Business requirements, scope, user flows, and acceptance criteria. |
@@ -98,6 +101,7 @@ The docs are ready for implementation planning with these locked decisions:
 - Product code is `GE` for first implementation. Reserve `MN` only if the rename is secured before product constants are added.
 - Route strategy is internal/admin only. No public Growth Engine site or host.
 - Firebase projects are `growth-engine-qa` and `growth-engine`.
+- Connections And Activation is required before provider execution. It owns adapter IDs, secret references, email pipeline readiness, WhatsApp pipeline readiness, webhooks, budgets, kill switches, validation, and activation state.
 - Email adapter is Amazon SES first, with `reach.menulist.ai` or equivalent dedicated subdomain.
 - Jurisdiction policy supports India, US, and `GLOBAL_REVIEW` records.
 - Manual CSV is mandatory; Google Places and Apify-like adapters are candidate-discovery only after source policy approval.
@@ -108,9 +112,14 @@ The docs are ready for implementation planning with these locked decisions:
 - MenuList canonical surface resolver/bridge owns public URL truth. Growth Engine must not hardcode public URL patterns.
 - Google Business Profile, Apple Business Connect, and Bing Places are owner-authorized distribution handoffs only.
 - WhatsApp remains assisted unless explicit opt-in, approved templates, provider readiness, and policy review exist.
+- WhatsApp API sending requires a Message Governance Layer: consent ledger, suppression ledger, template registry, conversation-window state, webhook ingestion, reputation monitor, sender identity policy, and kill switches.
+- WhatsApp is reserved for expected owner verification, claim recovery, support, and truth-maintenance journeys. Public phone availability or enriched phone data is not WhatsApp opt-in.
+- WhatsApp Flows may collect structured owner-confirmed business truth after consent and policy approval; they must not become generic AI chat or lead resale intake.
 - All feature flags stay default off.
 
-Implementation must include owned distribution gates and owned automation gates, not only sending gates. Source policy, channel policy, sender readiness, suppression, target registry, workflow engine, enrichment waterfalls, decision snapshots, AI worker registry, canonical surface publishing, discovery publishing, menu feed export readiness, onboarding inventory, artifact review, evals, and incident controls are launch-baseline requirements.
+Implementation must include owned distribution gates, owned automation gates, and connection activation gates, not only sending gates. Source policy, channel policy, adapter registry, provider secrets, sender readiness, suppression, target registry, workflow engine, enrichment waterfalls, decision snapshots, AI worker registry, canonical surface publishing, discovery publishing, menu feed export readiness, onboarding inventory, artifact review, evals, and incident controls are launch-baseline requirements.
+
+Before code starts, use [Implementation Readiness](./growth-engine_implementation-readiness.md) as the final checklist. It defines the required internal routes, screen states, role matrix, feature flags, environment keys, secret handling, Firestore rules/index expectations, seed records, use cases, API guards, UI guards, tests, and stop conditions.
 
 The only non-code blocker is external: purchase/protect `menunexus.com` and complete final MCA/company-name and trademark checks before renaming product constants, folders, Firebase projects, or public-facing assets.
 

@@ -111,19 +111,19 @@ function slidesChanged(oldSlides: ScreenSlide[], newSlides: ScreenSlide[]): bool
 
 /**
  * Get slide label for display
- * Per spec: Labels like "Today", "Popular", "Always shown", "Your upload"
+ * Per spec: Labels like "Today", "Popular", "On menu", "Custom slide"
  */
 export function getSlideLabel(slide: ScreenSlide): string {
     switch (slide.source) {
         case "pinned":
-            return "Your Upload";
+            return "Custom slide";
         case "campaign":
             return slide.caption || "Today";
         case "evergreen":
             if (slide.type === "brand_fallback") {
                 return ""; // No label for brand
             }
-            return slide.caption || "Always Available";
+            return slide.caption || "On menu";
         default:
             return "";
     }

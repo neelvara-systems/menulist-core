@@ -141,6 +141,12 @@ export const DB_COLLECTIONS = {
     // @see __docs__/lifecycle-messaging/
     MESSAGE_LOGS: "messageLogs",            // Message send logs (idempotency + debugging)
 
+    // Owner Notifications (Owner/account-critical email + WhatsApp notices)
+    // @see __docs__/owner-notifications/
+    OWNER_NOTIFICATION_EVENTS: "ownerNotificationEvents",
+    OWNER_NOTIFICATION_DELIVERIES: "ownerNotificationDeliveries",
+    OWNER_NOTIFICATION_RATE_LIMITS: "ownerNotificationRateLimits",
+
     // Scheduler Monitoring (Nightly Scheduler Run Logs)
     // @see __docs__/decision-intelligence/
     SCHEDULER_RUN_LOGS: "schedulerRunLogs", // Persisted run results for dashboard monitoring

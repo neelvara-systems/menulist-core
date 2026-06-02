@@ -2,8 +2,7 @@
 
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
-import { FaWhatsapp } from 'react-icons/fa6';
-import { LuClipboard, LuCopy, LuExternalLink } from 'react-icons/lu';
+import { LuClipboard, LuCopy, LuExternalLink, LuMessageCircle } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -96,7 +95,7 @@ export default function ShareLinkCard({
                     </Button>
                     <Button
                         size="small"
-                        icon={<FaWhatsapp size={14} />}
+                        icon={<LuMessageCircle size={14} />}
                         onClick={handleWhatsApp}
                         style={{ color: token.colorTextLightSolid, background: token.colorSuccess, borderColor: token.colorSuccess }}
                     >

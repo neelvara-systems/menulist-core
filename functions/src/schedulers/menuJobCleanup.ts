@@ -13,6 +13,7 @@ import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from "../sharedData/platformNotificationRegistry";
 import {
     MENU_IMAGE_PROCESSING_JOBS_COLLECTION,
     MENU_PROCESSING_STATUS,
@@ -51,6 +52,10 @@ async function createExtractionAlert(params: {
     message: string;
     metadata?: Record<string, unknown>;
 }): Promise<void> {
+    const triggerType = params.title === EXTRACTION_ALERT_TITLES.stuckJob
+        ? PLATFORM_NOTIFICATION_TRIGGER_TYPES.JOB_STUCK
+        : PLATFORM_NOTIFICATION_TRIGGER_TYPES.EXTRACTION_FAILURE_SPIKE;
+
     await createAlert({
         ...EXTRACTION_ALERT_SCOPE,
         type: 'health',
@@ -61,6 +66,9 @@ async function createExtractionAlert(params: {
             subsystem: 'ai-extraction',
             ...params.metadata,
         },
+        triggerType,
+        productId: 'ML',
+        category: 'extraction',
         actionRequired: true,
     });
 }

@@ -11,8 +11,10 @@
 
 import { Button, Card, DatePicker, Flex, Input, Tag, Typography, theme } from 'antd';
 import dayjs from 'dayjs';
+import { useFormatter } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
+import { formatDateTime } from '@util/dateTime';
 
 const { Text } = Typography;
 
@@ -32,6 +34,7 @@ interface TempStatusCardProps {
 
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const currentStatus = storeDetails?.tempStatus;
     const isActive = currentStatus && new Date(currentStatus.expiresAt).getTime() > Date.now();
 
@@ -160,7 +163,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         <Flex align="center" gap={6} style={{ marginTop: 6 }}>
                             <LuClock size={12} style={{ color: token.colorWarningText, flexShrink: 0 }} />
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Expires {dayjs(currentStatus.expiresAt).format('MMM D, YYYY [at] h:mm A')}
+                                Expires {formatDateTime(currentStatus.expiresAt, 'datetime', formatter)}
                             </Text>
                         </Flex>
                     </div>

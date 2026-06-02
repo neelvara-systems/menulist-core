@@ -67,6 +67,21 @@ function StatusTag({ status }: { status: string }) {
     return <Tag color={colorMap[status] || 'default'}>{status}</Tag>;
 }
 
+function PipelineTag({ value }: { value?: string | null }) {
+    if (!value) return <>—</>;
+    const label = value.replace(/_/g, ' ');
+    const colorMap: Record<string, string> = {
+        messaging_onboarding: 'geekblue',
+        project: 'blue',
+        public_menu_draft: 'green',
+        menu_link_import: 'purple',
+        owner_upload: 'cyan',
+        public_create_menu: 'green',
+        MESSAGING_ONBOARDING: 'geekblue',
+    };
+    return <Tag color={colorMap[value] || 'default'}>{label}</Tag>;
+}
+
 // ================================================================
 // MAIN COMPONENT
 // ================================================================
@@ -221,6 +236,20 @@ export default function ExtractionMonitor() {
                 if (isFirst === false) return <Tag color="purple">Re-extract</Tag>;
                 return '—';
             },
+        },
+        {
+            title: 'Destination',
+            dataIndex: 'destinationType',
+            key: 'destination',
+            width: 130,
+            render: (destinationType: string | null | undefined) => <PipelineTag value={destinationType} />,
+        },
+        {
+            title: 'Source',
+            dataIndex: 'source',
+            key: 'source',
+            width: 130,
+            render: (source: string | null | undefined) => <PipelineTag value={source} />,
         },
         {
             title: 'Error',

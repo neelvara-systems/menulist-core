@@ -3,6 +3,7 @@
 import HelpCenter from '@template/main-app/helpCenter';
 import { HELP_CENTER_TABS, HOME_TAB_KEY } from '@template/main-app/helpCenter/tabsConfig';
 import { helpCenterTabRouting } from '@constant/navigations';
+import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
@@ -22,6 +23,7 @@ function normalizeHelpCenterTab(tab?: string | null) {
 
 export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScreenProps) {
     const router = useRouter();
+    const { token } = theme.useToken();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
@@ -64,7 +66,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                     </Flex>
                 )}
                 onBack={handleBack}
-                right={<LuHelpCircle color="#3b82f6" size={18} />}
+                right={<LuHelpCircle color={token.colorPrimary} size={18} />}
                 title="Help Center"
             />
             <div

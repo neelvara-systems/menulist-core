@@ -247,6 +247,73 @@ In Firestore Console, create/update document `ops_config/system`:
 
 ---
 
+## Step 7B: Platform Alert Email/WhatsApp Go-Live Checklist (10 minutes)
+
+> Platform alerts are implemented and deployed, but production send-out still needs final channel configuration before launch.
+
+Current deployment state as of June 2, 2026:
+
+- Production Functions have WhatsApp outbound secrets available.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `ecomsai`.
+- SMTP and Telegram are intentionally deploy-optional until those secrets exist, so Firebase deploy validation does not fail.
+
+Before going live, complete this checklist:
+
+1. Create the missing Secret Manager values:
+
+```bash
+firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project ecomsai
+firebase functions:secrets:set TELEGRAM_CHAT_ID --project ecomsai
+firebase functions:secrets:set SMTP_HOST --project ecomsai
+firebase functions:secrets:set SMTP_PORT --project ecomsai
+firebase functions:secrets:set SMTP_USER --project ecomsai
+firebase functions:secrets:set SMTP_PASS --project ecomsai
+```
+
+2. Add platform alert recipients:
+
+```bash
+# Functions env source used before Firebase deploy
+PLATFORM_ALERT_EMAIL_TO=you@yourdomain.com
+PLATFORM_ALERT_WHATSAPP_TO=91XXXXXXXXXX
+
+# Optional fallback names supported by the code
+INTERNAL_NOTIFICATION_EMAIL=you@yourdomain.com
+INTERNAL_NOTIFICATION_WHATSAPP=91XXXXXXXXXX
+```
+
+3. Configure WhatsApp delivery mode:
+
+```bash
+# Preferred for platform alerts outside a 24-hour WhatsApp session
+PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME=your_approved_template_name
+PLATFORM_ALERT_WHATSAPP_TEMPLATE_LANGUAGE=en
+
+# Only use text fallback when a valid active session exists
+PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE=true
+```
+
+4. After SMTP/Telegram secrets exist, expose them to the affected Functions by updating `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` and any Telegram `SECRET_GROUPS.MONITORING` usage needed by the deployed targets.
+
+5. Redeploy the affected Firebase Functions:
+
+```bash
+firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project ecomsai
+```
+
+6. Test one controlled platform alert:
+
+| Channel | Test |
+| --- | --- |
+| Platform dashboard | Confirm the alert appears in `/ops/platform-notifications` |
+| Email | Confirm the platform recipient receives the alert email |
+| WhatsApp | Confirm the platform recipient receives the WhatsApp template/text |
+| Manual recovery | Confirm Email and WhatsApp Web buttons still open prefilled fallback messages |
+
+Do not mark platform alert delivery production-ready until dashboard visibility, Email delivery, WhatsApp delivery, and manual fallback are all verified.
+
+---
+
 ## Step 8: UptimeRobot Setup (5 minutes) — FREE
 
 > **Why UptimeRobot if Sentry exists?** See FAQ below.
@@ -364,6 +431,7 @@ _Estimates based on 50 stores, 3 publishes/day average._
 | Telegram alerts               | ✅ Auto    | Fires on health failure, cost spike            |
 | SAFE_MODE on budget spike     | ☐ Pre-prod verify | GCP → Pub/Sub → secret-protected webhook → SAFE_MODE |
 | Alert escalation              | ✅ Auto    | 30-min re-alert for critical unacknowledged    |
+| Platform alert Email/WhatsApp | ☐ Pre-prod verify | Step 7B must pass before production            |
 | Create Telegram bot           | ❌ Manual  | One-time setup (5 min)                         |
 | Set GCP budget alerts         | ❌ Manual  | One-time setup (10 min)                        |
 | Verify SAFE_MODE end-to-end   | ❌ Manual  | Step 2C must pass before production            |
@@ -417,3 +485,4 @@ firebase functions:secrets:set GEMINI_AI_KEY_4
 | 1.1     | February 20, 2026 | Added Step 7: SMTP email setup for lifecycle messaging, updated cost table |
 | 1.2     | March 13, 2026    | Added Step 9: AI key rotation setup for multi-key Gemini protection        |
 | 1.3     | May 24, 2026      | Added Cloud Billing export and SAFE_MODE pre-production verification gates |
+| 1.4     | June 2, 2026      | Added platform alert Email/WhatsApp go-live checklist                      |

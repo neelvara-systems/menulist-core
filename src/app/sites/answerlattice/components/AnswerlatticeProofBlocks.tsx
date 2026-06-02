@@ -116,7 +116,7 @@ export function AnswerlatticeBeforeAfterStrip({ items }: { items: AnswerlatticeB
                             <LuArrowRight aria-hidden size={18} />
                         </div>
                         <div className="rounded-2xl border border-teal-300/20 bg-teal-400/[0.07] p-4">
-                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-teal-200">Answerlattice reply</div>
+                            <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-teal-200">AnswerLattice reply</div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">{item.after}</p>
                         </div>
                     </div>

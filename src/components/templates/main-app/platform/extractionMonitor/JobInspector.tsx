@@ -18,6 +18,7 @@ import {
     retryExtractionJob,
 } from '@database/ops/extraction';
 import type { ExtractionJobDetails } from '@lib/ops/extractionTypes';
+import { formatInrPaise } from '@util/formatters';
 import {
     Button,
     Descriptions,
@@ -37,6 +38,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { LuCopy, LuRefreshCw } from 'react-icons/lu';
 
 const { Text } = Typography;
+
+function PipelineTag({ value }: { value?: string | null }) {
+    if (!value) return <>—</>;
+    const colorMap: Record<string, string> = {
+        messaging_onboarding: 'geekblue',
+        project: 'blue',
+        public_menu_draft: 'green',
+        menu_link_import: 'purple',
+        owner_upload: 'cyan',
+        public_create_menu: 'green',
+        MESSAGING_ONBOARDING: 'geekblue',
+    };
+    return <Tag color={colorMap[value] || 'default'}>{value.replace(/_/g, ' ')}</Tag>;
+}
 
 interface JobInspectorProps {
     jobId: string | null;
@@ -135,6 +150,15 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <Descriptions.Item label="Type">
                         {job.isFirstExtraction === true ? 'First Extraction' : job.isFirstExtraction === false ? 'Re-extraction' : '—'}
                     </Descriptions.Item>
+                    <Descriptions.Item label="Destination">
+                        <PipelineTag value={job.destinationType || job.destination?.type} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Source">
+                        <PipelineTag value={job.source} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Skip Project Save">
+                        {job.skipProjectSave ? <Tag color="orange">Yes</Tag> : <Tag>No</Tag>}
+                    </Descriptions.Item>
                 </Descriptions>
 
                 {/* Per-file results */}
@@ -194,9 +218,10 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
     // ================================================================
 
     const AIResponseTab = () => {
-        if (!job?.result?.combinedData) return <Empty description="No AI response data" />;
+        if (!job?.result?.combinedData && !job?.result?.rawBatchResponses?.length) return <Empty description="No AI response data" />;
 
-        const jsonString = JSON.stringify(job.result.combinedData, null, 2);
+        const combinedJson = JSON.stringify(job.result.combinedData || null, null, 2);
+        const rawResponsesJson = JSON.stringify(job.result.rawBatchResponses || [], null, 2);
 
         return (
             <div>
@@ -204,11 +229,12 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <Button
                         size="small"
                         icon={<LuCopy />}
-                        onClick={() => copyToClipboard(jsonString, 'Raw AI data')}
+                        onClick={() => copyToClipboard(combinedJson, 'Normalized AI data')}
                     >
-                        Copy Raw Data
+                        Copy Normalized Data
                     </Button>
                 </div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>Normalized Extraction Output</Text>
                 <pre style={{
                     background: token.colorFillAlter,
                     padding: 12,
@@ -219,8 +245,35 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
                 }}>
-                    {jsonString}
+                    {combinedJson}
                 </pre>
+
+                {job.result.rawBatchResponses?.length ? (
+                    <div style={{ marginTop: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                            <Text strong>Raw Provider Responses</Text>
+                            <Button
+                                size="small"
+                                icon={<LuCopy />}
+                                onClick={() => copyToClipboard(rawResponsesJson, 'Raw provider responses')}
+                            >
+                                Copy Raw Responses
+                            </Button>
+                        </div>
+                        <pre style={{
+                            background: token.colorFillAlter,
+                            padding: 12,
+                            borderRadius: 6,
+                            fontSize: 11,
+                            maxHeight: 360,
+                            overflow: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-all',
+                        }}>
+                            {rawResponsesJson}
+                        </pre>
+                    </div>
+                ) : null}
 
                 {/* Confidence summary */}
                 {job.result.confidenceSummary && (
@@ -252,18 +305,33 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
 
     const CostTab = () => {
         if (!job?.transaction) return <Empty description="No cost data available" />;
+        const tokenUsage = job.transaction.tokenUsage;
 
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                    <Statistic title="Credits" value={job.transaction.totalCredits} />
-                    <Statistic title="Charge (paise)" value={job.transaction.totalCharge} />
+                    <Statistic title="Owner Units" value={job.transaction.unitsConsumed || 0} />
+                    <Statistic title="Token Credits (Audit)" value={job.transaction.totalCredits} />
+                    <Statistic
+                        title="Estimated AI Cost"
+                        value={formatInrPaise(job.transaction.totalCharge, {
+                            maximumFractionDigits: 2,
+                            minimumFractionDigits: 2,
+                        })}
+                    />
                     <Statistic title="Transaction ID" valueRender={() => (
                         <Text copyable={{ text: job.transaction!.transactionId }} style={{ fontSize: 14 }}>
                             {job.transaction!.transactionId.substring(0, 16)}...
                         </Text>
                     )} />
                 </div>
+                {tokenUsage ? (
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                        <Statistic title="Total Tokens" value={tokenUsage.totalTokenCount} />
+                        <Statistic title="Prompt Tokens" value={tokenUsage.promptTokenCount} />
+                        <Statistic title="Output Tokens" value={tokenUsage.candidatesTokenCount} />
+                    </div>
+                ) : null}
 
                 {/* Batch results */}
                 {job.result?.batchResults && job.result.batchResults.length > 0 && (

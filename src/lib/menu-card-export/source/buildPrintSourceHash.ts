@@ -30,7 +30,14 @@ export function buildPrintSourceHash(
         business: {
             name: source.business.name,
             publicMenuUrl: source.business.publicMenuUrl,
+            logoUrl: source.business.logoUrl || null,
             brandColor: source.business.brandColor || null,
+            businessType: source.business.businessType || null,
+            businessCategory: source.business.businessCategory || null,
+            catalogKind: source.business.catalogKind || null,
+            offeringKind: source.business.offeringKind || null,
+            currency: source.menu.currency || null,
+            currencyCode: source.menu.currencyCode || null,
         },
         menu: source.menu.categories.map((category) => ({
             id: category.id,

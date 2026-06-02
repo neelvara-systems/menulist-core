@@ -37,6 +37,8 @@ Growth Engine = source policy, scoring, routing, and distribution automation
 MenuList = confirmed public business truth
 ```
 
+Provider setup belongs in [Connections And Activation Screen](./growth-engine_connections-activation-screen.md). Foursquare source runs require an active `foursquare_places_api` or `fsq_os_places` adapter, server-only credential ref where needed, source policy, field profile, provider budget cap, kill switch, validation run, and audit state before any request/import is queued.
+
 ## 2. Current Official Constraints
 
 | Area | Source | Product impact |

@@ -1,8 +1,8 @@
-import { CalendarOutlined, EyeOutlined, FireOutlined, GlobalOutlined, LineChartOutlined, MobileOutlined, RiseOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AnalyticsData } from '@lib/analytics/types';
 import { Card, Col, Row, Statistic, Tooltip, Typography, theme } from 'antd';
 import React from 'react';
+import { LuCalendar, LuEye, LuFlame, LuGlobe, LuLineChart, LuSmartphone, LuTrendingUp, LuTrophy } from 'react-icons/lu';
 
 const { Title } = Typography;
 const { useToken } = theme;
@@ -121,21 +121,21 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
           <Statistic
             title={labels.totalViewsLabel}
             value={views}
-            prefix={<EyeOutlined />}
+            prefix={<LuEye />}
           />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
             title="Total Item Clicks"
             value={clicks}
-            prefix={<LineChartOutlined />}
+            prefix={<LuLineChart />}
           />
         </Col>
         <Col xs={12} sm={6}>
             <Statistic
                 title="Overall CTR"
                 value={`${ctr}%`}
-                prefix={<RiseOutlined />}
+                prefix={<LuTrendingUp />}
                 valueStyle={{ color: Number(ctr) > 5 ? token.colorSuccess : token.colorError }}
             />
         </Col>
@@ -143,35 +143,35 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
           <Statistic
             title="Unique Devices"
             value={getDeviceCount()}
-            prefix={<MobileOutlined />}
+            prefix={<LuSmartphone />}
           />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
             title="Searches"
             value={searches}
-            prefix={<FireOutlined />}
+            prefix={<LuFlame />}
           />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
             title="No-result Searches"
             value={zeroResultSearches}
-            prefix={<LineChartOutlined />}
+            prefix={<LuLineChart />}
           />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
             title="Customer Actions"
             value={actions}
-            prefix={<RiseOutlined />}
+            prefix={<LuTrendingUp />}
           />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
             title="Unavailable Interest"
             value={unavailable}
-            prefix={<LineChartOutlined />}
+            prefix={<LuLineChart />}
           />
         </Col>
       </Row>
@@ -187,7 +187,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
             <Statistic
               title="Recent Views (7d)"
               value={recent7Views}
-              prefix={<CalendarOutlined />}
+              prefix={<LuCalendar />}
             />
           </Tooltip>
         </Col>
@@ -196,7 +196,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
             <Statistic
               title="Recent Clicks (7d)"
               value={recent7Clicks}
-              prefix={<FireOutlined />}
+              prefix={<LuFlame />}
             />
           </Tooltip>
         </Col>
@@ -205,7 +205,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
             <Statistic
                 title="Recent CTR (7d)"
                 value={`${ctr7Days}%`}
-                prefix={<RiseOutlined />}
+                prefix={<LuTrendingUp />}
                 valueStyle={{ color: Number(ctr7Days) > 5 ? token.colorSuccess : token.colorError }}
             />
           </Tooltip>
@@ -215,7 +215,7 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
             <Statistic
               title="Locations"
               value={getLocationCount()}
-              prefix={<GlobalOutlined />}
+              prefix={<LuGlobe />}
             />
           </Tooltip>
         </Col>
@@ -231,14 +231,14 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
           <Statistic
             title="Most Popular Item"
             value={topItem.name}
-            prefix={<TrophyOutlined />}
+            prefix={<LuTrophy />}
           />
         </Col>
         <Col xs={24} sm={12}>
           <Statistic
             title="Click Count"
             value={topItem.clicks}
-            prefix={<LineChartOutlined />}
+            prefix={<LuLineChart />}
           />
         </Col>
       </Row>

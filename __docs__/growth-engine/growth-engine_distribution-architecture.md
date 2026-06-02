@@ -51,6 +51,10 @@ Lead generation remains one input. Distribution activation becomes the product.
 | FSQ OS Places | https://docs.foursquare.com/data-products/docs/fsq-places-open-source and https://docs.foursquare.com/data-products/docs/places-os-data-schema | Open-source POI data can be evaluated separately for identity graph enrichment, with license/source review, field allowlist, retention policy, and no public truth use until verified. |
 | Gmail sender rules | https://support.google.com/a/answer/81126 | Owned email distribution still needs SPF, DKIM, DMARC, one-click unsubscribe, visible unsubscribe, and spam-rate monitoring. |
 | CAN-SPAM | https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Commercial email requires sender identity, postal address, opt-out handling, and prompt suppression. |
+| WhatsApp Business Terms | https://www.whatsapp.com/legal/business-terms/ | WhatsApp requires necessary rights, consents, and permissions, and businesses must honor stop and opt-out requests. Growth Engine must treat phone number availability as insufficient for WhatsApp eligibility. |
+| WhatsApp Business Messaging Policy | https://www.whatsapp.com/legal/business-policy/ | Business-initiated WhatsApp messages require opt-in and approved templates outside the customer service window. Growth Engine must block cold API outreach from scraped, enriched, Google Places, or Foursquare numbers. |
+| WhatsApp Platform Pricing | https://whatsappbusiness.com/products/platform-pricing/ | Pricing and service windows make conversation state, message category, and cost attribution first-class distribution controls. |
+| WhatsApp Flows | https://whatsappbusiness.com/products/whatsapp-flows/ | Flows are useful for structured owner-confirmed business truth capture, not for generic chat, hidden consent, or lead resale intake. |
 
 ## 3. What Was Missing
 
@@ -69,6 +73,7 @@ The lead-gen model was missing the parts that create distribution power:
 | Surface health monitor | The system needs to know whether pages are indexable, noindex, stale, broken, redirected, or missing structured data. |
 | Freshness and drift monitor | Distribution decays when menus, prices, hours, or availability become stale. |
 | Owned channel composer | Email, WhatsApp, and share links should be internal rails, not outsourced to generic outreach tools. |
+| WhatsApp Message Governance Layer | WhatsApp API sends need consent proof, suppression checks, approved templates, conversation-window state, sender identity health, webhooks, reputation monitoring, Flow review, and kill switches before provider execution. |
 | Automation workflow engine | Distribution requires repeatable triggers, enrichment waterfalls, AI workers, decision snapshots, sender assignment, operator queues, and optimization reports. |
 
 ## 4. Owned Distribution Principle
@@ -80,7 +85,10 @@ Growth Engine owns:
 - target identity graph
 - business truth graph candidate edges
 - source policy
+- connection adapter registry
+- provider secret refs and validation state
 - consent and suppression
+- WhatsApp consent, suppression, templates, conversation state, sender identity, webhooks, Flow definitions, and reputation health
 - distribution queue
 - templates and message guards
 - public URL inventory
@@ -100,7 +108,7 @@ Growth Engine owns:
 Low-level infrastructure adapters are allowed:
 
 - email delivery API or SMTP provider
-- WhatsApp Business Platform or assisted WhatsApp handoff
+- WhatsApp Business Platform only behind Growth Engine's Message Governance Layer, or assisted WhatsApp handoff where API eligibility is not yet approved
 - IndexNow endpoint
 - Google Business Profile APIs after owner authorization and policy approval
 - Google Actions Center feeds only after eligibility and partner setup
@@ -125,13 +133,15 @@ The product value must live in MenuList-owned logic, not in Clay, Apollo, HubSpo
 | AI-readable truth packet | Publish a concise JSON/Markdown packet for confirmed public truth. | No private PII, scraped facts, or unverified menu data. |
 | QR/PDF/share links | Generate owned distribution links from canonical truth. | Links must resolve to current MenuList truth. |
 | Owner website widget/embed | Let owners put MenuList truth on their own site. | Widget must not create a separate truth source. |
-| Email/WhatsApp distribution | Contact eligible owners and route them to claim/onboarding. | Suppression, sender readiness, opt-in, and channel policy must pass. |
+| Email/WhatsApp distribution | Contact eligible owners and route them to claim/onboarding. | Suppression, sender readiness, opt-in, template/window eligibility, governance audit, and channel policy must pass. |
+| WhatsApp Flow truth capture | Collect structured owner-confirmed hours, menu URL, category, outlet, contact, or support data. | Flow fields must be approved, minimal, consent-safe, and cannot publish public truth without verification. |
 
 ## 6. Required System Modules
 
 | Module | Responsibility |
 | --- | --- |
 | Distribution Target Registry | Business/location/menu target identity, source provenance, claim state, and surface inventory. |
+| Connections And Activation | Internal control screen and registry for adapter IDs, provider secret refs, email pipeline readiness, WhatsApp pipeline readiness, webhook health, budgets, kill switches, validation, and activation state. |
 | Business Truth Graph Registry | Candidate and confirmed identity nodes/edges across business, location, outlet, menu, source, claim, surface, handoff, freshness, and attribution relationships. |
 | Automation Workflow Engine | Typed triggers, steps, retries, idempotency, budget gates, approvals, and kill-switch checks. |
 | Enrichment Waterfall Engine | Ordered source/provider/AI evidence runs for identity, menu gap, contactability, and source confidence. |
@@ -146,6 +156,7 @@ The product value must live in MenuList-owned logic, not in Clay, Apollo, HubSpo
 | Surface Health Monitor | Checks indexability, canonical tags, noindex, redirects, structured data, HTTP status, and stale pages. |
 | Freshness Monitor | Tracks menu, price, availability, hours, language, and outlet freshness. |
 | Owned Channel Engine | Sends or queues email/WhatsApp/share distribution with internal templates, caps, suppression, and attribution. |
+| WhatsApp Message Governance Layer | Controls WhatsApp consent proof, suppression, template eligibility, conversation windows, sender identity, pacing, webhooks, Flow submissions, reputation, and audit before any WhatsApp API send. |
 | Sender Assignment Engine | Assigns sender identity per target, preserves conversation continuity, applies pacing, timezone, and sender-health rules. |
 | Operator Workboard | Turns review, reply, handoff, discovery, freshness, cost, eval, and incident exceptions into auditable work items. |
 | Attribution Graph | Connects source, artifact, channel, public URL, claim route, onboarding, publication, and freshness outcomes. |
@@ -231,6 +242,7 @@ The launch baseline must include the complete distribution loop:
 
 ```txt
 source policy
+-> connection activation
 -> source identity handles
 -> business truth graph candidate edges
 -> distribution target registry
@@ -240,6 +252,7 @@ source policy
 -> AI worker gated decision
 -> decision snapshot
 -> owned channel eligibility
+-> WhatsApp governance audit where WhatsApp is selected
 -> claim route
 -> owner-confirmed MenuList truth
 -> canonical menu/business page

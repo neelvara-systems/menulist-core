@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Webflow Install',
-    description: 'Answerlattice v1 install guidance for Webflow custom-code installs.',
+    description: 'AnswerLattice v1 install guidance for Webflow custom-code installs.',
     alternates: { canonical: '/install/frameworks/webflow' },
 };
 

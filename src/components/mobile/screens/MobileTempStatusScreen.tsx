@@ -16,6 +16,7 @@ import {
     default as MobileTempStatusConfigurator,
 } from '../components/MobileTempStatusConfigurator';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { fromNativeDateTimeInputValue, toDate } from '@util/dateTime';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useState } from 'react';
 import { Card, DotLoading, Flex, NavBar, Toast } from '../antd';
@@ -45,14 +46,14 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
     const handleSet = useCallback(async () => {
         setIsLoading(true);
 
-        const exactExpiryDate = new Date(exactExpiryAt);
+        const expiresAt = fromNativeDateTimeInputValue(exactExpiryAt);
+        const exactExpiryDate = toDate(expiresAt);
         if (!exactExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
             Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
             setIsLoading(false);
             return;
         }
 
-        const expiresAt = exactExpiryDate.toISOString();
         const selectedOption = MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType);
         const message = statusType === 'custom'
             ? (customMessage.trim() || 'Temporary notice')

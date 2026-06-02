@@ -22,7 +22,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         label: 'Developer handoff',
         title: 'Framework quickstarts and agent packet',
         description:
-            'Next.js, React, Vue/Nuxt, and vanilla script examples give developers a clean install path using the stable Answerlattice v1 widget contract.',
+            'Next.js, React, Vue/Nuxt, and vanilla script examples give developers a clean install path using the stable AnswerLattice v1 widget contract.',
         href: '/quickstarts',
         cta: 'View quickstarts',
         featured: true,
@@ -37,7 +37,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
     },
     {
         label: 'Knowledge intake',
-        title: 'Teach Answerlattice from links, docs, files, and media',
+        title: 'Teach AnswerLattice from links, docs, files, and media',
         description:
             'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, and support macros, then review drafts before publishing.',
         href: '/product/knowledge-intake',
@@ -85,8 +85,8 @@ export default function DayOneLaunchPackSection({
                     eyebrow="Day-one launch pack"
                     title={isProduct
                         ? 'The practical setup layer behind the product.'
-                        : 'Everything needed to prove Answerlattice on the first rollout.'}
-                    description="Answerlattice should not feel like another dashboard to configure. The first rollout now has quickstarts, starter surfaces, import templates, install verification, buyer proof, and a security handoff that all point back to owner-approved support knowledge."
+                        : 'Everything needed to prove AnswerLattice on the first rollout.'}
+                    description="AnswerLattice should not feel like another dashboard to configure. The first rollout now has quickstarts, starter surfaces, import templates, install verification, buyer proof, and a security handoff that all point back to owner-approved support knowledge."
                 />
 
                 <div className="grid gap-4 lg:grid-cols-6">

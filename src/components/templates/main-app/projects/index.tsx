@@ -51,8 +51,7 @@ import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
-import { TbFileTypeJpg, TbFileTypePdf } from 'react-icons/tb';
+import { LuArrowRight, LuFileImage, LuFilePlus, LuFileText, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import useSWR from 'swr';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
 import PreviewModal from './b2cView/previewModal';
@@ -83,9 +82,9 @@ import { validateFile } from './validation';
 import { WelcomeModal } from './WelcomeModal';
 
 type MenuIntakeDecisionResult =
-    | { action: 'continue'; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[] }
+    | { action: 'continue'; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[]; identityOverrideConfirmed?: boolean }
     | { action: 'cancel' }
-    | { action: 'create_new_project'; projectId: string; projectMetadata: ProjectMetadata; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[] };
+    | { action: 'create_new_project'; projectId: string; projectMetadata: ProjectMetadata; files: MenuFileToProcess[]; ignoredFiles: MenuFileToProcess[]; identityOverrideConfirmed?: boolean };
 
 type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
@@ -1618,7 +1617,7 @@ function ProjectsPage() {
                             : 'Cancel',
                     onOk: async () => {
                         await maybeAcceptBusinessIdentitySuggestions(result);
-                        resolve({ action: 'continue', files: filesForExtraction, ignoredFiles });
+                        resolve({ action: 'continue', files: filesForExtraction, ignoredFiles, identityOverrideConfirmed: true });
                     },
                     onCancel: async () => {
                         if (!canCreateNewProject) {
@@ -1666,6 +1665,7 @@ function ProjectsPage() {
                                 projectMetadata,
                                 files: filesForExtraction,
                                 ignoredFiles,
+                                identityOverrideConfirmed: true,
                             });
                         } catch (error: any) {
                             message.error(error?.message || 'Could not create a new menu.');
@@ -1763,6 +1763,7 @@ function ProjectsPage() {
                 projectId: targetProjectId,
                 businessCategory: storeDetails?.businessCategory,
                 businessType: storeDetails?.businessType,
+                identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
             }),
             PROCESSING_TIMEOUT * filesToProcess.length,
         );
@@ -2307,10 +2308,10 @@ function ProjectsPage() {
                                                 </Typography.Text>
                                                 <Flex gap={20} align='center' justify='center'>
                                                     <Tooltip title="Upload JPG or PNG images">
-                                                        <Button shape='circle' type='text' size='large' icon={<TbFileTypeJpg size={32} />} style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg || '#e6f7ff' }} />
+                                                        <Button shape='circle' type='text' size='large' icon={<LuFileImage size={32} />} style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg }} />
                                                     </Tooltip>
                                                     <Tooltip title="Upload PDF documents">
-                                                        <Button shape='circle' type='text' size='large' icon={<TbFileTypePdf size={32} />} style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg || '#fff1f0' }} />
+                                                        <Button shape='circle' type='text' size='large' icon={<LuFileText size={32} />} style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg }} />
                                                     </Tooltip>
                                                 </Flex>
                                                 <Button

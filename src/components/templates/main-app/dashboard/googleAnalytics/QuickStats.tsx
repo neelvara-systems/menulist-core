@@ -1,9 +1,9 @@
 'use client';
 
-import { DollarOutlined, EyeOutlined, ShoppingCartOutlined, UserOutlined } from '@ant-design/icons';
 import { fetchDateRangeStats, fetchRealTimeStats } from '@services/analytics';
 import { Card, Col, Row, Statistic, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { LuDollarSign, LuEye, LuShoppingCart, LuUser } from 'react-icons/lu';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -69,28 +69,28 @@ const QuickStats: React.FC<QuickStatsProps> = ({ propertyId, dateRange }) => {
             {
                 title: 'Active Now',
                 value: stats.activeUsers,
-            icon: <UserOutlined style={{ color: token.colorPrimary }} />,
+            icon: <LuUser style={{ color: token.colorPrimary }} />,
                 suffix: 'users',
                 precision: 0
             },
             {
                 title: 'Total Visitors',
                 value: stats.totalVisitors,
-            icon: <EyeOutlined style={{ color: token.colorSuccess }} />,
+            icon: <LuEye style={{ color: token.colorSuccess }} />,
                 suffix: 'views',
                 precision: 0
             },
             {
                 title: 'Total Orders',
                 value: stats.totalOrders,
-            icon: <ShoppingCartOutlined style={{ color: token.colorInfo }} />,
+            icon: <LuShoppingCart style={{ color: token.colorInfo }} />,
                 suffix: 'orders',
                 precision: 0
             },
             {
                 title: 'Total Revenue',
                 value: stats.totalRevenue,
-            icon: <DollarOutlined style={{ color: token.colorWarning }} />,
+            icon: <LuDollarSign style={{ color: token.colorWarning }} />,
                 prefix: '$',
                 precision: 2
             }

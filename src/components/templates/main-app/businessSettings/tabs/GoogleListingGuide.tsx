@@ -17,8 +17,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Alert, Button, Card, Divider, Flex, Steps, Typography, message, theme } from 'antd';
 import { useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuGlobe } from 'react-icons/lu';
-import { SiGooglemybusiness } from 'react-icons/si';
+import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuStore } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -96,7 +95,7 @@ export default function GoogleListingGuide({
     return (
         <Card size="small">
             <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-                <SiGooglemybusiness size={18} style={{ color: '#4285F4' }} />
+                <LuStore size={18} style={{ color: token.colorPrimary }} />
                 <Title level={5} style={{ margin: 0 }}>
                     Make this your official link on Google
                 </Title>

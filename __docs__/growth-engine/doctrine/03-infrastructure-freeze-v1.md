@@ -22,12 +22,16 @@ Every first-version module needs:
 - kill-switch checks
 - retry/queue behavior where needed
 - data retention policy
+- connection adapter state
+- secret reference state
+- webhook endpoint state
 - Business Truth Graph node and edge state
 - automation workflow state
 - enrichment waterfall state
 - AI worker eval state
 - decision snapshot state
 - sender assignment state
+- WhatsApp governance state
 - operator work-item state
 - surface health state
 - discovery publishing state
@@ -42,31 +46,37 @@ No outbound channel can send and no public distribution job can publish until th
 3. Business Truth Graph model
 4. dedupe keys
 5. suppressions
-6. campaign model
-7. approved templates
-8. canonical surface model
-9. discovery publish job model
-10. menu feed export model
-11. GBP handoff model
-12. dry-run engine
-13. budget policy
-14. kill switches
-15. send job model
-16. DNC/unsubscribe handling
-17. route tracking
-18. feedback ingestion
-19. freshness and surface health monitor
-20. automation workflow engine
-21. enrichment waterfall registry
-22. AI worker registry
-23. decision snapshot ledger
-24. sender assignment and pacing registry
-25. operator workboard
+6. implementation readiness acceptance
+7. connection adapter registry
+8. secret reference registry
+9. webhook endpoint registry
+10. campaign model
+11. approved templates
+12. canonical surface model
+13. discovery publish job model
+14. menu feed export model
+15. GBP handoff model
+16. dry-run engine
+17. budget policy
+18. kill switches
+19. send job model
+20. DNC/unsubscribe handling
+21. route tracking
+22. feedback ingestion
+23. freshness and surface health monitor
+24. automation workflow engine
+25. enrichment waterfall registry
+26. AI worker registry
+27. decision snapshot ledger
+28. sender assignment and pacing registry
+29. WhatsApp Message Governance Layer
+30. operator workboard
 
 ## 3. Launch Baseline
 
 ```txt
 source import
+-> connection activation
 -> normalize/dedupe/suppress
 -> distribution target registry
 -> Business Truth Graph registry
@@ -82,6 +92,7 @@ source import
 -> Apple/Bing handoff manager
 -> campaign dry-run
 -> email execution
+-> WhatsApp governance
 -> tracked route
 -> owner-confirmed truth activation
 -> public surface publish
@@ -120,6 +131,7 @@ Growth Engine must have:
 - product API namespace
 - product DAL
 - product workflow engine
+- product connection registry
 - product Firebase project
 - product Cloud Functions package
 - product feature flags
@@ -132,6 +144,10 @@ MenuList integration stays explicit and contract-based.
 Providers are adapters.
 
 Growth Engine remains the system of record.
+
+Provider execution must pass through Connections And Activation.
+
+Plaintext provider credentials must not live in Firestore, browser state, logs, AI prompts, or operator notes.
 
 Provider payloads must be normalized before they affect campaign state.
 
@@ -146,6 +162,7 @@ Third-party workflow builders, enrichment tables, sequencers, or CRMs must not b
 First controlled use is not approved until:
 
 - dry-run can block unsafe campaigns
+- connection activation can block providers with missing policy, secret ref, webhook, budget, kill switch, validation, or approval
 - distribution targets can block public publishing from candidate-only data
 - Business Truth Graph can block public publishing from candidate or low-confidence edges
 - canonical surfaces have structured data, sitemap, and freshness state
@@ -155,6 +172,7 @@ First controlled use is not approved until:
 - DNC recall passes eval tests
 - suppression works across channels
 - budget caps pause non-critical jobs
+- WhatsApp API sends are blocked without consent, template/window eligibility, governance audit, webhook health, sender quality, and pacing
 - global and channel kill switches block execution
 - route feedback updates attribution
 - dashboards read bounded summary docs

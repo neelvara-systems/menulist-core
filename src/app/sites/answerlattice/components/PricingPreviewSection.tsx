@@ -3,7 +3,7 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
-    answerlattice_starter: 'Best for one SaaS app or digital product with early repeated questions.',
+    answerlattice_starter: 'Best for one SaaS app or digital product preparing its first support layer.',
     answerlattice_growth: 'Best for active SaaS apps and digital products that need weekly review and higher capacity.',
     answerlattice_studio: 'Best for studios or agencies launching multiple digital products.',
 };
@@ -20,8 +20,8 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
                     eyebrow="Pricing clarity"
-                    title="Start free, then move to predictable INR plans."
-                    description="Support credits are plan capacity for governed answers, chat assistance, and knowledge governance work. Static hosted help pages and widget loading do not consume credits."
+                    title="Check the pricing shape before setup."
+                    description="This is the short version for homepage buyers: start with the beta setup, then move to predictable INR capacity when support volume grows. The full pricing page explains plan details, support credits, top-ups, and fit."
                 />
                 <div className="grid gap-4 lg:grid-cols-3">
                     {plans.map((plan) => (
@@ -57,7 +57,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         data-answerlattice-label="view_pricing"
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                     >
-                        View pricing
+                        View full pricing
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}

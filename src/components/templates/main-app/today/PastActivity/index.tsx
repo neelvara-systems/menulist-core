@@ -5,7 +5,9 @@ import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@consta
 import { usePastActivity } from "@hook/usePastActivity";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { Campaign } from "@type/campaigns";
+import { formatDateTime } from "@util/dateTime";
 import { Button, Drawer, Select, Spin, Typography } from "antd";
+import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { LuArrowLeft, LuCheck, LuClock3, LuInfo, LuX } from "react-icons/lu";
@@ -66,6 +68,7 @@ const resolveSelectedProject = (
  */
 const PastActivityScreen = () => {
     const router = useRouter();
+    const formatter = useFormatter();
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const {
@@ -109,11 +112,7 @@ const PastActivityScreen = () => {
     const groupedByDate = campaigns.reduce((acc, campaign) => {
         const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
         const date = activityDate
-            ? new Date(activityDate).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric'
-            })
+            ? formatDateTime(activityDate, 'date', formatter)
             : 'Unknown';
 
         if (!acc[date]) {

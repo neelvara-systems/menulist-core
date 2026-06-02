@@ -14,8 +14,9 @@ import syncMissingBusinessCopyTranslations from '@services/ai/businessCopy/syncM
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
+import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Toast } from '../antd';
@@ -30,6 +31,7 @@ interface MobileBusinessCopySetupScreenProps {
 export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusinessCopySetupScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMenu = useTranslations('MobileMenu');
+    const formatter = useFormatter();
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -46,7 +48,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     const showFullGenerationCta = coverage.repairableGapCount === 0 || hasEmptyBusinessCopyFields;
     const fullGenerationLabel = hasCoverageGaps ? t('generateBusinessCopy') : t('regenerateBusinessCopy');
     const businessCopyMeta = storeDetails?.businessCopyMeta;
-    const formatAuditTime = (value?: string) => value ? new Date(value).toLocaleString() : '';
+    const formatAuditTime = (value?: string) => value ? formatDateTime(value, 'datetime', formatter) : '';
     const repairTargetLanguagesLabel = coverage.fields
         .flatMap((field) => field.missingLanguages)
         .filter((languageCode, index, list) => list.indexOf(languageCode) === index)

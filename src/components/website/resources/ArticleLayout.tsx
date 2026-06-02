@@ -35,6 +35,7 @@ export default function ArticleLayout({
         <main className="ws-resource-article-page">
             <ResourceAnalytics
                 cluster={article.cluster}
+                locale={locale}
                 pageType="article"
                 slug={article.slug}
             />
@@ -62,7 +63,12 @@ export default function ArticleLayout({
                         <ResourceTrackedLink
                             href={article.primaryCta.href}
                             eventName="resource_primary_cta_click"
-                            eventProps={{ slug: article.slug, cluster: article.cluster }}
+                            eventProps={{
+                                slug: article.slug,
+                                cluster: article.cluster,
+                                cta_label: article.primaryCta.label,
+                                source_page: 'resource_article',
+                            }}
                             className="ws-btn ws-btn--primary"
                         >
                             {article.primaryCta.label} <LuArrowRight size={16} />
@@ -93,10 +99,14 @@ export default function ArticleLayout({
                         {article.sections.map((section) => (
                             <ArticleSection
                                 key={section.id}
+                                articleCluster={article.cluster}
+                                articleSlug={article.slug}
                                 section={section}
                                 labels={{
                                     checklist: labels.checklist,
                                     comparison: labels.comparison,
+                                    copiedChecklist: labels.copiedChecklist,
+                                    copyChecklist: labels.copyChecklist,
                                 }}
                             />
                         ))}

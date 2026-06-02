@@ -1,6 +1,6 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
-import { Flex, Progress, Typography } from 'antd';
+import { Flex, Progress, Typography, theme } from 'antd';
 import { LuCheckCircle, LuFileText, LuSparkles, LuUpload } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -13,34 +13,34 @@ interface ProcessingOverlayProps {
     progress?: number;
 }
 
-function getStageConfig(labels: OfferingLabels) {
+function getStageConfig(labels: OfferingLabels, token: ReturnType<typeof theme.useToken>['token']) {
     return {
         uploading: {
             icon: <LuUpload size={40} />,
             title: 'Uploading your file...',
             description: `Just a moment while we save your content`,
-            color: '#1890ff',
+            color: token.colorPrimary,
             step: 1
         },
         reading: {
             icon: <LuFileText size={40} />,
             title: `Reading your ${labels.offeringLower}...`,
             description: `We're looking at your ${labels.offeringLower}`,
-            color: '#52c41a',
+            color: token.colorSuccess,
             step: 2
         },
         extracting: {
             icon: <LuSparkles size={40} />,
             title: `Finding all your ${labels.itemsPlural}...`,
             description: `Extracting ${labels.itemsPlural}, prices, and descriptions`,
-            color: '#faad14',
+            color: token.colorWarning,
             step: 3
         },
         complete: {
             icon: <LuCheckCircle size={40} />,
             title: 'All done!',
             description: `Your ${labels.offeringLower} is ready to edit`,
-            color: '#52c41a',
+            color: token.colorSuccess,
             step: 4
         }
     };
@@ -51,8 +51,9 @@ export const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
     fileName,
     progress
 }) => {
+    const { token } = theme.useToken();
     const labels = useOfferingLabels();
-    const config = getStageConfig(labels)[stage];
+    const config = getStageConfig(labels, token)[stage];
     const totalSteps = 4;
     const percentComplete = ((config.step - 1) / (totalSteps - 1)) * 100;
 
@@ -142,7 +143,7 @@ export const ProcessingOverlay: React.FC<ProcessingOverlayProps> = ({
                     style={{
                         marginTop: 16,
                         padding: '12px 20px',
-                        background: '#f5f5f5',
+                        background: token.colorFillQuaternary,
                         borderRadius: 8,
                         maxWidth: 400
                     }}

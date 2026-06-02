@@ -15,9 +15,17 @@ import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLang
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
+import {
+    formatDateTime,
+    formatDateTimeRange,
+    fromNativeDateInputValue,
+    fromNativeDateTimeInputValue,
+    type IntlFormatter,
+    toNativeDateInputValue,
+    toNativeDateTimeInputValue,
+} from '@util/dateTime';
 import { theme } from 'antd';
-import dayjs from 'dayjs';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuMonitor, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Select, Switch, Tag, Text, TextArea, Toast } from '../antd';
@@ -43,39 +51,43 @@ type SpecialMenuConflictCheckParams = {
     startsAt: string;
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, formatter: IntlFormatter): string {
     if (!iso) return '';
-    const date = new Date(iso);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatDateTime(iso, 'date', formatter);
 }
 
-function formatScheduleRange(startsAt: string, endsAt: string): string {
+function formatScheduleRange(startsAt: string, endsAt: string, formatter: IntlFormatter): string {
     if (!startsAt || !endsAt) return '';
-    const start = dayjs(startsAt);
-    const end = dayjs(endsAt);
-    const sameDay = start.isSame(end, 'day');
-
-    if (sameDay) {
-        return `${start.format('MMM D, YYYY • h:mm A')} - ${end.format('h:mm A')}`;
-    }
-
-    return `${start.format('MMM D, YYYY • h:mm A')} - ${end.format('MMM D, YYYY • h:mm A')}`;
+    return formatDateTimeRange(startsAt, endsAt, formatter, '');
 }
 
 function toInputValue(iso: string | null | undefined, allowTimeScheduling: boolean): string {
     if (!iso) return '';
-    const date = dayjs(iso);
-    return allowTimeScheduling ? date.format('YYYY-MM-DDTHH:mm') : date.format('YYYY-MM-DD');
+    return allowTimeScheduling ? toNativeDateTimeInputValue(iso) : toNativeDateInputValue(iso);
 }
 
 function toIsoValue(rawValue: string, allowTimeScheduling: boolean): string {
     return allowTimeScheduling
-        ? dayjs(rawValue).toISOString()
-        : dayjs(rawValue).startOf('day').toISOString();
+        ? fromNativeDateTimeInputValue(rawValue)
+        : fromNativeDateInputValue(rawValue);
 }
 
 function getScheduledStartsAtValue(allowTimeScheduling: boolean): string {
-    return toInputValue(dayjs().add(1, allowTimeScheduling ? 'hour' : 'day').toISOString(), allowTimeScheduling);
+    const date = new Date();
+    date.setTime(date.getTime() + (allowTimeScheduling ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+    return toInputValue(date.toISOString(), allowTimeScheduling);
+}
+
+function getDefaultScheduledEndsAtValue(): string {
+    const date = new Date();
+    date.setTime(date.getTime() + 24 * 60 * 60 * 1000);
+    return toInputValue(date.toISOString(), true);
+}
+
+function getNativeDateTimeMs(value: string): number {
+    const iso = toIsoValue(value, true);
+    const date = new Date(iso);
+    return date.getTime();
 }
 
 function resolveProjectName(name: ProjectNameValue, fallback: string): string {
@@ -161,11 +173,11 @@ function CreateSpecialMenuSheet({
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
     const [mode, setMode] = useState<'replace' | 'overlay'>(capabilities.availableModes[0] || 'overlay');
     const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
-    const [endsAt, setEndsAt] = useState(() => toInputValue(dayjs().add(1, 'day').toISOString(), true));
+    const [endsAt, setEndsAt] = useState(getDefaultScheduledEndsAtValue);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const isActiveToggleOn = startsAt
-        ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
+        ? getNativeDateTimeMs(startsAt) <= Date.now()
         : false;
 
     const resetForm = () => {
@@ -176,7 +188,7 @@ function CreateSpecialMenuSheet({
         setDisplayNameDrafts({ [defaultLanguage]: '' });
         setMode(capabilities.availableModes[0] || 'overlay');
         setStartsAt(toInputValue(new Date().toISOString(), true));
-        setEndsAt(toInputValue(dayjs().add(1, 'day').toISOString(), true));
+        setEndsAt(getDefaultScheduledEndsAtValue());
     };
 
     useEffect(() => {
@@ -227,7 +239,7 @@ function CreateSpecialMenuSheet({
         const startsAtIso = toIsoValue(startsAt, true);
         const endsAtIso = toIsoValue(endsAt, true);
 
-        if (dayjs(endsAtIso).valueOf() <= dayjs(startsAtIso).valueOf()) {
+        if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
             return;
         }
@@ -551,7 +563,7 @@ function EditSpecialMenuSheet({
     const initialEndsAt = toInputValue(item?.endsAt, true);
     const referenceLanguage = getProjectPreferredLanguage({ languages: managedLanguages });
     const isActiveToggleOn = startsAt
-        ? dayjs(toIsoValue(startsAt, true)).valueOf() <= Date.now()
+        ? getNativeDateTimeMs(startsAt) <= Date.now()
         : false;
     const hasChanges = JSON.stringify(displayNameDrafts) !== JSON.stringify(initialDisplayNameDrafts)
         || JSON.stringify(descriptionDrafts) !== JSON.stringify(initialDescriptionDrafts)
@@ -585,7 +597,7 @@ function EditSpecialMenuSheet({
         const startsAtIso = toIsoValue(startsAt, true);
         const endsAtIso = toIsoValue(endsAt, true);
 
-        if (dayjs(endsAtIso).valueOf() <= dayjs(startsAtIso).valueOf()) {
+        if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
             return;
         }
@@ -717,7 +729,7 @@ function EditSpecialMenuSheet({
                         <Button
                             fill="none"
                             onClick={handleClose}
-                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >
                             <LuX size={18} />
                         </Button>
@@ -888,6 +900,7 @@ function SpecialMenuItem({
     onEdit: (item: SpecialMenuListItem) => Promise<void> | void;
 }) {
     const t = useTranslations('MobileSpecialMenu');
+    const formatter = useFormatter();
     const { token } = theme.useToken();
     const [isWorking, setIsWorking] = useState(false);
     const modeLabel = item.mode === 'replace' ? t('replaceOption') : t('overlayOption');
@@ -925,7 +938,7 @@ function SpecialMenuItem({
         const confirmed = await Dialog.confirm({
             cancelText: t('keepScheduled'),
             confirmText: t('cancelAction'),
-            content: t('cancelConfirm', { date: formatDate(item.startsAt), name: item.displayName }),
+            content: t('cancelConfirm', { date: formatDate(item.startsAt, formatter), name: item.displayName }),
         });
         if (!confirmed) return;
 
@@ -957,7 +970,7 @@ function SpecialMenuItem({
                         <Flex align="center" gap={6} style={{ minWidth: 0 }}>
                             <LuCalendar color={token.colorTextTertiary} size={13} />
                             <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-                                {formatScheduleRange(item.startsAt, item.endsAt)}
+                                {formatScheduleRange(item.startsAt, item.endsAt, formatter)}
                             </Text>
                         </Flex>
 

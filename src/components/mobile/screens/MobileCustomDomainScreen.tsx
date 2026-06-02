@@ -3,6 +3,7 @@
 import { checkCustomDomainAvailability } from '@database/stores';
 import { normalizeBaseUrl } from '@constant/urls';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCheckCircle2, LuCopy, LuExternalLink, LuGlobe, LuSearch, LuTrash2 } from 'react-icons/lu';
@@ -17,6 +18,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
     const tMobile = useTranslations('MobileSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [domainInput, setDomainInput] = useState(storeDetails?.customDomain || '');
     const [loading, setLoading] = useState(false);
@@ -136,8 +138,8 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                             </Text>
                             <Flex align="center" gap={8} wrap>
                                 <Button fill="outline" loading={statusLoading} onClick={() => void refreshStatus()} size="small">{t('checkVerification')}</Button>
-                                <Button fill="none" onClick={() => navigator.clipboard.writeText(activeDomainUrl)} size="small"><LuCopy size={16} /></Button>
-                                <Button fill="none" onClick={() => window.open(activeDomainUrl, '_blank')} size="small"><LuExternalLink size={16} /></Button>
+                                <Button fill="none" onClick={() => navigator.clipboard.writeText(activeDomainUrl)} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuCopy size={16} /></Button>
+                                <Button fill="none" onClick={() => window.open(activeDomainUrl, '_blank')} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuExternalLink size={16} /></Button>
                                 <Button
                                     color="danger"
                                     fill="none"
@@ -152,6 +154,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                                         });
                                     }}
                                     size="small"
+                                    style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                 >
                                     <LuTrash2 size={16} />
                                 </Button>
@@ -200,7 +203,7 @@ export default function MobileCustomDomainScreen({ onBack }: MobileCustomDomainS
                     <Card>
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>
-                                <LuCheckCircle2 color="#16a34a" size={18} />
+                                <LuCheckCircle2 color={token.colorSuccess} size={18} />
                                 <Text strong>{t('customDomainActive')}</Text>
                             </Flex>
                             <Text type="secondary">{t('autoRedirect')}</Text>

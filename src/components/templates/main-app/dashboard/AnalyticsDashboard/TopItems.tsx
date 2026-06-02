@@ -1,8 +1,8 @@
-import { FireOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AnalyticsData } from '@lib/analytics/types';
 import { Card, Empty, List, Tag, Typography, theme } from 'antd';
 import React from 'react';
+import { LuFlame } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 const { useToken } = theme;
@@ -13,6 +13,11 @@ interface TopItemsProps {
 
 const TopItems: React.FC<TopItemsProps> = ({ data }) => {
     const { token } = useToken();
+    const countTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
 
     // Get top items from summary or calculate from daily data
   const getTopItems = () => {
@@ -81,7 +86,7 @@ const TopItems: React.FC<TopItemsProps> = ({ data }) => {
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               <div style={{ marginRight: 16, minWidth: 24, textAlign: 'center' }}>
                     {index < 3 ? (
-                    <FireOutlined style={{
+                    <LuFlame style={{
                     color: index === 0
                         ? token.colorError
                         : index === 1
@@ -97,7 +102,7 @@ const TopItems: React.FC<TopItemsProps> = ({ data }) => {
                 <Text strong>{item.name}</Text>
               </div>
               <div>
-                <Tag color="blue">{item.totalClicks} clicks</Tag>
+                <Tag style={countTagStyle}>{item.totalClicks} clicks</Tag>
               </div>
             </div>
           </List.Item>

@@ -11,9 +11,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { Badge, Button, Card, Col, Flex, List, Modal, Row, Switch, theme, Tooltip, Typography } from 'antd';
 import { useContext, useEffect, useState } from 'react';
-import { FaBolt } from 'react-icons/fa';
-import { HiOutlineOfficeBuilding } from 'react-icons/hi';
-import { LuCheck, LuInfo, LuStore, LuZap } from 'react-icons/lu';
+import { LuBuilding2, LuCheck, LuInfo, LuStore, LuZap } from 'react-icons/lu';
 import RemainingCreditNote from './RemainingCreditNote';
 import UpgradeConfirmationModal from './UpgradeConfirmationModal';
 
@@ -68,7 +66,7 @@ const PlanCardComponent = ({
                 borderColor: token.colorSuccess,
                 color: token.colorTextLightSolid,
             },
-            icon: <FaBolt size={20} color={token.colorSuccessText} />,
+            icon: <LuZap size={20} color={token.colorSuccessText} />,
         }
         : plan.planId === 'pro'
             ? {
@@ -79,7 +77,7 @@ const PlanCardComponent = ({
                     borderColor: token.colorWarning,
                     color: token.colorTextLightSolid,
                 },
-                icon: <HiOutlineOfficeBuilding size={20} color={token.colorWarningText} />,
+                icon: <LuBuilding2 size={20} color={token.colorWarningText} />,
             }
             : plan.planId === 'premium'
                 ? {
@@ -201,7 +199,7 @@ const PlanCardComponent = ({
                     ghost={plan.isRecommended}
                     onClick={() => onPurchase(plan)}
                     style={{ ...style.buttonStyles, color: style.color }}
-                    icon={<FaBolt />}
+                    icon={<LuZap />}
                 >
                     {plan.planId === 'custom' ? 'Contact Us'
                         : action === 'upgrade'

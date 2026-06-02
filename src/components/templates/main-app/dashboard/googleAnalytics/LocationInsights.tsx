@@ -1,9 +1,9 @@
 'use client';
 
-import { GlobalOutlined } from '@ant-design/icons';
 import { fetchLocationStats } from '@services/analytics';
 import { Card, Progress, Space, Table, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { LuGlobe } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 const { useToken } = theme;
@@ -72,7 +72,7 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
         {
             title: (
                 <Space>
-                    <GlobalOutlined />
+                    <LuGlobe />
                     Location
                 </Space>
             ),

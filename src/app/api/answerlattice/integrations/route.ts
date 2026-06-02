@@ -16,7 +16,7 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
-import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -231,7 +231,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             linear: existing.linear || { enabled: false, apiKey: '', teamId: '', eventFilters: [] },
             github: existing.github || { enabled: false, token: '', owner: '', repo: '', eventFilters: [] },
             circuitBreaker: existing.circuitBreaker || {},
-            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+            modifiedOn: FieldValue.serverTimestamp(),
             updatedBy: session?.uId || session?.user?.email || 'unknown',
         };
 

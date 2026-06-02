@@ -221,8 +221,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
 
             const projectCollectionPath = `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`;
-            const projectRef = db.collection(projectCollectionPath).doc();
-            const projectId = projectRef.id;
+            const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`;
+            const projectRef = db.collection(projectCollectionPath).doc(projectId);
             const extractedData = draft.extractedData;
             const fileEntry = {
                 uid: `file_${Date.now()}`,
@@ -230,7 +230,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 url: draft.imageUrl,
                 type: draft.fileType || 'image/jpeg',
                 size: Number(draft.fileSize || 0),
+                active: true,
+                deleted: false,
+                index: 0,
                 extractedData: {
+                    message: '',
                     data: {
                         categories: extractedData.categories || [],
                         items: extractedData.items || [],

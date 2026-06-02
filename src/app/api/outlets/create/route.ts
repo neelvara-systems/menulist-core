@@ -24,6 +24,8 @@ import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
+import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
 import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
 import { slugify } from "@lib/utils/slugify";
 import { revalidateTag } from "next/cache";
@@ -46,6 +48,65 @@ class OutletBillingUpdateError extends Error {
         this.reason = reason;
     }
 }
+
+const resolveSummaryNameForSlug = (value: unknown, fallback: string): string => {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        const record = value as Record<string, unknown>;
+        const preferred = record.en || record["en-US"] || Object.values(record).find((entry) => (
+            typeof entry === "string" && entry.trim()
+        ));
+        if (typeof preferred === "string" && preferred.trim()) return preferred.trim();
+    }
+    return fallback;
+};
+
+const normalizeOutletSlugBase = (outletName: string): string => {
+    const base = slugify(outletName) || `outlet-${Date.now().toString(36)}`;
+    return isReservedOutletSlug(base) ? `${base}-outlet` : base;
+};
+
+const outletSlugExists = async (
+    db: FirebaseFirestore.Firestore,
+    tenantId: number,
+    outletSlug: string,
+): Promise<boolean> => {
+    const [directSnap, historySnap] = await Promise.all([
+        db.collection(DB_COLLECTIONS.STORES)
+            .where("tenantId", "==", tenantId)
+            .where("outletSlug", "==", outletSlug)
+            .where("active", "==", true)
+            .limit(1)
+            .get(),
+        db.collection(DB_COLLECTIONS.STORES)
+            .where("tenantId", "==", tenantId)
+            .where("previousOutletSlugs", "array-contains", outletSlug)
+            .limit(1)
+            .get(),
+    ]);
+    return !directSnap.empty || !historySnap.empty;
+};
+
+const buildUniqueOutletSlug = async (
+    db: FirebaseFirestore.Firestore,
+    tenantId: number,
+    outletName: string,
+): Promise<string> => {
+    const base = normalizeOutletSlugBase(outletName);
+    let candidate = base;
+    let suffix = 2;
+
+    while (await outletSlugExists(db, tenantId, candidate)) {
+        candidate = `${base}-${suffix}`;
+        suffix += 1;
+        if (suffix > 100) {
+            candidate = `${base}-${Date.now().toString(36)}`;
+            if (!(await outletSlugExists(db, tenantId, candidate))) return candidate;
+        }
+    }
+
+    return candidate;
+};
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_OUTLET_CREATION) {
@@ -211,6 +272,14 @@ export const POST = withAuth(async (request, session) => {
             .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`)
             .where('deleted', '!=', true)
             .get();
+        const masterProjectsSummarySnap = await db
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(`projects_${storeId}`)
+            .get();
+        const masterProjectsSummary = masterProjectsSummarySnap.exists
+            ? parseSummaryProjects(masterProjectsSummarySnap.data())
+            : {};
+        const outletSlug = await buildUniqueOutletSlug(db, tenantId, outletName);
 
         // Read current tenant data for storesList
         const tenantData = (await tenantRef.get()).data();
@@ -223,11 +292,6 @@ export const POST = withAuth(async (request, session) => {
             const userSnap = userRef ? await tx.get(userRef) : null;
             const newStoreId = (summary.data()?.stores?.count || 0) + 1;
             const storeKey = outletName.toLowerCase().replaceAll(" ", "_");
-            // URL Routing Architecture — ADR-1: Auto-generate outletSlug for path routing
-            let outletSlug = slugify(outletName);
-            if (isReservedOutletSlug(outletSlug)) {
-                outletSlug = `${outletSlug}-outlet`;
-            }
             const businessType = masterStore.businessType || 'restaurant';
             const businessCategory = resolveBusinessCategory(businessType, masterStore.businessCategory) || 'specialty';
             const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId, newStoreId);
@@ -315,10 +379,13 @@ export const POST = withAuth(async (request, session) => {
             ));
             tx.update(tenantRef, {
                 storesList: [...normalizedStoresList, {
+                    active: true,
                     storeId: newStoreId,
                     name: outletName,
                     tenantName,
                     isMaster: false,
+                    outletSlug,
+                    previousOutletSlugs: [],
                 }],
                 outletCreationLock: false,
             });
@@ -338,8 +405,24 @@ export const POST = withAuth(async (request, session) => {
                 const projDoc = masterProjectsSnap.docs[pi];
                 const masterProject = projDoc.data();
                 const masterProjectId = projDoc.id;
+                const masterSummary = masterProjectsSummary[masterProjectId] || {};
                 const timestamp = Date.now().toString(36);
                 const outletProjectId = `${tenantId}-${timestamp}${pi > 0 ? pi : ''}-${newStoreId}`;
+                const masterSummaryName = masterSummary.name || masterProject.name || projDoc.id;
+                const outletProjectSlug = typeof masterSummary.slug === "string" && masterSummary.slug.trim()
+                    ? masterSummary.slug.trim()
+                    : slugify(resolveSummaryNameForSlug(masterSummaryName, projDoc.id));
+                const outletSummaryData = Object.fromEntries(
+                    Object.entries({
+                        ...masterSummary,
+                        projectId: outletProjectId,
+                        masterProjectId,
+                        name: masterSummaryName,
+                        active: masterSummary.active !== false && masterProject.active !== false,
+                        isDefault: masterSummary.isDefault === true,
+                        slug: outletProjectSlug || undefined,
+                    }).filter(([, value]) => value !== undefined),
+                );
 
                 tx.set(
                     db.doc(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${newStoreId}/${outletProjectId}`),
@@ -358,10 +441,7 @@ export const POST = withAuth(async (request, session) => {
 
                 tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/projects_${newStoreId}`), {
                     lastUpdated: now,
-                    [`projects.${outletProjectId}`]: {
-                        name: masterProject.name || projDoc.id,
-                        active: true,
-                    },
+                    ...buildSummaryProjectPayload(outletProjectId, outletSummaryData),
                 }, { merge: true });
             }
 

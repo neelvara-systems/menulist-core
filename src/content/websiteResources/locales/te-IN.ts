@@ -22,6 +22,8 @@ export const teINResourceTranslationPack: WebsiteResourceTranslationPack = {
         "backToHub": "వనరులకి తిరిగి వెళ్ళు",
         "checklist": "చెక్‌లిస్ట్",
         "comparison": "పోలిక",
+        "copiedChecklist": "చెక్‌లిస్ట్ కాపీ అయింది",
+        "copyChecklist": "చెక్‌లిస్ట్ కాపీ చేయండి",
         "faqTitle": "యజమానులు అడిగే ప్రశ్నలు",
         "onThisPage": "ఈ పేజీలో",
         "primaryAction": "తదుపరి దశ",
@@ -688,6 +690,196 @@ export const teINResourceTranslationPack: WebsiteResourceTranslationPack = {
                 }
             }
         },
+                  "restaurant-menu-schema": {
+                            "title": "Restaurant menu schema customers page లో చూసే content నే చూపాలి",
+                            "metaTitle": "Restaurant Menu Schema Guide | MenuList",
+                            "metaDescription": "Public restaurant menu pages కోసం structured-data guide.",
+                            "description": "Public restaurant menu pages కోసం structured-data guide.",
+                            "quickAnswer": "Restaurant menu schema visible public menu content తో match కావాలి. Business కోసం Restaurant లేదా LocalBusiness, visible menu కోసం Menu, MenuSection, MenuItem use చేయాలి. Hidden prices, fake reviews, unavailable details markup చేయకండి.",
+                            "primaryCtaLabel": "Structured menu page publish చేయండి",
+                            "distributionSnippets": [
+                                      "Restaurant menu schema customers page లో చూసే content నే చూపాలి",
+                                      "Restaurant menu schema visible public menu content తో match కావాలి. Business కోసం Restaurant లేదా LocalBusiness, visible menu కోసం Menu, MenuSection, MenuItem use చేయాలి. Hidden prices, fake reviews, unavailable details markup చేయకండి."
+                            ],
+                            "sections": {
+                                      "schema-types": {
+                                                "title": "Schema types",
+                                                "body": [
+                                                          "Public restaurant menu pages కోసం structured-data guide."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name తో match కావాలి.",
+                                                          "Visible price Offer price తో match కావాలి.",
+                                                          "Hidden FAQ answers markup చేయకండి.",
+                                                          "Use Menu, MenuSection, and MenuItem for visible menu content.",
+                                                          "Use FAQPage only for FAQ content visible on the page."
+                                                ]
+                                      },
+                                      "visible-content": {
+                                                "title": "Visible content match",
+                                                "body": [
+                                                          "Restaurant menu schema visible public menu content తో match కావాలి. Business కోసం Restaurant లేదా LocalBusiness, visible menu కోసం Menu, MenuSection, MenuItem use చేయాలి. Hidden prices, fake reviews, unavailable details markup చేయకండి."
+                                                ],
+                                                "checklist": [
+                                                          "Visible item name MenuItem name తో match కావాలి.",
+                                                          "Visible price Offer price తో match కావాలి.",
+                                                          "Hidden FAQ answers markup చేయకండి.",
+                                                          "Mobile data లో URL open చేయండి."
+                                                ]
+                                      },
+                                      "common-mistakes": {
+                                                "title": "Common mistakes",
+                                                "checklist": [
+                                                          "Hidden FAQ answers markup చేయకండి.",
+                                                          "Old PDFs main customer link గా ఉండకూడదు.",
+                                                          "Old prices structured data मध्ये/में/లో रखना ತಪ್ಪు.",
+                                                          "Schema does not guarantee ranking."
+                                                ]
+                                      },
+                                      "how-menulist-fits": {
+                                                "title": "MenuList ఎలా fit అవుతుంది",
+                                                "body": [
+                                                          "MenuList keeps public menu pages structured around the owner-approved source.",
+                                                          "External search and AI systems decide what they crawl, show, cite, or ignore."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "schema-guarantee": {
+                                                "question": "Schema ranking guarantee చేస్తుందా?",
+                                                "answer": "లేదు. Schema page అర్థం చేసుకోవడానికి ఉపయోగపడుతుంది; search systems crawl, rank, rich results ను తామే నిర్ణయిస్తాయి."
+                                      },
+                                      "hidden-menu-items": {
+                                                "question": "Hidden items schema లో add చేయవచ్చా?",
+                                                "answer": "లేదు. Structured data public page తో match కావాలి."
+                                      }
+                            }
+                  },
+                  "official-menu-url-checklist": {
+                            "title": "Customers చూసే ప్రతి surface లో one stable menu URL use చేయండి",
+                            "metaTitle": "Official Menu URL Checklist for Restaurants | MenuList",
+                            "metaDescription": "Scattered menu links ను one approved source URL తో replace చేసే checklist.",
+                            "description": "Scattered menu links ను one approved source URL తో replace చేసే checklist.",
+                            "quickAnswer": "Customers చూసే ప్రతి surface లో one stable menu URL use చేయండి. Stable URL keeps QR, Google, social, website, WhatsApp, print, screens, and branch pages pointed to the current approved menu source.",
+                            "primaryCtaLabel": "Stable menu URL సృష్టించండి",
+                            "distributionSnippets": [
+                                      "Customers చూసే ప్రతి surface లో one stable menu URL use చేయండి",
+                                      "Use one stable URL instead of sending a new file link after every update."
+                            ],
+                            "sections": {
+                                      "choose-source-url": {
+                                                "title": "Source URL ఎంచుకోండి",
+                                                "body": [
+                                                          "Choose a public menu page the owner can keep current. The URL should stay stable when prices, items, photos, or availability change."
+                                                ],
+                                                "checklist": [
+                                                          "Use a short public URL.",
+                                                          "Open on mobile without login.",
+                                                          "Menu is owner-approved.",
+                                                          "Page updates without changing the URL."
+                                                ]
+                                      },
+                                      "update-surfaces": {
+                                                "title": "Customer-facing surfaces update చేయండి",
+                                                "checklist": [
+                                                          "QR codes.",
+                                                          "Google Business Profile menu link.",
+                                                          "Instagram and WhatsApp links.",
+                                                          "Website menu buttons.",
+                                                          "Print files and screens.",
+                                                          "Branch pages and branch QR cards."
+                                                ]
+                                      },
+                                      "test-before-printing": {
+                                                "title": "Printing ముందు test చేయండి",
+                                                "checklist": [
+                                                          "Mobile data లో URL open చేయండి.",
+                                                          "Final print size తో QR scan చేయండి.",
+                                                          "Check title, prices, and availability.",
+                                                          "Ask staff to send the same URL.",
+                                                          "Old PDFs main customer link గా ఉండకూడదు."
+                                                ]
+                                      },
+                                      "limits": {
+                                                "title": "URL force చేయలేనివి",
+                                                "body": [
+                                                          "A clear official URL reduces confusion, but external sites still decide when cached or old information refreshes."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "new-qr-every-update": {
+                                                "question": "ప్రతి update కు new QR కావాలా?",
+                                                "answer": "లేదు. Stable menu URL ఉంటే same printed QR తో menu update చేయవచ్చు."
+                                      },
+                                      "delete-old-pdfs": {
+                                                "question": "Old PDFs remove చేయాలా?",
+                                                "answer": "Old public PDFs main menu link గా ఉండకూడదు. Current backup files మాత్రమే ఉంచండి."
+                                      }
+                            }
+                  },
+                  "restaurant-qr-menu-mistakes": {
+                            "title": "Restaurants avoid చేయాల్సిన common QR menu mistakes",
+                            "metaTitle": "Common QR Menu Mistakes Restaurants Should Avoid | MenuList",
+                            "metaDescription": "Table cards లేదా packaging print చేసే ముందు QR menu mistake list.",
+                            "description": "Table cards లేదా packaging print చేసే ముందు QR menu mistake list.",
+                            "quickAnswer": "QR code menu కాదు. అది stable current menu source కు access point మాత్రమే. Readable placement, fallback URL, scan testing అవసరం.",
+                            "primaryCtaLabel": "Stable QR menu set up చేయండి",
+                            "distributionSnippets": [
+                                      "QR code menu కాదు. అది stable current menu source కు access point మాత్రమే. Readable placement, fallback URL, scan testing అవసరం.",
+                                      "A QR menu fails when the link, placement, or branch version is wrong."
+                            ],
+                            "sections": {
+                                      "pdf-only": {
+                                                "title": "Mistake 1: QR old PDF తెరుస్తుంది",
+                                                "body": [
+                                                          "A PDF can be useful for print, but it becomes stale through WhatsApp, old website links, or old QR cards."
+                                                ],
+                                                "checklist": [
+                                                          "Main QR destination mobile-friendly menu page కావాలి.",
+                                                          "Keep PDF secondary for print or backup.",
+                                                          "Replace old PDF links when prices change."
+                                                ]
+                                      },
+                                      "unstable-links": {
+                                                "title": "Mistake 2: ప్రతి update తర్వాత link మారుతుంది",
+                                                "body": [
+                                                          "If every update creates a new URL, printed QR material becomes risky. A stable URL is safer."
+                                                ],
+                                                "checklist": [
+                                                          "One stable public menu URL use చేయండి.",
+                                                          "Update content behind the URL.",
+                                                          "Keep staff replies and social links on the same source."
+                                                ]
+                                      },
+                                      "placement-testing": {
+                                                "title": "Mistake 3: scan testing లేకుండా print చేయడం",
+                                                "checklist": [
+                                                          "Final print size తో QR scan చేయండి.",
+                                                          "iPhone మరియు Android cameras test చేయండి.",
+                                                          "Test in customer lighting.",
+                                                          "Print a readable fallback URL.",
+                                                          "Mobile data లో URL open చేయండి."
+                                                ]
+                                      },
+                                      "branch-mismatch": {
+                                                "title": "Mistake 4: wrong branch menu",
+                                                "body": [
+                                                          "Branches may have different prices, availability, hours, or service modes. When those differences matter, QR should open the correct branch version."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "biggest-qr-mistake": {
+                                                "question": "Common QR mistake ఏమిటి?",
+                                                "answer": "QR old లేదా hard-to-read menu file తెరుస్తుంది; stable current menu page కాదు."
+                                      },
+                                      "branch-specific-qr": {
+                                                "question": "ప్రతి branch కు తన QR menu కావాలా?",
+                                                "answer": "Prices, availability, hours లేదా service details branch-wise వేరైతే అవును."
+                                      }
+                            }
+                  },
         "multi-location-menu-management": {
             "title": "స్థానిక తేడాలను దాచకుండా అవుట్‌లెట్ మెనులను సమలేఖనం చేసి ఉంచండి",
             "metaTitle": "బహుళ-స్థాన మెనూ నిర్వహణ | MenuList",

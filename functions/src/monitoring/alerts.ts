@@ -9,6 +9,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { isAlertsMuted } from './deployMute';
 import { logSystemError } from './errorTracking';
+import { sendPlatformAlertDelivery } from './platformNotificationDelivery';
 import { sendTelegramAlert } from './telegramAlert';
 
 // ================================================================
@@ -28,6 +29,10 @@ export interface Alert {
   acknowledgedAt?: Timestamp;
   acknowledgedBy?: string;
   metadata?: Record<string, any>;
+  triggerType?: string;
+  productId?: string;
+  category?: string;
+  suppressPlatformDelivery?: boolean;
   actionRequired?: boolean;
   actionTaken?: boolean;
 }
@@ -124,9 +129,26 @@ export async function createAlert(
       return '';
     }
 
+    const {
+      triggerType,
+      productId,
+      category,
+      suppressPlatformDelivery,
+      metadata,
+      ...alertFields
+    } = alert;
+    const alertMetadata = {
+      ...(metadata || {}),
+      ...(triggerType ? { platformTriggerType: triggerType } : {}),
+      ...(productId ? { productId } : {}),
+      ...(category ? { category } : {}),
+      ...(suppressPlatformDelivery ? { platformDeliverySuppressed: true } : {}),
+    };
+
     // Create alert
     const docRef = await db.collection(DB_COLLECTIONS.SYSTEM_ALERTS).add({
-      ...alert,
+      ...alertFields,
+      metadata: alertMetadata,
       timestamp: Timestamp.now(),
       acknowledged: false,
       actionRequired: alert.actionRequired || false,
@@ -147,9 +169,18 @@ export async function createAlert(
           metadata: {
             storeId: alert.sId,
             tenantId: alert.tId,
-            ...alert.metadata,
+            ...alertMetadata,
           },
         }).catch(err => console.error('[Alerts] Telegram delivery failed:', err));
+        sendPlatformAlertDelivery({
+          id: docRef.id,
+          severity: alert.severity,
+          title: alert.title,
+          message: alert.message,
+          tId: alert.tId,
+          sId: alert.sId,
+          metadata: alertMetadata,
+        }).catch(err => console.error('[Alerts] Platform alert delivery failed:', err));
       } else {
         console.log('[Alerts] Alert muted (deploy window active)');
       }

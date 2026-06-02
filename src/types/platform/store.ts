@@ -39,6 +39,7 @@ export type StoreDataType = {
     url?: string;
     createdBy?: string;
     createdOn?: string;
+    lastPublishedAt?: Timestamp | Date | string | null;
     logo: string;
     licenceKey?: string;
     licenceExpiryDate?: string;

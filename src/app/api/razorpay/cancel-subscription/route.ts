@@ -179,6 +179,27 @@ export const POST = withAuth(async (request, session) => {
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_SUCCESS',
                 data: summarizeSubscriptionForCancelLog({ ...internalSub, status: targetStatus }),
             });
+
+            if (!isAnswerlatticeBillingProduct(productId) && targetStatus === 'cancelled') {
+                try {
+                    const { sendLifecycleMessage } = await import('@lib/messaging');
+                    sendLifecycleMessage({
+                        storeId: String(internalSub.storeId),
+                        tenantId: String(internalSub.tenantId),
+                        eventType: 'SUBSCRIPTION_CANCELLED',
+                        referenceId: `subscription-cancelled-${internalSub.id}`,
+                        recipientEmail: internalSub.email || session.user.email || '',
+                        storeName: internalSub.name || '',
+                        metadata: {
+                            amount: internalSub.amount,
+                            currency: internalSub.currency || 'INR',
+                            planName: internalSub.planName || 'Subscription',
+                            sentAt: new Date().toISOString(),
+                        },
+                    }).catch(() => { /* non-blocking */ });
+                } catch { /* non-blocking */ }
+            }
+
             return NextResponse.json({
                 success: true,
                 message: targetStatus === 'completed' ? "Subscription is already completed." : "Subscription cancelled successfully.",

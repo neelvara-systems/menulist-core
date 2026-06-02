@@ -1,5 +1,6 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import { FEATURE_FLAGS } from '@config/features';
+import countryData from '@atoms/phoneNumberInput/countryData';
 import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
 import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
@@ -28,9 +29,32 @@ interface LocaleSettingsTabProps {
 const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDiscovery, scrollRef, storeDetails }) => {
     const t = useTranslations('BusinessSettings');
     const format = useFormatter();
+    const form = Form.useFormInstance();
     const now = getUTCDate().newDate;
     const watchedActiveLanguages = Form.useWatch('activeLanguages') || [];
     const watchedDefaultLanguage = Form.useWatch('defaultLanguage');
+    const watchedCurrencyCode = Form.useWatch('currencyCode');
+    const watchedCurrencySymbol = Form.useWatch('currencySymbol');
+    const currencyOptions = useMemo(() => {
+        const uniqueCurrencies = new Map<string, { label: string; value: string }>();
+        countryData.forEach((item) => {
+            if (!uniqueCurrencies.has(item.currencyCode)) {
+                uniqueCurrencies.set(item.currencyCode, {
+                    label: `${item.currencyCode} (${item.currencySymbol})`,
+                    value: item.currencyCode,
+                });
+            }
+        });
+
+        return Array.from(uniqueCurrencies.values()).sort((left, right) => left.label.localeCompare(right.label));
+    }, []);
+    const handleCurrencyChange = (value: string) => {
+        const matchedCurrency = countryData.find((item) => item.currencyCode === value);
+        form.setFieldsValue({
+            currencyCode: value,
+            currencySymbol: matchedCurrency?.currencySymbol || form.getFieldValue('currencySymbol') || '₹',
+        });
+    };
     const nextStorePolicy = useMemo(() => {
         const normalized = normalizeStoreLanguagePolicy({
             ...storeDetails,
@@ -111,6 +135,32 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                             options={TIME_FORMATS.map((t) => ({ label: `${format.dateTime(now, t.value)} (${t.labelHelper})`, value: t.label }))}
                         />
                     </Form.Item>
+                </Col>
+            </Row>
+
+            <Row gutter={[16, 0]}>
+                <Col xs={24} md={6}>
+                    <Form.Item
+                        name="currencyCode"
+                        label={t('currency')}
+                        extra={t('currencyHelper')}
+                    >
+                        <Select
+                            placeholder={t('currency')}
+                            showSearch
+                            onChange={handleCurrencyChange}
+                            filterOption={(input, option) =>
+                                (option?.label?.toString().toLowerCase() || '').includes(input.toLowerCase())
+                            }
+                            options={currencyOptions}
+                        />
+                    </Form.Item>
+                    <Form.Item name="currencySymbol" hidden>
+                        <input type="hidden" />
+                    </Form.Item>
+                    <Text type="secondary" style={{ display: 'block', marginTop: -12, marginBottom: 16, fontSize: 12 }}>
+                        {(watchedCurrencySymbol || storeDetails?.currencySymbol || '₹')} {(watchedCurrencyCode || storeDetails?.currencyCode || 'INR')}
+                    </Text>
                 </Col>
             </Row>
 

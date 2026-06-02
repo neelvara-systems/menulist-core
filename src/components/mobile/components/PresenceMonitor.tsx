@@ -22,12 +22,12 @@ import { StoreDataType } from '@type/platform/store';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-import { FaInstagram } from 'react-icons/fa6';
 import {
     LuCheck,
     LuClipboard,
     LuExternalLink,
     LuGlobe,
+    LuInstagram,
     LuMessageCircle,
     LuPlus,
     LuQrCode,
@@ -74,7 +74,7 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
         dalKey: 'instagramBio',
         labelKey: 'surfaces.instagramBio.label',
         explanationKey: 'surfaces.instagramBio.explanation',
-        icon: <FaInstagram size={16} />,
+        icon: <LuInstagram size={16} />,
         guideStepKeys: [
             'surfaces.instagramBio.steps.open',
             'surfaces.instagramBio.steps.edit',
@@ -259,8 +259,8 @@ export default function MobilePresenceMonitor({
                                         size="small"
                                         style={{
                                             borderRadius: 999,
-                                            minHeight: 36,
-                                            minWidth: 36,
+                                            minHeight: 44,
+                                            minWidth: 44,
                                             paddingInline: 0,
                                         }}
                                     >
@@ -332,7 +332,7 @@ export default function MobilePresenceMonitor({
                     <Flex style={{ height: '100%' }} vertical>
                         <NavBar
                             right={(
-                                <Button fill="none" onClick={handleCloseSurface} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                                <Button fill="none" onClick={handleCloseSurface} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                                     <LuX size={18} />
                                 </Button>
                             )}
@@ -353,7 +353,7 @@ export default function MobilePresenceMonitor({
                                         <Button
                                             color={isActive(selectedSurface.id) ? 'success' : 'primary'}
                                             fill="none"
-                                            style={{ minHeight: 24, minWidth: 24, paddingInline: 0 }}
+                                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                         >
                                             {isActive(selectedSurface.id) ? <LuCheck size={16} /> : <LuPlus size={16} />}
                                         </Button>

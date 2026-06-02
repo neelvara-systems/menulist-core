@@ -1592,6 +1592,16 @@ export const FEATURE_FLAGS = {
     ENABLE_OPS_ALERTS: true,
 
     /**
+     * Platform Notification Dashboard — internal founder/operator alert monitor.
+     *
+     * Uses existing systemAlerts with bounded manual refresh. This is separate
+     * from owner notifications and has no owner/customer-facing surface.
+     */
+    ENABLE_PLATFORM_NOTIFICATION_DASHBOARD: true,
+    ENABLE_PLATFORM_ALERT_EMAIL: true,
+    ENABLE_PLATFORM_ALERT_WHATSAPP: true,
+
+    /**
      * Menu Health Monitor — Post-publish verification.
      *
      * When enabled:
@@ -2262,6 +2272,23 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/email-notifications/
      */
     ENABLE_ANSWERLATTICE_NOTIFICATIONS: true,
+
+    /**
+     * Owner Notifications
+     *
+     * Shared owner/account notification core for MenuList and Answerlattice.
+     * Trigger points enqueue product-scoped events; the central processor handles
+     * recipient resolution, settings-aware formatting, email/WhatsApp channels,
+     * idempotency, rate limits, and delivery logs.
+     *
+     * @see __docs__/owner-notifications/
+     */
+    ENABLE_OWNER_NOTIFICATIONS: true,
+    ENABLE_OWNER_NOTIFICATION_EMAIL: true,
+    ENABLE_OWNER_NOTIFICATION_WHATSAPP: false,
+    ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION: true,
+    ENABLE_OWNER_NOTIFICATION_ANSWERLATTICE_MIGRATION: true,
+    ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD: true,
 
     /**
      * Answerlattice Governance UI

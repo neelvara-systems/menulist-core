@@ -16,8 +16,10 @@ import { isFunctionFeatureEnabled } from '../constants/features';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { isAlertsMuted } from '../monitoring/deployMute';
+import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDelivery';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { intakeProcessorLogic } from '../messagingOnboarding';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import {
     cleanupExpiredPreviewJobsLogic,
     cleanupOldJobsLogic,
@@ -79,6 +81,7 @@ interface TaskSummary {
 const maintenanceSecrets = Array.from(new Set([
     ...SECRET_GROUPS.AI,
     ...SECRET_GROUPS.WHATSAPP_OUTBOUND,
+    ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
 ]));
 
 function getIntervalBucket(date: Date, minutes: number): number {
@@ -359,6 +362,29 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             error: message,
         });
 
+        await createAlert({
+            tId: 'system',
+            sId: 'scheduler',
+            type: 'health',
+            severity: 'critical',
+            title: 'Maintenance Scheduler Task Failed',
+            message: `Task ${task.name} failed: ${message}`,
+            metadata: {
+                schedulerName: SCHEDULER_NAME,
+                taskName: task.name,
+                runId,
+            },
+            triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.SCHEDULER_FAILURE,
+            productId: 'PLATFORM',
+            category: 'scheduler',
+            actionRequired: true,
+        }).catch((alertError) => {
+            logger.error(`[${SCHEDULER_NAME}] Failed to create scheduler failure alert`, {
+                task: task.name,
+                error: errorMessage(alertError),
+            });
+        });
+
         return {
             name: task.name,
             status: 'failed',
@@ -403,6 +429,9 @@ async function runMenuStuckCleanup(): Promise<MaintenanceTaskResult> {
                 cleanedJobs: stuckResult.cleaned,
                 sampleJobIds: stuckResult.jobIds.slice(0, 5),
             },
+            triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.JOB_STUCK,
+            productId: 'ML',
+            category: 'extraction',
             actionRequired: true,
         });
     }
@@ -526,6 +555,22 @@ async function runAlertEscalation(): Promise<MaintenanceTaskResult> {
             title: `STILL UNRESOLVED: ${alert.title}`,
             message: `This critical alert has been unacknowledged for 30+ minutes.\n\n${alert.message}\n\nOriginal time: ${alert.timestamp?.toDate?.()?.toISOString() || 'unknown'}`,
             metadata: { alertId: doc.id, storeId: alert.sId, tenantId: alert.tId },
+        });
+        await sendPlatformAlertDelivery({
+            id: doc.id,
+            severity: 'critical',
+            title: `STILL UNRESOLVED: ${alert.title}`,
+            message: `This critical alert has been unacknowledged for 30+ minutes.\n\n${alert.message}\n\nOriginal time: ${alert.timestamp?.toDate?.()?.toISOString() || 'unknown'}`,
+            tId: alert.tId,
+            sId: alert.sId,
+            metadata: {
+                alertId: doc.id,
+                storeId: alert.sId,
+                tenantId: alert.tId,
+                platformTriggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.UNRESOLVED_CRITICAL_ALERT,
+                productId: 'PLATFORM',
+                category: 'system',
+            },
         });
     }
 

@@ -259,7 +259,7 @@ export default function CreateSpecialMenuModal({
                 )}
 
                 {capabilities.availableModes.length === 1 && (
-                    <div style={{ marginBottom: 16, padding: "8px 12px", background: "#f6f6f6", borderRadius: 6 }}>
+                    <div style={{ marginBottom: 16, padding: "8px 12px", background: token.colorFillQuaternary, borderRadius: 6 }}>
                         <LuInfo size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             Special items will appear alongside your regular menu.

@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.20 (Full Resource Locale Coverage)
+**Version:** 3.6.24 (Public Truth Indexing Guardrail)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,7 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.20** | **Full Resource Locale Coverage** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.24** | **Public Truth Indexing Guardrail** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
 Version 3.6.15 adds the public `/resources` layer as an evergreen MenuList website surface. It ships a resources hub, 12 server-rendered article routes including Menu Source Audit, QR/Google/PDF/SEO/AI discovery guides, checklists, worksheet content, resource schema, platform discovery registry entries, static sitemap entries, robots crawler-policy sync, `llms.txt`/`llms-full.txt` coverage, a homepage resources section, and header/footer navigation. This is static public website content only; owner dashboard, auth, billing, Firebase, Cloud Functions, customer menu runtime, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
@@ -26,6 +26,14 @@ Version 3.6.18 adds reviewed Hindi resource URLs at `/hi-IN/resources` and `/hi-
 Version 3.6.19 completes the first Indian-language resource rollout by adding reviewed Tamil, Telugu, Marathi, and Bengali packs for the resources hub and all 12 resource articles. The reviewed route layer now covers `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, and `/bn-IN/resources`, with localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, and LLM context coverage. This is static public website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
 Version 3.6.20 completes long-form resource coverage for every language in the public website switcher by adding reviewed Arabic and Spanish packs for the resources hub and all 12 resource articles. Reviewed resource routes now cover `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, `/bn-IN/resources`, `/ar-SA/resources`, and `/es-ES/resources`, with localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, LLM context coverage, locale JSON loading, and Arabic RTL direction support. This is static public website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+
+Version 3.6.21 updates the website to match the complete resources navigation and discovery strategy without changing product runtime. Header navigation is Features -> How it works -> Multi-location -> Pricing -> Resources, desktop Resources opens a compact dropdown, mobile navigation exposes the same resource cluster, the homepage includes the eight-card "Learn how to keep your public menu current" bridge, footer resource links point to the core resource set, robots/LLM files carry modest official-source positioning, and GA4-only resource measurement includes resource-to-upload and resource-to-pricing events.
+
+Version 3.6.22 expands the public content/discovery layer with three additional resource articles (`/resources/restaurant-menu-schema`, `/resources/official-menu-url-checklist`, and `/resources/restaurant-qr-menu-mistakes`), reviewed coverage for those articles across all active resource locale packs, four industry landing pages under `/industries/`, sitemap/LLM discovery coverage, and a real checklist-copy UI that emits `resource_checklist_copy` only when checklist content exists. Downloadable template tracking remains intentionally unimplemented until real downloadable assets are designed and QA'd.
+
+Version 3.6.23 applies the marketing-team feedback pass to the highest-value English resource and industry surfaces without adding thin pages or changing product runtime. `/resources/official-menu-source`, `/resources/menu-source-audit`, `/resources/google-business-profile-menu`, `/resources/qr-menu-for-restaurants`, `/resources/multi-location-menu-management`, and `/industries/restaurants` now use `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation. Candidate pages for WhatsApp links, price changes, cleanup, and comparisons remain documented for later content work after the core pages are polished.
+
+Version 3.6.24 adds the long-term public truth indexing guardrail from the business-page strategy review. Existing tenant OBP/menu metadata and per-tenant sitemap output now use `src/lib/seo/publicTruthIndexing.ts` so expired, blocked, starter, weak, or incomplete public truth records stay reachable but receive `noindex, follow` and stay out of sitemap. OBP runtime now relies on visible business-record schema instead of generated hidden FAQPage JSON-LD. This does not create directory pages, keyword-variant restaurant pages, unclaimed business records, owner dashboard changes, Firebase changes, Cloud Function changes, or new marketing resource pages.
 
 Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Source-to-public bridge -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -95,6 +103,7 @@ Old runnable/source-code backups have been removed. Historical research and stag
 | Content/Strategy | [Resources Localization Plan](./main-website_resources-localization-plan.md) | Resource translation and management plan for active website languages |
 | Dev / QA        | [Resources Validation](./main-website_resources-validation.md) | Implementation verification log for the Resources layer |
 | Dev / SEO       | [SEO & AEO](./main-website_seo-aeo.md)           | Title tags, meta, schema, AEO strategy              |
+| Marketing / SEO | [SEO/AEO Marketing Brief](./main-website_seo-aeo-marketing-brief.md) | Shareable summary of resource, industry, discovery, page-title, and marketing-review coverage |
 | Strategy/AI     | [Website Prep Codex Prompts](./website-prep-codex-prompts/README.md) | Staged prompt pack for repo-grounded website strategy, visual direction, implementation, launch, and governance |
 
 ### Archive (Historical Research Only)
@@ -123,7 +132,9 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
 | `src/components/website/resources/`                          | Resource hub, article layout, cards, schema, and GA4-only resource tracking |
+| `src/components/website/industries/`                          | Shared industry landing-page component for MenuList-fit pages |
 | `src/content/websiteResources/`                              | Typed localized resource content registry      |
+| `src/content/websiteIndustries.ts`                            | Typed industry landing-page registry           |
 | `src/lib/website/resourceSchema.ts`                           | Resource WebPage, Article, BreadcrumbList, FAQPage, and ItemList JSON-LD builders |
 | `src/components/seo/JsonLdScript.tsx`                       | Shared server-rendered JSON-LD script helper   |
 | `src/components/website/shared/LogoMark.tsx`                | Official MenuList logo mark used by website header/footer |
@@ -631,6 +642,10 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.24 | June 2, 2026 | Added the public truth indexing guardrail for tenant OBP/menu metadata and per-tenant sitemap inclusion, and removed generated hidden FAQPage JSON-LD from OBP runtime. |
+| 3.6.23 | June 2, 2026 | Applied the marketing feedback quality pass to the official-source, audit, Google menu, QR menu, multi-location, and restaurant industry pages while deferring comparison/extra industry pages to avoid thin expansion. |
+| 3.6.22 | June 2, 2026 | Added three resource articles, four industry pages, expanded reviewed locale resource coverage, sitemap/LLM discovery entries, and checklist-copy measurement while leaving downloadable templates absent until real files exist. |
+| 3.6.21 | June 2, 2026 | Hardened the Resources layer with a desktop Resources dropdown, mobile nested resource links, the eight-card homepage resources block, updated footer resource links, grouped robots rules for named search/AI crawlers, `CCBot` discovery policy coverage, LLM positioning limits, and GA4 resource conversion/referrer events. |
 | 3.6.20 | June 1, 2026 | Added reviewed Arabic and Spanish resource packs, completed reviewed resource coverage for every public website-switcher language, and added verifier coverage for active language parity. |
 | 3.6.19 | June 1, 2026 | Added reviewed Tamil, Telugu, Marathi, and Bengali resource packs and locale-prefixed resource discovery coverage. |
 | 3.6.18 | June 1, 2026 | Added reviewed Hindi resource URLs, localized resource metadata/schema, sitemap hreflang alternates, LLM coverage, and route/discovery verifier checks. |

@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'AI Agent Install Packet',
-    description: 'Copyable Answerlattice v1 install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.',
+    description: 'Copyable AnswerLattice v1 install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.',
     alternates: { canonical: '/install/ai-agent' },
 };
 

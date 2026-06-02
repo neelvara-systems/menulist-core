@@ -15,6 +15,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 export const MESSAGE_EVENTS = {
   STORE_PUBLISHED: 'STORE_PUBLISHED',
+  MENU_PUBLISH_FAILED: 'MENU_PUBLISH_FAILED',
   PAYMENT_SUCCESS: 'PAYMENT_SUCCESS',
   PAYMENT_FAILED: 'PAYMENT_FAILED',
   RENEWAL_REMINDER: 'RENEWAL_REMINDER',
@@ -22,6 +23,7 @@ export const MESSAGE_EVENTS = {
   SUSPENSION_WARNING: 'SUSPENSION_WARNING',
   CREDIT_PURCHASE_SUCCESS: 'CREDIT_PURCHASE_SUCCESS',
   CREDITS_EXHAUSTED: 'CREDITS_EXHAUSTED',
+  MENU_STALE: 'MENU_STALE',
 } as const;
 
 export type MessageEventType = typeof MESSAGE_EVENTS[keyof typeof MESSAGE_EVENTS];
@@ -34,6 +36,7 @@ export type MessagePriority = 'critical' | 'important' | 'warning';
 
 export const EVENT_PRIORITY: Record<MessageEventType, MessagePriority> = {
   STORE_PUBLISHED: 'important',
+  MENU_PUBLISH_FAILED: 'critical',
   PAYMENT_SUCCESS: 'important',
   PAYMENT_FAILED: 'critical',
   RENEWAL_REMINDER: 'important',
@@ -41,6 +44,7 @@ export const EVENT_PRIORITY: Record<MessageEventType, MessagePriority> = {
   SUSPENSION_WARNING: 'critical',
   CREDIT_PURCHASE_SUCCESS: 'important',
   CREDITS_EXHAUSTED: 'warning',
+  MENU_STALE: 'warning',
 };
 
 // ================================================================

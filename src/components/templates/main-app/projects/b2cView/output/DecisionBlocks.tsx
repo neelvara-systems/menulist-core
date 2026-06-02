@@ -502,7 +502,7 @@ export default function DecisionBlocks({
     businessType,
     moodConfig,
     onItemClick,
-    currency = '$',
+    currency = '',
     menuSettings,
     precomputedBlocks,
     showItemPrices = true,

@@ -2,9 +2,7 @@ import { AIEnhancementPack, Currency } from '@data/common';
 import { formatCurrency } from '@util/formatters';
 import { Button, Card, Flex, Typography, theme } from 'antd';
 import React from 'react';
-import { FaCoins } from 'react-icons/fa';
-import { GiTwoCoins } from 'react-icons/gi';
-import { RiCoinFill } from 'react-icons/ri';
+import { LuCoins } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
@@ -27,7 +25,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
         }
     } = {
         enhancement: {
-            icon: GiTwoCoins,
+            icon: LuCoins,
             color: token.colorPrimary,
             buttonStyles: {
                 borderColor: `${token.colorPrimary}4d`,
@@ -35,7 +33,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
             },
         },
         starter: {
-            icon: RiCoinFill,
+            icon: LuCoins,
             color: token.colorInfo,
             buttonStyles: {
                 borderColor: `${token.colorInfo}4d`,
@@ -43,7 +41,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
             }
         },
         value: {
-            icon: GiTwoCoins,
+            icon: LuCoins,
             color: token.colorSuccess,
             buttonStyles: {
                 borderColor: `${token.colorSuccess}4d`,
@@ -51,7 +49,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
             },
         },
         pro: {
-            icon: FaCoins,
+            icon: LuCoins,
             color: token.colorWarning,
             buttonStyles: {
                 borderColor: `${token.colorWarning}4d`,

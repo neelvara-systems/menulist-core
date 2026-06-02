@@ -288,9 +288,11 @@ const checkHealth = async () => {
 
 ## FINDING 8: Basic/Traditional UI on Customer-Facing Screens
 
-**Severity:** HIGH (differentiation) | **Status:** ✅ v2.1 IMPLEMENTED  
+**Severity:** HIGH (differentiation) | **Status:** SUPERSEDED by June 2, 2026 readability hardening
 **Impact:** Generic dark-theme menu board and flat slideshow — no visual differentiation from competitors  
 **Source:** Web research (DotSignage trends 2025, CrownTV design guide, industry best practices)
+
+**Current decision:** The v2.1 decorative treatment was later judged too close to generic signage software and too weak for distance readability. Runtime screens now prioritize stable high-contrast TV output: no ambient orbs, no glassmorphism dependence, no food thumbnails in Menu Board rows, no shimmer/pulse tags, no negative letter spacing, and larger item/price typography.
 
 ### What Was Done
 
@@ -314,8 +316,8 @@ const checkHealth = async () => {
 2. Multi-stop gradient overlay (bottom-heavy for text readability + side vignettes)
 3. Full-bleed image layout (image covers entire viewport, not constrained)
 4. Glassmorphism price pill badge (green tint, backdrop-blur)
-5. Glassmorphism label badge ("Featured", "Today's Pick", "Popular")
-6. Brand fallback slide with animated gradient orbs + glassmorphism logo wrapper
+5. Label badge with factual wording ("Featured", "Today", "Popular", "On menu")
+6. Screen-safe brand fallback slide with fixed branding and no decorative orbs
 7. Capsule-style progress indicators (active = wider, done = brighter)
 8. QR code repositioned to top-right corner (unobtrusive)
 9. Smoother slide transitions (scale + opacity with custom cubic-bezier easing)
@@ -378,6 +380,57 @@ const checkHealth = async () => {
 
 ---
 
+## FINDING 10: Owner Trust And TV Distance Readability Gap
+
+**Severity:** HIGH (owner trust + public output) | **Status:** ✅ IMPLEMENTED June 2, 2026
+**Impact:** Owner setup showed generic links, Menu Board text was too small for counter viewing, owner-only mode was stored but not enforced, and ordinary public cache invalidation did not reliably touch screen content version.
+
+### What Was Done
+
+**Owner setup:**
+
+- `ScreenLink.tsx` now renders separate Menu Board and Highlights setup cards with compact URLs, QR blocks, copy/open actions, and last-seen status.
+- `DigitalScreenSettings/index.tsx` passes `screenLastSeenAt`, renames the override to "Only custom slides", and makes clear that Menu Board is unaffected.
+- `CurrentSlides.tsx` now describes custom slide content accurately instead of implying the generated slide stack is fully listed.
+- `MobileDigitalScreensScreen.tsx` now mirrors desktop setup with TV status, compact screen cards, custom slide controls, and owner-only toggle copy.
+
+**TV output:**
+
+- `MenuBoardDisplay.tsx` now preserves category/item order where `categoryOrderIndex` and `orderIndex` are available.
+- Menu Board rows use larger screen-grade item names and prices, fewer rows per page, aligned price columns, no thumbnails, no ambient effects, no shimmer tags, and stable dimensions.
+- `ScreenDisplay.tsx` removes brand fallback orbs/glass effects and uses calmer fixed badges/pills for Highlights.
+
+**Data freshness:**
+
+- `MenuItemForSlide` now carries `categoryOrderIndex` and `orderIndex`.
+- `getMenuItemsForScreen()` and `getMenuItemsForScreenServer()` populate order metadata from extracted menu data.
+- `generateScreenSlides()` now enforces owner-only custom slide mode.
+- `touchDigitalScreenContentVersion()` links public client cache invalidation to screen content version for initialized screens only.
+- `/api/revalidate/menu` includes `screen-data` when invalidating a store.
+
+**Firebase cost impact:** For stores with initialized screens, public menu/cache invalidation adds one guarded `platformSummary` read and one `screen.contentVersion` write. No new collection, Storage path, Cloud Function, scheduler, rule, or index.
+
+---
+
+## FINDING 11: Screen Content Trust Gap
+
+**Severity:** HIGH (public output trust) | **Status:** ✅ IMPLEMENTED June 2, 2026
+**Impact:** Screen content could show weak fallbacks: currency-bearing prices might parse as missing, category IDs could leak when category lookup failed, evergreen labels could overclaim permanent availability, campaign labels could imply owner claims, and custom slide management names could appear as poster overlays.
+
+### What Was Done
+
+- Added `screenContent.ts` as the shared normalization layer for screen text, truncation, prices, category fallback, image URLs, tags, diet-tag detection, owner captions, and item dedupe.
+- Updated client and server screen menu extraction to use content normalization before returning `MenuItemForSlide`.
+- Changed missing Menu Board prices from a dash to `Ask`.
+- Replaced risky labels such as permanent availability and chef-style claims with factual labels: `Today`, `Popular`, `Featured`, category name, or `On menu`.
+- Updated evergreen selection to prefer bestsellers, priced items, source menu order, and category variety.
+- Changed custom `owner_upload` slides so uploaded artwork displays without forced item-title/caption overlays.
+- Normalized custom slide captions on upload, edit, desktop display, and mobile display.
+
+**Firebase cost impact:** $0 — CPU-only normalization in existing reads/render flow. No new reads, writes, collections, Storage paths, Cloud Functions, schedulers, indexes, or rules.
+
+---
+
 ## Document History
 
 | Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                     |
@@ -391,3 +444,5 @@ const checkHealth = async () => {
 | 7.0     | 2026-02-08 | Cascade | **v2.2.1 HARDENING:** 7 fixes — dietary dot logic bug, cache-first MenuBoard init, category header 18→22px, description opacity 0.35→0.45, ITEMS_PER_PAGE 12→10, broken image fallback, reload guard (30s throttle)                                                                         |
 | 8.0     | 2026-02-08 | Cascade | **v2.2.2 REFACTOR:** `guardedReload` → shared util, `MenuItemForSlide` + `ScreenStoreInfo` → `@type/campaigns.ts`, circular dependency eliminated, 3 duplicate interfaces removed                                                                                                           |
 | 9.0     | 2026-03-15 | Cascade | **v2.3 HARDENING (ChatGPT review v3):** Token entropy 8→22 chars. Reload jitter for mass reload smoothing. MenuBoard: broken image fallback, listener offline+retry, sold-out messaging, MAX_TOTAL_ITEMS=200. Auto-fullscreen recovery. Settings: activity status, Main TV/Second TV labels |
+| 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                       |
+| 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual labels, evergreen category variety, custom-slide artwork rendering, and caption safety.                                                                                                |

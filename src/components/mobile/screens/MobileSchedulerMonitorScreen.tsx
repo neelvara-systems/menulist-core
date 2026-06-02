@@ -3,7 +3,9 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummary, SchedulerTaskResult } from '@lib/ops/schedulerTypes';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuActivity, LuClock, LuPlay, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
@@ -32,20 +34,10 @@ const TASK_LABELS: Record<string, string> = {
     weekly_narrative: 'Weekly Narrative',
 };
 
-function formatTimestamp(value: any): string {
+function formatTimestamp(value: any, formatter: IntlFormatter): string {
     if (!value) return '-';
-    try {
-        const date = value.toDate ? value.toDate() : new Date(value.seconds ? value.seconds * 1000 : value);
-        return date.toLocaleString('en-IN', {
-            day: '2-digit',
-            hour: '2-digit',
-            hour12: true,
-            minute: '2-digit',
-            month: 'short',
-        });
-    } catch {
-        return '-';
-    }
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function formatDuration(ms?: number): string {
@@ -80,6 +72,7 @@ function renderTask(task: SchedulerTaskResult) {
 }
 
 export default function MobileSchedulerMonitorScreen({ onBack }: MobileSchedulerMonitorScreenProps) {
+    const formatter = useFormatter();
     const { data: session, status } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
@@ -234,7 +227,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                                 </Flex>
                                 <Flex align="center" justify="space-between">
                                     <Text type="secondary">Last run</Text>
-                                    <Text>{formatTimestamp(lastRun?.startedAt)}</Text>
+                                    <Text>{formatTimestamp(lastRun?.startedAt, formatter)}</Text>
                                 </Flex>
                                 <Flex align="center" justify="space-between">
                                     <Text type="secondary">Duration</Text>
@@ -273,7 +266,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                                             description={(
                                                 <Flex align="center" gap={6}>
                                                     <LuClock size={12} />
-                                                    <Text type="secondary">{formatTimestamp(run.startedAt)} · {formatDuration(run.durationMs)}</Text>
+                                                    <Text type="secondary">{formatTimestamp(run.startedAt, formatter)} · {formatDuration(run.durationMs)}</Text>
                                                 </Flex>
                                             )}
                                             extra={<Tag color={statusColor(run.status)}>{run.status}</Tag>}

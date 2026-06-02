@@ -22,6 +22,8 @@ export const esESResourceTranslationPack: WebsiteResourceTranslationPack = {
         "backToHub": "Volver a recursos",
         "checklist": "Lista de verificación",
         "comparison": "Comparación",
+        "copiedChecklist": "Lista copiada",
+        "copyChecklist": "Copiar lista",
         "faqTitle": "Preguntas que hacen los propietarios",
         "onThisPage": "En esta pagina",
         "primaryAction": "Siguiente paso",
@@ -688,6 +690,196 @@ export const esESResourceTranslationPack: WebsiteResourceTranslationPack = {
                 }
             }
         },
+                  "restaurant-menu-schema": {
+                            "title": "El schema del menú debe describir lo que el cliente ve en la página",
+                            "metaTitle": "Restaurant Menu Schema Guide | MenuList",
+                            "metaDescription": "Guía práctica de datos estructurados para páginas públicas de menú de restaurante.",
+                            "description": "Guía práctica de datos estructurados para páginas públicas de menú de restaurante.",
+                            "quickAnswer": "El schema del menú debe coincidir con el contenido público visible. Use Restaurant o LocalBusiness para el negocio, y Menu, MenuSection y MenuItem para el menú visible. No marque precios ocultos, reseñas falsas ni detalles no disponibles.",
+                            "primaryCtaLabel": "Publicar una página de menú estructurada",
+                            "distributionSnippets": [
+                                      "El schema del menú debe describir lo que el cliente ve en la página",
+                                      "El schema del menú debe coincidir con el contenido público visible. Use Restaurant o LocalBusiness para el negocio, y Menu, MenuSection y MenuItem para el menú visible. No marque precios ocultos, reseñas falsas ni detalles no disponibles."
+                            ],
+                            "sections": {
+                                      "schema-types": {
+                                                "title": "Tipos de schema",
+                                                "body": [
+                                                          "Guía práctica de datos estructurados para páginas públicas de menú de restaurante."
+                                                ],
+                                                "checklist": [
+                                                          "El nombre visible coincide con MenuItem.",
+                                                          "El precio visible coincide con Offer.",
+                                                          "No marque preguntas ocultas.",
+                                                          "Use Menu, MenuSection, and MenuItem for visible menu content.",
+                                                          "Use FAQPage only for FAQ content visible on the page."
+                                                ]
+                                      },
+                                      "visible-content": {
+                                                "title": "Contenido visible coincidente",
+                                                "body": [
+                                                          "El schema del menú debe coincidir con el contenido público visible. Use Restaurant o LocalBusiness para el negocio, y Menu, MenuSection y MenuItem para el menú visible. No marque precios ocultos, reseñas falsas ni detalles no disponibles."
+                                                ],
+                                                "checklist": [
+                                                          "El nombre visible coincide con MenuItem.",
+                                                          "El precio visible coincide con Offer.",
+                                                          "No marque preguntas ocultas.",
+                                                          "Abra la URL con datos móviles."
+                                                ]
+                                      },
+                                      "common-mistakes": {
+                                                "title": "Errores comunes",
+                                                "checklist": [
+                                                          "No marque preguntas ocultas.",
+                                                          "Los PDF antiguos no deben ser el enlace principal del cliente.",
+                                                          "Old prices structured data मध्ये/में/లో रखना ತಪ್ಪు.",
+                                                          "Schema does not guarantee ranking."
+                                                ]
+                                      },
+                                      "how-menulist-fits": {
+                                                "title": "Cómo encaja MenuList",
+                                                "body": [
+                                                          "MenuList keeps public menu pages structured around the owner-approved source.",
+                                                          "External search and AI systems decide what they crawl, show, cite, or ignore."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "schema-guarantee": {
+                                                "question": "¿El schema garantiza ranking?",
+                                                "answer": "No. Puede aclarar la página, pero los sistemas de búsqueda deciden rastreo, ranking y resultados enriquecidos."
+                                      },
+                                      "hidden-menu-items": {
+                                                "question": "¿Se pueden añadir elementos ocultos al schema?",
+                                                "answer": "No. Los datos estructurados deben coincidir con la página pública."
+                                      }
+                            }
+                  },
+                  "official-menu-url-checklist": {
+                            "title": "Use una URL estable del menú en cada lugar donde miran los clientes",
+                            "metaTitle": "Official Menu URL Checklist for Restaurants | MenuList",
+                            "metaDescription": "Checklist para sustituir enlaces dispersos por una fuente aprobada del menú.",
+                            "description": "Checklist para sustituir enlaces dispersos por una fuente aprobada del menú.",
+                            "quickAnswer": "Use una URL estable del menú en cada lugar donde miran los clientes. Stable URL keeps QR, Google, social, website, WhatsApp, print, screens, and branch pages pointed to the current approved menu source.",
+                            "primaryCtaLabel": "Crear una URL estable del menú",
+                            "distributionSnippets": [
+                                      "Use una URL estable del menú en cada lugar donde miran los clientes",
+                                      "Use one stable URL instead of sending a new file link after every update."
+                            ],
+                            "sections": {
+                                      "choose-source-url": {
+                                                "title": "Elija la URL fuente",
+                                                "body": [
+                                                          "Choose a public menu page the owner can keep current. The URL should stay stable when prices, items, photos, or availability change."
+                                                ],
+                                                "checklist": [
+                                                          "Use a short public URL.",
+                                                          "Open on mobile without login.",
+                                                          "Menu is owner-approved.",
+                                                          "Page updates without changing the URL."
+                                                ]
+                                      },
+                                      "update-surfaces": {
+                                                "title": "Actualice cada superficie visible",
+                                                "checklist": [
+                                                          "QR codes.",
+                                                          "Google Business Profile menu link.",
+                                                          "Instagram and WhatsApp links.",
+                                                          "Website menu buttons.",
+                                                          "Print files and screens.",
+                                                          "Branch pages and branch QR cards."
+                                                ]
+                                      },
+                                      "test-before-printing": {
+                                                "title": "Pruebe antes de imprimir",
+                                                "checklist": [
+                                                          "Abra la URL con datos móviles.",
+                                                          "Escanee el QR con el tamaño final de impresión.",
+                                                          "Check title, prices, and availability.",
+                                                          "Ask staff to send the same URL.",
+                                                          "Los PDF antiguos no deben ser el enlace principal del cliente."
+                                                ]
+                                      },
+                                      "limits": {
+                                                "title": "Lo que la URL no puede forzar",
+                                                "body": [
+                                                          "A clear official URL reduces confusion, but external sites still decide when cached or old information refreshes."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "new-qr-every-update": {
+                                                "question": "¿Cada actualización necesita un QR nuevo?",
+                                                "answer": "No. Con una URL estable, el mismo QR impreso puede abrir el menú actualizado."
+                                      },
+                                      "delete-old-pdfs": {
+                                                "question": "¿Deben eliminarse los PDF antiguos?",
+                                                "answer": "Los PDF públicos antiguos no deben ser el enlace principal del menú. Mantenga solo archivos actuales."
+                                      }
+                            }
+                  },
+                  "restaurant-qr-menu-mistakes": {
+                            "title": "Errores comunes de menú QR que los restaurantes deben evitar",
+                            "metaTitle": "Common QR Menu Mistakes Restaurants Should Avoid | MenuList",
+                            "metaDescription": "Lista práctica antes de imprimir tarjetas de mesa o packaging con QR.",
+                            "description": "Lista práctica antes de imprimir tarjetas de mesa o packaging con QR.",
+                            "quickAnswer": "El código QR no es el menú. Solo es el acceso a la fuente actual del menú. Necesita ubicación legible, URL de respaldo y pruebas de escaneo antes de usarse.",
+                            "primaryCtaLabel": "Configurar un menú QR estable",
+                            "distributionSnippets": [
+                                      "El código QR no es el menú. Solo es el acceso a la fuente actual del menú. Necesita ubicación legible, URL de respaldo y pruebas de escaneo antes de usarse.",
+                                      "A QR menu fails when the link, placement, or branch version is wrong."
+                            ],
+                            "sections": {
+                                      "pdf-only": {
+                                                "title": "Error 1: QR hacia un PDF antiguo",
+                                                "body": [
+                                                          "A PDF can be useful for print, but it becomes stale through WhatsApp, old website links, or old QR cards."
+                                                ],
+                                                "checklist": [
+                                                          "Use una página móvil como destino principal del QR.",
+                                                          "Keep PDF secondary for print or backup.",
+                                                          "Replace old PDF links when prices change."
+                                                ]
+                                      },
+                                      "unstable-links": {
+                                                "title": "Error 2: cambiar el enlace en cada actualización",
+                                                "body": [
+                                                          "If every update creates a new URL, printed QR material becomes risky. A stable URL is safer."
+                                                ],
+                                                "checklist": [
+                                                          "Use una URL pública estable.",
+                                                          "Update content behind the URL.",
+                                                          "Keep staff replies and social links on the same source."
+                                                ]
+                                      },
+                                      "placement-testing": {
+                                                "title": "Error 3: imprimir sin pruebas de escaneo",
+                                                "checklist": [
+                                                          "Escanee el QR con el tamaño final de impresión.",
+                                                          "Pruebe cámaras iPhone y Android.",
+                                                          "Test in customer lighting.",
+                                                          "Print a readable fallback URL.",
+                                                          "Abra la URL con datos móviles."
+                                                ]
+                                      },
+                                      "branch-mismatch": {
+                                                "title": "Error 4: menú de sucursal equivocado",
+                                                "body": [
+                                                          "Branches may have different prices, availability, hours, or service modes. When those differences matter, QR should open the correct branch version."
+                                                ]
+                                      }
+                            },
+                            "faq": {
+                                      "biggest-qr-mistake": {
+                                                "question": "¿Cuál es el error QR más común?",
+                                                "answer": "Abrir un archivo antiguo o difícil de leer en lugar de una página actual y estable."
+                                      },
+                                      "branch-specific-qr": {
+                                                "question": "¿Cada sucursal necesita su propio QR?",
+                                                "answer": "Sí cuando precios, disponibilidad, horarios o detalles de servicio cambian por sucursal."
+                                      }
+                            }
+                  },
         "multi-location-menu-management": {
             "title": "Mantenga los menús outlet alineados sin ocultar las diferencias locales",
             "metaTitle": "Gestión de menús en múltiples ubicaciones | MenuList",

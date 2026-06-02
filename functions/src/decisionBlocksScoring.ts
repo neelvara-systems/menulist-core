@@ -6,13 +6,14 @@ import { processAuthorityMaturationForAllStores } from './analytics/authorityMat
 import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetention';
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
 import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
-import { FUNCTION_MAX_INSTANCES, SECRETS } from './config/secrets';
+import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getDecisionBlocksDocId, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
 import { flush as flushSentry, initSentry } from './lib/sentry';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from './sharedData/platformNotificationRegistry';
 import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunContext } from './intelligence/menuIntelligence';
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
@@ -1080,6 +1081,7 @@ export const computeDecisionBlocksScores = onSchedule({
         SECRETS.RAZORPAY_KEY_ID,
         SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
+        ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],
 }, async (event) => {
     initSentry();
@@ -2007,6 +2009,13 @@ export const computeDecisionBlocksScores = onSchedule({
                 tId: 'system',
                 sId: 'scheduler',
                 metadata: { schedulerRun: true, hasErrors, duration, schedulerHour: currentUTCHour, storeMismatch },
+                ...(hasErrors
+                    ? {
+                        triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.SCHEDULER_FAILURE,
+                        productId: 'PLATFORM',
+                        category: 'scheduler',
+                    }
+                    : { suppressPlatformDelivery: true }),
             });
         } catch { /* non-blocking — if this fails, UptimeRobot is the backstop */ }
 
@@ -2037,6 +2046,7 @@ export const triggerStoreNightlyScheduler = onCall({
         SECRETS.RAZORPAY_KEY_ID,
         SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
+        ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],
 }, async (request) => {
     initSentry();
@@ -2313,6 +2323,7 @@ export const triggerDecisionBlocksScoring = onCall({
         SECRETS.RAZORPAY_KEY_ID,
         SECRETS.RAZORPAY_KEY_SECRET,
         SECRETS.SENTRY_DSN,
+        ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
     ],
 }, async (request) => {
     initSentry();

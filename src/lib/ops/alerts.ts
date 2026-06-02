@@ -13,6 +13,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { sendPlatformAlertDelivery } from '@lib/ops/platformNotificationDelivery';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const db = admin.firestore();
@@ -21,8 +22,12 @@ interface CreateAlertParams {
   severity: 'info' | 'warning' | 'critical';
   title: string;
   message: string;
+  type?: 'performance' | 'error' | 'health' | 'usage' | 'security';
   sId?: string;
   tId?: string;
+  triggerType?: string;
+  productId?: string;
+  category?: string;
   metadata?: Record<string, any>;
 }
 
@@ -32,8 +37,14 @@ interface CreateAlertParams {
  */
 export async function createAlert(params: CreateAlertParams): Promise<string> {
   try {
+    const alertMetadata = {
+      ...(params.metadata || {}),
+      ...(params.triggerType ? { platformTriggerType: params.triggerType } : {}),
+      ...(params.productId ? { productId: params.productId } : {}),
+      ...(params.category ? { category: params.category } : {}),
+    };
     const docRef = await db.collection(DB_COLLECTIONS.SYSTEM_ALERTS).add({
-      type: 'error',
+      type: params.type || 'error',
       severity: params.severity,
       title: params.title,
       message: params.message,
@@ -43,7 +54,7 @@ export async function createAlert(params: CreateAlertParams): Promise<string> {
       acknowledged: false,
       actionRequired: params.severity === 'critical',
       actionTaken: false,
-      metadata: params.metadata || {},
+      metadata: alertMetadata,
     });
 
     // Fire-and-forget Telegram notification
@@ -68,6 +79,16 @@ export async function createAlert(params: CreateAlertParams): Promise<string> {
               body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
             }).catch(() => { /* non-blocking */ });
           }
+
+          sendPlatformAlertDelivery({
+            id: docRef.id,
+            severity: params.severity,
+            title: params.title,
+            message: params.message,
+            tId: params.tId || 'system',
+            sId: params.sId || 'system',
+            metadata: alertMetadata,
+          }).catch(() => { /* non-blocking */ });
         }
       }
     } catch { /* non-blocking */ }

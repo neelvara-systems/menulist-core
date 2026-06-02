@@ -59,6 +59,10 @@ const OPTIONAL_VARS: readonly string[] = [
     'SMTP_HOST',                     // Lifecycle messaging (ENABLE_LIFECYCLE_MESSAGING)
     'SMTP_USER',                     // Lifecycle messaging
     'SMTP_PASS',                     // Lifecycle messaging
+    'INTERNAL_NOTIFICATION_EMAIL',   // Internal/platform email recipient
+    'PLATFORM_ALERT_EMAIL_TO',       // Platform alert email recipient override
+    'PLATFORM_ALERT_WHATSAPP_TO',    // Platform alert WhatsApp recipient
+    'PLATFORM_ALERT_WHATSAPP_TEMPLATE_NAME', // Platform alert WhatsApp template
     'TELEGRAM_BOT_TOKEN',           // Ops alerts (ENABLE_OPS_ALERTS)
     'TELEGRAM_CHAT_ID',             // Ops alerts
     'GA_CLIENT_EMAIL',              // Analytics

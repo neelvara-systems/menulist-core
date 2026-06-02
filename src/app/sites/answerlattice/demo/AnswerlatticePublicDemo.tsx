@@ -80,7 +80,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
         type: 'canonical',
         title: 'Page-aware onboarding answer',
         genericAnswer: 'Upload any document you have and review your setup checklist.',
-        answer: 'Start with your public docs, setup guide, and top 10 recurring support questions. Answerlattice will create entity candidates and draft answers for review.',
+        answer: 'Start with your public docs, setup guide, and top 10 recurring support questions. AnswerLattice will create entity candidates and draft answers for review.',
         status: 'Matched by product surface context',
         related: ['Import knowledge', 'Entity candidates', 'Canonical answer drafts'],
         nextAction: 'Upload docs, then review generated drafts in Knowledge Governance.',
@@ -92,7 +92,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
         answer: 'Team members can be given support-management access, but billing owner permissions are not fully covered by approved knowledge yet.',
         status: 'Fallback used because canonical coverage is incomplete',
         related: ['Team roles', 'Workspace permissions'],
-        nextAction: 'Answerlattice adds this recurring gap to the signal-to-knowledge queue.',
+        nextAction: 'AnswerLattice adds this recurring gap to the signal-to-knowledge queue.',
     },
     release: {
         type: 'gap',
@@ -205,7 +205,7 @@ export default function AnswerlatticePublicDemo() {
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{answer.genericAnswer}</p>
                             </div>
                             <div className="rounded-2xl border border-teal-300/20 bg-teal-400/10 p-4">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-teal-100">Why Answerlattice is different</div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-teal-100">Why AnswerLattice is different</div>
                                 <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">{answer.status}</p>
                             </div>
                         </div>
@@ -213,7 +213,7 @@ export default function AnswerlatticePublicDemo() {
 
                     <aside className="border-t border-white/[0.08] bg-[#0b0b1e] p-5 text-white lg:border-l lg:border-t-0">
                         <div className="mb-5">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Answerlattice widget result</p>
+                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">AnswerLattice widget result</p>
                             <h3 className="mt-2 text-2xl font-bold">{answer.title}</h3>
                         </div>
 

@@ -33,6 +33,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { evaluatePublicTruthIndexability } from '@lib/seo/publicTruthIndexing';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
@@ -42,17 +43,23 @@ type StoreSitemapSeed = {
     isMaster: boolean;
     tenantId: number | null;
     modifiedOn: Date;
+    publicStore: Record<string, any>;
 };
 
 type ProjectSitemapEntry = {
     slug: string;
     isDefault: boolean;
+    active?: boolean;
+    deleted?: boolean;
+    isSpecialMenu?: boolean;
+    name?: unknown;
 };
 
 type OutletSitemapEntry = {
     outletSlug: string;
     storeId: string;
     modifiedOn: Date;
+    publicStore: Record<string, any>;
 };
 
 const getRequestHostname = (value: string | null): string => {
@@ -76,6 +83,52 @@ const readModifiedOn = (raw: any): Date => {
     return new Date();
 };
 
+const serializeTimestampLike = (raw: any): string | null => {
+    if (!raw) return null;
+    let date: Date | null = null;
+    if (raw?.toDate) {
+        date = raw.toDate();
+    } else if (raw instanceof Date) {
+        date = raw;
+    } else if (typeof raw === 'string' || typeof raw === 'number') {
+        date = new Date(raw);
+    } else if (typeof raw?._seconds === 'number') {
+        date = new Date(raw._seconds * 1000);
+    } else if (typeof raw?.seconds === 'number') {
+        date = new Date(raw.seconds * 1000);
+    }
+    return date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+};
+
+const buildSitemapPublicStore = (storeId: string, data: Record<string, any>): Record<string, any> => ({
+    storeId,
+    active: data?.active ?? true,
+    blocked: data?.blocked ?? false,
+    tenantBlocked: data?.tenantBlocked ?? false,
+    blockDetails: data?.blockDetails,
+    deleted: data?.deleted ?? false,
+    name: data?.name || data?.tenantName || '',
+    tenantName: data?.tenantName || '',
+    addressLine: data?.addressLine || '',
+    area: data?.area || '',
+    city: data?.city || '',
+    state: data?.state || '',
+    phoneNumber: data?.phoneNumber || '',
+    alternatePhoneNumber: data?.alternatePhoneNumber || '',
+    email: data?.email || '',
+    url: data?.url || '',
+    workingHours: data?.workingHours || {},
+    socialMedia: data?.socialMedia || {},
+    publicPresence: data?.publicPresence || {},
+    geo: data?.geo,
+    primaryProjectId: data?.primaryProjectId || '',
+    lastPublishedAt: serializeTimestampLike(data?.lastPublishedAt),
+    activePlanType: data?.activePlanType || '',
+    onboardingSource: data?.onboardingSource || '',
+    starterActivationStatus: data?.starterActivationStatus || '',
+    activationDeadline: serializeTimestampLike(data?.activationDeadline),
+});
+
 const getMasterStoreSeed = unstable_cache(
     async (subdomain: string, customDomain: string | null): Promise<StoreSitemapSeed | null> => {
         try {
@@ -94,11 +147,13 @@ const getMasterStoreSeed = unstable_cache(
             if (snapshot.empty) return null;
             const storeDoc = snapshot.docs[0];
             const data = storeDoc.data() as Record<string, any>;
+            if (isPlatformEntityBlocked(data)) return null;
             return {
                 storeId: storeDoc.id,
                 isMaster: data?.isMaster !== false, // default true when missing (single-store)
                 tenantId: typeof data?.tenantId === 'number' ? data.tenantId : null,
                 modifiedOn: readModifiedOn(data?.modifiedOn),
+                publicStore: buildSitemapPublicStore(storeDoc.id, data),
             };
         } catch {
             return null;
@@ -122,9 +177,17 @@ const getProjectsForSitemap = unstable_cache(
                 const p = project as Record<string, any>;
                 if (p?.active === false) continue;
                 if (p?.deleted === true) continue;
+                if (p?.isSpecialMenu === true) continue;
                 const slug = typeof p?.slug === 'string' ? p.slug.trim() : '';
                 if (!slug) continue;
-                entries.push({ slug, isDefault: p?.isDefault === true });
+                entries.push({
+                    slug,
+                    isDefault: p?.isDefault === true,
+                    active: p?.active,
+                    deleted: p?.deleted,
+                    isSpecialMenu: p?.isSpecialMenu,
+                    name: p?.name,
+                });
             }
             return entries;
         } catch {
@@ -157,6 +220,7 @@ const getOutletsForSitemap = unstable_cache(
                         outletSlug: data.outletSlug.trim(),
                         storeId: String(data.storeId || storeId),
                         modifiedOn: readModifiedOn(data.modifiedOn),
+                        publicStore: buildSitemapPublicStore(String(data.storeId || storeId), data),
                     }))
                     .sort((a, b) => a.outletSlug.localeCompare(b.outletSlug));
 
@@ -175,7 +239,12 @@ const getOutletsForSitemap = unstable_cache(
                 const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
                 // A-08 + G-12: outlets missing a slug are not routable; skip.
                 if (!outletSlug) continue;
-                outlets.push({ outletSlug, storeId: d.id, modifiedOn: readModifiedOn(data?.modifiedOn) });
+                outlets.push({
+                    outletSlug,
+                    storeId: d.id,
+                    modifiedOn: readModifiedOn(data?.modifiedOn),
+                    publicStore: buildSitemapPublicStore(d.id, data),
+                });
             }
             return outlets;
         } catch {
@@ -209,17 +278,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const entries: MetadataRoute.Sitemap = [];
 
-    // Rule 1: OBP root — always included, highest priority.
-    entries.push({
-        url: `${baseUrl}/`,
-        lastModified: seed.modifiedOn,
-        changeFrequency: 'weekly',
-        priority: 1.0,
+    // Rule 1: OBP root — included only when it is a useful public business
+    // truth page. Weak starter/incomplete records remain reachable but stay
+    // out of sitemap until enough public facts exist.
+    const rootIndexDecision = evaluatePublicTruthIndexability(seed.publicStore, {
+        surface: 'obp',
+        hasPublishedMenu: Boolean(seed.publicStore.lastPublishedAt || seed.publicStore.primaryProjectId),
     });
+    if (rootIndexDecision.includeInSitemap) {
+        entries.push({
+            url: `${baseUrl}/`,
+            lastModified: seed.modifiedOn,
+            changeFrequency: 'weekly',
+            priority: 1.0,
+        });
+    }
 
     // Rule 2 + 3: master-store projects at their canonical slug URLs.
     const masterProjects = await getProjectsForSitemap(seed.storeId);
     for (const project of masterProjects) {
+        const indexDecision = evaluatePublicTruthIndexability(seed.publicStore, {
+            surface: 'menu',
+            projectSummary: project,
+        });
+        if (!indexDecision.includeInSitemap) continue;
         entries.push({
             url: `${baseUrl}/${project.slug}`,
             lastModified: seed.modifiedOn,
@@ -233,14 +315,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (seed.isMaster && seed.tenantId != null) {
         const outlets = await getOutletsForSitemap(seed.tenantId, seed.storeId);
         for (const outlet of outlets) {
-            entries.push({
-                url: `${baseUrl}/${outlet.outletSlug}`,
-                lastModified: outlet.modifiedOn,
-                changeFrequency: 'weekly',
-                priority: 0.8,
+            const outletRootDecision = evaluatePublicTruthIndexability(outlet.publicStore, {
+                surface: 'outlet_obp',
+                hasPublishedMenu: Boolean(outlet.publicStore.lastPublishedAt || outlet.publicStore.primaryProjectId),
             });
+            if (outletRootDecision.includeInSitemap) {
+                entries.push({
+                    url: `${baseUrl}/${outlet.outletSlug}`,
+                    lastModified: outlet.modifiedOn,
+                    changeFrequency: 'weekly',
+                    priority: 0.8,
+                });
+            }
             const outletProjects = await getProjectsForSitemap(outlet.storeId);
             for (const project of outletProjects) {
+                const outletProjectDecision = evaluatePublicTruthIndexability(outlet.publicStore, {
+                    surface: 'menu',
+                    projectSummary: project,
+                });
+                if (!outletProjectDecision.includeInSitemap) continue;
                 entries.push({
                     url: `${baseUrl}/${outlet.outletSlug}/${project.slug}`,
                     lastModified: outlet.modifiedOn,

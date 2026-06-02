@@ -6,6 +6,315 @@
 
 ---
 
+## June 2, 2026 — Platform Notification Tracking Dashboard
+
+### Changed
+
+- **Internal platform notification monitor added** - Platform users can review founder/operator alerts from `/ops/platform-notifications`, filter by status, severity, and trigger type, inspect runbooks and metadata, acknowledge alerts, and create manual platform alerts.
+- **Manual recovery is auditable** - Platform alert rows expose Email and WhatsApp Web actions that prefill an operator message before opening the external tool. Recording manual handoff marks action taken and stores masked handoff metadata on the existing alert document.
+- **SAFE_MODE emits platform alerts** - SAFE_MODE activation and deactivation now write classified `systemAlerts` records so cost-protection toggles appear in the platform notification dashboard.
+- **Ops Control Room links the monitor** - The internal `/ops` page now links to platform notifications alongside scheduler, extraction, messaging onboarding, and owner notification monitors.
+- **Platform alerts can send Email and WhatsApp automatically** - Classified internal triggers now use the shared platform registry to fan out to platform-owner email and WhatsApp recipients when the channel flags and recipient envs are configured.
+- **Cloud Functions emit classified platform alerts** - Payment failures, webhook failures, publish verification failures, extraction stuck jobs, owner-notification delivery failures, scheduler failures, WhatsApp onboarding health failures, and GCP budget alerts now attach platform trigger metadata directly instead of relying only on dashboard-side heuristics.
+
+### Cost
+
+- **No new collection was added** - The dashboard reuses `systemAlerts`, uses manual refresh only, caps list scans at 150 recent alerts, uses five count aggregations, and performs one direct detail read only when selecting an alert. Acknowledge/manual handoff are one alert-document write each.
+- **Automatic delivery adds no Firestore queue** - Email and WhatsApp fan-out uses existing provider integrations after the existing alert write and mute check; provider charges apply outside Firebase.
+
+### Deployed
+
+- **Firebase Functions deployed to `ecomsai`** - Updated `menulistMaintenanceScheduler`, `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`, `triggerDecisionBlocksScoring`, `verifyMenuPublish`, `forceRepublish`, `gcpBudgetAlertWebhook`, `messagingOnboarding`, and `msgExtractionWatcher`.
+
+## June 2, 2026 — MenuList Resource Expansion And Industry Pages
+
+### Changed
+
+- **Resource library expanded** - The MenuList website now includes resource pages for restaurant menu schema, official menu URL checks, and common restaurant QR menu mistakes, in addition to the existing official-source, QR, Google menu, SEO, AI/search, checklist, worksheet, and multi-location resources.
+- **Reviewed resource locale coverage stays complete** - Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish resource packs now cover all 15 article routes with source-versioned content and discovery coverage.
+- **Industry pages added** - Restaurants, cafes/bakeries, takeaway/cloud kitchens, and multi-location food businesses now have public landing pages that explain MenuList as the current approved menu source layer for that business type.
+- **Checklist copy is measurable** - Resource checklist sections now expose a copy action and emit `resource_checklist_copy` through the public website analytics path. `resource_template_download` remains absent until real downloadable files exist.
+- **Discovery files updated** - Sitemap, `llms.txt`, `llms-full.txt`, and platform discovery policy now include the added resource and industry URLs.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website, content, schema, and discovery-file work. No Firestore reads/writes, Storage objects, Cloud Functions, schedulers, Firebase rules, indexes, owner dashboard flows, customer menu runtime, auth, middleware, tenant routing, or billing behavior were changed.
+
+---
+
+## June 2, 2026 — Owner Notification Tracking Dashboard
+
+### Changed
+
+- **Internal owner notification monitor added** - Platform users can review MenuList and Answerlattice owner notification events from `/ops/owner-notifications`, inspect delivery attempts, resolve the current owner contact for one selected event, and retry failed, partial, or skipped events.
+- **Manual recovery is auditable** - Failed, partial, and skipped rows expose Email and WhatsApp Web actions that show the registered notification template prefilled before opening the external tool. Platform users can then record an external manual handoff with masked/hashed destination and operator audit fields.
+- **Ops Control Room links the monitor** - The internal `/ops` page now links to the owner notification monitor without adding owner-facing navigation.
+
+### Cost
+
+- **Dashboard reads are bounded** - Manual refresh only, no realtime listener, list scan capped at 90 events, delivery/contact reads only after selecting one event, and no new Firestore composite index, rule, Storage path, Cloud Function, or scheduler was added.
+
+## June 2, 2026 — AI Accounting And Credit Handling Hardening
+
+### Changed
+
+- **Billable AI accounting is centralized** - Description, translation, image, campaign, review, SEO, business-copy, new-item metadata, batch image, and menu-card advisor routes now finalize successful provider calls through one server-side accounting helper.
+- **AI operation writes are server-only** - Browser clients can still read scoped transaction history, but `menulistAiOperations/{tId}/{sId}` writes are now denied by Firestore rules and the old client write helper throws.
+- **AI action cost lookup fails closed** - Every `AI_ACTIONS_TYPES` value must have explicit unit-cost and real-cost entries. Unknown AI actions no longer default to zero units.
+- **Free setup operations stay explicit** - Initial extraction, first-pass descriptions, menu intake identity, public create-menu extraction, and structural setup actions remain zero-unit operations. Extraction audit rows now also store `unitsConsumed: 0`.
+- **AI transaction dashboards are audience-scoped** - Owner desktop/mobile Transactions now load through an owner-allowlisted server API and show date, action, menu/project, result summary, credits used, no-credit setup actions, and processing time without token, provider-cost, margin, model, raw provider payload, ID, or generation-config internals. Desktop pagination now uses cursor-backed Previous/Next controls. Platform-role debug can inspect the full AI transaction object and paise-safe provider cost fields.
+
+### Fixed
+
+- **Credit deduction cannot be skipped by operation-log failure** - Operation logging is monitored as best-effort, while credit consumption remains mandatory for billable outputs.
+- **Paid outputs do not continue after credit-consumption failure** - Billable routes now fail the request if post-provider credit deduction fails instead of returning usable paid output without reducing balance.
+- **Batch image operation logs keep tenant/store scope** - The Cloud Task worker passes tenant/store ids directly into the server operation logger instead of relying on a browser session.
+- **Extraction monitor separates owner units from token audit cost** - Platform extraction review now labels owner units separately from token-credit and estimated AI-cost telemetry.
+- **Extraction monitor cost is paise-safe** - Desktop and mobile platform cost cards now format paise-denominated AI costs as INR, and the job inspector shows raw provider responses plus token breakdown.
+
+### Verification
+
+- `npm run verify:ai-accounting`
+
+### Cost
+
+- **Transaction reads are bounded** - The owner transaction API now applies the shared `DATA_READ` rate limit before Firestore reads. The desktop transactions page only reads project summary metadata when the loaded page has project IDs, and it uses the read-only project-summary helper so opening transaction history cannot create a default project.
+
+---
+
+## June 2, 2026 — Owner Notifications Core Implemented
+
+### Changed
+
+- **Owner notification core is live in code** - Added the shared trigger registry, app-side owner notification processor, MenuList Functions processor, product-specific templates, settings-aware date/time/currency formatting, email channel delivery, guarded WhatsApp channel support, deterministic event IDs, delivery logs, and direct-ID rate-limit counters.
+- **MenuList lifecycle notifications now route through owner events** - Billing, credit, publish success/failure, renewal reminder, suspension warning, subscription cancellation/pause/resume/upgrade, credits exhausted, and menu stale owner notices now write `ownerNotificationEvents` and `ownerNotificationDeliveries` before delivery.
+- **Answerlattice owner notification test uses the shared core** - The `ANSWERLATTICE_NOTIFICATION_TEST` path now writes and delivers through the owner notification system, while ticket/customer emails and workflow integrations remain separate.
+- **Owner date/time/currency formatting is centralized** - Owner notification templates now render billing dates, renewal dates, sent-at timestamps, and money labels from stored timezone, date format, time format, currency code, and currency symbol settings.
+- **Rollback paths are preserved** - Existing lifecycle and Answerlattice notification senders remain available when owner-notification migration flags are disabled or the new path throws.
+
+### Deployed
+
+- **Firebase Functions deployed to `ecomsai`** - Updated `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`.
+
+### Cost
+
+- **New owner notification collections are server-only** - Adds `ownerNotificationEvents`, `ownerNotificationDeliveries`, and `ownerNotificationRateLimits`; no browser read path, Firestore rule change, Storage path, or new scheduled function was added.
+- **No new composite index was added** - Retry/digest helpers use bounded single-field queries and in-memory date filtering.
+
+---
+
+## June 2, 2026 — Owner Notifications Architecture Plan
+
+### Changed
+
+- **Owner notification planning is centralized** - A new `owner-notifications` documentation set defines the shared long-term architecture for MenuList and Answerlattice owner/account notices across email and WhatsApp.
+- **Notification boundaries are explicit** - The plan separates owner-required messages from internal ops alerts, dashboard toasts, marketing campaigns, manual WhatsApp share links, and Answerlattice workflow integrations.
+- **Settings-aware notification formatting is specified** - The implementation plan requires owner/store timezone, date format, time format, currency code, and currency symbol to be resolved before rendering email or WhatsApp content.
+
+### Cost
+
+- **No runtime cost change yet** - This is documentation and architecture planning only. No Firestore collection, Storage path, Cloud Function, scheduler, Firebase rule, index, email send, or WhatsApp send was added in this pass.
+
+---
+
+## June 2, 2026 — Menu Card Export Branded And Business-Type-Aware PDF Output
+
+### Changed
+
+- **Print PDFs now reuse store branding** - The export source now prefers the same `publicPresence.accentColor` used by OBP and embeds the existing store logo in the PDF header when the logo can be loaded safely.
+- **Print PDFs show brand color beyond the title band** - Category dividers and prices now use the store accent color so the file no longer looks like a plain black-and-white export when a brand color exists.
+- **Print PDF prices are cleaner** - PDF prices now use store currency settings with PDF-safe INR fallback, whole-number prices without forced decimals, preserved price ranges, and measured price width to avoid overlap.
+- **Print PDFs feel more like real business sheets** - The renderer now draws warm paper backgrounds, borders, title plaque/editorial headers, section treatments, and dotted price leaders depending on the selected controlled style and business type.
+- **Print files now follow business type** - Stores with food, service, retail, professional, health/wellness, or specialty business categories now get automatic menu, service-list, or catalog labels and visual treatment from the existing business type data.
+- **Print files now start with an automatic design pick** - The route chooses an initial style, density, description, QR, and contact setting from the current business type and content shape before any AI/provider call.
+- **Export freshness includes branding and currency** - Local export hashes now include the logo URL, brand color, currency symbol, and currency code, so old generated files are not treated as reusable after store branding or currency changes.
+
+### Cost
+
+- **No export records or uploads were added** - Branding and physical-menu styling still use the existing store context and client-side PDF generation. Final render may download the existing logo image once when `Include logo` is on and the image is not already cached; repeat exports in the same route session reuse an in-memory logo cache.
+- **Business-type styling is client-side** - Business profile selection reuses already-loaded store business type/category data and adds no Firestore read/write, Storage upload, Cloud Function, rule, or index.
+- **Auto design is client-side** - The automatic design pick runs over already-loaded print source data and does not consume AI capacity or add Firebase operations.
+
+---
+
+## June 2, 2026 — Menu Extraction Pipeline Consolidation
+
+### Changed
+
+- **Menu extraction job creation is centralized** - Dashboard and mobile uploads now create extraction jobs through `POST /api/menu-extraction/jobs`, which verifies auth, tenant/store access, project existence, Storage URL ownership, rate limits, SAFE_MODE, and menu-intake identity before the job exists.
+- **Extraction job contract is shared** - App routes and Cloud Functions now use mirrored `menuExtractionJob` contract files for destination types, source markers, MIME limits, file limits, and routing builders.
+- **Public create-menu extraction is durable** - `/create-menu` now creates a public draft and queues the shared `menuImageProcessingJobs` worker instead of running extraction inside the public API request after returning.
+- **Extraction destinations are explicit** - Jobs can now target a project, public draft, or messaging onboarding session, while reusing the same worker.
+- **Messaging and link import keep their current flows** - Messaging still uses its extraction watcher, and link import still lands in review; both now carry destination metadata.
+- **Extraction monitor shows routing metadata** - The internal extraction monitor now surfaces job source and destination so platform review can distinguish owner upload, link import, public draft, and messaging jobs.
+- **Extraction contract verification added** - `npm run verify:menu-extraction-pipeline` checks the shared app/Functions contract, server-only job creation, public durable extraction, retry source handling, and worker guards. `npm run verify:menu-extraction-pipeline:dry-run` builds sample jobs for every entry point and verifies routing, source, Storage prefix, MIME, and cancellation-rule behavior offline.
+
+### Fixed
+
+- **Extraction cannot create missing project docs** - Project saves now fail if the target project document does not exist.
+- **Browser clients cannot create extraction jobs directly** - Firestore rules now make `menuImageProcessingJobs` creation server-only.
+- **Cancellation cannot mutate job payloads** - Firestore rules now restrict client cancellation updates to status/timestamp fields only.
+- **Owner job source metadata is server-owned** - The protected owner route no longer accepts client-provided `source` or `sourceMetadata`; retry jobs load lineage from the original failed job after ownership checks.
+- **Bad job files are rejected before AI work** - The worker validates MIME type, file count, file size, Firebase bucket, and expected Storage prefix before extraction.
+- **Worker MIME validation is source-specific** - Owner upload, public image upload, link import, and messaging onboarding now use their own MIME allow-lists inside the worker, not just at the route layer.
+- **Messaging HEIC/HEIF compatibility preserved** - The shared worker MIME contract now includes the HEIC/HEIF types already accepted by WhatsApp messaging intake.
+- **Empty extractions stop before save** - Jobs with no extracted menu items fail instead of completing into project or public draft output.
+- **Public draft extracted data matches project types** - Public draft completion now normalizes categories, items, attributes, item category references, availability, and languages before preview/claim so claimed projects receive the same extracted-data shape as owner extraction.
+- **Public draft claims write standard file shape** - Claimed public drafts now create project file entries with the same active/deleted/index/message fields used by owner extraction and messaging publish paths.
+- **Public draft claims render from `/client`** - Claimed public drafts now create project IDs in the normal `{tenantId}-{timestamp}-{storeId}` format so the public client renderer can load the new project from its nested Firestore path.
+- **Review apply writes standard file shells** - Link-import/re-extraction review apply now creates source file shells with `active`, `deleted`, `index`, and `extractedData.message` before applying categories/items and revalidating the public menu cache.
+- **Messaging publish render contract verified** - Messaging extraction now has verifier coverage for standard project file envelopes, active approval publishing, platform summary writes, and menu/store/client-store cache tags.
+- **Public renderer contract verified** - Menu extraction verification now checks that `/client` loads parseable project IDs and that `MenuPageNew` consumes normalized extracted categories/items.
+
+### Cost
+
+- **Public create-menu adds one durable job write** - Public drafts now add a `menuImageProcessingJobs` write and normal worker status writes. No new collection, index, scheduler, or Storage bucket was added.
+- **Owner uploads keep the same preflight model** - The protected job route enforces the existing menu-intake identity check before job creation; no new owner-facing setting was added.
+
+---
+
+## June 2, 2026 — Digital Screens Setup And TV Readability Hardening
+
+### Changed
+
+- **Digital Screen setup is clearer** - Owner settings now show Menu Board and Highlights as separate TV setup cards with compact links, QR blocks, open/copy actions, and last-seen status.
+- **Menu Board is easier to read on TVs** - The counter screen now uses larger item and price text, fewer rows per page, stable price alignment, menu/category order where available, and no decorative background effects.
+- **Highlights owner-only mode is enforced** - When Only custom slides is on, Highlights uses valid uploaded slides only, with a brand fallback if no valid upload remains.
+- **Mobile setup matches desktop** - Phone owners now see TV status, compact Menu Board and Highlights cards, custom slide controls, and the same owner-only slide toggle.
+- **Screen content is normalized before display** - Digital Screens now clean item/category text, parse currency-bearing prices, normalize tags, dedupe repeated items, and keep custom slide captions safe.
+- **Highlight labels are factual** - System-generated slides now use labels such as Today, Popular, Featured, category name, or On menu, avoiding overclaims like permanent availability or chef endorsement.
+- **Custom posters stay untouched** - Owner-uploaded poster slides now display as artwork without forced caption or item-title overlays.
+
+### Fixed
+
+- **Menu edits refresh connected screens** - Public menu cache invalidation now also touches Digital Screen content version when a screen already exists, and menu revalidation includes the `screen-data` cache tag.
+- **Weak screen fallbacks removed** - Missing Menu Board prices now show `Ask` instead of a dash, common veg/non-veg tags are detected more reliably, and technical category IDs are blocked from display.
+
+### Cost
+
+- **Small write on menu changes where screens exist** - For stores with initialized Digital Screens, public menu/cache invalidation now adds one guarded `platformSummary` read and one `screen.contentVersion` write. Content normalization is CPU-only. No new Firestore collection, Storage path, Cloud Function, scheduler, rule, or index was added.
+
+---
+
+## June 2, 2026 — Firebase Auth Product Boundary Fix
+
+### Fixed
+
+- **MenuList auth sync stays product-scoped** - `/api/auth/set-claims` now creates a separate Answerlattice Firebase custom token only for Answerlattice-scoped requests, preventing normal MenuList owner routes from failing when separate Answerlattice Admin credentials are unavailable.
+- **Answerlattice login keeps explicit scope** - The legacy login page now includes Answerlattice product scope for Answerlattice hosts and callbacks so separate Answerlattice Firebase auth still receives the required custom token.
+
+### Cost
+
+- **Avoids unnecessary Admin auth calls** - Normal MenuList Firebase Auth sync no longer performs Answerlattice user lookup, custom-claim, or custom-token work. No Firestore read/write, Storage, Cloud Function, scheduler, Firebase rule, or index change was added.
+
+---
+
+## June 2, 2026 — MenuList Resources Navigation And Discovery Hardening
+
+### Changed
+
+- **Resources navigation is now complete** - The MenuList website header now uses product-led navigation with a compact Resources dropdown, and the mobile drawer exposes the same resource cluster beneath Resources.
+- **Homepage resources block aligned** - The homepage now shows the eight strategic resources: menu engineering, QR menu setup, digital menu vs PDF, Google menu source, restaurant menu SEO, AI search discovery, official menu source, and multi-location menu control.
+- **Footer resources aligned** - Footer resource links now point to the core content set plus Trust & Security, instead of a smaller checklist-heavy subset.
+- **Crawler and LLM discovery hardened** - `robots.txt` now applies protected-route disallows to named search/AI crawlers as well as generic crawlers, `CCBot` is listed in the discovery policy, and LLM context files state MenuList's preferred official-source positioning and claim limits.
+- **Resource measurement tightened** - Resource analytics now tracks page views, primary/secondary CTA clicks, related-resource clicks, homepage/hub card clicks, AI/search referrers, upload-menu clicks from resources, and pricing clicks from resources through GA4-only public website events.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website and discovery-file work. No Firestore reads/writes, Storage objects, Cloud Functions, schedulers, Firebase rules, indexes, owner dashboard flows, customer menu runtime, auth, middleware, tenant routing, or billing behavior were changed.
+
+---
+
+## June 2, 2026 — Menu Card Export Dedicated Mobile Screen
+
+### Changed
+
+- **Print Menu mobile screen** - Handheld users now get a dedicated mobile Print Menu screen at `/use-menulist/menu-card-export` instead of the desktop export layout.
+- **Shared export controller** - Desktop and mobile Print Menu renderers now share one controller for project loading, source building, preview, preflight, export generation, local history, and Pro/Premium layout suggestion.
+- **Mobile verification guard** - `verify:menu-card-export` now checks the shared controller and dedicated mobile screen so the route cannot regress back to desktop-only mobile behavior.
+
+### Cost
+
+- **No new Firebase export cost** - The mobile screen still generates PDF/packet artifacts in the browser and uses device-local history only. No export collection, Storage upload, Cloud Function, Firestore index, Firebase rule, or artifact API route was added.
+
+---
+
+## June 2, 2026 — Growth Engine Implementation Readiness Docs
+
+### Added
+
+- **Implementation readiness contract** - Growth Engine now has a final implementation-entry document covering internal route inventory, UI states, RBAC, feature flags, environment keys, secret handling, Firestore rules/index expectations, seed config, use cases, API guards, UI guards, test readiness, and stop conditions.
+- **Readiness gates in core docs** - README, spec, implementation plan, Firebase plan, helpdoc, doctrine, gap audit, and tests now require readiness acceptance before coding or provider execution.
+- **Runtime blocker framing** - Gap audit now distinguishes documentation coverage from runtime blockers that code must enforce if any required foundation is missing.
+
+### Changed
+
+- **Implementation handoff** - Provider setup, routing, rules, seed config, UI actions, and tests now have one readiness source before implementation starts.
+
+### Cost
+
+- **Documentation only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, Firebase rules, billing logic, app routes, or credentials were added.
+
+---
+
+## June 2, 2026 — Growth Engine Connections And Activation Docs
+
+### Added
+
+- **Connections And Activation screen** - Growth Engine now has a dedicated internal control-screen spec for adapter IDs, provider secret refs, email pipeline readiness, WhatsApp pipeline readiness, webhook health, budgets, kill switches, validation runs, and activation approvals.
+- **Connection data contracts** - Growth Engine docs now define connection adapters, secret references, pipeline connections, activation checks, email pipeline connections, WhatsApp pipeline connections, webhook endpoints, validation runs, and audit events.
+- **Provider activation tests** - Test docs now block provider execution without active adapter state, safe secret refs, required webhooks, budget caps, kill-switch scope, validation, and compliance approval.
+
+### Changed
+
+- **Provider execution gate** - Source imports, email sends, WhatsApp sends, webhooks, discovery jobs, and AI/provider calls now require active Connections And Activation state before execution.
+- **Operator docs** - Help, mobile, website, implementation, Firebase, doctrine, distribution, automation, and gap-audit docs now treat provider configuration as governed activation, not simple key storage.
+
+### Cost
+
+- **Documentation only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, Firebase rules, billing logic, app routes, or credentials were added.
+
+---
+
+## June 2, 2026 — Growth Engine WhatsApp Governance Docs
+
+### Added
+
+- **WhatsApp governance policy** - Growth Engine now documents WhatsApp as a consented owner-verification and business-truth maintenance rail, not as generic cold outreach or a bulk sender.
+- **Message governance foundation** - Growth Engine docs now require consent proof, suppression, approved templates, conversation-window state, sender identity health, webhook ingestion, reputation monitoring, Flow review, governance audit, and kill switches before WhatsApp API outbound use.
+- **MenuList truth journeys** - Owner claim, public-info correction, incomplete claim recovery, stale-data confirmation, support handoff, owner referral, and structured WhatsApp Flow truth capture are documented as the only approved WhatsApp journeys.
+
+### Changed
+
+- **Distribution architecture** - WhatsApp is now part of the owned channel control plane only after eligibility and governance checks; scraped, enriched, Google Places, and Foursquare phone numbers do not create WhatsApp opt-in.
+- **Internal operator surfaces** - Mobile remains emergency read-only/pause only, while the internal admin plan now includes WhatsApp consent, template, webhook, sender, Flow, and reputation summaries.
+
+### Cost
+
+- **Documentation only** - No Firestore reads/writes, Storage objects, Cloud Functions, provider calls, schedulers, indexes, Firebase rules, billing logic, or app routes were added.
+
+---
+
+## June 2, 2026 — Multi-Location Public Routing Hardening
+
+### Fixed
+
+- **Outlet URL creation** - New outlets now receive a tenant-unique `outletSlug`, and tenant store lists persist the outlet routing fields used by owner share and location switching surfaces.
+- **Linked outlet menu summaries** - Outlet creation and master-project propagation now copy canonical slug/default markers into outlet project summaries while keeping the summary `projectId` pointed at the outlet project.
+- **Published subdomain lock** - Mobile subdomain settings now match desktop by hiding the editor after first publish, and Firestore rules now reject direct client subdomain changes on published stores.
+- **Linked outlet save boundary** - `/api/projects/outlet-save` now persists only the outlet-local fields it is responsible for, ignoring extra project identity/routing fields in full-project client payloads.
+- **Public linked-menu fallback** - Customer menu routes now show the not-found fallback when a linked outlet project cannot resolve its master, instead of rendering incomplete local-only data.
+- **Deep public redirect paths** - Canonical subdomain/custom-domain redirects now preserve the full public path, so routes such as `/{outletSlug}/{projectSlug}` do not collapse to only the outlet segment during host canonicalization.
+- **OBP canonical host guard** - Public OBP metadata now ignores stale stored canonical URLs that point at a different host, preventing one tenant from emitting another tenant's canonical URL.
+- **Sitemap special menus** - Public sitemaps now exclude special-menu override projects.
+- **Tenant robots route** - Tenant `/robots.txt` now routes to an explicit client robots handler instead of being interpreted as a menu slug.
+
+### Cost
+
+- **No new recurring Firebase workload** - Outlet creation adds bounded summary reads for slug/default copying, linked outlet saves keep the same one project write, and no Cloud Function, scheduler, Storage object, or Firestore index was added.
+
+---
+
 ## June 2, 2026 — Menu Card Export Output Identification
 
 ### Changed
@@ -66,7 +375,7 @@
 
 ### Fixed
 
-- **Print Menu mobile route guard** - `/use-menulist/menu-card-export` now bypasses the generic mobile shell on handheld devices, so the Mobile Share action opens the responsive export route instead of falling back to the Share tab.
+- **Print Menu mobile route guard** - `/use-menulist/menu-card-export` now bypasses the generic mobile shell on handheld devices, so the route is not replaced by the generic Mobile Share tab.
 - **Print Menu feature flag parity** - The local history flag now controls the history UI and browser history write path; the print-shop flag now hides packet creation and blocks stale flagged state from creating a packet.
 - **Print Menu freeze cleanup** - Removed unused placeholder modules from the menu-card export library so the frozen surface only contains wired runtime code.
 

@@ -2,6 +2,9 @@
 
 import { usePastActivity } from '@hook/usePastActivity';
 import { Campaign } from '@type/campaigns';
+import { formatDateTime } from '@util/dateTime';
+import { theme } from 'antd';
+import { useFormatter } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuClock3, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -15,6 +18,8 @@ interface MobileTodayHistoryScreenProps {
 }
 
 export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryScreenProps) {
+    const { token } = theme.useToken();
+    const formatter = useFormatter();
     const {
         isLoading: loadingProjects,
         projectsList,
@@ -29,17 +34,13 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
         return campaigns.reduce<Record<string, Campaign[]>>((accumulator, campaign) => {
             const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
             const key = activityDate
-                ? new Date(activityDate).toLocaleDateString('en-US', {
-                    day: 'numeric',
-                    month: 'short',
-                    weekday: 'long',
-                })
+                ? formatDateTime(activityDate, 'date', formatter)
                 : 'Unknown';
             if (!accumulator[key]) accumulator[key] = [];
             accumulator[key].push(campaign);
             return accumulator;
         }, {});
-    }, [campaigns]);
+    }, [campaigns, formatter]);
 
     const getCampaignLabel = (campaign: Campaign) => {
         switch (campaign.type) {
@@ -132,11 +133,11 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                                         {entries.map((entry) => (
                                             <Flex align="center" gap={8} key={entry.id}>
                                                 {entry.status === 'completed' ? (
-                                                    <LuCheck color="#16a34a" size={15} />
+                                                    <LuCheck color={token.colorSuccess} size={15} />
                                                 ) : entry.status === 'suggested' ? (
-                                                    <LuClock3 color="#d97706" size={15} />
+                                                    <LuClock3 color={token.colorWarning} size={15} />
                                                 ) : (
-                                                    <LuX color="#dc2626" size={15} />
+                                                    <LuX color={token.colorError} size={15} />
                                                 )}
                                                 <Text>
                                                     {getCampaignLabel(entry)}

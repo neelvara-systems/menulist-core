@@ -14,7 +14,7 @@ export async function GET() {
         headers: {
             'Content-Type': 'application/javascript; charset=utf-8',
             'Cache-Control': ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL,
-            'X-Answerlattice-Widget-Contract': 'answerlattice-widget-v1',
+            'X-AnswerLattice-Widget-Contract': 'answerlattice-widget-v1',
         },
     });
 }

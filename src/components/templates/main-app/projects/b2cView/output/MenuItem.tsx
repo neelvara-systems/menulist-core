@@ -30,7 +30,7 @@ export default function MenuItemOutput({
     moodConfig,
     showImage = true,
     imagePosition = 'left',
-    currency = '$',
+    currency = '',
 }: MenuItemOutputProps) {
     const isAvailable = item.available !== false;
     const itemStyle = moodConfig.itemStyle;

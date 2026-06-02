@@ -4,7 +4,7 @@ import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Alert, Input as AntInput, List as AntList, Steps, Typography } from 'antd';
+import { Alert, Input as AntInput, List as AntList, Steps, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
@@ -28,6 +28,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
     const tMobile = useTranslations('MobileSettings');
+    const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
 
     const [subdomainValue, setSubdomainValue] = useState(storeDetails?.subdomain || '');
@@ -45,12 +46,14 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         () => (storeDetails?.subdomain ? getMenuUrl(storeDetails.subdomain) : null),
         [storeDetails?.subdomain]
     );
+    const subdomainLocked = Boolean(storeDetails?.lastPublishedAt);
     const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
     const normalizedInputSubdomain = subdomainValue.trim().toLowerCase();
     const hasSubdomainChanged = normalizedInputSubdomain !== currentSubdomain;
-    const canCheckSubdomain = normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
+    const canCheckSubdomain = !subdomainLocked && normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
     const canSaveSubdomain = Boolean(
-        availability?.available
+        !subdomainLocked
+        && availability?.available
         && availability?.normalized === normalizedInputSubdomain
         && (!storeDetails?.subdomain || hasSubdomainChanged)
     );
@@ -109,6 +112,10 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
     }, [refreshStatus]);
 
     const checkAvailability = useCallback(async (input: string) => {
+        if (subdomainLocked) {
+            setAvailability(null);
+            return;
+        }
         if (!input || input.trim().length < 3) {
             setAvailability(null);
             return;
@@ -124,11 +131,15 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         } finally {
             setCheckingSubdomain(false);
         }
-    }, []);
+    }, [subdomainLocked, t]);
 
     const saveSubdomain = useCallback(async () => {
         const nextSubdomain = availability?.normalized || subdomainValue.trim();
         if (!storeDetails?.storeId || !nextSubdomain) return;
+        if (subdomainLocked) {
+            Toast.show({ content: t('subdomainLockedMessage'), duration: 1500 });
+            return;
+        }
         setSavingSubdomain(true);
         try {
             await updateStore({ storeId: storeDetails.storeId, subdomain: nextSubdomain } as any);
@@ -139,7 +150,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         } finally {
             setSavingSubdomain(false);
         }
-    }, [availability?.normalized, common, setStoreDetails, storeDetails, subdomainValue, tMobile]);
+    }, [availability?.normalized, common, setStoreDetails, storeDetails, subdomainLocked, subdomainValue, t, tMobile]);
 
     const addDomain = async () => {
         if (!domainInput.trim()) return;
@@ -238,19 +249,31 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     <Flex gap={8} vertical>
                         <Text strong>{t('subdomain')}</Text>
                         <Text type="secondary">{t('subdomainSetupNote')}</Text>
-                        <Alert
-                            description={t('subdomainChangeWarning')}
-                            message={t('subdomainLockedMessage')}
-                            showIcon
-                            type="warning"
-                        />
                         {storeDetails?.isMaster === false ? (
                             <>
                                 <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('outletSubdomainInfo')}</Text>
                                 <Text type="secondary">{t('outletSubdomainDesc')}</Text>
                             </>
+                        ) : subdomainLocked ? (
+                            <>
+                                <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('noSubdomainDesc')}</Text>
+                                <Alert
+                                    description={t('subdomainChangeWarning')}
+                                    message={t('subdomainLockedMessage')}
+                                    showIcon
+                                    type="info"
+                                />
+                            </>
                         ) : (
                             <>
+                                {storeDetails?.subdomain ? (
+                                    <Alert
+                                        description={t('subdomainChangeWarning')}
+                                        message={t('subdomainLockedMessage')}
+                                        showIcon
+                                        type="warning"
+                                    />
+                                ) : null}
                                 <AntInput
                                     addonAfter={`.${PLATFORM_DOMAIN}`}
                                     onChange={(event) => {
@@ -264,7 +287,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                 <Text type="secondary">{t('subdomainHelp')}</Text>
                                 {availability ? (
                                     <Flex align="center" gap={8}>
-                                        {availability.available ? <LuCheck color="#16a34a" size={16} /> : <LuX color="#dc2626" size={16} />}
+                                        {availability.available ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorError} size={16} />}
                                         <Text type="secondary">{availability.available ? t('isAvailable', { name: availability.preview }) : availability.reason}</Text>
                                     </Flex>
                                 ) : null}
@@ -367,7 +390,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                                 <Text type="secondary">Enter a domain you already control. After connecting it, you will still need to update DNS where the domain is managed.</Text>
                                 {domainAvailability ? (
                                     <Flex align="center" gap={8}>
-                                        {domainAvailability.available ? <LuCheck color="#16a34a" size={16} /> : <LuX color="#dc2626" size={16} />}
+                                        {domainAvailability.available ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorError} size={16} />}
                                         <Text type="secondary">{domainAvailability.available ? 'Domain is available to connect' : domainAvailability.reason}</Text>
                                     </Flex>
                                 ) : null}
@@ -415,7 +438,7 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                     <Card>
                         <Flex gap={6} vertical>
                             <Flex align="center" gap={8}>
-                                <LuCheckCircle2 color="#16a34a" size={18} />
+                                <LuCheckCircle2 color={token.colorSuccess} size={18} />
                                 <Text strong>{t('customDomainActive')}</Text>
                             </Flex>
                             <Text type="secondary">{t('autoRedirect')}</Text>

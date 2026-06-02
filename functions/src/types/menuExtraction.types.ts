@@ -136,6 +136,7 @@ export interface ProcessMenuImagesResponse {
         requestId: string;
         totalCharge: number;
         totalCredits: number;
+        unitsConsumed: number;
         processingTime: number;
         transactionId: string | null;
         recorded: boolean;

@@ -1,6 +1,7 @@
 'use client'
 
 import { copyTodayGrowthPackText, TodayReadyActionKind, TodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
+import { theme } from 'antd';
 import { LuAlertTriangle, LuCopy, LuMegaphone, LuShieldCheck } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
 
@@ -21,6 +22,7 @@ const actionKindIcon = {
 };
 
 export default function TodayWeeklyGrowthPackCard({ pack }: TodayWeeklyGrowthPackCardProps) {
+    const { token } = theme.useToken();
     const handleCopy = async (copy: string, title: string) => {
         const copied = await copyTodayGrowthPackText(copy);
         Toast.show({
@@ -59,9 +61,9 @@ export default function TodayWeeklyGrowthPackCard({ pack }: TodayWeeklyGrowthPac
                                 align="center"
                                 justify="center"
                                 style={{
-                                    background: 'rgba(0, 81, 209, 0.08)',
+                                    background: token.colorPrimaryBg,
                                     borderRadius: 10,
-                                    color: 'var(--adm-color-primary)',
+                                    color: token.colorPrimary,
                                     flexShrink: 0,
                                     height: 32,
                                     width: 32,
@@ -100,7 +102,7 @@ export default function TodayWeeklyGrowthPackCard({ pack }: TodayWeeklyGrowthPac
                                     fill="outline"
                                     onClick={() => void handleCopy(asset.copy, asset.title)}
                                     size="small"
-                                    style={{ minHeight: 38 }}
+                                    style={{ minHeight: 44 }}
                                 >
                                     <Flex align="center" gap={6}>
                                         <LuCopy size={14} />

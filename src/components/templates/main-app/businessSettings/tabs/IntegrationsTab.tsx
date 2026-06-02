@@ -11,8 +11,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { Alert, Badge, Button, Card, Divider, Flex, Typography, theme } from "antd";
-import { LuLink, LuMapPin } from "react-icons/lu";
-import { SiGooglemybusiness } from "react-icons/si";
+import { LuLink, LuMapPin, LuStore } from "react-icons/lu";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -50,7 +49,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     return (
         <Card size="small" ref={scrollRef}>
             <Flex align="center" gap={8}>
-                <SiGooglemybusiness size={20} style={{ color: "#4285F4" }} />
+                <LuStore size={20} style={{ color: token.colorPrimary }} />
                 <Title level={5} style={{ margin: "unset" }}>
                     Google Business Profile
                 </Title>
@@ -114,7 +113,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             ) : (
                 // Not Connected State (Phase 0 Stub)
                 <Flex vertical gap={16} align="center" style={{ padding: "24px 0" }}>
-                    <SiGooglemybusiness size={48} style={{ color: token.colorTextTertiary }} />
+                    <LuStore size={48} style={{ color: token.colorTextTertiary }} />
 
                     <Paragraph
                         type="secondary"
@@ -134,7 +133,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
                     <Button
                         type="primary"
-                        icon={<SiGooglemybusiness />}
+                        icon={<LuStore />}
                         disabled
                         size="large"
                     >

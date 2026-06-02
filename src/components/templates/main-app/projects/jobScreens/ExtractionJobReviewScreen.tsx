@@ -78,11 +78,13 @@ function MatchScoreBadge({ score, matchType }: { score: number; matchType?: stri
 }
 
 function PriceChangeDisplay({ from, to }: { from?: string; to?: string }) {
+    const { token } = theme.useToken();
+
     return (
         <Space size={4}>
             <Text type="secondary" delete>{from || '(none)'}</Text>
             <Text>→</Text>
-            <Text strong style={{ color: '#52c41a' }}>{to}</Text>
+            <Text strong style={{ color: token.colorSuccess }}>{to}</Text>
         </Space>
     );
 }
@@ -137,11 +139,12 @@ function ItemRow({
     primaryLang: string;
     onToggle: (approved: boolean) => void;
 }) {
+    const { token } = theme.useToken();
     const name = item.extractedItem.name[primaryLang] || Object.values(item.extractedItem.name)[0] || 'Unnamed';
     const categoryName = item.extractedItem.categoryName || 'Unknown Category';
 
     return (
-        <Flex justify="space-between" align="center" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+        <Flex justify="space-between" align="center" style={{ padding: '8px 0', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
             <Flex align="center" gap={8}>
                 <Checkbox
                     checked={item.approved}
@@ -393,10 +396,10 @@ export function ExtractionJobReviewScreen({
             {preview.warnings.length > 0 && (
                 <Card
                     size="small"
-                    style={{ marginBottom: 16, borderColor: '#faad14' }}
+                    style={{ marginBottom: 16, borderColor: token.colorWarning }}
                     title={
                         <Flex align="center" gap={8}>
-                            <LuAlertTriangle color="#faad14" />
+                            <LuAlertTriangle color={token.colorWarning} />
                             <Text strong>Warnings ({preview.warnings.length})</Text>
                         </Flex>
                     }
@@ -412,7 +415,7 @@ export function ExtractionJobReviewScreen({
             {/* New Categories */}
             <ReviewSection
                 title="New Categories"
-                icon={<LuPlus color="#52c41a" />}
+                icon={<LuPlus color={token.colorSuccess} />}
                 count={preview.newCategories.length}
                 color="green"
             >
@@ -429,7 +432,7 @@ export function ExtractionJobReviewScreen({
             {/* Updated Categories */}
             <ReviewSection
                 title="Updated Categories"
-                icon={<LuRefreshCw color="#1890ff" />}
+                icon={<LuRefreshCw color={token.colorPrimary} />}
                 count={preview.updatedCategories.length}
                 color="blue"
             >
@@ -446,7 +449,7 @@ export function ExtractionJobReviewScreen({
             {/* New Items */}
             <ReviewSection
                 title="New Items"
-                icon={<LuPlus color="#52c41a" />}
+                icon={<LuPlus color={token.colorSuccess} />}
                 count={preview.newItems.length}
                 color="green"
             >
@@ -463,7 +466,7 @@ export function ExtractionJobReviewScreen({
             {/* Updated Items */}
             <ReviewSection
                 title="Updated Items"
-                icon={<LuRefreshCw color="#1890ff" />}
+                icon={<LuRefreshCw color={token.colorPrimary} />}
                 count={preview.updatedItems.length}
                 color="blue"
             >
@@ -480,7 +483,7 @@ export function ExtractionJobReviewScreen({
             {/* Price Overrides (Outlet mode) */}
             <ReviewSection
                 title="Price Overrides"
-                icon={<LuDollarSign color="#fa8c16" />}
+                icon={<LuDollarSign color={token.colorWarning} />}
                 count={preview.overrideSuggestions.length}
                 color="orange"
             >
@@ -501,7 +504,7 @@ export function ExtractionJobReviewScreen({
                     style={{ marginBottom: 16, opacity: 0.7 }}
                     title={
                         <Flex align="center" gap={8}>
-                            <LuX color="#999" />
+                            <LuX color={token.colorTextTertiary} />
                             <Text type="secondary">Ignored ({preview.ignored.length})</Text>
                         </Flex>
                     }

@@ -13,11 +13,13 @@
  * - "Low activity" message if < 20 views
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData, EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
+import { formatDateKey } from '@util/dateTime';
 import { Alert, Card, Col, Empty, Row, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import React from 'react';
+import { LuInfo } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
 import MetricCard from './MetricCard';
 import styles from './OwnerDashboard.module.scss';
@@ -30,6 +32,7 @@ interface DailyViewProps {
 
 const DailyView: React.FC<DailyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
+    const formatter = useFormatter();
 
     if (!data) {
         return (
@@ -48,11 +51,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
     const { metrics, aiSummary, isLowActivity, date } = data;
 
     // Format date for display
-    const formattedDate = new Date(date).toLocaleDateString('en-IN', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short',
-    });
+    const formattedDate = formatDateKey(date, formatter);
 
     return (
         <div className={styles.dailyView}>
@@ -60,7 +59,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
             {isLowActivity && (
                 <Alert
                     type="info"
-                    icon={<InfoCircleOutlined />}
+                    icon={<LuInfo />}
                     message={EMPTY_STATE_MESSAGES.lowActivity.title}
                     description={EMPTY_STATE_MESSAGES.lowActivity.description}
                     className={styles.lowActivityAlert}

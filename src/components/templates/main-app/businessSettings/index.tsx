@@ -63,7 +63,6 @@ import {
     LuTv,
     LuUser,
 } from "react-icons/lu";
-import { SiGooglemybusiness } from "react-icons/si";
 import DigitalScreenSettings from "../settings/DigitalScreenSettings";
 import PresenceMonitor from "../useMenuList/PresenceMonitor";
 import {

@@ -17,6 +17,7 @@
  */
 
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
+import { FEATURE_FLAGS } from '@config/features';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
@@ -129,10 +130,14 @@ async function sendViaSMTP(to: string, subject: string, html: string): Promise<{
           smtpAlertedToday = today;
           try {
             const { createAlert } = await import('@lib/ops/alerts');
+            const { PLATFORM_NOTIFICATION_TRIGGER_TYPES } = await import('@data/shared/platformNotificationRegistry');
             await createAlert({
               severity: 'critical',
               title: '🚨 SMTP Connection Failed — Emails NOT Sending',
               message: `SMTP verify failed: ${verifyErr instanceof Error ? verifyErr.message : 'Unknown'}\nHost: ${process.env.SMTP_HOST}\nAll lifecycle emails will fail until SMTP is fixed.`,
+              triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.EMAIL_PROVIDER_FAILURE,
+              productId: 'PLATFORM',
+              category: 'owner_notifications',
             });
           } catch { /* non-blocking */ }
         }
@@ -170,6 +175,40 @@ async function getTemplate(eventType: string, meta: Record<string, any>): Promis
  */
 export async function sendLifecycleMessage(payload: LifecycleMessagePayload): Promise<boolean> {
   const { storeId, tenantId, eventType, referenceId, recipientEmail, storeName, metadata = {} } = payload;
+
+  if (!(await isEnabled())) return false;
+
+  if (FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
+    try {
+      const { enqueueOwnerNotification } = await import('@lib/owner-notifications');
+      const result = await enqueueOwnerNotification({
+        productId: 'ML',
+        triggerType: eventType,
+        tenantId,
+        storeId,
+        referenceId,
+        recipientHints: {
+          email: recipientEmail,
+          name: storeName,
+        },
+        metadata: {
+          ...metadata,
+          storeName,
+        },
+        source: {
+          runtime: 'next',
+          path: 'src/lib/messaging/index.ts:sendLifecycleMessage',
+        },
+      }, { processImmediately: true });
+
+      return 'sent' in result
+        ? result.sent > 0
+        : result.status === 'pending';
+    } catch {
+      // Fall through to the legacy sender so billing/publish operations keep their
+      // current fire-and-forget behavior if the new queue is unavailable.
+    }
+  }
 
   // 1. Feature flag
   if (!(await isEnabled())) return false;

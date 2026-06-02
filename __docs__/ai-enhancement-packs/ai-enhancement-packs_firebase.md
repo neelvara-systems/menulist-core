@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** ✅ Runtime Updated
-**Last Updated:** May 20, 2026
+**Last Updated:** June 2, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -13,7 +13,7 @@
 
 | Collection             | Path                                           | Purpose                                                    | Status                                |
 | ---------------------- | ---------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- |
-| `menulistAiOperations` | `menulistAiOperations/{tId}/{sId}/{docId}`     | Append-only AI usage event log                             | ✅ Active for billable, free, public, and internal AI audit rows |
+| `menulistAiOperations` | `menulistAiOperations/{tId}/{sId}/{docId}`     | Append-only AI usage event log                             | ✅ Server/Admin write only; active for billable, free, public, and internal AI audit rows |
 | `topups`               | `topups/{orderId}`                             | Pack purchase records                                      | ✅ Written by top-up create/verify APIs |
 | `subscriptions`        | `subscriptions/{sub_id}` (filtered by tId+sId) | Subscription with `monthlyCredits` + `topUpCredits` fields | ✅ Exists, capacity already built-in  |
 | `aiCreditTransactions` | Sub-collection of `menulistAiOperations`       | Legacy credit transaction records                          | ✅ Exists                             |
@@ -26,7 +26,7 @@
 
 ### Purpose
 
-Append-only log of every AI operation. Each document represents one API call to Gemini. This is the **source of truth** for cost reconciliation.
+Append-only log of every AI operation. Each document represents one API call to Gemini. This is the **source of truth** for cost reconciliation. Writes are server/Admin-only through `src/lib/ai/operationLog.ts` and `src/lib/ai/accounting.ts`; browser clients can read scoped transaction history but cannot create or mutate operation rows.
 
 ### Document Schema
 
@@ -74,7 +74,7 @@ Append-only log of every AI operation. Each document represents one API call to 
 
 | Operation                | Trigger                       | Frequency       | Reads              | Writes |
 | ------------------------ | ----------------------------- | --------------- | ------------------ | ------ |
-| **Write**                | Every AI API call             | Per user action | 0                  | 1      |
+| **Write**                | Server route/worker after successful AI provider call | Per user action | 0                  | 1      |
 | **Read (paginated)**     | Admin views Transactions page | Rare            | pageSize (10-50)   | 0      |
 | **Read (by store)**      | Admin filters by store        | Rare            | All docs for store | 0      |
 | **Read (by date range)** | Admin filters by date         | Rare            | Filtered subset    | 0      |
@@ -163,7 +163,7 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 
 `verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the authenticated session before updating `subscriptions.topUpCredits`.
 
-AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route logs the operation and calls `consumeAICapacity()`. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
+AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route calls `finalizeAiOperationAccounting()`, which records the operation and then calls `consumeAICapacity()`. Operation-log failure is monitored and does not skip credit consumption. Credit-consumption failure fails the paid response. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
 
 ---
 
@@ -358,10 +358,11 @@ match /subscriptions/{subId} {
 
 ### Enabling Usage Logging (Day 1)
 
-1. Uncomment `addAiOperation()` in all 6 API routes (see impl doc)
+1. Route billable successful provider calls through `finalizeAiOperationAccounting()`
 2. No collection creation needed — `menulistAiOperations` already exists
-3. No index creation needed initially — existing `createdOn` desc index covers basic queries
-4. Monitor Firestore usage in console for first 48 hours
+3. Keep Firestore rules server/Admin-only for writes and tenant/store-scoped for reads
+4. Run `npm run verify:ai-accounting`
+5. Monitor Firestore usage in console for first 48 hours
 
 ### Capacity Enforcement (Day 1)
 

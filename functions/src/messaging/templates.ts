@@ -65,9 +65,25 @@ function storePublished(meta: Record<string, any>): EmailTemplate {
   };
 }
 
+function menuPublishFailed(meta: Record<string, any>): EmailTemplate {
+  const { storeName, failureReason } = meta;
+  return {
+    subject: `Menu publish needs attention — ${storeName || 'MenuList'}`,
+    html: wrap(`
+      <h2 style="${STYLES.header}">Menu publish needs attention</h2>
+      <p style="${STYLES.text}">The latest publish check for <strong>${storeName || 'your business'}</strong> did not complete successfully.</p>
+      <div style="${STYLES.critical}">
+        <strong>What happened:</strong><br>
+        ${failureReason || 'The public menu check failed.'}
+      </div>
+      <p style="${STYLES.text}">Open the dashboard and retry publish after reviewing the menu state.</p>
+    `),
+  };
+}
+
 function paymentSuccess(meta: Record<string, any>): EmailTemplate {
   const { storeName, amount, currency, planName, nextBillingDate } = meta;
-  const formattedAmount = `${currency || 'INR'} ${amount || '0'}`;
+  const formattedAmount = meta.amountLabel || `${currency || 'INR'} ${amount || '0'}`;
   return {
     subject: `Payment received — ${storeName || 'MenuList'}`,
     html: wrap(`
@@ -85,7 +101,7 @@ function paymentSuccess(meta: Record<string, any>): EmailTemplate {
 
 function paymentFailed(meta: Record<string, any>): EmailTemplate {
   const { storeName, amount, currency, retryInfo } = meta;
-  const formattedAmount = `${currency || 'INR'} ${amount || '0'}`;
+  const formattedAmount = meta.amountLabel || `${currency || 'INR'} ${amount || '0'}`;
   return {
     subject: `Payment failed — Action needed — ${storeName || 'MenuList'}`,
     html: wrap(`
@@ -103,7 +119,7 @@ function paymentFailed(meta: Record<string, any>): EmailTemplate {
 
 function renewalReminder(meta: Record<string, any>): EmailTemplate {
   const { storeName, amount, currency, renewalDate, planName } = meta;
-  const formattedAmount = `${currency || 'INR'} ${amount || '0'}`;
+  const formattedAmount = meta.amountLabel || `${currency || 'INR'} ${amount || '0'}`;
   return {
     subject: `Upcoming renewal — ${storeName || 'MenuList'}`,
     html: wrap(`
@@ -152,6 +168,7 @@ function suspensionWarning(meta: Record<string, any>): EmailTemplate {
 
 function creditPurchaseSuccess(meta: Record<string, any>): EmailTemplate {
   const { storeName, creditsAdded, newBalance, amount, currency } = meta;
+  const formattedAmount = meta.amountLabel || `${currency || 'INR'} ${amount || '0'}`;
   return {
     subject: `Credits added — ${storeName || 'MenuList'}`,
     html: wrap(`
@@ -160,7 +177,7 @@ function creditPurchaseSuccess(meta: Record<string, any>): EmailTemplate {
       <div style="${STYLES.highlight}">
         <strong>Credits added:</strong> ${creditsAdded || '0'}<br>
         <strong>New balance:</strong> ${newBalance || 'See dashboard'}<br>
-        ${amount ? `<strong>Amount paid:</strong> ${currency || 'INR'} ${amount}` : ''}
+        ${amount ? `<strong>Amount paid:</strong> ${formattedAmount}` : ''}
       </div>
       <p style="${STYLES.text}">Credits are available immediately for AI features like image generation and descriptions.</p>
     `),
@@ -183,12 +200,29 @@ function creditsExhausted(meta: Record<string, any>): EmailTemplate {
   };
 }
 
+function menuStale(meta: Record<string, any>): EmailTemplate {
+  const { storeName, reason, daysSincePublish } = meta;
+  return {
+    subject: `Menu review suggested — ${storeName || 'MenuList'}`,
+    html: wrap(`
+      <h2 style="${STYLES.header}">Menu review suggested</h2>
+      <p style="${STYLES.text}">The public menu for <strong>${storeName || 'your business'}</strong> may need review.</p>
+      <div style="${STYLES.highlight}">
+        <strong>Reason:</strong> ${reason || 'Menu information may be older than expected.'}<br>
+        ${daysSincePublish ? `<strong>Days since publish:</strong> ${daysSincePublish}` : ''}
+      </div>
+      <p style="${STYLES.text}">Open the dashboard when convenient and confirm the menu is still current.</p>
+    `),
+  };
+}
+
 // ================================================================
 // TEMPLATE RESOLVER
 // ================================================================
 
 const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, any>) => EmailTemplate> = {
   STORE_PUBLISHED: storePublished,
+  MENU_PUBLISH_FAILED: menuPublishFailed,
   PAYMENT_SUCCESS: paymentSuccess,
   PAYMENT_FAILED: paymentFailed,
   RENEWAL_REMINDER: renewalReminder,
@@ -196,6 +230,7 @@ const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, any>) => Emai
   SUSPENSION_WARNING: suspensionWarning,
   CREDIT_PURCHASE_SUCCESS: creditPurchaseSuccess,
   CREDITS_EXHAUSTED: creditsExhausted,
+  MENU_STALE: menuStale,
 };
 
 /**

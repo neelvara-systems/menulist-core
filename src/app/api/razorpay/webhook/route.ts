@@ -330,12 +330,16 @@ export async function POST(request: Request) {
                 // 🔔 ALERT: Payment failure — founder needs to know immediately
                 try {
                     const { createAlert } = await import('@lib/ops/alerts');
+                    const { PLATFORM_NOTIFICATION_TRIGGER_TYPES } = await import('@data/shared/platformNotificationRegistry');
                     await createAlert({
                         severity: event.event === 'subscription.halted' ? 'critical' : 'warning',
                         title: `Payment ${event.event === 'subscription.halted' ? 'HALTED' : 'Failed'}: Store ${eventPayloadToUpload.storeId}`,
                         message: `Event: ${event.event}\nStore: ${eventPayloadToUpload.storeId}\nTenant: ${eventPayloadToUpload.tenantId}\nError: ${paymentEntity?.error_description || paymentEntity?.error_reason || 'Unknown'}`,
                         sId: eventPayloadToUpload.storeId ? String(eventPayloadToUpload.storeId) : undefined,
                         tId: eventPayloadToUpload.tenantId ? String(eventPayloadToUpload.tenantId) : undefined,
+                        triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PAYMENT_FAILURE,
+                        productId: 'ML',
+                        category: 'payments',
                     });
                 } catch { /* non-blocking */ }
 
@@ -502,9 +506,6 @@ export async function POST(request: Request) {
                         // 📧 LIFECYCLE MESSAGE: Payment success confirmation to store owner
                         try {
                             const { sendLifecycleMessage } = await import('@lib/messaging');
-                            const nextBilling = subscriptionEntity.charge_at
-                                ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
-                                : 'See dashboard';
                             sendLifecycleMessage({
                                 storeId: String(internalSub.storeId),
                                 tenantId: String(internalSub.tenantId),
@@ -516,7 +517,9 @@ export async function POST(request: Request) {
                                     amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
                                     currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
                                     planName: internalSub.planName || 'Subscription',
-                                    nextBillingDate: nextBilling,
+                                    nextBillingAt: subscriptionEntity.charge_at
+                                        ? new Date(subscriptionEntity.charge_at * 1000).toISOString()
+                                        : null,
                                 },
                             }).catch(() => { /* non-blocking */ });
                         } catch { /* non-blocking */ }
@@ -606,6 +609,25 @@ export async function POST(request: Request) {
                             { ...cancelledInternalSub, status: 'cancelled' },
                             'webhook:subscription.cancelled',
                         );
+                        if (shouldSendMenuListBillingMessages) {
+                            try {
+                                const { sendLifecycleMessage } = await import('@lib/messaging');
+                                sendLifecycleMessage({
+                                    storeId: String(cancelledInternalSub.storeId),
+                                    tenantId: String(cancelledInternalSub.tenantId),
+                                    eventType: 'SUBSCRIPTION_CANCELLED',
+                                    referenceId: `subscription-cancelled-${cancelledInternalSub.id}`,
+                                    recipientEmail: cancelledInternalSub.email || '',
+                                    storeName: cancelledInternalSub.name || '',
+                                    metadata: {
+                                        amount: cancelledInternalSub.amount,
+                                        currency: cancelledInternalSub.currency || 'INR',
+                                        planName: cancelledInternalSub.planName || 'Subscription',
+                                        sentAt: new Date().toISOString(),
+                                    },
+                                }).catch(() => { /* non-blocking */ });
+                            } catch { /* non-blocking */ }
+                        }
                     }
                 }
                 break;
@@ -638,6 +660,25 @@ export async function POST(request: Request) {
                         { ...pausedInternalSub, status: 'paused' },
                         'webhook:subscription.paused',
                     );
+                    if (shouldSendMenuListBillingMessages) {
+                        try {
+                            const { sendLifecycleMessage } = await import('@lib/messaging');
+                            sendLifecycleMessage({
+                                storeId: String(pausedInternalSub.storeId),
+                                tenantId: String(pausedInternalSub.tenantId),
+                                eventType: 'SUBSCRIPTION_PAUSED',
+                                referenceId: `subscription-paused-${pausedInternalSub.id}`,
+                                recipientEmail: pausedInternalSub.email || '',
+                                storeName: pausedInternalSub.name || '',
+                                metadata: {
+                                    amount: pausedInternalSub.amount,
+                                    currency: pausedInternalSub.currency || 'INR',
+                                    planName: pausedInternalSub.planName || 'Subscription',
+                                    sentAt: new Date().toISOString(),
+                                },
+                            }).catch(() => { /* non-blocking */ });
+                        } catch { /* non-blocking */ }
+                    }
                 }
                 break;
             }
@@ -684,6 +725,25 @@ export async function POST(request: Request) {
                         { ...resumedInternalSub, status: 'active' },
                         'webhook:subscription.resumed',
                     );
+                    if (shouldSendMenuListBillingMessages) {
+                        try {
+                            const { sendLifecycleMessage } = await import('@lib/messaging');
+                            sendLifecycleMessage({
+                                storeId: String(resumedInternalSub.storeId),
+                                tenantId: String(resumedInternalSub.tenantId),
+                                eventType: 'SUBSCRIPTION_RESUMED',
+                                referenceId: `subscription-resumed-${resumedInternalSub.id}`,
+                                recipientEmail: resumedInternalSub.email || '',
+                                storeName: resumedInternalSub.name || '',
+                                metadata: {
+                                    amount: resumedInternalSub.amount,
+                                    currency: resumedInternalSub.currency || 'INR',
+                                    planName: resumedInternalSub.planName || 'Subscription',
+                                    sentAt: new Date().toISOString(),
+                                },
+                            }).catch(() => { /* non-blocking */ });
+                        } catch { /* non-blocking */ }
+                    }
                 }
                 break;
             }
@@ -719,12 +779,16 @@ export async function POST(request: Request) {
         // 🚨 CRITICAL ALERT: Webhook processing failure = potential payment state inconsistency
         try {
             const { createAlert } = await import('@lib/ops/alerts');
+            const { PLATFORM_NOTIFICATION_TRIGGER_TYPES } = await import('@data/shared/platformNotificationRegistry');
             await createAlert({
                 severity: 'critical',
                 title: `Razorpay Webhook FAILED: ${event?.event || 'unknown'}`,
                 message: `Webhook processing crashed. Payment state may be inconsistent.\nEvent: ${event?.event}\nStore: ${event?.storeId || 'unknown'}\nError: ${error instanceof Error ? error.message : 'Unknown'}`,
                 sId: event?.storeId ? String(event.storeId) : undefined,
                 tId: event?.tenantId ? String(event.tenantId) : undefined,
+                triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PAYMENT_WEBHOOK_FAILURE,
+                productId: 'ML',
+                category: 'payments',
             });
         } catch { /* non-blocking */ }
 

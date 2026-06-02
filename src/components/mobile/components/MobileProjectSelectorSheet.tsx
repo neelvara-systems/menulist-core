@@ -18,9 +18,10 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
+import { formatDateTime, fromNativeDateTimeInputValue, toNativeDateTimeInputValue, type IntlFormatter } from '@util/dateTime';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
@@ -86,34 +87,10 @@ const getResolvedSpecialMenuStatus = (
     return project.specialMenuStatus || 'scheduled';
 };
 
-const toNativeDateTimeValue = (value?: string | null) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return '';
-
-    const pad = (part: number) => String(part).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-const fromNativeDateTimeValue = (value: string) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return '';
-    return date.toISOString();
-};
-
-const formatScheduleDateTime = (value?: string | null) => {
+const formatScheduleDateTime = (value: string | null | undefined, formatter: IntlFormatter) => {
     if (!value) return null;
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return null;
-
-    return new Intl.DateTimeFormat('en', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(date);
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? null : label;
 };
 
 const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => {
@@ -172,6 +149,7 @@ export default function MobileProjectSelectorSheet({
     visible,
 }: MobileProjectSelectorSheetProps) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const t = useTranslations('MobileProjectSelector');
     const tShare = useTranslations('MobileShare');
     const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
@@ -271,8 +249,8 @@ export default function MobileProjectSelectorSheet({
     const managingProjectSpecialMenuSummary = useMemo(() => {
         if (!managingProject?.isSpecialMenu) return null;
 
-        const startsAtLabel = formatScheduleDateTime(managingProject.specialMenuStartsAt);
-        const endsAtLabel = formatScheduleDateTime(managingProject.specialMenuEndsAt);
+        const startsAtLabel = formatScheduleDateTime(managingProject.specialMenuStartsAt, formatter);
+        const endsAtLabel = formatScheduleDateTime(managingProject.specialMenuEndsAt, formatter);
 
         if (managingProjectSpecialMenuStatus === 'expired') {
             return endsAtLabel
@@ -293,7 +271,7 @@ export default function MobileProjectSelectorSheet({
         return startsAtLabel
             ? `This menu currently does not display to customers. It is scheduled to start at ${startsAtLabel}.`
             : 'This menu currently does not display to customers. It is scheduled to start later.';
-    }, [managingProject, managingProjectSpecialMenuStatus]);
+    }, [formatter, managingProject, managingProjectSpecialMenuStatus]);
     const formSourceProject = useMemo(
         () => projects.find((project) => project.projectId === formProjectId) || null,
         [formProjectId, projects]
@@ -430,8 +408,8 @@ export default function MobileProjectSelectorSheet({
         setIsProjectImageAdjustOpen(false);
         setFormIsDefault(false);
         setFormActive(project.active !== false);
-        setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
-        setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
+        setFormStartsAt(toNativeDateTimeInputValue(project.specialMenuStartsAt));
+        setFormEndsAt(toNativeDateTimeInputValue(project.specialMenuEndsAt));
     };
 
     const openDuplicate = async (project: ProjectSheetProject) => {
@@ -653,8 +631,8 @@ export default function MobileProjectSelectorSheet({
 
                 if (isEditingSpecialMenu) {
                     metadataUpdate.specialMenuDisplayName = localizedName;
-                    metadataUpdate.specialMenuStartsAt = fromNativeDateTimeValue(formStartsAt);
-                    metadataUpdate.specialMenuEndsAt = fromNativeDateTimeValue(formEndsAt);
+                    metadataUpdate.specialMenuStartsAt = fromNativeDateTimeInputValue(formStartsAt);
+                    metadataUpdate.specialMenuEndsAt = fromNativeDateTimeInputValue(formEndsAt);
                 }
 
                 await updateProjectMetadata(formProjectId, metadataUpdate);
@@ -678,8 +656,8 @@ export default function MobileProjectSelectorSheet({
                         projectId: formProjectId,
                         _specialMenu: {
                             displayName: localizedName,
-                            endsAt: fromNativeDateTimeValue(formEndsAt),
-                            startsAt: fromNativeDateTimeValue(formStartsAt),
+                            endsAt: fromNativeDateTimeInputValue(formEndsAt),
+                            startsAt: fromNativeDateTimeInputValue(formStartsAt),
                         } as any,
                     });
                 }
@@ -713,8 +691,8 @@ export default function MobileProjectSelectorSheet({
                     projectImage: savedProjectImage || null,
                     ...(isEditingSpecialMenu ? {
                         specialMenuDisplayName: localizedName,
-                        specialMenuEndsAt: fromNativeDateTimeValue(formEndsAt),
-                        specialMenuStartsAt: fromNativeDateTimeValue(formStartsAt),
+                        specialMenuEndsAt: fromNativeDateTimeInputValue(formEndsAt),
+                        specialMenuStartsAt: fromNativeDateTimeInputValue(formStartsAt),
                     } : {}),
                 });
 
@@ -742,8 +720,8 @@ export default function MobileProjectSelectorSheet({
             formIsDefault !== initialFormIsDefault ||
             formActive !== (formSourceProject?.active !== false) ||
             (isEditingSpecialMenu && (
-                fromNativeDateTimeValue(formStartsAt) !== initialFormStartsAt ||
-                fromNativeDateTimeValue(formEndsAt) !== initialFormEndsAt
+                fromNativeDateTimeInputValue(formStartsAt) !== initialFormStartsAt ||
+                fromNativeDateTimeInputValue(formEndsAt) !== initialFormEndsAt
             ))
         )
         : true;
@@ -758,8 +736,8 @@ export default function MobileProjectSelectorSheet({
         setFormProjectImage(formSourceProject.projectImage || null);
         setFormIsDefault(formSourceProject.isDefault === true);
         setFormActive(formSourceProject.active !== false);
-        setFormStartsAt(toNativeDateTimeValue(formSourceProject.specialMenuStartsAt));
-        setFormEndsAt(toNativeDateTimeValue(formSourceProject.specialMenuEndsAt));
+        setFormStartsAt(toNativeDateTimeInputValue(formSourceProject.specialMenuStartsAt));
+        setFormEndsAt(toNativeDateTimeInputValue(formSourceProject.specialMenuEndsAt));
     };
 
     const handleProjectImageSelect = async (file: File) => {
@@ -1288,7 +1266,7 @@ export default function MobileProjectSelectorSheet({
                                     {resolveProjectName(managingProject?.name, t('catalogActions'))}
                                 </Title>
                                 {managingProject?.deleted ? (
-                                    <Tag color="danger">Deleted</Tag>
+                                    <Tag color="error">Deleted</Tag>
                                 ) : null}
                                 {managingProject?.deleted !== true && managingProject?.active === false ? (
                                     <Tag color="warning">Inactive</Tag>

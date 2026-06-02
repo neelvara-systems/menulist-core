@@ -2,6 +2,8 @@
 
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@constant/common';
+import { formatInrPaise } from '@util/formatters';
+import { theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuChevronRight, LuCopy, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Input, Result, Select, Tag, Text, Title, Toast } from '../antd';
@@ -51,11 +53,8 @@ const initialDraft: OnboardDraft = {
     pricingTier: '',
 };
 
-function formatMoney(paise?: number) {
-    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
-}
-
 export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () => void }) {
+    const { token } = theme.useToken();
     const tiers = useMemo(() => getActiveResellerTiers(), []);
     const businessTypeOptions = useMemo(() => BUSINESS_TYPES.map((businessType: any) => ({
         label: businessType.label || businessType.name || businessType.value,
@@ -75,12 +74,12 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
         if (!selectedTier) return 'Select a tier';
         const locationCount = Math.max(1, Number(draft.locationCount || 1));
         if (draft.paymentMode === 'offline' && draft.commitmentMonths) {
-            return `${formatMoney(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths), locationCount))} one-time prepaid`;
+            return `${formatInrPaise(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths), locationCount))} one-time prepaid`;
         }
         if (draft.billingInterval === 'YEAR') {
-            return `${formatMoney(selectedTier.yearlyPriceINR * locationCount)}/year recurring`;
+            return `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year recurring`;
         }
-        return `${formatMoney(selectedTier.monthlyPriceINR * locationCount)}/month recurring`;
+        return `${formatInrPaise(selectedTier.monthlyPriceINR * locationCount)}/month recurring`;
     };
 
     const validateStep = () => {
@@ -245,11 +244,11 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                 <div
                                     key={label}
                                     style={{
-                                        background: index <= step ? '#0054D0' : '#e5e7eb',
+                                        background: index <= step ? token.colorPrimary : token.colorFillSecondary,
                                         borderRadius: 999,
-                                        color: index <= step ? '#fff' : '#64748b',
+                                        color: index <= step ? token.colorTextLightSolid : token.colorTextSecondary,
                                         fontSize: 12,
-                                        minHeight: 28,
+                                        minHeight: 32,
                                         padding: '6px 8px',
                                         textAlign: 'center',
                                     }}
@@ -282,8 +281,8 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                         key={tier.id}
                                         onClick={() => updateDraft('pricingTier', tier.id)}
                                         style={{
-                                            borderColor: draft.pricingTier === tier.id ? '#0054D0' : undefined,
-                                            boxShadow: draft.pricingTier === tier.id ? '0 0 0 1px #0054D0' : undefined,
+                                            borderColor: draft.pricingTier === tier.id ? token.colorPrimary : undefined,
+                                            boxShadow: draft.pricingTier === tier.id ? `0 0 0 1px ${token.colorPrimary}` : undefined,
                                         }}
                                     >
                                         <Flex align="center" justify="space-between">
@@ -291,7 +290,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                                 <Text strong>{tier.name}</Text>
                                                 <Text type="secondary">{tier.description}</Text>
                                             </Flex>
-                                            <Tag>{formatMoney(tier.monthlyPriceINR)}/mo</Tag>
+                                            <Tag>{formatInrPaise(tier.monthlyPriceINR)}/mo</Tag>
                                         </Flex>
                                     </Card>
                                 ))}
@@ -304,13 +303,13 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                     { label: 'Online', value: 'online', desc: 'Generate a Razorpay recurring link for the client.' },
                                     { label: 'Offline', value: 'offline', desc: 'One-time prepaid cash or UPI collected by reseller.' },
                                 ].map((mode) => (
-                                    <Card key={mode.value} onClick={() => updateDraft('paymentMode', mode.value)} style={{ borderColor: draft.paymentMode === mode.value ? '#0054D0' : undefined }}>
+                                    <Card key={mode.value} onClick={() => updateDraft('paymentMode', mode.value)} style={{ borderColor: draft.paymentMode === mode.value ? token.colorPrimary : undefined }}>
                                         <Flex align="center" justify="space-between">
                                             <Flex gap={2} vertical>
                                                 <Text strong>{mode.label}</Text>
                                                 <Text type="secondary">{mode.desc}</Text>
                                             </Flex>
-                                            {draft.paymentMode === mode.value ? <LuCheck color="#0054D0" size={18} /> : null}
+                                            {draft.paymentMode === mode.value ? <LuCheck color={token.colorPrimary} size={18} /> : null}
                                         </Flex>
                                     </Card>
                                 ))}
@@ -385,7 +384,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                 <Flex justify="space-between"><Text type="secondary">{draft.paymentMode === 'online' ? 'Commitment' : 'Duration'}</Text><Text strong>{draft.commitmentMonths} months</Text></Flex>
                             ) : null}
                             <Flex justify="space-between"><Text type="secondary">Amount</Text><Text strong>{amountLabel()}</Text></Flex>
-                            <Card style={{ background: draft.paymentMode === 'offline' ? '#fff7e6' : '#eff6ff' }}>
+                            <Card style={{ background: draft.paymentMode === 'offline' ? token.colorWarningBg : token.colorPrimaryBg }}>
                                 <Text>
                                     {draft.paymentMode === 'offline'
                                         ? `Confirm only after collecting ${amountLabel()} from the client. Access ends after the selected prepaid duration.`

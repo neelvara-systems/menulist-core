@@ -161,6 +161,8 @@ These operations are always free. No units are deducted. No subscription is requ
 
 Worst case cost absorbed: 10 large menu extractions = ~₹7. Negligible.
 
+Internal audit may still record token usage and estimated platform cost for these operations. That audit cost is not owner-pack usage and does not reduce the owner's balance.
+
 ### Paid Operations (Consumes Units)
 
 | Operation           | Units | Our Charge (₹) | Google Cost (₹) | Margin | Margin % |

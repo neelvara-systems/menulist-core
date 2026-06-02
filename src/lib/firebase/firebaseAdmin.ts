@@ -1,13 +1,16 @@
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin if it hasn't been initialized yet
-if (!admin.apps.length) {
+const DEFAULT_APP_NAME = '[DEFAULT]';
+const existingDefaultApp = admin.apps.find(app => app?.name === DEFAULT_APP_NAME);
+const firebaseAdminApp = existingDefaultApp || (() => {
     const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
     // For Vercel deployment: Use explicit environment variables
     // For local development: Uses GOOGLE_APPLICATION_CREDENTIALS automatically
     if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-        admin.initializeApp({
+        const app = admin.initializeApp({
             credential: admin.credential.cert({
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
@@ -16,18 +19,30 @@ if (!admin.apps.length) {
             ...(storageBucket ? { storageBucket } : {}),
         });
         console.log("🔥 Firebase Admin initialized with explicit credentials (Vercel).");
-    } else {
-        // Fallback to ADC for local development with GOOGLE_APPLICATION_CREDENTIALS
-        admin.initializeApp({
-            ...(storageBucket ? { storageBucket } : {}),
-        });
-        console.log("🔥 Firebase Admin initialized with ADC (local development).");
+        return app;
     }
-}
 
-const firestoreAdmin = admin.firestore();
-const storageAdmin = admin.storage();
-const authAdmin = admin.auth();
-const Vector = (admin.firestore as any).VectorValue;
+    // Fallback to ADC for local development with GOOGLE_APPLICATION_CREDENTIALS
+    const app = admin.initializeApp({
+        ...(storageBucket ? { storageBucket } : {}),
+    });
+    console.log("🔥 Firebase Admin initialized with ADC (local development).");
+    return app;
+})();
+
+const firestoreAdmin = admin.firestore(firebaseAdminApp);
+const storageAdmin = firebaseAdminApp.storage();
+const authAdmin = firebaseAdminApp.auth();
+type VectorValue = ReturnType<typeof FieldValue.vector> & {
+    values?: number[];
+    _values?: number[];
+};
+type VectorFactory = {
+    new(values?: number[]): VectorValue;
+    (values?: number[]): VectorValue;
+};
+const Vector = (function Vector(values?: number[]) {
+    return FieldValue.vector(values) as VectorValue;
+}) as VectorFactory;
 
 export { Vector, admin, authAdmin, firestoreAdmin, storageAdmin };

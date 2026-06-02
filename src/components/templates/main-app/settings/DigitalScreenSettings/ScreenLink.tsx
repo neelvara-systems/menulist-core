@@ -2,139 +2,396 @@
 
 /**
  * Screen Link Section
- * Per spec v2.0: Two URLs per store — Menu Board (default) + Highlights
- * Per spec: FR-9 - One URL base per store (bookmarkable)
- * 
- * Menu Board: /screen/{token}               → full menu with prices
- * Highlights: /screen/{token}?mode=highlights → rotating promotional slides
+ * Per spec v2.0: Two URLs per store: Menu Board (default) and Highlights.
  */
 
-import { CheckOutlined, CopyOutlined, DesktopOutlined, LinkOutlined, PlaySquareOutlined } from "@ant-design/icons";
-import { Button, Input, message, Space, Tag, theme, Tooltip, Typography } from "antd";
-import { useState } from "react";
+import { Button, QRCode, Space, Tag, Tooltip, Typography, message, theme } from "antd";
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode } from "react-icons/lu";
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 interface ScreenLinkProps {
     screenUrl: string;
+    screenLastSeenAt?: any;
 }
 
-export default function ScreenLink({ screenUrl }: ScreenLinkProps) {
+type ScreenMode = "menu" | "highlights";
+
+interface ScreenModeCardProps {
+    compactUrl: string;
+    copied: boolean;
+    description: string;
+    icon: ReactNode;
+    mode: ScreenMode;
+    onCopy: () => void;
+    onOpen: () => void;
+    qrValue: string;
+    tag: string;
+    title: string;
+}
+
+function toDate(value?: any): Date | null {
+    if (!value) return null;
+    try {
+        if (typeof value.toDate === "function") return value.toDate();
+        if (typeof value.toMillis === "function") return new Date(value.toMillis());
+        if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+        return null;
+    }
+}
+
+function formatLastSeen(value?: any): string {
+    const date = toDate(value);
+    if (!date) return "Waiting for first TV";
+
+    const diff = Date.now() - date.getTime();
+    const minutes = Math.max(0, Math.floor(diff / 60000));
+
+    if (minutes < 1) return "Seen just now";
+    if (minutes < 60) return `Seen ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Seen ${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+    const days = Math.floor(hours / 24);
+    return `Seen ${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function compactScreenUrl(url: string): string {
+    try {
+        const parsed = new URL(url);
+        return `${parsed.host}${parsed.pathname}${parsed.search}`;
+    } catch {
+        return url.replace(/^https?:\/\//, "");
+    }
+}
+
+function ScreenModeCard({
+    compactUrl,
+    copied,
+    description,
+    icon,
+    mode,
+    onCopy,
+    onOpen,
+    qrValue,
+    tag,
+    title,
+}: ScreenModeCardProps) {
+    return (
+        <section className={`screen-mode-card ${mode}`}>
+            <div className="screen-mode-main">
+                <div className="screen-mode-top">
+                    <span className="screen-mode-icon">{icon}</span>
+                    <div>
+                        <Title level={5} style={{ margin: 0 }}>{title}</Title>
+                        <Text type="secondary">{description}</Text>
+                    </div>
+                    <Tag className="screen-mode-tag">{tag}</Tag>
+                </div>
+
+                <div className={`screen-preview ${mode}`} aria-hidden="true">
+                    {mode === "menu" ? (
+                        <>
+                            <span className="preview-title" />
+                            <span className="preview-category" />
+                            <span className="preview-row" />
+                            <span className="preview-row short" />
+                            <span className="preview-row" />
+                        </>
+                    ) : (
+                        <>
+                            <span className="preview-image" />
+                            <span className="preview-caption" />
+                            <span className="preview-price" />
+                        </>
+                    )}
+                </div>
+
+                <div className="screen-url-row">
+                    <LuQrCode size={16} />
+                    <Text ellipsis className="screen-compact-url">{compactUrl}</Text>
+                </div>
+
+                <Space wrap>
+                    <Tooltip title={copied ? "Copied" : "Copy TV link"}>
+                        <Button icon={copied ? <LuCheck /> : <LuCopy />} onClick={onCopy} type="primary">
+                            {copied ? "Copied" : "Copy link"}
+                        </Button>
+                    </Tooltip>
+                    <Button icon={<LuExternalLink />} onClick={onOpen}>
+                        Open
+                    </Button>
+                </Space>
+            </div>
+
+            <div className="screen-mode-qr">
+                <QRCode
+                    value={qrValue}
+                    size={106}
+                    color="#172033"
+                    bgColor="#ffffff"
+                    errorLevel="H"
+                    style={{ borderRadius: 8 }}
+                />
+                <Text type="secondary">Screen QR</Text>
+            </div>
+        </section>
+    );
+}
+
+export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkProps) {
     const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
 
     const highlightsUrl = `${screenUrl}?mode=highlights`;
+    const menuCompactUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
+    const highlightsCompactUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
+    const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
+    const hasSeenSignal = Boolean(toDate(screenLastSeenAt));
 
-    const handleCopy = async (url: string, type: 'menu' | 'highlights') => {
+    const handleCopy = async (url: string, type: ScreenMode) => {
         try {
             await navigator.clipboard.writeText(url);
-            if (type === 'menu') {
+            if (type === "menu") {
                 setCopiedMenu(true);
                 setTimeout(() => setCopiedMenu(false), 2000);
             } else {
                 setCopiedHighlights(true);
                 setTimeout(() => setCopiedHighlights(false), 2000);
             }
-            message.success('Link copied to clipboard');
-        } catch (error) {
-            message.error('Failed to copy link');
+            message.success("Screen link copied");
+        } catch {
+            message.error("Unable to copy screen link");
         }
     };
 
     return (
         <div className="screen-link-section">
-            {/* Menu Board Link (Default) */}
-            <div style={{ marginBottom: 16 }}>
-                <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <DesktopOutlined style={{ color: token.colorPrimary }} />
-                    <Text strong>Menu Board</Text>
-                    <Tag color="blue">Main TV</Tag>
+            <div className="screen-setup-header">
+                <div>
+                    <Text strong>TV setup</Text>
+                    <Text type="secondary" className="screen-setup-subtitle">
+                        Two screen types are ready for this store.
+                    </Text>
                 </div>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                    Full menu with categories, items, and prices — for your counter or ordering screen
-                </Text>
-                <Space.Compact style={{ width: '100%' }}>
-                    <Input
-                        value={screenUrl}
-                        readOnly
-                        style={{ fontFamily: 'monospace', fontSize: 13 }}
-                        prefix={<LinkOutlined style={{ color: token.colorTextTertiary }} />}
-                    />
-                    <Tooltip title={copiedMenu ? 'Copied!' : 'Copy link'}>
-                        <Button
-                            type="primary"
-                            icon={copiedMenu ? <CheckOutlined /> : <CopyOutlined />}
-                            onClick={() => handleCopy(screenUrl, 'menu')}
-                        >
-                            {copiedMenu ? 'Copied' : 'Copy'}
-                        </Button>
-                    </Tooltip>
-                </Space.Compact>
-                <Button
-                    type="link"
-                    size="small"
-                    onClick={() => window.open(screenUrl, '_blank')}
-                    style={{ padding: 0, marginTop: 4 }}
-                >
-                    Preview Menu Board →
-                </Button>
+                <Tag color={hasSeenSignal ? "success" : "default"}>
+                    {lastSeenLabel}
+                </Tag>
             </div>
 
-            {/* Highlights Link */}
-            <div style={{ marginBottom: 16 }}>
-                <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <PlaySquareOutlined style={{ color: token.colorInfo }} />
-                    <Text strong>Highlights</Text>
-                    <Tag color="purple">Second TV</Tag>
-                </div>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                    Rotating promotional slides with featured items — for entrance or waiting area
-                </Text>
-                <Space.Compact style={{ width: '100%' }}>
-                    <Input
-                        value={highlightsUrl}
-                        readOnly
-                        style={{ fontFamily: 'monospace', fontSize: 13 }}
-                        prefix={<LinkOutlined style={{ color: token.colorTextTertiary }} />}
-                    />
-                    <Tooltip title={copiedHighlights ? 'Copied!' : 'Copy link'}>
-                        <Button
-                            icon={copiedHighlights ? <CheckOutlined /> : <CopyOutlined />}
-                            onClick={() => handleCopy(highlightsUrl, 'highlights')}
-                        >
-                            {copiedHighlights ? 'Copied' : 'Copy'}
-                        </Button>
-                    </Tooltip>
-                </Space.Compact>
-                <Button
-                    type="link"
-                    size="small"
-                    onClick={() => window.open(highlightsUrl, '_blank')}
-                    style={{ padding: 0, marginTop: 4 }}
-                >
-                    Preview Highlights →
-                </Button>
+            <div className="screen-mode-grid">
+                <ScreenModeCard
+                    compactUrl={menuCompactUrl}
+                    copied={copiedMenu}
+                    description="Full menu with categories and prices"
+                    icon={<LuMonitor size={20} />}
+                    mode="menu"
+                    onCopy={() => void handleCopy(screenUrl, "menu")}
+                    onOpen={() => window.open(screenUrl, "_blank", "noopener,noreferrer")}
+                    qrValue={screenUrl}
+                    tag="Counter TV"
+                    title="Menu Board"
+                />
+                <ScreenModeCard
+                    compactUrl={highlightsCompactUrl}
+                    copied={copiedHighlights}
+                    description="Featured items and custom slides"
+                    icon={<LuPlay size={20} />}
+                    mode="highlights"
+                    onCopy={() => void handleCopy(highlightsUrl, "highlights")}
+                    onOpen={() => window.open(highlightsUrl, "_blank", "noopener,noreferrer")}
+                    qrValue={highlightsUrl}
+                    tag="Entrance TV"
+                    title="Highlights"
+                />
             </div>
 
-            {/* Setup Tip */}
-            <div
-                style={{
-                    padding: 12,
-                    background: token.colorSuccessBg,
-                    borderRadius: 8,
-                    border: `1px solid ${token.colorSuccessBorder}`
-                }}
-            >
-                <Text style={{ fontSize: 13 }}>
-                    <strong>Setup tip:</strong> Open the Menu Board link on your counter TV and the Highlights
-                    link on your entrance TV. Both follow your active store menu automatically, refresh themselves, and work offline.
-                </Text>
+            <div className="screen-setup-steps">
+                <span>Open the link on the TV</span>
+                <span>Make it full screen</span>
+                <span>Leave the TV awake</span>
             </div>
 
             <style jsx>{`
                 .screen-link-section {
-                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 14px;
+                }
+                .screen-setup-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                }
+                .screen-setup-subtitle {
+                    display: block;
+                    margin-top: 2px;
+                }
+                .screen-mode-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 14px;
+                }
+                .screen-mode-card {
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) 136px;
+                    gap: 16px;
+                    min-height: 248px;
+                    padding: 16px;
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 8px;
+                    background: ${token.colorBgContainer};
+                }
+                .screen-mode-card.menu {
+                    border-top: 3px solid ${token.colorPrimary};
+                }
+                .screen-mode-card.highlights {
+                    border-top: 3px solid ${token.colorWarning};
+                }
+                .screen-mode-main {
+                    display: flex;
+                    min-width: 0;
+                    flex-direction: column;
+                    gap: 14px;
+                }
+                .screen-mode-top {
+                    display: grid;
+                    grid-template-columns: 34px minmax(0, 1fr) auto;
+                    align-items: start;
+                    gap: 10px;
+                }
+                .screen-mode-icon {
+                    display: inline-flex;
+                    width: 34px;
+                    height: 34px;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    color: ${token.colorPrimary};
+                }
+                .screen-mode-tag {
+                    margin: 0;
+                    border-radius: 6px;
+                    font-weight: 600;
+                }
+                .screen-preview {
+                    position: relative;
+                    height: 78px;
+                    overflow: hidden;
+                    border-radius: 8px;
+                    background: #07101f;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .screen-preview.menu {
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 7px;
+                }
+                .preview-title,
+                .preview-category,
+                .preview-row {
+                    display: block;
+                    border-radius: 4px;
+                }
+                .preview-title {
+                    width: 44%;
+                    height: 8px;
+                    background: #ffffff;
+                }
+                .preview-category {
+                    width: 32%;
+                    height: 6px;
+                    background: #fbbf24;
+                }
+                .preview-row {
+                    height: 7px;
+                    background: rgba(255, 255, 255, 0.46);
+                }
+                .preview-row.short {
+                    width: 72%;
+                }
+                .screen-preview.highlights {
+                    background: linear-gradient(135deg, #111827 0%, #273449 100%);
+                }
+                .preview-image {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(135deg, rgba(251, 191, 36, 0.52), rgba(96, 165, 250, 0.42));
+                }
+                .preview-caption {
+                    position: absolute;
+                    left: 12px;
+                    right: 44px;
+                    bottom: 20px;
+                    height: 10px;
+                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 0.92);
+                }
+                .preview-price {
+                    position: absolute;
+                    left: 12px;
+                    bottom: 8px;
+                    width: 56px;
+                    height: 7px;
+                    border-radius: 4px;
+                    background: #86efac;
+                }
+                .screen-url-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    min-width: 0;
+                    padding: 9px 10px;
+                    border: 1px solid ${token.colorBorderSecondary};
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                }
+                .screen-compact-url {
+                    min-width: 0;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 12px;
+                }
+                .screen-mode-qr {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                    gap: 8px;
+                    min-width: 0;
+                    padding: 12px 8px;
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    text-align: center;
+                }
+                .screen-setup-steps {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 8px;
+                }
+                .screen-setup-steps span {
+                    min-height: 34px;
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    background: ${token.colorFillAlter};
+                    color: ${token.colorTextSecondary};
+                    font-size: 13px;
+                    font-weight: 600;
+                    text-align: center;
+                }
+                @media (max-width: 1080px) {
+                    .screen-mode-grid {
+                        grid-template-columns: 1fr;
+                    }
                 }
             `}</style>
         </div>

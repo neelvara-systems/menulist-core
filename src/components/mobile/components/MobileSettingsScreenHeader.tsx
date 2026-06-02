@@ -38,7 +38,7 @@ export default function MobileSettingsScreenHeader({
                         <Button
                             aria-label={`About ${title}`}
                             fill="none"
-                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >
                             <LuInfo size={18} />
                         </Button>

@@ -10,7 +10,7 @@ import { ANSWERLATTICE_FRAMEWORK_SNIPPETS } from '@lib/answerlattice/installCont
 
 export const metadata: Metadata = {
     title: 'Developer Quickstarts',
-    description: 'Answerlattice widget quickstarts for env-backed Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context, and user-initiated screenshot support.',
+    description: 'AnswerLattice widget quickstarts for env-backed Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context, and user-initiated screenshot support.',
     alternates: { canonical: '/quickstarts' },
 };
 
@@ -87,7 +87,7 @@ export default function AnswerlatticeQuickstartsPage() {
                         Add page-aware support without building a support stack.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use the v1 script once, then send safe page context from the app screens where users get stuck.
+                        Use the v1 script once, then send safe page context from the app screens where users need help.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
@@ -109,7 +109,7 @@ export default function AnswerlatticeQuickstartsPage() {
                         ))}
                     </div>
                     <p className="mx-auto mt-6 max-w-3xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Private beta workspaces can use the exact dashboard snippet immediately. Answerlattice supports the stable v1 script URL and browser global for client installs.
+                        Private beta workspaces can use the exact dashboard snippet immediately. AnswerLattice supports the stable v1 script URL and browser global for client installs.
                     </p>
                 </section>
 
@@ -119,7 +119,7 @@ export default function AnswerlatticeQuickstartsPage() {
                             className="mb-8"
                             eyebrow="Environment setup"
                             title="Keep install values out of committed code."
-                            description="Put only the public Answerlattice widget key and optional script URL in client-safe env variables. Answerlattice does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app."
+                            description="Put only the public AnswerLattice widget key and optional script URL in client-safe env variables. AnswerLattice does not need your Firebase credentials, service account, tenant IDs, store IDs, or user data inside the browser app."
                         />
                         <div className="grid gap-4 lg:grid-cols-3">
                             {ENV_EXAMPLES.map(([title, code]) => (
@@ -149,7 +149,7 @@ export default function AnswerlatticeQuickstartsPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
-                    <h2 className="text-3xl font-bold text-white">Verify the install from Answerlattice.</h2>
+                    <h2 className="text-3xl font-bold text-white">Verify the install from AnswerLattice.</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         The Widget screen checks that the key exists, script loaded, origin is valid, route is allowed, and page context arrived.
                     </p>

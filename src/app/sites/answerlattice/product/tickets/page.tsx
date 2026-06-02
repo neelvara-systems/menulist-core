@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('tickets');
 
 if (!feature) {
-    throw new Error('Answerlattice Tickets feature configuration is missing.');
+    throw new Error('AnswerLattice Tickets feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

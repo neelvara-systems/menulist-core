@@ -1,9 +1,11 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import type { TableColumnsType } from 'antd';
 import { Alert, Button, Card, Empty, Modal, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuBookOpen, LuCheckCircle, LuClock3, LuCreditCard, LuPlay, LuRefreshCw, LuXCircle } from 'react-icons/lu';
 
@@ -143,17 +145,10 @@ function StatusTag({ status }: { status: string }) {
     return <Tag color={STATUS_COLORS[status] || 'default'}>{status || 'unknown'}</Tag>;
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, formatter: IntlFormatter) {
     if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-    });
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function formatDuration(ms: number) {
@@ -171,6 +166,7 @@ function shortId(value: string | null | undefined) {
 
 export default function AnswerlatticeIntakeMonitor() {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
     const [snapshot, setSnapshot] = useState<IntakeMonitorSnapshot | null>(null);
     const [loading, setLoading] = useState(true);
@@ -370,7 +366,7 @@ export default function AnswerlatticeIntakeMonitor() {
             dataIndex: 'modifiedOn',
             key: 'modifiedOn',
             width: 140,
-            render: formatDate,
+            render: (value: string | null) => formatDate(value, formatter),
         },
         {
             title: 'Error',
@@ -387,7 +383,7 @@ export default function AnswerlatticeIntakeMonitor() {
             dataIndex: 'createdOn',
             key: 'createdOn',
             width: 140,
-            render: formatDate,
+            render: (value: string | null) => formatDate(value, formatter),
         },
         {
             title: 'Workspace',
@@ -448,7 +444,7 @@ export default function AnswerlatticeIntakeMonitor() {
             dataIndex: 'startedAt',
             key: 'startedAt',
             width: 140,
-            render: formatDate,
+            render: (value: string | null) => formatDate(value, formatter),
         },
         {
             title: 'Status',
@@ -554,7 +550,7 @@ export default function AnswerlatticeIntakeMonitor() {
                             value={selectedScope ? `${selectedScope.tId}:${selectedScope.sId}` : undefined}
                         />
                         <Tag>{snapshot?.tenants?.length || 0} Answerlattice workspaces</Tag>
-                        {snapshot?.tenantSummaryUpdatedAt ? <Tag>Summary {formatDate(snapshot.tenantSummaryUpdatedAt)}</Tag> : null}
+                        {snapshot?.tenantSummaryUpdatedAt ? <Tag>Summary {formatDate(snapshot.tenantSummaryUpdatedAt, formatter)}</Tag> : null}
                     </Space>
                 </Space>
             </Card>
@@ -582,7 +578,7 @@ export default function AnswerlatticeIntakeMonitor() {
                     <Statistic
                         prefix={<LuClock3 />}
                         title="Last summary run"
-                        value={stats?.latestSchedulerRun ? formatDate(stats.latestSchedulerRun.startedAt) : '-'}
+                        value={stats?.latestSchedulerRun ? formatDate(stats.latestSchedulerRun.startedAt, formatter) : '-'}
                         valueStyle={{ fontSize: 16 }}
                     />
                 </Card>

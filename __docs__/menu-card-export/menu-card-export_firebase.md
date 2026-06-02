@@ -12,6 +12,16 @@ The current implementation preserves the PDF Surface cost model for exports: Men
 
 PDF document properties, generated-date/source-reference filenames, and print-shop source summaries are also generated in the browser. They add no Firestore reads/writes and no Storage operations.
 
+Brand color and logo reuse comes from the already-loaded platform store context used by the owner app and OBP. When `Include logo` is on, the final renderer may download the existing logo image once to embed it into the PDF; this is cached in memory for repeat exports in the same route session and does not create an export artifact, Storage upload, Firestore document, rule, index, or Cloud Function.
+
+Font-size selection, currency formatting, INR/rupee PDF-safe fallback, and price-column measurement are CPU-only renderer work. They add no Firestore read/write, Storage operation, Cloud Function, rule, or index.
+
+Physical output styling is also renderer-only: warm page backgrounds, borders, title plaques/header cards, category labels, and dotted leaders are drawn by `jsPDF` in the browser. No background images, template assets, Storage reads, Firestore documents, Cloud Functions, rules, or indexes are added.
+
+Business-type-aware output is cost-neutral. The print source reuses `store.businessType` and `store.businessCategory` from the already-loaded store context, resolves catalog/offering kind through the existing shared taxonomy, and chooses menu/service/catalog labels and visual tone in the browser. It does not add a store reread, export record, Storage upload, Cloud Function, rule, or index.
+
+Auto print design is also cost-neutral. It runs in the browser after the print source is built, using item count, category count, description coverage, variant presence, business profile, and selected preset to choose the initial style, density, and safe toggles. It does not call the Pro/Premium AI advisor, consume AI capacity, write Firestore, upload Storage, invoke Cloud Functions, or require rules/index changes.
+
 The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, checks rate limit and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
 
 Real-data runtime QA on June 1, 2026 generated PDFs and print-shop packet ZIPs from an active multi-project account with no export collection, export-storage API route, Storage object, rule change, index change, or Cloud Function path.
@@ -100,6 +110,7 @@ The route uses `getExistingProjectsListWithoutLoader()` instead of the legacy au
 | Query existing export by hash | 0 Firebase | Local history is checked in `localStorage`. |
 | Create export record | 0 Firebase | Local history record only. |
 | Upload PDF artifact | 0 | Browser downloads Blob directly. |
+| Read logo asset | 0-1 browser image download | Only when `Include logo` is on, a store logo exists, and the URL is not already cached in the route session. Uses the same existing logo URL as OBP. |
 | Update export record | 0 Firebase | Local history record only. |
 | Generate download URL | 0 | Browser object URL only. |
 | Set PDF metadata / filename | 0 Firebase | Browser `jsPDF` document properties and local filename string only. |
@@ -162,6 +173,7 @@ Rules:
 | Thumbnails | Generate only if UI displays them; otherwise store preview model only. |
 | AI advisor | Owner-click only, Pro/Premium only, rate-limited, capacity-gated, and not part of critical export path. |
 | Print-shop packet | Client-side ZIP only; no Storage cost. |
+| Logo embedding | Final-render only; cache the converted logo data URL in memory by source URL. |
 | Batch export | Flag off until per-request caps, indexes, and access checks are proven. |
 
 ---
@@ -177,6 +189,8 @@ This is operation-count planning, not a billing quote.
 | 10,000 exports | 0 during export | 0 | 0 | 0 |
 
 The route does perform normal project reads when the owner opens the route or changes selected menu. That read is required to render the current menu and is not multiplied by style/preset browsing.
+
+If `Include logo` is on and the logo is stored in Firebase Storage but not already browser-cached, branded PDF output can add one normal logo-image download during final render. It does not add Firestore cost, export artifact Storage cost, or any persistent export object.
 
 AI advisor operations are not counted as exports. A successful Pro/Premium suggestion adds existing AI-accounting writes only: one operation log write and one subscription credit update. Non-Pro/Premium attempts do not call the provider and do not consume credits.
 

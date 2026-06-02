@@ -2,7 +2,7 @@
 
 **Created:** January 4, 2026  
 **Status:** 🔒 **v2.2 LOCKED — Production complete. Only readability/reliability/scale fixes allowed.**  
-**Last Audit:** February 8, 2026 (full codebase trace + ChatGPT Strategic Review v2 → LOCKED)  
+**Last Audit:** June 2, 2026 (owner setup, TV readability, and screen invalidation hardening)
 **Applies:** 3-Year Architecture Freeze Rule
 
 ---
@@ -35,6 +35,12 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
 - **Menu source is automatic** — screens follow the store's active menu truth; no project picker
+- **Owner-only override is real** — Highlights uses valid custom slides only when `ownerOverrideEnabled` is on, with brand fallback if all custom slides expire.
+- **Content is normalized before display** — screen extraction normalizes localized text, strips HTML-like/control text, parses currency-bearing prices, blocks technical category IDs, dedupes items, normalizes tags, and caps custom slide captions.
+- **Currency symbol follows store settings** — `ScreenStoreInfo.currencySymbol` is hydrated from the store document and passed to Menu Board / Highlights price renderers.
+- **Owner uploads are artwork** — `owner_upload` slides render the uploaded image as the content and do not overlay the management caption as TV copy.
+- **Public cache invalidation touches screens** — client-side project/menu public cache invalidation also increments screen content version when a screen token already exists.
+- **Screen SSR cache tag included** — `/api/revalidate/menu` store invalidation now includes `screen-data` so screen SSR reads can refresh with public menu changes.
 - **Shared public attribution** — both screen modes render the same quiet `Powered by MenuList. All rights reserved` attribution used by public OBP/menu surfaces.
 
 ---
@@ -46,18 +52,20 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - `src/types/campaigns.ts:370-461` — `MenuItemForSlide`, `ScreenStoreInfo`, `ScreenSlide`, `DigitalScreenState`, `ScreenAPIResponse`, `SCREEN_CONFIDENCE_THRESHOLD` (0.7)
 - `src/config/features.ts` — `DIGITAL_SCREENS_ENABLED` (true), `_CONFIDENCE_THRESHOLD` (0.7), `_UPLOAD_EXPIRY_DAYS` (14), `_MAX_UPLOADS` (3), **`DIGITAL_SCREENS_MODE`** (v2.0)
 
-### Library (`src/lib/screen/` — 4 files)
+### Library (`src/lib/screen/` — 6 files)
 
-- `utils.ts` (~100 lines) — Token generation (8-char), URL builder, expiry helpers, `guardedReload(componentName)` shared reload throttle
+- `utils.ts` (~100 lines) — High-entropy screen token generation, URL builder, expiry helpers, `guardedReload(componentName)` shared reload throttle
+- `screenContent.ts` — Shared content normalization: text, truncation, price parsing, category fallback, image URL validation, tag normalization, diet tag detection, owner caption safety, item dedupe.
 - `evergreenSlides.ts` (~95 lines) — `generateEvergreenSlides()`, `generateBrandFallback()` (imports `MenuItemForSlide` from `@type/campaigns`)
-- `slideGenerator.ts` (~150 lines) — 4-layer stack generator (exports `generateScreenSlides`, re-exports `MenuItemForSlide`)
+- `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
+- `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first and never creates partial screen state.
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
 
 - `page.tsx` (~90 lines) — Server component: DAL fetch, mode routing via `?mode=` query param
-- `ScreenDisplay.tsx` (~740 lines) — **Highlights mode** client: rotation, cache-first, onSnapshot, seen signal, Ken Burns image zoom, glassmorphism overlays, capsule progress
-- **`MenuBoardDisplay.tsx`** (~800 lines) — **Menu Board mode** client: glassmorphism cards, food thumbnails, ambient orbs, staggered animations, progress bar, auto-pagination (v2.0+v2.1)
+- `ScreenDisplay.tsx` — **Highlights mode** client: rotation, cache-first, onSnapshot, seen signal, hero image slides, QR, capsule progress, screen-safe brand fallback
+- **`MenuBoardDisplay.tsx`** — **Menu Board mode** client: screen-grade full menu layout, ordered categories/items, price alignment, QR, progress bar, auto-pagination
 - `ScreenAttribution.tsx` — Shared quiet MenuList attribution used by both screen modes.
 
 ### API Route (1 file)
@@ -69,7 +77,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - `getScreenDataByToken(token)` — Public, query by token → screen + store + tenantId (2 reads)
 - `getMenuItemsForScreen(storeId, tenantId)` — Public, fetches items for evergreen slides (2 reads)
 - `getScreenState()` — Session required, returns DigitalScreenState
-- `initializeScreenState()` — First-time setup, generates 8-char token
+- `initializeScreenState()` — First-time setup, generates 22-character high-entropy token
 - `updateScreenSettings()` — Toggle owner override
 - `addPinnedSlide()` / `removePinnedSlide()` — Owner upload management (max 3)
 - `bumpScreenContentVersion()` — Invalidation trigger
@@ -77,10 +85,11 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 
 ### Settings UI (`src/components/.../DigitalScreenSettings/` — 4 files)
 
-- `index.tsx` (203 lines) — Main card: fetch state, override toggle
-- `CurrentSlides.tsx` (107 lines) — Read-only list with source labels
-- `OwnerUploads.tsx` (190 lines) — Upload manager: max 3, 14-day expiry, delete
-- `ScreenLink.tsx` (101 lines) — Copy URL, preview in new tab
+- `index.tsx` — Main card: fetch state, owner-only toggle, settings composition
+- `CurrentSlides.tsx` — Custom slide list and owner-only mode messaging
+- `OwnerUploads.tsx` — Upload manager: max 3, 14-day expiry, delete, caption edit
+- `ScreenLink.tsx` — TV setup cards for Menu Board + Highlights, compact URLs, QR blocks, last-seen status
+- `src/components/mobile/screens/MobileDigitalScreensScreen.tsx` — Mobile parity surface for TV status, both links, custom slides, and owner-only toggle
 
 ---
 
@@ -99,7 +108,11 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
     → getMenuItemsForScreen(storeId, tenantId) [DAL — campaigns/index.ts:602]
       → Query projects/{tenantId}/{storeId}/metadata (active, !deleted) [1 read]
       → getDoc projects/{tenantId}/{storeId}/{projectId} [1 read]
-      → Extract items (name, imageUrl, price, available, isBestSeller, categoryName)
+      → Extract and normalize items:
+          name, imageUrl, price, available, isBestSeller,
+          categoryName, categoryOrderIndex, orderIndex,
+          description, tags
+      → Dedupe repeated items before rendering
     → IF mode === 'highlights':
         → generateScreenSlides() [slideGenerator.ts:49]
           → Layer 1-4 stack, min 3 / max 8, monotonicity
@@ -128,7 +141,9 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 
 ```
 Owner saves menu → bumpScreenContentVersion() [DAL]
+  → OR public client cache invalidation → touchDigitalScreenContentVersion()
   → contentVersion++ in platformSummary/campaigns_{sId}
+  → /api/revalidate/menu store invalidation also clears screen-data cache tag
   → onSnapshot fires on all connected screens for that store
   → newVersion > currentVersion → window.location.reload()
   → Full SSR re-render → fresh slides
@@ -141,7 +156,8 @@ Settings page → DigitalScreenSettings/index.tsx
   → getScreenState() or initializeScreenState() [DAL]
   → Display:
       ScreenLink (v2.0: TWO links — Menu Board + Highlights)
-      CurrentSlides (read-only, highlights mode only)
+      TV setup status (daily last-seen signal)
+      CurrentSlides (custom slides + owner-only mode messaging)
       OwnerUploads (max 3, highlights mode only)
       Override toggle (highlights mode only)
   → Upload: file → base64 → uploadScreenSlide() → Storage + pinnedSlides[]
@@ -157,12 +173,13 @@ Settings page → DigitalScreenSettings/index.tsx
 MENU BOARD: Owner edits menu → screen updates automatically
 ─────────────────────────────────────────────────────────────
 Owner edits item in Editor (price, name, availability)
-  → save triggers bumpScreenContentVersion() [DAL]
+  → save triggers public cache invalidation for the store
+  → public cache invalidation calls touchDigitalScreenContentVersion() when screen exists
   → contentVersion++ in platformSummary/campaigns_{sId}
   → onSnapshot fires on MenuBoardDisplay.tsx
   → newVersion > currentVersion → window.location.reload()
   → page.tsx re-fetches getMenuItemsForScreen() → fresh menu data
-  → MenuBoardDisplay re-renders with updated categories/items/prices
+  → MenuBoardDisplay re-renders with updated categories/items/prices in menu order
 
 Owner marks item sold out
   → same flow above
@@ -180,10 +197,12 @@ HIGHLIGHTS: System manages content; owner can add images
 System (automatic):
   Campaign engine generates slide → stored in platformSummary
   → onSnapshot fires on ScreenDisplay.tsx → reload → fresh slides
+  → Labels stay factual: Today / Popular / Featured / category / On menu
 
 Owner (optional):
   Upload image → addPinnedSlide() → pinnedSlides[] + contentVersion bump
-  → onSnapshot fires → reload → image appears in rotation
+  → onSnapshot fires → reload → image appears in rotation as artwork
+  → Caption is a management label, not a forced overlay on the TV
 
   Remove image → removePinnedSlide() → array update + contentVersion bump
   → onSnapshot fires → reload → image removed from rotation
@@ -209,12 +228,12 @@ Any change to platformSummary/campaigns_{sId}
 | Field                  | Type          | Purpose                                                     |
 | ---------------------- | ------------- | ----------------------------------------------------------- |
 | `enabled`              | boolean       | Screen feature on/off                                       |
-| `screenToken`          | string        | 8-char UUID prefix for URL                                  |
+| `screenToken`          | string        | 22-character high-entropy screen URL token; legacy 8-char tokens remain accepted |
 | `lastRefreshed`        | Timestamp     | Debug info                                                  |
 | `contentVersion`       | number        | Bumped on menu/availability change → triggers client reload |
 | `lastContentChangeAt`  | Timestamp     | Debug info                                                  |
 | `currentMinConfidence` | number        | Monotonicity tracking (highest shown today)                 |
-| `ownerOverrideEnabled` | boolean       | "Use my designs only" toggle                                |
+| `ownerOverrideEnabled` | boolean       | "Only custom slides" toggle for Highlights                  |
 | `pinnedSlides`         | ScreenSlide[] | Max 3, 14-day expiry each                                   |
 | `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal                               |
 
@@ -537,3 +556,5 @@ The following historical docs are in `_archive/` — their content has been abso
 | 7.0     | 2026-02-08 | Cascade | **v2.2.1 HARDENING:** 7 fixes — dietary dot logic consistency, cache-first MenuBoard init, category header 22px, description opacity 0.45, pagination 10 items/page, broken image fallback, reload guard (30s throttle)                                                                                                                                   |
 | 8.0     | 2026-02-08 | Cascade | **v2.2.2 REFACTOR:** Extracted `guardedReload` to shared `utils.ts`, moved `MenuItemForSlide` + `ScreenStoreInfo` to `@type/campaigns.ts` (single source of truth), broke circular dep between slideGenerator↔evergreenSlides                                                                                                                             |
 | 9.0     | 2026-03-15 | Cascade | **v2.3 HARDENING:** Token entropy (8→22 chars, ~130-bit). Reload jitter (`guardedReloadWithJitter`). MenuBoard: broken image fallback, listener offline+retry, sold-out messaging, MAX_TOTAL_ITEMS=200. Auto-fullscreen recovery (both modes). Settings: activity status indicator, Main TV/Second TV labels. All reliability/scale fixes per LOCKED rule |
+| 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                                                                              |
+| 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual highlight labels, evergreen category variety, custom-slide artwork rendering, and sanitized owner captions.                                                                                                                              |

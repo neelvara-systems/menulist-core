@@ -17,8 +17,7 @@ import {
 } from '@lib/utils/feedbackQrCode';
 import { Button, Card, Flex, Modal, Spin, Typography, message, theme } from 'antd';
 import React, { useState } from 'react';
-import { FaWhatsapp } from 'react-icons/fa6';
-import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuQrCode } from 'react-icons/lu';
+import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -128,7 +127,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                         </Button>
                         <Button
                             size="small"
-                            icon={<FaWhatsapp size={14} />}
+                            icon={<LuMessageCircle size={14} />}
                             onClick={handleWhatsApp}
                             style={{ color: token.colorSuccess, borderColor: token.colorSuccess }}
                         >

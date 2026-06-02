@@ -6,6 +6,7 @@ import type {
     OwnerConfidence,
     SourceQuality,
 } from '@template/main-app/projects/types';
+import { theme } from 'antd';
 import { LuCheckCircle, LuLock, LuSparkles } from 'react-icons/lu';
 import { Card, Flex, List, Tag, Text } from '../../antd';
 
@@ -30,6 +31,7 @@ export default function MobileOwnerActionPlanCard({
     analyticsAiEntitlement,
     title = "Today's Action List",
 }: MobileOwnerActionPlanCardProps) {
+    const { token } = theme.useToken();
     const actions = actionPlan?.actions || [];
     const bestSource = sourceQuality[0];
     const isPlanLocked = analyticsAiEntitlement
@@ -50,7 +52,7 @@ export default function MobileOwnerActionPlanCard({
             <Flex gap={10} vertical>
                 {isPlanLocked ? (
                     <Flex align="center" gap={8}>
-                        <LuLock color="#1d3f8f" size={18} />
+                        <LuLock color={token.colorPrimary} size={18} />
                         <Flex gap={2} vertical>
                             <Text strong>Available on Pro</Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -94,7 +96,7 @@ export default function MobileOwnerActionPlanCard({
                     </List>
                 ) : !isPlanLocked ? (
                     <Flex align="center" gap={8}>
-                        <LuCheckCircle color="#16a34a" size={18} />
+                        <LuCheckCircle color={token.colorSuccess} size={18} />
                         <Text type="secondary">No action needed. Menu state is stable.</Text>
                     </Flex>
                 ) : null}

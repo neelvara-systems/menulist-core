@@ -199,6 +199,7 @@
         "dateFormatHelper": "This controls how dates are shown to your team inside the app.",
         "timeFormatHelper": "Pick the clock style your team reads most easily, like 12-hour or 24-hour time.",
         "currencyHelper": "Set the currency customers should see on prices for this outlet.",
+        "currency": "Moneda",
         "contentLanguageTitle": "Content language",
         "contentLanguageHelper": "Switch the language here to review or edit what customers see in that language. Empty fields mean this language still needs content.",
         "addPlatform": "Add Platform",
@@ -871,7 +872,7 @@
         "reset": "Reset",
         "refresh": "Refresh",
         "totalItems": "Total {total} items",
-        "subtitle": "Haz seguimiento del uso del procesamiento de IA, las marcas de tiempo y los cargos de facturación de las operaciones recientes."
+        "subtitle": "Haz seguimiento de la actividad de mejora del menú, los tiempos y el uso de créditos."
     },
     "Users": {
         "title": "Users",

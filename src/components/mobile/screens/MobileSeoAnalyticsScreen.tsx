@@ -792,7 +792,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     <Button
                                         fill="none"
                                         onClick={() => setIsGuideOpen(false)}
-                                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                        style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                     >
                                         <LuX size={18} />
                                     </Button>
@@ -887,7 +887,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                     <Button
                                         fill="none"
                                         onClick={closeSetupWizard}
-                                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                                        style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                                     >
                                         <LuX size={18} />
                                     </Button>
@@ -896,7 +896,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 {tAnalytics('setupWizard')}
                             </NavBar>
 
-                            <Flex gap={12} style={{ borderBottom: '1px solid #f0f0f0', padding: 12 }} vertical>
+                            <Flex gap={12} style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, padding: 12 }} vertical>
                                 <Flex align="center" justify="space-between">
                                     <Text strong>{wizardSteps[wizardStep]?.title}</Text>
                                     <Text type="secondary">Step {wizardStep + 1} of {wizardSteps.length}</Text>
@@ -907,7 +907,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                                 {wizardSteps[wizardStep]?.content}
                             </Flex>
 
-                            <Flex gap={8} style={{ borderTop: '1px solid #f0f0f0', padding: 12 }} justify="space-between">
+                            <Flex gap={8} style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, padding: 12 }} justify="space-between">
                                 <Button
                                     disabled={wizardStep === 0}
                                     fill="outline"

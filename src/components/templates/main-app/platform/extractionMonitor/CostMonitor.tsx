@@ -14,6 +14,7 @@
 
 import { getExtractionCostMetrics } from '@database/ops/extraction';
 import type { ExtractionCostMetrics } from '@lib/ops/extractionTypes';
+import { formatInrPaise } from '@util/formatters';
 import { Card, Empty, Spin, Statistic, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 
@@ -66,24 +67,30 @@ export default function CostMonitor({ cost: externalCost, refreshTrigger }: Cost
                 <Statistic title="Gemini Calls" value={cost.callsToday} />
                 <Statistic
                     title="Avg Cost/Extraction"
-                    value={cost.avgCostPerExtraction}
-                    suffix="paise"
+                    value={formatInrPaise(cost.avgCostPerExtraction, {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2,
+                    })}
                 />
                 <Statistic
                     title="Daily Spend"
-                    value={cost.dailySpend}
-                    suffix="paise"
+                    value={formatInrPaise(cost.dailySpend, {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2,
+                    })}
                     valueStyle={{ color: cost.dailySpend > 10000 ? token.colorError : undefined }}
                 />
                 <Statistic
                     title="Most Expensive"
-                    value={cost.mostExpensiveJobCost}
-                    suffix="paise"
+                    value={formatInrPaise(cost.mostExpensiveJobCost, {
+                        maximumFractionDigits: 2,
+                        minimumFractionDigits: 2,
+                    })}
                 />
             </div>
             <div style={{ marginTop: 8 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Data from MENULIST_AI_OPERATIONS collection (Cloud Function writes).
+                    Data from MENULIST_AI_OPERATIONS collection (Cloud Function writes). Stored as paise and shown as INR here.
                 </Text>
             </div>
         </Card>

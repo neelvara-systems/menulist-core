@@ -8,7 +8,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                     Give your SaaS or digital product a support layer users can trust.
                 </h2>
                 <p className="mt-4 text-lg text-[#a0a0c0]">
-                    Start with existing docs, notes, FAQs, releases, screenshots, recordings, and repeated questions. Answerlattice turns them into page-aware support, hosted help, answer drafts, fallback signals, and review work.
+                    Start with existing docs, notes, FAQs, releases, screenshots, recordings, and recurring questions. AnswerLattice turns them into page-aware support, hosted help, answer drafts, fallback signals, and review work.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                     <AnswerlatticeLink

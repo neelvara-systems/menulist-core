@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
  * - `menu-store-{storeId}` — invalidates project data + decision blocks for one store
  * - `store-{storeId}` — legacy per-store tag for store-scoped cached helpers
  * - `client-stores` — invalidates public store lookup data used by OBP, menus, PWA shortcuts, and compliance pages
+ * - `screen-data` — invalidates digital screen SSR reads
  *
  * Usage:
  *   // Per-store (preferred — via storeId shorthand):
@@ -29,7 +30,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Valid tags for customer-facing invalidation.
 const VALID_TAG_PREFIXES = ['menu-store-', 'store-'];
-const VALID_EXACT_TAGS = ['client-stores'];
+const VALID_EXACT_TAGS = ['client-stores', 'screen-data'];
 
 function isValidTag(tag: string): boolean {
     return VALID_EXACT_TAGS.includes(tag) || VALID_TAG_PREFIXES.some(prefix => tag.startsWith(prefix));
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
         // Build tags — support storeId shorthand or explicit tags array
         let tags: string[] = [];
         if (body.storeId) {
-            tags = [`menu-store-${body.storeId}`, `store-${body.storeId}`, 'client-stores'];
+            tags = [`menu-store-${body.storeId}`, `store-${body.storeId}`, 'client-stores', 'screen-data'];
         } else if (body.tags && Array.isArray(body.tags)) {
             tags = body.tags.filter(isValidTag);
         }

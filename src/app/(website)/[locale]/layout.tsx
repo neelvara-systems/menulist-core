@@ -1,6 +1,7 @@
 import IntlClientWrapper from '@/providers/IntlClientWrapper';
 import { WEBSITE_LANGUAGES } from '@/config/websiteLanguages';
 import {
+    getWebsiteResourceLocaleStaticParams,
     isReviewedWebsiteResourceLocale,
 } from '@/content/websiteResources/routing';
 import { defaultTimezone } from '@lib/localization/config';
@@ -65,6 +66,10 @@ function getMessagesForLocale(locale: string): Record<string, unknown> {
     if (!selectedMessages) return enUS;
 
     return deepMergeMessages(enUS, selectedMessages);
+}
+
+export function generateStaticParams() {
+    return getWebsiteResourceLocaleStaticParams();
 }
 
 export default function WebsiteResourceLocaleLayout({ children, params }: LocaleLayoutProps) {

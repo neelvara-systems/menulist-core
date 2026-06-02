@@ -125,6 +125,24 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
                         detectedAt: FieldValue.serverTimestamp(),
                     },
                 });
+
+                try {
+                    const { sendLifecycleMessage } = await import('../messaging/messagingEngine');
+                    await sendLifecycleMessage({
+                        storeId: String(sId),
+                        tenantId: String(storeData.tId),
+                        eventType: 'MENU_STALE',
+                        referenceId: `menu-stale-${sId}-${new Date().toISOString().slice(0, 10)}`,
+                        metadata: {
+                            reason: 'Menu information may be older than expected.',
+                            daysSincePublish: storeData.daysSincePublish,
+                            truthScore: storeData.score,
+                        },
+                    });
+                } catch {
+                    // Detection cooldown remains intact even if delivery fails.
+                }
+
                 result.writesCount++;
                 result.newStalenessDetected++;
 

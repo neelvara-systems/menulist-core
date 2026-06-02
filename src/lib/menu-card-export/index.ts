@@ -16,4 +16,6 @@ export * from './repository/freshness';
 export * from './repository/menuCardExportRepository';
 export * from './source/buildPrintSource';
 export * from './source/buildPrintSourceHash';
+export * from './templates/autoPrintDesign';
+export * from './templates/businessPrintProfiles';
 export * from './templates/registry';

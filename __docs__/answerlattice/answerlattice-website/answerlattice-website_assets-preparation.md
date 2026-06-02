@@ -1,14 +1,14 @@
-# Answerlattice Website - Final Assets Preparation
+# AnswerLattice Website - Final Assets Preparation
 
 > **Status:** Planning artifact for final website media
-> **Last Updated:** 2026-06-01
+> **Last Updated:** 2026-06-02
 > **Audience:** Product / Marketing / Design / Engineering
 
 ---
 
 ## Goal
 
-Prepare the final videos, screenshots, and product-media placeholders needed to make the Answerlattice website feel concrete, credible, and conversion-ready without using random stock assets, fake customers, or unsupported product claims.
+Prepare the final videos, screenshots, and product-media placeholders needed to make the AnswerLattice website feel concrete, credible, and conversion-ready without using random stock assets, fake customers, or unsupported product claims.
 
 The current homepage uses responsive HTML/CSS sample product scenes. Those are acceptable placeholders. Final assets should replace or support them only after the captured UI is reviewed for accuracy, privacy, and claim parity.
 
@@ -16,7 +16,7 @@ The current homepage uses responsive HTML/CSS sample product scenes. Those are a
 
 ## Asset Rules
 
-1. Keep the current Answerlattice theme colors: deep navy surfaces, verdigris/teal controls, cyan support accents, and existing logo treatment.
+1. Keep the current AnswerLattice theme colors: deep navy surfaces, verdigris/teal controls, cyan support accents, and existing logo treatment.
 2. Do not use fake customer logos, fake testimonials, fake usage metrics, or stock people imagery.
 3. Use one consistent demo workspace: `Sample SaaS workspace`.
 4. Use generic but realistic sample product areas: Billing, Onboarding, Team Settings, Releases, Integrations, and Errors.
@@ -47,7 +47,7 @@ The current homepage uses responsive HTML/CSS sample product scenes. Those are a
 |-------|--------------|----------------|----------------|
 | Homepage hero workspace preview | `/` | `src/app/sites/answerlattice/components/HeroSection.tsx` or final dashboard capture | Billing page support, approved answer, safe context, review queue |
 | Product proof tabs | `/` and `/product` | `src/app/sites/answerlattice/components/ProductPreviewSection.tsx` | Product setup, Key product pages, Widget install, Feedback review, Answer review |
-| Product overview hero proof | `/product` | `src/app/sites/answerlattice/product/page.tsx` plus dashboard captures | What Answerlattice is, what it connects, approved-answer conversion proof, safe runtime boundary |
+| Product overview hero proof | `/product` | `src/app/sites/answerlattice/product/page.tsx` plus dashboard captures | What AnswerLattice is, what it connects, approved-answer conversion proof, safe runtime boundary |
 | Activation Command Center | `/product/launch-setup`, `/get-started` | `/answerlattice/activation`, `src/app/(answerlattice)/answerlattice/activation/page.tsx` | Launch readiness, product profile, knowledge import, surfaces, widget install |
 | Product Surfaces | Homepage proof, Product page | `/answerlattice/product-surfaces` | Billing, onboarding, team settings, releases, integrations with coverage states |
 | Knowledge Intake | Pre-Onboarding, Product features | `/answerlattice/knowledge-intake`, `AnswerlatticeKnowledgeIntake.tsx` | Source links, docs/files, screenshot/recording text extraction, draft review state |
@@ -64,7 +64,7 @@ The current homepage uses responsive HTML/CSS sample product scenes. Those are a
 | Governance: Trust metrics | Security/trust proof | `/answerlattice/governance/trust`, `FounderTrustDashboard.tsx` | Coverage, trust readiness, widget status, failing surfaces |
 | Billing and support credits | Pricing page | `/answerlattice/billing`, `AnswerlatticeBilling.tsx` | Plan, monthly support credits, top-up path, no sensitive payment IDs |
 | FAQ category proof | `/faq` | Static public page capture | Four grouped FAQ sections: setup/source intake, page-aware boundaries, fallback/support work, operations/pricing/runtime |
-| Contact fit proof | `/contact` | Static public page capture | Product URL, first stuck page, repeated questions, and do-not-send private data boundary |
+| Contact fit proof | `/contact` | Static public page capture | Product URL, first support page, expected or recurring questions, and do-not-send private data boundary |
 
 ---
 

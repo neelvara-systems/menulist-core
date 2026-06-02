@@ -397,6 +397,8 @@ export interface MenuItemForSlide {
     available: boolean;
     isBestSeller?: boolean;
     categoryName?: string;
+    categoryOrderIndex?: number;
+    orderIndex?: number;
     description?: string; // v2.2: Short description for richer screen display
     tags?: string[]; // v2.2: Dietary/category tags (e.g. "Vegetarian", "Non-Vegetarian")
 }
@@ -409,6 +411,7 @@ export interface ScreenStoreInfo {
     name: string;
     logoUrl?: string;
     menuQrUrl: string;
+    currencySymbol?: string;
 }
 
 /**
@@ -486,6 +489,7 @@ export interface ScreenAPIResponse {
         name: string;
         logoUrl?: string;
         menuQrUrl: string;
+        currencySymbol?: string;
     };
 }
 

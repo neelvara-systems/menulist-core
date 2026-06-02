@@ -169,6 +169,9 @@ export async function saveFilesToProject(
             // 1. Read project inside transaction (always fresh, ignores _existingProjectData)
             const projectDoc = await transaction.get(projectRef);
             const existingProject = projectDoc.exists ? projectDoc.data() : null;
+            if (!existingProject) {
+                throw new Error(`Project not found: ${projectId}`);
+            }
             const existingFiles: ProjectFileEntry[] = existingProject?.files || [];
             const existingLanguages: string[] = existingProject?.languages || [];
             const existingDefaultLanguage: string | undefined = existingProject?.defaultLanguage;

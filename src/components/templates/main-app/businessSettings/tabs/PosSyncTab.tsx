@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
 import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
+import { formatDateTime } from "@util/dateTime";
 import {
     Alert,
     Badge,
@@ -35,7 +36,7 @@ import {
 } from "antd";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useSession } from "next-auth/react";
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from "react";
 import {
     LuArrowRight,
@@ -78,6 +79,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     onStoreUpdate,
 }) => {
     const t = useTranslations('PosSync');
+    const formatter = useFormatter();
     const { token } = theme.useToken();
     const { data: session } = useSession();
     const posSync = storeDetails?.posSync;
@@ -323,7 +325,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         ].join('\n');
         navigator.clipboard.writeText(summary);
         message.success('Technical summary copied');
-    }, []);
+    }, [storeDetails?.currencyCode]);
 
     const handleDownloadSample = useCallback(() => {
         const sample = {
@@ -333,7 +335,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             tenantId: 0,
             projectId: 'sample',
             storeId: 0,
-            currency: 'INR',
+            currency: storeDetails?.currencyCode || 'INR',
             languages: [{ code: 'en', name: 'English', isPrimary: true }],
             menu: {
                 categories: [
@@ -391,7 +393,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             dataIndex: 'sentAt',
             key: 'sentAt',
             width: 160,
-            render: (val: string) => val ? new Date(val).toLocaleString() : '—',
+            render: (val: string) => val ? formatDateTime(val, 'datetime', formatter) : '—',
         },
         {
             title: 'Status',

@@ -14,6 +14,13 @@
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
+import {
+    formatScreenPrice,
+    getScreenDietType,
+    normalizeOwnerSlideCaption,
+    resolveScreenText,
+    truncateScreenText,
+} from "@lib/screen/screenContent";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -313,7 +320,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     .qr-code {
                         padding: 8px;
                         background: white;
-                        border-radius: 12px;
+                        border-radius: 8px;
                     }
                 `}</style>
             </div>
@@ -398,12 +405,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     top: 16px;
                     left: 50%;
                     transform: translateX(-50%);
-                    background: rgba(0, 0, 0, 0.7);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                    background: rgba(0, 0, 0, 0.86);
                     color: #ffffff;
                     padding: 10px 24px;
-                    border-radius: 24px;
+                    border-radius: 8px;
                     font-size: 14px;
                     font-weight: 600;
                     z-index: 200;
@@ -425,12 +430,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     position: fixed;
                     top: 16px;
                     right: 16px;
-                    background: rgba(0, 0, 0, 0.5);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                    background: rgba(0, 0, 0, 0.78);
                     color: #fca5a5;
                     padding: 6px 14px;
-                    border-radius: 20px;
+                    border-radius: 8px;
                     font-size: 12px;
                     font-weight: 600;
                     z-index: 100;
@@ -444,11 +447,6 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     height: 6px;
                     border-radius: 50%;
                     background: #ef4444;
-                    animation: pulse-dot 2s ease-in-out infinite;
-                }
-                @keyframes pulse-dot {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.4; }
                 }
                 
                 .slide-progress-bar {
@@ -460,10 +458,8 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     gap: 6px;
                     z-index: 100;
                     padding: 6px 12px;
-                    background: rgba(0, 0, 0, 0.3);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
-                    border-radius: 20px;
+                    background: rgba(0, 0, 0, 0.56);
+                    border-radius: 8px;
                 }
                 
                 .progress-capsule {
@@ -494,10 +490,6 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
     if (slide.type === "brand_fallback") {
         return (
             <div className="slide brand-slide">
-                {/* Ambient orbs for brand slide */}
-                <div className="brand-orb brand-orb-1" />
-                <div className="brand-orb brand-orb-2" />
-
                 <div className="brand-content">
                     {storeInfo.logoUrl ? (
                         <div className="brand-logo-wrap">
@@ -516,7 +508,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                                 color="#1e293b"
                                 bgColor="#ffffff"
                                 errorLevel="H"
-                                style={{ borderRadius: 10 }}
+                                style={{ borderRadius: 8 }}
                             />
                         </div>
                     )}
@@ -532,34 +524,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                         text-align: center;
                         position: relative;
                         overflow: hidden;
-                        background: #0a0e1a;
-                    }
-                    .brand-orb {
-                        position: absolute;
-                        border-radius: 50%;
-                        filter: blur(100px);
-                        opacity: 0.2;
-                        pointer-events: none;
-                    }
-                    .brand-orb-1 {
-                        width: 500px;
-                        height: 500px;
-                        background: radial-gradient(circle, #fbbf24, transparent 70%);
-                        top: -100px;
-                        right: -100px;
-                        animation: brand-float 15s ease-in-out infinite;
-                    }
-                    .brand-orb-2 {
-                        width: 400px;
-                        height: 400px;
-                        background: radial-gradient(circle, #60a5fa, transparent 70%);
-                        bottom: -100px;
-                        left: -100px;
-                        animation: brand-float 20s ease-in-out infinite reverse;
-                    }
-                    @keyframes brand-float {
-                        0%, 100% { transform: translate(0, 0); }
-                        50% { transform: translate(40px, -30px); }
+                        background: #070b12;
                     }
                     .brand-content {
                         display: flex;
@@ -575,11 +540,9 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        background: rgba(255, 255, 255, 0.06);
-                        backdrop-filter: blur(20px);
-                        -webkit-backdrop-filter: blur(20px);
-                        border-radius: 32px;
-                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        background: rgba(255, 255, 255, 0.08);
+                        border-radius: 8px;
+                        border: 1px solid rgba(255, 255, 255, 0.16);
                         padding: 24px;
                     }
                     .brand-logo {
@@ -590,19 +553,19 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     .brand-name-large {
                         font-size: 56px;
                         font-weight: 800;
-                        letter-spacing: -1px;
+                        letter-spacing: 0;
                         text-shadow: 0 4px 20px rgba(0,0,0,0.5);
                     }
                     .brand-tagline {
                         font-size: 22px;
                         opacity: 0.6;
                         font-weight: 500;
-                        letter-spacing: 1px;
+                        letter-spacing: 0;
                     }
                     .brand-qr {
                         padding: 12px;
                         background: rgba(255, 255, 255, 0.95);
-                        border-radius: 16px;
+                        border-radius: 8px;
                         box-shadow: 0 8px 32px rgba(0,0,0,0.3);
                     }
                 `}</style>
@@ -610,20 +573,83 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
         );
     }
 
-    // Item highlight slide
-    const slideLabel = slide.source === "pinned" ? "Featured" :
-        slide.source === "campaign" ? "Today's Pick" :
-            slide.source === "evergreen" ? "Popular" : "";
+    if (slide.type === "owner_upload") {
+        const ownerSlideLabel = normalizeOwnerSlideCaption(slide.caption);
 
-    // Determine dietary indicator from tags
-    const isVeg = slide.tags?.some(t => t.toLowerCase().includes('vegetarian') && !t.toLowerCase().includes('non'));
-    const isNonVeg = slide.tags?.some(t => t.toLowerCase().includes('non-vegetarian') || t.toLowerCase().includes('non vegetarian'));
-    const hasDietaryTag = isVeg || isNonVeg;
+        return (
+            <div className="slide owner-upload-slide">
+                <img
+                    src={slide.imageUrl}
+                    alt={ownerSlideLabel}
+                    className="owner-upload-image"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                />
 
-    // Truncate description for display (max ~120 chars for readability on screen)
-    const displayDesc = slide.description
-        ? slide.description.length > 120 ? slide.description.slice(0, 117) + '...' : slide.description
-        : null;
+                {qrReady && (slide.qrUrl || storeInfo.menuQrUrl) && (
+                    <div className="slide-qr-corner">
+                        <QRCode
+                            value={slide.qrUrl || storeInfo.menuQrUrl}
+                            size={64}
+                            color="#1e293b"
+                            bgColor="#ffffff"
+                            errorLevel="H"
+                            style={{ borderRadius: 6 }}
+                        />
+                    </div>
+                )}
+
+                <div className="slide-store-watermark">{storeInfo.name}</div>
+
+                <style jsx>{`
+                    .owner-upload-slide {
+                        width: 100%;
+                        height: 100%;
+                        position: relative;
+                        overflow: hidden;
+                        background: #070b12;
+                    }
+                    .owner-upload-image {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        display: block;
+                    }
+                    .slide-qr-corner {
+                        position: absolute;
+                        top: 24px;
+                        right: 24px;
+                        padding: 8px;
+                        background: rgba(255, 255, 255, 0.92);
+                        border-radius: 8px;
+                        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+                        z-index: 2;
+                    }
+                    .slide-store-watermark {
+                        position: absolute;
+                        bottom: 28px;
+                        right: 24px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: rgba(255, 255, 255, 0.32);
+                        letter-spacing: 0;
+                        text-transform: uppercase;
+                        z-index: 2;
+                    }
+                `}</style>
+            </div>
+        );
+    }
+
+    const slideLabel = resolveScreenText(
+        slide.caption,
+        slide.source === "evergreen" ? "On menu" : "Featured",
+    );
+    const dietType = getScreenDietType(slide.tags);
+    const hasDietaryTag = dietType !== null;
+    const displayTitle = truncateScreenText(slide.itemName || slide.caption, 72, "Featured item");
+    const displayDesc = slide.description ? truncateScreenText(slide.description, 120) : null;
 
     return (
         <div className="slide item-slide">
@@ -632,7 +658,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                 <div className="slide-image-layer">
                     <img
                         src={slide.imageUrl}
-                        alt={slide.itemName || 'Menu item'}
+                        alt={displayTitle}
                         className="slide-hero-image"
                         onError={(e) => {
                             // HARDENING: Hide broken image, gradient overlay handles background
@@ -645,7 +671,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
             {/* Multi-stop gradient overlay for text readability */}
             <div className="slide-overlay" />
 
-            {/* Decorative accent — diagonal color strip at top */}
+            {/* Screen accent strip */}
             <div className="slide-accent-strip" />
 
             {/* Content positioned over the image */}
@@ -655,36 +681,29 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     {slideLabel && (
                         <span className="slide-label-badge">{slideLabel}</span>
                     )}
-                    {hasDietaryTag && (
-                        <span className={`dietary-badge ${isVeg ? 'veg' : 'non-veg'}`}>
+                    {hasDietaryTag && dietType && (
+                        <span className={`dietary-badge ${dietType === "veg" ? 'veg' : 'non-veg'}`}>
                             <span className="dietary-dot" />
-                            {isVeg ? 'Veg' : 'Non-Veg'}
+                            {dietType === "veg" ? 'Veg' : 'Non-Veg'}
                         </span>
                     )}
                 </div>
 
                 {/* Item name */}
-                <h2 className="slide-item-name">{slide.itemName || slide.caption}</h2>
+                <h2 className="slide-item-name">{displayTitle}</h2>
 
                 {/* Description — v2.2 */}
                 {displayDesc && (
                     <p className="slide-description">{displayDesc}</p>
                 )}
 
-                {/* Price + category row */}
-                <div className="slide-meta-row">
-                    {slide.price != null && slide.price > 0 && (
+                {slide.price != null && slide.price > 0 && (
+                    <div className="slide-meta-row">
                         <div className="slide-price-pill">
-                            <span className="price-currency">₹</span>
-                            <span className="price-value">{slide.price.toLocaleString('en-IN')}</span>
+                            <span className="price-value">{formatScreenPrice(slide.price, storeInfo.currencySymbol)}</span>
                         </div>
-                    )}
-
-                    {/* Caption */}
-                    {slide.caption && slide.itemName && (
-                        <span className="slide-caption">{slide.caption}</span>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* QR in corner */}
@@ -741,7 +760,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     z-index: 1;
                 }
 
-                /* ═══ DECORATIVE ACCENT STRIP ═══ */
+                /* ═══ SCREEN ACCENT STRIP ═══ */
                 .slide-accent-strip {
                     position: absolute;
                     top: 0;
@@ -773,34 +792,28 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     flex-wrap: wrap;
                 }
 
-                /* ═══ LABEL BADGE ═══ */
                 .slide-label-badge {
                     display: inline-flex;
                     padding: 6px 16px;
                     background: rgba(255, 255, 255, 0.12);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
                     border: 1px solid rgba(255, 255, 255, 0.15);
-                    border-radius: 20px;
+                    border-radius: 8px;
                     font-size: 14px;
                     font-weight: 700;
                     color: rgba(255, 255, 255, 0.9);
                     text-transform: uppercase;
-                    letter-spacing: 2px;
+                    letter-spacing: 0;
                 }
 
-                /* ═══ DIETARY BADGE ═══ */
                 .dietary-badge {
                     display: inline-flex;
                     align-items: center;
                     gap: 6px;
                     padding: 5px 14px;
-                    border-radius: 20px;
+                    border-radius: 8px;
                     font-size: 13px;
                     font-weight: 700;
-                    letter-spacing: 0.5px;
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                    letter-spacing: 0;
                 }
                 .dietary-badge.veg {
                     background: rgba(34, 197, 94, 0.18);
@@ -833,7 +846,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     margin: 0;
                     color: #ffffff;
                     text-shadow: 0 4px 20px rgba(0,0,0,0.5);
-                    letter-spacing: -0.5px;
+                    letter-spacing: 0;
                     line-height: 1.1;
                 }
 
@@ -845,10 +858,10 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     margin: 0;
                     line-height: 1.4;
                     max-width: 700px;
-                    letter-spacing: 0.3px;
+                    letter-spacing: 0;
                 }
 
-                /* ═══ META ROW — PRICE + CAPTION ═══ */
+                /* ═══ META ROW — PRICE ═══ */
                 .slide-meta-row {
                     display: flex;
                     align-items: center;
@@ -856,37 +869,20 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     margin-top: 4px;
                 }
 
-                /* ═══ PRICE PILL — GLASSMORPHISM ═══ */
                 .slide-price-pill {
                     display: inline-flex;
                     align-items: baseline;
                     gap: 4px;
                     padding: 8px 24px;
                     background: rgba(74, 222, 128, 0.15);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
                     border: 1px solid rgba(74, 222, 128, 0.25);
-                    border-radius: 24px;
-                }
-                .price-currency {
-                    font-size: 24px;
-                    font-weight: 500;
-                    color: #4ade80;
-                    opacity: 0.8;
+                    border-radius: 8px;
                 }
                 .price-value {
                     font-size: 36px;
                     font-weight: 800;
                     color: #4ade80;
                     font-variant-numeric: tabular-nums;
-                }
-
-                /* ═══ CAPTION ═══ */
-                .slide-caption {
-                    font-size: 18px;
-                    color: rgba(255, 255, 255, 0.5);
-                    font-weight: 500;
-                    letter-spacing: 0.5px;
                 }
 
                 /* ═══ QR CORNER ═══ */
@@ -896,7 +892,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     right: 24px;
                     padding: 8px;
                     background: rgba(255, 255, 255, 0.92);
-                    border-radius: 12px;
+                    border-radius: 8px;
                     box-shadow: 0 4px 24px rgba(0,0,0,0.3);
                     z-index: 2;
                 }
@@ -909,7 +905,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     font-size: 13px;
                     font-weight: 600;
                     color: rgba(255, 255, 255, 0.2);
-                    letter-spacing: 1px;
+                    letter-spacing: 0;
                     text-transform: uppercase;
                     z-index: 2;
                 }

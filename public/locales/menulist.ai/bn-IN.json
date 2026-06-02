@@ -199,6 +199,7 @@
         "dateFormatHelper": "This controls how dates are shown to your team inside the app.",
         "timeFormatHelper": "Pick the clock style your team reads most easily, like 12-hour or 24-hour time.",
         "currencyHelper": "Set the currency customers should see on prices for this outlet.",
+        "currency": "মুদ্রা",
         "contentLanguageTitle": "Content language",
         "contentLanguageHelper": "Switch the language here to review or edit what customers see in that language. Empty fields mean this language still needs content.",
         "addPlatform": "Add Platform",
@@ -871,7 +872,7 @@
         "reset": "Reset",
         "refresh": "Refresh",
         "totalItems": "Total {total} items",
-        "subtitle": "সাম্প্রতিক কাজগুলোর জন্য AI প্রসেসিং ব্যবহার, সময়চিহ্ন এবং বিলিং চার্জ ট্র্যাক করুন।"
+        "subtitle": "মেনু উন্নয়ন কার্যকলাপ, সময় এবং ক্রেডিট ব্যবহার ট্র্যাক করুন।"
     },
     "Users": {
         "title": "Users",

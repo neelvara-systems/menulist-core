@@ -1,7 +1,7 @@
 # Digital Screens — Documentation Hub
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)  
-**Status:** 🔒 v2.2 LOCKED (v2.3 hardening applied Mar 2026) — Only readability/reliability/scale fixes allowed.  
+**Status:** 🔒 v2.2 LOCKED (readability + owner-trust hardening applied June 2, 2026) — Only readability/reliability/scale fixes allowed.
 **One-liner:** "Your full menu on your shop TV. Always up to date. Never touch it."
 
 ---
@@ -16,6 +16,15 @@ Digital Screens extends MenuList's authority into the physical store environment
 Both modes use the same data pipeline, same URL base. Owner opens a link on their TV. That's it. Content management IS menu management — there's no separate "screen content" to manage.
 
 Both screen modes keep the same quiet public attribution as OBP and menu pages: `Powered by MenuList. All rights reserved`.
+
+June 2026 hardening keeps that boundary while making the feature owner-trustworthy:
+
+- TV setup now shows the two screen types as distinct setup cards with compact links, QR blocks, and last-seen status.
+- Menu Board now uses screen-grade typography, price alignment, fewer rows per page, and the owner/menu category order instead of bestseller-first sorting.
+- Screen content now normalizes item/category text, currency-bearing prices, tags, descriptions, and custom slide captions before display, and TV price symbols follow the store's selected `currencySymbol`.
+- Highlights owner-only mode now truly uses custom slides only, with brand fallback if no valid upload remains.
+- Highlights no longer overlays management captions on custom poster slides; owner-uploaded artwork is treated as the screen content.
+- Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
 
 **Problem solved:** Shop TVs showing outdated slideshows or blank screens because nobody remembers to update them. And the 70%+ of restaurants that need a full menu board on screen, not just promotional slides.
 
@@ -51,6 +60,8 @@ Historical docs in `_archive/`:
 src/types/campaigns.ts                      # ScreenSlide, DigitalScreenState types
 src/config/features.ts                      # DIGITAL_SCREENS_* feature flags + MODE
 src/lib/screen/                             # Utilities, slide generators, renderer
+src/lib/screen/screenContent.ts             # Content normalization, price parsing, tags, captions
+src/lib/screen/screenInvalidation.ts       # Public-cache-linked screen content version touch
 src/app/screen/[token]/page.tsx             # Server component (SSR, DAL fetch, mode routing)
 src/app/screen/[token]/ScreenDisplay.tsx    # Highlights mode client (rotation, cache, listener)
 src/app/screen/[token]/MenuBoardDisplay.tsx # Menu Board mode client (v2.0 — full menu, pagination)
@@ -66,12 +77,14 @@ src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 
 **One TV (most common):**
 
-1. Settings → Digital Screen → copy Menu Board link → open on TV → bookmark → done
+1. Settings → Digital Screen → copy Menu Board link from the TV setup card → open on TV → fullscreen → done
 
 **Two TVs:**
 
 1. Counter TV → Menu Board link (full menu with prices)
 2. Waiting area TV → Highlights link (rotating promotions + QR)
+
+**Trust signal:** The settings screen shows when a TV was last seen after it sends the daily screen signal.
 
 **Content management:** Owner edits menu in Projects/Editor. Screen updates automatically. No separate screen content management.
 
@@ -98,4 +111,4 @@ See `digital-screens_firebase.md` for full breakdown.
 
 ---
 
-**Last Updated:** March 15, 2026
+**Last Updated:** June 2, 2026

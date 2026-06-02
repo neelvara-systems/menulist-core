@@ -25,6 +25,7 @@ import { AICapacityError } from "@services/ai/capacityError";
 import translateProjectPublicContent from "@services/ai/projectPublicContent/translateProjectPublicContent";
 import { UserUploadedFileType } from "@type/common";
 import { DEFAULT_OUTLET_POLICY, type InheritanceState, type OutletPolicy } from "@type/multiOutlet.types";
+import { formatDateTime } from "@util/dateTime";
 import { isSameObjects, removeObjRef } from "@util/utils";
 import {
     message as antdMessage,
@@ -41,6 +42,7 @@ import {
     Tooltip,
     Typography
 } from "antd";
+import { useFormatter } from "next-intl";
 import {
     useCallback,
     useContext,
@@ -116,6 +118,7 @@ const DEFAULT_EDITOR_FILTERS: EditorFilters = {
 
 function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction, onQualityActionHandled }: EditorProps) {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const labels = useOfferingLabels();
     const [previewFile, setPreviewFile] = useState<ProjectFileType | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState<string | null>(null);
@@ -126,6 +129,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const hasShownConfidenceNudgeRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+    const lastSavedAtLabel = lastSavedAt ? formatDateTime(lastSavedAt, "time", formatter) : null;
     const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(
         PlatformGlobalDataContext,
     );
@@ -1305,10 +1309,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             </Text>
                         }
                     />
-                    {lastSavedAt && !isSaving && !hasChanges && (
-                        <Tooltip title={`Last saved at ${new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Visible to customers now`}>
+                    {lastSavedAtLabel && !isSaving && !hasChanges && (
+                        <Tooltip title={`Last saved at ${lastSavedAtLabel} · Visible to customers now`}>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Live
+                                {lastSavedAtLabel} · Live
                             </Text>
                         </Tooltip>
                     )}

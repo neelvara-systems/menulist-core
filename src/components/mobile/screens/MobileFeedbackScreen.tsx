@@ -6,6 +6,7 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -247,7 +248,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                                 <Flex gap={8} vertical>
                                                     <Flex align="center" gap={8}>
                                                         {stars(feedback.rating)}
-                                                        <Text type="secondary">{feedback.createdAt ? format.dateTime(new Date(feedback.createdAt), 'date') : ''}</Text>
+                                                        <Text type="secondary">{feedback.createdAt ? formatDateTime(feedback.createdAt, 'date', format) : ''}</Text>
                                                     </Flex>
                                                     <Text
                                                         style={{

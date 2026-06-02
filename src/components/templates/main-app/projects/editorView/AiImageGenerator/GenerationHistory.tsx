@@ -1,5 +1,7 @@
 import { UserUploadedFileType } from '@type/common';
+import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Empty, Flex, Image, Popover, Space, Typography, theme } from 'antd';
+import { useFormatter } from 'next-intl';
 import React from 'react';
 import { LuClock, LuRefreshCw, LuTrash2 } from 'react-icons/lu';
 import { ImageGenerationConfigType } from '../../types';
@@ -23,14 +25,14 @@ const GenerationHistory: React.FC<GenerationHistoryProps> = ({
   onClearHistory
 }) => {
   const { token } = theme.useToken();
+  const formatter = useFormatter();
 
   if (!history || history.length === 0) {
     return null;
   }
 
   const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString();
+    return formatDateTime(timestamp, 'datetime', formatter);
   };
 
   const renderHistoryContent = () => {

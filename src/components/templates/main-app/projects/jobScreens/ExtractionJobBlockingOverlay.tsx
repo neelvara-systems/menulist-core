@@ -11,7 +11,7 @@
  * - Master job blocking message when outlet's master has active job
  */
 
-import { Button, Flex, Progress, Spin, Typography } from 'antd';
+import { Button, Flex, Progress, Spin, Typography, theme } from 'antd';
 import { LuLoader2, LuPause } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -42,6 +42,8 @@ export default function ExtractionJobBlockingOverlay({
     onCancel,
     canCancel = false,
 }: ExtractionJobBlockingOverlayProps) {
+    const { token } = theme.useToken();
+
     if (!visible) return null;
 
     return (
@@ -56,7 +58,7 @@ export default function ExtractionJobBlockingOverlay({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                backgroundColor: token.colorBgElevated,
                 zIndex: 1000,
                 backdropFilter: 'blur(4px)',
             }}

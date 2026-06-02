@@ -125,6 +125,18 @@ export const SECRET_GROUPS = {
         SECRETS.TELEGRAM_CHAT_ID,
     ] as string[],
 
+    /**
+     * Platform-owner alert delivery.
+     *
+     * Keep this group limited to configured deploy-safe secrets. SMTP and
+     * Telegram stay runtime-gated until their Secret Manager values exist.
+     */
+    PLATFORM_ALERT_DELIVERY: [
+        SECRETS.WHATSAPP_PHONE_NUMBER_ID,
+        SECRETS.WHATSAPP_ACCESS_TOKEN,
+        SECRETS.WHATSAPP_APP_SECRET,
+    ] as string[],
+
     /** Inbound Google Cloud budget alert webhook authentication */
     BUDGET_ALERT: [
         SECRETS.GCP_BUDGET_WEBHOOK_SECRET,

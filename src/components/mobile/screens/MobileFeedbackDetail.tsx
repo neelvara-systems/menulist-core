@@ -1,6 +1,7 @@
 'use client'
 
 import { updateFeedbackStatus } from '@database/guestFeedback';
+import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -60,7 +61,7 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                         <Flex align="center" justify="space-between">
                             <Flex gap={4} vertical>
                                 <Title level={4} style={{ margin: 0 }}>{feedback.customerName || t('anonymous')}</Title>
-                                <Text type="secondary">{feedback.createdAt ? format.dateTime(new Date(feedback.createdAt), 'date') : ''}</Text>
+                                <Text type="secondary">{feedback.createdAt ? formatDateTime(feedback.createdAt, 'date', format) : ''}</Text>
                             </Flex>
                             {statusTag}
                         </Flex>

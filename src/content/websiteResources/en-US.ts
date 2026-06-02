@@ -2,7 +2,7 @@ import type { WebsiteResourcesCopy } from './types';
 import { WEBSITE_RESOURCE_SOURCE_VERSION } from './sourceVersion';
 
 const publishedAt = '2026-06-01';
-const updatedAt = '2026-06-01';
+const updatedAt = '2026-06-02';
 
 export const enUSWebsiteResources: WebsiteResourcesCopy = {
     locale: 'en-US',
@@ -24,6 +24,8 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
         backToHub: 'Back to resources',
         checklist: 'Checklist',
         comparison: 'Comparison',
+        copiedChecklist: 'Checklist copied',
+        copyChecklist: 'Copy checklist',
         faqTitle: 'Questions owners ask',
         onThisPage: 'On this page',
         primaryAction: 'Next step',
@@ -55,18 +57,18 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
         {
             slug: 'menu-source-audit',
             cluster: 'source-audit',
-            title: 'Find every place customers may still see an old menu',
+            title: 'Audit every place customers may still see an old menu',
             metaTitle: 'Menu Source Audit for Restaurants | MenuList',
             metaDescription: 'Check Google, QR codes, WhatsApp, Instagram, PDFs, staff files, websites, and branch copies for old menu versions.',
-            description: 'A practical audit for finding old menu copies before they confuse customers.',
-            quickAnswer: 'A menu source audit checks every public and staff-shared place where a customer might still see old prices, old items, or an outdated menu file. The goal is one current approved menu link behind every surface.',
+            description: 'A practical audit for finding old menu copies before they confuse customers or staff.',
+            quickAnswer: 'A menu source audit checks every public and staff-shared place where a customer might still see old prices, old items, or an outdated menu file. The goal is one current approved menu URL behind QR, Google, WhatsApp, website, print, screen, and branch surfaces.',
             readingTime: '6 min',
             publishedAt,
             updatedAt,
             changeFrequency: 'monthly',
             priority: 0.82,
             primaryCta: { label: 'Upload your current menu', href: '/create-menu' },
-            relatedSlugs: ['official-menu-source', 'google-business-profile-menu', 'menu-update-checklist'],
+            relatedSlugs: ['official-menu-source', 'google-business-profile-menu', 'official-menu-url-checklist'],
             distributionSnippets: [
                 'Most menu problems are not inside the menu. They are in old copies still visible on Google, WhatsApp, QR cards, and staff files.',
                 'Before printing a new QR code, check where the old menu is still being shared.',
@@ -117,7 +119,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     id: 'how-menulist-fits',
                     title: 'How MenuList fits',
                     body: [
-                        'MenuList gives the business one approved menu source and public link. QR, website links, saved menu shortcuts, print assets, and official pages can point back to that current source.',
+                        'MenuList gives the business an official menu source for the current approved menu. QR, website links, saved menu shortcuts, WhatsApp replies, print assets, screens, branch pages, and official pages can point back to that current source.',
                         'External platforms still decide what they crawl, show, cache, or refresh. The MenuList job is to make the official source clearer and easier to reuse.',
                     ],
                 },
@@ -226,24 +228,24 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
         {
             slug: 'qr-menu-for-restaurants',
             cluster: 'qr-menu',
-            title: 'A QR code is only useful when the menu behind it is current',
-            metaTitle: 'QR Menu for Restaurants | MenuList',
-            metaDescription: 'Plan QR menus around one stable menu link, table placement, scan testing, and current customer-facing content.',
-            description: 'A QR menu guide focused on the source behind the code.',
-            quickAnswer: 'A restaurant QR code should open one stable, current, mobile-friendly menu link. The QR itself is only a doorway. The menu source behind it decides whether customers trust it.',
+            title: 'QR menus need one current approved destination',
+            metaTitle: 'QR Menu Setup for Restaurants | MenuList',
+            metaDescription: 'Plan restaurant QR menus around one stable official menu URL, table placement, scan testing, and current customer-facing content.',
+            description: 'A QR menu guide focused on the official source behind the code.',
+            quickAnswer: 'A restaurant QR code should open one stable, current, mobile-friendly menu URL. The QR itself is only a doorway. The official menu source behind it decides whether customers trust what they see.',
             readingTime: '6 min',
             publishedAt,
             updatedAt,
             changeFrequency: 'monthly',
             priority: 0.78,
             primaryCta: { label: 'Create one official QR menu', href: '/create-menu' },
-            relatedSlugs: ['qr-code-placement-checklist', 'digital-menu-vs-pdf-menu', 'official-menu-source'],
+            relatedSlugs: ['restaurant-qr-menu-mistakes', 'qr-code-placement-checklist', 'official-menu-source'],
             sections: [
                 {
                     id: 'what-qr-opens',
                     title: 'What the QR should open',
                     body: [
-                        'The QR should open a current public menu page that works on a phone, shows business identity, and stays readable without downloading a heavy file.',
+                        'The QR should open the official menu source: a current public menu page that works on a phone, shows business identity, and stays readable without downloading a heavy file.',
                     ],
                     bullets: [
                         'Current item names and prices',
@@ -261,6 +263,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                         'The page is hard to read on a phone.',
                         'The link changes after every menu update.',
                         'Staff print new QR cards without checking the old ones.',
+                        'The QR points to a shared branch menu when this location has different prices or availability.',
                         'Customers scan in poor lighting or from too far away.',
                     ],
                 },
@@ -372,11 +375,11 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
         {
             slug: 'google-business-profile-menu',
             cluster: 'google-menu',
-            title: 'Give Google one clearer menu source to read',
-            metaTitle: 'Google Business Profile Menu Source | MenuList',
-            metaDescription: 'Use one current menu link for Google Business Profile while avoiding claims about ranking, refresh timing, or automatic Google updates.',
+            title: 'Use one clear menu URL in Google Business Profile',
+            metaTitle: 'Google Business Profile Menu URL | MenuList',
+            metaDescription: 'Use one current official menu URL for Google Business Profile while avoiding claims about ranking, refresh timing, or automatic Google updates.',
             description: 'A careful owner guide for Google menu links, photos, and old menu cleanup.',
-            quickAnswer: 'Google Business Profile can show menu links, menu photos, and customer-uploaded images. A current official menu link reduces confusion, but Google decides what it crawls, shows, and refreshes.',
+            quickAnswer: 'Google Business Profile can show menu links, menu photos, and customer-uploaded images. A current official menu URL reduces confusion, but Google decides what it crawls, shows, and refreshes.',
             readingTime: '6 min',
             publishedAt,
             updatedAt,
@@ -392,7 +395,8 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     id: 'why-outdated',
                     title: 'Why Google menu information becomes outdated',
                     body: [
-                        'Google may show business links, menu links, photos, customer-uploaded images, and other discovered content. If old files remain public, customers can still find them.',
+                        'Google may show business links, menu links, photos, customer-uploaded images, and other discovered content. If old files remain public, customers can still find them even after the restaurant has changed prices or items.',
+                        'The owner-controlled job is to make the current approved menu easy to identify and reuse as the official source.',
                     ],
                 },
                 {
@@ -425,7 +429,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     id: 'claim-limit',
                     title: 'What MenuList does not control',
                     body: [
-                        'MenuList does not control Google ranking, Google Maps placement, photo removal decisions, crawl timing, or AI summaries. MenuList prepares a clearer official menu source that owners can place where Google and customers look.',
+                        'MenuList does not control Google ranking, Google Maps placement, photo removal decisions, crawl timing, or AI summaries. MenuList prepares a clearer official menu source and stable URL that owners can place where Google and customers look.',
                     ],
                 },
             ],
@@ -445,11 +449,11 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
         {
             slug: 'official-menu-source',
             cluster: 'official-source',
-            title: 'Customers should not have to guess which menu is correct',
+            title: 'Official menu source: one current approved menu for every public surface',
             metaTitle: 'Official Menu Source for Restaurants | MenuList',
             metaDescription: 'Define one approved public menu source for QR codes, Google, WhatsApp, Instagram, websites, print, and multi-location teams.',
-            description: 'The core MenuList concept explained in owner language.',
-            quickAnswer: 'An official menu source is the owner-approved menu version that every public link and material should point to. Customers should not compare PDFs, photos, and QR links to guess what is current.',
+            description: 'The core MenuList concept explained in owner language: one official source for the current approved menu.',
+            quickAnswer: 'An official menu source is the owner-approved menu version that every public link and material should point to. It gives QR codes, Google links, WhatsApp replies, websites, print assets, screens, branch pages, search engines, and AI systems one clearer current menu URL to work from.',
             readingTime: '5 min',
             publishedAt,
             updatedAt,
@@ -463,7 +467,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     title: 'The problem with menu copies everywhere',
                     body: [
                         'A business can have one current menu internally and many outdated copies publicly. Customers see screenshots, saved PDFs, old QR links, Google photos, Instagram posts, and staff-shared files.',
-                        'The official source gives every surface a single place to point.',
+                        'MenuList gives every public surface one current approved menu source, so customers, staff, QR codes, Google links, WhatsApp links, branch pages, websites, print assets, screens, search engines, and AI/search systems are less likely to work from stale menu information.',
                     ],
                 },
                 {
@@ -482,14 +486,15 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     id: 'when-prices-change',
                     title: 'When prices or items change',
                     body: [
-                        'The owner updates the approved source. The QR and customer links should keep opening the current version instead of forcing the owner to chase every old file.',
+                        'The owner updates the current approved menu source. The QR and customer links should keep opening the current version instead of forcing the owner to chase every old file.',
                     ],
                 },
                 {
                     id: 'how-menulist-fits',
                     title: 'How MenuList fits',
                     body: [
-                        'MenuList turns the current menu into a structured public source. The same source can support QR menus, official pages, sharing links, print/PDF assets, screens, and multi-location control.',
+                        'MenuList turns the current approved menu into a structured public source. The same source can support QR menus, official pages, sharing links, print/PDF assets, screens, and multi-location control.',
+                        'MenuList does not guarantee that outside platforms will crawl, rank, cite, refresh, or summarize the page. Its job is to keep the public customer-facing version clearer and easier to reuse.',
                     ],
                 },
             ],
@@ -799,26 +804,268 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
             ],
         },
         {
+            slug: 'restaurant-menu-schema',
+            cluster: 'menu-seo',
+            title: 'Use restaurant menu schema only for menu details customers can see',
+            metaTitle: 'Restaurant Menu Schema Guide | MenuList',
+            metaDescription: 'Learn how Restaurant, LocalBusiness, Menu, MenuSection, MenuItem, OpeningHoursSpecification, Article, FAQPage, and BreadcrumbList schema should be used.',
+            description: 'A practical structured-data guide for public restaurant menu pages.',
+            quickAnswer: 'Restaurant menu schema should describe the same public menu content customers can see on the page. Use Restaurant or LocalBusiness for the business, Menu, MenuSection, and MenuItem for visible menu content, and never mark up hidden prices, fake reviews, or unavailable details.',
+            readingTime: '6 min',
+            publishedAt: '2026-06-02',
+            updatedAt,
+            changeFrequency: 'monthly',
+            priority: 0.74,
+            primaryCta: { label: 'Publish a structured menu page', href: '/create-menu' },
+            relatedSlugs: ['restaurant-menu-seo', 'ai-search-menu-discovery', 'official-menu-source'],
+            distributionSnippets: [
+                'Restaurant menu schema is useful only when it matches the menu customers can actually see.',
+                'Structured data should describe current public menu content, not invent prices, reviews, or hidden items.',
+            ],
+            sections: [
+                {
+                    id: 'schema-types',
+                    title: 'Schema types that fit restaurant menu pages',
+                    body: [
+                        'A restaurant public page can use business schema for identity and menu schema for the actual menu. The safest setup is simple: describe the business, the public menu URL, menu sections, and menu items that are visible on the page.',
+                    ],
+                    checklist: [
+                        'Use Restaurant when the business is a restaurant.',
+                        'Use LocalBusiness or a closer subtype when Restaurant does not fit.',
+                        'Use Menu for the public menu object.',
+                        'Use MenuSection for visible menu categories.',
+                        'Use MenuItem for visible menu items.',
+                        'Use OpeningHoursSpecification only for published business hours.',
+                        'Use FAQPage only when the same questions and answers are visible on the page.',
+                        'Use BreadcrumbList for page navigation context.',
+                    ],
+                },
+                {
+                    id: 'visible-content',
+                    title: 'Structured data must match visible content',
+                    body: [
+                        'Schema is not a place to add information customers cannot see. If the price, item, hour, rating, review, image, dietary claim, or offer is not visible and current on the public page, it should not be marked up.',
+                    ],
+                    checklist: [
+                        'Visible item name matches the MenuItem name.',
+                        'Visible price matches the Offer price when price markup is used.',
+                        'Visible hours match OpeningHoursSpecification.',
+                        'Visible FAQ content matches FAQPage markup.',
+                        'Canonical URL matches the public page URL.',
+                        'Sitemap includes only public pages intended for discovery.',
+                    ],
+                },
+                {
+                    id: 'common-mistakes',
+                    title: 'Common schema mistakes',
+                    checklist: [
+                        'Adding fake reviews or ratings.',
+                        'Marking up hidden FAQ answers.',
+                        'Keeping old prices in structured data after changing visible prices.',
+                        'Using Restaurant schema for a non-restaurant business.',
+                        'Adding unavailable menu items that customers cannot see.',
+                        'Expecting schema to guarantee rankings, rich results, or AI citations.',
+                    ],
+                },
+                {
+                    id: 'how-menulist-fits',
+                    title: 'How MenuList fits',
+                    body: [
+                        'MenuList keeps public menu pages structured around the owner-approved menu source. That makes it easier to keep visible content, metadata, sitemap entries, and JSON-LD aligned.',
+                        'External search and AI systems still decide what they crawl, show, cite, summarize, or ignore.',
+                    ],
+                },
+            ],
+            faq: [
+                {
+                    id: 'schema-guarantee',
+                    question: 'Does restaurant menu schema guarantee rich results or rankings?',
+                    answer: 'No. Schema can help systems understand a page, but search engines decide whether to crawl, index, rank, or show enhanced results.',
+                },
+                {
+                    id: 'hidden-menu-items',
+                    question: 'Can hidden menu items be added to schema?',
+                    answer: 'No. Structured data should match the public page. Hidden items, old prices, and private notes should stay out of public schema.',
+                },
+            ],
+        },
+        {
+            slug: 'official-menu-url-checklist',
+            cluster: 'checklists',
+            title: 'Use one stable menu URL everywhere customers look',
+            metaTitle: 'Official Menu URL Checklist for Restaurants | MenuList',
+            metaDescription: 'A checklist for using one stable menu URL across QR codes, Google Business Profile, WhatsApp, Instagram, websites, print assets, screens, and branches.',
+            description: 'A surface-by-surface checklist for replacing scattered menu links with one approved source URL.',
+            quickAnswer: 'An official menu URL is the stable public link customers should use for the current approved menu. Put the same URL behind QR codes, Google menu links, social profiles, website buttons, WhatsApp replies, print assets, screens, and branch pages where it fits.',
+            readingTime: '5 min',
+            publishedAt: '2026-06-02',
+            updatedAt,
+            changeFrequency: 'monthly',
+            priority: 0.76,
+            primaryCta: { label: 'Create a stable menu URL', href: '/create-menu' },
+            relatedSlugs: ['official-menu-source', 'menu-source-audit', 'qr-menu-for-restaurants'],
+            distributionSnippets: [
+                'Do not create a new menu file for every update. Keep one stable menu URL and update the approved menu behind it.',
+                'The best menu link is the one customers keep reaching, even after prices or availability change.',
+            ],
+            sections: [
+                {
+                    id: 'choose-source-url',
+                    title: 'Choose the source URL',
+                    body: [
+                        'Start with the public menu page that the owner can keep current. This URL should stay stable even when prices, items, photos, or availability change.',
+                    ],
+                    checklist: [
+                        'Use a short public URL when possible.',
+                        'Confirm the page opens on mobile without login.',
+                        'Confirm the menu shown is owner-approved.',
+                        'Confirm the page can be updated without changing the URL.',
+                        'Use branch-specific URLs when each location has different prices or availability.',
+                    ],
+                },
+                {
+                    id: 'update-surfaces',
+                    title: 'Update every customer-facing surface',
+                    checklist: [
+                        'QR codes on tables, counters, packaging, windows, and bill folders.',
+                        'Google Business Profile menu link where available.',
+                        'Instagram bio, highlights, and link-in-bio tools.',
+                        'WhatsApp saved replies, catalog notes, and group descriptions.',
+                        'Website menu buttons and navigation links.',
+                        'PDF or print files that include a menu URL.',
+                        'Digital screens and counter displays.',
+                        'Branch pages and branch-specific QR cards.',
+                    ],
+                },
+                {
+                    id: 'test-before-printing',
+                    title: 'Test before printing or sharing',
+                    checklist: [
+                        'Open the URL on mobile data.',
+                        'Scan the QR from final print size.',
+                        'Check the menu title, prices, and current availability.',
+                        'Ask staff to send the same URL when customers ask for the menu.',
+                        'Keep old PDFs from being used as the main customer link.',
+                    ],
+                },
+                {
+                    id: 'limits',
+                    title: 'What the URL cannot force',
+                    body: [
+                        'A clear official URL reduces confusion, but it does not force external sites to refresh instantly. Google, social platforms, customer-uploaded photos, and old shared files can still show cached or old information until they update or are replaced.',
+                    ],
+                },
+            ],
+            faq: [
+                {
+                    id: 'new-qr-every-update',
+                    question: 'Does every menu update need a new QR code?',
+                    answer: 'No. If the QR points to a stable menu URL, the business can update the menu behind the URL and keep the same printed QR code.',
+                },
+                {
+                    id: 'delete-old-pdfs',
+                    question: 'Should old PDF links be removed?',
+                    answer: 'Old public PDFs should stop being the main menu link. Keep only current print or backup files that match the approved menu.',
+                },
+            ],
+        },
+        {
+            slug: 'restaurant-qr-menu-mistakes',
+            cluster: 'qr-menu',
+            title: 'Common QR menu mistakes restaurants should avoid',
+            metaTitle: 'Common QR Menu Mistakes Restaurants Should Avoid | MenuList',
+            metaDescription: 'Avoid stale PDF menus, tiny QR codes, missing fallback URLs, slow mobile pages, branch mismatches, and untested QR placements.',
+            description: 'A practical mistake list for QR menus before owners print table cards or packaging.',
+            quickAnswer: 'The biggest QR menu mistake is treating the QR code as the menu. The QR is only an access point. The important part is the stable current menu source behind it, plus readable placement, a fallback URL, and scan testing before customers use it.',
+            readingTime: '5 min',
+            publishedAt: '2026-06-02',
+            updatedAt,
+            changeFrequency: 'monthly',
+            priority: 0.74,
+            primaryCta: { label: 'Set up a stable QR menu', href: '/create-menu' },
+            relatedSlugs: ['qr-menu-for-restaurants', 'qr-code-placement-checklist', 'digital-menu-vs-pdf-menu'],
+            distributionSnippets: [
+                'The QR code is not the menu. It is only the doorway to the menu source behind it.',
+                'A QR menu fails when the link, placement, or branch version is wrong.',
+            ],
+            sections: [
+                {
+                    id: 'pdf-only',
+                    title: 'Mistake 1: pointing QR codes to old PDFs',
+                    body: [
+                        'A PDF can be useful for print, but it often becomes stale when it is shared through WhatsApp, old website links, or old QR cards. A mobile menu page is easier to update behind the same link.',
+                    ],
+                    checklist: [
+                        'Use a mobile-friendly menu page as the main QR destination.',
+                        'Keep PDF files secondary for print or backup.',
+                        'Replace old PDF links when prices or items change.',
+                    ],
+                },
+                {
+                    id: 'unstable-links',
+                    title: 'Mistake 2: changing the link after every menu update',
+                    body: [
+                        'If each update creates a new URL, printed QR material becomes risky. The safer setup is a stable URL with menu content updated behind it.',
+                    ],
+                    checklist: [
+                        'Use one stable public menu URL.',
+                        'Update content behind the URL instead of replacing the URL.',
+                        'Keep staff replies and social links pointed to the same source.',
+                    ],
+                },
+                {
+                    id: 'placement-testing',
+                    title: 'Mistake 3: printing before real scan testing',
+                    checklist: [
+                        'Test the QR at final print size.',
+                        'Test iPhone and Android cameras.',
+                        'Test in the same lighting customers will use.',
+                        'Print a readable fallback URL below the QR.',
+                        'Open the page on mobile data, not only Wi-Fi.',
+                    ],
+                },
+                {
+                    id: 'branch-mismatch',
+                    title: 'Mistake 4: using one branch menu for every location',
+                    body: [
+                        'A shared brand menu is useful, but branches may have different prices, availability, hours, or service modes. QR codes should send customers to the right branch version when those differences matter.',
+                    ],
+                },
+            ],
+            faq: [
+                {
+                    id: 'biggest-qr-mistake',
+                    question: 'What is the most common QR menu mistake?',
+                    answer: 'Using a QR code that opens an old or hard-to-read menu file instead of a stable current menu page.',
+                },
+                {
+                    id: 'branch-specific-qr',
+                    question: 'Should each branch have its own QR menu?',
+                    answer: 'Yes when prices, availability, hours, or service details differ by branch. A shared QR is fine only when the same menu is truly correct everywhere.',
+                },
+            ],
+        },
+        {
             slug: 'multi-location-menu-management',
             cluster: 'multi-location',
-            title: 'Keep outlet menus aligned without hiding local differences',
-            metaTitle: 'Multi-location Menu Management | MenuList',
-            metaDescription: 'Manage master menus, outlet differences, branch price drift, local availability, and public link consistency from one approved source.',
+            title: 'Keep branch menus aligned without hiding local differences',
+            metaTitle: 'Multi-location Menu Source Control | MenuList',
+            metaDescription: 'Manage master menus, outlet differences, branch price drift, local availability, QR links, Google links, and public branch consistency from one approved source.',
             description: 'A guide for brands running more than one location.',
-            quickAnswer: 'Multi-location menu management needs one approved master source plus controlled outlet differences for price, availability, local items, and branch-specific details.',
+            quickAnswer: 'Multi-location menu management needs one current approved master source plus controlled outlet differences for price, availability, local items, hours, QR links, Google links, and branch-specific public details.',
             readingTime: '6 min',
             publishedAt,
             updatedAt,
             changeFrequency: 'monthly',
             priority: 0.76,
             primaryCta: { label: 'Set up your first location', href: '/create-menu' },
-            relatedSlugs: ['official-menu-source', 'menu-update-checklist', 'menu-source-audit'],
+            relatedSlugs: ['official-menu-source', 'official-menu-url-checklist', 'menu-update-checklist'],
             sections: [
                 {
                     id: 'why-branches-drift',
                     title: 'Why branch menus drift',
                     body: [
-                        'One outlet changes a price. Another runs out of an item. A third prints old QR material. Over time the brand has many menu versions and no simple way to know what customers see.',
+                        'One outlet changes a price. Another runs out of an item. A third prints old QR material. A fourth updates WhatsApp replies but not Google. Over time the brand has many menu versions and no simple way to know what customers see.',
                     ],
                 },
                 {
@@ -839,6 +1086,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                         'Branch-specific service modes',
                         'QR links for each outlet',
                         'Google and social links per outlet',
+                        'Public branch pages where customer truth differs',
                         'Printed materials per outlet',
                     ],
                 },
@@ -846,7 +1094,7 @@ export const enUSWebsiteResources: WebsiteResourcesCopy = {
                     id: 'how-menulist-fits',
                     title: 'How MenuList fits',
                     body: [
-                        'MenuList supports a master menu and outlet-aware control so businesses can keep the shared source stable while preserving local differences where needed.',
+                        'MenuList supports a master menu and outlet-aware control so businesses can keep the shared source stable while preserving local differences where needed. The goal is not to hide branch differences; it is to keep each public branch version approved and current.',
                     ],
                 },
             ],

@@ -20,13 +20,13 @@ import {
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, message, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
-import { FaInstagram } from 'react-icons/fa6';
 import {
     LuAlertTriangle,
     LuCheck,
     LuClipboard,
     LuExternalLink,
     LuGlobe,
+    LuInstagram,
     LuMessageCircle,
     LuMonitor,
     LuQrCode,
@@ -77,7 +77,7 @@ const MANUAL_SURFACES: ManualSurfaceConfig[] = [
         dalKey: 'instagramBio',
         label: 'Instagram Bio',
         explanation: 'Add your official business link to your bio so followers can open it',
-        icon: <FaInstagram size={16} />,
+        icon: <LuInstagram size={16} />,
         guideSteps: [
             'Open Instagram and go to your profile',
             'Tap "Edit Profile"',
@@ -153,6 +153,16 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const totalActive = manualActiveCount + autoActiveCount;
     const totalSurfaces = MANUAL_SURFACES.length + autoSurfaces.length;
     const allActive = totalActive === totalSurfaces;
+    const primaryTagStyle = {
+        backgroundColor: token.colorPrimaryBg,
+        borderColor: token.colorPrimaryBorder,
+        color: token.colorPrimaryText,
+    };
+    const successTagStyle = {
+        backgroundColor: token.colorSuccessBg,
+        borderColor: token.colorSuccessBorder,
+        color: token.colorSuccessText,
+    };
 
     // Find first incomplete manual surface for "Start here" / "Next" highlighting
     const nextManualSurface = MANUAL_SURFACES.find(s => !isManualActive(s.id));
@@ -213,14 +223,14 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
         >
             <Flex vertical gap={14}>
                 {/* Header */}
-                <Flex justify="space-between" align="center">
+                <Flex justify="space-between" align="center" gap={12} wrap="wrap">
                     <Flex vertical gap={2}>
                         <Text strong style={{ fontSize: 14 }}>Make your business easy to find</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             Add your official page to the places customers already use
                         </Text>
                     </Flex>
-                    <Tag color={allActive ? 'green' : 'default'} style={{ margin: 0 }}>
+                    <Tag style={{ ...(allActive ? successTagStyle : {}), margin: 0 }}>
                         {allActive
                             ? 'All set'
                             : `Visible in ${totalActive} place${totalActive !== 1 ? 's' : ''}`
@@ -258,7 +268,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                     return (
                         <div key={surface.id}>
                             <Flex
-                                gap={10} align="center"
+                                gap={10} align="center" wrap="wrap"
                                 style={{
                                     padding: '8px 0',
                                     borderBottom: `1px solid ${token.colorBorderSecondary}`,
@@ -282,10 +292,10 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                     <Flex gap={6} align="center">
                                         <Text style={{ fontSize: 13 }}>{surface.label}</Text>
                                         {isNext && manualActiveCount === 0 && (
-                                            <Tag color="blue" style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>Start here</Tag>
+                                            <Tag style={{ ...primaryTagStyle, fontSize: 10, lineHeight: '16px', margin: 0 }}>Start here</Tag>
                                         )}
                                         {isNext && manualActiveCount > 0 && (
-                                            <Tag color="blue" style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>Next</Tag>
+                                            <Tag style={{ ...primaryTagStyle, fontSize: 10, lineHeight: '16px', margin: 0 }}>Next</Tag>
                                         )}
                                     </Flex>
                                     <Text type="secondary" style={{ fontSize: 11 }}>
@@ -305,7 +315,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                         type={isNext ? 'primary' : 'default'}
                                         icon={<LuClipboard size={12} />}
                                         onClick={() => handleCopyAndExpand(surface)}
-                                        style={{ fontSize: 11 }}
+                                        style={{ flex: '0 1 150px', fontSize: 11, minHeight: 32, whiteSpace: 'normal' }}
                                     >
                                         Add to {surface.label.split(' ')[0]}
                                     </Button>
@@ -317,7 +327,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                         icon={<LuX size={12} />}
                                         loading={updating === surface.id}
                                         onClick={() => handleRemove(surface)}
-                                        style={{ fontSize: 11, color: token.colorTextTertiary }}
+                                        style={{ color: token.colorTextTertiary, flexShrink: 0, fontSize: 11, minHeight: 32 }}
                                     >
                                         Remove
                                     </Button>
@@ -342,13 +352,13 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                             <li key={i}>{step}</li>
                                         ))}
                                     </ol>
-                                    <Flex gap={8}>
+                                    <Flex gap={8} wrap="wrap">
                                         {surface.openUrl && (
                                             <Button
                                                 size="small" type="text"
                                                 icon={<LuExternalLink size={12} />}
                                                 onClick={() => window.open(surface.openUrl, '_blank')}
-                                                style={{ fontSize: 11 }}
+                                                style={{ fontSize: 11, minHeight: 32 }}
                                             >
                                                 Open {surface.label.split(' ')[0]}
                                             </Button>
@@ -357,7 +367,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                             size="small" type="primary"
                                             loading={updating === surface.id}
                                             onClick={() => handleConfirm(surface)}
-                                            style={{ fontSize: 11 }}
+                                            style={{ fontSize: 11, minHeight: 32 }}
                                         >
                                             Mark as Added
                                         </Button>
@@ -396,7 +406,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                             <Text type="secondary" style={{ fontSize: 11 }}>{surface.description}</Text>
                         </Flex>
                         {surface.active && (
-                            <Tag style={{ fontSize: 10, margin: 0 }} color="blue">Auto</Tag>
+                            <Tag style={{ ...primaryTagStyle, fontSize: 10, margin: 0 }}>Auto</Tag>
                         )}
                     </Flex>
                 ))}

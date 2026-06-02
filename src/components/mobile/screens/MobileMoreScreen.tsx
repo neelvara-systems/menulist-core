@@ -440,87 +440,87 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         : { color: 'default', label: tShare('feedbackOff') };
 
     const moduleItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color="#0f766e" size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
-        ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
-        ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr'], label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS && canManageStore ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && canManageMenu ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
-        ...(canManageMenuDesign ? [{ key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPageTop', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('main') }] : []),
-        ...(canManageDigitalScreens ? [{ key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') }] : []),
+        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color={token.colorSuccess} size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
+        ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color={token.colorInfo} size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
+        ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr'], label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS && canManageStore ? [{ key: 'tempStatus', icon: <LuAlertTriangle color={token.colorWarning} size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && canManageMenu ? [{ key: 'specialMenus', icon: <LuSparkles color={token.colorWarning} size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
+        ...(canManageMenuDesign ? [{ key: 'designEditor', icon: <LuPalette color={token.colorPrimary} size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPageTop', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('main') }] : []),
+        ...(canManageDigitalScreens ? [{ key: 'digitalScreens', icon: <LuTv color={token.colorInfo} size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') }] : []),
         ...(canAccessBilling ? [
-            { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
-            { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
+            { key: 'billing', icon: <LuCreditCard color={token.colorPrimary} size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
+            { key: 'transactions', icon: <LuReceipt color={token.colorInfo} size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
         ] : []),
     ];
 
     const businessIdentityItems: MoreListItem[] = [
-        ...(canManageBusinessProfile ? [{ key: 'businessProfileHub', icon: <LuBuilding2 color="#f97316" size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business Profile', description: 'Brand, public identity, social links, official page, and app branding.', onClick: () => openSubScreen('businessProfileHub') }] : []),
-        ...(canManageSearchDiscovery ? [{ key: 'searchDiscoveryHub', icon: <LuSearch color="#0ea5e9" size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, business copy, and discovery setup in one place.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') }] : []),
+        ...(canManageBusinessProfile ? [{ key: 'businessProfileHub', icon: <LuBuilding2 color={token.colorWarning} size={20} />, keywords: ['brand', 'official page', 'social media', 'customer app', 'business profile'], label: 'Business Profile', description: 'Brand, public identity, social links, official page, and app branding.', onClick: () => openSubScreen('businessProfileHub') }] : []),
+        ...(canManageSearchDiscovery ? [{ key: 'searchDiscoveryHub', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['seo', 'search', 'discovery', 'domain', 'business copy', 'google listing'], label: 'Search & Discovery', description: 'Domain, SEO, business copy, and discovery setup in one place.', statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('searchDiscoveryHub') }] : []),
         ...(canManageStore ? [
-            { key: 'locale', icon: <LuGlobe color="#14b8a6" size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
-            { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
-            { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
+            { key: 'locale', icon: <LuGlobe color={token.colorSuccess} size={20} />, keywords: ['timezone', 'time zone', 'date format', 'currency', 'language', 'region'], label: t('languageRegion'), description: t('languageRegionDesc'), onClick: () => openSubScreen('locale') },
+            { key: 'hoursEdit', icon: <LuClock color={token.colorPrimary} size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
+            { key: 'timeSlots', icon: <LuClock color={token.colorSuccess} size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
         ] : []),
-        ...(canManageLocations ? [{ key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, keywords: ['branches', 'outlets', 'stores', 'chain', 'multi location'], label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') }] : []),
-        ...(userPermissions?.canManageUsers ? [{ key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, keywords: ['staff', 'team', 'employee', 'user access', 'invite'], label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') }] : []),
-        ...(userPermissions?.canAssignRoles ? [{ key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, keywords: ['permissions', 'access control', 'manager', 'cashier', 'role'], label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') }] : []),
+        ...(canManageLocations ? [{ key: 'locations', icon: <LuMapPin color={token.colorWarning} size={20} />, keywords: ['branches', 'outlets', 'stores', 'chain', 'multi location'], label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') }] : []),
+        ...(userPermissions?.canManageUsers ? [{ key: 'users', icon: <LuUsers color={token.colorPrimary} size={20} />, keywords: ['staff', 'team', 'employee', 'user access', 'invite'], label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') }] : []),
+        ...(userPermissions?.canAssignRoles ? [{ key: 'roles', icon: <LuShield color={token.colorPrimary} size={20} />, keywords: ['permissions', 'access control', 'manager', 'cashier', 'role'], label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') }] : []),
     ];
 
     const businessPresenceItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'analyticsSettings', icon: <LuBarChart3 color="#16a34a" size={20} />, keywords: ['google analytics', 'search console', 'facebook pixel', 'tracking'], label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') }] : []),
-        ...(canManageFeedback ? [{ key: 'feedbackSettings', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback form', 'ask for name', 'ask for phone', 'comment form'], label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_POS_SYNC && canManageIntegrations ? [{ key: 'posSync', icon: <LuShield color="#475569" size={20} />, keywords: ['external sync', 'connected systems', 'provider', 'pos', 'webhook', 'integration secret', 'menu sync'], label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
+        ...(canViewAnalytics ? [{ key: 'analyticsSettings', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['google analytics', 'search console', 'facebook pixel', 'tracking'], label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') }] : []),
+        ...(canManageFeedback ? [{ key: 'feedbackSettings', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['feedback form', 'ask for name', 'ask for phone', 'comment form'], label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_POS_SYNC && canManageIntegrations ? [{ key: 'posSync', icon: <LuShield color={token.colorTextSecondary} size={20} />, keywords: ['external sync', 'connected systems', 'provider', 'pos', 'webhook', 'integration secret', 'menu sync'], label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
     ];
 
     const businessProfileHubItems: MoreListItem[] = [
-        ...(canManageStore ? [{ key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, keywords: ['logo', 'brand', 'business name', 'phone', 'email', 'address', 'coordinates', 'gst', 'contact person'], label: 'Brand Settings', description: 'Manage brand name, logo, contact details, and address.', onClick: () => openSubScreen('basicSettings') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('businessProfileHub') }] : []),
-        ...(canManagePublicPresence ? [{ key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, keywords: ['instagram', 'facebook', 'zomato', 'swiggy', 'social links'], label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && canManageStore ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, keywords: ['amenities', 'wifi', 'parking', 'veg', 'pet friendly', 'attributes'], label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
-        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && canManagePublicPresence ? [{ key: 'customerApp', icon: <LuSmartphone color="#8b5cf6" size={20} />, keywords: ['pwa', 'install app', 'home screen icon', 'customer app', 'mobile app'], label: 'Customer App', description: 'Installable menu app — settings and live install analytics.', onClick: () => openSubScreen('customerApp') }] : []),
+        ...(canManageStore ? [{ key: 'basicSettings', icon: <LuSettings color={token.colorWarning} size={20} />, keywords: ['logo', 'brand', 'business name', 'phone', 'email', 'address', 'coordinates', 'gst', 'contact person'], label: 'Brand Settings', description: 'Manage brand name, logo, contact details, and address.', onClick: () => openSubScreen('basicSettings') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPage', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('businessProfileHub') }] : []),
+        ...(canManagePublicPresence ? [{ key: 'socialSettings', icon: <LuGlobe color={token.colorError} size={20} />, keywords: ['instagram', 'facebook', 'zomato', 'swiggy', 'social links'], label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && canManageStore ? [{ key: 'businessAttributes', icon: <LuBuilding2 color={token.colorPrimary} size={20} />, keywords: ['amenities', 'wifi', 'parking', 'veg', 'pet friendly', 'attributes'], label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && canManagePublicPresence ? [{ key: 'customerApp', icon: <LuSmartphone color={token.colorPrimary} size={20} />, keywords: ['pwa', 'install app', 'home screen icon', 'customer app', 'mobile app'], label: 'Customer App', description: 'Installable menu app — settings and live install analytics.', onClick: () => openSubScreen('customerApp') }] : []),
     ];
 
     const searchDiscoveryHubItems: MoreListItem[] = [
         ...(canManagePublicPresence ? [
-            { key: 'domainSettings', icon: <LuGlobe color="#27a8e3" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
-            ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#0051d1" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
-            { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
-            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#27a8e3" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
+            { key: 'domainSettings', icon: <LuGlobe color={token.colorInfo} size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
+            ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
+            { key: 'seoSettings', icon: <LuGlobe color={token.colorInfo} size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
+            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color={token.colorInfo} size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         ] : []),
-        ...(FEATURE_FLAGS.ENABLE_GBP_SYNC && canManageIntegrations ? [{ key: 'integrations', icon: <LuGlobe color="#0051d1" size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_GBP_SYNC && canManageIntegrations ? [{ key: 'integrations', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
     ];
 
     const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'opsControlRoom', icon: <LuActivity color="#dc2626" size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
-        { key: 'schedulerMonitor', icon: <LuClock3 color="#ea580c" size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
-        { key: 'extractionMonitor', icon: <LuSparkles color="#7c3aed" size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
-        ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color="#0f766e" size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/answerlattice-intake') }] : []),
+        { key: 'opsControlRoom', icon: <LuActivity color={token.colorError} size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
+        { key: 'schedulerMonitor', icon: <LuClock3 color={token.colorWarning} size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
+        { key: 'extractionMonitor', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
+        ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/answerlattice-intake') }] : []),
     ] : [];
 
     const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
+        { key: 'platformHub', icon: <LuShield color={token.colorError} size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
     ] : [];
 
     const answerlatticeManagementItems: MoreListItem[] = [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
-        ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
-        { key: 'platformTenants', icon: <LuBuilding2 color="#475569" size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
-        { key: 'platformStores', icon: <LuMapPin color="#27a8e3" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
-        { key: 'platformUsers', icon: <LuUsers color="#0051d1" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
-        { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
+        ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color={token.colorError} size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
+        { key: 'platformTenants', icon: <LuBuilding2 color={token.colorTextSecondary} size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
+        { key: 'platformStores', icon: <LuMapPin color={token.colorInfo} size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
+        { key: 'platformUsers', icon: <LuUsers color={token.colorPrimary} size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
+        { key: 'testSentry', icon: <LuAlertTriangle color={token.colorError} size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
     const resellerManagementItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
-        { key: 'resellerHub', icon: <LuBuilding2 color="#27a8e3" size={20} />, keywords: ['reseller', 'partner', 'clients', 'onboarding'], label: 'Reseller', description: isPlatformAdmin ? 'Partner onboarding, client activation, and reseller profile management.' : 'Client onboarding and license management.', onClick: () => openSubScreen('resellerHub') },
+        { key: 'resellerHub', icon: <LuBuilding2 color={token.colorInfo} size={20} />, keywords: ['reseller', 'partner', 'clients', 'onboarding'], label: 'Reseller', description: isPlatformAdmin ? 'Partner onboarding, client activation, and reseller profile management.' : 'Client onboarding and license management.', onClick: () => openSubScreen('resellerHub') },
     ] : [];
 
     const resellerHubItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
-        { key: 'resellerDashboard', icon: <LuBuilding2 color="#27a8e3" size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
-        { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding', 'new client'], label: 'Onboard Client', description: 'Create a client account, select a plan, and activate payment.', onClick: () => openSubScreen('resellerOnboarding') },
-        ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
+        { key: 'resellerDashboard', icon: <LuBuilding2 color={token.colorInfo} size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
+        { key: 'resellerOnboard', icon: <LuSparkles color={token.colorWarning} size={20} />, keywords: ['reseller onboard', 'partner onboarding', 'new client'], label: 'Onboard Client', description: 'Create a client account, select a plan, and activate payment.', onClick: () => openSubScreen('resellerOnboarding') },
+        ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color={token.colorPrimary} size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
     ] : [];
 
     const answerlatticeHubItems: MoreListItem[] = [];
@@ -738,28 +738,28 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     arrow
                     description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
                     onClick={() => openSubScreen('answerlatticeHelp')}
-                    prefix={<LuHelpCircle color="#3b82f6" size={20} />}
+                    prefix={<LuHelpCircle color={token.colorPrimary} size={20} />}
                     title={<Text strong>{t('helpCenter')}</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
                     onClick={() => openSubScreen('answerlatticeDocs')}
-                    prefix={<LuBookOpen color="#8b5cf6" size={20} />}
+                    prefix={<LuBookOpen color={token.colorPrimary} size={20} />}
                     title={<Text strong>Documentation</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">Create or track support tickets.</Text>}
                     onClick={() => openSubScreen('answerlatticeSupport')}
-                    prefix={<LuTicket color="#f59e0b" size={20} />}
+                    prefix={<LuTicket color={token.colorWarning} size={20} />}
                     title={<Text strong>Support Tickets</Text>}
                 />
                 <List.Item
                     arrow
                     description={<Text type="secondary">See recent product changes and fixes.</Text>}
                     onClick={() => openSubScreen('answerlatticeReleaseNotes')}
-                    prefix={<LuReceipt color="#0ea5e9" size={20} />}
+                    prefix={<LuReceipt color={token.colorInfo} size={20} />}
                     title={<Text strong>Release Notes</Text>}
                 />
             </List>
@@ -888,13 +888,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                         arrow
                         description={<Text type="secondary">{t('appSettingsDesc')}</Text>}
                         onClick={() => setIsAppSettingsOpen(true)}
-                        prefix={<LuSettings color="#64748b" size={20} />}
+                        prefix={<LuSettings color={token.colorTextSecondary} size={20} />}
                         title={<Text strong>{t('appSettings')}</Text>}
                     />
                     <List.Item
                         description={<Text type="secondary">Load the latest MenuList version on this device.</Text>}
                         onClick={handleRefreshApp}
-                        prefix={<LuRefreshCw color="#0054D0" size={20} />}
+                        prefix={<LuRefreshCw color={token.colorPrimary} size={20} />}
                         title={<Text strong>Refresh app</Text>}
                     />
                     <div
@@ -913,8 +913,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                                 }
                                 handleLogout();
                             }}
-                            prefix={<LuLogOut color="#dc2626" size={20} />}
-                            title={<Text strong style={{ color: '#dc2626' }}>{isLoggingOut ? t('loggingOut') : t('logOut')}</Text>}
+                            prefix={<LuLogOut color={token.colorError} size={20} />}
+                            title={<Text strong style={{ color: token.colorError }}>{isLoggingOut ? t('loggingOut') : t('logOut')}</Text>}
                         />
                     </div>
                 </List>
@@ -952,6 +952,7 @@ function MobileAccountProfileScreen({
     userLoginLabel?: string;
     userName: string;
 }) {
+    const { token } = theme.useToken();
     const [draftDialCode, setDraftDialCode] = useState(dialCode || '');
     const [draftEmail, setDraftEmail] = useState(email || '');
     const [draftName, setDraftName] = useState(userName || '');
@@ -1038,9 +1039,9 @@ function MobileAccountProfileScreen({
 
                 <Card title="Profile details">
                     <List>
-                        <List.Item prefix={<LuUser color="#9ca3af" size={16} />} title={<Text>{userName}</Text>} />
-                        <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{email || 'No email added'}</Text>} />
-                        <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{phoneLabel || 'No phone added'}</Text>} />
+                        <List.Item prefix={<LuUser color={token.colorTextTertiary} size={16} />} title={<Text>{userName}</Text>} />
+                        <List.Item prefix={<LuMail color={token.colorTextTertiary} size={16} />} title={<Text>{email || 'No email added'}</Text>} />
+                        <List.Item prefix={<LuPhone color={token.colorTextTertiary} size={16} />} title={<Text>{phoneLabel || 'No phone added'}</Text>} />
                     </List>
                 </Card>
 

@@ -23,6 +23,7 @@ export const DISCOVERY_CRAWLERS = [
     'Google-Extended',
     'Googlebot',
     'Bingbot',
+    'CCBot',
 ] as const;
 
 export const PUBLIC_DISCOVERY_DISALLOWED_PATHS = [
@@ -33,6 +34,8 @@ export const PUBLIC_DISCOVERY_DISALLOWED_PATHS = [
     '/api/',
     '/editor/',
     '/preview/',
+    '/auth/',
+    '/internal/',
 ] as const;
 
 export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
@@ -84,6 +87,34 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         description: 'Public menu creation entry point',
         changeFrequency: 'monthly',
         priority: 0.8,
+    },
+    {
+        label: 'Restaurants',
+        path: '/industries/restaurants',
+        description: 'Official menu source layer for restaurants',
+        changeFrequency: 'monthly',
+        priority: 0.76,
+    },
+    {
+        label: 'Cafes and Bakeries',
+        path: '/industries/cafes-bakeries',
+        description: 'Current menu source layer for cafes, bakeries, dessert shops, and beverage counters',
+        changeFrequency: 'monthly',
+        priority: 0.74,
+    },
+    {
+        label: 'Takeaways and Cloud Kitchens',
+        path: '/industries/takeaway-cloud-kitchens',
+        description: 'Public menu source layer for takeaways, pickup kitchens, and cloud kitchens',
+        changeFrequency: 'monthly',
+        priority: 0.74,
+    },
+    {
+        label: 'Multi-location Food Businesses',
+        path: '/industries/multi-location-food-businesses',
+        description: 'Menu source control for branch and outlet food businesses',
+        changeFrequency: 'monthly',
+        priority: 0.76,
     },
     ...WEBSITE_RESOURCE_ALL_DISCOVERY_PAGES,
     {

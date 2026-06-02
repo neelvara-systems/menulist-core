@@ -26,7 +26,7 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 | 4. URL Architecture | "~50%" | **~70% done** | Stable subdomain URLs, slug permanence, previousSlugs redirects, canonical tags |
 | 5. Knowledge Graph | "~30%" | **~50% done** | Entity identity, sameAs links, schema.org publisher, GBP integration foundation |
 | 6. AI Retrieval | "~60%" | **~75% done** | SSR HTML with structured content, menu items as text (not images), semantic headings |
-| 7. AEO Citation | "~35%" | **~50% done** | FAQ schema, structured facts in JSON-LD, dateModified freshness signal |
+| 7. AEO Citation | "~35%" | **~50% done** | Structured business/menu facts in JSON-LD, dateModified freshness signal, visible FAQ schema only where content is rendered |
 | 8. Geo Discovery | "~10%" | **~45% done** | GeoCoordinates on store, schema.org geo, open-now computation, address data, cuisineTypes field |
 | 9. Menu Discovery | "not started" | **~25% done** | Taxonomy system built (Phase 1A), dietary tags, offering tags (infrastructure layer) |
 
@@ -105,7 +105,7 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 | PostalAddress | ✅ DONE | `src/lib/schema/index.ts` — `buildAddress()` |
 | GeoCoordinates | ✅ DONE | `src/lib/schema/index.ts` — `buildGeoCoordinates()` |
 | BreadcrumbList | ✅ DONE | `src/lib/schema/index.ts` — `buildBreadcrumbList()` |
-| FAQPage | ✅ DONE | `src/lib/schema/index.ts` — `buildFaqSchema()` (auto-generated from hours/location/phone/catalog presence) |
+| FAQPage | ⚠️ LIMITED | FAQPage is reserved for visible reviewed FAQ content. OBP runtime stopped emitting generated hidden FAQPage JSON-LD on June 2, 2026. |
 | sameAs (social) | ✅ DONE | `src/lib/schema/index.ts` — `buildSameAs()` (Instagram, Facebook, X/Twitter, LinkedIn, YouTube, website) |
 | amenityFeature | ✅ DONE | `src/lib/schema/index.ts` — `buildAmenityFeatures()` (WiFi, outdoor seating, dietary, etc.) |
 | ReserveAction | ✅ DONE | `src/app/client/obp/schema.ts` — reservation URL with EntryPoint |
@@ -184,7 +184,7 @@ ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage
 | Text accessibility | ✅ DONE | No canvas, no JS-only content |
 | Structured lists | ✅ DONE | Categories → Items naturally form lists |
 | Natural language summaries | ⚠️ PARTIAL | `publicPresence.descriptor` exists but short |
-| FAQ blocks | ✅ DONE | `buildFaqSchema()` auto-generates Q&A from store data |
+| FAQ blocks | ⚠️ LIMITED | Website resource FAQs are visible and reviewed. OBP does not render hidden generated FAQ blocks. |
 | Popular dish highlights | ⚠️ MISSING | No curated "popular dishes" section on public pages |
 
 **Actual score: ~75%** (ChatGPT guessed 60%)
@@ -198,7 +198,7 @@ ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage
 | Requirement | Status | Evidence |
 |------------|--------|----------|
 | Factual data present | ✅ DONE | Menu items, prices, hours — all structured |
-| FAQ schema | ✅ DONE | `buildFaqSchema()` generates Q&A |
+| FAQ schema | ⚠️ LIMITED | Use only where FAQ content is visibly rendered and reviewed. LocalBusiness/Restaurant/Menu schema is the stronger OBP/menu signal. |
 | Item-level facts | ✅ DONE | Per-item schema.org with price, availability |
 | dateModified | ✅ DONE | Freshness signal for AI |
 | Price comparison data | ✅ DONE | Structured Offer with price + currency |

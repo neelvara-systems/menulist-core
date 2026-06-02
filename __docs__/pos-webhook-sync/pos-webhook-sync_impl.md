@@ -180,6 +180,7 @@ ShareModal.handleSubmit()
 2. Include ALL category fields (images, timeSlots, orderIndex)
 3. Strip only internal fields (`descriptionSource`, `ownerBoost`, processing metadata)
 4. Add envelope fields (event, version, timestamp, tenantId, storeId, currency, languages)
+5. Resolve `currency` from the store's selected `currencyCode` for live deliveries, test pings, sample downloads, and public pull API parity.
 
 ### What We're Doing Right (Confirmed by Research)
 

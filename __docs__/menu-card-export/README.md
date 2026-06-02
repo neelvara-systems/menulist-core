@@ -9,9 +9,9 @@
 
 ## What This Is
 
-Menu Card Export is the routed owner surface for creating print-ready menu files from current MenuList truth. It replaces the current single-click PDF download with a complete print workflow: choose the job, pick a controlled style, review preflight, preview pages, export, and see whether older files still match the current menu.
+Menu Card Export is the routed owner surface for creating print-ready files from current MenuList truth. It replaces the current single-click PDF download with a complete print workflow: choose the job, pick a controlled style, review preflight, preview pages, export, and see whether older files still match the current menu, service list, or catalog.
 
-This is not a design editor. The route keeps owners out of freeform layout work and keeps printable output tied to the same menu truth used by QR menus, official pages, screens, and Menu Kit.
+This is not a design editor. The route keeps owners out of freeform layout work and keeps printable output tied to the same business truth used by QR pages, official pages, screens, and Menu Kit.
 
 ---
 
@@ -23,11 +23,12 @@ Build this as a dedicated owner route, not another button inside Share Modal.
 | --- | --- |
 | Route | `/use-menulist/menu-card-export` |
 | Entry points | Use MenuList card, project Share modal, Mobile Share print section, Mobile Menu command sheet, More > Modules |
-| Primary action | Print menu / export menu card |
+| Primary action | Print menu/service/catalog file |
 | Current `Menu PDF` button | Becomes a route entry point or legacy quick export while migration is active |
 | Renderer model | Deterministic print model, template registry, preflight engine, layout engine, local export record |
 | Owner controls | Job preset, style, paper, density, logo, descriptions, QR, contact, safe category-level layout overrides |
 | Core presets | Home print PDF, WhatsApp PDF, print-shop packet, table menu |
+| Auto design | Client-side automatic style, density, and safe toggle selection from business type and content shape |
 | Layout suggestion | Pro/Premium-only AI recommendation that returns a bounded JSON recipe; owner must apply it |
 | Rejected | Drag/drop editor, arbitrary text boxes, custom CSS, font uploads, per-item styling |
 
@@ -63,6 +64,8 @@ The predecessor PDF Surface remains available only as the flag-off fallback. The
 | Project Share modal routes to Print Menu when the feature flag is on. | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:250`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` |
 | Use MenuList routes to Print Menu when the feature flag is on. | `src/components/templates/main-app/useMenuList/index.tsx:251`, `src/components/templates/main-app/useMenuList/index.tsx:951` |
 | Shared route helper preserves project selection in entry links. | `src/lib/menu-card-export/navigation.ts:1` |
+| Shared export controller keeps desktop and mobile behavior aligned. | `src/hooks/useMenuCardExportController.ts:87` |
+| Dedicated mobile Print Menu screen renders on handheld devices. | `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:59` |
 | Mobile Share routes to Print Menu when the feature flag is on. | `src/components/mobile/screens/MobileShareScreen.tsx:461`, `src/components/mobile/screens/MobileShareScreen.tsx:889` |
 | Mobile Menu command sheet routes to Print Menu and saves pending edits first. | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` |
 | More > Modules exposes Print Menu for discoverability beside Dashboard. | `src/components/mobile/screens/MobileMoreScreen.tsx:442` |
@@ -77,7 +80,7 @@ The predecessor PDF Surface remains available only as the flag-off fallback. The
 | PDF Surface | Current lightweight PDF generator. Menu Card Export supersedes it as the long-term route. |
 | Menu Kit | QR deployment pack. Menu Card Export produces the full printable menu/menu-card workflow and print-shop packet. |
 | Use MenuList | Parent output center. It links to the routed export workflow instead of trying to contain all print controls. |
-| Public menu / OBP | Source of truth remains unchanged. Export reads from canonical project/store data and links back to the live menu. |
+| Public menu / OBP | Source of truth remains unchanged. Export reads from canonical project/store data, reuses the OBP store logo and `publicPresence.accentColor`, follows the stored business type/category, and links back to the live public surface. |
 | Menu snapshots | Export records must reference a snapshot/hash so freshness can be checked. |
 
 ---
@@ -88,7 +91,7 @@ The predecessor PDF Surface remains available only as the flag-off fallback. The
 | --- | --- |
 | Job presets, not PDF jargon | Owner chooses `Home print`, `WhatsApp`, or `Print-shop packet`; the system maps that to paper, density, QR, bleed, and file settings. |
 | Preflight before export | The route flags missing prices, long text, low-resolution photos, QR scan risk, bleed/safety issues, stale menu state, and page overflow before the owner prints. |
-| QR bridge to live menu | Printed files can include a scan-safe QR back to the current mobile menu, not a stale PDF. |
+| QR bridge to live surface | Printed files can include a scan-safe QR back to the current mobile menu, service list, or catalog, not a stale PDF. |
 | Print-shop handoff | A packet can include the print PDF, home-printer proof, print instructions, and QR test checklist. |
 | Freshness history | Old exports show whether the source menu changed and can be regenerated from the same settings. |
 | Export identification | PDF metadata, generated date, deterministic filename, and print-shop source summary make files easier to find and support without adding Firebase storage. |
@@ -106,6 +109,11 @@ Implemented and validated in code:
 - Feature flags control route, local history, print-shop packet visibility, batch exposure, and Pro/Premium layout suggestion.
 - Multi-project selection uses the shared project selector pattern and guards against stale project data while switching.
 - Real project data shape support covers top-level extracted data and file-based `project.files[].extractedData.data` menus.
+- PDF output reuses the existing store logo and OBP `publicPresence.accentColor`; brand color, logo, business type/category, catalog kind, offering kind, and currency are included in the local source hash so old plain, wrong-profile, or wrong-currency exports are not reused after store changes.
+- PDF output uses density-based font sizes and store currency settings. INR/rupee output is rendered as PDF-safe `Rs 120` text with whole-number prices kept clean and price ranges preserved.
+- PDF output now uses controlled physical styling: warm paper tone, page border, title plaque/editorial/header card, section treatments, and price leaders where the selected template and business type benefit from them.
+- PDF output resolves business type/category through the shared MenuList business taxonomy: food gets menu-style output, retail/product businesses get catalog-style output, and service/professional/health businesses get cleaner service-list output without owners choosing another setting.
+- Auto print design chooses the starting style, density, description, QR, and contact defaults from business type and content shape before any AI/provider call. Owners can still override style/density/options.
 - PDF output sets document properties, uses generated-date/source-reference filenames, and keeps internal source hashes out of the visible customer footer.
 - Print-shop packets include a source summary with preset, style/template version, page count, generated date, menu updated date, source reference, renderer version, and live menu destination.
 - Pro/Premium layout suggestion: `src/app/api/menu-card-export/design-advisor/route.ts`, `src/lib/menu-card-export/ai/designAdvisor.ts`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts`.
@@ -116,6 +124,9 @@ Implemented and validated in code:
 Firebase cost decision:
 
 - Default export path performs **zero Firestore writes** and **zero Storage uploads**.
+- Brand color/logo reuse comes from the existing platform store context. When `Include logo` is on, logo embedding may download the existing logo image once during final render; it is cached in memory for repeat exports in the same route session.
+- Business-type profile reuse comes from the already-loaded store context. It adds no Firestore read, write, Storage upload, Cloud Function, rule, or index.
+- Auto print design is browser CPU work over the already-built print source. It adds no Firebase cost and no AI unit usage.
 - Empty stores stay read-only: the route uses an existing-projects summary helper and does not create a default menu from the print workflow.
 - Export history is local to the browser/device.
 - Server persistence/export-storage API routes are intentionally not added in the default implementation to protect Firebase cost.
@@ -134,7 +145,8 @@ No new public menu write path is introduced. Public cache invalidation is not re
 June 2, 2026 mobile parity guardrails:
 
 - Desktop Use MenuList, project Share modal, Mobile Share, Mobile Menu command sheet, and More > Modules all enter the routed Print Menu workflow.
-- Handheld layout routing bypasses the generic mobile shell for `/use-menulist/menu-card-export`.
+- Handheld layout routing bypasses the generic mobile shell for `/use-menulist/menu-card-export`, then the route renders the dedicated mobile Print Menu screen.
+- Desktop and mobile share `useMenuCardExportController`, so project loading, export generation, local history, and AI advisor behavior stay aligned.
 - Mobile Menu saves pending local edits before opening Print Menu so the route reads the latest saved menu truth.
 - More keeps Print Menu in the Modules list beside Dashboard for discovery; the analytics dashboard itself stays metric-focused.
 - Local export history obeys `ENABLE_MENU_CARD_EXPORT_HISTORY`.

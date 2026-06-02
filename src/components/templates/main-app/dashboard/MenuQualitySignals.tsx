@@ -12,14 +12,13 @@
  * @see __docs__/menu-quality-signals/
  */
 
-import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
 import { Button, Card, Flex, Skeleton, theme, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { LuDollarSign, LuEyeOff, LuFileText, LuFolder, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
+import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuFolder, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -125,7 +124,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
         >
             {allClear ? (
                 <Flex align="center" gap={12} style={{ padding: '8px 0' }}>
-                    <CheckCircleFilled style={{ fontSize: 24, color: token.colorSuccess }} />
+                    <LuCheckCircle size={24} style={{ color: token.colorSuccess }} />
                     <div>
                         <Text strong>No action needed</Text>
                         <br />
@@ -181,8 +180,8 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                                     alignItems: 'center',
                                 }}>
                                     {signal.status === 'ok'
-                                        ? <CheckCircleFilled style={{ fontSize: 16 }} />
-                                        : <ExclamationCircleFilled style={{ fontSize: 16 }} />
+                                        ? <LuCheckCircle size={16} />
+                                        : <LuAlertCircle size={16} />
                                     }
                                 </span>
                                 <Flex align="center" gap={6}>

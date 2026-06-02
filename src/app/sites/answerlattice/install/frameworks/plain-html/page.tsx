@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Plain HTML Install',
-    description: 'Answerlattice v1 script-tag install guidance for static or server-rendered products.',
+    description: 'AnswerLattice v1 script-tag install guidance for static or server-rendered products.',
     alternates: { canonical: '/install/frameworks/plain-html' },
 };
 

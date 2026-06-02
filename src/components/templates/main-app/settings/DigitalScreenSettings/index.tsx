@@ -13,7 +13,6 @@
  * Follows existing pattern: Uses DAL functions directly, not API routes
  */
 
-import { CheckCircleOutlined } from "@ant-design/icons";
 import { FEATURE_FLAGS } from "@config/features";
 import { getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
@@ -23,6 +22,7 @@ import { PlatformGlobalDataContext } from "@providers/platformProviders/platform
 import { ScreenSlide } from "@type/campaigns";
 import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useState } from "react";
+import { LuCheckCircle } from "react-icons/lu";
 import CurrentSlides from "./CurrentSlides";
 import OwnerUploads from "./OwnerUploads";
 import ScreenLink from "./ScreenLink";
@@ -98,7 +98,7 @@ export default function DigitalScreenSettings() {
             await updateScreenSettings({ ownerOverrideEnabled: enabled });
 
             setSettings(prev => prev ? { ...prev, ownerOverrideEnabled: enabled } : null);
-            message.success(enabled ? 'Your uploads will be prioritized' : 'System content restored');
+            message.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
         } catch (err) {
             message.error('Failed to update setting');
         }
@@ -145,7 +145,7 @@ export default function DigitalScreenSettings() {
             title={
                 <Space>
                     <span>Digital Screen</span>
-                    <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+                    <LuCheckCircle style={{ color: token.colorSuccess }} />
                     <Text type="secondary" style={{ fontSize: 14, fontWeight: 'normal' }}>
                         Running
                     </Text>
@@ -153,51 +153,12 @@ export default function DigitalScreenSettings() {
             }
             className="digital-screen-settings"
         >
-            {/* Screen Activity Status — Per ChatGPT review v3 */}
-            {settings.screenLastSeenAt && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 16,
-                    padding: '8px 12px',
-                    background: token.colorSuccessBg,
-                    borderRadius: 8,
-                    border: `1px solid ${token.colorSuccessBorder}`,
-                }}>
-                    <span style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: token.colorSuccess,
-                        display: 'inline-block',
-                    }} />
-                    <Text style={{ fontSize: 13 }}>
-                        Screen active — last seen{' '}
-                        {(() => {
-                            try {
-                                const ts = settings.screenLastSeenAt?.toDate?.() ||
-                                    new Date(settings.screenLastSeenAt?.seconds * 1000 || settings.screenLastSeenAt);
-                                const diff = Date.now() - ts.getTime();
-                                const hours = Math.floor(diff / 3600000);
-                                if (hours < 1) return 'less than an hour ago';
-                                if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-                                const days = Math.floor(hours / 24);
-                                return `${days} day${days > 1 ? 's' : ''} ago`;
-                            } catch {
-                                return 'recently';
-                            }
-                        })()}
-                    </Text>
-                </div>
-            )}
-
             <div style={{
                 marginBottom: 16,
                 padding: '12px 14px',
                 background: token.colorFillAlter,
                 border: `1px solid ${token.colorBorderSecondary}`,
-                borderRadius: 10,
+                borderRadius: 8,
             }}>
                 <Text strong style={{ display: 'block', marginBottom: 4 }}>How to manage content</Text>
                 <Text type="secondary">
@@ -208,12 +169,14 @@ export default function DigitalScreenSettings() {
             {/* Screen Link Section */}
             <ScreenLink
                 screenUrl={settings.screenUrl}
+                screenLastSeenAt={settings.screenLastSeenAt}
             />
 
             <Divider />
 
             {/* Current Slides Section */}
             <CurrentSlides
+                ownerOverrideEnabled={settings.ownerOverrideEnabled}
                 pinnedSlides={settings.pinnedSlides}
                 onSlideDeleted={handleSlideDeleted}
             />
@@ -235,10 +198,10 @@ export default function DigitalScreenSettings() {
             <div className="override-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <Text strong>Use my designs only</Text>
+                        <Text strong>Only custom slides</Text>
                         <br />
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            When enabled, only your uploaded images will appear
+                            Highlights will show uploaded slides only. Menu Board keeps showing the menu.
                         </Text>
                     </div>
                     <Switch

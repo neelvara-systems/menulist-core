@@ -343,6 +343,7 @@ export async function tryExtractMenuLinkTextFromJob(
                 requestId: `link-text-${jobId}`,
                 totalCharge: 0,
                 totalCredits: 0,
+                unitsConsumed: 0,
                 processingTime,
                 transactionId: null,
                 recorded: false,

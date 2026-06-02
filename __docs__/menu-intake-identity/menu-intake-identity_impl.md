@@ -1,7 +1,7 @@
 # Menu Intake Identity — Implementation
 
 **Status:** Implemented  
-**Last Updated:** May 3, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -14,7 +14,8 @@ Upload UI
   -> /api/menu-intake-identity
   -> decision response
   -> continue, warn, confirm, create new project, accept identity suggestions, or stop
-  -> existing menuImageProcessingJobs extraction
+  -> /api/menu-extraction/jobs
+  -> menuImageProcessingJobs extraction
 ```
 
 ## Files
@@ -24,6 +25,8 @@ Upload UI
 | `src/data/shared/menuIntakeIdentity.ts` | Shared prompt, normalized result shape, match decision. |
 | `functions/src/sharedData/menuIntakeIdentity.ts` | Byte-for-byte backend mirror for Cloud Functions. |
 | `src/app/api/menu-intake-identity/route.ts` | Protected preflight API for dashboard/mobile uploads. |
+| `src/lib/menu-extraction/menuIntakeIdentityServer.ts` | Shared server identity analyzer used by the preflight API, central extraction job API, and public draft job metadata. |
+| `src/app/api/menu-extraction/jobs/route.ts` | Protected extraction job creation; re-runs/enforces menu-intake identity before the job is created. |
 | `src/lib/menu-intake-identity/client.ts` | Client helper for desktop/mobile upload flows. |
 | `src/lib/menu-intake-identity/suggestionAcceptance.ts` | Builds store identity suggestions and selected-field update payloads. |
 | `functions/src/messagingOnboarding/assetIntelligence.ts` | Reuses shared prompt/normalizer while preserving messaging session flow. |
@@ -80,6 +83,10 @@ When a strong mismatch is detected for an existing project, desktop and mobile s
 
 Mixed uploads are filtered before extraction. Files not listed as valid menu/list pages are deleted from temporary storage and are not sent into `menuImageProcessingJobs`.
 
+The same preflight logic is also enforced server-side by `POST /api/menu-extraction/jobs` immediately before job creation. A `block` decision stops job creation. A `notice` or `confirm` decision requires the UI to pass `identityOverrideConfirmed`, which desktop and mobile set only after the owner accepts the warning.
+
+The lower-level `analyzeMenuIntakeIdentity()` helper can also run without an authenticated project context. Public create-menu uses that path to attach identity metadata to `public_menu_draft` jobs when the uploaded or acquired source is readable by the helper. That keeps public claim prefill on the same prompt/normalizer without giving anonymous requests direct access to tenant context.
+
 ## Security
 
 - Protected route uses `withAuth()`.
@@ -89,6 +96,8 @@ Mixed uploads are filtered before extraction. Files not listed as valid menu/lis
 - Rate limit checked before Gemini call.
 - Server-side file fetch is restricted to the configured Firebase Storage bucket.
 - Logs do not include raw file contents, tokens, or full URLs.
+- Browser clients no longer create `menuImageProcessingJobs` directly.
+- Public draft identity checks run server-side with platform IDs and public billing metadata; they do not read owner tenant/store/project documents.
 
 ## Cost
 

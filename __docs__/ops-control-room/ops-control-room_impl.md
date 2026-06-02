@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Superadmin access at /ops  
 **Created:** February 20, 2026  
-**Last Updated:** May 1, 2026
+**Last Updated:** June 2, 2026
 **Audience:** Developers
 
 ---
@@ -15,6 +15,16 @@ Access: platformRole === 'PLATFORM' || 'ADMIN' (superadmin only)
 Data: Fetch-on-open, manual refresh button
 Layout: Single column, 5 numeric card sections
 ```
+
+## Linked Platform Monitors
+
+The Ops Control Room links internal platform-role-only monitors without adding owner-facing navigation:
+
+- `/ops/scheduler` for scheduler runs and manual recovery.
+- `/ops/extraction` for extraction/job review and cost telemetry.
+- `/ops/messaging-onboarding` for WhatsApp onboarding intake operations.
+- `/ops/platform-notifications` for founder/operator alerts from `systemAlerts`, including acknowledgement and manual Email/WhatsApp Web handoff.
+- `/ops/owner-notifications` for owner email/WhatsApp delivery tracking and retry.
 
 ## File Structure
 
@@ -38,6 +48,8 @@ src/
         └── ops/
             ├── safe-mode/
             │   └── route.ts          # NEW — Enable/disable SAFE_MODE
+            ├── platform-notifications/
+            │   └── route.ts          # Platform alert tracking + manual handoff
             └── mute-alerts/
                 └── route.ts          # NEW — Mute alerts for deploy
 ```

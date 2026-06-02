@@ -67,7 +67,7 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const testPayload = buildTestPayload(storeId, tenantId);
+        const testPayload = buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || 'INR');
         const rawBody = JSON.stringify(testPayload);
         const timestamp = Math.floor(Date.now() / 1000);
         const deliveryId = generateDeliveryId();

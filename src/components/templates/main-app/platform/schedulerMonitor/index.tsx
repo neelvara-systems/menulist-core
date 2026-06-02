@@ -3,8 +3,10 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
+import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -75,16 +77,10 @@ const HEALTH_CONFIG: Record<string, { tone: 'success' | 'warning' | 'error' | 'd
 // HELPERS
 // ================================================================
 
-function formatTimestamp(ts: any): string {
+function formatTimestamp(ts: any, formatter: IntlFormatter): string {
     if (!ts) return '-';
-    try {
-        const date = ts.toDate ? ts.toDate() : new Date(ts.seconds ? ts.seconds * 1000 : ts);
-        return date.toLocaleString('en-IN', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            hour12: true,
-        });
-    } catch { return '-'; }
+    const label = formatDateTime(ts, 'datetime', formatter);
+    return label === 'N/A' ? '-' : label;
 }
 
 function formatDuration(ms: number): string {
@@ -113,6 +109,7 @@ function flattenDetails(details: Record<string, any> | undefined): string {
 
 function SchedulerMonitor() {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
@@ -302,7 +299,7 @@ function SchedulerMonitor() {
                     </div>
                     <div>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>Last Run</Text>
-                        <Text strong>{formatTimestamp(health?.lastRun?.startedAt)}</Text>
+                        <Text strong>{formatTimestamp(health?.lastRun?.startedAt, formatter)}</Text>
                         {health?.lastRun && (
                             <Tag color={STATUS_COLORS[health.lastRun.status]} style={{ marginLeft: 8 }}>
                                 {health.lastRun.status.toUpperCase()}
@@ -588,7 +585,7 @@ function SchedulerMonitor() {
                         title: 'Started At',
                         dataIndex: 'startedAt',
                         width: 180,
-                        render: (ts: any) => <Text style={{ fontSize: 12 }}>{formatTimestamp(ts)}</Text>,
+                        render: (ts: any) => <Text style={{ fontSize: 12 }}>{formatTimestamp(ts, formatter)}</Text>,
                     },
                     {
                         title: 'Duration',

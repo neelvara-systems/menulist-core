@@ -266,34 +266,33 @@ export const updateStore = async (data: any) => {
             // G-08 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): subdomain is a permanent
             // URL anchor once the store has ever been published. Renaming it
             // would silently break every printed QR, every shared link, and
-            // every search-indexed URL. If the caller is trying to mutate
-            // `subdomain` on a store that already has `lastPublishedAt`, drop
-            // that field from the update and warn — all other updates go
-            // through untouched so the save still succeeds.
+            // every search-indexed URL. Fail closed if the guard cannot prove
+            // the store is still pre-publish.
             if (data.subdomain !== undefined) {
+                let current: any;
                 try {
-                    const current: any = await getCurrentStoreData();
-                    const wasPublished = !!current?.lastPublishedAt;
-                    const subdomainChanged = (current?.subdomain || '') !== data.subdomain;
-                    if (wasPublished && subdomainChanged) {
-                        console.warn(
-                            `[G-08] Blocked subdomain change on published store ${data.id}: ` +
-                            `${current?.subdomain} → ${data.subdomain}. Subdomain is immutable after first publish.`,
-                        );
-                        // T5-N-02: Emit analytics event for security/support signal.
-                        // Fire-and-forget: don't block the save if tracking fails.
-                        trackEvent(TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED, {
-                            storeId: data.id,
-                            tenantId: data.tenantId,
-                            attemptedSubdomain: data.subdomain,
-                            currentSubdomain: current?.subdomain,
-                        }).catch(() => { /* silent — analytics failure shouldn't block save */ });
-                        delete data.subdomain;
-                    }
+                    current = await getCurrentStoreData();
                 } catch (e) {
-                    // Non-fatal: if the guard read fails, allow the update
-                    // rather than locking owners out of every settings save.
-                    console.warn('[G-08] Could not verify publish status; allowing update:', e);
+                    console.warn('[G-08] Could not verify publish status; blocking subdomain update:', e);
+                    throw new Error('Could not verify whether this public link is locked. Please try again.');
+                }
+
+                const wasPublished = !!current?.lastPublishedAt;
+                const subdomainChanged = (current?.subdomain || '') !== data.subdomain;
+                if (wasPublished && subdomainChanged) {
+                    console.warn(
+                        `[G-08] Blocked subdomain change on published store ${data.id}: ` +
+                        `${current?.subdomain} → ${data.subdomain}. Subdomain is immutable after first publish.`,
+                    );
+                    // T5-N-02: Emit analytics event for security/support signal.
+                    // Fire-and-forget: don't block the save if tracking fails.
+                    trackEvent(TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED, {
+                        storeId: data.id,
+                        tenantId: data.tenantId,
+                        attemptedSubdomain: data.subdomain,
+                        currentSubdomain: current?.subdomain,
+                    }).catch(() => { /* silent — analytics failure shouldn't block save */ });
+                    throw new Error('This public link is locked after first publish.');
                 }
             }
 

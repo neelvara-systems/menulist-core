@@ -79,6 +79,7 @@ interface ActionEngineProps {
     onBack: () => void;
     selectedItems: SelectedItemInfo[];
     projectData: Project;
+    currencySymbol: string;
     hasSelection: boolean;
     repairSummary: RepairMenuSummary;
     repairLanguageIssues: LanguageIssueSummary[];
@@ -106,6 +107,7 @@ export default function ActionEngine({
     onBack,
     selectedItems,
     projectData,
+    currencySymbol,
     hasSelection,
     repairSummary,
     repairLanguageIssues,
@@ -212,6 +214,7 @@ export default function ActionEngine({
                 {activeAction === 'pricing' && (
                     <PricingAction
                         selectedItems={selectedItems}
+                        currencySymbol={currencySymbol}
                         onPreviewChange={onPricingPreview}
                         onConfigReady={onPricingConfigReady}
                     />

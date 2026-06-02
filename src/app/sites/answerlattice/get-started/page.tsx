@@ -10,7 +10,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Answerlattice workspace, add your app, invite the first team members, teach Answerlattice from starter sources, pick pages where users get stuck, and get a widget key for page-aware support.',
+    description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for page-aware support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -23,20 +23,20 @@ function getBasePath(): string {
 }
 
 const CRITERIA = [
-    { label: 'Your SaaS app is live or close to launch', description: 'A product with real users, billing, onboarding, settings, or release notes.' },
-    { label: 'Users ask repeated questions', description: 'The same setup, billing, role, release, or error questions appear more than once.' },
-    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, or common answers Answerlattice can learn from.' },
+    { label: 'Your SaaS app is live, beta, or close to launch', description: 'A working product with billing, onboarding, settings, release notes, or other user-facing flows to support.' },
+    { label: 'You know the first support questions', description: 'The same setup, billing, role, release, or error questions already appear, or are predictable before launch.' },
+    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, or common answers AnswerLattice can learn from.' },
     { label: 'You can install one script', description: 'You can add the widget, allow domains, block routes, and pass safe page context.' },
     { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
 ];
 
 const FIRST_SESSION = [
     'Add company and product name',
-    'Create your Answerlattice workspace',
+    'Create your AnswerLattice workspace',
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
     'Seed starter surfaces for key product pages',
-    'Teach Answerlattice from selected links, docs, FAQs, screenshots, recordings, or support macros',
+    'Teach AnswerLattice from selected links, docs, FAQs, screenshots, recordings, or support macros',
     'Verify widget install and page context',
     'Review the first approved answers',
 ];
@@ -54,10 +54,10 @@ export default function AnswerlatticeGetStartedPage() {
                         <div className="text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
                             <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                                Create your Answerlattice workspace.
+                                Create your AnswerLattice workspace.
                             </h1>
                             <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                                Sign in with Google, add your app, invite the people who need access, pick the pages where users get stuck, and get a widget key for your first support layer.
+                                Sign in with Google, add your app, invite the people who need access, pick the pages where users need help, and get a widget key for your first support layer.
                             </p>
                         </div>
 
@@ -79,7 +79,7 @@ export default function AnswerlatticeGetStartedPage() {
                                     <div>
                                         <h2 className="text-base font-semibold text-white">Have a repo, docs, website, screenshots, or owner notes?</h2>
                                         <p className="mt-1 text-sm leading-relaxed text-[#d6d6ef]">
-                                            Run pre-onboarding first so Answerlattice starts with cleaner source truth.
+                                            Run pre-onboarding first so AnswerLattice starts with cleaner source truth.
                                         </p>
                                     </div>
                                 </div>
@@ -97,7 +97,7 @@ export default function AnswerlatticeGetStartedPage() {
                         <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}
                             <div>
-                                <h2 className="mb-6 text-xl font-semibold">Answerlattice is a good fit when</h2>
+                                <h2 className="mb-6 text-xl font-semibold">AnswerLattice is a good fit when</h2>
                                 <div className="space-y-4">
                                     {CRITERIA.map((item, i) => (
                                         <div key={i} className="flex items-start gap-3">
@@ -145,7 +145,7 @@ export default function AnswerlatticeGetStartedPage() {
                     <p className="text-sm text-[#6b6b8a]">
                         Not ready to apply?{' '}
                         <AnswerlatticeLink basePath={basePath} href="/product" className="text-teal-300 hover:text-teal-200">
-                            Learn more about how Answerlattice works
+                            Learn more about how AnswerLattice works
                         </AnswerlatticeLink>
                     </p>
                 </section>

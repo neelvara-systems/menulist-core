@@ -1,10 +1,10 @@
 'use client'
 
 import { BillingHistoryItem } from '@type/razorpay';
+import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import { useFormatter } from 'next-intl';
-import { FaBolt } from 'react-icons/fa';
-import { LuExternalLink, LuPackage, LuReceipt } from 'react-icons/lu';
+import { LuExternalLink, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -30,8 +30,8 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryP
             dataIndex: 'date',
             key: 'date',
             render: (timestamp: number) => (
-                <Tooltip title={formatter.dateTime(new Date(timestamp), { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' })}>
-                    {formatter.dateTime(new Date(timestamp), { year: 'numeric', month: 'short', day: 'numeric' })}
+                <Tooltip title={formatDateTime(timestamp, 'datetime', formatter)}>
+                    {formatDateTime(timestamp, 'date', formatter)}
                 </Tooltip>
             ),
         },
@@ -48,7 +48,7 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryP
             render: (text: string, record: BillingHistoryItem) => (
                 <Space>
                         {record.type === 'Subscription Payment' ? (
-                            <FaBolt color={token.colorInfo} />
+                            <LuZap color={token.colorInfo} />
                         ) : (
                             <LuPackage color={token.colorWarning} />
                         )}

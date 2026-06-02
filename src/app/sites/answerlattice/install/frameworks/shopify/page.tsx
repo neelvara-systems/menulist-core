@@ -4,7 +4,7 @@ import AnswerlatticeInstallContractPage from '../../InstallContractPage';
 
 export const metadata: Metadata = {
     title: 'Shopify-Style Install',
-    description: 'Answerlattice v1 install guidance for Shopify-style script injection.',
+    description: 'AnswerLattice v1 install guidance for Shopify-style script injection.',
     alternates: { canonical: '/install/frameworks/shopify' },
 };
 

@@ -1,5 +1,6 @@
 {
     "BusinessSettings": {
+        "currency": "货币",
         "publicClosedToday": "今天休息",
         "publicOpenToday": "今天营业：{hours}",
         "publicInfoVerifiedToday": "信息今日已验证",

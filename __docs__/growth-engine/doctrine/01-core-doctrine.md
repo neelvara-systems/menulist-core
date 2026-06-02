@@ -16,6 +16,8 @@ It exists to:
 find qualified distribution targets
 detect menu truth gaps
 contact safely where allowed
+configure provider adapters only through governed connections
+use WhatsApp only for expected owner verification and truth-maintenance where consent exists
 route owners into MenuList claim/onboarding
 activate confirmed MenuList truth
 maintain candidate and confirmed business truth graph relationships
@@ -57,23 +59,27 @@ Secondary metrics matter only if they explain the north star:
 No outreach or distribution without:
 
 1. source provenance
-2. dedupe
-3. suppression check
-4. channel eligibility
-5. approved template
-6. campaign cap
-7. stop rule
-8. dry-run report
-9. kill-switch coverage
-10. tracked onboarding route when a link is used
-11. distribution target identity
-12. Business Truth Graph provenance, confidence, and truth state
-13. owner-confirmed or approved MenuList-verified truth before public publishing
-14. structured data and sitemap readiness before discovery publishing
-15. automation workflow idempotency, budget, and kill-switch checks
-16. decision snapshot before any route, send, publish, notify, or pause action
-17. AI eval pass before autonomous classification or generation
-18. sender assignment before outbound execution
+2. implementation readiness acceptance
+3. active connection adapter where a provider is used
+4. server-only secret reference where credentials are needed
+5. dedupe
+6. suppression check
+7. channel eligibility
+8. approved template
+9. WhatsApp governance audit for WhatsApp sends
+10. campaign cap
+11. stop rule
+12. dry-run report
+13. kill-switch coverage
+14. tracked onboarding route when a link is used
+15. distribution target identity
+16. Business Truth Graph provenance, confidence, and truth state
+17. owner-confirmed or approved MenuList-verified truth before public publishing
+18. structured data and sitemap readiness before discovery publishing
+19. automation workflow idempotency, budget, and kill-switch checks
+20. decision snapshot before any route, send, publish, notify, or pause action
+21. AI eval pass before autonomous classification or generation
+22. sender assignment before outbound execution
 
 ## 4. System Posture
 
@@ -82,6 +88,7 @@ Growth Engine is a controlled operator system.
 It should run on:
 
 - queues
+- connection adapters
 - workflow runs
 - enrichment waterfalls
 - AI worker registry
@@ -126,11 +133,13 @@ MenuList owns:
 Growth Engine owns:
 
 - acquisition
+- Connections And Activation registry
 - automation workflows
 - enrichment waterfalls
 - decision snapshots
 - AI worker registry and eval state
 - sender assignment and pacing
+- WhatsApp Message Governance Layer
 - operator work queues
 - distribution target operations
 - Business Truth Graph candidate edges

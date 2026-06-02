@@ -1,4 +1,5 @@
 import { Alert, Collapse, Flex, Statistic, Tag, Typography, theme } from 'antd';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { useState } from 'react';
 import { LuArrowDown, LuArrowRight, LuArrowUp, LuFileText, LuLanguages, LuSparkles } from 'react-icons/lu';
 import type {
@@ -26,6 +27,7 @@ interface ImpactPreviewProps {
     textCasePreview: TextCasePreview | null;
     lastApplyMessage: string | null;
     selectedItems: SelectedItemInfo[];
+    currencySymbol: string;
 }
 
 export default function ImpactPreview({
@@ -38,6 +40,7 @@ export default function ImpactPreview({
     textCasePreview,
     lastApplyMessage,
     selectedItems,
+    currencySymbol,
 }: ImpactPreviewProps) {
     const { token } = theme.useToken();
     const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
@@ -291,14 +294,14 @@ export default function ImpactPreview({
                     <Statistic
                         title={<Text type="secondary" style={{ fontSize: 10 }}>Avg before</Text>}
                         value={pricingPreview.avgPriceBefore}
-                        prefix="₹"
+                        prefix={currencySymbol}
                         valueStyle={{ fontSize: 16 }}
                         precision={0}
                     />
                     <Statistic
                         title={<Text type="secondary" style={{ fontSize: 10 }}>Avg after</Text>}
                         value={pricingPreview.avgPriceAfter}
-                        prefix="₹"
+                        prefix={currencySymbol}
                         valueStyle={{ fontSize: 16, color: isPositive ? token.colorError : token.colorSuccess }}
                         precision={0}
                     />
@@ -382,11 +385,11 @@ export default function ImpactPreview({
                                             </Flex>
                                             <Flex align="center" gap={8}>
                                                 <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    ₹{change.oldPrice}
+                                                    {formatMenuPrice(change.oldPrice, currencySymbol)}
                                                 </Text>
                                                 <LuArrowRight style={{ fontSize: 10, color: token.colorTextQuaternary }} />
                                                 <Text strong style={{ fontSize: 11 }}>
-                                                    ₹{change.newPrice}
+                                                    {formatMenuPrice(change.newPrice, currencySymbol)}
                                                 </Text>
                                                 <Tag
                                                     color={change.changePercent > 0 ? 'blue' : 'orange'}
@@ -520,7 +523,7 @@ export default function ImpactPreview({
                                             >
                                                 <Text style={{ fontSize: 11 }}>{item.name}</Text>
                                                 <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    {item.price ? `₹${item.price}` : 'No price'}
+                                                    {item.price ? formatMenuPrice(item.price, currencySymbol) : 'No price'}
                                                 </Text>
                                             </Flex>
                                         ))}
@@ -660,7 +663,7 @@ export default function ImpactPreview({
                                             >
                                                 <Text style={{ fontSize: 11 }}>{item.name}</Text>
                                                 <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    {item.price ? `₹${item.price}` : 'No price'}
+                                                    {item.price ? formatMenuPrice(item.price, currencySymbol) : 'No price'}
                                                 </Text>
                                             </Flex>
                                         ))}
@@ -788,7 +791,7 @@ export default function ImpactPreview({
                                             >
                                                 <Text style={{ fontSize: 11 }}>{item.name}</Text>
                                                 <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    {item.price ? `₹${item.price}` : 'No price'}
+                                                    {item.price ? formatMenuPrice(item.price, currencySymbol) : 'No price'}
                                                 </Text>
                                             </Flex>
                                         ))}

@@ -3,7 +3,9 @@
 import { Line } from '@ant-design/plots';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyAnalytics } from '@lib/analytics/types';
+import { formatDateKey } from '@util/dateTime';
 import { Card, Empty, Radio, Typography, theme } from 'antd';
+import { useFormatter } from 'next-intl';
 import React, { useState } from 'react';
 
 const { Title } = Typography;
@@ -15,6 +17,7 @@ interface TrendAnalysisProps {
 
 const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
     const { token } = useToken();
+    const formatter = useFormatter();
 
     const labels = useOfferingLabels();
   const [metric, setMetric] = useState<'views' | 'clicks' | 'searches' | 'actions'>('views');
@@ -75,13 +78,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
     xAxis: {
       label: {
         formatter: (text: string) => {
-          // Format date for display (e.g., "Apr 7" instead of "2025-04-07")
-          try {
-            const date = new Date(text);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          } catch (e) {
-            return text;
-          }
+          return formatDateKey(text, formatter, text);
         },
       },
     },

@@ -45,21 +45,27 @@ Hard rules:
 10. No repeated aggregation queries for normal UI.
 11. No BigQuery dashboard without partitioning/clustering and max bytes billed.
 12. No provider run without daily and per-run spend caps.
-13. No source import without source policy and retention class.
-14. No email send without sender-domain readiness and provider webhook readiness.
-15. No public distribution job from candidate-only data.
-16. No sitemap, IndexNow, feed, or truth-packet output for noindex/private artifacts.
-17. No discovery dashboard from raw publish jobs; use summaries.
-18. No automation dashboard from raw workflow step events; use workflow run summaries.
-19. No enrichment waterfall without cache key, policy approval, and per-step cost cap.
-20. No AI worker run without typed output schema, prompt version, budget cap, and eval status.
-21. No sender rotation that breaks one sender per target conversation.
-22. No Google Places source run without approved field-mask profile and per-run budget cap.
-23. No Google Places wildcard field mask in production.
-24. No durable storage of broader Places content as MenuList truth.
-25. No Foursquare Places API pay-as-you-go data used for prospect outreach without separate contract or written permission.
-26. No Foursquare Premium Signal profile without explicit approval, budget cap, and public-output blocker.
-27. No public publishing from Business Truth Graph candidate or low-confidence edges.
+13. No provider run without an active adapter from Connections And Activation.
+14. No plaintext provider credential in Firestore, browser state, logs, AI prompts, or dashboard payloads.
+15. No source import without source policy and retention class.
+16. No email send without sender-domain readiness and provider webhook readiness.
+17. No public distribution job from candidate-only data.
+18. No sitemap, IndexNow, feed, or truth-packet output for noindex/private artifacts.
+19. No discovery dashboard from raw publish jobs; use summaries.
+20. No automation dashboard from raw workflow step events; use workflow run summaries.
+21. No enrichment waterfall without cache key, policy approval, and per-step cost cap.
+22. No AI worker run without typed output schema, prompt version, budget cap, and eval status.
+23. No sender rotation that breaks one sender per target conversation.
+24. No Google Places source run without approved field-mask profile and per-run budget cap.
+25. No Google Places wildcard field mask in production.
+26. No durable storage of broader Places content as MenuList truth.
+27. No Foursquare Places API pay-as-you-go data used for prospect outreach without separate contract or written permission.
+28. No Foursquare Premium Signal profile without explicit approval, budget cap, and public-output blocker.
+29. No public publishing from Business Truth Graph candidate or low-confidence edges.
+30. No WhatsApp API send without message-governance audit, consent proof, suppression check, approved template or open service window, sender health, pacing, webhook readiness, and reputation check.
+31. No WhatsApp opt-in from public phone availability, source import, Google Places data, Foursquare data, or third-party enrichment.
+32. No raw WhatsApp webhook payload in Firestore beyond compact normalized event fields and Storage refs.
+33. No implementation handoff without Firestore rules and index expectations reviewed against [Implementation Readiness](./growth-engine_implementation-readiness.md).
 
 ## 4. Hot Collections
 
@@ -72,10 +78,23 @@ Hard rules:
 | `growthEngineApprovals` | Approval queue | Bounded list |
 | `growthEngineActionQueue` | Pending operator/system actions | Bounded list |
 | `growthEngineKillSwitches` | Emergency controls | Small list |
+| `growthEngineConnectionAdapters` | Adapter IDs, provider metadata, lifecycle, policy links, budget, and kill-switch scope | Small policy list |
+| `growthEnginePipelineConnections` | Source/email/WhatsApp/webhook/discovery/AI activation state | Small policy list |
+| `growthEngineEmailPipelineConnections` | Email provider, sender domain, DNS, unsubscribe, bounce/complaint webhook, and cap state | Small policy list/detail |
+| `growthEngineWhatsAppPipelineConnections` | WABA, phone-number ID, token refs, webhook refs, opt-in policy, template sync, and reputation state | Small policy list/detail |
+| `growthEngineWebhookEndpoints` | Provider webhook URL, expected events, signing-secret ref, latest health, and dead-letter state | Small policy list/detail |
+| `growthEngineConnectionValidationRuns` | Technical and policy validation results for adapters and pipelines | Recent bounded list/detail |
+| `growthEngineConnectionHealthSummaries` | Connection status rollups for dashboards | Small summary docs |
+| `growthEngineConnectionSecrets` | Secret refs, fingerprints, versions, and rotation metadata only | Admin detail only |
 | `growthEngineSourcePolicies` | Approved source rules | Small policy list |
 | `growthEngineChannelPolicies` | Jurisdiction/channel eligibility | Small policy list |
 | `growthEngineSenderDomains` | Email DNS/readiness/health | Small list/detail |
 | `growthEngineConsentLedger` | Opt-in, unsubscribe, DNC, complaint, bounce proof | Identity lookup only |
+| `growthEngineWhatsAppTemplates` | Template status, category, quality, variables, owner, version, and allowed use case | Small policy list |
+| `growthEngineWhatsAppConversationStates` | Customer service window, free-entry window, latest inbound, template-required state | Contact/target detail only |
+| `growthEngineWhatsAppSenderIdentities` | WABA/phone identity, quality, allowed use cases, and pause/block state | Small policy list |
+| `growthEngineWhatsAppReputationSnapshots` | Sender/template quality, delivery, read, reply, opt-out, complaint, and decision summaries | Small summary docs |
+| `growthEngineMessageGovernanceAudits` | Pre-send consent, suppression, template, conversation, sender, pacing, and reputation decision | Target/campaign detail only |
 | `growthEngineOnboardingFlowInventory` | Approved MenuList route bridge flows | Small policy list |
 | `growthEngineProviderRegister` | Approved providers, costs, retention, webhooks | Small policy list |
 | `growthEngineGooglePlacesSourceRuns` | Google Places query plan, field mask, SKU estimate, and run state | Admin/source detail only |
@@ -96,14 +115,45 @@ Hard rules:
 | `growthEngineSurfaceHealthSummaries` | Indexability, structured data, HTTP, noindex, redirect status | Small summary docs |
 | `growthEngineFreshnessSummaries` | Menu, price, hours, language, outlet freshness | Small summary docs |
 
+## 4A. Firestore Rules And Index Readiness
+
+The implementation must create Growth Engine-specific Firestore rules and indexes for the separate Firebase target.
+
+Minimum rules posture:
+
+- default deny
+- internal/admin access only
+- role checks by collection group
+- no public read
+- no MenuList owner/customer read
+- no client write to secret refs, audit events, webhook events, or message-governance audits
+- contact reveal only through audited server route
+
+Minimum index posture:
+
+- summary list indexes by status and updated timestamp
+- queue indexes by status, severity, and due timestamp
+- connection indexes by adapter ID and lifecycle
+- webhook health indexes by endpoint ID and latest event timestamp
+- suppression lookup indexes by hashed identity
+- incident indexes by status and severity
+
+Do not index raw payload fields, message bodies, AI prompt payloads, source raw fields, or webhook raw payload refs.
+
 ## 5. Warm/Cold Collections
 
 | Collection | Purpose | UI rule |
 | --- | --- | --- |
 | `growthEngineSourceRuns` | Source execution records | List recent only |
+| `growthEngineConnectionAuditEvents` | Adapter, secret-ref, validation, activation, pause, and kill-switch audit trail | Bounded audit list only |
+| `growthEngineConnectionValidationEvents` | Detailed validation check events | Admin/debug only |
+| `growthEngineConnectionIncidentLinks` | Links from adapters/webhooks/senders to incidents | Incident detail only |
 | `growthEngineSourceCandidates` | Imported candidate staging | Not normal dashboard |
 | `growthEngineMessages` | Conversation messages | Lead/conversation detail only |
 | `growthEngineMessageEvents` | Delivery/reply/click events | Never dashboard scan |
+| `growthEngineWhatsAppWebhookEvents` | Normalized WhatsApp status, reply, button, Flow, template, and quality events | Never dashboard scan |
+| `growthEngineWhatsAppFlowDefinitions` | Approved structured truth-capture Flow definitions | Admin/policy only |
+| `growthEngineWhatsAppTemplateEvents` | Template status/quality sync history | Admin/debug only |
 | `growthEngineSendJobs` | Execution queue/history | Job detail only |
 | `growthEngineFeedbackEvents` | MenuList route feedback | Rollup source only |
 | `growthEngineAttributionTouches` | Attribution history | Analytics/export only |
@@ -131,6 +181,7 @@ Use Cloud Storage for:
 
 - raw source payloads
 - raw provider webhook payloads
+- raw WhatsApp webhook payloads when needed for short-lived audit
 - import CSV files
 - large export reports
 - eval datasets
@@ -141,11 +192,15 @@ Use Cloud Storage for:
 - public truth packet artifacts
 - structured data validation reports
 
+Do not store plaintext provider keys, SMTP passwords, WhatsApp tokens, app secrets, webhook verify tokens, or signing secrets in Firestore or Storage. Store these in Secret Manager or an approved server-only vault. Firestore stores secret refs, fingerprints, versions, status, rotation metadata, and audit links only.
+
 Firestore stores references, checksums, timestamps, provider/source metadata, retention class, and status.
 
 Do not store Google Maps photos, reviews, menus, profile content, or broader Places API content as Growth Engine assets or durable truth. Google place IDs, request metadata, field masks, response hashes, and internal decision state may be stored.
 
 Do not store Foursquare photos, tips, ratings, descriptions, popularity, menu, or profile content as Growth Engine assets, public artifact content, or durable MenuList truth. Foursquare place IDs, category IDs, chain IDs, source run metadata, response hashes, and candidate graph edges may be stored when source policy allows it.
+
+Do not store full WhatsApp webhook payloads in Firestore. Store normalized event type, message/provider IDs, validation state, outcome timestamps, error code where needed, compact hashes, and Storage refs. Message bodies are retained only where compliance/support policy requires and should be redacted or minimized.
 
 ## 7. Task Queues And Workers
 
@@ -154,6 +209,9 @@ Firebase task queue functions can handle async, resource-intensive, rate-limited
 Use task queues for:
 
 - source import
+- connection validation
+- secret rotation reminders
+- connection health summary rollups
 - Google Places seed runs
 - Google Places selective details enrichment
 - Foursquare identity/category/chain enrichment
@@ -176,6 +234,13 @@ Use task queues for:
 - GBP handoff reminders
 - dry-run generation
 - send jobs
+- email DNS/readiness checks
+- WhatsApp governance checks
+- WhatsApp template sync
+- WhatsApp conversation-state updates
+- WhatsApp webhook verification and normalization
+- WhatsApp reputation rollups
+- WhatsApp Flow submission processing
 - webhook normalization
 - reply classification
 - follow-up detection
@@ -224,7 +289,11 @@ type GrowthBudgetPolicy = {
     maxEmailSendsPerDay?: number;
     maxWhatsappAssistedPerDay?: number;
     maxWhatsappApiPerDay?: number;
+    maxWhatsappTemplateSendsPerDay?: number;
+    maxWhatsappRecipientsPerBatch?: number;
+    maxWhatsappFlowSubmissionsPerDay?: number;
     maxEmailProviderSpendUsdPerDay?: number;
+    maxWhatsappProviderSpendUsdPerDay?: number;
   };
   analytics: {
     maxBigQueryBytesBilledPerQuery?: number;
@@ -268,11 +337,15 @@ Default first-run posture:
 | Provider area | Guardrail |
 | --- | --- |
 | Source providers | Require policy approval, run cap, daily cap, raw payload retention class, and source-quality review before campaign eligibility. |
+| Connection adapters | Require active lifecycle, secret refs, policy links, validation run, budget cap, kill switch, and owner before provider execution. |
 | Google Places | Require approved source policy, named field-mask profile, per-run request cap, SKU estimate, quota alert, place-ID-only durable storage, and block photos/reviews/profile/menu content. |
 | Foursquare | Require approved source policy, field profile, per-run request cap, tier estimate, outreach-eligibility flag, and PAYG prospecting block unless contract/written permission exists. |
 | Business Truth Graph | Store nodes/edges as compact summary records with provenance, confidence, and truth state. Public publishing reads confirmed MenuList truth only, not candidate graph edges. |
 | Email provider | Track per-send cost, bounce webhook health, unsubscribe webhook health, domain readiness, spam-rate threshold, and daily send cap. |
-| WhatsApp provider | Assisted-only until opt-in proof and template approval exist; API costs stay disabled until policy review. |
+| WhatsApp provider | Assisted-only until opt-in proof, approved templates, conversation-state engine, webhook signature verification, sender identity health, reputation monitor, pacing policy, and governance audit exist. API costs stay disabled until policy review. |
+| WhatsApp templates | Block pending, rejected, paused, disabled, wrong-category, or low-quality templates from unattended sends. |
+| WhatsApp reputation | Pause or reduce sends when delivery, read, reply, opt-out, complaint, template quality, or sender quality moves outside policy. |
+| WhatsApp Flows | Store Flow definitions as policy objects; write Flow submissions only after schema validation and approved field filtering. |
 | AI provider | Cache typed outputs by source hash and prompt version; block duplicate spend on unchanged inputs. |
 | Enrichment waterfall | Require approved provider order, stop condition, source-policy match, and per-step cost cap before running. |
 | Workflow engine | Require idempotency key, retry cap, budget check, and kill-switch check before each step execution. |
@@ -305,6 +378,10 @@ For a first controlled campaign of 100 leads:
 | Operator work items | variable writes | Created only for human-review and exception queues. |
 | Dry-run | 100-300 reads, 1 report write | Reads summaries, suppressions, templates, campaign policy. |
 | Email sends | 100 send jobs + events | Provider cost outside Firebase. |
+| WhatsApp assisted tasks | only opted-in or owner-initiated contacts | No provider API send counted until operator marks sent. |
+| WhatsApp API template sends | disabled until governance passes | Requires consent proof, template approval, conversation state, reputation check, and provider cost cap. |
+| WhatsApp webhooks | variable normalized events | Signature-verified, idempotent, compact events only; raw payloads use short TTL Storage refs. |
+| WhatsApp Flow submissions | only approved Flow definitions | Validated structured truth fields can update candidate graph state for review. |
 | Replies/clicks | variable writes | Webhook-driven. |
 | Dashboard | bounded summary reads | No raw event scans. |
 | Sender health sync | small scheduled/queued reads | Domain/provider status only. |
@@ -351,6 +428,12 @@ For 1,000 leads, use batch jobs and summary rollups. Do not open raw lead/event 
 | Truth packet checksum/state | Retain while packet is public. |
 | Source policy approval | Long-term while source may explain prior outreach. |
 | Consent, unsubscribe, DNC, complaint proof | Long-term retention for suppression and audit. |
+| WhatsApp consent proof | Long-term while any WhatsApp message history or suppression state can be audited. |
+| WhatsApp conversation state | Retain while target/contact remains eligible; archive compact state after inactivity. |
+| WhatsApp template records | Long-term while template can explain prior sends. |
+| WhatsApp raw webhook payload | Short TTL Storage only, unless required for incident evidence. |
+| WhatsApp normalized webhook event | Retain while message/conversation attribution remains active. |
+| WhatsApp reputation snapshot | Retain enough for quality, cost, and incident trend analysis. |
 | Artifact review/takedown | Retain review evidence after artifact expiry. |
 | Vendor/data processor records | Long-term while vendor was used for any retained data. |
 | Data subject request records | Long-term audit record, with personal payload minimized. |

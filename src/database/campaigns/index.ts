@@ -7,9 +7,18 @@ import getActiveSession from "@lib/auth/getActiveSession";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
-import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
-import { generateScreenToken } from "@lib/screen/utils";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
+import {
+    dedupeScreenMenuItems,
+    normalizeOwnerSlideCaption,
+    normalizeScreenCategoryName,
+    normalizeScreenImageUrl,
+    normalizeScreenTags,
+    parseScreenPrice,
+    resolveScreenText,
+} from "@lib/screen/screenContent";
+import { generateScreenToken } from "@lib/screen/utils";
 import {
     Campaign,
     CampaignExport,
@@ -464,6 +473,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
                 storeData?.customDomain,
                 selectedProjectSlug,
             ),
+            currencySymbol: storeData?.currencySymbol || '₹',
         };
 
         return {
@@ -500,6 +510,8 @@ export const getMenuItemsForScreen = async (
     available: boolean;
     isBestSeller?: boolean;
     categoryName?: string;
+    categoryOrderIndex?: number;
+    orderIndex?: number;
     description?: string;
     tags?: string[];
 }>> => {
@@ -515,27 +527,23 @@ export const getMenuItemsForScreen = async (
                 available: boolean;
                 isBestSeller?: boolean;
                 categoryName?: string;
+                categoryOrderIndex?: number;
+                orderIndex?: number;
                 description?: string;
                 tags?: string[];
             }> = [];
-
-            const resolveLocalizedText = (value: unknown): string => {
-                if (typeof value === 'string') return value.trim();
-                if (!value || typeof value !== 'object') return '';
-                const localized = Object.values(value as Record<string, unknown>).find(
-                    (entry) => typeof entry === 'string' && entry.trim().length > 0
-                );
-                return typeof localized === 'string' ? localized.trim() : '';
-            };
 
             for (const file of (projectData?.files || [])) {
                 const categories = Array.isArray(file?.extractedData?.data?.categories)
                     ? file.extractedData.data.categories
                     : [];
-                const categoryMap = categories.reduce((acc: Record<string, string>, category: any) => {
-                    const categoryName = resolveLocalizedText(category?.name);
+                const categoryMap = categories.reduce((acc: Record<string, { name: string; orderIndex: number }>, category: any, index: number) => {
+                    const categoryName = normalizeScreenCategoryName(category?.name, "");
                     if (category?.id && categoryName) {
-                        acc[category.id] = categoryName;
+                        acc[category.id] = {
+                            name: categoryName,
+                            orderIndex: Number.isFinite(Number(category?.orderIndex)) ? Number(category.orderIndex) : index,
+                        };
                     }
                     return acc;
                 }, {});
@@ -544,28 +552,31 @@ export const getMenuItemsForScreen = async (
                     ? file.extractedData.data.items
                     : [];
 
-                for (const item of items) {
-                    const itemName = resolveLocalizedText(item?.name);
+                for (const [index, item] of items.entries()) {
+                    const itemName = resolveScreenText(item?.name);
                     if (!itemName) continue;
 
-                    const itemDesc = resolveLocalizedText(item?.description) || undefined;
-                    const parsedPrice = typeof item?.price === 'string' ? parseFloat(item.price) : item?.price;
+                    const itemDesc = resolveScreenText(item?.description) || undefined;
+                    const parsedPrice = parseScreenPrice(item?.price);
+                    const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
 
                     extractedItems.push({
                         id: item?.id || `item-${extractedItems.length}`,
                         name: itemName,
-                        imageUrl: item?.images?.[0]?.url,
-                        price: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+                        imageUrl: normalizeScreenImageUrl(item?.images?.[0]?.url),
+                        price: parsedPrice,
                         available: item?.available !== false,
                         isBestSeller: item?.isBestSeller || false,
-                        categoryName: categoryMap[item?.category] || item?.category || undefined,
+                        categoryName: categoryInfo?.name || normalizeScreenCategoryName(item?.category),
+                        categoryOrderIndex: categoryInfo?.orderIndex,
+                        orderIndex: Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : index,
                         description: itemDesc,
-                        tags: item?.tags?.length ? item.tags : undefined,
+                        tags: normalizeScreenTags(item?.tags),
                     });
                 }
             }
 
-            return extractedItems;
+            return dedupeScreenMenuItems(extractedItems);
         };
 
         const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
@@ -860,9 +871,10 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
 
             const data = docSnap.data() as CampaignsSummaryDocument;
             const currentSlides = data.screen?.pinnedSlides || [];
+            const nextCaption = normalizeOwnerSlideCaption(caption);
             const updatedSlides = currentSlides.map((slide) => (
                 slide.id === slideId
-                    ? { ...slide, caption: caption.trim() || "Custom Slide" }
+                    ? { ...slide, caption: nextCaption }
                     : slide
             ));
 
@@ -972,7 +984,7 @@ export const uploadScreenSlide = async (
                 source: "pinned",
                 type: "owner_upload",
                 imageUrl,
-                caption,
+                caption: normalizeOwnerSlideCaption(caption),
                 confidenceScore: 1.0, // Owner uploads always max confidence
                 availabilityLinked: false,
                 availabilityReliability: "high",

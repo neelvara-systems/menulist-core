@@ -336,11 +336,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeIds: getStoreIdsClaim(dbUser),
             ...answerlatticePermissionClaims,
         };
-        const answerlatticeCustomToken = await createAnswerlatticeCustomTokenIfNeeded(
-            session.user.email,
-            session.user.name,
-            customClaims,
-        );
+        const answerlatticeCustomToken = shouldUseAnswerlatticeUserContext
+            ? await createAnswerlatticeCustomTokenIfNeeded(
+                session.user.email,
+                session.user.name,
+                customClaims,
+            )
+            : null;
 
         // If UID provided, set claims on existing user
         if (uid) {

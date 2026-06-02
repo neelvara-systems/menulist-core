@@ -5,18 +5,18 @@ const SETUP_STEPS = [
     {
         number: '01',
         title: 'Add your product',
-        detail: 'Create the Answerlattice workspace with company, product, and support details.',
+        detail: 'Create the AnswerLattice workspace with company, product, and support details.',
         outcome: 'Workspace ready',
     },
     {
         number: '02',
-        title: 'Pick 2-5 pages where users get stuck',
+        title: 'Pick 2-5 pages where users need help',
         detail: 'Start with billing, onboarding, settings, team, release, or integration screens.',
         outcome: 'Pages mapped',
     },
     {
         number: '03',
-        title: 'Teach Answerlattice from links, docs, files, or media',
+        title: 'Teach AnswerLattice from links, docs, files, or media',
         detail: 'Use selected public pages, support notes, FAQs, release updates, supported files, screenshots, or short support recordings instead of building a blank help center.',
         outcome: 'Drafts prepared',
     },

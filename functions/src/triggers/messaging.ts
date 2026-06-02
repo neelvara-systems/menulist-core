@@ -18,7 +18,13 @@ import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from '../types';
 // Messaging onboarding webhook — onRequest (first in codebase — §19.1)
 // Route: /messagingOnboarding/{provider}
 export const messagingOnboarding = onRequest(
-    FUNCTION_OPTIONS.messagingWebhook,
+    {
+        ...FUNCTION_OPTIONS.messagingWebhook,
+        secrets: Array.from(new Set([
+            ...SECRET_GROUPS.WHATSAPP,
+            ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ])),
+    },
     messagingOnboardingWebhook,
 );
 
@@ -29,7 +35,10 @@ export const msgExtractionWatcher = onDocumentUpdated(
     {
         ...FUNCTION_OPTIONS.base,
         timeoutSeconds: 540,
-        secrets: SECRET_GROUPS.WHATSAPP_OUTBOUND,
+        secrets: Array.from(new Set([
+            ...SECRET_GROUPS.WHATSAPP_OUTBOUND,
+            ...SECRET_GROUPS.PLATFORM_ALERT_DELIVERY,
+        ])),
         document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}`,
     },
     async (event) => {

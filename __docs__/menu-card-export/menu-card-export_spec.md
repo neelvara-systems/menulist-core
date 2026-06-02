@@ -9,13 +9,13 @@
 
 ## Executive Summary
 
-Menu Card Export turns MenuList's current menu truth into print-ready menu files. The owner opens a dedicated route, chooses the job they need, selects a controlled style, reviews preflight warnings, checks a preview, and exports a PDF or packet that can point customers back to the live menu.
+Menu Card Export turns MenuList's current business truth into print-ready files. The owner opens a dedicated route, chooses the job they need, selects a controlled style, reviews preflight warnings, checks a preview, and exports a PDF or packet that can point customers back to the live menu, service list, or catalog.
 
 The current PDF Surface is useful but too small as a product surface: it is a single download button in Share Modal and Use MenuList, backed by one `jsPDF` generator. The long-term feature needs its own route because style choice, page preview, export history, stale detection, and mobile parity need more room than a modal action can safely provide.
 
 One-sentence product definition:
 
-> Create print-ready menu files from the current MenuList menu.
+> Create print-ready files from the current MenuList menu, service list, or catalog.
 
 ---
 
@@ -48,7 +48,7 @@ Final research-backed position:
 | Would anyone notice if absent? | Yes. Printed menus and WhatsApp PDFs are common SMB operating surfaces. Current PDF quality is not enough. | PASS |
 | Does it strengthen the core moment? | Yes. Customers see correct menu information in print and can scan back to the latest live menu. | PASS |
 | Can it be explained in one sentence without "and"? | Yes: Create print-ready menu files from the current MenuList menu. | PASS |
-| Will this matter in 3 years? | Yes. Offline menu cards and stale printed prices are durable restaurant problems. | PASS |
+| Will this matter in 3 years? | Yes. Offline menu cards, service lists, catalog sheets, and stale printed prices are durable SMB problems. | PASS |
 
 Verdict: approved as a routed print workflow, not as a design tool.
 
@@ -63,12 +63,13 @@ Verdict: approved as a routed print workflow, not as a design tool.
 | Treat pagination as the product. | Agree | Build explicit category-first pagination. Do not rely on raw CSS columns. |
 | Add print-shop handoff. | Agree | Add a flag-gated packet with PDF, print instructions, proof checklist, and QR test note. |
 | Add useful SMB additions. | Agree | Add job presets, preflight, WhatsApp file, QR scan checks, safe layout overrides, and stale-file regeneration. |
-| Use snapshots and freshness detection. | Agree | Store `printSourceHash`, `menuSnapshotId`, and freshness state on export records. |
+| Use snapshots and freshness detection. | Agree | Store `printSourceHash`, `menuSnapshotId`, and freshness state in device-local export history. Server records remain behind separate cost approval. |
 | Start with many template families. | Partial | Ship a registry that supports families, but expose only approved Classic, Compact, and Premium styles until each passes the QA matrix. |
 | Use Playwright/Chromium server rendering. | Partial | Keep a renderer adapter boundary. Existing repo dependency is `jsPDF`, not Playwright; any browser renderer requires deployment/runtime proof before adoption. |
 | Add AI style advice. | Agree with guardrails | Pro/Premium-only, JSON-only layout recipe. It never renders final pages or rewrites menu truth. |
+| Make output work without a designer. | Agree | Add deterministic auto print design before Pro/Premium AI or manual style choice. |
 | Store generated artifacts and export history. | Partial | Local browser history is implemented first to keep Firebase cost at zero. Server artifact storage remains behind future flag approval. |
-| Add report/deck export playbook elements. | Partial | Accept PDF metadata, deterministic filenames, source summary, and practical print checklist. Reject executive summaries, ToC, approvals, confidentiality labels, chart/table defaults, and AI/tool provenance because this is a restaurant menu output, not a report. |
+| Add report/deck export playbook elements. | Partial | Accept PDF metadata, deterministic filenames, source summary, and practical print checklist. Reject executive summaries, ToC, approvals, confidentiality labels, chart/table defaults, and AI/tool provenance because this is an SMB-facing menu/service/catalog output, not a report. |
 
 ---
 
@@ -82,6 +83,8 @@ The live code already proves demand and a basic path:
 - `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` opens Print Menu from the project Share modal when the feature flag is on.
 - `src/components/templates/main-app/useMenuList/index.tsx:951` opens Print Menu from Use MenuList when the feature flag is on.
 - `src/lib/menu-card-export/navigation.ts:1` centralizes the route path and `projectId` query construction.
+- `src/hooks/useMenuCardExportController.ts:87` owns shared project loading, print source building, preview, preflight, export generation, local history, and Pro/Premium layout suggestion behavior.
+- `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:59` renders the dedicated mobile Print Menu screen while reusing the shared controller.
 - `src/components/mobile/screens/MobileShareScreen.tsx:889` opens Print Menu from Mobile Share when the feature flag is on.
 - `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` exposes Print Menu inside the mobile Menu command sheet.
 - `src/components/mobile/screens/MobileMenuScreen.tsx:2742` starts the mobile Menu route handoff, and `src/components/mobile/screens/MobileMenuScreen.tsx:2749` saves pending mobile menu edits before leaving for Print Menu.
@@ -99,8 +102,8 @@ The live code already proves demand and a basic path:
 | --- | --- |
 | Use MenuList | Primary card: `Menu Card Export` opens `/use-menulist/menu-card-export`. |
 | Project Share modal | `Menu card` action opens the route with `projectId` preselected. |
-| Mobile Share | `Print Menu` tile opens the responsive route with the selected menu. |
-| Mobile Menu | Command sheet `Print Menu` opens the responsive route after saving pending edits. |
+| Mobile Share | `Print Menu` tile opens the dedicated mobile Print Menu screen with the selected menu. |
+| Mobile Menu | Command sheet `Print Menu` opens the dedicated mobile Print Menu screen after saving pending edits. |
 | More > Modules | `Print Menu` opens the route with the current mobile project selection; it is listed beside Dashboard for discovery, not inside analytics. |
 | Existing `Menu PDF` action | May stay behind legacy flag during migration, but it is no longer the main feature. |
 
@@ -167,7 +170,7 @@ Allowed:
 - Paper size: A4, A5, Letter
 - Orientation: portrait, landscape where style supports it
 - Density: comfortable, balanced, compact
-- Include logo
+- Include the existing store logo
 - Include descriptions
 - Include photos if template supports them
 - Include QR
@@ -194,6 +197,38 @@ Rejected:
 - AI-generated final pages
 
 Safe overrides are not a design editor. They are constrained layout hints validated by the pagination engine.
+
+Branding rule:
+
+- Use the existing store logo and the same `store.publicPresence.accentColor` used by OBP.
+- Fall back to older store/project brand color fields only when OBP accent color is missing.
+- Do not add a logo upload, theme picker, or manual color setting inside Print Menu.
+
+Business-type rule:
+
+- Use existing `store.businessType` and `store.businessCategory` through the shared MenuList business taxonomy.
+- Food businesses render as menu sheets.
+- Retail/product businesses render as product catalog or price-list sheets.
+- Service, professional, creative, specialty, and health/wellness businesses render as cleaner service-list sheets.
+- The QR label and default document label must match the resolved business profile, for example current menu, current services, or current catalog.
+- Do not add owner-facing business-theme controls inside Print Menu; the store's existing business type is the control point.
+
+Auto print design rule:
+
+- The route should start with a system-picked style, density, and safe toggles.
+- Inputs are existing print source facts: business profile, category count, item count, description coverage, variant presence, and selected job preset.
+- Food, service, retail/product, professional, and wellness businesses must receive different baseline choices where useful.
+- Owners may still change job, style, density, and safe toggles.
+- Auto print design must be deterministic, client-side, and free. It must not call the Pro/Premium AI advisor.
+
+Physical-menu rule:
+
+- Output should feel like a real printed business sheet, not a plain table printout.
+- Use controlled template styling only: paper tone, borders, title plaque/editorial heading, category treatment, and price leaders.
+- Classic may use a restaurant-menu plaque and ribbon sections.
+- Premium may use an editorial hierarchy with more whitespace.
+- Compact may use a warm card-like sheet suitable for dense menus and QR handoff.
+- Do not add owner-controlled ornaments, arbitrary fonts, background images, or manual design controls.
 
 ### Pro/Premium Layout Suggestion
 
@@ -292,7 +327,7 @@ PDF and packet identification:
 
 ## Freshness
 
-Every export stores:
+When local export history is enabled, each completed export record stores:
 
 - `menuSnapshotId`
 - `printSourceHash`
@@ -335,6 +370,7 @@ Do not show hash values to owners unless support mode is active.
 | MCE-13 | Multi-location batch export is feature-flagged and shares the same access checks per selected store/project. |
 | MCE-14 | Generated PDF text remains selectable wherever the renderer supports text output. |
 | MCE-15 | Pro/Premium layout suggestion is optional, plan-gated, capacity-gated, JSON-only, and never part of final render truth. |
+| MCE-16 | Auto print design is available before paid AI and never consumes AI capacity. |
 | MCE-16 | Generated PDFs include document properties and deterministic filenames for easier local search and support. |
 | MCE-17 | Print-shop packet instructions include owner-safe source summary, generated/menu-updated dates, template version, renderer version, and live menu destination. |
 
@@ -347,11 +383,11 @@ Do not show hash values to owners unless support mode is active.
 | Security | Authenticated owner route uses existing DAL/session context; the AI advisor API uses `withAuth()`, tenant/store verification, validation, and rate limiting. |
 | Cost | Preview and final export must not write Firestore or upload Storage in the default implementation. AI advisor must be blocked before provider call for non-Pro/Premium users. |
 | Performance | Preview should return in under 2 seconds for normal menus; final export must show clear queued/rendering/ready states. |
-| Mobile | Thumb-safe controls, no precision layout editing, same export records as desktop. |
+| Mobile | Thumb-safe controls, no precision layout editing, same device-local export history model as desktop. |
 | Public output | PDF must not include internal notes, owner-only metadata, draft items, or hidden content. |
 | Output identification | Source hashes may be used in metadata/instructions, but full hashes must not be printed as customer-facing menu footer text. |
 | Cache | No public cache invalidation because no public menu/store truth is mutated. |
-| Reliability | If render fails, the export record stores a safe error code and owner can retry. |
+| Reliability | If render fails, the route shows a safe retry state without creating a Firestore record or Storage artifact. |
 | Accessibility | Do not claim PDF/UA compliance until tagged PDF, reading order, metadata, and verification tooling are implemented. |
 
 ---

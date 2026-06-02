@@ -433,8 +433,13 @@ export const MenuCardDesignAdvisorRequestSchema = z.object({
     sourceSummary: z.object({
         businessName: z.string().min(1).max(120),
         menuTitle: z.string().min(1).max(120),
+        autoDesignLabel: z.string().max(80).optional(),
+        autoDesignReason: z.string().max(220).optional(),
+        businessCategory: z.string().max(80).optional(),
+        businessProfile: z.string().max(80).optional(),
         categoryCount: z.number().int().min(0).max(200),
         itemCount: z.number().int().min(0).max(1000),
+        offeringKind: z.enum(['menuItem', 'product', 'service']).optional(),
         pageCount: z.number().int().min(0).max(200),
         hasDescriptions: z.boolean(),
         hasVariants: z.boolean(),

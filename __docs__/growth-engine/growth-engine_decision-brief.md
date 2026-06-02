@@ -91,6 +91,8 @@ Growth Engine owns:
 - decision snapshots
 - AI worker registry and eval state
 - sender assignment and pacing
+- Connections And Activation registry
+- WhatsApp Message Governance Layer
 - operator work queues
 - distribution target registry
 - Business Truth Graph candidate edges
@@ -163,6 +165,7 @@ Accepted:
 - lead data must be normalized, deduped, scored, and suppressed before sending
 - dry-run mode is mandatory
 - WhatsApp should start assisted, not bulk automated
+- WhatsApp must be treated as a consented owner-verification and truth-maintenance rail, not a generic cold outreach channel
 - Growth Engine should become owned distribution infrastructure, not just lead gen
 - canonical public surfaces, structured data, sitemaps, feed exports, and freshness state are core
 - Firestore must use summary docs and bounded queries
@@ -179,6 +182,8 @@ Modified:
 - generic lead/outreach tools become optional infrastructure inputs, not systems of record
 - generic workflow/enrichment/sequencing patterns become internal MenuList-owned automation contracts
 - omnichannel becomes email-first plus WhatsApp-assisted, with Instagram/Messenger inbound or warm-only until policy is proven
+- WhatsApp API automation becomes message governance first: consent, suppression, template status, conversation window, webhook verification, reputation, sender identity, pacing, and audit
+- provider configuration becomes Connections And Activation first: adapter IDs, secret refs, webhook health, budget caps, kill switches, validation, and activation audit before provider execution
 - AI autonomy becomes typed, evaluated, and approval-gated
 
 Rejected:
@@ -197,6 +202,8 @@ Rejected:
 - rely on third-party workflow builders or enrichment tables as the automation system of record
 - start with all channels at once
 - send without suppression, dry run, approvals, and kill switches
+- use WhatsApp API sends from scraped, enriched, public, Google Places, or Foursquare phone numbers without explicit opt-in
+- use shared WhatsApp sender pools, number rotation, fake utility templates, or generic AI assistant behavior
 
 ## Final Decision
 

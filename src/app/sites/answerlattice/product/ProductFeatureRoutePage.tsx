@@ -12,7 +12,7 @@ export function buildProductFeatureMetadata(feature: AnswerlatticeProductFeature
         description: feature.description,
         alternates: { canonical: feature.href },
         openGraph: {
-            title: `${feature.label} | Answerlattice`,
+            title: `${feature.label} | AnswerLattice`,
             description: feature.description,
             url: feature.href,
         },

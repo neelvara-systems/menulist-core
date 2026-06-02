@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('changelog');
 
 if (!feature) {
-    throw new Error('Answerlattice Changelog feature configuration is missing.');
+    throw new Error('AnswerLattice Changelog feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

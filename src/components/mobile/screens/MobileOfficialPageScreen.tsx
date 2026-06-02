@@ -359,7 +359,7 @@ function SortablePhotoRow({
                             font: 'inherit',
                             fontSize: 12,
                             fontWeight: 700,
-                            minHeight: 32,
+                            minHeight: 44,
                             opacity: disabled || isBusy ? 0.5 : 1,
                             padding: '0 14px',
                         }}

@@ -113,6 +113,7 @@ function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = 
     const sourceMetadata = jobData?.sourceMetadata && typeof jobData.sourceMetadata === 'object'
         ? jobData.sourceMetadata
         : null;
+    let nextIndex = files.length;
 
     for (const sourceFile of jobFiles) {
         if (!sourceFile?.uid || files.some(file => file?.uid === sourceFile.uid)) continue;
@@ -122,10 +123,14 @@ function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = 
             size: sourceFile.size || 0,
             type: sourceFile.type || 'text/plain',
             url: sourceFile.url || '',
+            active: true,
+            deleted: false,
+            index: nextIndex++,
             processingTime: jobData?.result?.processingTime || 0,
             ...(source ? { source } : {}),
             ...(sourceMetadata ? { sourceMetadata } : {}),
             extractedData: {
+                message: '',
                 data: {
                     categories: [],
                     items: [],

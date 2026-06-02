@@ -8,6 +8,7 @@ import {
 } from '@hook/useGrowthOS';
 import { isGrowthOSSummaryKitStale } from '@lib/growthos/todayTrigger';
 import type { GrowthOSOutput, GrowthOSStaffBriefOutput } from '@type/growthos';
+import { theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
@@ -45,6 +46,7 @@ const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBrie
 );
 
 export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCardProps) {
+    const { token } = theme.useToken();
     const { growthOSSummary, mutate } = useGrowthOS();
     const [isWorking, setIsWorking] = useState(false);
     const latestKit = growthOSSummary?.latestKit || null;
@@ -200,9 +202,9 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                 {isStale || primaryOutputBlocked ? (
                     <Text
                         style={{
-                            background: 'rgba(250, 173, 20, 0.12)',
+                            background: token.colorWarningBg,
                             borderRadius: 12,
-                            color: 'var(--adm-color-warning)',
+                            color: token.colorWarningText,
                             padding: 12,
                         }}
                     >

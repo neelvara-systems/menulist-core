@@ -2,7 +2,7 @@
 
 > **Consolidated documentation** for AI discovery, machine readability, schema.org, GEO/AEO, and ecosystem interoperability.
 > Merged from: `seo-aeo-discovery-infrastructure/`, `infrastructure-gap-analysis/`, `discovery-infrastructure/`
-> Last Updated: May 23, 2026
+> Last Updated: June 2, 2026
 
 ---
 
@@ -63,6 +63,7 @@ Current production contract:
 | [seo-aeo-discovery-infrastructure_website.md](./seo-aeo-discovery-infrastructure_website.md)               | Landing page content                                         | ✅ COMPLETE |
 | [seo-aeo-discovery-infrastructure_helpdoc.md](./seo-aeo-discovery-infrastructure_helpdoc.md)               | Customer help article                                        | ✅ COMPLETE |
 | [seo-aeo-discovery-infrastructure_mobile-support.md](./seo-aeo-discovery-infrastructure_mobile-support.md) | Owner-facing informational card shipped on desktop and mobile | ✅ COMPLETE |
+| [public-truth-indexing-policy.md](./public-truth-indexing-policy.md)                                       | Public tenant page indexing gate for OBP/menu sitemap and metadata | ✅ IMPLEMENTED |
 
 ### Archive
 
@@ -88,7 +89,7 @@ Current production contract:
 | PostalAddress                             | OBP + Menu | `src/lib/schema/index.ts`                      |
 | GeoCoordinates                            | OBP + Menu | `src/lib/schema/index.ts`                      |
 | BreadcrumbList                            | Menu pages | `src/lib/schema/index.ts`                      |
-| FAQPage (auto-generated)                  | OBP pages  | `src/lib/schema/index.ts`                      |
+| FAQPage (visible FAQ content only)         | Website resources / reviewed visible FAQ surfaces | `src/lib/website/resourceSchema.ts`, `src/lib/schema/index.ts` |
 | sameAs (social profiles)                  | OBP + Menu | `src/lib/schema/index.ts`                      |
 | amenityFeature (14 attributes)            | OBP        | `src/lib/schema/index.ts`                      |
 | ReserveAction + OrderAction               | OBP        | `src/app/client/obp/schema.ts`                 |
@@ -106,7 +107,8 @@ Current production contract:
 | Platform robots.txt (explicit AI bot rules) | `public/robots.txt:1-40`                   | ✅ OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
 | Per-store robots.txt                        | `src/app/client/robots.ts:12-61`           | ✅ Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules              |
 | Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts`, `public/sitemap.xml` | ✅ Shared active route inventory; dynamic/static sitemap omit redirect-only `/product` |
-| Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts:167-229`        | ✅ OBP + active canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
+| Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts`        | ✅ Gated OBP + canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
+| Public truth indexability gate              | `src/lib/seo/publicTruthIndexing.ts`, `src/app/client/sitemap.ts`, `src/app/client/[[...slug]]/page.tsx` | ✅ Weak/incomplete tenant records stay reachable but receive `noindex, follow` and stay out of sitemap |
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |
 | LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ Current category/type-aware public business data description          |
 | Website page JSON-LD                        | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | ✅ Server-rendered homepage graph plus WebPage/BreadcrumbList on active platform pages |
@@ -146,7 +148,8 @@ src/lib/schema/                    # Schema.org utilities (SHIPPED)
 
 src/lib/seo/                       # SEO/AEO discovery utilities (SHIPPED)
 ├── discoveryPolicy.ts             # Platform pages, crawler allowlist, public disallow paths
-└── publicMetadata.ts              # Shared public preview metadata normalization
+├── publicMetadata.ts              # Shared public preview metadata normalization
+└── publicTruthIndexing.ts          # Public tenant page index/sitemap quality gate
 
 src/app/client/obp/schema.ts       # OBP schema generator (SHIPPED)
 src/app/client/[[...slug]]/page.tsx  # Menu schema generator (SHIPPED)
@@ -294,3 +297,4 @@ MenuList is infrastructure, not SaaS. The primary metric is **dataset coverage**
 | Mar 10, 2026 | **DOC UPDATE:** Added Entity Identity Rules (invariants), Item Similarity Matching documentation, Dataset Coverage Metrics, strengthened Doctrine Rules         |
 | May 9, 2026  | **PARITY UPDATE:** Corrected discovery copy to avoid Google/Maps/AI overclaims, updated `/client` route evidence, robots/sitemap status, flag defaults, and current llms.txt line counts |
 | May 23, 2026 | **AGENT-READABLE WEBSITE HARDENING:** Added server-rendered website JSON-LD coverage, removed legacy `/product` from platform discovery inventories, documented PAL/WebMCP boundaries, and added `verify:agent-readiness` for MenuList and Answerlattice |
+| Jun 2, 2026  | **PUBLIC TRUTH INDEXING GATE:** Added central indexability policy for public tenant OBP/menu metadata and sitemap inclusion; OBP runtime no longer emits generated FAQPage JSON-LD |

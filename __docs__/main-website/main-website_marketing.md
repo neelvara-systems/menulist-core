@@ -29,6 +29,8 @@
 
 > Full resource locale coverage note (June 1, 2026): Arabic and Spanish now have the same reviewed long-form resource coverage as the Indian-language packs. Regional distribution can use the locale-prefixed resource URLs, but all language variants remain owner-education surfaces, not ranking guarantees or automatic external-platform update promises.
 
+> Resource navigation/discovery note (June 2, 2026): The public website now treats Resources as a first-class navigation surface without turning the homepage into a blog. Header Resources uses a compact dropdown, mobile uses nested resource links, the homepage shows eight strategic resource cards, and the footer points to the core resource set plus Trust & Security. Marketing measurement should prioritize `resource reader -> upload menu click`, not traffic alone. Resource referrer tracking is GA4-only and must not store tenant/customer identifiers or raw private data.
+
 > Growth Kits website placement note (June 1, 2026): do not add GrowthOS, Growth Kits, or Today's Sales Pack to the homepage. It is a Pro/Premium client upsell after MenuList has current menu truth, not a first-visit acquisition promise. If usage proves demand, place it later as a small Pro/Premium pricing or Features-page proof point with no auto-posting, scheduler, revenue-lift, or sales-growth promise.
 
 ---

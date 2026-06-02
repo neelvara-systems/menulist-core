@@ -24,6 +24,7 @@ import {
     ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL,
     ANSWERLATTICE_WIDGET_SCRIPT_URL,
 } from './constants';
+import { ANSWERLATTICE_RESOURCE_ARTICLES } from '../../../content/answerlatticePublic';
 
 export type AnswerlatticeInstallDocKey =
     | 'overview'
@@ -205,12 +206,12 @@ export function renderAnswerlatticeAgentPrompt(input: AnswerlatticeAgentPacketIn
     const entryPoints = input.supportEntryPoints?.length ? input.supportEntryPoints : ['global widget', 'help button', 'sidebar', 'settings page'];
 
     return normalizeLines(`
-You are integrating Answerlattice into this product.
+You are integrating AnswerLattice into this product.
 
 Goal:
-Install the Answerlattice v1 support widget, pass safe page context, respect Answerlattice dashboard route rules, and prove the installation works.
+Install the AnswerLattice v1 support widget, pass safe page context, respect AnswerLattice dashboard route rules, and prove the installation works.
 
-Use these Answerlattice values:
+Use these AnswerLattice values:
 - Widget key: ${widgetKey}
 - Dashboard-saved allowed origins, for verification only:
 ${formatList(allowedOrigins, ['(none saved yet)'])}
@@ -230,40 +231,40 @@ ${ANSWERLATTICE_CONTEXT_METHODS.map((method) => `  - ${ANSWERLATTICE_WIDGET_GLOB
 
 Implementation rules:
 1. Find the app root, global layout, document shell, or main client entry point.
-2. Install the Answerlattice script exactly once.
+2. Install the AnswerLattice script exactly once.
 3. Prefer an environment variable for the widget key when the framework supports it.
 4. Do not install the widget separately on each page.
 5. Do not expose tenantId, storeId, internal user IDs, emails, billing data, tokens, cookies, secrets, or private account metadata.
 6. Pass only safe page context: path, title, feature, workflow, role, and locale.
-7. Update Answerlattice context after client-side route changes.
-8. Do not create app settings for allowed origins or blocked routes. Answerlattice dashboard owns those values.
-9. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting Answerlattice on sensitive screens.
+7. Update AnswerLattice context after client-side route changes.
+8. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
+9. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
 10. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
-11. Add a short code comment explaining that this is the Answerlattice v1 widget contract.
+11. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
 12. Run lint, typecheck, and build commands available in the repository.
 13. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
 
 Acceptance criteria:
 - The app builds.
-- The Answerlattice script is loaded once.
+- The AnswerLattice script is loaded once.
 - The widget key is not hardcoded when env vars are available.
 - Dashboard-owned allowed origins and blocked routes are not duplicated as product settings.
-- The widget is absent on blocked routes when a local route guard is present; otherwise Answerlattice dashboard route rules control runtime visibility.
+- The widget is absent on blocked routes when a local route guard is present; otherwise AnswerLattice dashboard route rules control runtime visibility.
 - Safe page context updates on route changes.
-- No forbidden identifiers or secrets are sent to Answerlattice.
-- The browser console has no Answerlattice integration errors.
+- No forbidden identifiers or secrets are sent to AnswerLattice.
+- The browser console has no AnswerLattice integration errors.
 `);
 }
 
 export function renderAnswerlatticeAgentsMd() {
     return normalizeLines(`
-# Answerlattice Integration Instructions
+# AnswerLattice Integration Instructions
 
-Use this file when installing Answerlattice into this repository.
+Use this file when installing AnswerLattice into this repository.
 
 ## Goal
 
-Install the Answerlattice Widget Contract v1.
+Install the AnswerLattice Widget Contract v1.
 
 ## Contract
 
@@ -309,11 +310,11 @@ Also block any route containing token, invite, reset-password, payment, secret, 
 
 export function renderAnswerlatticeClaudeMd() {
     return normalizeLines(`
-# Answerlattice Integration Memory
+# AnswerLattice Integration Memory
 
-When asked to install Answerlattice, follow the Answerlattice Widget Contract v1. Treat this as project integration context, not as an enforcement layer.
+When asked to install AnswerLattice, follow the AnswerLattice Widget Contract v1. Treat this as project integration context, not as an enforcement layer.
 
-## Install Answerlattice
+## Install AnswerLattice
 
 Use:
 ${ANSWERLATTICE_WIDGET_SCRIPT_URL}
@@ -359,21 +360,21 @@ After implementation:
 - run lint
 - run typecheck
 - run build
-- inspect that only one Answerlattice script is mounted
-- confirm blocked routes do not initialize Answerlattice
+- inspect that only one AnswerLattice script is mounted
+- confirm blocked routes do not initialize AnswerLattice
 `);
 }
 
 export function renderAnswerlatticeCursorRule() {
     return normalizeLines(`
 ---
-description: Install and maintain the Answerlattice support widget
+description: Install and maintain the AnswerLattice support widget
 globs:
   - "**/*.{ts,tsx,js,jsx,vue,html}"
 alwaysApply: false
 ---
 
-When installing Answerlattice, use the Answerlattice Widget Contract v1.
+When installing AnswerLattice, use the AnswerLattice Widget Contract v1.
 
 Script:
 ${ANSWERLATTICE_WIDGET_SCRIPT_URL}
@@ -382,7 +383,7 @@ Install once at the app shell/root layout level.
 Use env vars for the widget key.
 Pass only canonical v1 safe context for new installs: path, title, feature, workflow, role, locale.
 Never send tenantId, storeId, userId, email, phone, token, secret, cookie, billing or payment data.
-Do not create product settings for allowed origins or blocked routes; Answerlattice dashboard owns those values.
+Do not create product settings for allowed origins or blocked routes; AnswerLattice dashboard owns those values.
 Avoid login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes when the host app has a central script guard.
 Run lint/typecheck/build after changes.
 `);
@@ -390,9 +391,9 @@ Run lint/typecheck/build after changes.
 
 export function renderAnswerlatticeCursorRuleMd() {
     return normalizeLines(`
-# Answerlattice Cursor Rule
+# AnswerLattice Cursor Rule
 
-Use this persistent project rule when the task mentions Answerlattice, support widget, help widget, AI support, or page-aware support.
+Use this persistent project rule when the task mentions AnswerLattice, support widget, help widget, AI support, or page-aware support.
 
 ## Contract
 
@@ -406,7 +407,7 @@ Use this persistent project rule when the task mentions Answerlattice, support w
 - Use env vars for the al_* widget key.
 - Pass canonical v1 context for new installs: path, title, feature, workflow, role, locale.
 - Never send tenantId, storeId, userId, email, phone, token, secret, cookie, billing data, payment data, customer records, or private metadata.
-- Do not create product settings for allowed origins or blocked routes; Answerlattice dashboard owns those values.
+- Do not create product settings for allowed origins or blocked routes; AnswerLattice dashboard owns those values.
 - Avoid login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes when the host app has a central script guard.
 - Run lint/typecheck/build after changes.
 `);
@@ -415,11 +416,11 @@ Use this persistent project rule when the task mentions Answerlattice, support w
 export function renderAnswerlatticeWindsurfRule() {
     return normalizeLines(`
 ---
-description: Answerlattice Widget Contract v1
+description: AnswerLattice Widget Contract v1
 activation: model_decision
 ---
 
-Use this rule when the task mentions Answerlattice, support widget, help widget, AI support, or page-aware support.
+Use this rule when the task mentions AnswerLattice, support widget, help widget, AI support, or page-aware support.
 
 Install:
 ${ANSWERLATTICE_WIDGET_SCRIPT_URL}
@@ -443,12 +444,12 @@ export function renderAnswerlatticeSkill() {
     return normalizeLines(`
 ---
 name: answerlattice-install
-description: Install the Answerlattice v1 support widget into a client product with safe page context, blocked routes, and verification checks.
+description: Install the AnswerLattice v1 support widget into a client product with safe page context, blocked routes, and verification checks.
 ---
 
-# Answerlattice Install Skill
+# AnswerLattice Install Skill
 
-Follow the Answerlattice Widget Contract v1.
+Follow the AnswerLattice Widget Contract v1.
 
 1. Locate the app shell, root layout, document, or main client entry.
 2. Install ${ANSWERLATTICE_WIDGET_SCRIPT_URL} once.
@@ -614,23 +615,23 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
         key: 'overview',
         path: '/install',
         markdownPath: '/install.md',
-        title: 'Install Answerlattice with your AI coding agent',
+        title: 'Install AnswerLattice with your AI coding agent',
         navTitle: 'Install overview',
-        description: 'Copy the Answerlattice agent packet, install the v1 widget once, pass safe page context, and verify from the dashboard.',
+        description: 'Copy the AnswerLattice agent packet, install the v1 widget once, pass safe page context, and verify from the dashboard.',
         sections: [
             {
                 heading: 'Start with the agent packet',
-                body: 'The product owner does not need to hand-write an integration. Save the widget key, allowed origins, and blocked routes in the Answerlattice dashboard, then copy the dashboard packet into Codex, Claude Code, Cursor, Windsurf, or another coding agent.',
+                body: 'The product owner does not need to hand-write an integration. Save the widget key, allowed origins, and blocked routes in the AnswerLattice dashboard, then copy the dashboard packet into Codex, Claude Code, Cursor, Windsurf, or another coding agent.',
                 bullets: [
-                    'Save allowed origins and blocked routes in Answerlattice first.',
+                    'Save allowed origins and blocked routes in AnswerLattice first.',
                     'Copy the AI install packet from the dashboard Install Center.',
                     'Review the files changed and verification output.',
-                    'Use the Answerlattice dashboard to confirm runtime status.',
+                    'Use the AnswerLattice dashboard to confirm runtime status.',
                 ],
             },
             {
                 heading: 'Stable contract',
-                body: 'Answerlattice freezes the public v1 script URL, browser global, context methods, and safe context fields for the supported install path.',
+                body: 'AnswerLattice freezes the public v1 script URL, browser global, context methods, and safe context fields for the supported install path.',
                 code: buildAnswerlatticeWidgetEmbedSnippet(),
             },
             {
@@ -653,10 +654,10 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
         markdownPath: '/install/ai-agent.md',
         title: 'AI agent install packet',
         navTitle: 'AI agent',
-        description: 'Copyable prompt and acceptance criteria for coding agents installing Answerlattice.',
+        description: 'Copyable prompt and acceptance criteria for coding agents installing AnswerLattice.',
         sections: [
             {
-                heading: 'Configure Answerlattice first',
+                heading: 'Configure AnswerLattice first',
                 bullets: [
                     'Create or copy the al_* widget key in the dashboard.',
                     'Save allowed production and staging origins in the dashboard.',
@@ -692,10 +693,10 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
                 heading: 'Verify',
                 bullets: [
                     'Open the product on an allowed origin.',
-                    'Confirm one Answerlattice script tag exists.',
+                    'Confirm one AnswerLattice script tag exists.',
                     'Navigate between routes and confirm context changes.',
                     'Visit blocked routes and confirm the widget is absent.',
-                    'Return to the Answerlattice dashboard and check runtime status.',
+                    'Return to the AnswerLattice dashboard and check runtime status.',
                 ],
             },
         ],
@@ -714,7 +715,7 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
                     'Use app/layout.tsx plus a small client component for App Router.',
                     'Use _app.tsx or the shared shell for Pages Router.',
                     'Use NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY for the public al_* key.',
-                    'Do not create separate allowed-origin or blocked-route settings in the product; Answerlattice dashboard owns them.',
+                    'Do not create separate allowed-origin or blocked-route settings in the product; AnswerLattice dashboard owns them.',
                 ],
                 code: ANSWERLATTICE_FRAMEWORK_SNIPPETS.nextjs,
             },
@@ -769,13 +770,13 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
         key: 'contracts',
         path: '/install/contracts.md',
         markdownPath: '/install/contracts.md',
-        title: 'Answerlattice Widget Contract v1',
+        title: 'AnswerLattice Widget Contract v1',
         navTitle: 'Contracts',
         description: 'Stable script URL, browser API, context schema, verification semantics, and compatibility policy.',
         sections: [
             {
                 heading: 'Stability policy',
-                body: 'Answerlattice will keep the Widget Contract v1 backward-compatible for at least 36 months from general availability.',
+                body: 'AnswerLattice will keep the Widget Contract v1 backward-compatible for at least 36 months from general availability.',
                 bullets: [
                     `${ANSWERLATTICE_WIDGET_SCRIPT_URL}`,
                     'al_* widget key format',
@@ -790,7 +791,7 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
             },
             {
                 heading: 'Widget script caching',
-                body: 'The v1 script URL is stable and backward-compatible, but not immutable. Answerlattice can ship compatible bug fixes without requiring clients to change install code.',
+                body: 'The v1 script URL is stable and backward-compatible, but not immutable. AnswerLattice can ship compatible bug fixes without requiring clients to change install code.',
                 bullets: [
                     `Recommended header: Cache-Control: ${ANSWERLATTICE_WIDGET_SCRIPT_CACHE_CONTROL}`,
                     'Do not use long immutable caching on /widget/v1/answerlattice-widget.js.',
@@ -812,8 +813,8 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
             {
                 heading: 'Dashboard-owned settings',
                 bullets: [
-                    'Allowed origins are saved in the Answerlattice dashboard and enforced by Answerlattice runtime APIs.',
-                    'Blocked routes are saved in the Answerlattice dashboard and returned through widget runtime config.',
+                    'Allowed origins are saved in the AnswerLattice dashboard and enforced by AnswerLattice runtime APIs.',
+                    'Blocked routes are saved in the AnswerLattice dashboard and returned through widget runtime config.',
                     'Client products should not create duplicate owner settings for origins or blocked routes.',
                 ],
             },
@@ -848,7 +849,7 @@ export function renderAnswerlatticeMarkdownDoc(key: AnswerlatticeInstallDocKey, 
 
 > ${doc.description}
 
-## Configure Answerlattice first
+## Configure AnswerLattice first
 
 - Create or copy the al_* widget key in the dashboard.
 - Save allowed origins in the dashboard.
@@ -891,23 +892,26 @@ ${links}${sections}
 
 ## Public API note
 
-The public API may be account-gated. For most clients, install the Answerlattice widget first.
+The public API may be account-gated. For most clients, install the AnswerLattice widget first.
 `);
 }
 
 export function renderAnswerlatticeLlmsTxt() {
     return normalizeLines(`
-# Answerlattice
+# AnswerLattice
 
-> Answerlattice is governed answer infrastructure for SaaS products. These docs help coding agents install the Answerlattice widget, pass safe page context, respect dashboard route rules, and verify the integration.
+> AnswerLattice is governed answer infrastructure for SaaS products. These docs help coding agents install the AnswerLattice widget, pass safe page context, respect dashboard route rules, and verify the integration.
 
 ## Start here
 
-- [Install Answerlattice with an AI coding agent](${ANSWERLATTICE_SITE_URL}/install/ai-agent.md): Copyable install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.
-- [Pre-Onboarding Kit](${ANSWERLATTICE_SITE_URL}/pre-onboarding.md): Master prompt for preparing available product sources, multi-product repo boundaries, website links, docs, owner notes, policies, support questions, and screenshot rules before Answerlattice onboarding.
+- [Install AnswerLattice with an AI coding agent](${ANSWERLATTICE_SITE_URL}/install/ai-agent.md): Copyable install packet for Codex, Claude Code, Cursor, Windsurf, and other coding agents.
+- [Pre-Onboarding Kit](${ANSWERLATTICE_SITE_URL}/pre-onboarding.md): Master prompt for preparing available product sources, multi-product repo boundaries, website links, docs, owner notes, policies, support questions, and screenshot rules before AnswerLattice onboarding.
 - [Pre-Onboarding Owner Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/owner-guide.md): End-to-end owner checklist for using the prompt and reviewing generated inputs.
-- [Pre-Onboarding Agent Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/agent-guide.md): Operating rules for AI coding agents preparing Answerlattice input packages.
-- [Answerlattice Widget Contract v1](${ANSWERLATTICE_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
+- [Pre-Onboarding Agent Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/agent-guide.md): Operating rules for AI coding agents preparing AnswerLattice input packages.
+- [AnswerLattice Widget Contract v1](${ANSWERLATTICE_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
+- [Resources](${ANSWERLATTICE_SITE_URL}/resources): Launch setup, pre-onboarding, widget verification, support control, pricing, and runtime-safety guides.
+- [Developers](${ANSWERLATTICE_SITE_URL}/developers): Widget install, safe page context, verification, framework quickstarts, and agent install packets.
+- [Comparisons](${ANSWERLATTICE_SITE_URL}/comparisons): Category comparisons with scoped claims and no unsupported vendor rankings.
 - [Manual install](${ANSWERLATTICE_SITE_URL}/install/manual.md): Human-readable script install.
 - [Next.js install](${ANSWERLATTICE_SITE_URL}/install/frameworks/nextjs.md): App Router and Pages Router instructions.
 - [React install](${ANSWERLATTICE_SITE_URL}/install/frameworks/react.md): React SPA install and route-change context updates.
@@ -925,23 +929,23 @@ tenantId, storeId, userId, email, phone, tokens, cookies, secrets, billing data,
 
 ## Public API note
 
-The public API may be account-gated. For most clients, install the Answerlattice widget first.
+The public API may be account-gated. For most clients, install the AnswerLattice widget first.
 `);
 }
 
 export function renderAnswerlatticeLlmsFullTxt() {
     return normalizeLines(`
-# Answerlattice - Full Agent Context
+# AnswerLattice - Full Agent Context
 
-> Answerlattice is the Governed Answer Infrastructure for SaaS Support. This file expands Answerlattice public product boundaries and the agent install layer for coding agents.
+> AnswerLattice is the Governed Answer Infrastructure for SaaS Support. This file expands AnswerLattice public product boundaries and the agent install layer for coding agents.
 
 ## Product boundary
 
-- Answerlattice keeps support knowledge, page-aware answers, hosted help, tickets, feedback review, Support Board follow-up, releases, and support-gap review under owner-approved control.
-- Answerlattice is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, autonomous publisher, or client-product code owner.
-- Public agents may read these docs, route users to official Answerlattice pages, and install the widget from the v1 contract.
+- AnswerLattice keeps support knowledge, page-aware answers, hosted help, tickets, feedback review, Support Board follow-up, releases, and support-gap review under owner-approved control.
+- AnswerLattice is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, autonomous publisher, or client-product code owner.
+- Public agents may read these docs, route users to official AnswerLattice pages, and install the widget from the v1 contract.
 - Public agents must not mutate customer workspaces, canonical answers, tickets, widget settings, billing, private knowledge, or account data.
-- Public API and MCP surfaces may be account-gated. Use the widget install path first unless Answerlattice explicitly enables API access for the account.
+- Public API and MCP surfaces may be account-gated. Use the widget install path first unless AnswerLattice explicitly enables API access for the account.
 
 ## Primary public routes
 
@@ -959,8 +963,16 @@ export function renderAnswerlatticeLlmsFullTxt() {
 - ${ANSWERLATTICE_SITE_URL}/install
 - ${ANSWERLATTICE_SITE_URL}/install/ai-agent
 - ${ANSWERLATTICE_SITE_URL}/install/contracts.md
+- ${ANSWERLATTICE_SITE_URL}/developers
+- ${ANSWERLATTICE_SITE_URL}/developers/safe-page-context
+- ${ANSWERLATTICE_SITE_URL}/developers/widget-verification
+- ${ANSWERLATTICE_SITE_URL}/comparisons
+- ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-chatbots
+- ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-helpdesks
+- ${ANSWERLATTICE_SITE_URL}/comparisons/answerlattice-vs-knowledge-bases
 - ${ANSWERLATTICE_SITE_URL}/pricing
 - ${ANSWERLATTICE_SITE_URL}/resources
+${ANSWERLATTICE_RESOURCE_ARTICLES.map((article) => `- ${ANSWERLATTICE_SITE_URL}${article.path}`).join('\n')}
 - ${ANSWERLATTICE_SITE_URL}/security
 - ${ANSWERLATTICE_SITE_URL}/faq
 
@@ -1014,7 +1026,7 @@ export function buildAnswerlatticeAgentKitFiles(input: AnswerlatticeAgentPacketI
         'answerlattice-install-packet.md': renderAnswerlatticeMarkdownDoc('ai-agent', input),
         'answerlattice-widget-contract-v1.md': renderAnswerlatticeMarkdownDoc('contracts'),
         'answerlattice-context-contract-v1.md': normalizeLines(`
-# Answerlattice Context Contract v1
+# AnswerLattice Context Contract v1
 
 Allowed context fields:
 ${formatList(ANSWERLATTICE_ALLOWED_CONTEXT_FIELDS)}
@@ -1022,16 +1034,16 @@ ${formatList(ANSWERLATTICE_ALLOWED_CONTEXT_FIELDS)}
 Never send:
 ${formatList(ANSWERLATTICE_FORBIDDEN_CONTEXT_FIELDS)}
 
-Allowed origins and blocked routes are dashboard-owned Answerlattice settings. Do not create duplicate product settings for them.
+Allowed origins and blocked routes are dashboard-owned AnswerLattice settings. Do not create duplicate product settings for them.
 `),
         'answerlattice-verification-contract-v1.md': normalizeLines(`
-# Answerlattice Verification Contract v1
+# AnswerLattice Verification Contract v1
 
 - Confirm ${ANSWERLATTICE_WIDGET_SCRIPT_URL} loads once.
 - Confirm the widget key is not hardcoded when env vars are available.
 - Confirm route context updates after client-side navigation.
 - Confirm no forbidden context fields are sent.
-- Confirm the Answerlattice dashboard shows the latest runtime status after testing from an allowed origin.
+- Confirm the AnswerLattice dashboard shows the latest runtime status after testing from an allowed origin.
 `),
         'AGENTS.md': renderAnswerlatticeAgentsMd(),
         'CLAUDE.md': renderAnswerlatticeClaudeMd(),
@@ -1043,7 +1055,7 @@ Allowed origins and blocked routes are dashboard-owned Answerlattice settings. D
         'tests/answerlattice-widget-smoke.spec.ts': normalizeLines(`
 import { test, expect } from '@playwright/test';
 
-test('Answerlattice widget loads once and exposes the browser contract', async ({ page }) => {
+test('AnswerLattice widget loads once and exposes the browser contract', async ({ page }) => {
   await page.goto(process.env.ANSWERLATTICE_TEST_URL || 'http://localhost:3000/');
   await expect(page.locator('script[src*="/widget/v1/answerlattice-widget.js"]')).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => typeof window.AnswerlatticeWidget?.page)).toBe('function');

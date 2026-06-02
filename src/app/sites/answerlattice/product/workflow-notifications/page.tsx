@@ -4,7 +4,7 @@ import { getAnswerlatticeSupportFeature } from '../../productFeatures';
 const feature = getAnswerlatticeSupportFeature('workflow-notifications');
 
 if (!feature) {
-    throw new Error('Answerlattice Workflow Notifications feature configuration is missing.');
+    throw new Error('AnswerLattice Workflow Notifications feature configuration is missing.');
 }
 
 export const metadata = buildProductFeatureMetadata(feature);

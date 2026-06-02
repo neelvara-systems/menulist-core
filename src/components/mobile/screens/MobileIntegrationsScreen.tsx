@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext } from 'react';
 import { LuLink, LuMapPin } from 'react-icons/lu';
@@ -15,6 +16,7 @@ interface MobileIntegrationsScreenProps {
 export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsScreenProps) {
     const tBusiness = useTranslations('BusinessSettings');
     const t = useTranslations('MobileIntegrations');
+    const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const infoContent = (
         <Flex gap={8} style={{ maxWidth: 280 }} vertical>
@@ -76,7 +78,7 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
 
                         {gbp?.locationName ? (
                             <Flex align="center" gap={8}>
-                                <LuMapPin color="#64748b" size={16} />
+                                <LuMapPin color={token.colorTextTertiary} size={16} />
                                 <Flex gap={2} vertical>
                                     <Text strong>{gbp.locationName}</Text>
                                     {gbp.locationAddress ? <Text type="secondary">{gbp.locationAddress}</Text> : null}
@@ -88,7 +90,7 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
                             <>
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
-                                        <LuLink color="#64748b" size={16} />
+                                        <LuLink color={token.colorTextTertiary} size={16} />
                                         <Text>{t('menuLink')}</Text>
                                     </Flex>
                                     <Tag color={linkHealthy ? 'success' : 'warning'}>

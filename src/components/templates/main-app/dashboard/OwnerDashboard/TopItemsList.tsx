@@ -5,10 +5,10 @@
  * Simple list with item name and click count.
  */
 
-import { FireOutlined } from '@ant-design/icons';
 import { TopItem } from '@template/main-app/projects/types';
 import { Card, Empty, List, Typography } from 'antd';
 import React from 'react';
+import { LuFlame } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
@@ -48,7 +48,7 @@ const TopItemsList: React.FC<TopItemsListProps> = ({
                     <List.Item className={styles.topItemRow}>
                         <div className={styles.topItemRank}>
                             {index === 0 ? (
-                                <FireOutlined className={styles.topItemIcon} />
+                                <LuFlame className={styles.topItemIcon} />
                             ) : (
                                 <span className={styles.rankNumber}>{index + 1}</span>
                             )}

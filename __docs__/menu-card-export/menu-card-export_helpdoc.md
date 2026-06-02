@@ -29,7 +29,7 @@ You need:
 3. Open **Menu Card Export**.
 4. Choose the menu you want to export.
 5. Choose what you need: **Home Print**, **WhatsApp PDF**, or **Print-shop packet**.
-6. Choose a style.
+6. MenuList picks a layout for the current menu. Change it only if needed.
 7. Review any warnings.
 8. Check the preview.
 9. Select **Create PDF**.
@@ -47,11 +47,11 @@ Screenshot needed: Menu Card Export route with style picker and preview.
 | Compact | Your menu has many items and short descriptions. |
 | Premium | Your menu is shorter and needs more space between items. |
 
-The layout is handled automatically.
+MenuList starts with the style, spacing, and display options that fit the current menu. This keeps the PDF from feeling like a plain data printout while avoiding a design editor.
 
 ## Suggest A Layout
 
-Pro and Premium accounts can select **Suggest layout**. MenuList recommends a preset, style, density, and safe display settings for the current menu.
+Pro and Premium accounts can select **Suggest layout** for an extra layout check. MenuList reviews the current PDF setup and recommends any safer preset, style, density, or display setting.
 
 Review the suggestion, then select **Apply suggestion** if it looks right. The final PDF is still created from your saved MenuList menu.
 

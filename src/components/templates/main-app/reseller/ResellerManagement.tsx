@@ -3,6 +3,7 @@
 import { RESELLER_CAPS } from "@config/resellerPricing";
 import { ECOMSAI_PLATFORM_PASSWORD } from "@constant/user";
 import { ResellerProfile } from "@type/reseller";
+import { formatInrPaise } from "@util/formatters";
 import {
     Badge, Button, Card, Col, Descriptions, Drawer, Empty, Flex, Form, Input, InputNumber,
     message,
@@ -42,10 +43,6 @@ type ResellerMonthlySummary = {
         totalExpectedPaise: number;
     };
 };
-
-function formatMoney(paise?: number) {
-    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
-}
 
 /**
  * Reseller Management — Platform Admin Only
@@ -268,7 +265,7 @@ function ResellerManagement() {
             dataIndex: 'totalRevenueCollectedPaise',
             key: 'revenue',
             render: (paise: number) => (
-                <Text strong>₹{((paise || 0) / 100).toLocaleString()}</Text>
+                <Text strong>{formatInrPaise(paise)}</Text>
             ),
         },
         {
@@ -321,9 +318,7 @@ function ResellerManagement() {
                     <Card size="small">
                         <Statistic
                             title="Total Revenue"
-                            value={profiles.reduce((sum, p) => sum + (p.totalRevenueCollectedPaise || 0), 0) / 100}
-                            prefix="₹"
-                            precision={0}
+                            value={formatInrPaise(profiles.reduce((sum, p) => sum + (p.totalRevenueCollectedPaise || 0), 0))}
                         />
                     </Card>
                 </Col>
@@ -342,10 +337,10 @@ function ResellerManagement() {
                         <Statistic title="Transactions" value={monthlySummary?.totals.transactionCount || 0} />
                     </Col>
                     <Col xs={12} md={6}>
-                        <Statistic title="Offline Collected" value={(monthlySummary?.totals.offlineCollectedPaise || 0) / 100} prefix="₹" precision={0} />
+                        <Statistic title="Offline Collected" value={formatInrPaise(monthlySummary?.totals.offlineCollectedPaise)} />
                     </Col>
                     <Col xs={12} md={6}>
-                        <Statistic title="Online Pending" value={(monthlySummary?.totals.onlinePendingPaise || 0) / 100} prefix="₹" precision={0} />
+                        <Statistic title="Online Pending" value={formatInrPaise(monthlySummary?.totals.onlinePendingPaise)} />
                     </Col>
                 </Row>
                 <Table
@@ -367,19 +362,19 @@ function ResellerManagement() {
                             title: 'Offline Collected',
                             dataIndex: 'offlineCollectedPaise',
                             key: 'offlineCollectedPaise',
-                            render: (value: number) => <Text strong>{formatMoney(value)}</Text>,
+                            render: (value: number) => <Text strong>{formatInrPaise(value)}</Text>,
                         },
                         {
                             title: 'Online Pending',
                             dataIndex: 'onlinePendingPaise',
                             key: 'onlinePendingPaise',
-                            render: (value: number) => <Text>{formatMoney(value)}</Text>,
+                            render: (value: number) => <Text>{formatInrPaise(value)}</Text>,
                         },
                         {
                             title: 'Total Expected',
                             dataIndex: 'totalExpectedPaise',
                             key: 'totalExpectedPaise',
-                            render: (value: number) => <Text>{formatMoney(value)}</Text>,
+                            render: (value: number) => <Text>{formatInrPaise(value)}</Text>,
                         },
                     ]}
                     dataSource={monthlySummary?.resellers || []}
@@ -518,7 +513,7 @@ function ResellerManagement() {
                                 <Descriptions.Item label="Online Stores">{editingProfile.totalOnlineStores || 0}</Descriptions.Item>
                                 <Descriptions.Item label="Offline Stores">{editingProfile.totalOfflineStores || 0}</Descriptions.Item>
                                 <Descriptions.Item label="Active Offline">{editingProfile.currentActiveOfflineStores || 0}</Descriptions.Item>
-                                <Descriptions.Item label="Revenue">₹{((editingProfile.totalRevenueCollectedPaise || 0) / 100).toLocaleString()}</Descriptions.Item>
+                                <Descriptions.Item label="Revenue">{formatInrPaise(editingProfile.totalRevenueCollectedPaise)}</Descriptions.Item>
                                 <Descriptions.Item label="Transactions">{editingProfile.totalTransactions || 0}</Descriptions.Item>
                             </Descriptions>
                         </>

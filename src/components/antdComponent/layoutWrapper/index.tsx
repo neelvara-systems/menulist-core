@@ -40,8 +40,8 @@ const { Content } = Layout;
 const DESKTOP_ONLY_ROUTE_PREFIXES: string[] = [];
 const DESKTOP_ONLY_ROUTES = [
     '/platform/test-sentry',
-    // Responsive route-level workflow launched from desktop Use MenuList and mobile Share.
-    // Handheld devices must render the route itself instead of being absorbed by MobileShell.
+    // Route-level Print Menu workflow launched from desktop and mobile entry points.
+    // Handheld devices bypass MobileShell so the route can render its dedicated mobile screen.
     '/use-menulist/menu-card-export',
 ];
 

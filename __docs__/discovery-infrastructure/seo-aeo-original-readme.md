@@ -52,8 +52,8 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 
 | File                                   | Purpose                                                                                                                                                                                       |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/schema/index.ts`              | Shared schema.org utilities (buildAddress, buildGeoCoordinates, buildOpeningHours, buildSameAs, buildBreadcrumbList, buildFaqSchema, buildTempStatusSchema, getSchemaType, getMenuSchemaType) |
-| `src/app/client/obp/OBPContent.tsx`   | OBP page — renders FAQ JSON-LD schema (Phase 2)                                                                                                                                               |
+| `src/lib/schema/index.ts`              | Shared schema.org utilities (buildAddress, buildGeoCoordinates, buildOpeningHours, buildSameAs, buildBreadcrumbList, buildFaqSchema utility, buildTempStatusSchema, getSchemaType, getMenuSchemaType) |
+| `src/app/client/obp/OBPContent.tsx`   | OBP page — renders visible public business facts; generated hidden FAQ JSON-LD was removed from OBP runtime on June 2, 2026                                                                    |
 | `src/app/client/obp/schema.ts`        | OBP schema — uses shared utilities + geo, sameAs, priceRange, dateModified, business-specific @type                                                                                           |
 | `src/app/client/[[...slug]]/page.tsx` | Menu schema — BreadcrumbList JSON-LD, dateModified, servesCuisine, availability, suitableForDiet (Phase 2)                                                                                    |
 | `src/app/client/sitemap.ts`           | Tenant sitemap — OBP + active canonical menu/outlet URLs; `/menu` is indexed only when owner-claimed                                                                                          |
@@ -104,7 +104,7 @@ See [ChatGPT Review](./_archive/chatgpt-review.md) for full analysis with 22-poi
 
 9. Multi-platform distribution research (Apple Maps, directories)
 10. AI search visibility monitoring (manual, no dashboard)
-11. ~~FAQ schema on OBP~~ → ✅ SHIPPED in Phase 2 (Feb 22, 2026)
+11. ~~FAQ schema on OBP~~ → Retired from OBP runtime on June 2, 2026; use FAQ schema only where FAQ content is visibly rendered and reviewed
 
 ---
 
@@ -141,7 +141,7 @@ Shared utilities in `src/lib/schema/index.ts` are used by both OBP (`schema.ts`)
 
 Deepen schema.org output for richer search results.
 
-- ✅ **FAQ schema on OBP** — Auto-generated FAQPage from store hours, location, phone, menu link
+- ⚠️ **FAQ schema on OBP** — Retired from OBP runtime; LocalBusiness/Restaurant/Menu schema remains the primary public business signal
 - ✅ **BreadcrumbList on menu pages** — Business → Menu navigation for search display
 - ✅ **dateModified on menu pages** — Freshness signal (already on OBP, now on menu)
 - ✅ **servesCuisine on menu pages** — Cuisine type for food businesses
@@ -209,6 +209,7 @@ This is a **data quality discipline**, not a code feature. Enforced through onbo
 | Feb 16, 2026 | **IMPLEMENTED:** Shared schema utilities, OBP + menu schema enrichment, StoreDataType fields (geo, priceRange) |
 | Feb 16, 2026 | ChatGPT feedback round 2 processed. 90-day roadmap locked. Entity consistency standard defined.                |
 | Feb 22, 2026 | **PHASE 2:** FAQ schema on OBP, BreadcrumbList on menu, dateModified + servesCuisine on menu, sitemap enhanced |
+| Jun 2, 2026 | **PUBLIC TRUTH UPDATE:** OBP generated hidden FAQPage JSON-LD retired; public truth indexing gate added for metadata and per-tenant sitemap inclusion |
 | May 9, 2026  | **PARITY UPDATE:** Corrected `/client` paths, GBP sync status, sitemap indexing rules, and `cuisineTypes` store field |
 
 ---

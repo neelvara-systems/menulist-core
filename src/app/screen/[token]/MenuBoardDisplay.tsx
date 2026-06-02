@@ -20,12 +20,13 @@
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
+import { formatScreenPrice, getScreenDietType, normalizeScreenCategoryName, truncateScreenText } from "@lib/screen/screenContent";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { MenuItemForSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
 import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ScreenAttribution from "./ScreenAttribution";
 
 // Auto-pagination timing (per spec: 15-20 seconds per page)
@@ -51,6 +52,7 @@ interface MenuBoardProps {
 interface CategoryGroup {
     name: string;
     items: MenuItemForSlide[];
+    orderIndex: number;
 }
 
 /**
@@ -63,7 +65,7 @@ function groupByCategory(items: MenuItemForSlide[]): CategoryGroup[] {
     for (const item of items) {
         if (!item.available) continue;
         if (totalCount >= MAX_TOTAL_ITEMS) break;
-        const category = item.categoryName || "Menu";
+        const category = normalizeScreenCategoryName(item.categoryName, "Menu");
         if (!groups.has(category)) {
             groups.set(category, []);
         }
@@ -71,22 +73,23 @@ function groupByCategory(items: MenuItemForSlide[]): CategoryGroup[] {
         totalCount++;
     }
 
-    return Array.from(groups.entries()).map(([name, items]) => ({
-        name,
-        items: items.sort((a, b) => {
-            // Bestsellers first within category
-            if (a.isBestSeller && !b.isBestSeller) return -1;
-            if (!a.isBestSeller && b.isBestSeller) return 1;
-            return a.name.localeCompare(b.name);
-        })
-    }));
+    return Array.from(groups.entries())
+        .map(([name, items], index) => ({
+            name,
+            orderIndex: Math.min(...items.map((item) => item.categoryOrderIndex ?? index)),
+            items: items.sort((a, b) => (
+                (a.orderIndex ?? Number.MAX_SAFE_INTEGER) - (b.orderIndex ?? Number.MAX_SAFE_INTEGER)
+                || a.name.localeCompare(b.name)
+            )),
+        }))
+        .sort((a, b) => a.orderIndex - b.orderIndex || a.name.localeCompare(b.name));
 }
 
 /**
  * Calculate how many items fit per page based on screen height
  * Conservative estimate: ~12 items per page for readability on TV
  */
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 8;
 
 /**
  * Paginate category groups into pages that fit on screen
@@ -120,7 +123,7 @@ function paginateCategories(categories: CategoryGroup[]): CategoryGroup[][] {
             let remaining = [...category.items];
             while (remaining.length > 0) {
                 const chunk = remaining.slice(0, ITEMS_PER_PAGE - 1); // -1 for header
-                pages.push([{ name: category.name, items: chunk }]);
+                pages.push([{ name: category.name, items: chunk, orderIndex: category.orderIndex }]);
                 remaining = remaining.slice(ITEMS_PER_PAGE - 1);
             }
         } else {
@@ -292,15 +295,9 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-    // Format price with Indian locale
-    const formatPrice = useCallback((price?: number) => {
-        if (price == null || price <= 0) return null;
-        return `₹${price.toLocaleString('en-IN')}`;
-    }, []);
-
     const currentCategories = pages[currentPage] || [];
 
-    // Category accent colors — cycling palette for visual differentiation
+    // Category accent colors — restrained high-contrast palette for TV readability
     const ACCENT_COLORS = [
         { bg: 'rgba(251, 191, 36, 0.12)', border: '#fbbf24', text: '#fbbf24' },  // Amber
         { bg: 'rgba(244, 114, 182, 0.12)', border: '#f472b6', text: '#f472b6' }, // Pink
@@ -325,12 +322,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 </div>
             )}
 
-            {/* Animated ambient background orbs */}
-            <div className="ambient-orb orb-1" />
-            <div className="ambient-orb orb-2" />
-            <div className="ambient-orb orb-3" />
-
-            {/* Header — glassmorphism */}
+            {/* Header */}
             <header className="board-header">
                 <div className="store-identity">
                     {storeInfo.logoUrl && (
@@ -369,7 +361,6 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 >
                     {currentCategories.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-icon">🍽</div>
                             <p>{menuItems.length > 0 && menuItems.every(i => !i.available)
                                 ? 'All items currently unavailable'
                                 : 'Preparing your menu...'}</p>
@@ -414,47 +405,16 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                                                         duration: 0.4,
                                                     }}
                                                 >
-                                                    {/* Thumbnail — show food image or initial */}
-                                                    {item.imageUrl ? (
-                                                        <div className="item-thumb">
-                                                            <img
-                                                                src={item.imageUrl}
-                                                                alt=""
-                                                                className="thumb-img"
-                                                                loading="lazy"
-                                                                onError={(e) => {
-                                                                    // Per ChatGPT review v3: Hide broken image, show placeholder instead
-                                                                    (e.target as HTMLImageElement).style.display = 'none';
-                                                                    const parent = (e.target as HTMLImageElement).parentElement;
-                                                                    if (parent) parent.classList.add('thumb-broken');
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <div
-                                                            className="item-thumb-placeholder"
-                                                            style={{
-                                                                background: `linear-gradient(135deg, ${accent.border}33, ${accent.border}11)`,
-                                                                borderColor: `${accent.border}44`,
-                                                            }}
-                                                        >
-                                                            <span style={{ color: accent.text }}>
-                                                                {item.name.charAt(0).toUpperCase()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-
                                                     <div className="item-details">
                                                         <div className="item-name-row">
                                                             {/* Dietary indicator dot — logic must match ScreenDisplay */}
                                                             {(() => {
-                                                                const isVeg = item.tags?.some(t => t.toLowerCase().includes('vegetarian') && !t.toLowerCase().includes('non'));
-                                                                const isNonVeg = item.tags?.some(t => t.toLowerCase().includes('non-vegetarian') || t.toLowerCase().includes('non vegetarian'));
-                                                                if (isVeg) return <span className="diet-dot veg" />;
-                                                                if (isNonVeg) return <span className="diet-dot non-veg" />;
+                                                                const dietType = getScreenDietType(item.tags);
+                                                                if (dietType === "veg") return <span className="diet-dot veg" />;
+                                                                if (dietType === "nonVeg") return <span className="diet-dot non-veg" />;
                                                                 return null;
                                                             })()}
-                                                            <span className="item-name">{item.name}</span>
+                                                            <span className="item-name">{truncateScreenText(item.name, 64, "Menu item")}</span>
                                                             {item.isBestSeller && (
                                                                 <span className="popular-tag">
                                                                     <span className="popular-dot" />
@@ -465,20 +425,15 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                                                         {/* Short description — truncated for menu board density */}
                                                         {item.description && (
                                                             <span className="item-desc">
-                                                                {item.description.length > 60 ? item.description.slice(0, 57) + '...' : item.description}
+                                                                {truncateScreenText(item.description, 60)}
                                                             </span>
                                                         )}
                                                     </div>
 
                                                     <div className="item-price-area">
-                                                        {item.price != null && item.price > 0 ? (
-                                                            <span className="item-price">
-                                                                <span className="currency">₹</span>
-                                                                {item.price.toLocaleString('en-IN')}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="item-price muted">—</span>
-                                                        )}
+                                                        <span className={`item-price ${item.price != null && item.price > 0 ? "" : "muted"}`}>
+                                                            {formatScreenPrice(item.price, storeInfo.currencySymbol)}
+                                                        </span>
                                                     </div>
                                                 </motion.div>
                                             ))}
@@ -518,14 +473,13 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
             <ScreenAttribution />
 
             <style jsx>{`
-                /* ═══ BASE ═══ */
                 .menu-board {
                     width: 100vw;
                     height: 100vh;
                     display: flex;
                     flex-direction: column;
-                    background: #0a0e1a;
-                    color: #e2e8f0;
+                    background: #070b12;
+                    color: #e5edf7;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                     overflow: hidden;
                     position: relative;
@@ -535,17 +489,15 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     top: 16px;
                     left: 50%;
                     transform: translateX(-50%);
-                    background: rgba(0, 0, 0, 0.7);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                    background: rgba(0, 0, 0, 0.86);
                     color: #ffffff;
-                    padding: 10px 24px;
-                    border-radius: 24px;
-                    font-size: 14px;
-                    font-weight: 600;
+                    padding: 10px 22px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    font-weight: 700;
                     z-index: 200;
                     cursor: pointer;
-                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    border: 1px solid rgba(255, 255, 255, 0.18);
                     animation: hint-fade 10s ease-out forwards;
                 }
                 @keyframes hint-fade {
@@ -553,57 +505,14 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     100% { opacity: 0; pointer-events: none; }
                 }
 
-                /* ═══ AMBIENT BACKGROUND ═══ */
-                .ambient-orb {
-                    position: absolute;
-                    border-radius: 50%;
-                    filter: blur(120px);
-                    opacity: 0.15;
-                    pointer-events: none;
-                    z-index: 0;
-                }
-                .orb-1 {
-                    width: 600px;
-                    height: 600px;
-                    background: radial-gradient(circle, #fbbf24, transparent 70%);
-                    top: -200px;
-                    left: -100px;
-                    animation: float-orb 20s ease-in-out infinite;
-                }
-                .orb-2 {
-                    width: 500px;
-                    height: 500px;
-                    background: radial-gradient(circle, #60a5fa, transparent 70%);
-                    bottom: -150px;
-                    right: -100px;
-                    animation: float-orb 25s ease-in-out infinite reverse;
-                }
-                .orb-3 {
-                    width: 400px;
-                    height: 400px;
-                    background: radial-gradient(circle, #f472b6, transparent 70%);
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    animation: float-orb 30s ease-in-out infinite;
-                }
-                @keyframes float-orb {
-                    0%, 100% { transform: translate(0, 0) scale(1); }
-                    25% { transform: translate(30px, -20px) scale(1.05); }
-                    50% { transform: translate(-20px, 30px) scale(0.95); }
-                    75% { transform: translate(20px, 20px) scale(1.03); }
-                }
-
-                /* ═══ HEADER — GLASSMORPHISM ═══ */
                 .board-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 20px 48px;
-                    background: rgba(255, 255, 255, 0.04);
-                    backdrop-filter: blur(20px);
-                    -webkit-backdrop-filter: blur(20px);
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    gap: 28px;
+                    padding: 26px 56px 18px;
+                    background: #070b12;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
                     flex-shrink: 0;
                     position: relative;
                     z-index: 1;
@@ -612,226 +521,179 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     display: flex;
                     align-items: center;
                     gap: 18px;
+                    min-width: 0;
                 }
                 .logo-glow {
-                    position: relative;
-                    width: 52px;
-                    height: 52px;
+                    width: 64px;
+                    height: 64px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                }
-                .logo-glow::before {
-                    content: '';
-                    position: absolute;
-                    inset: -4px;
-                    border-radius: 16px;
-                    background: linear-gradient(135deg, #fbbf24, #f472b6, #60a5fa);
-                    opacity: 0.5;
-                    filter: blur(8px);
-                    animation: logo-pulse 4s ease-in-out infinite;
-                }
-                @keyframes logo-pulse {
-                    0%, 100% { opacity: 0.3; }
-                    50% { opacity: 0.6; }
+                    flex-shrink: 0;
                 }
                 .store-logo {
-                    width: 52px;
-                    height: 52px;
+                    width: 64px;
+                    height: 64px;
                     object-fit: contain;
-                    border-radius: 14px;
-                    position: relative;
-                    z-index: 1;
-                    background: rgba(255,255,255,0.1);
+                    border-radius: 8px;
+                    background: #ffffff;
+                    padding: 4px;
                 }
                 .store-name {
-                    font-size: 30px;
+                    font-size: 42px;
                     font-weight: 800;
+                    line-height: 1.08;
                     margin: 0;
                     color: #ffffff;
-                    letter-spacing: -0.5px;
+                    letter-spacing: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
                 .header-right {
                     display: flex;
                     align-items: center;
                     gap: 16px;
+                    flex-shrink: 0;
                 }
                 .qr-card {
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 16px 10px 12px;
-                    background: rgba(255, 255, 255, 0.95);
-                    border-radius: 14px;
-                    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+                    padding: 9px 14px 9px 9px;
+                    background: #ffffff;
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.22);
                 }
                 .qr-label {
-                    font-size: 12px;
-                    color: #374151;
-                    font-weight: 600;
-                    letter-spacing: 0.3px;
-                    max-width: 60px;
-                    line-height: 1.3;
+                    font-size: 13px;
+                    color: #172033;
+                    font-weight: 800;
+                    letter-spacing: 0;
+                    max-width: 72px;
+                    line-height: 1.18;
                 }
 
-                /* ═══ CONTENT ═══ */
                 .board-content {
                     flex: 1;
                     overflow: hidden;
-                    padding: 28px 48px 16px;
+                    padding: 32px 56px 18px;
                     position: relative;
                     z-index: 1;
                 }
                 .empty-state {
                     display: flex;
-                    flex-direction: column;
                     align-items: center;
                     justify-content: center;
                     height: 100%;
-                    gap: 16px;
-                    opacity: 0.5;
-                }
-                .empty-icon {
-                    font-size: 64px;
-                    animation: float-orb 3s ease-in-out infinite;
+                    opacity: 0.8;
+                    text-align: center;
                 }
                 .empty-state p {
-                    font-size: 24px;
-                    font-weight: 500;
+                    font-size: 30px;
+                    font-weight: 700;
+                    margin: 0;
+                    color: rgba(255, 255, 255, 0.72);
                 }
 
-                /* ═══ CATEGORY LAYOUT ═══ */
                 .categories-layout {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-                    gap: 24px;
+                    grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+                    gap: 28px;
                     height: 100%;
                     align-content: start;
                 }
-
-                /* ═══ CATEGORY CARD — GLASSMORPHISM ═══ */
                 .category-card {
-                    border-radius: 16px;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
-                    padding: 16px 20px;
+                    border-radius: 8px;
+                    border: 2px solid rgba(255, 255, 255, 0.12);
+                    padding: 20px 24px;
                     display: flex;
                     flex-direction: column;
-                    gap: 10px;
+                    gap: 14px;
+                    min-width: 0;
                 }
                 .category-header {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    padding-bottom: 10px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                    gap: 12px;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
                 }
                 .category-accent-bar {
-                    width: 4px;
-                    height: 24px;
-                    border-radius: 4px;
+                    width: 6px;
+                    height: 34px;
+                    border-radius: 6px;
                     flex-shrink: 0;
                 }
                 .category-name {
-                    font-size: 22px;
+                    font-size: 31px;
                     font-weight: 800;
+                    line-height: 1.08;
                     text-transform: uppercase;
-                    letter-spacing: 1.5px;
+                    letter-spacing: 0;
                     margin: 0;
                     flex: 1;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
                 .category-count {
-                    font-size: 13px;
-                    font-weight: 600;
-                    opacity: 0.6;
-                    min-width: 20px;
-                    text-align: right;
+                    display: none;
                 }
 
-                /* ═══ ITEM ROW ═══ */
                 .items-list {
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 0;
                 }
                 .menu-item-row {
                     display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 6px 8px;
-                    border-radius: 10px;
-                    transition: background 0.2s ease;
+                    align-items: flex-start;
+                    gap: 18px;
+                    min-height: 58px;
+                    padding: 10px 0;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 }
-
-                /* ═══ THUMBNAIL ═══ */
-                .item-thumb {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 10px;
-                    overflow: hidden;
-                    flex-shrink: 0;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                .menu-item-row:last-child {
+                    border-bottom: none;
                 }
-                .thumb-img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .thumb-broken {
-                    background: rgba(255, 255, 255, 0.06);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                }
-                .item-thumb-placeholder {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 10px;
-                    flex-shrink: 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border: 1px solid;
-                    font-size: 18px;
-                    font-weight: 700;
-                }
-
-                /* ═══ ITEM DETAILS ═══ */
                 .item-details {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
-                    gap: 2px;
+                    gap: 5px;
                     min-width: 0;
                 }
                 .item-name-row {
                     display: flex;
                     align-items: center;
-                    gap: 8px;
+                    gap: 10px;
                     min-width: 0;
                 }
                 .item-name {
-                    font-size: 18px;
-                    font-weight: 500;
-                    color: #f1f5f9;
+                    font-size: 30px;
+                    font-weight: 700;
+                    line-height: 1.12;
+                    color: #ffffff;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
                 .item-desc {
-                    font-size: 13px;
-                    color: rgba(255, 255, 255, 0.45);
-                    font-weight: 400;
+                    font-size: 17px;
+                    color: rgba(255, 255, 255, 0.6);
+                    font-weight: 500;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    line-height: 1.3;
+                    line-height: 1.25;
                 }
 
-                /* ═══ DIETARY DOT ═══ */
                 .diet-dot {
-                    width: 10px;
-                    height: 10px;
-                    border-radius: 2px;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 3px;
                     border: 2px solid;
                     flex-shrink: 0;
                 }
@@ -845,102 +707,138 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     border-radius: 50%;
                 }
 
-                /* ═══ POPULAR TAG — ANIMATED ═══ */
                 .popular-tag {
                     display: inline-flex;
                     align-items: center;
-                    gap: 5px;
-                    padding: 2px 10px;
-                    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 146, 60, 0.2));
-                    border: 1px solid rgba(251, 191, 36, 0.3);
-                    border-radius: 20px;
-                    font-size: 11px;
-                    font-weight: 700;
+                    gap: 6px;
+                    padding: 4px 8px;
+                    background: rgba(251, 191, 36, 0.16);
+                    border: 1px solid rgba(251, 191, 36, 0.36);
+                    border-radius: 6px;
+                    font-size: 13px;
+                    font-weight: 800;
                     color: #fbbf24;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
+                    letter-spacing: 0;
                     flex-shrink: 0;
-                    animation: tag-shimmer 3s ease-in-out infinite;
                 }
                 .popular-dot {
-                    width: 5px;
-                    height: 5px;
+                    width: 7px;
+                    height: 7px;
                     border-radius: 50%;
                     background: #fbbf24;
-                    animation: dot-pulse 2s ease-in-out infinite;
-                }
-                @keyframes tag-shimmer {
-                    0%, 100% { border-color: rgba(251, 191, 36, 0.3); }
-                    50% { border-color: rgba(251, 191, 36, 0.6); }
-                }
-                @keyframes dot-pulse {
-                    0%, 100% { opacity: 1; transform: scale(1); }
-                    50% { opacity: 0.5; transform: scale(0.7); }
                 }
 
-                /* ═══ PRICE ═══ */
                 .item-price-area {
                     flex-shrink: 0;
                     text-align: right;
+                    min-width: 120px;
                 }
                 .item-price {
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: #4ade80;
+                    font-size: 32px;
+                    font-weight: 800;
+                    line-height: 1;
+                    color: #86efac;
                     font-variant-numeric: tabular-nums;
+                    white-space: nowrap;
                 }
                 .item-price .currency {
-                    font-size: 14px;
-                    font-weight: 500;
-                    opacity: 0.7;
+                    font-size: 22px;
+                    font-weight: 700;
+                    opacity: 0.78;
                     margin-right: 1px;
                 }
                 .item-price.muted {
-                    color: rgba(255, 255, 255, 0.2);
+                    color: rgba(255, 255, 255, 0.28);
                 }
 
-                /* ═══ FOOTER — PROGRESS BAR ═══ */
                 .board-footer {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 12px 48px;
+                    min-height: 30px;
+                    padding: 8px 56px 22px;
                     flex-shrink: 0;
                     position: relative;
                     z-index: 1;
                 }
                 .progress-track {
-                    width: 240px;
-                    height: 4px;
-                    background: rgba(255, 255, 255, 0.08);
-                    border-radius: 4px;
-                    overflow: hidden;
+                    width: 320px;
+                    height: 6px;
+                    background: rgba(255, 255, 255, 0.14);
+                    border-radius: 6px;
                     position: relative;
                 }
                 .progress-fill {
                     height: 100%;
-                    background: linear-gradient(90deg, #fbbf24, #f472b6);
-                    border-radius: 4px;
+                    background: #fbbf24;
+                    border-radius: 6px;
                 }
                 .page-label {
                     position: absolute;
-                    right: -50px;
+                    right: -58px;
                     top: 50%;
                     transform: translateY(-50%);
-                    font-size: 12px;
-                    color: rgba(255, 255, 255, 0.3);
-                    font-weight: 600;
+                    font-size: 13px;
+                    color: rgba(255, 255, 255, 0.58);
+                    font-weight: 700;
                     font-variant-numeric: tabular-nums;
                 }
                 .offline-pill {
-                    font-size: 11px;
-                    padding: 4px 12px;
-                    background: rgba(239, 68, 68, 0.15);
-                    color: #fca5a5;
-                    border-radius: 20px;
-                    border: 1px solid rgba(239, 68, 68, 0.2);
-                    font-weight: 600;
-                    letter-spacing: 0.5px;
+                    font-size: 13px;
+                    padding: 6px 12px;
+                    background: rgba(239, 68, 68, 0.16);
+                    color: #fecaca;
+                    border-radius: 8px;
+                    border: 1px solid rgba(239, 68, 68, 0.32);
+                    font-weight: 700;
+                    letter-spacing: 0;
+                }
+
+                @media (max-width: 1100px), (orientation: portrait) {
+                    .board-header {
+                        padding: 20px 32px 14px;
+                    }
+                    .store-name {
+                        font-size: 34px;
+                    }
+                    .logo-glow,
+                    .store-logo {
+                        width: 52px;
+                        height: 52px;
+                    }
+                    .board-content {
+                        padding: 24px 32px 12px;
+                    }
+                    .categories-layout {
+                        grid-template-columns: 1fr;
+                        gap: 18px;
+                    }
+                    .category-card {
+                        padding: 18px 20px;
+                    }
+                    .category-name {
+                        font-size: 28px;
+                    }
+                    .item-name {
+                        font-size: 27px;
+                    }
+                    .item-desc {
+                        font-size: 16px;
+                    }
+                    .item-price {
+                        font-size: 29px;
+                    }
+                    .item-price-area {
+                        min-width: 104px;
+                    }
+                    .qr-label {
+                        display: none;
+                    }
+                    .board-footer {
+                        padding-left: 32px;
+                        padding-right: 32px;
+                    }
                 }
             `}</style>
         </div>

@@ -6,14 +6,14 @@ import { buildAnswerlatticeUrl, ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SI
 import { ANSWERLATTICE_THEME_COLOR } from './theme';
 
 export const metadata: Metadata = {
-    applicationName: 'Answerlattice',
-    authors: [{ name: 'Answerlattice', url: ANSWERLATTICE_SITE_URL }],
-    creator: 'Answerlattice',
-    publisher: 'Answerlattice',
+    applicationName: 'AnswerLattice',
+    authors: [{ name: 'AnswerLattice', url: ANSWERLATTICE_SITE_URL }],
+    creator: 'AnswerLattice',
+    publisher: 'AnswerLattice',
     category: 'customer support software',
     title: {
         default: ANSWERLATTICE_SITE_TITLE,
-        template: '%s | Answerlattice',
+        template: '%s | AnswerLattice',
     },
     description: ANSWERLATTICE_SITE_DESCRIPTION,
     metadataBase: new URL(ANSWERLATTICE_SITE_URL),
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     },
     appleWebApp: {
         capable: true,
-        title: 'Answerlattice',
+        title: 'AnswerLattice',
         statusBarStyle: 'black-translucent',
         startupImage: getStaticAnswerlatticeAppleStartupImages(),
     },
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
         title: ANSWERLATTICE_SITE_TITLE,
         description: ANSWERLATTICE_SITE_DESCRIPTION,
         url: ANSWERLATTICE_SITE_URL,
-        siteName: 'Answerlattice',
+        siteName: 'AnswerLattice',
         images: [
             {
                 url: buildAnswerlatticeUrl('/answerlattice-og-image.png'),

@@ -1,3 +1,5 @@
+import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
+
 const PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
 
 const pendingRevalidations = new Map<string, Promise<void>>();
@@ -75,4 +77,5 @@ export const revalidatePublicClientCacheForProject = async (
 ): Promise<void> => {
     const storeId = getStoreIdFromProjectId(projectId);
     await revalidatePublicClientCache(storeId, context);
+    await touchDigitalScreenContentVersion(storeId, context);
 };

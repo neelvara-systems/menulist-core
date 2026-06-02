@@ -19,8 +19,8 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
     const [showAISearchModal, setShowAISearchModal] = useState(false);
     const [mounted, setMounted] = useState(false);
     const primaryColor = mounted ? token.colorPrimary : APP_THEME_COLOR;
-    const primaryBg = mounted ? token.colorPrimaryBg : '#eef6ff';
-    const elevatedBg = mounted ? token.colorBgElevated : '#ffffff';
+    const primaryBg = token.colorPrimaryBg;
+    const elevatedBg = token.colorBgElevated;
 
     // Get current tab info for breadcrumb
     const currentTab = HELP_CENTER_TABS.find(tab => tab.key === activeTab);
@@ -228,7 +228,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                                 borderRadius: activeTab === 'home' ? 10 : 7,
                                                 border: 'none',
                                                 background: `linear-gradient(135deg, ${primaryColor} 0%, ${APP_THEME_COLOR} 100%)`,
-                                                color: '#ffffff',
+                                                color: token.colorTextLightSolid,
                                                 boxShadow: activeTab === 'home' ? `0 8px 18px ${primaryColor}59` : 'none',
                                                 transition: 'all 0.5s ease'
                                             }}
@@ -249,7 +249,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                     background: token.colorBgContainer,
                                     borderRadius: activeTab === 'home' ? 12 : 10,
                                     border: `1px solid ${token.colorBorder}`,
-                                    boxShadow: activeTab === 'home' ? '0 20px 40px rgba(2,6,23,0.08)' : 'none',
+                                    boxShadow: activeTab === 'home' ? token.boxShadowSecondary : 'none',
                                     height: activeTab === 'home' ? 48 : 38,
                                     padding: '3px 3px 3px 12px',
                                     transition: 'all 0.5s ease',

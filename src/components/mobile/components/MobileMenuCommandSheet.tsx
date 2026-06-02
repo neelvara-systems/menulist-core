@@ -284,7 +284,7 @@ export default function MobileMenuCommandSheet({
                     right={(
                         <Text
                             onClick={onClose}
-                            style={{ alignItems: 'center', color: token.colorText, cursor: 'pointer', display: 'flex', justifyContent: 'center', minHeight: 40, minWidth: 40 }}
+                            style={{ alignItems: 'center', color: token.colorText, cursor: 'pointer', display: 'flex', justifyContent: 'center', minHeight: 44, minWidth: 44 }}
                         >
                             <LuX size={18} />
                         </Text>

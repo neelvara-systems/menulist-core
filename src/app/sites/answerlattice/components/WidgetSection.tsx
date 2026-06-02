@@ -89,7 +89,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                 <SectionHeader
                     eyebrow="Page-Aware Widget"
                     title="Put help inside the screen where users are stuck."
-                    description="Users ask from inside your app. Answerlattice reads safe page hints, accepts explicit screenshot attachments when needed, finds canonical answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing."
+                    description="Users ask from inside your app. AnswerLattice reads safe page hints, accepts explicit screenshot attachments when needed, finds canonical answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing."
                 >
                     <AnswerlatticeLink
                         basePath={basePath}

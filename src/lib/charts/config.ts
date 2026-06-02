@@ -7,6 +7,7 @@
  */
 
 import { theme } from 'antd';
+import { formatInrAmount } from '@util/formatters';
 
 // ================================================================
 // CHART CONFIGURATION HOOK
@@ -221,7 +222,7 @@ export function formatChartLabel(
     case 'percentage':
       return `${value}%`;
     case 'currency':
-      return `₹${value.toLocaleString()}`;
+      return formatInrAmount(value);
     case 'number':
     default:
       return value.toLocaleString();

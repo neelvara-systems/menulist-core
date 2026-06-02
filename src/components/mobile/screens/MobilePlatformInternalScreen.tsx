@@ -4,6 +4,7 @@ import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFi
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
 import type { TenantDataType } from '@type/platform/tenant';
+import { theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import type { ComponentType, Dispatch, SetStateAction } from 'react';
@@ -218,6 +219,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
     const config = PLATFORM_SCREEN_CONFIG[screen];
     const Component = config.Component;
     const isAnswerlatticeRoute = Boolean(config.requiresAnswerlattice);
+    const { token } = theme.useToken();
     const router = useRouter();
 
     const openDesktopTools = () => {
@@ -236,7 +238,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         aria-label={`Open ${config.title} desktop tools`}
                         fill="none"
                         onClick={openDesktopTools}
-                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                        style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                     >
                         <LuExternalLink size={18} />
                     </Button>
@@ -462,7 +464,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         }
 
                         [data-mobile-answerlattice-admin="true"] .ant-table-wrapper {
-                            border: 1px solid rgba(15, 23, 42, 0.08);
+                            border: 1px solid ${token.colorBorderSecondary};
                             border-radius: 8px;
                         }
 
