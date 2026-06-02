@@ -6,6 +6,24 @@
 
 ---
 
+## June 2, 2026 — Menu Card Export Output Identification
+
+### Changed
+
+- **Print Menu file naming** - PDF and print-shop packet downloads now include the business/menu name, preset, generated date, and short source reference in the filename.
+- **Print Menu PDF metadata** - Generated PDFs now set document title, subject, author, keywords, creator, and creation date for easier local search and support review.
+- **Print-shop packet instructions** - Packet instructions now include preset, style/template version, page count, source reference, renderer version, menu updated date, generated date, and live menu destination.
+
+### Fixed
+
+- **Visible footer cleanup** - Generated PDFs no longer print the full internal source hash in the customer-facing footer.
+
+### Cost
+
+- **No new Firebase export cost** - Metadata, filenames, and packet notes are generated in the browser. No export collection, Storage upload, Cloud Function, Firestore index, Firebase rule, or artifact API route was added.
+
+---
+
 ## June 2, 2026 — Menu Card Export Mobile Surface Parity
 
 ### Changed

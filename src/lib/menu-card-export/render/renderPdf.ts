@@ -6,13 +6,7 @@ import { buildPrintSourceHash } from '../source/buildPrintSourceHash';
 import { applySafeLayoutOverrides } from '../overrides/applySafeLayoutOverrides';
 import { getPrintBox } from './renderPrintBoxes';
 import { renderQr } from './renderQr';
-
-function safeFilename(value: string): string {
-    return (value || 'menu')
-        .replace(/[^a-zA-Z0-9\s_-]/g, '')
-        .trim()
-        .replace(/\s+/g, '_') || 'menu';
-}
+import { buildArtifactFilename, buildPdfDocumentProperties, formatArtifactDate } from './artifactMetadata';
 
 function hexToRgb(hex: string): [number, number, number] {
     const clean = (hex || '#2d2d2d').replace('#', '');
@@ -87,8 +81,8 @@ function drawFooter(
     doc: jsPDF,
     source: MenuCardPrintSource,
     settings: MenuCardExportSettings,
-    sourceHash: string,
     qrDataUrl: string | null,
+    generatedAt: Date,
 ) {
     const total = doc.getNumberOfPages();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -104,7 +98,7 @@ function drawFooter(
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(120, 120, 120);
         doc.setFontSize(7);
-        doc.text(sourceHash, 12, footerY, { align: 'left' });
+        doc.text(`Generated: ${formatArtifactDate(generatedAt)}`, 12, footerY, { align: 'left' });
         doc.text(`Page ${page} of ${total}`, pageWidth / 2, footerY, { align: 'center' });
 
         if (settings.includeUpdatedDate) {
@@ -187,11 +181,14 @@ export async function renderPdf(
     source: MenuCardPrintSource,
     settings: MenuCardExportSettings,
     overrides: MenuCardSafeOverrides = {},
+    generatedAt: Date = new Date(),
 ): Promise<MenuCardGeneratedArtifact> {
     const template = getMenuCardTemplate(settings.styleId);
     const sourceHash = buildPrintSourceHash(source, settings, overrides);
     const categories = applySafeLayoutOverrides(source.menu.categories, overrides);
     const doc = new jsPDF({ orientation: settings.orientation, unit: 'mm', format: getFormat(settings) });
+    doc.setCreationDate(generatedAt);
+    doc.setProperties(buildPdfDocumentProperties({ source, settings, template, sourceHash }));
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const printBox = getPrintBox(settings);
@@ -238,15 +235,13 @@ export async function renderPdf(
         y += 4;
     });
 
-    drawFooter(doc, source, settings, sourceHash, qrDataUrl);
+    drawFooter(doc, source, settings, qrDataUrl, generatedAt);
 
     const blob = doc.output('blob');
-    const safeName = safeFilename(`${source.business.name}_${source.menu.title}`);
-    const suffix = settings.preset === 'whatsapp' ? 'WhatsApp' : settings.preset === 'print_shop_packet' ? 'PrintShop' : 'PrintMenu';
 
     return {
         blob,
-        filename: `${safeName}_${suffix}.pdf`,
+        filename: buildArtifactFilename({ source, settings, template, sourceHash, extension: 'pdf', generatedAt }),
         mimeType: 'application/pdf',
         pageCount: doc.getNumberOfPages(),
         sourceHash,

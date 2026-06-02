@@ -6,6 +6,7 @@ export * from './models/templateTypes';
 export * from './models/warningTypes';
 export * from './navigation';
 export * from './presets/presetRegistry';
+export * from './render/artifactMetadata';
 export * from './render/renderPdf';
 export * from './render/renderPreviewModel';
 export * from './printShop/buildPrintShopPacket';

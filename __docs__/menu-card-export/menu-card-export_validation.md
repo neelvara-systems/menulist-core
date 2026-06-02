@@ -11,7 +11,7 @@
 | --- | --- | --- |
 | Dedicated route exists | PASS | `src/app/(main)/use-menulist/menu-card-export/page.tsx:1` |
 | Feature flags added | PASS | `src/config/features.ts:1683` |
-| Firebase cost optimized by default | PASS | `src/config/features.ts:1677`, `scripts/verification/verify-menu-card-export.js:50` |
+| Firebase cost optimized by default | PASS | `src/config/features.ts:1677`, `scripts/verification/verify-menu-card-export.js:63`, `scripts/verification/verify-menu-card-export.js:67` |
 | AI advisor is Pro/Premium only | PASS | `src/config/features.ts:1687`, `src/config/features.ts:1688`, `src/app/api/menu-card-export/design-advisor/route.ts:144` |
 | AI advisor blocks before provider for non-Pro/Premium | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:145`, `src/app/api/menu-card-export/design-advisor/route.ts:146` |
 | AI advisor validates bounded request/response | PASS | `src/lib/validation/apiSchemas.ts:422`, `src/lib/menu-card-export/ai/designAdvisor.ts:32`, `src/lib/menu-card-export/ai/designAdvisor.ts:71` |
@@ -25,21 +25,23 @@
 | Route reads selected menu once and computes preview client-side | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:137`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:215`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:238` |
 | Preflight exists before export | PASS | `src/lib/menu-card-export/preflight/runPrintPreflight.ts:13`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:251` |
 | PDF generation is client-side | PASS | `src/lib/menu-card-export/render/renderPdf.ts:186` |
+| PDF metadata and deterministic filenames are set in browser | PASS | `src/lib/menu-card-export/render/artifactMetadata.ts:32`, `src/lib/menu-card-export/render/artifactMetadata.ts:52`, `src/lib/menu-card-export/render/renderPdf.ts:190`, `src/lib/menu-card-export/render/renderPdf.ts:244` |
 | Print-shop packet is client-side ZIP | PASS | `src/lib/menu-card-export/printShop/buildPrintShopPacket.ts:16` |
+| Print-shop instructions include source summary and live menu destination | PASS | `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:26`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:37`, `src/lib/menu-card-export/printShop/buildPrintInstructions.ts:39` |
 | Real project file extraction shape is supported | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:48`, `src/lib/menu-card-export/source/buildPrintSource.ts:57` |
 | Local export history exists without Firestore | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:10`, `src/lib/menu-card-export/repository/menuCardExportRepository.ts:49` |
-| History flag controls local history UI/write path | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:208`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:401`, `scripts/verification/verify-menu-card-export.js:56` |
+| History flag controls local history UI/write path | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:208`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:401`, `scripts/verification/verify-menu-card-export.js:62` |
 | Print-shop flag controls preset visibility and stale state | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:74`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:379`, `src/app/api/menu-card-export/design-advisor/route.ts:194` |
 | Unused placeholder modules removed before freeze | PASS | `src/lib/menu-card-export/index.ts:1`, `__docs__/menu-card-export/menu-card-export_impl.md:32` |
 | Use MenuList routes to Print Menu | PASS | `src/components/templates/main-app/useMenuList/index.tsx:251`, `src/components/templates/main-app/useMenuList/index.tsx:951` |
 | Share modal routes to Print Menu | PASS | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:250`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` |
-| Shared entry URL helper exists | PASS | `src/lib/menu-card-export/navigation.ts:1`, `scripts/verification/verify-menu-card-export.js:78` |
+| Shared entry URL helper exists | PASS | `src/lib/menu-card-export/navigation.ts:1`, `scripts/verification/verify-menu-card-export.js:79` |
 | Mobile Share routes to Print Menu | PASS | `src/components/mobile/screens/MobileShareScreen.tsx:461`, `src/components/mobile/screens/MobileShareScreen.tsx:889` |
 | Mobile Menu routes to Print Menu after pending-edit save | PASS | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/screens/MobileMenuScreen.tsx:3954` |
 | Mobile Menu command sheet exposes Print Menu | PASS | `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` |
 | More > Modules exposes Print Menu beside Dashboard | PASS | `src/components/mobile/screens/MobileMoreScreen.tsx:399`, `src/components/mobile/screens/MobileMoreScreen.tsx:442` |
-| Mobile shell does not absorb Print Menu route | PASS | `src/components/antdComponent/layoutWrapper/index.tsx:45`, `scripts/verification/verify-menu-card-export.js:62` |
-| Verification command added | PASS | `package.json:31`, `scripts/verification/verify-menu-card-export.js:202` |
+| Mobile shell does not absorb Print Menu route | PASS | `src/components/antdComponent/layoutWrapper/index.tsx:45`, `scripts/verification/verify-menu-card-export.js:71` |
+| Verification command added | PASS | `package.json:31`, `scripts/verification/verify-menu-card-export.js:238` |
 
 ---
 
@@ -60,11 +62,11 @@
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| No export Firestore write | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:3`, `scripts/verification/verify-menu-card-export.js:54` |
-| No export-storage API route | PASS | `scripts/verification/verify-menu-card-export.js:82` |
+| No export Firestore write | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:3`, `scripts/verification/verify-menu-card-export.js:63` |
+| No export-storage API route | PASS | `scripts/verification/verify-menu-card-export.js:182` |
 | No Storage upload | PASS | `src/lib/menu-card-export/repository/artifactStorage.ts:3`, `src/lib/menu-card-export/printShop/buildPrintShopPacket.ts:24` |
 | History is local only | PASS | `src/lib/menu-card-export/repository/menuCardExportRepository.ts:3` |
-| Empty stores do not create a default menu | PASS | `src/database/projects/index.ts:1273`, `scripts/verification/verify-menu-card-export.js:54` |
+| Empty stores do not create a default menu | PASS | `src/database/projects/index.ts:1273`, `scripts/verification/verify-menu-card-export.js:67` |
 | Style/preset browsing does not re-read or write Firebase | PASS | `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:235`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:239` |
 | Non-Pro/Premium suggestions avoid provider cost | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176` |
 | AI credits are not consumed before validated recommendation | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:183`, `src/app/api/menu-card-export/design-advisor/route.ts:205`, `src/app/api/menu-card-export/design-advisor/route.ts:235` |
@@ -99,7 +101,7 @@ Generated artifacts:
 | Artifact | Result |
 | --- | --- |
 | PDF render | PASS. `file` identified valid PDF 1.3 output; page counts matched runtime output. |
-| Print-shop packet | PASS. ZIP contained `menu-print.pdf`, `PRINT_INSTRUCTIONS.txt`, and `QR_TEST_CHECKLIST.txt`. |
+| Print-shop packet | PASS. ZIP contained `menu-print.pdf`, `PRINT_INSTRUCTIONS.txt`, and `QR_TEST_CHECKLIST.txt`; instructions now include preset/style, template version, source reference, renderer version, and live menu destination. |
 | Source extraction | PASS. File-based `project.files[].extractedData.data` menus produced visible categories/items. |
 | Firebase write path | PASS. Runtime generated local PDF/ZIP blobs only; no export-storage API route, Storage upload, export collection, index, rule, or Cloud Function was added. |
 | Multi-project behavior | PASS. Active menus were selected independently and generated separate hashes/artifacts. |

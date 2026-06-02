@@ -3,9 +3,9 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
-    answerlattice_starter: 'Best for one AI-built SaaS app with early repeated questions.',
-    answerlattice_growth: 'Best for active SaaS products that need weekly review and higher capacity.',
-    answerlattice_studio: 'Best for studios or agencies launching multiple AI-built products.',
+    answerlattice_starter: 'Best for one SaaS app or digital product with early repeated questions.',
+    answerlattice_growth: 'Best for active SaaS apps and digital products that need weekly review and higher capacity.',
+    answerlattice_studio: 'Best for studios or agencies launching multiple digital products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;

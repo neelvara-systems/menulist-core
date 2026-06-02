@@ -1,7 +1,7 @@
 # Answerlattice Website — Implementation
 
-> **Version:** 1.2.53
-> **Last Updated:** 2026-06-01
+> **Version:** 1.2.55
+> **Last Updated:** 2026-06-02
 > **Audience:** Developers
 
 ---
@@ -146,7 +146,7 @@ Public contact submissions use `src/app/api/answerlattice/public/contact/route.t
 
 The public website now follows `../self-sellable-product-strategy.md`:
 
-- homepage leads with the AI-built SaaS launch problem instead of enterprise control-plane language
+- homepage leads with "SaaS and digital products" so the first viewport does not imply Answerlattice only works for SaaS, while AI-built SaaS remains a targeted use-case path
 - "vibe-coded SaaS" is treated as an SEO/campaign alias, not the main public buyer label
 - homepage and product page expose the implemented Answerlattice engine pillars: Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
@@ -176,6 +176,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
 - May 31 shared-conversation pass changed the homepage hero to "Launch your SaaS with support already built.", made support setup the primary CTA, and clarified that Answerlattice prepares docs, FAQs, answer drafts, hosted help, and page-aware widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed.
 - June 1 fresh-product conversion pass changed the homepage hero to "Give every SaaS page the right support answer.", added a sample workspace preview to the hero, added the conversion proof band, moved product proof and page-aware demo above setup-heavy sections, and moved Pre-Onboarding lower as a source-preparation accelerator.
+- June 2 positioning pass changed the top-level hero/title/footer/product-page language to "Page-aware support answers for SaaS and digital products" so Answerlattice can sell beyond SaaS without weakening the SaaS-focused use-case pages.
 - June 1 full-site conversion pass added `PageProofStrip.tsx` and applied compact proof strips/clearer CTAs to product overview, product-area pages, product-feature template, SEO/use-case template, setup, pricing, resources, proof, security, install, FAQ, contact, pre-onboarding, updates, privacy, and terms pages. It also grouped the FAQ into scannable sections, replaced exact fake-looking mockup metrics with status-style placeholder states, and tightened shared mobile heading wrapping for non-home page readability.
 - June 1 final copy/CSS pass corrected rendered wording across all public Answerlattice routes, replaced plus-sign product labels with plain-language labels where they appear as buyer-facing copy, changed ambiguous page terminology to "product pages", and moved scoped Answerlattice CSS imports to the root app layout so clean-cache renders keep Tailwind utilities and dark theme styling.
 - May 31 feedback website pass added `/product/feedback-review`, registered it through `ANSWERLATTICE_SUPPORT_FEATURES`, exposed it in header/footer/resources/product grids through shared feature data, and added a homepage/Product preview tab for ratings, feature requests, suggestions, Support Board handoff, and answer-governance boundaries.
@@ -463,3 +464,5 @@ Conversion analytics is client-side only:
 | 2026-06-01 | 1.2.51 | Reworked the homepage implementation for conversion clarity: page-aware support-answer hero, inline sample workspace preview, new `HomeProofBandSection`, product proof/demo moved earlier, Pre-Onboarding repositioned as source preparation, metadata refreshed, and final asset-preparation doc added |
 | 2026-06-01 | 1.2.52 | Extended the conversion pass across non-home pages with reusable `PageProofStrip`, clearer hero CTAs, grouped FAQ rendering, safer sample-state wording, and install/product/SEO template updates without adding Firebase reads, external calls, or new dependencies |
 | 2026-06-01 | 1.2.53 | Completed rendered copy QA across all public Answerlattice routes and root-loaded scoped Answerlattice CSS from `src/app/layout.tsx` so clean-cache route loads no longer depend on a nested website CSS chunk |
+| 2026-06-02 | 1.2.54 | Broadened top-level public positioning to SaaS and digital products across homepage hero, site metadata, Product, About, Contact, footer, and docs while preserving AI-built SaaS as a focused use-case route |
+| 2026-06-02 | 1.2.55 | Removed repeated long rendered copy from the product-feature, SEO/use-case, and resources shared templates, then completed the top-level SaaS plus digital-product copy sweep for Resources, Pricing, ROI, FAQ, Proof, and homepage pricing/CTA surfaces |

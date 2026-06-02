@@ -467,6 +467,27 @@ Accessibility rule:
 - Launch output must keep menu text selectable.
 - Do not claim PDF/UA until tagged structure, reading order, metadata, link annotations, image alternate text, and automated verification are implemented.
 
+## Output Metadata And Filenames
+
+Accepted from the generic export playbook:
+
+- Set real PDF document properties with `jsPDF.setProperties()`: title, subject, author, keywords, and creator.
+- Set PDF creation date from the same generated timestamp used by the artifact.
+- Use deterministic, readable filenames: business/menu name, preset, generated date, and short source reference.
+- Keep the full source hash out of the visible PDF footer; use the generated date, page count, and menu updated date as customer-safe footer text.
+- Keep support/audit identifiers in PDF metadata and print-shop instructions, not in owner-facing configuration.
+
+Rejected for this feature:
+
+- executive-summary pages
+- report/table/chart appendices
+- interactive ToC pages
+- approvals/changelog appendix
+- confidentiality labels
+- visible AI model/tool provenance
+
+Reason: Menu Card Export is a restaurant menu output workflow, not a report/deck exporter.
+
 ---
 
 ## Print-Shop Packet
@@ -494,6 +515,7 @@ rendered print PDF
 - quantity note placeholder
 - owner contact block if available
 - generated date and menu updated date
+- preset, style/template version, renderer version, source reference, page count, and live menu destination
 
 `QR_TEST_CHECKLIST.txt` should instruct staff/print shop to scan the QR from a phone before printing the full run.
 

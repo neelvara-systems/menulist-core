@@ -15,7 +15,7 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Answerlattice is the support layer for AI-built SaaS apps: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
+    description: 'Answerlattice is the support layer for SaaS and digital products: knowledge intake, team access, starter surfaces, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -122,7 +122,7 @@ export default function AnswerlatticeProductPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        The support layer for AI-built SaaS apps.
+                        The support layer for SaaS and digital products.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
                         Answerlattice connects your product pages, help content, custom owner answers, widget, tickets, feedback review, Support Board, releases, and approved answers so users get correct support while your product keeps changing.

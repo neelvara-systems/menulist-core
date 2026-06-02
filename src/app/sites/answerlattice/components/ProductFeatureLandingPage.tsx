@@ -52,7 +52,9 @@ function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Answerlattice product layer</p>
                         <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{feature.label}</h2>
-                        <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{feature.description}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
+                            The workspace keeps source material, page context, and approval status connected before support reaches users.
+                        </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                         {feature.heroBullets.map((bullet, index) => {
@@ -275,11 +277,11 @@ export default function ProductFeatureLandingPage({
                         inputs={[
                             {
                                 title: feature.label,
-                                detail: feature.description,
+                                detail: `${feature.label} stays tied to reviewed sources, safe page context, and owner-approved support output.`,
                             },
                             {
                                 title: 'Reviewed source',
-                                detail: feature.connectedDescription,
+                                detail: 'Support content feeds the widget, hosted help, tickets, and governance review from one controlled workspace.',
                             },
                             {
                                 title: 'Page context',

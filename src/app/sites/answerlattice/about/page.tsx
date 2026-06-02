@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Answerlattice helps AI-built SaaS teams keep support answers correct as products change.',
+    description: 'Answerlattice helps SaaS and digital-product teams keep support answers correct as products change.',
     alternates: { canonical: '/about' },
 };
 
@@ -35,7 +35,7 @@ export default function AnswerlatticeAboutPage() {
                             AI can build apps fast. Support still has to be correct.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Answerlattice exists because solo founders and small SaaS teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
+                            Answerlattice exists because solo founders and small product teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
                             Answerlattice keeps approved support knowledge connected to product surfaces. Founders get launch setup, hosted help, widget support, changelog binding, ticket fallback, and a governance queue without having to run a large support operation.
@@ -59,7 +59,7 @@ export default function AnswerlatticeAboutPage() {
                         <PageProofStrip
                             className="mt-8 text-left"
                             items={[
-                                { label: 'Audience', value: 'Live or near-live SaaS teams with repeated support questions' },
+                                { label: 'Audience', value: 'Live or near-live product teams with repeated support questions' },
                                 { label: 'Belief', value: 'Correct approved answers beat more support channels' },
                                 { label: 'Boundary', value: 'Not a helpdesk replacement or autopilot' },
                             ]}

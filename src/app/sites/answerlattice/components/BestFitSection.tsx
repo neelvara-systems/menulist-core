@@ -4,7 +4,7 @@ import SectionHeader from './SectionHeader';
 const FIT_DECISIONS = [
     {
         title: 'Live product',
-        detail: 'Your SaaS app is live or close to launch, and users are already finding confusing screens.',
+        detail: 'Your SaaS app or digital product is live or close to launch, and users are already finding confusing screens.',
         label: 'fit',
         tone: 'good' as const,
     },
@@ -59,7 +59,7 @@ export default function BestFitSection() {
                 <SectionHeader
                     eyebrow="Best fit"
                     title="Best for founders with real users and repeated questions."
-                    description="Answerlattice fits AI-built SaaS apps where users get stuck on billing, onboarding, settings, integrations, releases, or errors."
+                    description="Answerlattice fits SaaS apps and digital products where users get stuck on billing, onboarding, settings, integrations, releases, or errors."
                 />
                 <AnswerlatticeDecisionGrid items={FIT_DECISIONS} />
             </div>

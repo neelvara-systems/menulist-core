@@ -1,7 +1,7 @@
 # Menu Card Export — Test Cases
 
 **Status:** Production-ready baseline; Pro/Premium layout suggestion added
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -14,8 +14,9 @@ Current validated baseline:
 - `npm run verify:menu-card-export`
 - focused `next lint --file ...`
 - `npx tsc --noEmit --incremental false`
-- local unauthenticated route smoke compiles and redirects to signin
 - active multi-project owner data generated PDFs and print-shop packet ZIPs from two non-empty menus
+
+Local unauthenticated route smoke is currently blocked by a shared Next dev runtime issue that also affects `/use-menulist`; do not count it as feature-specific failure evidence.
 
 Authenticated browser click-through remains a useful manual smoke before a Vercel release, but authenticated real-data source extraction, PDF rendering, ZIP generation, and cost-path validation passed.
 
@@ -98,9 +99,9 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | --- | --- |
 | Packet flag off | Preset is hidden and stale flagged state cannot create a packet. |
 | Packet generated | ZIP contains PDF, instructions, and QR test checklist. |
-| Instructions | Includes store/menu, paper size, orientation, generated date, menu updated date, and contact block where available. |
+| Instructions | Includes store/menu, preset, style/template version, paper size, orientation, generated date, menu updated date, page count, source reference, renderer version, live menu destination, and contact block where available. |
 | QR checklist | Tells staff/printer to scan one sample before a full print run. |
-| Packet retention | Stored under configured export path and subject to retention. |
+| Packet retention | No Firebase retention path exists in the default implementation; packet downloads as a local ZIP only. |
 
 ---
 
@@ -110,6 +111,9 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | --- | --- |
 | Selectable item text | Sample item names can be extracted from PDF text. |
 | Screenshot-only PDF attempt | Verification fails. |
+| PDF document properties | Title, subject, author, keywords, and creator are set by the renderer. |
+| Download filename | Includes business/menu name, preset, generated date, and short source reference. |
+| Visible footer | Does not print the full internal source hash. |
 | Link annotation support | QR destination/short URL is present where renderer supports links. |
 | PDF/UA claim | No public/support claim exists unless tagged PDF verification is implemented. |
 

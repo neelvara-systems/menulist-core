@@ -11,7 +11,7 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Answerlattice resources for founders launching support for AI-built SaaS apps: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'Answerlattice resources for founders launching support for SaaS apps and digital products: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -75,6 +75,13 @@ const RESOURCE_GROUPS = [
     },
 ];
 
+const RESOURCE_PATH_DETAILS = [
+    'Begin with buyer proof and plan checks before moving into setup.',
+    'Use fit pages to confirm the support problem matches Answerlattice.',
+    'Prepare source inputs, install boundaries, and runtime checks before implementation.',
+    'Move into workspace setup or contact once the rollout decision is clear.',
+];
+
 export default function AnswerlatticeResourcesPage() {
     const basePath = getBasePath();
 
@@ -86,7 +93,7 @@ export default function AnswerlatticeResourcesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Resources</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Start here if you are launching support for an AI-built app.
+                        Start here if you are launching support for a SaaS app or digital product.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Start with pre-onboarding, then use the demo, fit checks, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
@@ -207,9 +214,9 @@ export default function AnswerlatticeResourcesPage() {
                         <AnswerlatticeSequenceDiagram
                             idPrefix="al-resources-path"
                             splitAfter={2}
-                            items={RESOURCE_GROUPS.map((group) => ({
+                            items={RESOURCE_GROUPS.map((group, index) => ({
                                 title: group.title,
-                                detail: group.description,
+                                detail: RESOURCE_PATH_DETAILS[index],
                                 meta: `${group.items.length} links`,
                             }))}
                         />

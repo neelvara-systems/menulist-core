@@ -9,11 +9,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Answerlattice setup, knowledge intake, team access, AI-built apps, page-aware support, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Answerlattice setup, knowledge intake, team access, digital products, page-aware support, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Answerlattice',
-        description: 'Answers to common questions about Answerlattice setup, knowledge intake, team access, AI-built apps, widget context, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Answerlattice setup, knowledge intake, team access, digital products, widget context, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
         url: `${ANSWERLATTICE_SITE_URL}/faq`,
     },
 };
@@ -61,7 +61,7 @@ const FAQS = [
     },
     {
         question: 'Is this for prototypes?',
-        answer: 'No. Answerlattice is for live or near-live SaaS apps with real users and repeated support questions.',
+        answer: 'No. Answerlattice is for live or near-live SaaS apps and digital products with real users and repeated support questions.',
     },
     {
         question: 'Is Answerlattice a chatbot?',
@@ -226,7 +226,7 @@ export default function AnswerlatticeFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Answerlattice.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, knowledge intake, team access, AI-built apps, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, knowledge intake, team access, digital products, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink

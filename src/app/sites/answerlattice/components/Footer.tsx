@@ -52,7 +52,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                             <span className="text-lg font-semibold text-white">Answerlattice</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
-                            Support layer for AI-built SaaS apps.
+                            Support layer for SaaS and digital products.
                             Knowledge intake, page-aware help, hosted docs, owner Q&A, and approved answers before fallback.
                         </p>
                     </div>
@@ -86,7 +86,7 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                         &copy; {new Date().getFullYear()} Answerlattice. All rights reserved.
                     </p>
                     <p className="text-xs text-[#505070]">
-                        Governed answer infrastructure for SaaS support.
+                        Governed answer infrastructure for SaaS and digital-product support.
                     </p>
                 </div>
             </div>

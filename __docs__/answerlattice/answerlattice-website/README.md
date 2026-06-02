@@ -1,8 +1,8 @@
 # Answerlattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for Answerlattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for page-aware SaaS support conversion, self-service Answerlattice, and agent-readable public discovery
-> **Date:** 2026-06-01
+> **Status:** ✅ IMPLEMENTED — refreshed for page-aware SaaS and digital-product support conversion, self-service Answerlattice, and agent-readable public discovery
+> **Date:** 2026-06-02
 > **Domain:** answerlattice.com (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -30,8 +30,8 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Page-aware SaaS support hero with inline sample workspace preview + conversion proof band + dashboard-style product proof + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
-| `/product` | Product | Self-serve product overview with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-app widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
+| `/` | Homepage | Page-aware SaaS and digital-product support hero with inline sample workspace preview + conversion proof band + dashboard-style product proof + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + pricing preview + objections + CTA |
+| `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, readiness proof strip, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
 | `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, weekly support review, and connected-runtime proof |
@@ -69,7 +69,7 @@
 | `/agents/answerlattice/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
-| `/resources` | Resources | Answerlattice learning hub for pre-onboarding, AI-built SaaS evaluation, setup, feedback review, widget install, governance, and safety |
+| `/resources` | Resources | Answerlattice learning hub for pre-onboarding, product evaluation, setup, feedback review, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline for product and website changes without using dashboard-owned changelog routes |
 | `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, Answerlattice role permissions, owner-approved answers, runtime limits, and responsible disclosure |
 | `/faq` | FAQ | Grouped founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, runtime safety, and data handling |
@@ -236,6 +236,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-06-01 | Reworked the homepage from a setup-first story into a conversion-first story: clearer page-aware support-answer hero, inline sample workspace preview, new conversion proof band, earlier product proof/demo, Pre-Onboarding moved lower as a source-preparation accelerator, refreshed metadata, and final asset-preparation plan added |
 | 2026-06-01 | Extended the homepage conversion pattern across the rest of the public site: product, product-area, feature, SEO/use-case, setup, pricing, resources, proof, security, install, FAQ, contact, legal, and updates pages now expose compact proof strips, clearer CTAs, grouped FAQ scanning, and safer sample-state wording |
 | 2026-06-01 | Completed rendered wording QA across all public Answerlattice routes and root-loaded scoped Answerlattice CSS through `src/app/layout.tsx` so clean-cache pages keep the dark theme, Tailwind utilities, and route styling without relying on a nested CSS chunk |
+| 2026-06-02 | Broadened the top-level homepage, metadata, Product, About, Contact, and footer positioning from SaaS-only wording to SaaS and digital products while keeping AI-built SaaS as a focused use-case and SEO path |
+| 2026-06-02 | Completed the full rendered page-content cross-check: removed repeated long body copy from shared templates and broadened Resources, Pricing, ROI, FAQ, Proof, homepage CTA, and homepage pricing copy to SaaS plus digital-product framing |
 | 2026-03-07 | Initial implementation: 6 pages, shared components, Tailwind, multi-product routing |
 | 2026-05-21 | Added small-SaaS positioning, `/demo`, Starter/Growth/Studio pricing copy, founder-friendly product/get-started/contact pages, public security/FAQ/legal pages, Answerlattice sitemap/robots, manifest, icons, and structured data |
 | 2026-05-21 | Restored implemented Answerlattice engine pillars to homepage and product page while keeping the deferred API/integration pillar off public claims |

@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Contact',
-    description: 'Contact Answerlattice for setup help, demos, pricing, security questions, or partnership requests for your AI-built SaaS app.',
+    description: 'Contact Answerlattice for setup help, demos, pricing, security questions, or partnership requests for your SaaS app or digital product.',
     alternates: { canonical: '/contact' },
 };
 
@@ -73,7 +73,7 @@ export default function AnswerlatticeContactPage() {
                                 <PageProofStrip
                                     className="mt-8 text-left"
                                     items={[
-                                        { label: 'Best inquiry', value: 'SaaS app with repeated support questions' },
+                                        { label: 'Best inquiry', value: 'SaaS or digital product with repeated support questions' },
                                         { label: 'Useful context', value: 'Product URL, first stuck page, top recurring questions' },
                                         { label: 'Avoid sending', value: 'Passwords, tokens, customer datasets, raw logs' },
                                     ]}

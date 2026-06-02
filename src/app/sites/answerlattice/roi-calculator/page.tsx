@@ -9,7 +9,7 @@ import AnswerlatticeRoiCalculator from './AnswerlatticeRoiCalculator';
 
 export const metadata: Metadata = {
     title: 'Support ROI Calculator',
-    description: 'Estimate repeated support questions, founder time saved, and Answerlattice plan fit for AI-built SaaS support.',
+    description: 'Estimate repeated support questions, founder time saved, and Answerlattice plan fit for SaaS and digital-product support.',
     alternates: { canonical: '/roi-calculator' },
 };
 

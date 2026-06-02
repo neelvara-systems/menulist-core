@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     keywords: [
         'support knowledge infrastructure',
         'SaaS support widget',
+        'digital product support',
+        'support widget for digital products',
         'page-aware support',
         'page-aware support widget',
         'support widget for solo founders',

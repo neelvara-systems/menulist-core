@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Answerlattice plans for small SaaS teams.',
+    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Answerlattice plans for small SaaS and digital-product teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -25,7 +25,7 @@ function getBasePath(): string {
 
 const PLAN_BULLETS: Record<string, string[]> = {
     answerlattice_starter: [
-        'One SaaS product workspace',
+        'One SaaS or digital-product workspace',
         'Team access and role permissions',
         'Knowledge intake from selected links, docs, and supported files',
         'Widget and help center',
@@ -50,9 +50,9 @@ const PLAN_BULLETS: Record<string, string[]> = {
 };
 
 const PLAN_GUIDANCE: Record<string, string> = {
-    answerlattice_starter: 'For one AI-built SaaS app with early users and repeated setup, billing, or onboarding questions.',
-    answerlattice_growth: 'For active SaaS products that need weekly review, support-gap tracking, and higher answer capacity.',
-    answerlattice_studio: 'For builders, agencies, or studios launching multiple AI-built products.',
+    answerlattice_starter: 'For one SaaS app or digital product with early users and repeated setup, billing, or onboarding questions.',
+    answerlattice_growth: 'For active SaaS apps and digital products that need weekly review, support-gap tracking, and higher answer capacity.',
+    answerlattice_studio: 'For builders, agencies, or studios launching multiple digital products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;

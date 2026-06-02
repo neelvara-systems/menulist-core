@@ -2,16 +2,11 @@ import JSZip from 'jszip';
 import type { MenuCardExportSettings, MenuCardSafeOverrides } from '../models/exportTypes';
 import type { MenuCardPrintShopPacket } from '../models/printShopTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
+import { getMenuCardTemplate } from '../templates/registry';
 import { renderPdf } from '../render/renderPdf';
+import { buildArtifactFilename } from '../render/artifactMetadata';
 import { buildPrintInstructions } from './buildPrintInstructions';
 import { buildQrTestChecklist } from './buildQrTestChecklist';
-
-function safeFilename(value: string): string {
-    return (value || 'menu')
-        .replace(/[^a-zA-Z0-9\s_-]/g, '')
-        .trim()
-        .replace(/\s+/g, '_') || 'menu';
-}
 
 export async function buildPrintShopPacket(
     source: MenuCardPrintSource,
@@ -19,14 +14,28 @@ export async function buildPrintShopPacket(
     overrides: MenuCardSafeOverrides = {},
 ): Promise<MenuCardPrintShopPacket> {
     const zip = new JSZip();
-    const pdf = await renderPdf(source, { ...settings, preset: 'print_shop_packet' }, overrides);
+    const generatedAt = new Date();
+    const packetSettings = { ...settings, preset: 'print_shop_packet' as const };
+    const template = getMenuCardTemplate(packetSettings.styleId);
+    const pdf = await renderPdf(source, packetSettings, overrides, generatedAt);
 
     zip.file('menu-print.pdf', await pdf.blob.arrayBuffer());
-    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(source, settings));
+    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(source, packetSettings, {
+        generatedAt,
+        pageCount: pdf.pageCount,
+        sourceHash: pdf.sourceHash,
+    }));
     zip.file('QR_TEST_CHECKLIST.txt', buildQrTestChecklist(source));
 
     const blob = await zip.generateAsync({ type: 'blob' });
-    const filename = `${safeFilename(`${source.business.name}_${source.menu.title}`)}_PrintShopPacket.zip`;
+    const filename = buildArtifactFilename({
+        source,
+        settings: packetSettings,
+        template,
+        sourceHash: pdf.sourceHash,
+        extension: 'zip',
+        generatedAt,
+    });
 
     return {
         blob,

@@ -5,7 +5,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-3xl text-center">
                 <h2 className="text-3xl font-bold sm:text-4xl">
-                    Give your SaaS product a support layer users can trust.
+                    Give your SaaS or digital product a support layer users can trust.
                 </h2>
                 <p className="mt-4 text-lg text-[#a0a0c0]">
                     Start with existing docs, notes, FAQs, releases, screenshots, recordings, and repeated questions. Answerlattice turns them into page-aware support, hosted help, answer drafts, fallback signals, and review work.
@@ -31,7 +31,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                     </AnswerlatticeLink>
                 </div>
                 <p className="mt-6 text-xs text-[#505070]">
-                    Built for solo founders, small SaaS teams, and studios managing multiple launches.
+                    Built for solo founders, small product teams, and studios managing multiple launches.
                 </p>
             </div>
         </section>

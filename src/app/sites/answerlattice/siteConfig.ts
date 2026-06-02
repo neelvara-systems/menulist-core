@@ -2,10 +2,10 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from './productFeatures';
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
 
 export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
-export const ANSWERLATTICE_SITE_TITLE = 'Answerlattice — Page-Aware Support Answers for SaaS';
+export const ANSWERLATTICE_SITE_TITLE = 'Answerlattice — Page-Aware Support Answers for SaaS and Digital Products';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'Answerlattice helps SaaS founders turn docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved page-aware answers for the app widget, hosted help, and support review queue.';
+    'Answerlattice helps SaaS and digital-product teams turn docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved page-aware answers for the app widget, hosted help, and support review queue.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -24,7 +24,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Answerlattice',
-        description: 'Support layer for AI-built SaaS apps: knowledge intake, team access, widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and support-gap review.',
+        description: 'Support layer for SaaS and digital products: knowledge intake, team access, widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -180,7 +180,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/resources',
         title: 'Resources | Answerlattice',
-        description: 'Answerlattice resources for founders launching support for AI-built SaaS apps: demo, fit, knowledge intake, feedback review, install, Support Board, runtime safety, pricing, and setup.',
+        description: 'Answerlattice resources for founders launching support for SaaS apps and digital products: demo, fit, knowledge intake, feedback review, install, Support Board, runtime safety, pricing, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
@@ -194,14 +194,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | Answerlattice',
-        description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Answerlattice plans for AI-built SaaS teams.',
+        description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid Answerlattice plans for SaaS and digital-product teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/roi-calculator',
         title: 'Support ROI Calculator | Answerlattice',
-        description: 'Estimate repeated support questions, founder time saved, support value, and Answerlattice plan fit for AI-built SaaS support.',
+        description: 'Estimate repeated support questions, founder time saved, support value, and Answerlattice plan fit for SaaS and digital-product support.',
         priority: 0.76,
         changeFrequency: 'monthly',
     },
@@ -236,21 +236,21 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | Answerlattice',
-        description: 'Answers to common questions founders ask about Answerlattice setup, knowledge intake, team access, AI-built apps, page-aware support, feedback review, Support Board, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about Answerlattice setup, knowledge intake, team access, digital products, page-aware support, feedback review, Support Board, screenshots, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/about',
         title: 'About | Answerlattice',
-        description: 'Answerlattice helps AI-built SaaS teams keep support answers correct as products change.',
+        description: 'Answerlattice helps SaaS and digital-product teams keep support answers correct as products change.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },
     {
         path: '/contact',
         title: 'Contact | Answerlattice',
-        description: 'Contact Answerlattice for setup help, demos, pricing, security questions, or partnership requests for your AI-built SaaS app.',
+        description: 'Contact Answerlattice for setup help, demos, pricing, security questions, or partnership requests for your SaaS app or digital product.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },

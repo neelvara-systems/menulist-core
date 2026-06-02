@@ -37,19 +37,19 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                 <div className="relative min-w-0 text-center lg:text-left">
                     <div className="relative mb-6 inline-flex max-w-[18rem] items-center justify-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-center sm:max-w-none">
                         <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
-                        <span className="text-xs font-medium text-[#a0a0c0]">For SaaS founders before a support team</span>
+                        <span className="text-xs font-medium text-[#a0a0c0]">For founders shipping SaaS and digital products</span>
                     </div>
 
                     <h1 className="relative mx-auto w-full max-w-[17.5rem] break-words text-[2rem] font-bold leading-[1.08] tracking-tight sm:max-w-3xl sm:text-5xl lg:mx-0 lg:text-6xl">
-                        <span className="block">Give every SaaS page </span>
+                        <span className="block">Page-aware support answers </span>
                         <span className="answerlattice-hero-gradient mt-1 block">
-                            <span className="block sm:inline">the right</span>
-                            <span className="block sm:inline"> support answer.</span>
+                            <span className="block sm:inline">for SaaS and</span>
+                            <span className="block sm:inline"> digital products.</span>
                         </span>
                     </h1>
 
                     <p className="relative mx-auto mt-6 w-full max-w-[18rem] text-base leading-relaxed text-[#a0a0c0] sm:max-w-2xl sm:text-lg lg:mx-0">
-                        Answerlattice turns product docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved answers for your app widget, hosted help, and support review queue.
+                        Answerlattice turns product docs, FAQs, release notes, screenshots, recordings, and repeated questions into approved answers for your in-product widget, hosted help, and support review queue.
                     </p>
 
                     <div className="relative mx-auto mt-8 flex w-full max-w-[16rem] flex-col items-stretch justify-center gap-4 sm:max-w-none sm:flex-row sm:items-center lg:justify-start">
@@ -92,7 +92,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </div>
 
                     <p className="relative mx-auto mt-6 w-full max-w-[18rem] text-xs leading-relaxed text-[#505070] sm:max-w-xl lg:mx-0">
-                        Built for solo founders, small SaaS teams, and studios that need credible support before hiring a support desk.
+                        Built for solo founders, small product teams, and studios that need credible support before hiring a support desk.
                     </p>
                 </div>
 

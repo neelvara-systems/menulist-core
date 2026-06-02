@@ -1,7 +1,7 @@
 # Menu Card Export — Firebase Cost And Operations
 
 **Status:** Implemented client-first export / Pro-Premium AI advisor metered separately
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 **Pricing references reviewed:** June 1, 2026
 
 ---
@@ -9,6 +9,8 @@
 ## Summary
 
 The current implementation preserves the PDF Surface cost model for exports: Menu Card Export renders preview, preflight, PDF, print-shop packet ZIP, freshness, and export history in the browser. It does **not** add export Firestore writes, Storage uploads, export-storage API routes, Firestore rules, Storage rules, Cloud Functions, or indexes.
+
+PDF document properties, generated-date/source-reference filenames, and print-shop source summaries are also generated in the browser. They add no Firestore reads/writes and no Storage operations.
 
 The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, checks rate limit and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
 
@@ -100,6 +102,7 @@ The route uses `getExistingProjectsListWithoutLoader()` instead of the legacy au
 | Upload PDF artifact | 0 | Browser downloads Blob directly. |
 | Update export record | 0 Firebase | Local history record only. |
 | Generate download URL | 0 | Browser object URL only. |
+| Set PDF metadata / filename | 0 Firebase | Browser `jsPDF` document properties and local filename string only. |
 
 ### Print-Shop Packet
 
@@ -107,7 +110,7 @@ The route uses `getExistingProjectsListWithoutLoader()` instead of the legacy au
 | --- | --- | --- |
 | Render print PDF | 1 CPU/render operation | No Firestore write by itself. |
 | Render optional proof PDF | 0-1 artifact | Feature flag / preset dependent. |
-| Build instructions/checklist | 0 Firestore | Generated from export metadata. |
+| Build instructions/checklist | 0 Firestore | Generated from export metadata, source summary, and QR destination. |
 | Upload packet ZIP | 0 Storage uploads | Browser downloads ZIP directly. |
 | Update export record | 0 Firebase | No `packetPath` in default implementation. |
 

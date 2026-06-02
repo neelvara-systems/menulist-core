@@ -91,6 +91,7 @@ The predecessor PDF Surface remains available only as the flag-off fallback. The
 | QR bridge to live menu | Printed files can include a scan-safe QR back to the current mobile menu, not a stale PDF. |
 | Print-shop handoff | A packet can include the print PDF, home-printer proof, print instructions, and QR test checklist. |
 | Freshness history | Old exports show whether the source menu changed and can be regenerated from the same settings. |
+| Export identification | PDF metadata, generated date, deterministic filename, and print-shop source summary make files easier to find and support without adding Firebase storage. |
 
 ---
 
@@ -105,6 +106,8 @@ Implemented and validated in code:
 - Feature flags control route, local history, print-shop packet visibility, batch exposure, and Pro/Premium layout suggestion.
 - Multi-project selection uses the shared project selector pattern and guards against stale project data while switching.
 - Real project data shape support covers top-level extracted data and file-based `project.files[].extractedData.data` menus.
+- PDF output sets document properties, uses generated-date/source-reference filenames, and keeps internal source hashes out of the visible customer footer.
+- Print-shop packets include a source summary with preset, style/template version, page count, generated date, menu updated date, source reference, renderer version, and live menu destination.
 - Pro/Premium layout suggestion: `src/app/api/menu-card-export/design-advisor/route.ts`, `src/lib/menu-card-export/ai/designAdvisor.ts`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts`.
 - AI accounting uses `AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR` and consumes one enhancement unit only after a valid recommendation is returned.
 - Verification command: `npm run verify:menu-card-export`

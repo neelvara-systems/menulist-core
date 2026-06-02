@@ -68,6 +68,7 @@ Verdict: approved as a routed print workflow, not as a design tool.
 | Use Playwright/Chromium server rendering. | Partial | Keep a renderer adapter boundary. Existing repo dependency is `jsPDF`, not Playwright; any browser renderer requires deployment/runtime proof before adoption. |
 | Add AI style advice. | Agree with guardrails | Pro/Premium-only, JSON-only layout recipe. It never renders final pages or rewrites menu truth. |
 | Store generated artifacts and export history. | Partial | Local browser history is implemented first to keep Firebase cost at zero. Server artifact storage remains behind future flag approval. |
+| Add report/deck export playbook elements. | Partial | Accept PDF metadata, deterministic filenames, source summary, and practical print checklist. Reject executive summaries, ToC, approvals, confidentiality labels, chart/table defaults, and AI/tool provenance because this is a restaurant menu output, not a report. |
 
 ---
 
@@ -280,6 +281,13 @@ Print-shop packet contents:
 - `QR_TEST_CHECKLIST.txt`
 - optional page thumbnails/proof images
 
+PDF and packet identification:
+
+- PDF document properties should include title, subject, author, keywords, and creator.
+- Downloaded filenames should include business/menu name, preset, generated date, and a short source reference.
+- The visible PDF footer should show owner/customer-safe information such as generated date, page count, and menu updated date. It must not print the full source hash.
+- Print-shop instructions may include a source reference, renderer version, template version, and live menu destination for support/audit use.
+
 ---
 
 ## Freshness
@@ -327,6 +335,8 @@ Do not show hash values to owners unless support mode is active.
 | MCE-13 | Multi-location batch export is feature-flagged and shares the same access checks per selected store/project. |
 | MCE-14 | Generated PDF text remains selectable wherever the renderer supports text output. |
 | MCE-15 | Pro/Premium layout suggestion is optional, plan-gated, capacity-gated, JSON-only, and never part of final render truth. |
+| MCE-16 | Generated PDFs include document properties and deterministic filenames for easier local search and support. |
+| MCE-17 | Print-shop packet instructions include owner-safe source summary, generated/menu-updated dates, template version, renderer version, and live menu destination. |
 
 ---
 
@@ -339,6 +349,7 @@ Do not show hash values to owners unless support mode is active.
 | Performance | Preview should return in under 2 seconds for normal menus; final export must show clear queued/rendering/ready states. |
 | Mobile | Thumb-safe controls, no precision layout editing, same export records as desktop. |
 | Public output | PDF must not include internal notes, owner-only metadata, draft items, or hidden content. |
+| Output identification | Source hashes may be used in metadata/instructions, but full hashes must not be printed as customer-facing menu footer text. |
 | Cache | No public cache invalidation because no public menu/store truth is mutated. |
 | Reliability | If render fails, the export record stores a safe error code and owner can retry. |
 | Accessibility | Do not claim PDF/UA compliance until tagged PDF, reading order, metadata, and verification tooling are implemented. |
@@ -356,6 +367,7 @@ Do not show hash values to owners unless support mode is active.
 - Automatic print ordering
 - Mutation of public menu/store data
 - AI-generated visual output
+- Report-style executive summaries, ToC pages, chart/table appendices, approval workflows, or confidentiality labels
 - New scheduled Firebase function
 
 ---

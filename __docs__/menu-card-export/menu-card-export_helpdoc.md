@@ -2,7 +2,7 @@
 
 **Status:** Ready for support use; screenshots pending
 **Audience:** MenuList owners
-**Last Updated:** June 1, 2026
+**Last Updated:** June 2, 2026
 
 ---
 
@@ -91,7 +91,7 @@ Screenshot needed: Mobile export action.
 4. Select **Create packet**.
 5. Send the downloaded packet to your printer.
 
-The packet can include the menu PDF, printing notes, and a QR test checklist.
+The packet can include the menu PDF, printing notes, file details for the printer, and a QR test checklist.
 
 Before printing many copies, ask the printer or staff to scan the QR code from one sample.
 

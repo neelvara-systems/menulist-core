@@ -115,7 +115,7 @@ export default function SeoLandingPage({
                     <SectionHeader
                         eyebrow="Setup path"
                         title="Approved knowledge stays the authority."
-                        description={ownerReview}
+                        description="The setup path keeps source material, page context, and owner approval connected before answers become official."
                     />
                     <AnswerlatticeSequenceDiagram
                         idPrefix={`${diagramId}-setup`}

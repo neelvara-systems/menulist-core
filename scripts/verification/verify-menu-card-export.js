@@ -8,6 +8,7 @@ const requiredFiles = [
   'src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx',
   'src/lib/menu-card-export/index.ts',
   'src/lib/menu-card-export/navigation.ts',
+  'src/lib/menu-card-export/render/artifactMetadata.ts',
   'src/lib/menu-card-export/render/renderPdf.ts',
   'src/lib/menu-card-export/render/renderPreviewModel.ts',
   'src/lib/menu-card-export/preflight/runPrintPreflight.ts',
@@ -126,6 +127,41 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
 const preflight = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/preflight/runPrintPreflight.ts'), 'utf8');
 if (!preflight.includes('runPrintPreflight')) failures.push('Preflight runner missing runPrintPreflight export');
 
+const artifactMetadata = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/artifactMetadata.ts'), 'utf8');
+[
+  'MENU_CARD_EXPORT_RENDERER_VERSION',
+  'buildArtifactFilename',
+  'buildPdfDocumentProperties',
+  'shortSourceReference',
+  'formatArtifactDate',
+].forEach((token) => {
+  if (!artifactMetadata.includes(token)) failures.push(`Artifact metadata helper missing token: ${token}`);
+});
+
+const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/renderPdf.ts'), 'utf8');
+[
+  'doc.setCreationDate(generatedAt)',
+  'doc.setProperties(buildPdfDocumentProperties',
+  'Generated: ${formatArtifactDate(generatedAt)}',
+  'buildArtifactFilename({ source, settings, template, sourceHash, extension: \'pdf\', generatedAt })',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF renderer missing metadata/naming token: ${token}`);
+});
+if (pdfRenderer.includes('doc.text(sourceHash')) {
+  failures.push('PDF renderer should not print the source hash in the visible footer');
+}
+
+const printInstructions = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/printShop/buildPrintInstructions.ts'), 'utf8');
+[
+  'Source summary:',
+  'Source reference:',
+  'Live menu:',
+  'MENU_CARD_EXPORT_RENDERER_VERSION',
+  'shortSourceReference',
+].forEach((token) => {
+  if (!printInstructions.includes(token)) failures.push(`Print instructions missing provenance token: ${token}`);
+});
+
 const printSource = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildPrintSource.ts'), 'utf8');
 ['project?.files', 'file?.extractedData?.data', 'project?.extractedData?.data'].forEach((token) => {
   if (!printSource.includes(token)) failures.push(`Print source missing real project data shape support: ${token}`);
@@ -203,6 +239,7 @@ console.log('Menu Card Export verification passed.');
 console.log('- Route exists');
 console.log('- Client-side preflight exists');
 console.log('- Client-side PDF/packet generation exists');
+console.log('- PDF metadata, deterministic filenames, and print-shop source summary exist');
 console.log('- Local history exists');
 console.log('- Mobile Share, Menu, and More entry points route through the shared Print Menu URL');
 console.log('- Pro/Premium AI advisor is guarded by plan, capacity, and operation logging');

@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Proof Pack',
-    description: 'Example Answerlattice workloads for AI-built SaaS support: billing, onboarding, releases, errors, and support-gap review.',
+    description: 'Example Answerlattice workloads for SaaS and digital-product support: billing, onboarding, releases, errors, and support-gap review.',
     alternates: { canonical: '/proof' },
 };
 
@@ -38,7 +38,7 @@ const EXAMPLES = [
     {
         label: 'Studio workload',
         title: 'Multiple small apps need the same support pattern',
-        situation: 'A studio launches several SaaS apps and needs repeatable install, surface templates, and safety controls.',
+        situation: 'A studio launches several SaaS apps and digital products and needs repeatable install, surface templates, and safety controls.',
         answerlattice: 'Reuse quickstarts, starter templates, allowed origins, blocked routes, import packs, and the install verifier for each workspace.',
         outcome: 'Each product gets its own scoped support layer without hardcoded client assumptions or shared tenant leakage.',
     },
