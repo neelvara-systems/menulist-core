@@ -95,6 +95,7 @@ async function handleExtractionComplete(
   // Read extraction result from job document (not temp project)
   const combinedData = jobData.result?.combinedData;
   const qualityScore = jobData.result?.qualityScore;
+  const extractedBusinessProfile = jobData.result?.extractedBusinessProfile || combinedData?.extractedBusinessProfile || null;
 
   logOnboardingEvent({
     sessionId,
@@ -216,6 +217,7 @@ async function handleExtractionComplete(
       languages: combinedData.languages || [],
       categories: extractedFileData.flatMap((data: any) => data.categories || []),
       items: extractedFileData.flatMap((data: any) => data.items || []),
+      ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
     }
     : combinedData;
 
@@ -227,6 +229,7 @@ async function handleExtractionComplete(
   // Store extraction result in session
   await sessionRef.update({
     extractedMenuData: previewMenuData,
+    extractedBusinessProfile,
     extractedProjectFiles,
     qualityScore,
     previewToken,

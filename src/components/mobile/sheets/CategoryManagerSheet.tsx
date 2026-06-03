@@ -38,6 +38,7 @@ export type MobileCategoryReorderItem = {
 
 interface CategoryManagerSheetProps {
     businessType?: string;
+    businessCategory?: string;
     categoryIconsEnabled?: boolean;
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
@@ -136,6 +137,7 @@ function SortableReorderRow({ id, title, description, accessory }: SortableReord
 
 export default function CategoryManagerSheet({
     businessType,
+    businessCategory,
     categoryIconsEnabled = true,
     categories,
     categoryItems,
@@ -156,7 +158,7 @@ export default function CategoryManagerSheet({
 }: CategoryManagerSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
-    const availabilityLabels = getOwnerLabels(businessType);
+    const availabilityLabels = getOwnerLabels(businessType, businessCategory);
     const STATUS_COLORS = {
         active: '#22c55e',
         inactive: '#94a3b8',
@@ -827,6 +829,7 @@ export default function CategoryManagerSheet({
 
             <MobileCategoryEditSheet
                 businessType={businessType}
+                businessCategory={businessCategory}
                 category={categoryEditorMode === 'edit' ? selectedCategory : null}
                 categoryIconsEnabled={categoryIconsEnabled}
                 mode={categoryEditorMode === 'edit' ? 'edit' : 'add'}

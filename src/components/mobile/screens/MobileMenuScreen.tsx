@@ -6,6 +6,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
+import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { updateStore } from '@database/stores';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
@@ -19,11 +20,11 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
+import { buildExtractedProfileHighlights, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
-import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { resolveProjectForRender } from '@lib/multiOutlet';
 import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjectPersistence';
@@ -279,6 +280,59 @@ function normalizeExtractedPrice(price: unknown): number {
     return 0;
 }
 
+function mergeProjectWithExtractedProfileDefaults(projectData: any, profile: any): any {
+    if (!profile) return projectData;
+    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
+    if (!imageBackgroundColor) return projectData;
+
+    return {
+        ...(projectData || {}),
+        aiPreferences: {
+            ...(projectData?.aiPreferences || {}),
+            image: {
+                ...(projectData?.aiPreferences?.image || {}),
+                backgroundColor: projectData?.aiPreferences?.image?.backgroundColor || imageBackgroundColor,
+            },
+        },
+    };
+}
+
+function buildExtractedProfileProjectPatch(projectData: any, profile: any): Partial<Project> | null {
+    if (!projectData?.projectId || !profile) return null;
+
+    const patch: any = { projectId: projectData.projectId };
+    if (projectData.masterProjectId) {
+        patch.masterProjectId = projectData.masterProjectId;
+    }
+    const brandAccentColor = getSuggestionValue(profile?.visualBrand?.brandAccentColor, 'medium');
+    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
+
+    if (brandAccentColor && !projectData?.config?.design?.brand?.accentColor) {
+        patch.config = {
+            ...(projectData?.config || {}),
+            design: {
+                ...(projectData?.config?.design || {}),
+                brand: {
+                    ...(projectData?.config?.design?.brand || {}),
+                    accentColor: brandAccentColor,
+                },
+            },
+        };
+    }
+
+    if (imageBackgroundColor && !projectData?.aiPreferences?.image?.backgroundColor) {
+        patch.aiPreferences = {
+            ...(projectData?.aiPreferences || {}),
+            image: {
+                ...(projectData?.aiPreferences?.image || {}),
+                backgroundColor: imageBackgroundColor,
+            },
+        };
+    }
+
+    return patch.config || patch.aiPreferences ? patch : null;
+}
+
 function findExtractedItemById(projectData: Project | null | undefined, itemId: string): ExtractedDataItem | null {
     if (!projectData?.files?.length) return null;
 
@@ -417,9 +471,10 @@ function formatSpecialMenuWindow(start?: string, end?: string): string | null {
 
 interface MobileMenuScreenProps {
     onOpenDesignEditor?: () => void;
+    onOpenPrintMenu?: () => void;
 }
 
-export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScreenProps) {
+export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }: MobileMenuScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
@@ -439,7 +494,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         upsertCachedProject,
     } = useMobileProjects();
     const labels = useOfferingLabels();
-    const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
+    const availabilityLabels = getOwnerLabels(storeDetails?.businessType, storeDetails?.businessCategory);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const canOpenMenuCardExport = FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && hasAnyPermission(userPermissions, [
         PERMISSIONS.MANAGE_MENU,
@@ -544,6 +599,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         qualityDetails?: { categoryQuality: number; itemQuality: number; priceQuality: number; descriptionQuality: number };
         categoriesCount?: number;
         itemsCount?: number;
+        profileHighlights?: OwnerDetectedDetail[];
     } | null>(null);
     const uncategorizedLabel = t('uncategorized');
     const menuContentTopRef = useRef<HTMLDivElement | null>(null);
@@ -815,6 +871,23 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             };
         });
     }, [clearPersistTimers, replaceProjectInList]);
+
+    const applyExtractedProfileProjectDefaults = useCallback(async (profile: any) => {
+        const baseProject = menuDataRef.current || menuData;
+        const patch = buildExtractedProfileProjectPatch(baseProject, profile);
+        if (!patch) return;
+
+        try {
+            const savedProject = await updateProjectWithoutLoader(patch);
+            syncSavedMenuProject({
+                ...(baseProject || {}),
+                ...patch,
+                ...(savedProject || {}),
+            });
+        } catch (error) {
+            console.warn('[MobileMenu] Could not apply extracted profile defaults', error);
+        }
+    }, [menuData, syncSavedMenuProject]);
 
     const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
         setActiveProcessingStateState(value);
@@ -1407,16 +1480,21 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (jobIsCompleted) {
             const result = activeJob?.result;
             if (result) {
+                const extractedProfile = result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile;
                 setExtractionStats({
                     qualityScore: result.qualityScore,
                     qualityDetails: result.qualityDetails,
                     categoriesCount: result.combinedData?.categories?.length || 0,
                     itemsCount: result.combinedData?.items?.length || 0,
+                    profileHighlights: buildExtractedProfileHighlights(extractedProfile),
                 });
                 void maybeAutoGenerateProjectImage({
                     categories: result.combinedData?.categories || [],
                     items: result.combinedData?.items || [],
-                    projectData: menuData,
+                    projectData: mergeProjectWithExtractedProfileDefaults(
+                        menuData,
+                        result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
+                    ),
                     projectId: activeProcessingState?.projectId || menuData?.projectId,
                     projectSummary: selectedProjectSummary,
                 });
@@ -1457,6 +1535,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         qualityDetails: activeJob.result.qualityDetails,
                         categoriesCount: activeJob.result.combinedData?.categories?.length || 0,
                         itemsCount: activeJob.result.combinedData?.items?.length || 0,
+                        profileHighlights: buildExtractedProfileHighlights(activeJob.result.extractedBusinessProfile || activeJob.result.combinedData?.extractedBusinessProfile),
                     });
                     setComparisonResult(comparison);
                     setShowReviewSheet(true);
@@ -1494,6 +1573,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         jobIsCompleted,
         jobIsFailed,
         jobIsPreviewReady,
+        applyExtractedProfileProjectDefaults,
         applyMenuDerivedBusinessAttributeDefaults,
         maybeAutoGenerateProjectImage,
         menuData,
@@ -2756,8 +2836,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             }
         }
 
-        window.location.href = buildMenuCardExportUrl(projectId);
-    }, [flushPendingMenuPersist, menuData?.projectId, selectedProjectId]);
+        await selectProject(projectId);
+        onOpenPrintMenu?.();
+    }, [flushPendingMenuPersist, menuData?.projectId, onOpenPrintMenu, selectProject, selectedProjectId]);
 
     const editingItemInheritanceState = editingItem?.id ? itemInheritanceStates[editingItem.id] : undefined;
     const isEditingInheritedOutletItem = Boolean(
@@ -3542,25 +3623,54 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 onMaskClick={() => setShowSuccessState(false)}
                 visible={showSuccessState}
             >
-                <Result
-                    extra={[
-                        <Button
-                            block
-                            color="primary"
-                            key="view-menu"
-                            onClick={() => setShowSuccessState(false)}
-                            size="large"
-                        >
-                            {t('viewUpdatedMenu')}
-                        </Button>,
-                    ]}
-                    status="success"
-                    subTitle={t('processingSuccessDesc', {
-                        categories: extractionStats?.categoriesCount || 0,
-                        items: extractionStats?.itemsCount || 0,
-                    })}
-                    title={t('processingSuccessTitle')}
-                />
+                <Flex gap={12} style={{ paddingBottom: 16 }} vertical>
+                    <Result
+                        extra={[
+                            <Button
+                                block
+                                color="primary"
+                                key="view-menu"
+                                onClick={() => setShowSuccessState(false)}
+                                size="large"
+                            >
+                                {t('viewUpdatedMenu')}
+                            </Button>,
+                        ]}
+                        status="success"
+                        subTitle={t('processingSuccessDesc', {
+                            categories: extractionStats?.categoriesCount || 0,
+                            items: extractionStats?.itemsCount || 0,
+                        })}
+                        title={t('processingSuccessTitle')}
+                    />
+                    {extractionStats?.profileHighlights?.length ? (
+                        <Card style={{ margin: '0 16px' }}>
+                            <Flex gap={8} vertical>
+                                <Text strong>Details picked up</Text>
+                                <Flex gap={6} wrap="wrap">
+                                    {extractionStats.profileHighlights.map((detail) => (
+                                        <Tag key={detail.key} style={{ alignItems: 'center', display: 'inline-flex', gap: 6 }}>
+                                            {detail.color ? (
+                                                <span
+                                                    aria-hidden="true"
+                                                    style={{
+                                                        background: detail.color,
+                                                        border: '1px solid rgba(0,0,0,0.12)',
+                                                        borderRadius: 999,
+                                                        display: 'inline-block',
+                                                        height: 10,
+                                                        width: 10,
+                                                    }}
+                                                />
+                                            ) : null}
+                                            {detail.label}: {detail.value}
+                                        </Tag>
+                                    ))}
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ) : null}
+                </Flex>
             </Popup>
 
             <Popup
@@ -3905,6 +4015,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             <MobileMenuCommandSheet
                 businessType={storeDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 lastUpdatedAt={menuData?.lastPublishedAt || menuData?.modifiedOn}
                 menuVersion={menuData?.menuVersion}
                 labels={labels}
@@ -4001,6 +4112,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             {menuData ? (
                 <SmartRecommendationsSheet
                     businessType={storeDetails?.businessType}
+                    businessCategory={storeDetails?.businessCategory}
                     onClose={() => handleCommandActionBack(() => setIsSmartRecommendationsOpen(false))}
                     onSaved={(updatedProject) => {
                         applyLocalMenuUpdate(updatedProject);
@@ -4028,6 +4140,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             {menuData ? (
                 <AIDefaultsSheet
                     businessType={storeDetails?.businessType}
+                    businessCategory={storeDetails?.businessCategory}
                     onClose={() => handleCommandActionBack(() => setIsAIDefaultsOpen(false))}
                     onSaved={(updatedProject) => {
                         applyLocalMenuUpdate(updatedProject);
@@ -4042,6 +4155,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             {menuData ? (
                 <GenerateDescriptionsSheet
                     businessType={storeDetails?.businessType}
+                    businessCategory={storeDetails?.businessCategory}
                     onClose={() => handleCommandActionBack(() => setIsGenerateDescriptionsOpen(false))}
                     onSaved={(updatedProject) => {
                         applyLocalMenuUpdate(updatedProject);
@@ -4059,6 +4173,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             <CategoryManagerSheet
                 businessType={storeDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 categoryIconsEnabled={showCategoryIcons}
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
@@ -4528,13 +4643,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     }}
                     onSaveComplete={() => {
                         const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
+                        const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
                         void maybeAutoGenerateProjectImage({
                             categories: previewData.categories,
                             items: previewData.items,
-                            projectData: menuData,
+                            projectData: mergeProjectWithExtractedProfileDefaults(menuData, extractedProfile),
                             projectId: menuData.projectId,
                             projectSummary: selectedProjectSummary,
                         });
+                        void applyExtractedProfileProjectDefaults(extractedProfile);
                         const attributePreviewData = {
                             ...previewData,
                             businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,

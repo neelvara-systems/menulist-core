@@ -11,6 +11,7 @@ import { Button, Card, Flex, Text, Toast } from '../antd';
 interface MobileCommunicationKitProps {
     storeName: string;
     businessType: string;
+    businessCategory?: string;
     menuLink: string;
     obpLink?: string;
     projectName?: string;
@@ -28,6 +29,7 @@ export default function MobileCommunicationKit({
     activeProjects,
     address,
     businessType,
+    businessCategory,
     menuLink,
     obpLink,
     projectName,
@@ -43,6 +45,7 @@ export default function MobileCommunicationKit({
         activeProjects,
         address,
         businessType,
+        businessCategory,
         isClosedToday: todayResult.isClosed,
         menuLink,
         obpLink,
@@ -50,7 +53,7 @@ export default function MobileCommunicationKit({
         projectName,
         storeName,
         todayHours: todayResult.hours,
-    }), [activeProjects, address, businessType, menuLink, obpLink, phone, projectName, storeName, todayResult]);
+    }), [activeProjects, address, businessType, businessCategory, menuLink, obpLink, phone, projectName, storeName, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
     const copyTemplates = useMemo(() => generateMessageTemplates(withSource(input, 'copy_link')), [input]);

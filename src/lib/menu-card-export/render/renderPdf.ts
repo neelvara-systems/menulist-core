@@ -8,6 +8,12 @@ import { applySafeLayoutOverrides } from '../overrides/applySafeLayoutOverrides'
 import { getPrintBox } from './renderPrintBoxes';
 import { renderQr } from './renderQr';
 import { buildArtifactFilename, buildPdfDocumentProperties, formatArtifactDate } from './artifactMetadata';
+import {
+    createMenuListLogoMarkDataUrl,
+    getMenuListLogoMarkWidth,
+    MENU_LIST_MENU_ATTRIBUTION_TEXT,
+} from '../../menu-kit/platformAttribution';
+import { resolveMenuListAttributionPolicy } from '../../platform/menuListBranding';
 
 const logoDataUrlCache = new Map<string, string | null>();
 
@@ -381,6 +387,38 @@ function drawLogoMark(
     doc.text(source.business.name.charAt(0).toUpperCase(), x + boxSize / 2, y + boxSize / 2 + 3.2, { align: 'center' });
 }
 
+function drawPdfMenuListAttribution(
+    doc: jsPDF,
+    pageWidth: number,
+    y: number,
+    color: RgbColor,
+    activePlanType?: string | null,
+) {
+    if (!resolveMenuListAttributionPolicy({ activePlanType }).showAttribution) {
+        return;
+    }
+
+    const text = MENU_LIST_MENU_ATTRIBUTION_TEXT;
+    const logoHeight = 3;
+    const logoWidth = getMenuListLogoMarkWidth(logoHeight);
+    const gap = 1.4;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    const textWidth = doc.getTextWidth(text);
+    const startX = pageWidth / 2 - (logoWidth + gap + textWidth) / 2;
+
+    try {
+        const logo = createMenuListLogoMarkDataUrl();
+        doc.addImage(logo.dataUrl, 'PNG', startX, y - logoHeight + 0.6, logoWidth, logoHeight);
+        setTextRgb(doc, color);
+        doc.text(text, startX + logoWidth + gap, y);
+    } catch {
+        setTextRgb(doc, color);
+        doc.text(text, pageWidth / 2, y, { align: 'center' });
+    }
+}
+
 function drawHeader(
     doc: jsPDF,
     source: MenuCardPrintSource,
@@ -481,6 +519,10 @@ function drawFooter(
         doc.setLineWidth(0.25);
         doc.line(12, footerY - 8, pageWidth - 12, footerY - 8);
 
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.setFontSize(7);
+        drawPdfMenuListAttribution(doc, pageWidth, footerY - 4.1, [120, 120, 120], source.business.activePlanType);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(120, 120, 120);
         doc.setFontSize(7);

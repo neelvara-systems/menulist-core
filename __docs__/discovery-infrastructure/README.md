@@ -97,7 +97,7 @@ Current production contract:
 | servesCuisine                             | OBP + Menu | From `store.cuisineTypes[]`                    |
 | publisher (Organization: MenuList)        | OBP + Menu | Both schema generators                         |
 | specialOpeningHoursSpecification          | OBP        | From tempStatus                                |
-| VegetarianDiet (per item)                 | Menu       | From item.tags                                 |
+| VegetarianDiet (per item)                 | Menu       | From item.dietaryTags with legacy item.tags fallback |
 | paymentAccepted                           | OBP        | From businessAttributes                        |
 
 ### Crawlability Infrastructure

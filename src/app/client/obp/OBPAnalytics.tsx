@@ -50,6 +50,7 @@ export default function OBPAnalytics({
             const utm_source = urlParams.get('utm_source') || undefined;
             const utm_medium = urlParams.get('utm_medium') || undefined;
             const utm_campaign = urlParams.get('utm_campaign') || undefined;
+            const utm_content = urlParams.get('utm_content') || undefined;
             const entrySource = urlParams.get('entry_source') || undefined;
 
             trackOBPView(storeId, {
@@ -61,6 +62,7 @@ export default function OBPAnalytics({
                 utm_source,
                 utm_medium,
                 utm_campaign,
+                utm_content,
                 entrySource,
                 obpLanguage: trackLanguageUsage ? activeLanguage : undefined,
                 obpLanguageName: trackLanguageUsage ? activeLanguageName : undefined,
@@ -102,6 +104,7 @@ export default function OBPAnalytics({
                     utm_source: urlParams.get('utm_source') || undefined,
                     utm_medium: urlParams.get('utm_medium') || undefined,
                     utm_campaign: urlParams.get('utm_campaign') || undefined,
+                    utm_content: urlParams.get('utm_content') || undefined,
                     entrySource: urlParams.get('entry_source') || undefined,
                 });
             } catch (error) {

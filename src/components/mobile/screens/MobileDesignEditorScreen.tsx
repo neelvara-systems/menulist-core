@@ -890,6 +890,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 visible={isProjectSelectorOpen}
             />
             <MobileQrCodeSheet
+                activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
                 downloadSuccessMessage={tShare('qrDownloaded')}

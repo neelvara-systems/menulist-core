@@ -143,14 +143,14 @@ AI extracts raw tags from visual markers. No changes needed.
 ```typescript
 function normalizeTags(tags?: string[], isBestSeller?: boolean): NormalizedAttributes {
     return {
-        veg: tags includes vegetarian keywords,
-        nonveg: tags includes non-vegetarian keywords,
+        veg: item.dietaryTags/decisionFacts/tags includes vegetarian keywords,
+        nonveg: item.dietaryTags/decisionFacts/tags includes non-vegetarian keywords,
         popular: isBestSeller === true,
     };
 }
 ```
 
-This is the ONLY place where AI tags are interpreted.
+This is the ONLY place where item dietary/filter tags are interpreted for public filter chips.
 
 #### Layer 3: Filter Allowlist
 
@@ -224,11 +224,11 @@ Uses `storeDetails.socialMedia` (Record<string, string>) from business settings.
    ↓
 2. AI extraction (parallelProcessingPrompt.ts)
    - Looks for visual markers: V, VG, GF, 🌶️, Green dot, Red dot
-   - Extracts to tags: ["Vegetarian"] or ["Non-Vegetarian"]
+   - Extracts to canonical dietaryTags: ["vegetarian"] or ["non-vegetarian"]
    ↓
-3. Stored in item.tags (string[])
+3. Stored in item.dietaryTags (string[]), with decisionFacts.dietaryTags/legacy tags fallback
    ↓
-4. MenuFilterChips reads tags
+4. MenuFilterChips reads normalized item filter attributes
    - Checks for veg keywords
    - Checks for non-veg keywords
    ↓
@@ -300,10 +300,11 @@ Uses `storeDetails.socialMedia` (Record<string, string>) from business settings.
 
 ### Why No `isVeg` Field?
 
-The dietary information (Vegetarian/Non-Vegetarian) is already extracted by the AI and stored in the `tags` field as strings. This is documented in:
+The dietary information (Vegetarian/Non-Vegetarian) is already extracted by the AI as canonical `dietaryTags` values, mirrored through decision facts when the owner edits it, and read with legacy `tags` as a fallback. This is documented in:
 
-- `parallelProcessingPrompt.ts` (lines 214-223) - Extraction rules
-- `extractedData.types.ts` - Comment explaining tags usage
+- `functions/src/logic/parallelProcessingPrompt.ts` - Extraction rules
+- `src/components/templates/main-app/projects/types/extractedData.types.ts` - Item metadata contract
+- `src/lib/menu/itemDecisionFacts.ts` - Owner edit mirror between decision facts and top-level metadata
 
 The AI looks for visual markers in menu images:
 

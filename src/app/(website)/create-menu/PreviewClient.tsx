@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
+import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 
 interface ExtractedCategory {
     id: string;
@@ -27,6 +28,8 @@ interface ExtractedItem {
     description?: Record<string, string>;
     price?: string;
     attributes?: Array<{ id: string; name: Record<string, string>; price?: string }>;
+    tags?: string[];
+    dietaryTags?: string[];
 }
 
 interface DraftData {
@@ -38,6 +41,12 @@ interface DraftData {
     } | null;
     detectedBusinessName: string | null;
     detectedBusinessType: string | null;
+    detectedBusinessCategory: string | null;
+    detectedCurrencyCode?: string | null;
+    detectedBrandAccentColor?: string | null;
+    detectedImageBackgroundColor?: string | null;
+    suggestedProjectName?: string | null;
+    extractedBusinessProfile?: any;
     imageUrl: string | null;
     sourceType?: string;
     error: string | null;
@@ -47,12 +56,105 @@ interface PreviewClientProps {
     draftId: string;
 }
 
+function cleanPreviewText(value: unknown): string {
+    return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+}
+
+function getSuggestionText(suggestion: any): string {
+    return cleanPreviewText(suggestion?.value ?? suggestion);
+}
+
+function addPreviewDetail(
+    details: OwnerDetectedDetail[],
+    key: string,
+    label: string,
+    value: unknown,
+    color?: string | null,
+) {
+    const normalized = cleanPreviewText(value);
+    if (!normalized) return;
+    details.push({
+        key,
+        label,
+        value: normalized,
+        ...(color ? { color } : {}),
+    });
+}
+
+function buildPublicPreviewDetectedDetails(draft: DraftData | null): OwnerDetectedDetail[] {
+    const profile = draft?.extractedBusinessProfile;
+    const details: OwnerDetectedDetail[] = [];
+    addPreviewDetail(details, 'projectName', 'Menu name', getSuggestionText(profile?.project?.projectName) || draft?.suggestedProjectName);
+    addPreviewDetail(details, 'phoneNumber', 'Phone', getSuggestionText(profile?.identity?.phoneNumber));
+    addPreviewDetail(details, 'addressLine', 'Address', getSuggestionText(profile?.identity?.addressLine));
+    addPreviewDetail(details, 'currencyCode', 'Currency', getSuggestionText(profile?.identity?.currencyCode) || draft?.detectedCurrencyCode);
+    const brandColor = getSuggestionText(profile?.visualBrand?.brandAccentColor) || draft?.detectedBrandAccentColor || '';
+    const imageBackground = getSuggestionText(profile?.visualBrand?.imageBackgroundColor) || draft?.detectedImageBackgroundColor || '';
+    addPreviewDetail(details, 'brandAccentColor', 'Brand color', brandColor, brandColor);
+    addPreviewDetail(details, 'imageBackgroundColor', 'Image background', imageBackground, imageBackground);
+    return details;
+}
+
+function normalizePreviewTag(tag: unknown): string {
+    if (typeof tag !== 'string') return '';
+    return tag.trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
+}
+
+function formatPreviewTag(tag: string): string {
+    switch (tag) {
+        case 'non-vegetarian':
+        case 'non-veg':
+        case 'nonveg':
+            return 'Non-veg';
+        case 'gluten-free':
+        case 'glutenfree':
+            return 'Gluten free';
+        case 'dairy-free':
+        case 'dairyfree':
+            return 'Dairy free';
+        case 'keto':
+            return 'Keto';
+        case 'vegetarian':
+            return 'Vegetarian';
+        case 'vegan':
+            return 'Vegan';
+        case 'halal':
+            return 'Halal';
+        case 'kosher':
+            return 'Kosher';
+        case 'organic':
+            return 'Organic';
+        default:
+            return tag
+                .split('-')
+                .filter(Boolean)
+                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                .join(' ');
+    }
+}
+
+function getPreviewItemTags(item: ExtractedItem): string[] {
+    const seen = new Set<string>();
+    const output: string[] = [];
+    [...(item.dietaryTags || []), ...(item.tags || [])].forEach((rawTag) => {
+        const tag = normalizePreviewTag(rawTag);
+        if (!tag) return;
+        const canonical = ['non-veg', 'nonveg'].includes(tag) ? 'non-vegetarian' : tag;
+        if (seen.has(canonical)) return;
+        seen.add(canonical);
+        output.push(canonical);
+    });
+    return output;
+}
+
 export default function PreviewClient({ draftId }: PreviewClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('Website');
     const isClaimMode = searchParams.get('claim') === 'true';
-    const { update: updateSession } = useSession();
+    const { status: sessionStatus, update: updateSession } = useSession();
+    const previewCallbackUrl = `/create-menu/preview/${draftId}${isClaimMode ? '?claim=true' : ''}`;
+    const signInUrl = `/signin?callbackUrl=${encodeURIComponent(previewCallbackUrl)}`;
 
     const [draft, setDraft] = useState<DraftData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -67,23 +169,32 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const [claimError, setClaimError] = useState<string | null>(null);
 
     const fetchDraft = useCallback(async () => {
+        if (sessionStatus !== 'authenticated') {
+            return 'waiting_for_auth';
+        }
+
         try {
             const res = await fetch(`/api/public/create-menu?draftId=${draftId}`);
 
+            if (res.status === 401) {
+                router.replace(signInUrl);
+                return 'auth_required';
+            }
+
             if (res.status === 410) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Draft expired.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Draft expired.' });
                 setLoading(false);
                 return 'expired';
             }
 
             if (res.status === 404) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Draft not found.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Draft not found.' });
                 setLoading(false);
                 return 'not_found';
             }
 
             if (!res.ok) {
-                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Failed to load preview.' });
+                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Failed to load preview.' });
                 setLoading(false);
                 return 'error';
             }
@@ -93,14 +204,21 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setLoading(false);
             return data.status;
         } catch {
-            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, imageUrl: null, sourceType: undefined, error: 'Connection error.' });
+            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Connection error.' });
             setLoading(false);
             return 'error';
         }
-    }, [draftId]);
+    }, [draftId, router, sessionStatus, signInUrl]);
 
     // Poll for extraction completion
     useEffect(() => {
+        if (sessionStatus === 'unauthenticated') {
+            router.replace(signInUrl);
+            return;
+        }
+
+        if (sessionStatus !== 'authenticated') return;
+
         let timer: NodeJS.Timeout;
         let active = true;
 
@@ -120,9 +238,14 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             active = false;
             clearTimeout(timer);
         };
-    }, [fetchDraft, pollCount]);
+    }, [fetchDraft, pollCount, router, sessionStatus, signInUrl]);
 
     const handleSignUp = () => {
+        if (sessionStatus === 'authenticated') {
+            router.push(`/create-menu/preview/${draftId}?claim=true`);
+            return;
+        }
+
         const callbackUrl = encodeURIComponent(`/create-menu/preview/${draftId}?claim=true`);
         router.push(`/signin?callbackUrl=${callbackUrl}`);
     };
@@ -147,6 +270,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     draftId,
                     businessName: businessName.trim(),
                     businessType: draft?.detectedBusinessType || undefined,
+                    businessCategory: draft?.detectedBusinessCategory || undefined,
                     city: city.trim(),
                     phone: phone.trim() || undefined,
                     addressLine: addressLine.trim() || undefined,
@@ -179,6 +303,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }
             const params = new URLSearchParams({
                 menuUrl: data.menuUrl || '',
+                officialPageUrl: data.officialPageUrl || '',
                 subdomain: data.subdomain || '',
                 name: businessName.trim(),
             });
@@ -191,10 +316,24 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
     // Pre-fill business name from AI detection
     useEffect(() => {
-        if (draft?.detectedBusinessName && !businessName) {
-            setBusinessName(draft.detectedBusinessName);
+        const profileBusinessName = getSuggestionText(draft?.extractedBusinessProfile?.identity?.businessName);
+        const detectedName = draft?.detectedBusinessName || profileBusinessName;
+        if (detectedName && !businessName) {
+            setBusinessName(detectedName);
         }
-    }, [draft?.detectedBusinessName]);
+    }, [businessName, draft?.detectedBusinessName, draft?.extractedBusinessProfile]);
+
+    useEffect(() => {
+        const profileIdentity = draft?.extractedBusinessProfile?.identity;
+        const detectedPhone = profileIdentity?.phoneNumber?.value;
+        const detectedAddress = profileIdentity?.addressLine?.value;
+        if (detectedPhone && !phone) {
+            setPhone(String(detectedPhone));
+        }
+        if (detectedAddress && !addressLine) {
+            setAddressLine(String(detectedAddress));
+        }
+    }, [addressLine, draft?.extractedBusinessProfile, phone]);
 
     // Loading state
     if (loading) {
@@ -287,6 +426,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const { extractedData, detectedBusinessName, detectedBusinessType } = draft || {};
     const categories = extractedData?.categories || [];
     const items = extractedData?.items || [];
+    const detectedDetails = buildPublicPreviewDetectedDetails(draft);
     const firstLanguage = extractedData?.languages?.[0];
     const lang = typeof firstLanguage === 'string'
         ? firstLanguage
@@ -321,6 +461,51 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     {detectedBusinessType && (
                         <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
                     )}
+                    {detectedDetails.length > 0 && (
+                        <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            justifyContent: 'center',
+                            marginTop: '14px',
+                        }}>
+                            {detectedDetails.map((detail) => (
+                                <span
+                                    key={detail.key}
+                                    style={{
+                                        alignItems: 'center',
+                                        backgroundColor: 'var(--ws-bg-subtle)',
+                                        border: '1px solid var(--ws-border-default)',
+                                        borderRadius: '999px',
+                                        color: 'var(--ws-text-secondary)',
+                                        display: 'inline-flex',
+                                        fontSize: '12px',
+                                        gap: '6px',
+                                        maxWidth: '100%',
+                                        padding: '6px 10px',
+                                    }}
+                                >
+                                    {detail.color ? (
+                                        <span
+                                            aria-hidden="true"
+                                            style={{
+                                                background: detail.color,
+                                                border: '1px solid rgba(0,0,0,0.12)',
+                                                borderRadius: '999px',
+                                                display: 'inline-block',
+                                                flex: '0 0 auto',
+                                                height: '10px',
+                                                width: '10px',
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span style={{ overflowWrap: 'anywhere' }}>
+                                        {detail.label}: {detail.value}
+                                    </span>
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </AnimateOnScroll>
 
@@ -352,57 +537,76 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                     </div>
 
                                     {/* Items */}
-                                    {catItems.map((item, idx) => (
-                                        <div
-                                            key={item.id}
-                                            style={{
-                                                padding: '12px 16px',
-                                                borderBottom: idx < catItems.length - 1 ? '1px solid var(--ws-border-subtle)' : undefined,
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'flex-start',
-                                                gap: '12px',
-                                            }}
-                                        >
-                                            <div style={{ flex: 1 }}>
-                                                <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
-                                                    {item.name?.[lang] || item.name?.en || item.id}
-                                                </p>
-                                                {item.description?.[lang] && (
-                                                    <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-                                                        {item.description[lang]}
+                                    {catItems.map((item, idx) => {
+                                        const itemTags = getPreviewItemTags(item);
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    borderBottom: idx < catItems.length - 1 ? '1px solid var(--ws-border-subtle)' : undefined,
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'flex-start',
+                                                    gap: '12px',
+                                                }}
+                                            >
+                                                <div style={{ flex: 1 }}>
+                                                    <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
+                                                        {item.name?.[lang] || item.name?.en || item.id}
                                                     </p>
-                                                )}
-                                                {/* Attributes/variants */}
-                                                {item.attributes && item.attributes.length > 0 && (
-                                                    <div style={{ marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                        {item.attributes.map((attr) => (
-                                                            <span key={attr.id} style={{
-                                                                fontSize: '11px',
-                                                                color: 'var(--ws-text-secondary)',
-                                                                backgroundColor: 'var(--ws-border-subtle)',
-                                                                padding: '2px 8px',
-                                                                borderRadius: '4px',
-                                                            }}>
-                                                                {attr.name?.[lang] || attr.name?.en || attr.id}
-                                                                {attr.price ? ` — ${attr.price}` : ''}
-                                                            </span>
-                                                        ))}
-                                                    </div>
+                                                    {item.description?.[lang] && (
+                                                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
+                                                            {item.description[lang]}
+                                                        </p>
+                                                    )}
+                                                    {itemTags.length > 0 && (
+                                                        <div style={{ marginTop: '5px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                            {itemTags.map((tag) => (
+                                                                <span key={tag} style={{
+                                                                    fontSize: '11px',
+                                                                    color: 'var(--ws-text-secondary)',
+                                                                    backgroundColor: 'var(--ws-bg-subtle)',
+                                                                    border: '1px solid var(--ws-border-subtle)',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '999px',
+                                                                }}>
+                                                                    {formatPreviewTag(tag)}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {/* Attributes/variants */}
+                                                    {item.attributes && item.attributes.length > 0 && (
+                                                        <div style={{ marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                            {item.attributes.map((attr) => (
+                                                                <span key={attr.id} style={{
+                                                                    fontSize: '11px',
+                                                                    color: 'var(--ws-text-secondary)',
+                                                                    backgroundColor: 'var(--ws-border-subtle)',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '4px',
+                                                                }}>
+                                                                    {attr.name?.[lang] || attr.name?.en || attr.id}
+                                                                    {attr.price ? ` — ${attr.price}` : ''}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {item.price && (
+                                                    <span style={{
+                                                        fontSize: '14px',
+                                                        fontWeight: 600,
+                                                        color: 'var(--ws-text-primary)',
+                                                        whiteSpace: 'nowrap',
+                                                    }}>
+                                                        {item.price}
+                                                    </span>
                                                 )}
                                             </div>
-                                            {item.price && (
-                                                <span style={{
-                                                    fontSize: '14px',
-                                                    fontWeight: 600,
-                                                    color: 'var(--ws-text-primary)',
-                                                    whiteSpace: 'nowrap',
-                                                }}>
-                                                    {item.price}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </AnimateStaggerChild>
                         );
@@ -411,21 +615,41 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     {/* Empty state */}
                     {categories.length === 0 && items.length > 0 && (
                         <div style={{ padding: '16px' }}>
-                            {items.map((item) => (
-                                <div key={item.id} style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    padding: '8px 0',
-                                    borderBottom: '1px solid var(--ws-border-subtle)',
-                                }}>
-                                    <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
-                                        {item.name?.[lang] || item.name?.en || item.id}
-                                    </span>
-                                    {item.price && (
-                                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
-                                    )}
-                                </div>
-                            ))}
+                            {items.map((item) => {
+                                const itemTags = getPreviewItemTags(item);
+                                return (
+                                    <div key={item.id} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        padding: '8px 0',
+                                        borderBottom: '1px solid var(--ws-border-subtle)',
+                                        gap: '12px',
+                                    }}>
+                                        <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
+                                            {item.name?.[lang] || item.name?.en || item.id}
+                                            {itemTags.length > 0 && (
+                                                <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '5px' }}>
+                                                    {itemTags.map((tag) => (
+                                                        <span key={tag} style={{
+                                                            fontSize: '11px',
+                                                            color: 'var(--ws-text-secondary)',
+                                                            backgroundColor: 'var(--ws-bg-subtle)',
+                                                            border: '1px solid var(--ws-border-subtle)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '999px',
+                                                        }}>
+                                                            {formatPreviewTag(tag)}
+                                                        </span>
+                                                    ))}
+                                                </span>
+                                            )}
+                                        </span>
+                                        {item.price && (
+                                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -455,23 +679,24 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 </div>
             </AnimateOnScroll>
 
-            {/* Sticky CTA — switches between sign-up and claim form */}
+            {/* Setup CTA — switches between sign-up and claim form */}
             <AnimateOnScroll delay={0.2}>
                 <div style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
+                    width: '100%',
+                    maxWidth: '560px',
                     backgroundColor: 'var(--ws-bg-primary)',
-                    borderTop: '1px solid var(--ws-border-default)',
-                    padding: '16px 20px',
+                    border: '1px solid var(--ws-border-default)',
+                    borderRadius: 'var(--ws-radius-xl)',
+                    boxShadow: 'var(--ws-shadow-sm)',
+                    padding: '16px',
+                    marginBottom: '32px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     gap: '8px',
-                    zIndex: 100,
+                    boxSizing: 'border-box',
                 }}>
-                {isClaimMode ? (
+                {(isClaimMode || sessionStatus === 'authenticated') ? (
                     /* Claim mode — user is authenticated, show publish form */
                     <div style={{ width: '100%', maxWidth: '520px' }}>
                         <AnimateStaggerChild index={0}>

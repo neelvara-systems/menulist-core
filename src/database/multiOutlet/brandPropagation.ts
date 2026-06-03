@@ -1,23 +1,26 @@
 /**
- * Multi-Outlet Brand Propagation
+ * Multi-Outlet Master Store Propagation
  *
- * When master store updates brand identity fields (logo, phoneNumber, etc.),
- * propagate to all outlets where outletPolicy.allowBrandingOverride === false.
+ * When master store updates chain-level identity/classification fields
+ * (logo, phoneNumber, businessType, businessCategory, etc.), propagate to all
+ * outlets where outletPolicy.canOverrideBrandIdentity === false.
  *
- * Non-blocking by design — called after master store save succeeds.
+ * Called from updateStore() after the master store save succeeds.
  * Follows same pattern as propagateNewProjectToOutlets().
  *
  * @see __docs__/official-business-page/official-business-page_impl.md ADR-7
  */
 
+import { resolveStoreBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
+import { mergeStoreSummaryFields } from "@database/platformSummary";
 import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { secureError } from "@lib/security/secureLogger";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
-/** Fields that constitute "brand identity" — propagated from master to outlets */
-const BRAND_FIELDS = [
+/** Master-controlled fields propagated from master to outlets when overrides are locked. */
+const MASTER_STORE_PROPAGATED_FIELDS = [
     'logo',
     'phoneNumber',
     'currencyCode',
@@ -25,42 +28,86 @@ const BRAND_FIELDS = [
     'country',
     'timeZone',
     'defaultLanguage',
+    'businessType',
+    'businessCategory',
 ] as const;
 
-type BrandField = typeof BRAND_FIELDS[number];
+const STORE_SUMMARY_PROPAGATED_FIELDS = new Set<string>([
+    'businessType',
+    'businessCategory',
+    'logo',
+    'timeZone',
+]);
 
-/**
- * Extract brand-relevant changes from a store update payload.
- * Returns null if no brand fields changed.
- */
-export function extractBrandChanges(updatedFields: Record<string, any>): Record<BrandField, any> | null {
-    const brandChanges: Partial<Record<BrandField, any>> = {};
-    let hasBrandChanges = false;
+type MasterStorePropagatedField = typeof MASTER_STORE_PROPAGATED_FIELDS[number];
 
-    for (const field of BRAND_FIELDS) {
-        if (field in updatedFields) {
-            brandChanges[field] = updatedFields[field];
-            hasBrandChanges = true;
-        }
-    }
-
-    return hasBrandChanges ? brandChanges as Record<BrandField, any> : null;
+export function hasMasterStorePropagationFields(updatedFields: Record<string, any>): boolean {
+    return MASTER_STORE_PROPAGATED_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(updatedFields, field));
 }
 
 /**
- * Propagate brand identity changes from master store to all outlets.
+ * Extract master-controlled outlet propagation changes from a store update payload.
+ * Returns null if no propagated fields changed.
+ */
+export function extractMasterStorePropagationChanges(
+    updatedFields: Record<string, any>,
+): Record<MasterStorePropagatedField, any> | null {
+    const propagationChanges: Partial<Record<MasterStorePropagatedField, any>> = {};
+    let hasPropagationChanges = false;
+
+    for (const field of MASTER_STORE_PROPAGATED_FIELDS) {
+        if (Object.prototype.hasOwnProperty.call(updatedFields, field)) {
+            propagationChanges[field] = updatedFields[field] === undefined ? null : updatedFields[field];
+            hasPropagationChanges = true;
+        }
+    }
+
+    if (!hasPropagationChanges) return null;
+
+    if ('businessType' in propagationChanges || 'businessCategory' in propagationChanges) {
+        propagationChanges.businessCategory = resolveStoreBusinessCategory(
+            propagationChanges.businessType,
+            propagationChanges.businessCategory,
+        );
+    }
+
+    return propagationChanges as Record<MasterStorePropagatedField, any>;
+}
+
+export const extractBrandChanges = extractMasterStorePropagationChanges;
+
+function extractStoresSummaryPropagationChanges(propagatedChanges: Record<string, any>) {
+    const summaryPatch: Record<string, any> = {};
+
+    for (const [field, value] of Object.entries(propagatedChanges)) {
+        if (STORE_SUMMARY_PROPAGATED_FIELDS.has(field)) {
+            summaryPatch[field] = value;
+        }
+    }
+
+    if (Object.keys(summaryPatch).length === 0) return null;
+
+    return summaryPatch;
+}
+
+/**
+ * Propagate master store identity/classification changes to all outlets.
  *
  * @param tenantId - Tenant ID
  * @param masterStoreId - Master store ID (the one being updated)
- * @param brandChanges - Object with changed brand fields
+ * @param propagatedChanges - Object with changed master-controlled fields
  * @returns Count of propagated and failed outlets
  */
-export async function propagateBrandToOutlets(
+export async function propagateMasterStoreChangesToOutlets(
     tenantId: number,
     masterStoreId: number,
-    brandChanges: Record<string, any>,
+    propagatedChanges: Record<string, any>,
 ): Promise<{ propagated: number; failed: number; skipped: number }> {
     const result = { propagated: 0, failed: 0, skipped: 0 };
+
+    if (!propagatedChanges || Object.keys(propagatedChanges).length === 0) {
+        return result;
+    }
 
     try {
         // Get tenant to find all outlet stores
@@ -79,10 +126,12 @@ export async function propagateBrandToOutlets(
         const masterRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(masterStoreId));
         const masterSnap = await getDoc(masterRef);
         const outletPolicy = masterSnap.data()?.outletPolicy;
+        const outletCanOverrideBrandIdentity = outletPolicy?.canOverrideBrandIdentity === true
+            || outletPolicy?.allowBrandingOverride === true;
 
-        // If branding override is allowed, skip propagation
-        // (outlets can have their own branding)
-        if (outletPolicy?.allowBrandingOverride === true) {
+        // If branding override is allowed, skip propagation.
+        // Outlets can then own their own brand identity and classification.
+        if (outletCanOverrideBrandIdentity) {
             result.skipped = outletStores.length;
             return result;
         }
@@ -91,8 +140,15 @@ export async function propagateBrandToOutlets(
         for (const outlet of outletStores) {
             try {
                 const outletRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(outlet.storeId));
-                await updateDoc(outletRef, brandChanges);
-                await revalidatePublicClientCache(outlet.storeId, "propagateBrandToOutlets");
+                await updateDoc(outletRef, {
+                    ...propagatedChanges,
+                    modifiedOn: serverTimestamp(),
+                });
+                const summaryChanges = extractStoresSummaryPropagationChanges(propagatedChanges);
+                if (summaryChanges) {
+                    await mergeStoreSummaryFields(outlet.storeId, summaryChanges);
+                }
+                await revalidatePublicClientCache(outlet.storeId, "propagateMasterStoreChangesToOutlets");
                 result.propagated++;
             } catch (e) {
                 secureError(`[BrandPropagation] Failed for outlet ${outlet.storeId}`, e as Error);
@@ -105,3 +161,5 @@ export async function propagateBrandToOutlets(
 
     return result;
 }
+
+export const propagateBrandToOutlets = propagateMasterStoreChangesToOutlets;

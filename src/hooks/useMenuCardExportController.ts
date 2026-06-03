@@ -57,7 +57,10 @@ export type MenuCardExportNotice = {
 
 type UseMenuCardExportControllerOptions = {
     initialProjectId?: string | null;
+    loadProjectData?: (projectId: string) => Promise<any | null>;
     notify?: (notice: MenuCardExportNotice) => void;
+    projectDataById?: Record<string, any>;
+    projectSummaries?: Array<Partial<MenuCardProjectOption> & { projectId: string }>;
 };
 
 export function resolveMenuCardProjectName(
@@ -76,6 +79,22 @@ function buildMenuUrl(storeDetails: any, project: MenuCardProjectOption): string
     );
 }
 
+function normalizeProjectOption(storeUrlContext: any, project: Partial<MenuCardProjectOption> & { projectId: string }): MenuCardProjectOption {
+    return {
+        projectId: project.projectId,
+        name: project.name || 'Menu',
+        isDefault: project.isDefault,
+        active: project.active,
+        deleted: project.deleted,
+        isSpecialMenu: project.isSpecialMenu,
+        projectImage: project.projectImage || null,
+        specialMenuBaseProjectId: project.specialMenuBaseProjectId,
+        specialMenuEndsAt: project.specialMenuEndsAt,
+        specialMenuStatus: project.specialMenuStatus,
+        url: project.url || buildMenuUrl(storeUrlContext, project as MenuCardProjectOption),
+    };
+}
+
 function makeSettings(preset: MenuCardExportPreset, styleId: string): MenuCardExportSettings {
     return buildDefaultSettings(preset, styleId);
 }
@@ -89,7 +108,10 @@ export function isMenuCardPresetAvailable(preset: MenuCardExportPreset): boolean
 
 export default function useMenuCardExportController({
     initialProjectId = null,
+    loadProjectData,
     notify,
+    projectDataById,
+    projectSummaries,
 }: UseMenuCardExportControllerOptions = {}) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [projects, setProjects] = useState<MenuCardProjectOption[]>([]);
@@ -105,6 +127,7 @@ export default function useMenuCardExportController({
     const manualSettingsTouchedRef = useRef(false);
     const projectDataCacheRef = useRef<Record<string, any>>({});
     const adviceCacheRef = useRef<Record<string, MenuCardDesignAdvisorRecommendation>>({});
+    const lastInitialProjectIdRef = useRef(initialProjectId || null);
     const [designAdvice, setDesignAdvice] = useState<MenuCardDesignAdvisorRecommendation | null>(null);
     const [adviceLoading, setAdviceLoading] = useState(false);
     const [adviceError, setAdviceError] = useState<string | null>(null);
@@ -132,6 +155,13 @@ export default function useMenuCardExportController({
     ]);
 
     useEffect(() => {
+        const nextInitialProjectId = initialProjectId || null;
+        if (!nextInitialProjectId || lastInitialProjectIdRef.current === nextInitialProjectId) return;
+        lastInitialProjectIdRef.current = nextInitialProjectId;
+        setSelectedProjectId(nextInitialProjectId);
+    }, [initialProjectId]);
+
+    useEffect(() => {
         let mounted = true;
 
         async function loadProjects() {
@@ -154,23 +184,13 @@ export default function useMenuCardExportController({
             setHistory([]);
             setDesignAdvice(null);
             setAdviceError(null);
-            const result = await getExistingProjectsListWithoutLoader(true);
+            const result = projectSummaries
+                ? { projects: projectSummaries }
+                : await getExistingProjectsListWithoutLoader(true);
             if (!mounted) return;
             const list = (result?.projects || [])
                 .filter((project: any) => project.deleted !== true && project.active !== false)
-                .map((project: any) => ({
-                    projectId: project.projectId,
-                    name: project.name,
-                    isDefault: project.isDefault,
-                    active: project.active,
-                    deleted: project.deleted,
-                    isSpecialMenu: project.isSpecialMenu,
-                    projectImage: project.projectImage || null,
-                    specialMenuBaseProjectId: project.specialMenuBaseProjectId,
-                    specialMenuEndsAt: project.specialMenuEndsAt,
-                    specialMenuStatus: project.specialMenuStatus,
-                    url: buildMenuUrl(storeUrlContext, project),
-                }));
+                .map((project: any) => normalizeProjectOption(storeUrlContext, project));
             setProjects(list);
             setSelectedProjectId((current) => {
                 if (current && list.some((project: MenuCardProjectOption) => project.projectId === current)) return current;
@@ -189,7 +209,7 @@ export default function useMenuCardExportController({
         return () => {
             mounted = false;
         };
-    }, [storeRouteKey, storeUrlContext]);
+    }, [projectSummaries, storeRouteKey, storeUrlContext]);
 
     const selectedProject = useMemo(
         () => projects.find((project) => project.projectId === selectedProjectId) || projects[0] || null,
@@ -225,7 +245,21 @@ export default function useMenuCardExportController({
                 return;
             }
 
-            const data = await getProjectDataWithoutLoader(selectedProject.projectId);
+            const providedProjectData = projectDataById?.[selectedProject.projectId];
+            if (providedProjectData) {
+                projectDataCacheRef.current[selectedProject.projectId] = providedProjectData;
+                setProjectData(providedProjectData);
+                setLoadedProjectId(selectedProject.projectId);
+                setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
+                    ? listLocalMenuCardExports(selectedProject.projectId)
+                    : []);
+                setLoading(false);
+                return;
+            }
+
+            const data = loadProjectData
+                ? await loadProjectData(selectedProject.projectId)
+                : await getProjectDataWithoutLoader(selectedProject.projectId);
             if (!mounted) return;
             projectDataCacheRef.current[selectedProject.projectId] = data;
             setProjectData(data);
@@ -246,7 +280,7 @@ export default function useMenuCardExportController({
         return () => {
             mounted = false;
         };
-    }, [selectedProject?.projectId]);
+    }, [loadProjectData, projectDataById, selectedProject?.projectId]);
 
     const source = useMemo<MenuCardPrintSource | null>(() => {
         if (!projectData || !selectedProject || !storeDetails) return null;

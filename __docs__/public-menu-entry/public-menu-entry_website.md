@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Website copy aligned
-**Last Updated:** May 31, 2026
+**Last Updated:** June 3, 2026
 **Page URL:** `/create-menu`
 
 ---
@@ -33,14 +33,14 @@ There's no single, reliable place where your menu lives.
 
 **Heading:** "One current menu. One official source."
 
-Upload a photo of your menu or paste a public menu link you have permission to use. MenuList prepares a clean, structured preview first, then asks the owner to sign in before creating the public starter link.
+Sign in, upload a photo of your menu, or paste a public menu link you have permission to use. MenuList prepares a clean, structured preview first, then the owner decides whether to create the public starter link.
 
 ---
 
 ## 4. How It Works (3 Steps)
 
-**Step 1:** Upload or paste your current menu source
-Start with a clear photo from your phone camera, a saved file, or a public menu link you have permission to import.
+**Step 1:** Sign in and add your current menu source
+Protect the setup first, then start with a clear photo from your phone camera, a saved file, or a public menu link you have permission to import.
 
 **Step 2:** Review before publishing
 Your menu appears as a clean, structured preview for owner review.
@@ -77,7 +77,7 @@ Restaurants, cafes, bakeries, salons, gyms, clinics — any business with offeri
 ## 7. FAQ (5 Questions)
 
 **Q: Do I need to create an account?**
-A: You can submit a photo or permission-confirmed public menu link and review the first preview before creating an account. A free account is required before claiming the public starter menu so the setup is attached to the right owner.
+A: Yes. You can open the page before signing in, but menu upload, link import, extraction, preview polling, and starter setup are attached to a free owner account.
 
 **Q: What kind of menus can I upload?**
 A: You can upload a JPEG, PNG, or WebP photo, or paste a public menu page, PDF, or image link that belongs to your business or that you have permission to import.
@@ -86,7 +86,7 @@ A: You can upload a JPEG, PNG, or WebP photo, or paste a public menu page, PDF, 
 A: The preview usually appears after a short processing step. Clearer photos process better.
 
 **Q: Is this free?**
-A: The first owner-account preview is free and rate-limited. QR, link, publishing, and plan setup continue from the account.
+A: The first signed-in setup preview is free and rate-limited. QR, link, publishing, and plan setup continue from the account.
 
 **Q: Can I update my menu later?**
 A: Yes. After publishing, you can update your menu anytime from your phone or computer. Changes go live instantly.
@@ -97,7 +97,7 @@ A: Yes. After publishing, you can update your menu anytime from your phone or co
 
 **Page title:** "Upload or Import Your Current Menu — MenuList"
 
-**Meta description:** "Start with a menu photo or public menu link and preview one owner-approved source for QR, web, official page, customer view, and sharing."
+**Meta description:** "Sign in, start with a menu photo or public menu link, and preview one owner-approved source for QR, web, official page, customer view, and sharing."
 
 **OG title:** "Upload or import your current menu"
 

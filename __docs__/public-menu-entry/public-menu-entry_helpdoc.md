@@ -2,13 +2,13 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Owner help copy aligned
-**Last Updated:** May 31, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
 ## Quick Summary
 
-Upload a photo of your current menu or paste a public menu link you have permission to use. Review the structured preview, then sign in before creating your official starter menu link. The preview is free and rate-limited; the public starter link is tied to the owner account before it goes live.
+Sign in, upload a photo of your current menu, or paste a public menu link you have permission to use. Review the structured preview before creating your official starter menu link. The first setup preview is free and rate-limited; the public starter link is tied to the owner account before it goes live.
 
 ---
 
@@ -18,16 +18,16 @@ Upload a photo of your current menu or paste a public menu link you have permiss
 - A photo of your menu (from your phone camera or a saved file), or a public menu link you own or have permission to import
 - Photos should be clear and well-lit
 - Supported direct photo formats: JPEG, PNG, WebP (max 10MB)
-- A Google/WhatsApp identity when you are ready to create the public starter link
+- A Google/WhatsApp identity before uploading or importing the menu source
 
 ### First Time? Here's How
 
 1. Go to **menulist.ai/create-menu**
-2. Choose **Upload photo** or **Paste menu link**
-3. Take a photo, choose a file, or paste the public menu link and confirm permission
-4. Wait while your menu is being read
-5. See your menu as a clean, structured page
-6. Sign in when you are ready to create the official starter menu link
+2. Sign in to protect the setup
+3. Choose **Upload photo** or **Paste menu link**
+4. Take a photo, choose a file, or paste the public menu link and confirm permission
+5. Wait while your menu is being read
+6. See your menu as a clean, structured page
 
 ---
 
@@ -36,21 +36,23 @@ Upload a photo of your current menu or paste a public menu link you have permiss
 ### How to upload your menu
 
 1. Open **menulist.ai/create-menu** on your phone or computer
-2. Tap the upload area
-3. Choose **"Take Photo"** (phone) or **"Choose File"** (computer)
-4. Select your menu image
-5. The image will be compressed automatically — no need to resize
-6. Wait for the progress bar to complete
+2. Sign in if prompted
+3. Tap the upload area
+4. Choose **"Take Photo"** (phone) or **"Choose File"** (computer)
+5. Select your menu image
+6. The image will be compressed automatically — no need to resize
+7. Wait for the progress bar to complete
 
 **Tip:** For best results, photograph your menu straight-on in good lighting. Avoid shadows and reflections.
 
 ### How to import from an existing menu link
 
 1. Open **menulist.ai/create-menu** on your phone or computer
-2. Choose **Paste menu link**
-3. Paste a public menu page, PDF, or image link that belongs to your business or that you have permission to import
-4. Confirm the permission checkbox
-5. Wait while MenuList reads the source and prepares the preview
+2. Sign in if prompted
+3. Choose **Paste menu link**
+4. Paste a public menu page, PDF, or image link that belongs to your business or that you have permission to import
+5. Confirm the permission checkbox
+6. Wait while MenuList reads the source and prepares the preview
 
 MenuList will reject private, login-required, unsafe, or unreadable links. If the link cannot be read clearly, upload a photo instead.
 
@@ -96,16 +98,17 @@ After publishing, you get:
 - You can edit everything after publishing in your dashboard
 
 ### "I see 'Rate limit exceeded'"
-- You can submit up to 3 public menu sources per day
+- You can submit up to 5 new menu sources per day from one owner account
+- Repeat uploads of the same active source should return the existing preview
 - Wait 24 hours and try again
-- If you need more, create an account first
+- If you need more, contact support
 
 ### "My draft expired"
 - Unpublished menus are stored for 24 hours
 - If your draft expired, upload your current menu or paste the public menu link again to create a fresh review
 
 ### "I uploaded but didn't create an account. Can I get my menu back?"
-- If it's been less than 24 hours, open the preview link again (check your browser history)
+- Uploads now require sign-in, so open the preview link while signed in to the same account
 - After 24 hours, the draft is automatically removed — upload again to start fresh
 
 ### "What happens after I publish?"

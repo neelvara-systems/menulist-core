@@ -20,6 +20,7 @@ type CommandAction = {
 
 interface MobileMenuCommandSheetProps {
     businessType?: string;
+    businessCategory?: string;
     labels: OfferingLabels;
     lastUpdatedAt?: any;
     menuVersion?: number;
@@ -67,6 +68,7 @@ function formatRelativeDate(timestamp: any): string {
 
 export default function MobileMenuCommandSheet({
     businessType,
+    businessCategory,
     labels,
     lastUpdatedAt,
     menuVersion,
@@ -93,7 +95,7 @@ export default function MobileMenuCommandSheet({
 }: MobileMenuCommandSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
-    const availabilityLabels = getOwnerLabels(businessType);
+    const availabilityLabels = getOwnerLabels(businessType, businessCategory);
 
     const bulkActions = useMemo<CommandAction[]>(() => [
         {

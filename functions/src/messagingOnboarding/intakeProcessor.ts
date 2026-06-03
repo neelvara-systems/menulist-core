@@ -16,6 +16,10 @@ import {
   buildMessagingOnboardingMenuExtractionDestination,
   MENU_EXTRACTION_SOURCES,
 } from "../sharedData/menuExtractionJob";
+import {
+  FALLBACK_BUSINESS_TYPE,
+  resolveStoreBusinessCategory,
+} from "../sharedData/businessTypes";
 import { MENU_IMAGE_PROCESSING_JOBS_COLLECTION } from "../types";
 import {
   MessagingOnboardingSession,
@@ -465,18 +469,20 @@ async function processSession(
     .filter(Boolean) as string[];
 
   // Store validation results
-  const bizType = validationResult.detected_business_type;
+  const bizType = validationResult.detected_business_type || {};
   const typeConfidence = bizType.type_confidence;
+  const useDetectedBusinessType = typeConfidence === "high" || typeConfidence === "medium";
+  const hasDetectedBusinessType = useDetectedBusinessType && Boolean(bizType.business_type);
   const detectedBusinessType =
-    typeConfidence === "high" || typeConfidence === "medium"
+    hasDetectedBusinessType
       ? bizType.business_type
-      : "Restaurant";
-  const detectedBusinessCategory =
-    typeConfidence === "high" || typeConfidence === "medium"
-      ? bizType.business_category
-      : "food";
+      : FALLBACK_BUSINESS_TYPE;
+  const detectedBusinessCategory = resolveStoreBusinessCategory(
+    detectedBusinessType,
+    bizType.business_category,
+  );
   const typeSource =
-    typeConfidence === "high" || typeConfidence === "medium"
+    hasDetectedBusinessType
       ? "ai"
       : "fallback";
 
@@ -621,8 +627,11 @@ async function triggerExtraction(
     })),
     targetLanguages: [{ code: "en", name: "English" }],
     action: "IMAGE_PROCESSING",
-    businessType: detected.businessType || session.detectedBusinessType || "Restaurant",
-    businessCategory: detected.businessCategory || session.detectedBusinessCategory || "food",
+    businessType: detected.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
+    businessCategory: resolveStoreBusinessCategory(
+      detected.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
+      detected.businessCategory || session.detectedBusinessCategory || undefined,
+    ),
     ...buildMenuExtractionRoutingFields(buildMessagingOnboardingMenuExtractionDestination(session.sessionId)),
     source: MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING,
     skipProjectSave: true,

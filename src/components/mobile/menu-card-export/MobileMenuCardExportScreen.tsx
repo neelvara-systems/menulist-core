@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuDownload, LuHistory, LuPackage, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, MobileAntdAppBridge, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 const DENSITY_OPTIONS = [
     { label: 'Comfort', value: 'comfortable' },
@@ -56,12 +57,27 @@ function WarningRow({ message, severity }: { message: string; severity: string }
     );
 }
 
-export default function MobileMenuCardExportScreen() {
+type MobileMenuCardExportScreenProps = {
+    initialProjectId?: string | null;
+    onBack?: () => void;
+};
+
+export default function MobileMenuCardExportScreen({ initialProjectId, onBack }: MobileMenuCardExportScreenProps = {}) {
     const { token } = theme.useToken();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const {
+        isLoading: mobileProjectsLoading,
+        projectsById,
+        projectsList,
+        refreshCachedProject,
+        selectedProjectId: mobileSelectedProjectId,
+    } = useMobileProjects();
     const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
     const notify = useCallback(notifyMobile, []);
+    const shouldUseMobileProjectState = !mobileProjectsLoading || projectsList.length > 0;
+    const resolvedInitialProjectId = initialProjectId || mobileSelectedProjectId || searchParams.get('projectId');
+    const handleBack = onBack || (() => router.back());
     const {
         adviceError,
         adviceLoading,
@@ -95,8 +111,11 @@ export default function MobileMenuCardExportScreen() {
         visiblePresets,
         warnings,
     } = useMenuCardExportController({
-        initialProjectId: searchParams.get('projectId'),
+        initialProjectId: resolvedInitialProjectId,
+        loadProjectData: shouldUseMobileProjectState ? refreshCachedProject : undefined,
         notify,
+        projectDataById: shouldUseMobileProjectState ? projectsById : undefined,
+        projectSummaries: shouldUseMobileProjectState ? projectsList : undefined,
     });
 
     const closeProjectSheet = () => setIsProjectSheetOpen(false);
@@ -112,7 +131,7 @@ export default function MobileMenuCardExportScreen() {
         return (
             <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh' }} vertical>
                 <MobileAntdAppBridge />
-                <NavBar onBack={() => router.back()} titleAlign="left">Print {documentLabel}</NavBar>
+                <NavBar onBack={handleBack} titleAlign="left">Print {documentLabel}</NavBar>
                 <Flex align="center" justify="center" style={{ flex: 1, padding: 20 }}>
                     <Empty description="Print menu is not enabled" />
                 </Flex>
@@ -124,7 +143,7 @@ export default function MobileMenuCardExportScreen() {
         return (
             <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh' }} vertical>
                 <MobileAntdAppBridge />
-                <NavBar onBack={() => router.back()} titleAlign="left">Print {documentLabel}</NavBar>
+                <NavBar onBack={handleBack} titleAlign="left">Print {documentLabel}</NavBar>
                 <Flex align="center" gap={10} justify="center" style={{ flex: 1 }} vertical>
                     <DotLoading color="primary" />
                     <Text type="secondary">Preparing print menu</Text>
@@ -137,7 +156,7 @@ export default function MobileMenuCardExportScreen() {
         return (
             <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh' }} vertical>
                 <MobileAntdAppBridge />
-                <NavBar onBack={() => router.back()} titleAlign="left">Print {documentLabel}</NavBar>
+                <NavBar onBack={handleBack} titleAlign="left">Print {documentLabel}</NavBar>
                 <Flex align="center" justify="center" style={{ flex: 1, padding: 20 }}>
                     <Empty description="Create a menu before exporting a print file" />
                 </Flex>
@@ -148,7 +167,7 @@ export default function MobileMenuCardExportScreen() {
     return (
         <Flex style={{ background: token.colorBgLayout, minHeight: '100dvh' }} vertical>
             <MobileAntdAppBridge />
-            <NavBar onBack={() => router.back()} titleAlign="left">Print {documentLabel}</NavBar>
+            <NavBar onBack={handleBack} titleAlign="left">Print {documentLabel}</NavBar>
 
             <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: 14, paddingBottom: 'calc(env(safe-area-inset-bottom) + 112px)' }} vertical>
                 <Flex gap={6} vertical>

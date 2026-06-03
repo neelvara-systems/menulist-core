@@ -19,6 +19,8 @@ import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
+import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
+import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { formatClockTime } from "@util/dateTime";
 import type { ReactNode } from "react";
 import {
@@ -49,7 +51,7 @@ import {
 } from "react-icons/lu";
 import * as LuIcons from "react-icons/lu";
 import type { IconType } from "react-icons";
-import OBPActions from "./OBPActions";
+import OBPActions, { type OBPActionPlaceholder } from "./OBPActions";
 import OBPAnalytics from "./OBPAnalytics";
 import OBPCustomerAppMount from "./OBPCustomerAppMount";
 import OBPExternalLinks from "./OBPExternalLinks";
@@ -99,6 +101,7 @@ interface OBPIconItem {
     Icon?: IconType;
     customIcon?: string;
     fallbackIcon?: string;
+    placeholder?: boolean;
 }
 
 function getTodayDayKey(timeZone: string | undefined): string {
@@ -417,7 +420,7 @@ function renderIconTile(item: OBPIconItem) {
     const Icon = item.Icon;
     const customIcon = renderCustomIconValue(item.customIcon);
     return (
-        <div key={item.key} className={styles.iconTile}>
+        <div key={item.key} className={`${styles.iconTile} ${item.placeholder ? styles.iconTilePlaceholder : ''}`}>
             <span className={styles.iconTileSymbol}>
                 {customIcon || (Icon ? <Icon aria-hidden="true" size={19} /> : <span aria-hidden="true" className={styles.iconTileEmoji}>{item.fallbackIcon}</span>)}
             </span>
@@ -565,6 +568,16 @@ export default function OBPResolvedSurface({
     const showOrder = (pp.showOrder !== false) && !!pp.orderUrl;
     const showGoogleReview = (pp.showGoogleReview !== false) && !!pp.googleReviewUrl;
     const showFeedback = (pp.showFeedback !== false) && store?.feedbackEnabled !== false && !!feedbackUrl;
+    const showStarterPlaceholders = !isPermanentlyClosed && shouldShowStarterPublicPlaceholders(store);
+    const starterPlaceholderActions: OBPActionPlaceholder[] = showStarterPlaceholders ? [
+        ...((pp.showCall !== false) && !showCall ? ['call' as const] : []),
+        ...((pp.showDirections !== false) && !showDirections ? ['directions' as const] : []),
+        ...((pp.showWhatsApp !== false) && !showWhatsApp ? ['whatsapp' as const] : []),
+        ...((pp.showReservation !== false) && !showReservation ? ['reserve' as const] : []),
+        ...((pp.showOrder !== false) && !showOrder ? ['order' as const] : []),
+        ...((pp.showGoogleReview !== false) && !showGoogleReview ? ['reviews' as const] : []),
+        ...((pp.showFeedback !== false) && store?.feedbackEnabled !== false && !showFeedback ? ['feedback' as const] : []),
+    ] : [];
     const whatsappNumber = (pp.whatsappNumber || store?.phoneNumber || '').replace(/[^0-9+]/g, '');
     const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
     const googleMapsEmbedUrl = buildGoogleMapsEmbedUrl({
@@ -573,6 +586,13 @@ export default function OBPResolvedSurface({
         geo: store?.geo || { latitude: store?.latitude, longitude: store?.longitude },
         googleMapsUrl: pp.googleMapsUrl,
     });
+    const hasStarterPreviewVisualDepth = Boolean(
+        businessCover ||
+        googleMapsEmbedUrl ||
+        (pp.photos || []).some(Boolean) ||
+        activeProjects.some((project) => Boolean(project.projectImage)),
+    );
+    const useStarterCompactLayout = showStarterPlaceholders && !hasStarterPreviewVisualDepth;
     const socialMedia = store?.socialMedia || {};
     const instagram = socialMedia.instagram;
     const facebook = socialMedia.facebook;
@@ -581,7 +601,14 @@ export default function OBPResolvedSurface({
     const youtube = socialMedia.youtube;
     const socialWhatsApp = socialMedia.whatsapp;
     const website = store?.url || socialMedia.website;
-    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website);
+    const starterPlaceholderSocials = showStarterPlaceholders ? [
+        ...(!instagram ? ['instagram' as const] : []),
+        ...(!facebook ? ['facebook' as const] : []),
+        ...(!youtube ? ['youtube' as const] : []),
+        ...(!website ? ['website' as const] : []),
+        ...(!socialWhatsApp && !showWhatsApp ? ['whatsapp' as const] : []),
+    ] : [];
+    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website || starterPlaceholderSocials.length);
     const attributeConfig = getBusinessAttributeConfigForType(store?.businessType, store?.businessCategory);
     const attributeTags = attributeConfig
         .filter((attribute) => store?.businessAttributes?.[attribute.key] === true)
@@ -632,6 +659,29 @@ export default function OBPResolvedSurface({
         fallbackIcon: iconVariant === 'emoji' ? getServiceModeEmoji(mode) : undefined,
         label: t(`publicServiceModes.${mode}`),
     }));
+    const starterPreviewServiceItems: OBPIconItem[] = showStarterPlaceholders && serviceModeItems.length === 0 ? [
+        {
+            key: 'starter-placeholder-dineIn',
+            Icon: iconVariant === 'icons' ? getServiceModeIcon('dineIn') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getServiceModeEmoji('dineIn') : undefined,
+            label: t('publicServiceModes.dineIn'),
+            placeholder: true,
+        },
+        {
+            key: 'starter-placeholder-takeaway',
+            Icon: iconVariant === 'icons' ? getServiceModeIcon('takeaway') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getServiceModeEmoji('takeaway') : undefined,
+            label: t('publicServiceModes.takeaway'),
+            placeholder: true,
+        },
+        {
+            key: 'starter-placeholder-delivery',
+            Icon: iconVariant === 'icons' ? getServiceModeIcon('delivery') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getServiceModeEmoji('delivery') : undefined,
+            label: t('publicServiceModes.delivery'),
+            placeholder: true,
+        },
+    ] : [];
     const serviceModeTags = serviceModeItems.map((item) => item.label);
     const paymentItems = buildPaymentMethods(store?.businessAttributes).map((method) => ({
         key: method,
@@ -639,10 +689,37 @@ export default function OBPResolvedSurface({
         fallbackIcon: iconVariant === 'emoji' ? getPaymentEmoji(method) : undefined,
         label: t(`publicPaymentMethods.${method}`),
     }));
+    const shouldShowUPIPreview = store?.currencyCode === 'INR'
+        || store?.country === 'IN'
+        || store?.currencySymbol === '₹';
+    const starterPreviewPaymentItems: OBPIconItem[] = showStarterPlaceholders && paymentItems.length === 0 ? [
+        {
+            key: 'starter-placeholder-cash',
+            Icon: iconVariant === 'icons' ? getPaymentIcon('cash') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getPaymentEmoji('cash') : undefined,
+            label: t('publicPaymentMethods.cash'),
+            placeholder: true,
+        },
+        {
+            key: 'starter-placeholder-cards',
+            Icon: iconVariant === 'icons' ? getPaymentIcon('cards') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getPaymentEmoji('cards') : undefined,
+            label: t('publicPaymentMethods.cards'),
+            placeholder: true,
+        },
+        ...(shouldShowUPIPreview ? [{
+            key: 'starter-placeholder-upi',
+            Icon: iconVariant === 'icons' ? getPaymentIcon('upi') : undefined,
+            fallbackIcon: iconVariant === 'emoji' ? getPaymentEmoji('upi') : undefined,
+            label: t('publicPaymentMethods.upi'),
+            placeholder: true,
+        }] : []),
+    ] : [];
     const paymentTags = paymentItems.map((item) => item.label);
     const cuisineTypes = store?.cuisineTypes || [];
     const priceRange = store?.priceRange;
     const hasStructuredInfo = !!(allHours || serviceModeTags.length || paymentTags.length || cuisineTypes.length || priceRange);
+    const hasStarterPreviewUtilityPlaceholders = starterPreviewServiceItems.length > 0 || starterPreviewPaymentItems.length > 0;
     const identityPills = [
         ...(isOutletSurface && areaContext ? [areaContext] : []),
         ...serviceModeTags.slice(0, 3),
@@ -688,7 +765,7 @@ export default function OBPResolvedSurface({
                 </>
             ) : null}
             <main className={styles.page} data-obp-page="true" style={{ '--obp-accent': accentColor } as any}>
-                <div className={styles.shell}>
+                <div className={`${styles.shell} ${useStarterCompactLayout ? styles.starterPreviewShell : ''}`}>
                     {showLanguageSwitcher ? (
                         <OBPLanguageSwitcher
                             activeLanguage={contentLanguage}
@@ -857,6 +934,8 @@ export default function OBPResolvedSurface({
                             showOrder={showOrder}
                             showGoogleReview={showGoogleReview}
                             showFeedback={showFeedback}
+                            placeholderActions={starterPlaceholderActions}
+                            placeholderMessage={t('publicStarterPlaceholderMessage')}
                             labels={{
                                 call: t('publicActionCall'),
                                 whatsapp: t('publicActionWhatsApp'),
@@ -919,7 +998,7 @@ export default function OBPResolvedSurface({
                         )}
                     </div>
 
-                    {(hasStructuredInfo || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0)) && (
+                    {(hasStructuredInfo || hasStarterPreviewUtilityPlaceholders || (FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && allAttributeTags.length > 0)) && (
                         <div className={styles.utilityStack}>
                             {allHours && !isPermanentlyClosed && (
                                 <section className={`${styles.info} ${styles.utilityInfo} ${styles.businessHoursInfo}`} aria-label={t('publicBusinessHours')}>
@@ -935,15 +1014,15 @@ export default function OBPResolvedSurface({
                                 </section>
                             )}
 
-                            {(serviceModeItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
+                            {(serviceModeItems.length > 0 || starterPreviewServiceItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
                                 <section className={`${styles.info} ${styles.utilityInfo} ${styles.serviceInfo}`} aria-label={t('publicServiceOptions')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                         {t('publicServiceOptions')}
                                     </h2>
-                                    {serviceModeItems.length > 0 && (
+                                    {(serviceModeItems.length > 0 || starterPreviewServiceItems.length > 0) && (
                                         <div className={`${styles.iconGrid} ${styles.iconGridCompact}`}>
-                                            {serviceModeItems.map(renderIconTile)}
+                                            {[...serviceModeItems, ...starterPreviewServiceItems].map(renderIconTile)}
                                         </div>
                                     )}
                                     {cuisineTypes.length > 0 && (
@@ -961,14 +1040,14 @@ export default function OBPResolvedSurface({
                                 </section>
                             )}
 
-                            {paymentItems.length > 0 && !isPermanentlyClosed && (
+                            {(paymentItems.length > 0 || starterPreviewPaymentItems.length > 0) && !isPermanentlyClosed && (
                                 <section className={`${styles.info} ${styles.utilityInfo} ${styles.paymentInfo}`} aria-label={t('publicPaymentOptions')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCreditCard, '💳')}</span>
                                         {t('publicPaymentOptions')}
                                     </h2>
                                     <div className={`${styles.iconGrid} ${styles.iconGridCompact}`}>
-                                        {paymentItems.map(renderIconTile)}
+                                        {[...paymentItems, ...starterPreviewPaymentItems].map(renderIconTile)}
                                     </div>
                                 </section>
                             )}
@@ -1020,6 +1099,8 @@ export default function OBPResolvedSurface({
                                             youtube: t('publicSocialPlatforms.youtube'),
                                         }}
                                         socialAriaLabelTemplate={t('publicSocialLinkLabel', { platform: '{platform}' })}
+                                        placeholderPlatforms={starterPlaceholderSocials}
+                                        placeholderMessage={t('publicStarterPlaceholderMessage')}
                                         instagram={instagram}
                                         facebook={facebook}
                                         twitter={twitter}
@@ -1047,8 +1128,10 @@ export default function OBPResolvedSurface({
                                 switchToLightLabel={t('publicSwitchToLightTheme')}
                             />
                         </div>
+                        {resolveMenuListAttributionPolicy({ activePlanType: (store as any)?.activePlanType }).showAttribution ? (
                         <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
                             <PublicMenuListAttribution
+                                activePlanType={(store as any)?.activePlanType}
                                 mode="compact"
                                 surfaceLabel={t('publicOfficialPagePoweredBy')}
                                 rightsLabel={t('publicAllRightsReserved')}
@@ -1057,6 +1140,7 @@ export default function OBPResolvedSurface({
                                 containerStyle={{ marginTop: 0, paddingBottom: 0 }}
                             />
                         </div>
+                        ) : null}
                     </footer>
                 </div>
             </main>

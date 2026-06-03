@@ -33,6 +33,7 @@ The only remaining non-code prerequisites are external business actions:
 - create or approve provider accounts
 - complete legal/compliance review for jurisdictions and channels
 - create verified sender domains, WABA/WhatsApp number, and source-provider accounts
+- prove MenuList with real production owners before enabling aggregator-style public listing outreach, broad source-provider acquisition runs, or cold WhatsApp/public-phone execution paths
 
 Those are operational prerequisites, not missing product docs.
 
@@ -233,6 +234,7 @@ These seed records must exist before workers can run:
 | Sender-domain health record | Any email send. |
 | WhatsApp sender identity | Any WhatsApp assisted/API action. |
 | WhatsApp template registry | Any WhatsApp API template send. |
+| WhatsApp Claim/Invite experiment policy | Any Claim/Invite variant assignment, send, follow-up, or winner selection. |
 | Onboarding flow inventory | Any tracked route. |
 | Canonical surface contract | Any public distribution. |
 | AI eval datasets | Any autonomous AI worker. |
@@ -255,6 +257,7 @@ The docs now cover these implementation use cases:
 | Create private claim artifact | Artifact QA, noindex, expiry, takedown path. |
 | Configure email pipeline | Connections, sender domain, DNS, unsubscribe, bounce/complaint webhook. |
 | Configure WhatsApp pipeline | Connections, WABA/phone-number ID, opt-in policy, templates, conversation state, webhook, reputation. |
+| Run WhatsApp Claim/Invite experiment | Consent ledger, channel policy, experiment policy, dry-run, template registry, sender assignment, reputation monitor, and masked summaries. |
 | Launch controlled campaign | Campaign draft, dry-run, caps, stop rules, suppression, sender assignment. |
 | Handle interested reply | Inbox, classifier, onboarding flow inventory, tracked route. |
 | Handle DNC/complaint | Suppression ledger, incident policy, pending action cancellation. |

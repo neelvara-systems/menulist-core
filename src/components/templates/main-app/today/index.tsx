@@ -9,6 +9,7 @@ import { getStoreContextName } from "@lib/businessIdentity/names";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { shouldShowGrowthOSNavigation } from "@lib/growthos/entitlements";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { resolveStoreBrandColor } from "@lib/menu-kit/brandTokens";
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from "@lib/today/inactiveItemsReminder";
 import { buildTodayWeeklyGrowthPack } from "@lib/today/weeklyGrowthPack";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
@@ -85,6 +86,9 @@ const TodayScreen = () => {
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
     const { activeSubscription, storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
+    const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
+    const storeLogoUrl = (storeDetails as any)?.logo || undefined;
+    const storeName = getStoreContextName(storeDetails as any, "Business");
     const inactiveItemsReminder = useMemo(() => {
         if (!activeProject?.projectId) return null;
         return getInactiveItemsReminder(activeProject as any);
@@ -444,11 +448,20 @@ const TodayScreen = () => {
             {physicalSurfaces?.tentCard?.eligible && (
                 <TentCardSection
                     tentCard={physicalSurfaces.tentCard}
-                    brandName={todayCampaigns.primary?.subject?.itemName}
+                    activePlanType={(storeDetails as any)?.activePlanType}
+                    brandColor={storeBrandColor}
+                    brandName={storeName}
+                    logoUrl={storeLogoUrl}
                 />
             )}
             {physicalSurfaces?.counterSticker?.eligible && (
-                <StickerSection sticker={physicalSurfaces.counterSticker} />
+                <StickerSection
+                    activePlanType={(storeDetails as any)?.activePlanType}
+                    brandColor={storeBrandColor}
+                    brandName={storeName}
+                    logoUrl={storeLogoUrl}
+                    sticker={physicalSurfaces.counterSticker}
+                />
             )}
 
             {/* Operational Campaigns (Passive) */}

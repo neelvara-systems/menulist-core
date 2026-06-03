@@ -163,6 +163,25 @@ Primary implementation files:
 - `functions/src/logic/processMenuImagesJob.ts`
 - `src/lib/extraction/applyChanges.ts`
 
+### Public Menu Entry OBP Defaults
+
+**Updated June 3, 2026** — When `/create-menu` claim converts an owner-bound draft into a real store/project, the claim route also applies first-run OBP defaults from real extracted or owner-confirmed data:
+
+- `publicPresence.descriptor` from resolved business type, except canonical `Other`.
+- `publicPresence.accentColor` from extracted brand color.
+- `publicPresence.whatsappNumber` from the owner-confirmed public phone/WhatsApp number.
+- Call, WhatsApp, Directions, and Feedback visibility defaults are enabled when the matching real data exists.
+- `businessAttributes` is filled from explicit high-confidence extraction suggestions and deterministic menu dietary tags.
+
+This keeps the starter OBP from looking empty while preserving the public truth contract:
+
+- Unpaid, unexpired starter OBPs show inactive placeholders for missing public profile/action slots such as Call, WhatsApp, Directions, Reserve, Order, Reviews, Instagram, Facebook, YouTube, and Website.
+- Sparse unpaid starter OBPs use a compact centered desktop layout instead of the full two-column desktop grid, preventing empty left/right whitespace when the business has not added cover photos, gallery photos, map embed, or menu project images yet.
+- Sparse unpaid starter OBPs may also show inactive Service Options and Payment Options preview tiles. These tiles are visual setup placeholders, not stored `businessAttributes`.
+- Menu CTAs render a deterministic placeholder thumbnail when a project image is missing, so the menu card/CTA stays visually balanced without a Storage upload or generated image.
+- Placeholder controls are presentation-only buttons. They do not write fake store data, do not use MenuList-owned WhatsApp/Instagram/website/social links, and do not navigate outbound.
+- Paid/live stores show only real owner-configured data. Placeholders are removed once `activePlanType` exists or `starterActivationStatus` is `active_paid`.
+
 ---
 
 ## 4. File Structure
@@ -329,7 +348,7 @@ Primary implementation files:
 - Owner-defined custom attributes render after controlled attributes, capped by settings UI, and support the shared category icon/emoji picker on desktop and mobile.
 - OBP photos open an in-page preview on click.
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
-- Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled.
+- Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled. The branding card is omitted for Premium stores through the shared MenuList attribution policy; non-Premium and missing plan data keep it visible.
 - Compliance content can be edited from Official Business Page settings using the existing compliance override API.
 - Business attribute defaults can be filled from high-confidence extraction evidence, but owner-entered `true`/`false` values remain authoritative.
 
@@ -585,15 +604,15 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Rationale:** Store has all needed identity data (logo, name, address, hours, contact). Reading from one collection (cached 60s) keeps cost at 1 read per page view. Tenant is an account container (billing, storesList, outlet locks) — not a rendering source.
 
-**Multi-chain implication:** Master store's OBP serves as the chain-level link. Outlets inherit brand identity (logo, phone, currency, timezone) from master at creation time. No separate tenant-level OBP needed.
+**Multi-chain implication:** Master store's OBP serves as the chain-level link. Outlets inherit master-controlled identity and classification (logo, phone, currency, timezone, default language, `businessType`, `businessCategory`) from master at creation time. No separate tenant-level OBP needed.
 
-### ADR-7: Outlet Brand Identity Inheritance
+### ADR-7: Outlet Master Identity And Classification Inheritance
 
-**Decision:** When creating an outlet, copy `logo`, `phoneNumber`, `currencyCode`, `currencySymbol`, `country`, `timeZone`, `defaultLanguage` from master store.
+**Decision:** When creating an outlet, copy `logo`, `phoneNumber`, `currencyCode`, `currencySymbol`, `country`, `timeZone`, `defaultLanguage`, `businessType`, and `businessCategory` from master store.
 
-**Rationale:** Outlets must render correctly (menus, OBP) without fetching tenant or master store data. Brand identity is static (rarely changes). Location-specific fields (name, address, workingHours) are set by outlet owner later. If master changes logo, propagation to outlets is a separate operation (controlled by `outletPolicy.allowBrandingOverride`).
+**Rationale:** Outlets must render correctly (menus, OBP, schema, labels, filters, time-slot defaults, and owner/public category-specific behavior) without fetching tenant or master store data. Master identity/classification is static or rare. Location-specific fields (name, address, workingHours) are set by outlet owner later. If master changes identity/classification, propagation to outlets is controlled by `outletPolicy.canOverrideBrandIdentity` (legacy `allowBrandingOverride` is also respected for old documents).
 
-**Implementation:** `src/app/api/outlets/create/route.ts` — 7 fields added to outlet store document creation.
+**Implementation:** `src/app/api/outlets/create/route.ts` copies the fields on creation. `src/database/stores/index.tsx` triggers propagation through `src/database/multiOutlet/brandPropagation.ts` after owner saves.
 
 ### ADR-8: SCSS Modules Only for Public OBP Page (No antd, No Framer, No shadcn)
 
@@ -628,17 +647,17 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Why not reuse menu's `aggregateDailyDocs`?** Menu aggregation expects `totalViews`, `totalClicks`, `decisionBlocksRendered`, etc. OBP has completely different fields. Sharing the aggregator would require complex field mapping with no benefit. Separate, clear OBP aggregation is simpler and more maintainable.
 
-### ADR-10: Brand Propagation on Master Save (Client-Side, Not Cloud Function)
+### ADR-10: Master Identity Propagation On Master Save (Client-Side, Not Cloud Function)
 
-**Decision:** Brand propagation runs client-side in Business Settings after `updateStore()` succeeds, not as a Cloud Function.
+**Decision:** Master identity/classification propagation runs from the shared `updateStore()` DAL after the master store save succeeds, not as a Cloud Function.
 
-**Rationale:** Brand changes are rare (logo changes maybe once a year). Running a Cloud Function for this would be over-engineering. The client-side approach: (1) detects brand field changes via `extractBrandChanges()`, (2) propagates to outlets via `propagateBrandToOutlets()`, (3) non-blocking (`.catch(() => {})`). If propagation fails, the next master store save will retry. Controlled by `outletPolicy.allowBrandingOverride` — if true, outlets keep their own branding.
+**Rationale:** Master identity/classification changes are rare. Running a Cloud Function for this would be over-engineering. The client-side DAL approach: (1) detects master-controlled field changes with `extractMasterStorePropagationChanges()`, (2) propagates to outlets with `propagateMasterStoreChangesToOutlets()`, (3) updates outlet store docs, merges outlet `storesSummary` fields through the shared partial summary writer, refreshes `modifiedOn`, and revalidates public cache tags. Controlled by `outletPolicy.canOverrideBrandIdentity` — if true, outlets keep their own branding/classification. Legacy `allowBrandingOverride` is also respected for old documents.
 
 ### ADR-11: Tenant = Account Container, Store = Rendering Source
 
 **Decision:** `TenantDataType` was cleaned up to separate account-level fields from platform-admin-only fields. Store is the single rendering source for all public surfaces (menus, OBP).
 
-**Rationale:** In the current codebase: (1) Logo is uploaded directly to store via Business Settings → `updateStore()`. Tenant `logo` field is never written in normal flow. (2) Onboarding creates tenant with minimal fields (name, email, businessType). (3) Outlet creation copies brand identity from master store, not tenant. Therefore, tenant is purely an account container (tenantId, storesList, outlet locks, billing). All rendering reads from store only. Platform-admin fields (logo, address, contact, locale) kept on tenant type as optional for the internal admin editor (`tenantDetailsModal.tsx`).
+**Rationale:** In the current codebase: (1) Logo is uploaded directly to store via Business Settings → `updateStore()`. Tenant `logo` field is never written in normal flow. (2) Onboarding creates tenant with minimal fields (name, email, businessType). (3) Outlet creation copies master identity/classification from master store, not tenant. Therefore, tenant is purely an account container (tenantId, storesList, outlet locks, billing). All rendering reads from store only. Platform-admin fields (logo, address, contact, locale) kept on tenant type as optional for the internal admin editor (`tenantDetailsModal.tsx`).
 
 **Why not remove tenant identity fields entirely?** The platform admin modal (`tenantDetailsModal.tsx`) uses all fields. Removing them would break the internal admin tool. Making them optional is the correct balance.
 

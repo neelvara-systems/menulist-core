@@ -2,6 +2,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { ECOMSAI_PLATFORM_STORE_ID } from '@constant/user';
 import useAnalyticsData from '@hook/useAnalyticsData';
+import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import DashboardProjectSelector from '@template/main-app/dashboard/OwnerDashboard/DashboardProjectSelector';
 import { Alert, Card, Col, DatePicker, Empty, Row, Space, Spin, Typography } from 'antd';
@@ -18,20 +19,19 @@ const LocationBreakdown = dynamic(() => import('./LocationBreakdown'), { ssr: fa
 const SourceBreakdown = dynamic(() => import('./SourceBreakdown'), { ssr: false, loading: () => <Spin /> });
 const MediumBreakdown = dynamic(() => import('./MediumBreakdown'), { ssr: false, loading: () => <Spin /> });
 const CampaignBreakdown = dynamic(() => import('./CampaignBreakdown'), { ssr: false, loading: () => <Spin /> });
+const ContentBreakdown = dynamic(() => import('./ContentBreakdown'), { ssr: false, loading: () => <Spin /> });
 const CustomerIntentInsights = dynamic(() => import('./CustomerIntentInsights'), { ssr: false, loading: () => <Spin /> });
 // Customer App (PWA) analytics — separate analytics doc (projectId='customerApp').
 const CustomerAppMetrics = dynamic(() => import('./CustomerAppMetrics'), { ssr: false, loading: () => <Spin /> });
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
-const DASHBOARD_PROJECT_STORAGE_KEY = 'menulist_dashboard_project_id';
 
 function AnalyticsDashboard() {
     const t = useTranslations('Dashboard');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        if (typeof window === 'undefined') return null;
-        return window.sessionStorage.getItem(DASHBOARD_PROJECT_STORAGE_KEY);
+        return getStoredOwnerProjectId(storeDetails?.storeId);
     });
     const [dateRange, setDateRange] = useState({
         startDate: dayjs().subtract(7, 'day').format('YYYY-MM-DD'),
@@ -39,12 +39,8 @@ function AnalyticsDashboard() {
     });
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const stored = window.sessionStorage.getItem(DASHBOARD_PROJECT_STORAGE_KEY);
-        if (stored && stored !== selectedProjectId) {
-            setSelectedProjectId(stored);
-        }
-    }, [selectedProjectId]);
+        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId));
+    }, [storeDetails?.storeId]);
 
     const { data, loading, error } = useAnalyticsData(dateRange, selectedProjectId || undefined);
 
@@ -78,9 +74,7 @@ function AnalyticsDashboard() {
                                     selectedProjectId={selectedProjectId}
                                     onProjectChange={(projectId) => {
                                         setSelectedProjectId(projectId);
-                                        if (typeof window !== 'undefined') {
-                                            window.sessionStorage.setItem(DASHBOARD_PROJECT_STORAGE_KEY, projectId);
-                                        }
+                                        setStoredOwnerProjectId(projectId, storeDetails?.storeId);
                                     }}
                                 />
                             </Space>
@@ -143,14 +137,17 @@ function AnalyticsDashboard() {
                         </Row>
 
                         <Row gutter={[16, 16]}>
-                            <Col xs={24} lg={8}>
+                            <Col xs={24} md={12} xl={6}>
                                 <SourceBreakdown data={data} />
                             </Col>
-                            <Col xs={24} lg={8}>
+                            <Col xs={24} md={12} xl={6}>
                                 <MediumBreakdown data={data} />
                             </Col>
-                            <Col xs={24} lg={8}>
+                            <Col xs={24} md={12} xl={6}>
                                 <CampaignBreakdown data={data} />
+                            </Col>
+                            <Col xs={24} md={12} xl={6}>
+                                <ContentBreakdown data={data} />
                             </Col>
                         </Row>
                     </>

@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
-**Last Updated:** May 20, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 | Collection | Type | Purpose |
 |-----------|------|---------|
-| `publicMenuDrafts` | NEW | Temporary drafts from public upload/link-before-auth previews (24h TTL) |
+| `publicMenuDrafts` | NEW | Temporary owner-bound drafts from authenticated upload/link previews (24h TTL) |
 | `projects/{tId}/{sId}/{projectId}` | EXISTING | Final project after claim |
 | `stores` | EXISTING | Store created on claim; starter activation and distribution signal fields live here |
 | `tenants` | EXISTING | Tenant created on claim for new users; starter activation deadline mirrored for new tenants |
@@ -19,23 +19,27 @@
 
 ## 2. Operations Per User Journey
 
-### 2.1 Upload/Link + Extraction (Public, IP Rate-Limited)
+### 2.1 Upload/Link + Extraction (Authenticated, User Rate-Limited)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
+| Check reusable active/same-source owner draft | `publicMenuDrafts` | READ | 0-2 queries, capped at 20 docs/query | POST /api/public/create-menu |
 | Create draft doc | `publicMenuDrafts` | WRITE | 1 | POST /api/public/create-menu |
 | Upload image or link artifact | Firebase Storage | WRITE | 1 | Same API route |
-| Read source artifact | Storage + `publicMenuDrafts` | READ | 1 | Public API route downloads temp source for extraction |
-| Update draft (extraction result) | `publicMenuDrafts` | WRITE | 1 | Public API route writes extraction result |
-| **Subtotal** | | | **2R + 2W + 1 Storage** | |
+| Create extraction job | `menuImageProcessingJobs` | WRITE | 1 | Same API route |
+| Update draft with job id | `publicMenuDrafts` | WRITE | 1 | Same API route |
+| Worker reads source artifact | Storage + `publicMenuDrafts` | READ | 1 | Shared extraction worker |
+| Worker updates draft (extraction result) | `publicMenuDrafts` | WRITE | 1 | Shared extraction worker |
+| **Subtotal (new source)** | | | **2-3R + 3W + 1 job write + 1 Storage** | |
+| **Subtotal (reused source)** | | | **1-2R + 0W + 0 Storage + 0 AI job** | |
 
-For public menu links, the route performs one bounded outbound source acquisition before the Storage write. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. The public source shares the same 3-per-IP-per-day `PUBLIC_MENU_ENTRY` limiter as image upload and is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
+For public menu links, the route performs one bounded outbound source acquisition only after auth, active-draft reuse, same-input dedupe, and the `PUBLIC_MENU_ENTRY_AUTH` user limit. Unsafe protocols, private IPs, unsafe redirects, unsupported content types, login/CAPTCHA-dependent sources, and low-confidence non-menu pages are rejected before draft creation. Link input is additionally gated by `ENABLE_MENU_LINK_IMPORT`.
 
-### 2.2 Preview (Token-Based Polling)
+### 2.2 Preview (Authenticated Owner Polling)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
-| Read draft (by token) | `publicMenuDrafts` | READ | 1-5 | Polling until extraction complete |
+| Read owner-bound draft (by token) | `publicMenuDrafts` | READ | 1-5 | Polling until extraction complete |
 | **Subtotal** | | | **1-5R** | |
 
 ### 2.3 Claim + Publish (Authenticated)
@@ -53,6 +57,10 @@ For public menu links, the route performs one bounded outbound source acquisitio
 | Revalidate public cache | Next.js cache tags | INVALIDATE | 3 tags | `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
 | **Subtotal** | | | **1R + 5-6W + 3 cache tags** | |
 
+The project metadata and `projectsSummary` writes include the resolved `businessType` and `businessCategory`. Low-confidence unknown types resolve to canonical `Other` while preserving the best known category when the draft has one. This mirrors the already-created store truth without adding extra reads, writes, collections, indexes, or Storage operations.
+
+Unpaid starter OBP placeholders are render-time only. They are computed from the already-loaded store document and missing publicPresence/social/service/payment fields, add no extra reads or writes, and never persist fake MenuList-owned links, service modes, payment methods, or placeholder attributes. Compact starter layout and deterministic menu placeholder thumbnails are CSS/React render behavior only.
+
 ### 2.3.1 Payment Webhook Entitlement Sync
 
 When Razorpay confirms a subscription, the webhook updates the same public URL from starter state to paid continuity state.
@@ -67,24 +75,26 @@ When Razorpay confirms a subscription, the webhook updates the same public URL f
 
 The nested `stores.{storeId}` map is required because Cloud Functions and scheduler entitlement checks read `storesSummary.data().stores[storeId]` directly.
 
+Because the same payment entitlement sync revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`, the public OBP cache is purged when the store becomes paid. The paid render path then hides all starter placeholders and shows only real owner-configured links/data.
+
 ### 2.4 Total Per Successful Conversion
 
 | Phase | Reads | Writes | Storage |
 |-------|-------|--------|---------|
-| Upload + Extract | 2 | 2 | 1 upload |
+| Upload + Extract (new source) | 2-3 | 4 | 1 upload |
 | Preview (avg 3 polls) | 3 | 0 | 0 |
-| Claim + Publish | 1 | 6 | 1 delete |
-| **TOTAL** | **6** | **8** | **1 upload** |
+| Claim + Publish | 1 | 6 | 0 |
+| **TOTAL** | **6-7** | **10** | **1 upload** |
 
 ### 2.5 Total Per Abandoned Draft (No Conversion)
 
 | Phase | Reads | Writes | Storage |
 |-------|-------|--------|---------|
-| Upload + Extract | 2 | 2 | 1 upload |
+| Upload + Extract (new source) | 2-3 | 4 | 1 upload |
 | Preview (avg 3 polls) | 3 | 0 | 0 |
 | Nightly cleanup | 1 | 0 | 1 delete |
 | Nightly delete doc | 0 | 1 (delete) | 0 |
-| **TOTAL** | **6** | **3** | **1 upload + 1 delete** |
+| **TOTAL** | **6-7** | **5** | **1 upload + 1 delete** |
 
 ### 2.6 Starter Distribution Activation Signals
 
@@ -145,7 +155,7 @@ Presence confirmations still use `menuPresence`. For starter stores, Presence Mo
 | High | 200 | 60 | ~₹10 | ~₹200 | ~₹210/mo |
 | Max (rate-limited) | 500 | 150 | ~₹25 | ~₹500 | ~₹525/mo |
 
-**Rate limit of 3/IP/day naturally caps cost.** Even at max throughput, monthly cost stays under ₹600 before external AI quota variance.
+**Authenticated rate limit of 5/user/day plus draft reuse caps cost.** Repeated refreshes or re-submits of an active/completed source return the existing draft before creating a new Storage artifact or AI job. Actual max throughput therefore depends on verified owner volume, not anonymous IP churn.
 
 ---
 
@@ -204,13 +214,44 @@ match /publicMenuDrafts/{draftId}/{fileName} {
 ## 7. Cost Safety Guardrails
 
 1. **SAFE_MODE:** Blocks public AI extraction during maintenance or incidents.
-2. **Rate limit:** 3 uploads per IP per 24h — caps daily Gemini calls.
+2. **Rate limit:** 5 new sources per signed-in owner per 24h — caps daily extraction calls without punishing shared networks.
 3. **Claim rate limit:** Authenticated publish attempts are rate-limited through the payment-onboarding bucket.
 4. **Feature flag:** `ENABLE_PUBLIC_MENU_ENTRY` — instant kill switch.
 5. **TTL cleanup:** 24h auto-delete prevents storage accumulation.
 6. **Batch cleanup limit:** Max 100 expired drafts per daily scheduler run.
 7. **Max image size:** 10MB — prevents storage abuse.
-8. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
+8. **Draft reuse/dedupe:** Active pending/processing drafts and same-source completed drafts return the existing preview before new Storage or AI work.
+9. **Public link safety:** Permission confirmation plus SSRF-safe acquisition blocks unsafe hosts, private IPs, unsupported protocols, and unbounded crawling before AI work.
+
+---
+
+## 8. Physical Claim Print Pilot Notes
+
+The current `/create-menu` route can receive print-driven traffic with UTM parameters at no additional Firestore cost beyond the existing Public Menu Entry journey.
+
+Example interim pilot URL:
+
+```text
+/create-menu?utm_source=print&utm_medium=postcard&utm_campaign=pilot
+```
+
+Offer/no-offer print variants can add `utm_content=offer` or `utm_content=no_offer`. Public menu and OBP analytics persist this as a bounded `viewsByContent.{variant}` counter on existing view writes, so there is no additional write operation.
+
+Unsupported in the current implementation:
+
+- `go.menulist.ai` short-link resolver.
+- Server-side scan log writes before `/create-menu`.
+- Merchant/audit prebinding.
+- HMAC-signed physical claim links.
+- Staff PIN validation.
+
+If those are implemented later, this Firebase doc must be updated first with:
+
+- Resolver read/write counts.
+- Scan-log retention and cleanup.
+- Privacy posture for IP/user-agent storage, preferring hashed or bounded security context over raw PII storage.
+- Rate-limit and replay-protection costs.
+- Claim conversion cache invalidation impact.
 
 ---
 

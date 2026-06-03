@@ -252,10 +252,6 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
         );
     }
 
-    if ((loading && !data) || (!overview && !overall)) {
-        return null;
-    }
-
     const modeTitle =
         mode === 'overall'
             ? 'Official Business Page · Overall'
@@ -273,15 +269,24 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
             : mode === 'weekly'
                 ? overview?.wtd || null
                 : mode === 'monthly'
-                    ? overview?.mtd || null
-                    : null;
+                ? overview?.mtd || null
+                : null;
 
-    if (mode === 'overall' && !overall) {
-        return null;
-    }
-
-    if (!['overview', 'overall'].includes(mode) && !selectedMetrics) {
-        return null;
+    if (loading && !data) {
+        return (
+            <Card
+                className={styles.obpCard}
+                variant="borderless"
+                title={
+                    <span>
+                        <LuGlobe size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                        {modeTitle}
+                    </span>
+                }
+            >
+                <Text type="secondary">Loading OBP activity…</Text>
+            </Card>
+        );
     }
 
     return (
@@ -376,34 +381,38 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                 <Empty description={<Text type="secondary">No settled OBP activity yet for this period.</Text>} />
             )}
 
-            {mode === 'overall' && overall ? (
-                <>
-                    <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions, {overall.lifetimeLinkClicks.toLocaleString()} link taps, {overall.lifetimeShares.toLocaleString()} shares
-                        </Text>
-                        {overall.firstDataDate ? (
+            {mode === 'overall' ? (
+                overall ? (
+                    <>
+                        <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                Since {overall.firstDataDate}
+                                Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions, {overall.lifetimeLinkClicks.toLocaleString()} link taps, {overall.lifetimeShares.toLocaleString()} shares
                             </Text>
-                        ) : null}
-                    </Flex>
-                    <div style={{ marginTop: 12 }}>
-                        <ActionBreakdown actions={overall.lifetimeActions} />
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                        <LinkBreakdown links={overall.lifetimeLinks} />
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                        <ShareBreakdown shares={overall.lifetimeShareMethods} />
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                        <SourceBreakdown sources={overall.lifetimeSources} />
-                    </div>
-                    <div style={{ marginTop: 12 }}>
-                        <LanguageBreakdown languages={overall.lifetimeLanguages} />
-                    </div>
-                </>
+                            {overall.firstDataDate ? (
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    Since {overall.firstDataDate}
+                                </Text>
+                            ) : null}
+                        </Flex>
+                        <div style={{ marginTop: 12 }}>
+                            <ActionBreakdown actions={overall.lifetimeActions} />
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                            <LinkBreakdown links={overall.lifetimeLinks} />
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                            <ShareBreakdown shares={overall.lifetimeShareMethods} />
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                            <SourceBreakdown sources={overall.lifetimeSources} />
+                        </div>
+                        <div style={{ marginTop: 12 }}>
+                            <LanguageBreakdown languages={overall.lifetimeLanguages} />
+                        </div>
+                    </>
+                ) : (
+                    <Empty description={<Text type="secondary">No lifetime OBP activity yet.</Text>} />
+                )
             ) : null}
         </Card>
     );

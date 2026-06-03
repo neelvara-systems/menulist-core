@@ -175,7 +175,7 @@ All template fields come from existing store data:
 
 | Field                             | Source                                                                |
 | --------------------------------- | --------------------------------------------------------------------- |
-| `{offering}` / `{offering_title}` | `getOfferingLabels(businessType)` → `offeringLower` / `offeringTitle` |
+| `{offering}` / `{offering_title}` | `getOfferingLabels(businessType, businessCategory)` → `offeringLower` / `offeringTitle` |
 | `{menu_link}`                     | Use MenuList data → `menuLink` or `obpLink`                           |
 | `{address}`                       | Store document → `address` field                                      |
 | `{phone}`                         | Store document → `phone` field                                        |

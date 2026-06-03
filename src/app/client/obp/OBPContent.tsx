@@ -9,6 +9,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { PLATFORM_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
     getStoreByCustomDomain,
@@ -188,6 +189,7 @@ export default async function OBPContent({
     if (isStarterPublicSurfaceExpired(storeData)) {
         return (
             <StarterActivationHoldingPage
+                activePlanType={storeData?.activePlanType || null}
                 storeName={storeData?.name || storeData?.businessName || null}
             />
         );
@@ -198,7 +200,7 @@ export default async function OBPContent({
         if (outletCount > 1) {
             const baseUrl = customDomain
                 ? `https://${customDomain}`
-                : `https://${subdomain}.menulist.ai`;
+                : `https://${subdomain}.${PLATFORM_DOMAIN}`;
             return (
                 <BrandOBPContent
                     store={storeData}

@@ -58,7 +58,7 @@ export const OUTLET_POLICY_CATEGORIES: PolicyCategory[] = [
         description: 'Controls whether outlets can adjust the customer-facing menu design.',
         items: [
             { key: 'canOverrideTheme', label: 'Change colors and fonts', description: 'Outlet teams can adjust menu colors and typography.' },
-            { key: 'canOverrideBrandIdentity', label: 'Change outlet branding', description: 'Outlet teams can change the logo and brand images shown for their outlet.' },
+            { key: 'canOverrideBrandIdentity', label: 'Change outlet branding', description: 'Outlet teams can keep separate outlet branding and business classification.' },
             { key: 'canOverrideLayout', label: 'Change menu layout', description: 'Outlet teams can adjust layout choices for their outlet menu.' },
         ],
     },

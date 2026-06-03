@@ -145,13 +145,6 @@ function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, da
     return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
 }
 
-function logOwnerDashboardDalResponse(label: string, payload: unknown, meta: Record<string, unknown>) {
-    console.log(`[MobileDashboard][DAL] ${label} response`, {
-        ...meta,
-        response: payload,
-    });
-}
-
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const projectId = options?.projectId;
@@ -193,13 +186,6 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             settledCacheKey!,
             async () => {
                 const response = await getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logOwnerDashboardDalResponse('getOwnerDashboardSettled', response, {
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    projectId,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             schedulerCacheKey,
@@ -222,14 +208,6 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             todayCacheKey!,
             async () => {
                 const response = await getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logOwnerDashboardDalResponse('getOwnerDashboardToday', response, {
-                    analyticsDayKey,
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    projectId,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             600000,
@@ -255,14 +233,6 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             dailyCacheKey!,
             async () => {
                 const response = await getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logOwnerDashboardDalResponse('getOwnerDashboardDaily', response, {
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    projectId,
-                    schedulerCacheKey,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             schedulerCacheKey,
@@ -286,14 +256,6 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             weeklyCacheKey!,
             async () => {
                 const response = await getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logOwnerDashboardDalResponse('getOwnerDashboardWeekly', response, {
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    projectId,
-                    schedulerCacheKey,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             schedulerCacheKey,
@@ -317,14 +279,6 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
             monthlyCacheKey!,
             async () => {
                 const response = await getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logOwnerDashboardDalResponse('getOwnerDashboardMonthly', response, {
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    projectId,
-                    schedulerCacheKey,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             schedulerCacheKey,

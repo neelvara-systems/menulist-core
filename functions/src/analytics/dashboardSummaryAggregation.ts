@@ -191,7 +191,11 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         uniqueInstallSessions: 0,
         languageTrackingEnabled: false,
         viewsByItem: {},
+        viewsBySource: {},
+        viewsByMedium: {},
+        viewsByCampaign: {},
         viewsByEntrySource: {},
+        viewsByContent: {},
         menuSessionsBySource: {},
         actionSessionsBySource: {},
         menuActionClicksBySource: {},
@@ -243,7 +247,11 @@ function aggregateDailyDocs(docs: Record<string, any>[]): Record<string, any> {
         result.uniqueInstallSessions += doc.uniqueInstallSessions || 0;
         result.languageTrackingEnabled = Boolean(result.languageTrackingEnabled || doc.languageTrackingEnabled);
         mergeMapField(result.viewsByItem, readAnalyticsMap(doc, 'viewsByItem'));
+        mergeMapField(result.viewsBySource, readAnalyticsMap(doc, 'viewsBySource'));
+        mergeMapField(result.viewsByMedium, readAnalyticsMap(doc, 'viewsByMedium'));
+        mergeMapField(result.viewsByCampaign, readAnalyticsMap(doc, 'viewsByCampaign'));
         mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
+        mergeMapField(result.viewsByContent, readAnalyticsMap(doc, 'viewsByContent'));
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));
         mergeMapField(result.menuActionClicksBySource, readAnalyticsMap(doc, 'menuActionClicksBySource'));
@@ -449,6 +457,19 @@ function sourceQualityEntries(data: Record<string, any> = {}) {
         })
         .filter((entry) => entry.menuSessions > 0 || entry.actionClicks > 0)
         .sort((a, b) => (b.actionSessions - a.actionSessions) || (b.menuSessions - a.menuSessions))
+        .slice(0, 6);
+}
+
+function trafficBreakdownEntries(data: Record<string, any> = {}, field: string) {
+    const values = readAnalyticsMap(data, field);
+    return Object.entries(values)
+        .map(([key, views]) => ({
+            key,
+            label: String(key).replace(/_/g, ' '),
+            views: Number(views) || 0,
+        }))
+        .filter((entry) => entry.views > 0)
+        .sort((a, b) => b.views - a.views)
         .slice(0, 6);
 }
 
@@ -1156,7 +1177,11 @@ function compactAnalyticsDay(date: string, data: Record<string, any>) {
         clicksByDevice: readAnalyticsMap(data, 'clicksByDevice'),
         viewsByLocation: readAnalyticsMap(data, 'viewsByLocation'),
         clicksByLocation: readAnalyticsMap(data, 'clicksByLocation'),
+        viewsBySource: topMap(readAnalyticsMap(data, 'viewsBySource'), DASHBOARD_ITEM_LIMIT),
+        viewsByMedium: topMap(readAnalyticsMap(data, 'viewsByMedium'), DASHBOARD_ITEM_LIMIT),
+        viewsByCampaign: topMap(readAnalyticsMap(data, 'viewsByCampaign'), DASHBOARD_ITEM_LIMIT),
         viewsByEntrySource: topMap(readAnalyticsMap(data, 'viewsByEntrySource'), DASHBOARD_ITEM_LIMIT),
+        viewsByContent: topMap(readAnalyticsMap(data, 'viewsByContent'), DASHBOARD_ITEM_LIMIT),
         menuSessionsBySource: topMap(readAnalyticsMap(data, 'menuSessionsBySource'), DASHBOARD_ITEM_LIMIT),
         actionSessionsBySource: topMap(readAnalyticsMap(data, 'actionSessionsBySource'), DASHBOARD_ITEM_LIMIT),
         menuActionClicksBySource: topMap(readAnalyticsMap(data, 'menuActionClicksBySource'), DASHBOARD_ITEM_LIMIT),
@@ -1297,6 +1322,10 @@ function buildDailyView(data: Record<string, any>, date: string) {
         topZeroResultSearchTerms: topSearchTerms(data.zeroResultSearchTerms),
         unavailableItems: topMapEntries(data.unavailableItemTapsByItem, data.itemNames),
         sourceQuality: sourceQualityEntries(data),
+        utmSources: trafficBreakdownEntries(data, 'viewsBySource'),
+        utmMediums: trafficBreakdownEntries(data, 'viewsByMedium'),
+        utmCampaigns: trafficBreakdownEntries(data, 'viewsByCampaign'),
+        utmContent: trafficBreakdownEntries(data, 'viewsByContent'),
         ownerConfidence: buildOwnerConfidence(data),
         isLowActivity: menuVisits < 20,
         isPartial: false,
@@ -1317,6 +1346,10 @@ function buildPeriodView(aggregated: Record<string, any>) {
         topZeroResultSearchTerms: topSearchTerms(aggregated.zeroResultSearchTerms),
         unavailableItems: topMapEntries(aggregated.unavailableItemTapsByItem, aggregated.itemNames),
         sourceQuality: sourceQualityEntries(aggregated),
+        utmSources: trafficBreakdownEntries(aggregated, 'viewsBySource'),
+        utmMediums: trafficBreakdownEntries(aggregated, 'viewsByMedium'),
+        utmCampaigns: trafficBreakdownEntries(aggregated, 'viewsByCampaign'),
+        utmContent: trafficBreakdownEntries(aggregated, 'viewsByContent'),
         ownerConfidence: buildOwnerConfidence(aggregated),
     };
 }
@@ -1592,12 +1625,20 @@ async function writeMenuDashboardSummary(
             totalUnavailableItemTaps: summary.lifetimeTotalUnavailableItemTaps || 0,
             totalMenuActionClicks: summary.lifetimeTotalMenuActionClicks || 0,
         },
+        blockPerformance: getBlockPerformance(summary),
         topCategories: topCategoryEntries(summary),
         topItems: topMapEntries(summary.clicksByItem, summary.itemNames),
         topLanguages: topLanguageEntries(summary),
         topAttributeFilters: topAttributeFilters(summary),
         menuActions: getMenuActions(summary),
+        topSearchTerms: topSearchTerms(summary.searchTerms),
+        topZeroResultSearchTerms: topSearchTerms(summary.zeroResultSearchTerms),
+        unavailableItems: topMapEntries(summary.unavailableItemTapsByItem, summary.itemNames),
         sourceQuality: sourceQualityEntries(summary),
+        utmSources: trafficBreakdownEntries(summary, 'viewsBySource'),
+        utmMediums: trafficBreakdownEntries(summary, 'viewsByMedium'),
+        utmCampaigns: trafficBreakdownEntries(summary, 'viewsByCampaign'),
+        utmContent: trafficBreakdownEntries(summary, 'viewsByContent'),
         ownerConfidence: buildOwnerConfidence(summary),
         firstDataDate: summary.firstDataDate,
         lastUpdated: summary.modifiedOn || summary.lastUpdated || null,

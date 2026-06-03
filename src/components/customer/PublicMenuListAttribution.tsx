@@ -1,7 +1,9 @@
 import { getPublicBaseUrl } from '@constant/urls';
+import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import type { CSSProperties } from 'react';
 
 interface PublicMenuListAttributionProps {
+    activePlanType?: string | null;
     mode?: 'full' | 'compact';
     surfaceLabel?: string;
     rightsLabel?: string | null;
@@ -55,6 +57,7 @@ function MenuListLogoMark({ height = 12 }: { height?: number }) {
 }
 
 export default function PublicMenuListAttribution({
+    activePlanType,
     mode = 'full',
     surfaceLabel = 'Powered by MenuList',
     rightsLabel = 'All rights reserved',
@@ -63,6 +66,10 @@ export default function PublicMenuListAttribution({
     accentColor = '#111',
     containerStyle,
 }: PublicMenuListAttributionProps) {
+    if (!resolveMenuListAttributionPolicy({ activePlanType }).showAttribution) {
+        return null;
+    }
+
     const isCompact = mode === 'compact';
     const markHeight = isCompact ? 12 : 14;
     const appUrl = getPublicBaseUrl();

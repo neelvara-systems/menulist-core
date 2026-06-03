@@ -12,8 +12,8 @@ function includesBusinessTerm(businessType: string | undefined, terms: string[])
     return terms.some((term) => normalized.includes(term));
 }
 
-function resolveBusinessPresetCategory(businessType?: string): string {
-    const canonicalCategory = resolveBusinessCategory(businessType);
+function resolveBusinessPresetCategory(businessType?: string, businessCategory?: string): string {
+    const canonicalCategory = resolveBusinessCategory(businessType, businessCategory);
     if (canonicalCategory) return canonicalCategory;
 
     // Legacy fallback only for old/free-text stores that predate BUSINESS_TYPES.
@@ -27,8 +27,8 @@ function resolveBusinessPresetCategory(businessType?: string): string {
     return 'default';
 }
 
-export function getRecommendedProjectAIPreferences(businessType?: string): Required<ProjectAIPreferences> {
-    const presetCategory = resolveBusinessPresetCategory(businessType);
+export function getRecommendedProjectAIPreferences(businessType?: string, businessCategory?: string): Required<ProjectAIPreferences> {
+    const presetCategory = resolveBusinessPresetCategory(businessType, businessCategory);
     const isPremium = includesBusinessTerm(businessType, ['luxury', 'jewelry', 'watch', 'spa', 'boutique hotel', 'wedding']);
 
     if (presetCategory === 'food') {
@@ -192,8 +192,8 @@ export const AI_IMAGE_ASPECT_RATIO_OPTIONS = [
     },
 ] as const;
 
-export function getResolvedProjectAIPreferences(projectData?: Project | null, businessType?: string): Required<ProjectAIPreferences> {
-    const recommended = getRecommendedProjectAIPreferences(businessType);
+export function getResolvedProjectAIPreferences(projectData?: Project | null, businessType?: string, businessCategory?: string): Required<ProjectAIPreferences> {
+    const recommended = getRecommendedProjectAIPreferences(businessType, businessCategory);
 
     return {
         description: {
@@ -220,16 +220,16 @@ export function getResolvedProjectAIPreferences(projectData?: Project | null, bu
     };
 }
 
-export function getProjectDescriptionContentLength(projectData?: Project | null, businessType?: string): 'Standard' | 'Detailed' {
-    return getResolvedProjectAIPreferences(projectData, businessType).description.contentLength;
+export function getProjectDescriptionContentLength(projectData?: Project | null, businessType?: string, businessCategory?: string): 'Standard' | 'Detailed' {
+    return getResolvedProjectAIPreferences(projectData, businessType, businessCategory).description.contentLength;
 }
 
-export function getProjectDescriptionTone(projectData?: Project | null, businessType?: string): NonNullable<ProjectAIPreferences['description']>['tone'] {
-    return getResolvedProjectAIPreferences(projectData, businessType).description.tone;
+export function getProjectDescriptionTone(projectData?: Project | null, businessType?: string, businessCategory?: string): NonNullable<ProjectAIPreferences['description']>['tone'] {
+    return getResolvedProjectAIPreferences(projectData, businessType, businessCategory).description.tone;
 }
 
-export function getProjectImagePreferencesSummary(projectData?: Project | null, businessType?: string): { aspectRatio: string; primaryStyle: string } {
-    const resolved = getResolvedProjectAIPreferences(projectData, businessType);
+export function getProjectImagePreferencesSummary(projectData?: Project | null, businessType?: string, businessCategory?: string): { aspectRatio: string; primaryStyle: string } {
+    const resolved = getResolvedProjectAIPreferences(projectData, businessType, businessCategory);
 
     return {
         aspectRatio: resolved.image.aspectRatio,
@@ -279,9 +279,10 @@ export function extractImagePreferencePatch(config: Partial<ImageGenerationConfi
 export function applyProjectImagePreferencesToGenerationConfig(
     config: ImageGenerationConfigType,
     projectData?: Project | null,
-    businessType?: string
+    businessType?: string,
+    businessCategory?: string,
 ): ImageGenerationConfigType {
-    const resolved = getResolvedProjectAIPreferences(projectData, businessType);
+    const resolved = getResolvedProjectAIPreferences(projectData, businessType, businessCategory);
 
     return {
         ...config,

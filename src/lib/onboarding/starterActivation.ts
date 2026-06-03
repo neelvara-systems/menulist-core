@@ -160,6 +160,17 @@ export function shouldRecordStarterActivationSignal(
         && storeDetails?.starterActivationStatus !== STARTER_ACTIVATION_STATUS.ARCHIVED;
 }
 
+export function shouldShowStarterPublicPlaceholders(
+    storeDetails?: Pick<StoreDataType, 'activationDeadline' | 'activePlanType' | 'onboardingSource' | 'starterActivationStatus'> | null,
+    nowMs = Date.now(),
+) {
+    if (!isStarterActivationStore(storeDetails)) return false;
+    if (hasStarterPaidPublicAccess(storeDetails)) return false;
+    if (isStarterActivationExpired(storeDetails, nowMs)) return false;
+    return storeDetails?.starterActivationStatus !== STARTER_ACTIVATION_STATUS.STARTER_EXPIRED
+        && storeDetails?.starterActivationStatus !== STARTER_ACTIVATION_STATUS.ARCHIVED;
+}
+
 export function isStarterActivationExpired(
     storeDetails?: Pick<StoreDataType, 'activationDeadline' | 'onboardingSource'> | null,
     nowMs = Date.now(),

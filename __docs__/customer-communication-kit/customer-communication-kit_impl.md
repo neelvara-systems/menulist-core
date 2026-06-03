@@ -190,7 +190,8 @@ src/config/features.ts           # Modified — add ENABLE_CUSTOMER_COMMUNICATIO
 | Field | Source | Fallback |
 |-------|--------|----------|
 | `storeName` | `storeDetails.name` from PlatformGlobalDataContext | "Your Business" |
-| `businessType` | `storeDetails.businessType` | "Restaurant" |
+| `businessType` | `storeDetails.businessType` | "Other" when exact type is unknown |
+| `businessCategory` | `storeDetails.businessCategory` | Omit when unknown |
 | `menuLink` | Use MenuList data → `menuLink` or `obpLink` | Required — no fallback |
 | `address` | `storeDetails.address` | Omit line |
 | `phone` | `storeDetails.phone` or `storeDetails.contactPhone` | Omit line |

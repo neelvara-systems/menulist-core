@@ -1,6 +1,6 @@
 'use client'
 
-import { BUSINESS_TYPES } from '@constant/common';
+import { BUSINESS_TYPES, resolveStoreBusinessCategory } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -86,6 +86,10 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
     const handleSave = useCallback(async () => {
         if (!storeDetails?.storeId) return;
+        if (!formData.tenantName.trim()) {
+            Toast.show({ content: 'Brand name is required', duration: 1500 });
+            return;
+        }
         if (!formData.name.trim()) {
             Toast.show({ content: t('businessNameRequired'), duration: 1500 });
             return;
@@ -93,9 +97,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
 
         const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
         const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
+        const businessCategory = resolveStoreBusinessCategory(formData.businessType, storeDetails.businessCategory);
         const updates: Record<string, any> = {
             addressLine: formData.addressLine,
             area: formData.area,
+            businessCategory,
             businessType: formData.businessType,
             city: formData.city,
             contactPersonEmail: formData.contactPersonEmail,
@@ -105,8 +111,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             district: formData.district,
             email: formData.email,
             gstn: formData.gstn,
-            name: formData.name,
-            tenantName: formData.tenantName,
+            name: formData.name.trim(),
+            tenantName: formData.tenantName.trim(),
             phoneNumber: formData.phoneNumber,
             postalCode: formData.postalCode,
             state: formData.state,
@@ -134,16 +140,17 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 tenantId: storeDetails.tenantId,
                 ...updates,
             } as any);
-            if (formData.tenantName && formData.tenantName !== tenantDetails?.name && storeDetails?.tenantId) {
+            if (formData.tenantName.trim() && formData.tenantName.trim() !== tenantDetails?.name && storeDetails?.tenantId) {
                 await updateTenant({
-                    name: formData.tenantName,
+                    name: formData.tenantName.trim(),
                     tenantId: storeDetails.tenantId,
                 });
-                setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName }));
+                setTenantDetails((previous: any) => ({ ...(previous || {}), name: formData.tenantName.trim() }));
             }
             setStoreDetails((previous: any) => ({
                 ...previous,
                 ...optimisticUpdates,
+                businessCategory: savedStore?.businessCategory ?? optimisticUpdates.businessCategory ?? previous.businessCategory,
                 logo: savedStore?.logo || previous.logo,
             }));
             if (savedStore?.logo) {
@@ -162,6 +169,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 ...previous,
                 addressLine: storeDetails.addressLine,
                 area: storeDetails.area,
+                businessCategory: storeDetails.businessCategory,
                 city: storeDetails.city,
                 businessType: storeDetails.businessType,
                 contactPersonEmail: storeDetails.contactPersonEmail,

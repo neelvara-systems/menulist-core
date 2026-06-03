@@ -16,7 +16,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { admin, firestoreAdmin } from "../firebaseAdmin";
-import { resolveBusinessCategory } from "../sharedData/businessTypes";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "../sharedData/businessTypes";
 import { createDefaultRoles } from "../sharedData/defaultRoles";
 import { resolveBusinessDayEndTime } from "../utils/businessDay";
 import { computeSchedulerHour } from "../utils/schedulerHour";
@@ -149,8 +149,8 @@ export async function executePublish(
 
   // Determine business type and category
   const finalBusinessType =
-    params.businessType || session.detectedBusinessType || "Restaurant";
-  const finalBusinessCategory = resolveBusinessCategory(finalBusinessType) || "specialty";
+    params.businessType || session.detectedBusinessType || FALLBACK_BUSINESS_TYPE;
+  const finalBusinessCategory = resolveStoreBusinessCategory(finalBusinessType, session.detectedBusinessCategory || undefined);
 
   // Infer country/currency/timezone from phone (uses sharedData/countryData.ts — 252 countries)
   const phoneDisplay = session.providerDisplayId;

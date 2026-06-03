@@ -27,6 +27,24 @@ It is not:
 - an owner onboarding system
 - a replacement for MenuList's public business truth system
 
+## MenuList Production Validation Gate
+
+Growth Engine must not move into aggregator-style public listing outreach until MenuList is proven with real production owners.
+
+Current allowed posture:
+
+- use the WhatsApp Claim/Invite kit only for owners who came through MenuList claim, verification, onboarding, inbound WhatsApp, existing customer, or founder-led consent contexts
+- keep public listing and aggregator-source ideas as blocked planning paths
+- use real MenuList production owner behavior to validate the core product before expanding acquisition infrastructure
+
+Blocked until that gate is met:
+
+- public listing lead aggregation as an execution path
+- cold WhatsApp outreach from public or enriched phone numbers
+- broad source-provider outreach runs
+- treating Google, Instagram, Maps, Foursquare, Apify-like, CSV, or other public/source-provider data as permission to message
+- scaling Growth Engine send infrastructure before MenuList activation, retention, and owner value are proven with real users
+
 ## Repo Strategy Recommendation
 
 Use the same repo as a product-scoped monorepo module, but do not build it inside MenuList root folders and do not clone the MenuList repo.

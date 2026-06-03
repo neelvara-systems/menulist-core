@@ -1,7 +1,7 @@
 # Menu Card Export — Validation Report
 
 **Status:** Production ready after deterministic auto-design and Pro/Premium layout suggestion hardening
-**Validated:** June 2, 2026
+**Validated:** June 3, 2026
 
 ---
 
@@ -29,6 +29,10 @@
 | AI advisor receives deterministic baseline and business profile context | PASS | `src/hooks/useMenuCardExportController.ts:385`, `src/hooks/useMenuCardExportController.ts:388`, `src/lib/validation/apiSchemas.ts:436`, `src/app/api/menu-card-export/design-advisor/prompt.ts:17` |
 | Preflight exists before export | PASS | `src/lib/menu-card-export/preflight/runPrintPreflight.ts:13`, `src/hooks/useMenuCardExportController.ts:322`, `src/hooks/useMenuCardExportController.ts:466`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:315` |
 | PDF generation is client-side | PASS | `src/lib/menu-card-export/render/renderPdf.ts:579` |
+| Legacy `generateMenuPdf()` delegates to premium renderer | PASS | `src/lib/export/menuPdfGenerator.ts` |
+| Use MenuList legacy print copy passes brand/project context | PASS | `src/components/templates/main-app/useMenuList/index.tsx` |
+| Mobile Share legacy print copy passes mobile project/store context | PASS | `src/components/mobile/screens/MobileShareScreen.tsx` |
+| Project Share modal legacy print copy passes store context | PASS | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx`, `src/components/templates/main-app/projects/index.tsx` |
 | PDF source reuses OBP brand color and store logo | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:40`, `src/lib/menu-card-export/source/buildPrintSource.ts:49`, `src/lib/menu-card-export/source/buildPrintSource.ts:116`, `src/lib/menu-card-export/source/buildPrintSource.ts:131` |
 | PDF source resolves business type/category from shared taxonomy | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:1`, `src/lib/menu-card-export/source/buildPrintSource.ts:117`, `src/lib/menu-card-export/source/buildPrintSource.ts:122`, `src/lib/menu-card-export/source/buildPrintSource.ts:134` |
 | Business print profiles cover food, service, retail, professional, and wellness output | PASS | `src/lib/menu-card-export/templates/businessPrintProfiles.ts:3`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:17`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:26`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:35`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:44`, `src/lib/menu-card-export/templates/businessPrintProfiles.ts:53` |
@@ -53,11 +57,11 @@
 | Shared export controller exists | PASS | `src/hooks/useMenuCardExportController.ts:87`, `scripts/verification/verify-menu-card-export.js:63` |
 | Dashboard/mobile output parity is enforced | PASS | `src/hooks/useMenuCardExportController.ts:460`, `src/hooks/useMenuCardExportController.ts:473`, `src/hooks/useMenuCardExportController.ts:475`, `src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx:336`, `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:392`, `scripts/verification/verify-menu-card-export.js:111` |
 | Dedicated mobile Print Menu screen exists | PASS | `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:59`, `scripts/verification/verify-menu-card-export.js:83` |
-| Mobile Share routes to Print Menu | PASS | `src/components/mobile/screens/MobileShareScreen.tsx:461`, `src/components/mobile/screens/MobileShareScreen.tsx:889` |
-| Mobile Menu routes to Print Menu after pending-edit save | PASS | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/screens/MobileMenuScreen.tsx:3954` |
+| Mobile Share opens shell Print Menu without PWA reload | PASS | `src/components/mobile/screens/MobileShareScreen.tsx:461`, `src/components/mobile/screens/MobileShareScreen.tsx:889` |
+| Mobile Menu opens shell Print Menu after pending-edit save without PWA reload | PASS | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/screens/MobileMenuScreen.tsx:3954` |
 | Mobile Menu command sheet exposes Print Menu | PASS | `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` |
-| More > Modules exposes Print Menu beside Dashboard | PASS | `src/components/mobile/screens/MobileMoreScreen.tsx:399`, `src/components/mobile/screens/MobileMoreScreen.tsx:442` |
-| Mobile shell does not absorb Print Menu route | PASS | `src/components/antdComponent/layoutWrapper/index.tsx:45`, `scripts/verification/verify-menu-card-export.js:97` |
+| More > Modules exposes shell Print Menu beside Dashboard without PWA reload | PASS | `src/components/mobile/screens/MobileMoreScreen.tsx:399`, `src/components/mobile/screens/MobileMoreScreen.tsx:442` |
+| Mobile shell maps Print Menu route to `more/printMenu` | PASS | `src/components/mobile/MobileShell.tsx:42`, `scripts/verification/verify-menu-card-export.js:97` |
 | Verification command added | PASS | `package.json:31`, `scripts/verification/verify-menu-card-export.js:299` |
 
 ---
@@ -99,6 +103,7 @@
 | --- | --- |
 | `npm run verify:menu-card-export` | PASS |
 | Static dashboard/mobile output parity guard | PASS |
+| Direct legacy `generateMenuPdf()` wrapper smoke with `ts-node` | PASS |
 | Direct OBP brand/currency source/hash smoke with `ts-node` | PASS |
 | Direct rendered INR price text smoke with `ts-node` | PASS |
 | Direct business-type source/hash smoke with `ts-node` | PASS |
@@ -149,8 +154,8 @@ Freeze hardening completed on June 2, 2026:
 
 - History feature flag now controls the local history UI, matching-export notice, and browser history write path.
 - Print-shop feature flag now hides the packet preset and blocks stale flagged state from creating packets.
-- Mobile shell routing guard keeps the Print Menu route from being replaced by the generic Mobile Share tab, and the route now branches to a dedicated mobile Print Menu screen on handheld devices.
-- Mobile Share, Mobile Menu command sheet, and More > Modules now route through the same Print Menu URL helper.
+- Mobile shell routing maps the Print Menu route and mobile entry points to `more/printMenu`, matching the existing More/settings screen model.
+- Mobile Share, Mobile Menu command sheet, and More > Modules now open the shell Print Menu screen, so the PWA does not force a document reload.
 - Mobile Menu saves pending local edits before opening Print Menu.
 - Dashboard and mobile output buttons now have an automated guard proving both call the same controller output action, with no direct renderer/source/history calls inside either UI surface.
 - Branded output now reuses the store logo and OBP `publicPresence.accentColor`, with logo conversion cached by URL during the route session.

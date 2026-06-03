@@ -11,8 +11,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
+import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuLogIn, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 
@@ -25,6 +26,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export default function CreateMenuClient() {
     const t = useTranslations('Website');
     const router = useRouter();
+    const { status: sessionStatus } = useSession();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [state, setState] = useState<UploadState>('idle');
     const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,13 @@ export default function CreateMenuClient() {
     const [inputMode, setInputMode] = useState<InputMode>('photo');
     const [menuLink, setMenuLink] = useState('');
     const [permissionConfirmed, setPermissionConfirmed] = useState(false);
+    const isAuthenticated = sessionStatus === 'authenticated';
+    const isSessionLoading = sessionStatus === 'loading';
+    const signInPath = `/signin?callbackUrl=${encodeURIComponent('/create-menu')}`;
+
+    const redirectToSignIn = useCallback(() => {
+        router.push(signInPath);
+    }, [router, signInPath]);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {
@@ -41,6 +50,11 @@ export default function CreateMenuClient() {
     }, [preview]);
 
     const handleFileSelect = useCallback(async (file: File) => {
+        if (!isAuthenticated) {
+            redirectToSignIn();
+            return;
+        }
+
         setError(null);
 
         // Validate type
@@ -74,6 +88,11 @@ export default function CreateMenuClient() {
                 body: formData,
             });
 
+            if (response.status === 401) {
+                redirectToSignIn();
+                return;
+            }
+
             if (response.status === 429) {
                 setError(t('CreateMenu.uploadLimit'));
                 setState('error');
@@ -97,7 +116,7 @@ export default function CreateMenuClient() {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [router, t]);
+    }, [isAuthenticated, redirectToSignIn, router, t]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -115,6 +134,10 @@ export default function CreateMenuClient() {
     }, []);
 
     const triggerFileInput = () => {
+        if (!isAuthenticated) {
+            redirectToSignIn();
+            return;
+        }
         fileInputRef.current?.click();
     };
 
@@ -128,6 +151,11 @@ export default function CreateMenuClient() {
 
     const handleLinkSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isAuthenticated) {
+            redirectToSignIn();
+            return;
+        }
+
         const trimmedLink = menuLink.trim();
 
         if (!trimmedLink || !permissionConfirmed) {
@@ -149,6 +177,11 @@ export default function CreateMenuClient() {
                 method: 'POST',
             });
 
+            if (response.status === 401) {
+                redirectToSignIn();
+                return;
+            }
+
             if (response.status === 429) {
                 setError(t('CreateMenu.uploadLimit'));
                 setState('error');
@@ -169,7 +202,7 @@ export default function CreateMenuClient() {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [menuLink, permissionConfirmed, router, t]);
+    }, [isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
 
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
 
@@ -210,208 +243,255 @@ export default function CreateMenuClient() {
                 </p>
             </AnimateOnScroll>
 
-            {/* Input mode */}
-            <AnimateOnScroll delay={0.08}>
-                <div
-                    role="tablist"
-                    aria-label={t('CreateMenu.inputModeLabel')}
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '8px',
-                        width: '100%',
-                        marginBottom: '16px',
-                        padding: '6px',
-                        border: '1px solid var(--ws-border-default)',
-                        borderRadius: 'var(--ws-radius-xl)',
-                        backgroundColor: 'var(--ws-bg-subtle)',
-                    }}
-                >
-                    {([
-                        { icon: LuCamera, label: t('CreateMenu.inputPhotoTab'), mode: 'photo' as const },
-                        { icon: LuLink, label: t('CreateMenu.inputLinkTab'), mode: 'link' as const },
-                    ]).map((item) => {
-                        const Icon = item.icon;
-                        const isActive = inputMode === item.mode;
-                        return (
-                            <button
-                                aria-selected={isActive}
-                                disabled={isProcessing}
-                                key={item.mode}
-                                onClick={() => selectInputMode(item.mode)}
-                                role="tab"
-                                style={{
-                                    alignItems: 'center',
-                                    backgroundColor: isActive ? 'var(--ws-bg-primary)' : 'transparent',
-                                    border: 'none',
-                                    borderRadius: 'var(--ws-radius-lg)',
-                                    boxShadow: isActive ? 'var(--ws-shadow-xs)' : 'none',
-                                    color: isActive ? 'var(--ws-text-primary)' : 'var(--ws-text-secondary)',
-                                    cursor: isProcessing ? 'default' : 'pointer',
-                                    display: 'inline-flex',
-                                    fontSize: '14px',
-                                    fontWeight: 700,
-                                    gap: '8px',
-                                    justifyContent: 'center',
-                                    minHeight: '44px',
-                                    padding: '10px 14px',
-                                    transition: 'all var(--ws-transition-normal)',
-                                }}
-                                type="button"
-                            >
-                                <Icon color={isActive ? 'var(--ws-brand-secondary)' : 'currentColor'} size={17} />
-                                {item.label}
-                            </button>
-                        );
-                    })}
-                </div>
-            </AnimateOnScroll>
-
-            {/* Upload Area */}
-            <AnimateOnScroll delay={0.1}>
-                {inputMode === 'photo' ? (
-                    <div
-                        onClick={!isProcessing ? triggerFileInput : undefined}
-                        onDrop={!isProcessing ? handleDrop : undefined}
-                        onDragOver={handleDragOver}
-                        style={dropZoneStyle({ error: Boolean(error), isProcessing, state })}
-                    >
-                        {/* Hidden file input */}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleInputChange}
-                            style={{ display: 'none' }}
-                        />
-
-                        {/* Preview image background */}
-                        {preview && (
-                            <div style={{
-                                position: 'absolute',
-                                inset: 0,
-                                backgroundImage: `url(${preview})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                opacity: 0.15,
-                                borderRadius: '14px',
-                            }} />
+            {!isAuthenticated ? (
+                <AnimateOnScroll delay={0.08}>
+                    <div style={authGateStyle}>
+                        {isSessionLoading ? (
+                            <LuLoader size={34} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                        ) : (
+                            <LuLogIn size={34} color="var(--ws-brand-secondary)" />
                         )}
-
-                        <UploadStateContent
-                            error={error}
-                            isLinkMode={false}
-                            reset={() => {
-                                setState('idle');
-                                setError(null);
-                                setPreview(null);
-                            }}
-                            state={state}
-                            t={t}
-                        />
-                    </div>
-                ) : (
-                    <form
-                        onSubmit={handleLinkSubmit}
-                        style={{
-                            ...dropZoneStyle({ error: Boolean(error), isProcessing, state }),
-                            alignItems: 'stretch',
-                            cursor: 'default',
-                            minHeight: '260px',
-                            textAlign: 'left',
-                        }}
-                    >
-                        <UploadStateContent
-                            error={error}
-                            isLinkMode
-                            reset={() => {
-                                setState('idle');
-                                setError(null);
-                            }}
-                            state={state}
-                            t={t}
-                        />
-
-                        {state === 'idle' && (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px',
-                                marginTop: '6px',
+                        <div style={{ textAlign: 'center' }}>
+                            <h2 style={{ color: 'var(--ws-text-primary)', fontSize: '19px', fontWeight: 700, margin: '0 0 6px' }}>
+                                {isSessionLoading ? t('CreateMenu.authChecking') : t('CreateMenu.authTitle')}
+                            </h2>
+                            <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
+                                {t('CreateMenu.authHint')}
+                            </p>
+                        </div>
+                        <button
+                            disabled={isSessionLoading}
+                            onClick={redirectToSignIn}
+                            style={{
+                                alignItems: 'center',
+                                backgroundColor: 'var(--ws-cta-default)',
+                                border: 'none',
+                                borderRadius: 'var(--ws-radius-lg)',
+                                color: '#fff',
+                                cursor: isSessionLoading ? 'default' : 'pointer',
+                                display: 'inline-flex',
+                                fontSize: '15px',
+                                fontWeight: 700,
+                                gap: '8px',
+                                justifyContent: 'center',
+                                minHeight: '48px',
+                                opacity: isSessionLoading ? 0.7 : 1,
+                                padding: '12px 18px',
                                 width: '100%',
-                            }}>
+                            }}
+                            type="button"
+                        >
+                            <LuLogIn size={17} />
+                            {t('CreateMenu.authCta')}
+                        </button>
+                    </div>
+                </AnimateOnScroll>
+            ) : (
+                <>
+                    {/* Input mode */}
+                    <AnimateOnScroll delay={0.08}>
+                        <div
+                            role="tablist"
+                            aria-label={t('CreateMenu.inputModeLabel')}
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '8px',
+                                width: '100%',
+                                marginBottom: '16px',
+                                padding: '6px',
+                                border: '1px solid var(--ws-border-default)',
+                                borderRadius: 'var(--ws-radius-xl)',
+                                backgroundColor: 'var(--ws-bg-subtle)',
+                            }}
+                        >
+                            {([
+                                { icon: LuCamera, label: t('CreateMenu.inputPhotoTab'), mode: 'photo' as const },
+                                { icon: LuLink, label: t('CreateMenu.inputLinkTab'), mode: 'link' as const },
+                            ]).map((item) => {
+                                const Icon = item.icon;
+                                const isActive = inputMode === item.mode;
+                                return (
+                                    <button
+                                        aria-selected={isActive}
+                                        disabled={isProcessing}
+                                        key={item.mode}
+                                        onClick={() => selectInputMode(item.mode)}
+                                        role="tab"
+                                        style={{
+                                            alignItems: 'center',
+                                            backgroundColor: isActive ? 'var(--ws-bg-primary)' : 'transparent',
+                                            border: 'none',
+                                            borderRadius: 'var(--ws-radius-lg)',
+                                            boxShadow: isActive ? 'var(--ws-shadow-xs)' : 'none',
+                                            color: isActive ? 'var(--ws-text-primary)' : 'var(--ws-text-secondary)',
+                                            cursor: isProcessing ? 'default' : 'pointer',
+                                            display: 'inline-flex',
+                                            fontSize: '14px',
+                                            fontWeight: 700,
+                                            gap: '8px',
+                                            justifyContent: 'center',
+                                            minHeight: '44px',
+                                            padding: '10px 14px',
+                                            transition: 'all var(--ws-transition-normal)',
+                                        }}
+                                        type="button"
+                                    >
+                                        <Icon color={isActive ? 'var(--ws-brand-secondary)' : 'currentColor'} size={17} />
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </AnimateOnScroll>
+
+                    {/* Upload Area */}
+                    <AnimateOnScroll delay={0.1}>
+                        {inputMode === 'photo' ? (
+                            <div
+                                onClick={!isProcessing ? triggerFileInput : undefined}
+                                onDrop={!isProcessing ? handleDrop : undefined}
+                                onDragOver={handleDragOver}
+                                style={dropZoneStyle({ error: Boolean(error), isProcessing, state })}
+                            >
+                                {/* Hidden file input */}
                                 <input
-                                    aria-label={t('CreateMenu.linkInputLabel')}
-                                    disabled={isProcessing}
-                                    onChange={(e) => {
-                                        setMenuLink(e.target.value);
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={handleInputChange}
+                                    style={{ display: 'none' }}
+                                />
+
+                                {/* Preview image background */}
+                                {preview && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        backgroundImage: `url(${preview})`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                        opacity: 0.15,
+                                        borderRadius: '14px',
+                                    }} />
+                                )}
+
+                                <UploadStateContent
+                                    error={error}
+                                    isLinkMode={false}
+                                    reset={() => {
+                                        setState('idle');
+                                        setError(null);
+                                        setPreview(null);
+                                    }}
+                                    state={state}
+                                    t={t}
+                                />
+                            </div>
+                        ) : (
+                            <form
+                                onSubmit={handleLinkSubmit}
+                                style={{
+                                    ...dropZoneStyle({ error: Boolean(error), isProcessing, state }),
+                                    alignItems: 'stretch',
+                                    cursor: 'default',
+                                    minHeight: '260px',
+                                    textAlign: 'left',
+                                }}
+                            >
+                                <UploadStateContent
+                                    error={error}
+                                    isLinkMode
+                                    reset={() => {
+                                        setState('idle');
                                         setError(null);
                                     }}
-                                    placeholder={t('CreateMenu.linkPlaceholder')}
-                                    style={{
-                                        backgroundColor: 'var(--ws-bg-primary)',
-                                        border: '1px solid var(--ws-border-default)',
-                                        borderRadius: 'var(--ws-radius-lg)',
-                                        boxSizing: 'border-box',
-                                        color: 'var(--ws-text-primary)',
-                                        fontSize: '15px',
-                                        minHeight: '48px',
-                                        outline: 'none',
-                                        padding: '12px 14px',
-                                        width: '100%',
-                                    }}
-                                    type="url"
-                                    value={menuLink}
+                                    state={state}
+                                    t={t}
                                 />
-                                <label style={{
-                                    alignItems: 'flex-start',
-                                    color: 'var(--ws-text-secondary)',
-                                    display: 'flex',
-                                    fontSize: '13px',
-                                    gap: '10px',
-                                    lineHeight: 1.45,
-                                }}>
-                                    <input
-                                        checked={permissionConfirmed}
-                                        disabled={isProcessing}
-                                        onChange={(e) => {
-                                            setPermissionConfirmed(e.target.checked);
-                                            setError(null);
-                                        }}
-                                        style={{ marginTop: '3px' }}
-                                        type="checkbox"
-                                    />
-                                    <span>{t('CreateMenu.linkPermission')}</span>
-                                </label>
-                                <button
-                                    disabled={isProcessing}
-                                    style={{
-                                        alignItems: 'center',
-                                        backgroundColor: 'var(--ws-cta-default)',
-                                        border: 'none',
-                                        borderRadius: 'var(--ws-radius-lg)',
-                                        color: '#fff',
-                                        cursor: isProcessing ? 'default' : 'pointer',
-                                        display: 'inline-flex',
-                                        fontSize: '15px',
-                                        fontWeight: 700,
-                                        gap: '8px',
-                                        justifyContent: 'center',
-                                        minHeight: '48px',
-                                        opacity: isProcessing ? 0.7 : 1,
-                                        padding: '12px 18px',
+
+                                {state === 'idle' && (
+                                    <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '12px',
+                                        marginTop: '6px',
                                         width: '100%',
-                                    }}
-                                    type="submit"
-                                >
-                                    <LuLink size={17} />
-                                    {t('CreateMenu.linkSubmit')}
-                                </button>
-                            </div>
+                                    }}>
+                                        <input
+                                            aria-label={t('CreateMenu.linkInputLabel')}
+                                            disabled={isProcessing}
+                                            onChange={(e) => {
+                                                setMenuLink(e.target.value);
+                                                setError(null);
+                                            }}
+                                            placeholder={t('CreateMenu.linkPlaceholder')}
+                                            style={{
+                                                backgroundColor: 'var(--ws-bg-primary)',
+                                                border: '1px solid var(--ws-border-default)',
+                                                borderRadius: 'var(--ws-radius-lg)',
+                                                boxSizing: 'border-box',
+                                                color: 'var(--ws-text-primary)',
+                                                fontSize: '15px',
+                                                minHeight: '48px',
+                                                outline: 'none',
+                                                padding: '12px 14px',
+                                                width: '100%',
+                                            }}
+                                            type="url"
+                                            value={menuLink}
+                                        />
+                                        <label style={{
+                                            alignItems: 'flex-start',
+                                            color: 'var(--ws-text-secondary)',
+                                            display: 'flex',
+                                            fontSize: '13px',
+                                            gap: '10px',
+                                            lineHeight: 1.45,
+                                        }}>
+                                            <input
+                                                checked={permissionConfirmed}
+                                                disabled={isProcessing}
+                                                onChange={(e) => {
+                                                    setPermissionConfirmed(e.target.checked);
+                                                    setError(null);
+                                                }}
+                                                style={{ marginTop: '3px' }}
+                                                type="checkbox"
+                                            />
+                                            <span>{t('CreateMenu.linkPermission')}</span>
+                                        </label>
+                                        <button
+                                            disabled={isProcessing}
+                                            style={{
+                                                alignItems: 'center',
+                                                backgroundColor: 'var(--ws-cta-default)',
+                                                border: 'none',
+                                                borderRadius: 'var(--ws-radius-lg)',
+                                                color: '#fff',
+                                                cursor: isProcessing ? 'default' : 'pointer',
+                                                display: 'inline-flex',
+                                                fontSize: '15px',
+                                                fontWeight: 700,
+                                                gap: '8px',
+                                                justifyContent: 'center',
+                                                minHeight: '48px',
+                                                opacity: isProcessing ? 0.7 : 1,
+                                                padding: '12px 18px',
+                                                width: '100%',
+                                            }}
+                                            type="submit"
+                                        >
+                                            <LuLink size={17} />
+                                            {t('CreateMenu.linkSubmit')}
+                                        </button>
+                                    </div>
+                                )}
+                            </form>
                         )}
-                    </form>
-                )}
-            </AnimateOnScroll>
+                    </AnimateOnScroll>
+                </>
+            )}
 
             {/* Value props */}
             <AnimateOnScroll delay={0.15}>
@@ -584,6 +664,21 @@ function UploadStateContent({
         </div>
     );
 }
+
+const authGateStyle: React.CSSProperties = {
+    alignItems: 'center',
+    backgroundColor: 'var(--ws-bg-primary)',
+    border: '1px solid var(--ws-border-default)',
+    borderRadius: 'var(--ws-radius-xl)',
+    boxShadow: 'var(--ws-shadow-sm)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px',
+    marginBottom: '4px',
+    minHeight: '240px',
+    padding: '32px 24px',
+    width: '100%',
+};
 
 function dropZoneStyle({
     error,

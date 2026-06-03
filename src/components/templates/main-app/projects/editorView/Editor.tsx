@@ -1335,7 +1335,8 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             </Flex>
 
             <AIDefaultsModal
-                businessType={tenantDetails?.businessType}
+                businessType={storeDetails?.businessType || tenantDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 onClose={() => setIsAIDefaultsOpen(false)}
                 open={isAIDefaultsOpen}
                 projectData={projectData}
@@ -1348,7 +1349,8 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             />
 
             <DescriptionGenerationModal
-                businessType={tenantDetails?.businessType}
+                businessType={storeDetails?.businessType || tenantDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 modalData={isDescModalOpen}
                 onClose={() => setIsDescModalOpen({ active: false })}
                 setFileProcessingId={setFileProcessingId}
@@ -1409,7 +1411,8 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             <DecisionBlocksSettingsModal
                 open={isDecisionBlocksModalOpen}
                 projectData={projectData}
-                businessType={tenantDetails?.businessType}
+                businessType={storeDetails?.businessType || tenantDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 onClose={() => setIsDecisionBlocksModalOpen(false)}
                 onApply={(updatedProject) => {
                     setProjectData(updatedProject);

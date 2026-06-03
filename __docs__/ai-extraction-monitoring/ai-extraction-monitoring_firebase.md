@@ -2,7 +2,7 @@
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** ✅ IMPLEMENTED — dashboard reads are consolidated and bounded
-**Last Updated:** May 11, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -85,10 +85,19 @@ Already exists. Dashboard reads these fields:
 | Field             | Used For                    |
 | ----------------- | --------------------------- |
 | `action`          | Filter for IMAGE_PROCESSING |
+| `jobId`           | Link provider cost row back to `menuImageProcessingJobs/{jobId}` |
+| `tId` / `sId` / `uId` | Tenant, store, and user context for platform drilldown |
+| `jobSource`       | Entry point (`owner_upload`, `public_create_menu`, messaging, link import) |
+| `destinationType` | Destination (`project`, `public_menu_draft`, `messaging_onboarding`) |
+| `destinationId`   | Project, draft, or session id for drilldown |
 | `totalCharge`     | Cost per extraction         |
 | `totalCredits`    | Credits consumed            |
 | `totalTokenCount` | Token usage                 |
-| `createdAt`       | Time-based filtering        |
+| `status` / `success` | Success/failure state for provider attempts |
+| `errorCode` / `retryAfterSeconds` | Failed attempt diagnosis and provider retry window |
+| `createdAt`       | Firestore timestamp for time-based filtering |
+
+Failed extraction attempts are recorded with zero `totalTokenCount`, zero `totalCharge`, and zero `unitsConsumed`. They still count as provider attempts for operational diagnosis, but not as owner credit usage.
 
 ---
 

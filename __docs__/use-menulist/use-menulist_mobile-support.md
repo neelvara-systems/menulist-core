@@ -1,7 +1,7 @@
 # Use MenuList — Mobile Support
 
 > **Version:** 1.2
-> **Last Updated:** May 22, 2026
+> **Last Updated:** June 3, 2026
 
 ## Feature Admission Test
 
@@ -18,7 +18,7 @@
 
 - Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
 - Mobile: dedicated `MobileShareScreen.tsx` is the phone-side output center for the same owner distribution jobs
-- Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, legacy PDF fallback, structured export, Menu Kit generation, and Menu Card Export route entry
+- Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, PDF fallback bridge, structured export, Menu Kit generation, and Menu Card Export route entry
 
 ## Mobile UX Requirements
 
@@ -37,7 +37,7 @@ Mobile covers the owner output actions that previously required desktop:
 - copy/open feedback link
 - show/download Store Menu QR, Business Profile QR, Project Menu QR, and outlet-scoped Store Menu QRs for master owners
 - open Menu Card Export / Print Menu for full PDF or print-shop packet creation
-- download the selected menu PDF only while the legacy fallback remains available
+- download the selected menu PDF through the Menu Card Export renderer bridge when the routed Print Menu feature is not the active path
 - export the selected menu data as XLSX or JSON
 - download the complete Menu Kit ZIP
 - download/share Menu Kit print and social assets: table tent, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
@@ -50,3 +50,7 @@ Mobile covers the owner output actions that previously required desktop:
 - project switching for multi-project stores
 
 Desktop and mobile are now parity for practical owner distribution actions. Desktop may still present some actions with a wider layout or modal preview, but owners should not need a laptop to deploy links, QRs, screen URLs, print files, exports, POS setup details, or staff guides.
+
+## Branded Output Parity
+
+Mobile Share does not use a mobile-only QR or print renderer. Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs, feedback QR, Menu Kit assets, and Print Menu output all reuse the same store logo/color context, the same scan-safe QR panel treatment, and the same Premium-only MenuList attribution removal rule as desktop. This prevents mobile downloads from looking like plain black-and-white copies while desktop output looks premium.

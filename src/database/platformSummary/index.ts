@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { resolveStoreBusinessCategory } from "@constant/common";
 import { collection, getDocs } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -17,7 +18,7 @@ import { deleteField, doc, getDoc, increment, serverTimestamp, setDoc, updateDoc
  * {
  *   lastUpdated: Timestamp,
  *   stores: {
- *     "storeId": { tId: number, businessType: string, active: boolean, name: string, tenantName: string }
+ *     "storeId": { tId: number, businessType: string, active: boolean, name: string, tenantName: string, subdomain?: string }
  *   }
  * }
  * 
@@ -33,6 +34,7 @@ export interface StoreSummaryData {
     tenantBlocked?: boolean;
     name: string;
     tenantName?: string;
+    subdomain?: string;
     isMaster?: boolean;
     outletSlug?: string;
     city?: string;
@@ -171,15 +173,19 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
     return await apiCallComposer(
         async () => {
             const ref = getStoresSummaryDocRef();
+            const businessCategory = resolveStoreBusinessCategory(data.businessType, data.businessCategory);
             const summaryEntry: Record<string, any> = {
                 tId: data.tId,
                 businessType: data.businessType || 'unknown',
-                businessCategory: data.businessCategory || 'specialty',
+                businessCategory,
                 active: data.active ?? true,
                 blocked: data.blocked ?? false,
                 name: data.name || '',
                 tenantName: data.tenantName || '',
             };
+            if (data.subdomain !== undefined) {
+                summaryEntry.subdomain = data.subdomain || '';
+            }
             // Include timeZone for DST-safe runtime scheduling in CF
             if (data.timeZone) {
                 summaryEntry.timeZone = data.timeZone;
@@ -225,6 +231,98 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
         },
         { storeId, data },
         "syncStoreToSummary"
+    );
+}
+
+/**
+ * Merge a partial store summary update without rebuilding the full summary row.
+ * Use for cross-store propagation paths where the changed fields are already known.
+ */
+export const mergeStoreSummaryFields = async (storeId: string | number, data: Partial<StoreSummaryData>) => {
+    return await apiCallComposer(
+        async () => {
+            const ref = getStoresSummaryDocRef();
+            const summaryEntry: Record<string, any> = {};
+
+            if (data.tId !== undefined) {
+                summaryEntry.tId = data.tId;
+            }
+            if (data.businessType !== undefined) {
+                summaryEntry.businessType = data.businessType || 'unknown';
+            }
+            if (data.businessType !== undefined || data.businessCategory !== undefined) {
+                summaryEntry.businessCategory = resolveStoreBusinessCategory(data.businessType, data.businessCategory);
+            }
+            if (data.active !== undefined) {
+                summaryEntry.active = data.active;
+            }
+            if (data.blocked !== undefined) {
+                summaryEntry.blocked = data.blocked;
+            }
+            if (data.tenantBlocked !== undefined) {
+                summaryEntry.tenantBlocked = data.tenantBlocked;
+            }
+            if (data.name !== undefined) {
+                summaryEntry.name = data.name || '';
+            }
+            if (data.tenantName !== undefined) {
+                summaryEntry.tenantName = data.tenantName || '';
+            }
+            if (data.subdomain !== undefined) {
+                summaryEntry.subdomain = data.subdomain || '';
+            }
+            if (data.isMaster !== undefined) {
+                summaryEntry.isMaster = data.isMaster;
+            }
+            if (data.outletSlug !== undefined) {
+                summaryEntry.outletSlug = data.outletSlug;
+            }
+            if (data.city !== undefined) {
+                summaryEntry.city = data.city || '';
+            }
+            if (data.addressLine !== undefined) {
+                summaryEntry.addressLine = data.addressLine || '';
+            }
+            if (data.logo !== undefined) {
+                summaryEntry.logo = data.logo || '';
+            }
+            if (data.workingHours !== undefined) {
+                summaryEntry.workingHours = data.workingHours || {};
+            }
+            if (data.timeZone !== undefined) {
+                summaryEntry.timeZone = data.timeZone || '';
+            }
+            if (data.businessDayEndTime !== undefined) {
+                summaryEntry.businessDayEndTime = data.businessDayEndTime || '';
+            }
+            if (data.schedulerHour !== undefined) {
+                summaryEntry.schedulerHour = data.schedulerHour;
+            }
+            if (data.activePlanType !== undefined) {
+                summaryEntry.activePlanType = data.activePlanType;
+            }
+            if (data.modifiedOn !== undefined) {
+                summaryEntry.modifiedOn = data.modifiedOn;
+            }
+
+            if (Object.keys(summaryEntry).length === 0) {
+                return false;
+            }
+
+            if (summaryEntry.modifiedOn === undefined) {
+                summaryEntry.modifiedOn = serverTimestamp();
+            }
+
+            await setDoc(ref, {
+                lastUpdated: serverTimestamp(),
+                stores: {
+                    [storeId]: summaryEntry,
+                },
+            }, { merge: true });
+            return true;
+        },
+        { storeId, data },
+        "mergeStoreSummaryFields"
     );
 }
 

@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { resolveStoreBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import {
@@ -577,8 +578,11 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                 ? updateLocalizedText(undefined, data.description, projectLanguage, 'en')
                 : toLocalizedText(data.description as any, projectLanguage);
             const resolvedName = resolveProjectSummaryName(localizedName, "Untitled");
+            const businessCategory = (data.businessType || data.businessCategory)
+                ? resolveStoreBusinessCategory(data.businessType, data.businessCategory)
+                : undefined;
             const recommendedDesignPreset = getRecommendedMenuDesignPresets({
-                businessCategory: data.businessCategory,
+                businessCategory,
                 businessType: data.businessType,
             })[0];
             const designPresetPatch = recommendedDesignPreset
@@ -645,6 +649,8 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                 name: localizedName || { [CANONICAL_SOURCE_LANGUAGE]: "Untitled" },
                 ...(localizedDescription != null ? { description: localizedDescription } : {}),
                 ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
+                ...(businessCategory ? { businessCategory } : {}),
+                ...(data.businessType ? { businessType: data.businessType } : {}),
                 active: isActive,
                 isDefault: data.isDefault ?? false,
                 slug: projectSlug,

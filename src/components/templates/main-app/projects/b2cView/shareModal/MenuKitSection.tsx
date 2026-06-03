@@ -29,6 +29,9 @@ interface MenuKitSectionProps {
     logoUrl?: string;
     menuModifiedOn?: Timestamp | null;
     businessType?: string;
+    businessCategory?: string;
+    activePlanType?: string | null;
+    brandColor?: string;
     locale?: string;
 }
 
@@ -39,12 +42,15 @@ export default function MenuKitSection({
     logoUrl,
     menuModifiedOn,
     businessType,
+    businessCategory,
+    activePlanType,
+    brandColor,
     locale,
 }: MenuKitSectionProps) {
     const { token } = theme.useToken();
     const [generating, setGenerating] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
-    const labels = getOfferingLabels(businessType);
+    const labels = getOfferingLabels(businessType, businessCategory);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
@@ -65,8 +71,11 @@ export default function MenuKitSection({
                 menuUrl,
                 shortLink,
                 logoUrl,
+                brandColor,
                 lastPublishedAt: parseTimestamp(menuModifiedOn),
                 businessType,
+                businessCategory,
+                activePlanType,
                 locale,
             });
 
@@ -93,8 +102,11 @@ export default function MenuKitSection({
                 menuUrl,
                 shortLink,
                 logoUrl,
+                brandColor,
                 lastPublishedAt: parseTimestamp(menuModifiedOn),
                 businessType,
+                businessCategory,
+                activePlanType,
                 locale,
             });
             const asset = result.assets[assetIndex];

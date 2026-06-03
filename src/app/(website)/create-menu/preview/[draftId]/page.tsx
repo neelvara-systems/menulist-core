@@ -2,8 +2,8 @@
  * Public Menu Entry — Preview Page
  * 
  * /create-menu/preview/{draftId} — Shows extracted menu preview.
- * Polls for extraction completion, then renders the menu.
- * No authentication required.
+ * Polls for extraction completion, then renders the owner-bound menu draft.
+ * Authentication required.
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md §6.2
  */

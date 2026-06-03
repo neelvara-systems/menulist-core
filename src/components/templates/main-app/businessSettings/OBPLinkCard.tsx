@@ -6,12 +6,14 @@ import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
 import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
+import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, Segmented, Typography, message, theme } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -26,7 +28,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const [showQr, setShowQr] = useState(false);
     const [qrType, setQrType] = useState<'share' | 'menu'>('share');
     const [defaultSlug, setDefaultSlug] = useState<string | undefined>(undefined);
-    const qrRef = useRef<HTMLDivElement>(null);
+    const storeBrandColor = resolveStoreBrandColor(storeDetails as any);
 
     // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): resolve the default
     // project's real canonical slug so the "Menu QR" points at the canonical
@@ -101,17 +103,25 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         window.open(obpOpenUrl, '_blank', 'noopener,noreferrer');
     };
 
-    const handleDownloadQr = () => {
-        const canvas = qrRef.current?.querySelector('canvas');
-        if (!canvas) return;
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url;
+    const handleDownloadQr = async () => {
         const qrName = qrType === 'share'
             ? getBrandName(storeDetails, 'business')
             : getStoreContextName(storeDetails, 'business');
-        a.download = `${qrName}-${qrType}-qr.png`;
-        a.click();
+        try {
+            const dataUrl = await generateBrandedQrCodeDataUrl(activeQrUrl, {
+                brandColor: storeBrandColor,
+                footer: activeQrUrl.replace(/^https?:\/\//, ''),
+                logoUrl: (storeDetails as any)?.logo || undefined,
+                storeName: qrName,
+                subtitle: qrType === 'share' ? 'Scan to open our business page' : 'Scan to open our menu',
+                title: qrType === 'share' ? 'Business Page QR' : 'Menu QR',
+                activePlanType: (storeDetails as any)?.activePlanType,
+            });
+            downloadQrCode(dataUrl, buildQrCodeFilename(`${qrName}-${qrType}`, 'qr'));
+            message.success('QR code downloaded');
+        } catch {
+            message.error('Could not download QR code');
+        }
     };
 
     const activeQrUrl = withAnalyticsSource(qrType === 'menu' ? menuUrl : obpUrl, 'qr');
@@ -196,7 +206,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                             : 'For table tents, dine-in QR codes'
                         }
                     </Text>
-                    <div ref={qrRef}>
+                    <div>
                         <QRCodeCanvas
                             value={activeQrUrl}
                             size={240}

@@ -9,8 +9,8 @@ import { trackMenuKitDownload } from '@lib/analytics/unified';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, shareBlob } from '@lib/menu-kit/menuKitGenerator';
-import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import {
     STARTER_ACTIVATION_SIGNALS,
@@ -134,9 +134,10 @@ interface MobileShareScreenProps {
     onOpenDigitalScreens?: () => void;
     onOpenDesignEditor?: () => void;
     onOpenPosSync?: () => void;
+    onOpenPrintMenu?: () => void;
 }
 
-export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEditor, onOpenPosSync }: MobileShareScreenProps) {
+export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEditor, onOpenPosSync, onOpenPrintMenu }: MobileShareScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
@@ -171,6 +172,10 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
     const storeDisplayName = useMemo(
         () => getStoreContextName(storeDetails as any, t('yourBusiness')),
         [storeDetails, t]
+    );
+    const storeBrandColor = useMemo(
+        () => resolveStoreBrandColor(storeDetails as any),
+        [storeDetails],
     );
     const canManageSharing = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU]);
     const canManageIntegrations = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_INTEGRATIONS]);
@@ -402,6 +407,9 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
         if (!data) return null;
         return {
             businessType: data.businessType,
+            businessCategory: storeDetails?.businessCategory,
+            activePlanType: (storeDetails as any)?.activePlanType,
+            brandColor: storeBrandColor,
             lastPublishedAt: parseTimestamp(data.menuModifiedOn),
             logoUrl: data.storeLogo || undefined,
             menuUrl: data.menuLink,
@@ -416,9 +424,9 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
         setGeneratingDownload('menu_pdf');
         try {
             const projectData = await getSelectedProjectData();
-            const extractedData = (projectData as any)?.extractedData || {};
-            const items = Array.isArray(extractedData.items) ? extractedData.items : [];
-            const categories = Array.isArray(extractedData.categories) ? extractedData.categories : [];
+            const exportData = await getSelectedProjectExportData();
+            const items = exportData.items;
+            const categories = exportData.categories;
 
             if (items.length === 0) {
                 Toast.show({ content: t('noMenuItems'), duration: 1500 });
@@ -427,7 +435,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
             const language =
                 (projectData as any)?.defaultLanguage ||
-                (Array.isArray((projectData as any)?.languages) ? (projectData as any).languages[0] : null) ||
+                exportData.languages[0] ||
                 storeDetails?.defaultLanguage ||
                 storeDetails?.activeLanguages?.[0] ||
                 storeDetails?.language ||
@@ -441,7 +449,19 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 language,
                 menuUrl: data.menuLink,
                 projectName: data.projectName || labels.offeringTitle,
+                projectId: data.projectId || undefined,
+                projectData: projectData as any,
                 showDescriptions: true,
+                storeData: storeDetails as any,
+                logoUrl: data.storeLogo || (storeDetails as any)?.logo || undefined,
+                businessType: (storeDetails as any)?.businessType || data.businessType,
+                businessCategory: (storeDetails as any)?.businessCategory,
+                activePlanType: (storeDetails as any)?.activePlanType,
+                brandColor: (storeDetails as any)?.publicPresence?.accentColor
+                    || (storeDetails as any)?.primaryColor
+                    || (storeDetails as any)?.brandColor
+                    || (storeDetails as any)?.themeColor,
+                currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
                 storeName: data.storeName,
             });
 
@@ -460,7 +480,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
     const handleOpenMenuCardExport = () => {
         if (!data?.projectId) return;
-        window.location.href = buildMenuCardExportUrl(data.projectId);
+        onOpenPrintMenu?.();
     };
 
     const handleStructuredExport = async (type: 'json' | 'xlsx') => {
@@ -541,8 +561,14 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
         setGeneratingDownload('feedback_qr');
         try {
-            const { downloadQrCode, generateFeedbackQrCode } = await import('@lib/utils/feedbackQrCode');
-            const qrDataUrl = await generateFeedbackQrCode(data.projectId, undefined, data.obpLink);
+            const { downloadQrCode, generateBrandedFeedbackQrCode } = await import('@lib/utils/feedbackQrCode');
+            const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId, {
+                brandColor: storeBrandColor,
+                footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
+                logoUrl: data.storeLogo || undefined,
+                storeName: data.storeName,
+                activePlanType: (storeDetails as any)?.activePlanType,
+            }, data.obpLink);
             downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
             Toast.show({ content: t('assetDownloaded', { label: t('feedbackQr') }), duration: 1400, icon: 'success' });
         } catch {
@@ -1012,6 +1038,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                             }))}
                         address={buildStoreAddress(storeDetails)}
                         businessType={data.businessType}
+                        businessCategory={storeDetails?.businessCategory}
                         menuLink={data.menuLink}
                         obpLink={data.obpLink}
                         phone={storeDetails?.phoneNumber || undefined}
@@ -1154,6 +1181,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
             <GuideSheet guide={activeGuideSheet} onClose={() => setActiveGuide(null)} visible={!!activeGuideSheet} />
 
             <MobileQrCodeSheet
+                brandColor={storeBrandColor}
                 copyErrorMessage={t('couldNotCopy')}
                 copySuccessMessage={t('linkCopied')}
                 downloadSuccessMessage={t('qrDownloaded')}
@@ -1161,11 +1189,14 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 generatingLabel={t('generatingQr')}
                 helperText={qrSheet?.helperText}
                 imageAlt={qrSheet?.title || t('showQr')}
+                logoUrl={data.storeLogo || undefined}
                 onClose={() => setIsQrSheetOpen(false)}
                 onDownload={() => recordStarterSignal(qrSheet?.starterSignal)}
                 qrErrorMessage={t('qrFailed')}
+                storeName={data.storeName}
                 title={qrSheet?.title || t('showQr')}
                 url={qrSheet?.url || ''}
+                activePlanType={(storeDetails as any)?.activePlanType}
                 visible={isQrSheetOpen}
             />
         </Flex>

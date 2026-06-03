@@ -33,6 +33,11 @@ import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitB
 import { logger } from "../lib/logger";
 import { checkExpensiveAIRateLimit } from "../lib/rateLimit";
 import * as Sentry from "../lib/sentry";
+import type {
+    ExtractedBusinessProfile,
+    ExtractedBusinessProfileConfidence,
+    ExtractedBusinessProfileSuggestion,
+} from "../sharedData/extractedBusinessProfile";
 import {
     ExtractedMenuData,
     MenuCategory,
@@ -63,6 +68,12 @@ interface UploadedFile {
     mimeType: string;
     name: string;
 }
+
+const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number> = {
+    high: 3,
+    medium: 2,
+    low: 1,
+};
 
 /**
  * Upload a single file to Gemini
@@ -288,6 +299,28 @@ interface TransactionObject {
     totalCredits: number;
     totalCharge: number;
     unitsConsumed: number;
+    jobId?: string;
+    tId?: string | number;
+    sId?: string | number;
+    uId?: string;
+    tenantId?: string | number;
+    storeId?: string | number;
+    userId?: string;
+    jobSource?: string;
+    destinationType?: string;
+    destinationId?: string;
+    jobMode?: string;
+    skipProjectSave?: boolean;
+    status?: 'completed' | 'failed';
+    success?: boolean;
+    billingMode?: 'free' | 'billable' | 'internal' | 'public';
+    errorCode?: string;
+    errorMessage?: string;
+    retryable?: boolean;
+    retryAfterSeconds?: number | null;
+    promptVersion?: string;
+    businessType?: string;
+    businessCategory?: string;
 }
 
 /**
@@ -296,6 +329,9 @@ interface TransactionObject {
 function removeUndefined(obj: any): any {
     if (obj === null || obj === undefined) {
         return null;
+    }
+    if (obj instanceof Date || typeof obj?.toDate === 'function') {
+        return obj;
     }
     if (Array.isArray(obj)) {
         return obj.map(removeUndefined);
@@ -334,6 +370,123 @@ async function addAiOperation(transactionObject: TransactionObject): Promise<str
     }
 }
 
+function truncateForAudit(value: unknown, maxLength: number = 2000): string {
+    const text = typeof value === 'string' ? value : JSON.stringify(value || '');
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function getProcessingErrorCode(error: any): string {
+    const message = String(error?.message || error || '').toLowerCase();
+    if (message.includes('rate limit') || message.includes('quota') || message.includes('resource_exhausted')) return 'RATE_LIMIT';
+    if (message.includes('timeout')) return 'TIMEOUT';
+    if (message.includes('circuit') || message.includes('breaker')) return 'CIRCUIT_BREAKER';
+    if (message.includes('gemini') || message.includes('ai')) return 'AI_ERROR';
+    if (message.includes('upload') || message.includes('file')) return 'FILE_ERROR';
+    return 'INTERNAL_ERROR';
+}
+
+function isRetryableProcessingError(error: any): boolean {
+    const code = getProcessingErrorCode(error);
+    return code === 'RATE_LIMIT' || code === 'TIMEOUT' || code === 'CIRCUIT_BREAKER' || code === 'AI_ERROR';
+}
+
+function extractRetryAfterSeconds(error: any): number | null {
+    const message = String(error?.message || error || '');
+    const retryDelayMatch = message.match(/retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i);
+    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+    const waitSecondsMatch = message.match(/wait\s+(\d+(?:\.\d+)?)\s+seconds/i);
+    const value = retryDelayMatch?.[1] || retryInMatch?.[1] || waitSecondsMatch?.[1];
+    if (!value) return null;
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+}
+
+async function recordFailedAiOperation(params: {
+    requestId: string;
+    files: MenuFileToProcess[];
+    targetLanguages: TargetLanguage[];
+    projectId: string;
+    fileId: string;
+    action: string;
+    processingTime: number;
+    error: any;
+    businessType?: string;
+    businessCategory?: string;
+    auditContext?: ProcessMenuImagesRequest['auditContext'];
+}): Promise<string | null> {
+    const errorCode = getProcessingErrorCode(params.error);
+    const errorMessage = truncateForAudit(params.error?.message || params.error || 'Unknown extraction error');
+    const retryAfterSeconds = extractRetryAfterSeconds(params.error);
+    const transactionObject: TransactionObject = {
+        transactionId: null,
+        files: params.files,
+        targetLanguages: params.targetLanguages,
+        projectId: params.projectId,
+        fileId: params.fileId,
+        action: params.action,
+        clientResponse: {
+            message: 'Menu extraction failed before data could be saved.',
+            data: { languages: [], categories: [], items: [] },
+            qualityScore: 0,
+            qualityDetails: {
+                categoryQuality: 0,
+                itemQuality: 0,
+                priceQuality: 0,
+                descriptionQuality: 0,
+            },
+        },
+        geminiResponse: JSON.stringify({
+            errorCode,
+            errorMessage,
+            retryAfterSeconds,
+        }),
+        generationConfig: GENERATION_CONFIG,
+        model: AI_MODEL,
+        promptTokenCount: 0,
+        candidatesTokenCount: 0,
+        totalTokenCount: 0,
+        processingTime: params.processingTime,
+        tokenPerCredit: TOKENS_PER_CREDIT,
+        chargePerCredit: CHARGE_PER_CREDIT,
+        totalCredits: 0,
+        totalCharge: 0,
+        unitsConsumed: 0,
+        status: 'failed',
+        success: false,
+        billingMode: 'free',
+        errorCode,
+        errorMessage,
+        retryable: isRetryableProcessingError(params.error),
+        retryAfterSeconds,
+        promptVersion: EXTRACTION_PROMPT_VERSION,
+        businessType: params.businessType,
+        businessCategory: params.businessCategory,
+        ...(params.auditContext ? {
+            jobId: params.auditContext.jobId,
+            tId: params.auditContext.tId,
+            sId: params.auditContext.sId,
+            uId: params.auditContext.uId,
+            tenantId: params.auditContext.tId,
+            storeId: params.auditContext.sId,
+            userId: params.auditContext.uId,
+            jobSource: params.auditContext.source,
+            destinationType: params.auditContext.destinationType,
+            destinationId: params.auditContext.destinationId,
+            jobMode: params.auditContext.jobMode,
+            skipProjectSave: params.auditContext.skipProjectSave,
+        } : {}),
+    };
+
+    transactionObject.transactionId = await addAiOperation(transactionObject);
+    logger.info('[processMenuImages] Failure transaction recorded', {
+        requestId: params.requestId,
+        transactionId: transactionObject.transactionId,
+        errorCode,
+        retryAfterSeconds,
+    });
+    return transactionObject.transactionId;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BATCH PROCESSING HELPERS
 // ═══════════════════════════════════════════════════════════════
@@ -368,6 +521,97 @@ function buildExistingCategoriesContext(
         lastCategoryId,
         lastItemId,
     };
+}
+
+function adjustProfileSuggestionSource<T>(
+    suggestion: ExtractedBusinessProfileSuggestion<T> | undefined,
+    sourceFileOffset: number,
+): ExtractedBusinessProfileSuggestion<T> | undefined {
+    if (!suggestion) return undefined;
+    return {
+        ...suggestion,
+        sourceFileIndex: suggestion.sourceFileIndex !== undefined
+            ? suggestion.sourceFileIndex + sourceFileOffset
+            : sourceFileOffset,
+    };
+}
+
+function adjustProfileSourceFileIndexes(
+    profile: ExtractedBusinessProfile | undefined,
+    sourceFileOffset: number,
+): ExtractedBusinessProfile | undefined {
+    if (!profile) return undefined;
+    return {
+        ...(profile.identity ? {
+            identity: {
+                businessName: adjustProfileSuggestionSource(profile.identity.businessName, sourceFileOffset),
+                phoneNumber: adjustProfileSuggestionSource(profile.identity.phoneNumber, sourceFileOffset),
+                addressLine: adjustProfileSuggestionSource(profile.identity.addressLine, sourceFileOffset),
+                businessType: adjustProfileSuggestionSource(profile.identity.businessType, sourceFileOffset),
+                businessCategory: adjustProfileSuggestionSource(profile.identity.businessCategory, sourceFileOffset),
+                currencyCode: adjustProfileSuggestionSource(profile.identity.currencyCode, sourceFileOffset),
+                defaultLanguage: adjustProfileSuggestionSource(profile.identity.defaultLanguage, sourceFileOffset),
+                activeLanguages: adjustProfileSuggestionSource(profile.identity.activeLanguages, sourceFileOffset),
+            },
+        } : {}),
+        ...(profile.visualBrand ? {
+            visualBrand: {
+                brandAccentColor: adjustProfileSuggestionSource(profile.visualBrand.brandAccentColor, sourceFileOffset),
+                imageBackgroundColor: adjustProfileSuggestionSource(profile.visualBrand.imageBackgroundColor, sourceFileOffset),
+            },
+        } : {}),
+        ...(profile.project ? {
+            project: {
+                projectName: adjustProfileSuggestionSource(profile.project.projectName, sourceFileOffset),
+            },
+        } : {}),
+    };
+}
+
+function chooseProfileSuggestion<T>(
+    existing?: ExtractedBusinessProfileSuggestion<T>,
+    incoming?: ExtractedBusinessProfileSuggestion<T>,
+): ExtractedBusinessProfileSuggestion<T> | undefined {
+    if (!existing) return incoming;
+    if (!incoming) return existing;
+    return PROFILE_CONFIDENCE_RANK[incoming.confidence] > PROFILE_CONFIDENCE_RANK[existing.confidence]
+        ? incoming
+        : existing;
+}
+
+function hasProfileSection(value: unknown): boolean {
+    return Boolean(value && typeof value === 'object' && Object.values(value).some(Boolean));
+}
+
+function mergeExtractedBusinessProfiles(
+    existing?: ExtractedBusinessProfile,
+    incoming?: ExtractedBusinessProfile,
+): ExtractedBusinessProfile | undefined {
+    const merged: ExtractedBusinessProfile = {
+        identity: {
+            businessName: chooseProfileSuggestion(existing?.identity?.businessName, incoming?.identity?.businessName),
+            phoneNumber: chooseProfileSuggestion(existing?.identity?.phoneNumber, incoming?.identity?.phoneNumber),
+            addressLine: chooseProfileSuggestion(existing?.identity?.addressLine, incoming?.identity?.addressLine),
+            businessType: chooseProfileSuggestion(existing?.identity?.businessType, incoming?.identity?.businessType),
+            businessCategory: chooseProfileSuggestion(existing?.identity?.businessCategory, incoming?.identity?.businessCategory),
+            currencyCode: chooseProfileSuggestion(existing?.identity?.currencyCode, incoming?.identity?.currencyCode),
+            defaultLanguage: chooseProfileSuggestion(existing?.identity?.defaultLanguage, incoming?.identity?.defaultLanguage),
+            activeLanguages: chooseProfileSuggestion(existing?.identity?.activeLanguages, incoming?.identity?.activeLanguages),
+        },
+        visualBrand: {
+            brandAccentColor: chooseProfileSuggestion(existing?.visualBrand?.brandAccentColor, incoming?.visualBrand?.brandAccentColor),
+            imageBackgroundColor: chooseProfileSuggestion(existing?.visualBrand?.imageBackgroundColor, incoming?.visualBrand?.imageBackgroundColor),
+        },
+        project: {
+            projectName: chooseProfileSuggestion(existing?.project?.projectName, incoming?.project?.projectName),
+        },
+    };
+
+    if (!hasProfileSection(merged.identity)) delete merged.identity;
+    if (!hasProfileSection(merged.visualBrand)) delete merged.visualBrand;
+    if (!hasProfileSection(merged.project)) delete merged.project;
+
+    return hasProfileSection(merged) ? merged : undefined;
 }
 
 /**
@@ -417,6 +661,10 @@ function mergeExtractedData(
             ? suggestion.sourceFileIndex + sourceFileOffset
             : sourceFileOffset,
     }));
+    const adjustedBusinessProfile = adjustProfileSourceFileIndexes(
+        newData.extractedBusinessProfile,
+        sourceFileOffset,
+    );
 
     // Merge categories (avoid duplicates by ID)
     const existingCategoryIds = new Set(accumulated.categories.map(c => String(c.id)));
@@ -433,11 +681,16 @@ function mergeExtractedData(
         ...(accumulated.businessAttributeSuggestions || []),
         ...adjustedBusinessAttributeSuggestions,
     ];
+    const mergedBusinessProfile = mergeExtractedBusinessProfiles(
+        accumulated.extractedBusinessProfile,
+        adjustedBusinessProfile,
+    );
 
     return {
         languages: accumulated.languages.length > 0 ? accumulated.languages : newData.languages,
         categories: [...accumulated.categories, ...uniqueNewCategories],
         items: [...accumulated.items, ...adjustedItems],
+        ...(mergedBusinessProfile ? { extractedBusinessProfile: mergedBusinessProfile } : {}),
         ...(mergedBusinessAttributeSuggestions.length > 0 ? { businessAttributeSuggestions: mergedBusinessAttributeSuggestions } : {}),
         // Only include fileMessages if there are any
         ...(mergedFileMessages.length > 0 ? { fileMessages: mergedFileMessages } : {}),
@@ -646,7 +899,7 @@ export async function processMenuImagesLogic(
     const requestId = generateRequestId();
     const startTime = Date.now();
 
-    const { files, targetLanguages, projectId = 'N/A', fileId = 'N/A', action = 'IMAGE_PROCESSING', businessType, businessCategory } = request;
+    const { files, targetLanguages, projectId = 'N/A', fileId = 'N/A', action = 'IMAGE_PROCESSING', businessType, businessCategory, auditContext } = request;
 
     // Set Sentry context for this processing request
     Sentry.setProcessingContext({
@@ -853,6 +1106,26 @@ export async function processMenuImagesLogic(
             totalCredits: totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT,
             totalCharge: CHARGE_PER_CREDIT * (totalTokenUsage.totalTokenCount / TOKENS_PER_CREDIT),
             unitsConsumed: 0,
+            status: 'completed',
+            success: true,
+            billingMode: 'free',
+            promptVersion: EXTRACTION_PROMPT_VERSION,
+            businessType,
+            businessCategory,
+            ...(auditContext ? {
+                jobId: auditContext.jobId,
+                tId: auditContext.tId,
+                sId: auditContext.sId,
+                uId: auditContext.uId,
+                tenantId: auditContext.tId,
+                storeId: auditContext.sId,
+                userId: auditContext.uId,
+                jobSource: auditContext.source,
+                destinationType: auditContext.destinationType,
+                destinationId: auditContext.destinationId,
+                jobMode: auditContext.jobMode,
+                skipProjectSave: auditContext.skipProjectSave,
+            } : {}),
         };
 
         // Step 7: Add operation to database
@@ -913,6 +1186,9 @@ export async function processMenuImagesLogic(
                 processingTime: transactionObject.processingTime,
                 transactionId: transactionObject.transactionId,
                 recorded: transactionRecorded,
+                promptTokenCount: transactionObject.promptTokenCount,
+                candidatesTokenCount: transactionObject.candidatesTokenCount,
+                totalTokenCount: transactionObject.totalTokenCount,
             },
             // Extraction provenance (P0 hardening)
             provenance: {
@@ -923,11 +1199,35 @@ export async function processMenuImagesLogic(
         };
 
     } catch (error: any) {
+        const processingTime = Date.now() - startTime;
+        try {
+            await recordFailedAiOperation({
+                requestId,
+                files,
+                targetLanguages,
+                projectId,
+                fileId,
+                action,
+                processingTime,
+                error,
+                businessType,
+                businessCategory,
+                auditContext,
+            });
+        } catch (transactionError: any) {
+            logger.error('[processMenuImages] Failed to record failure transaction', {
+                requestId,
+                projectId,
+                fileId,
+                error: transactionError?.message || String(transactionError),
+            });
+        }
+
         logger.error(`[processMenuImages] Request failed`, error, {
             requestId,
             projectId,
             fileId,
-            processingTime: Date.now() - startTime,
+            processingTime,
         });
 
         transaction.finish('error');

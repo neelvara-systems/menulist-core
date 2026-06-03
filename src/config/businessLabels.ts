@@ -69,10 +69,11 @@ const DEFAULT_LABELS: AvailabilityLabels = {
  * Get availability labels for a business type
  * 
  * @param businessType - The store's business type (e.g., "Restaurant", "Salon")
+ * @param businessCategory - Optional broad category when exact type is generic
  * @returns Labels appropriate for that business type
  */
-export function getAvailabilityLabels(businessType?: string): AvailabilityLabels {
-    const category = resolveBusinessCategory(businessType);
+export function getAvailabilityLabels(businessType?: string, businessCategory?: string): AvailabilityLabels {
+    const category = resolveBusinessCategory(businessType, businessCategory);
     if (category && CATEGORY_LABELS[category]) {
         return CATEGORY_LABELS[category];
     }
@@ -83,16 +84,16 @@ export function getAvailabilityLabels(businessType?: string): AvailabilityLabels
  * Get the customer-facing unavailable label
  * Convenience function for use in customer-facing components
  */
-export function getUnavailableLabel(businessType?: string): string {
-    return getAvailabilityLabels(businessType).customerUnavailable;
+export function getUnavailableLabel(businessType?: string, businessCategory?: string): string {
+    return getAvailabilityLabels(businessType, businessCategory).customerUnavailable;
 }
 
 /**
  * Get owner-facing labels for the availability toggle
  * Convenience function for use in editor components
  */
-export function getOwnerLabels(businessType?: string): { available: string; unavailable: string } {
-    const labels = getAvailabilityLabels(businessType);
+export function getOwnerLabels(businessType?: string, businessCategory?: string): { available: string; unavailable: string } {
+    const labels = getAvailabilityLabels(businessType, businessCategory);
     return {
         available: labels.ownerAvailable,
         unavailable: labels.ownerUnavailable,

@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@constant/common";
+import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { secureError } from "@lib/security/secureLogger";
 import crypto from "crypto";
@@ -95,16 +97,27 @@ export async function GET(
       })
       .catch(() => { });
 
+    const extractedProfile = session.extractedBusinessProfile || session.extractedMenuData?.extractedBusinessProfile || null;
+    const resolvedBusinessType = session.detectedBusinessType ||
+      getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
+      FALLBACK_BUSINESS_TYPE;
+    const resolvedBusinessCategory = resolveStoreBusinessCategory(
+      resolvedBusinessType,
+      session.detectedBusinessCategory || getSuggestionValue(extractedProfile?.identity?.businessCategory, "medium"),
+    );
+
     // Return preview data (sanitized — no tokens or internal fields)
     return NextResponse.json({
       sessionId,
       state: session.state,
       businessName:
-        session.extractedBusinessInfo?.businessName || "Your Business",
-      businessType: session.detectedBusinessType || "Restaurant",
-      businessCategory: session.detectedBusinessCategory || "food",
+        session.extractedBusinessInfo?.businessName ||
+        getSuggestionValue(extractedProfile?.identity?.businessName, "medium") ||
+        "Your Business",
+      businessType: resolvedBusinessType,
+      businessCategory: resolvedBusinessCategory,
       phone: session.providerDisplayId || "",
-      address: session.extractedBusinessInfo?.address || "",
+      address: session.extractedBusinessInfo?.address || getSuggestionValue(extractedProfile?.identity?.addressLine, "medium") || "",
       menuData: session.extractedMenuData,
       qualityScore: session.qualityScore,
       publishedResult: session.publishedResult,

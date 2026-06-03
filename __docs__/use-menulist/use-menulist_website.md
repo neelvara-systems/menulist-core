@@ -13,6 +13,6 @@ Copy your menu link, set up digital screens, download print-ready QR codes, and 
 ### Key Points
 - **Share instantly** — Copy your menu link and send it on WhatsApp in 3 seconds
 - **Digital screens** — Show your menu on TVs with one link
-- **Print-ready assets** — Table QR, counter sticker, entrance poster — all generated automatically
+- **Print-ready assets** — Table QR, counter sticker, entrance poster — all generated with your business name, logo, and color
 - **Menu Kit download** — Everything you need in one ZIP file
 - **Print Menu** — Open Menu Card Export when you need a menu PDF or print-shop packet

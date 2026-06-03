@@ -15,7 +15,7 @@
  */
 
 import { getDefaultTimeSlotPresets } from '@config/defaultTimeSlotPresets';
-import { resolveBusinessCategory } from '@constant/common';
+import { resolveStoreBusinessCategory } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
@@ -35,6 +35,9 @@ export interface TenantStoreConfig {
 
     /** Actual business type (e.g. 'Restaurant', 'Salon', 'SaaS') */
     businessType: string;
+
+    /** Explicit broad business category when known from intake or owner selection. */
+    businessCategory?: string;
 
     /** Owner email for tenant + store + default roles */
     email: string;
@@ -84,13 +87,31 @@ export interface TenantStoreResult {
 // Pre-Transaction Helpers
 // ═══════════════════════════════════════════════════════════════
 
+const MIN_SUBDOMAIN_LENGTH = 3;
+const MAX_SUBDOMAIN_LENGTH = 63;
+
+export function normalizeSubdomainCandidate(value: string): string {
+    const candidate = slugify(value).toLowerCase().slice(0, MAX_SUBDOMAIN_LENGTH).replace(/-+$/g, '');
+    return candidate.length >= MIN_SUBDOMAIN_LENGTH ? candidate : '';
+}
+
+function buildFallbackSubdomain(businessName: string, storeId: number): string {
+    const suffix = `-${storeId}`;
+    const maxBaseLength = Math.max(0, MAX_SUBDOMAIN_LENGTH - suffix.length);
+    const base = normalizeSubdomainCandidate(businessName)
+        .slice(0, maxBaseLength)
+        .replace(/-+$/g, '');
+    const fallback = base ? `${base}${suffix}` : `store-${storeId}`;
+    return normalizeSubdomainCandidate(fallback) || `store-${storeId}`;
+}
+
 /**
  * Pre-check subdomain uniqueness BEFORE a Firestore transaction.
  * Firestore transactions cannot do WHERE queries on other collections,
  * so subdomain uniqueness must be checked outside the transaction.
  *
- * Race condition window is tiny (ms) and collision auto-resolves
- * via storeId suffix fallback inside the transaction.
+ * Collisions found by this precheck auto-resolve via storeId suffix fallback
+ * inside the transaction.
  *
  * @returns Pre-checked subdomain string. Empty string if collision detected or invalid input.
  */
@@ -103,7 +124,7 @@ export async function preCheckSubdomain(
         .map((part) => typeof part === 'string' ? part.trim() : '')
         .filter(Boolean)
         .join(' ');
-    const subdomain = slugify(slugSource || businessName);
+    const subdomain = normalizeSubdomainCandidate(slugSource || businessName);
     if (!subdomain || isReservedSubdomain(subdomain)) {
         return '';
     }
@@ -146,6 +167,7 @@ export async function createTenantStoreInTransaction(
     const {
         businessName,
         businessType,
+        businessCategory: explicitBusinessCategory,
         businessIndustry = '',
         timeZone,
         businessDayEndTime,
@@ -200,7 +222,7 @@ export async function createTenantStoreInTransaction(
     const storeName = storeNameOverride || 'Main Store';
     const tenantKey = businessName.toLowerCase().replaceAll(' ', '_');
     const storeKey = storeName.toLowerCase().replaceAll(' ', '_');
-    const businessCategory = resolveBusinessCategory(businessType) || 'specialty';
+    const businessCategory = resolveStoreBusinessCategory(businessType, explicitBusinessCategory);
     const defaultRoles = createDefaultRoles(newStoreId, email || 'system');
     const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime, businessCategory);
     const schedulerHour = computeSchedulerHour(timeZone, resolvedBusinessDayEndTime);
@@ -208,16 +230,15 @@ export async function createTenantStoreInTransaction(
     // 3. Resolve subdomain (if requested)
     let autoSubdomain: string | undefined;
     if (subdomainConfig) {
-        autoSubdomain = subdomainConfig.preChecked || '';
+        autoSubdomain = normalizeSubdomainCandidate(subdomainConfig.preChecked || '');
         if (!autoSubdomain || isReservedSubdomain(autoSubdomain)) {
-            const base = slugify(businessName);
-            autoSubdomain = base ? `${base}-${newStoreId}` : `store-${newStoreId}`;
+            autoSubdomain = buildFallbackSubdomain(businessName, newStoreId);
         }
     }
 
     // 4. Generate time slot presets (if requested)
     const timeSlotPresets = includeTimeSlotPresets
-        ? getDefaultTimeSlotPresets(businessType, newTenantId, newStoreId)
+        ? getDefaultTimeSlotPresets(businessType, newTenantId, newStoreId, businessCategory)
         : undefined;
 
     // 5. Build storesList entry
@@ -292,6 +313,7 @@ export async function createTenantStoreInTransaction(
                     active: true,
                     name: storeName,
                     tenantName: businessName,
+                    ...(autoSubdomain ? { subdomain: autoSubdomain } : {}),
                     isMaster: true,
                     city: storeExtra?.city || '',
                     addressLine: storeExtra?.addressLine || '',

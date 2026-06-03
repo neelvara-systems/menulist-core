@@ -17,6 +17,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { LuChevronLeft } from "react-icons/lu";
 import { notFound } from "next/navigation";
 
@@ -59,6 +60,7 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         // Missing required data (no contact info)
         return (
             <ComplianceShell
+                activePlanType={storeData?.activePlanType}
                 title={titleMap[type] || 'Policy'}
                 businessName={getBrandName(storeData, 'Business')}
             >
@@ -103,6 +105,7 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
 
     return (
         <ComplianceShell
+            activePlanType={storeData?.activePlanType}
             title={title}
             businessName={businessName}
             logoUrl={logoUrl}
@@ -118,18 +121,22 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
 // ── Shell wrapper ──
 
 function ComplianceShell({
+    activePlanType,
     title,
     businessName,
     logoUrl,
     backHref = '/',
     children,
 }: {
+    activePlanType?: string | null;
     title: string;
     businessName: string;
     logoUrl?: string | null;
     backHref?: string;
     children: React.ReactNode;
 }) {
+    const showMenuListAttribution = resolveMenuListAttributionPolicy({ activePlanType }).showAttribution;
+
     return (
         <div style={{
             minHeight: '100dvh',
@@ -242,14 +249,20 @@ function ComplianceShell({
                 {children}
 
                 {/* Footer */}
+                {showMenuListAttribution ? (
                 <footer style={{
                     marginTop: 48,
                     paddingTop: 16,
                     borderTop: '1px solid #eee',
                     textAlign: 'center',
                 }}>
-                    <PublicMenuListAttribution mode="compact" surfaceLabel="Powered by MenuList" />
+                    <PublicMenuListAttribution
+                        activePlanType={activePlanType}
+                        mode="compact"
+                        surfaceLabel="Powered by MenuList"
+                    />
                 </footer>
+                ) : null}
             </div>
         </div>
     );

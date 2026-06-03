@@ -10,17 +10,24 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
-import { createMenuListLogoMarkDataUrl, getMenuListLogoMarkWidth } from '../platformAttribution';
+import {
+    createMenuListLogoMarkDataUrl,
+    getMenuListLogoMarkWidth,
+    MENU_LIST_MENU_ATTRIBUTION_TEXT,
+} from '../platformAttribution';
+import { resolveMenuListAttributionPolicy } from '../../platform/menuListBranding';
 import { MenuKitInput } from '../types';
 
 type PosterInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
 export async function generateEntrancePoster(input: PosterInput): Promise<Blob> {
-    const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, _logo } = input;
-    const labels = getOfferingLabels(businessType);
+    const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, businessCategory, _logo } = input;
+    const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
+    const brand = resolveMenuKitBrandTokens(input.brandColor);
 
     // A4 dimensions in mm
     const W = 210;
@@ -32,23 +39,26 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
         format: [W, H],
     });
 
-    // White background (default)
-    doc.setFillColor(255, 255, 255);
+    // Premium paper background
+    doc.setFillColor(...brand.paperRgb);
     doc.rect(0, 0, W, H, 'F');
 
-    // Subtle border
-    doc.setDrawColor(220, 220, 220);
+    // Brand border
+    doc.setDrawColor(...brand.borderRgb);
     doc.setLineWidth(0.5);
     doc.rect(10, 10, W - 20, H - 20);
+
+    doc.setFillColor(...brand.softAccentRgb);
+    doc.roundedRect(20, 26, W - 40, 42, 4, 4, 'F');
 
     // Heading — "OUR MENU" / "OUR SERVICES" etc.
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(36);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...brand.accentRgb);
     doc.text(`OUR ${labels.offeringUpper}`, W / 2, 50, { align: 'center' });
 
     // Decorative line
-    doc.setDrawColor(0, 0, 0);
+    doc.setDrawColor(...brand.accentRgb);
     doc.setLineWidth(0.8);
     doc.line(W / 2 - 40, 58, W / 2 + 40, 58);
 
@@ -56,29 +66,32 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     const qrDataUrl = await QRCode.toDataURL(menuUrl, {
         width: 800,
         margin: 2,
-        color: { dark: '#000000', light: '#ffffff' },
+        color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
 
     const qrSize = 80;
     const qrX = (W - qrSize) / 2;
     const qrY = 72;
+    doc.setFillColor(...brand.surfaceRgb);
+    doc.setDrawColor(...brand.borderRgb);
+    doc.roundedRect(qrX - 7, qrY - 7, qrSize + 14, qrSize + 14, 4, 4, 'FD');
     doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
 
     // "Scan to view menu" — medium
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(18);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...brand.textRgb);
     doc.text(`Scan to view ${labels.offeringLower}`, W / 2, 168, { align: 'center' });
 
     // "Open camera → point at QR" — instruction line
     doc.setFontSize(12);
-    doc.setTextColor(120, 120, 120);
+    doc.setTextColor(...brand.mutedRgb);
     doc.text('Open camera \u2192 point at QR', W / 2, 180, { align: 'center' });
 
     // Short link fallback
     doc.setFontSize(11);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(...brand.mutedRgb);
     doc.text(`Or open: ${shortLink}`, W / 2, 194, { align: 'center' });
 
     // Logo — centered, above store name (if available)
@@ -96,7 +109,7 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     // Store name — large, centered
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...brand.textRgb);
     doc.text(storeName, W / 2, storeNameY, { align: 'center', maxWidth: W - 40 });
 
     // "Updated on" date — optional footer
@@ -108,25 +121,27 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
         });
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.setTextColor(150, 150, 150);
+        doc.setTextColor(...brand.mutedRgb);
         doc.text(`Updated on: ${dateStr}`, W / 2, 240, { align: 'center' });
     }
 
-    // Bottom branding — subtle
-    const brandText = 'Menu powered by MenuList';
-    const brandLogoH = 3;
-    const brandLogoW = getMenuListLogoMarkWidth(brandLogoH);
-    const brandGap = 1.5;
-    const brandLogo = createMenuListLogoMarkDataUrl();
-    const brandY = H - 18;
+    if (resolveMenuListAttributionPolicy({ activePlanType: input.activePlanType }).showAttribution) {
+        // Bottom branding — subtle
+        const brandText = MENU_LIST_MENU_ATTRIBUTION_TEXT;
+        const brandLogoH = 3;
+        const brandLogoW = getMenuListLogoMarkWidth(brandLogoH);
+        const brandGap = 1.5;
+        const brandLogo = createMenuListLogoMarkDataUrl();
+        const brandY = H - 18;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(180, 180, 180);
-    const brandTextW = doc.getTextWidth(brandText);
-    const brandStartX = W / 2 - (brandLogoW + brandGap + brandTextW) / 2;
-    doc.addImage(brandLogo.dataUrl, 'PNG', brandStartX, brandY - brandLogoH + 0.6, brandLogoW, brandLogoH);
-    doc.text(brandText, brandStartX + brandLogoW + brandGap, brandY);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...brand.borderRgb);
+        const brandTextW = doc.getTextWidth(brandText);
+        const brandStartX = W / 2 - (brandLogoW + brandGap + brandTextW) / 2;
+        doc.addImage(brandLogo.dataUrl, 'PNG', brandStartX, brandY - brandLogoH + 0.6, brandLogoW, brandLogoH);
+        doc.text(brandText, brandStartX + brandLogoW + brandGap, brandY);
+    }
 
     return doc.output('blob');
 }

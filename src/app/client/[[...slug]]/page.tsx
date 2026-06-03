@@ -25,6 +25,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
+import { PLATFORM_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
 import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
@@ -80,6 +81,9 @@ import { Metadata, Viewport } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import CompliancePageContent from "../compliance/CompliancePageContent";
+import OBPContent from "../obp/OBPContent";
+import OBPSkeleton from "../obp/OBPSkeleton";
 import MenuBreadcrumb from "./MenuBreadcrumb";
 import MenuNotFoundFallback from "./MenuNotFoundFallback";
 
@@ -635,7 +639,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const imageUrl = storeData.logo || DEFAULT_PUBLIC_PREVIEW_IMAGE;
 
     // Build canonical URL based on domain type
-    const requestBase = origin || (subdomain ? `https://${subdomain}.menulist.ai` : '');
+    const requestBase = origin || (subdomain ? `https://${subdomain}.${PLATFORM_DOMAIN}` : '');
     const canonicalBase = customDomain
         ? `https://${customDomain}`
         : requestBase;
@@ -1613,7 +1617,7 @@ async function MenuContent({
         && storeData.subdomain
         && storeData.subdomain.toLowerCase() !== subdomain.toLowerCase()
     ) {
-        const canonical = `https://${storeData.subdomain}.menulist.ai${requestedPublicPath}`;
+        const canonical = `https://${storeData.subdomain}.${PLATFORM_DOMAIN}${requestedPublicPath}`;
         redirect(appendPublicLanguageParam(canonical, requestedLanguage));
     }
 
@@ -1689,7 +1693,6 @@ async function MenuContent({
         // skip the BrandOBP selector branch when storeOverride is supplied.
         // masterSubdomain / masterCustomDomain give OBPContent the origin
         // context it needs to build absolute URLs for the outlet surface.
-        const OBPContent = require('../obp/OBPContent').default;
         return (
             <OBPContent
                 storeOverride={storeData}
@@ -1706,6 +1709,7 @@ async function MenuContent({
     if (isStarterPublicSurfaceExpired(storeData)) {
         return (
             <StarterActivationHoldingPage
+                activePlanType={storeData?.activePlanType || null}
                 storeName={getStoreContextName(storeData, '') || masterBrandName || null}
             />
         );
@@ -1766,7 +1770,7 @@ async function MenuContent({
     if (redirectSlug && resolvedSlug && redirectSlug !== resolvedSlug.toLowerCase()) {
         const baseUrl = tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : origin || `https://${subdomain}.menulist.ai`;
+            : origin || `https://${subdomain}.${PLATFORM_DOMAIN}`;
         const outletPrefix = resolvedOutletSlug ? `/${resolvedOutletSlug}` : '';
         redirect(appendPublicLanguageParam(`${baseUrl}${outletPrefix}/${redirectSlug}`, requestedLanguage));
     }
@@ -1807,7 +1811,7 @@ async function MenuContent({
     const baseUrl =
         tenantType === "custom" && customDomain
             ? `https://${customDomain}`
-            : origin || `https://${subdomain}.menulist.ai`;
+            : origin || `https://${subdomain}.${PLATFORM_DOMAIN}`;
 
     // Add slug to canonical if not default project.
     // G-05 / R5 Layer 2 canonical (§9 + §8 PUBLIC-ROUTING-DOCTRINE):
@@ -1967,7 +1971,6 @@ export default function ClientMenuPage({ params, searchParams }: PageProps) {
     // Compliance pages: /privacy, /terms, /refund — static compliance artifacts
     // @see __docs__/compliance-pages/compliance-pages_impl.md
     if (FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && (slug === 'privacy' || slug === 'terms' || slug === 'refund')) {
-        const CompliancePageContent = require('../compliance/CompliancePageContent').default;
         return (
             <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#fafafa' }} />}>
                 <CompliancePageContent
@@ -1980,8 +1983,6 @@ export default function ClientMenuPage({ params, searchParams }: PageProps) {
 
     // OBP: When enabled and no slug → show Official Business Page
     if (FEATURE_FLAGS.ENABLE_OBP && !slug) {
-        const OBPContent = require('../obp/OBPContent').default;
-        const OBPSkeleton = require('../obp/OBPSkeleton').default;
         return (
             <Suspense fallback={<OBPSkeleton />}>
                 <OBPContent requestedLanguage={requestedLanguage} />

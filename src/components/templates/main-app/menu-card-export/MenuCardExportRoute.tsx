@@ -1,7 +1,5 @@
 'use client';
 
-import MobileMenuCardExportScreen from '@/components/mobile/menu-card-export/MobileMenuCardExportScreen';
-import useDeviceType from '@hook/useDeviceType';
 import useMenuCardExportController, {
     resolveMenuCardProjectName,
     type MenuCardExportNotice,
@@ -18,20 +16,6 @@ import styles from './menu-card-export.module.scss';
 const { Paragraph, Text, Title } = Typography;
 
 export default function MenuCardExportRoute() {
-    const { hasMounted, isHandheld } = useDeviceType();
-
-    if (!hasMounted) {
-        return (
-            <div className={styles.route}>
-                <Skeleton active paragraph={{ rows: 6 }} />
-            </div>
-        );
-    }
-
-    if (hasMounted && isHandheld) {
-        return <MobileMenuCardExportScreen />;
-    }
-
     return <DesktopMenuCardExportRoute />;
 }
 

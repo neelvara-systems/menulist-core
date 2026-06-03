@@ -65,7 +65,10 @@ Hard rules:
 30. No WhatsApp API send without message-governance audit, consent proof, suppression check, approved template or open service window, sender health, pacing, webhook readiness, and reputation check.
 31. No WhatsApp opt-in from public phone availability, source import, Google Places data, Foursquare data, or third-party enrichment.
 32. No raw WhatsApp webhook payload in Firestore beyond compact normalized event fields and Storage refs.
-33. No implementation handoff without Firestore rules and index expectations reviewed against [Implementation Readiness](./growth-engine_implementation-readiness.md).
+33. No WhatsApp Claim/Invite experiment from public listing provenance without explicit consent events.
+34. No experiment dashboard reading raw phone numbers, raw reply text, or raw webhook payloads.
+35. No automatic experiment winner selection while delivery, opt-out, complaint, sender-quality, template-quality, cost, or consent thresholds are breached.
+36. No implementation handoff without Firestore rules and index expectations reviewed against [Implementation Readiness](./growth-engine_implementation-readiness.md).
 
 ## 4. Hot Collections
 
@@ -95,6 +98,8 @@ Hard rules:
 | `growthEngineWhatsAppSenderIdentities` | WABA/phone identity, quality, allowed use cases, and pause/block state | Small policy list |
 | `growthEngineWhatsAppReputationSnapshots` | Sender/template quality, delivery, read, reply, opt-out, complaint, and decision summaries | Small summary docs |
 | `growthEngineMessageGovernanceAudits` | Pre-send consent, suppression, template, conversation, sender, pacing, and reputation decision | Target/campaign detail only |
+| `growthEngineMessageExperimentSummaries` | Claim/Invite variant counters, stop-rule state, winner eligibility, cost, and safety decisions | Small campaign summary docs |
+| `growthEngineMessageExperimentAssignments` | Target/contact variant assignment, consent proof ref, template ref, link token, and masked contact state | Campaign/target detail only |
 | `growthEngineOnboardingFlowInventory` | Approved MenuList route bridge flows | Small policy list |
 | `growthEngineProviderRegister` | Approved providers, costs, retention, webhooks | Small policy list |
 | `growthEngineGooglePlacesSourceRuns` | Google Places query plan, field mask, SKU estimate, and run state | Admin/source detail only |
@@ -345,6 +350,7 @@ Default first-run posture:
 | WhatsApp provider | Assisted-only until opt-in proof, approved templates, conversation-state engine, webhook signature verification, sender identity health, reputation monitor, pacing policy, and governance audit exist. API costs stay disabled until policy review. |
 | WhatsApp templates | Block pending, rejected, paused, disabled, wrong-category, or low-quality templates from unattended sends. |
 | WhatsApp reputation | Pause or reduce sends when delivery, read, reply, opt-out, complaint, template quality, or sender quality moves outside policy. |
+| WhatsApp Claim/Invite experiments | Use summary counters, masked assignment detail, hard stop rules, and consent proof refs. Do not scan raw message events to choose a winner. |
 | WhatsApp Flows | Store Flow definitions as policy objects; write Flow submissions only after schema validation and approved field filtering. |
 | AI provider | Cache typed outputs by source hash and prompt version; block duplicate spend on unchanged inputs. |
 | Enrichment waterfall | Require approved provider order, stop condition, source-policy match, and per-step cost cap before running. |

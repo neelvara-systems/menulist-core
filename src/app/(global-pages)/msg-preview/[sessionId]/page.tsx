@@ -99,7 +99,7 @@ export default function MsgPreviewPage() {
       const data: PreviewData = await res.json();
       setPreview(data);
       setBusinessName(data.businessName);
-      setBusinessType(data.businessType || "Restaurant");
+      setBusinessType(data.businessType || "Other");
       setAddress(data.address || "");
 
       if (data.state === "LIVE" && data.publishedResult) {

@@ -21,6 +21,7 @@ import { useFormatter } from 'next-intl';
 import React from 'react';
 import { LuInfo } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
+import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import MetricCard from './MetricCard';
 import styles from './OwnerDashboard.module.scss';
 
@@ -151,48 +152,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 </Col>
             </Row>
 
-            {(data.menuActions || data.topCategories?.length || data.topLanguages?.length || data.topAttributeFilters?.length || data.topSearchTerms?.length || data.topZeroResultSearchTerms?.length || data.unavailableItems?.length || (metrics.zeroResultSearches || 0) > 0) && (
-                <Card className={styles.detailCard} variant="borderless">
-                    {data.topCategories?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            Top category: {data.topCategories.map((category) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}
-                        </Text>
-                    ) : null}
-                    {data.topLanguages?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            Top languages: {data.topLanguages.map((language) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}
-                        </Text>
-                    ) : null}
-                    {data.topAttributeFilters?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            Top filters: {data.topAttributeFilters.map((filter) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}
-                        </Text>
-                    ) : null}
-                    {data.menuActions ? (
-                        <Text type="secondary">
-                            Customer actions: Call {data.menuActions.call}, WhatsApp {data.menuActions.whatsapp}, Directions {data.menuActions.directions}, Reserve {data.menuActions.reserve}, Order {data.menuActions.order}
-                        </Text>
-                    ) : null}
-                    {data.topSearchTerms?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            Top searches: {data.topSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
-                        </Text>
-                    ) : null}
-                    <Text style={{ display: 'block', marginTop: 8 }}>
-                        No-result searches: {metrics.zeroResultSearches || 0}
-                    </Text>
-                    {data.topZeroResultSearchTerms?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            No-result terms: {data.topZeroResultSearchTerms.map((term) => `${term.term} (${term.count})`).join(', ')}
-                        </Text>
-                    ) : null}
-                    {data.unavailableItems?.length ? (
-                        <Text style={{ display: 'block', marginTop: 8 }}>
-                            Unavailable interest: {data.unavailableItems.map((item) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}
-                        </Text>
-                    ) : null}
-                </Card>
-            )}
+            <MenuAnalyticsDetailsCard data={data} />
         </div>
     );
 };

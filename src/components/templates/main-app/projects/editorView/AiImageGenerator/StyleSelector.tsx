@@ -1,5 +1,6 @@
 import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import useDeviceType from '@hook/useDeviceType';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Flex, Modal, Tag, Typography, theme } from 'antd';
@@ -16,6 +17,7 @@ export interface StyleSelectorProps {
   open: boolean;
   setShowStyleSelector: (show: boolean) => void;
   businessType?: string;
+  businessCategory?: string;
 }
 
 interface StyleOption {
@@ -42,24 +44,40 @@ const STYLE_RECOMMENDATIONS: Record<string, { bestFor: string; recommended: stri
   'Soft Focus': { bestFor: 'Gentle, calm, premium visuals', recommended: ['Spa', 'Salon', 'Wedding Planner'] },
 };
 
-const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCategory, onChange, open, setShowStyleSelector, businessType }) => {
+const CATEGORY_STYLE_RECOMMENDATIONS: Record<string, string[]> = {
+  creative: ['Natural Light', 'Macro Photography', 'Watercolor'],
+  food: ['Natural Light', 'Food Photography', 'Top-Down / Flat Lay', 'Shallow Depth of Field / Bokeh'],
+  health: ['Natural Light', 'Shallow Depth of Field / Bokeh', 'Cinematic Lighting'],
+  professional: ['Natural Light', 'Minimalist'],
+  retail: ['Studio Lighting', 'Product Photography', 'Minimalist'],
+  service: ['Natural Light', 'Shallow Depth of Field / Bokeh', 'Soft Focus'],
+  specialty: ['Natural Light', 'Minimalist'],
+};
+
+const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCategory, onChange, open, setShowStyleSelector, businessType, businessCategory }) => {
   const { token } = theme.useToken();
   const { isMobile } = useDeviceType();
   const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
   const effectiveBusinessType = businessType || storeDetails?.businessType;
+  const effectiveBusinessCategory = resolveBusinessCategory(effectiveBusinessType, businessCategory || storeDetails?.businessCategory);
   const [localCategory, setLocalCategory] = React.useState<string>(stylesCategory);
   const [localSelectedStyles, setLocalSelectedStyles] = React.useState<string[]>(selectedStyles || []);
   const [hasAutoSelected, setHasAutoSelected] = React.useState(false);
 
   const isRecommendedForBusiness = (styleName: string): boolean => {
     const rec = STYLE_RECOMMENDATIONS[styleName];
-    if (!rec || !effectiveBusinessType) return false;
-    return rec.recommended.some(b => effectiveBusinessType?.toLowerCase().includes(b.toLowerCase()));
+    const typeMatch = rec && effectiveBusinessType
+      ? rec.recommended.some(b => effectiveBusinessType?.toLowerCase().includes(b.toLowerCase()))
+      : false;
+    const categoryMatch = effectiveBusinessCategory
+      ? CATEGORY_STYLE_RECOMMENDATIONS[effectiveBusinessCategory]?.includes(styleName)
+      : false;
+    return Boolean(typeMatch || categoryMatch);
   };
 
   const recommendedStyles = useMemo(() => {
     return Object.keys(STYLE_RECOMMENDATIONS).filter(isRecommendedForBusiness);
-  }, [effectiveBusinessType]);
+  }, [effectiveBusinessType, effectiveBusinessCategory]);
 
   // UX-07: Auto-select first recommended style if none selected
   useEffect(() => {

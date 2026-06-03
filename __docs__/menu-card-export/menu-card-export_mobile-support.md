@@ -2,7 +2,7 @@
 
 **Status:** Production-ready route entry with dedicated mobile Print Menu screen
 **Route:** `/use-menulist/menu-card-export`
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -29,21 +29,22 @@ Mobile should expose the route as `Print menu` or `Create menu PDF` in owner-fac
 
 ## Existing Mobile Baseline
 
-Mobile Share already has a PDF action:
+Mobile Share already has a PDF action. That action is now either a shell entry into Print Menu or, if the feature flag is off, a compatibility call into the same branded Menu Card Export renderer:
 
 - It reads selected project data through the mobile project cache: `src/components/mobile/screens/MobileShareScreen.tsx:341`.
-- It calls `generateMenuPdf()` and `downloadPdf()`: `src/components/mobile/screens/MobileShareScreen.tsx:435`.
+- Its legacy `generateMenuPdf()` call passes `projectData`, `storeData`, logo, business category, brand color, currency, and `activePlanType` context into the shared renderer bridge.
 - It exposes the action under Print & downloads: `src/components/mobile/screens/MobileShareScreen.tsx:889`.
 
 The new route must preserve this parity and improve it with preview, settings, and export history.
 
 Implemented behavior:
 
-- Mobile Share opens `/use-menulist/menu-card-export?projectId=...` when the feature flag is enabled.
-- Mobile Menu command sheet exposes `Print Menu` and saves pending local edits before opening the route: `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/components/MobileMenuCommandSheet.tsx:185`.
-- More > Modules exposes `Print Menu` beside Dashboard for owners who look for tools from More; the analytics dashboard screen stays metric-only: `src/components/mobile/screens/MobileMoreScreen.tsx:442`.
-- The main owner layout treats `/use-menulist/menu-card-export` as a handheld shell-bypass route, so the route can render the dedicated mobile Print Menu screen instead of falling back into the generic Mobile Share tab.
-- The mobile screen uses `MobileMenuCardExportScreen` and the shared `useMenuCardExportController`, so mobile has its own UI without a separate DAL or export system.
+- Mobile Share opens `Print Menu` by asking `MobileShell` to switch to `more/printMenu` when the feature flag is enabled.
+- Mobile Share flag-off quick PDF output uses the same branded renderer bridge, not a separate plain mobile PDF.
+- Mobile Menu command sheet exposes `Print Menu`, saves pending local edits, updates the shared mobile selected-project state, then asks `MobileShell` to switch to `more/printMenu`: `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/components/MobileMenuCommandSheet.tsx:185`.
+- More > Modules exposes `Print Menu` beside Dashboard and opens it as a More sub-screen for owners who look for tools from More; the analytics dashboard screen stays metric-only: `src/components/mobile/screens/MobileMoreScreen.tsx:442`.
+- The main owner layout maps `/use-menulist/menu-card-export` into `MobileShell` as `more/printMenu` on handheld devices; it does not use a special route-level mobile bypass.
+- The mobile screen uses `MobileMenuCardExportScreen`, `MobileProjectsProvider`, and the shared `useMenuCardExportController`, so mobile has its own UI while sharing selected-project state and export logic.
 - Multi-menu stores use the same shared project selector pattern as other owner/mobile project surfaces.
 - The route gates preview/export by the loaded project id so a project switch cannot mix old menu data with the newly selected menu URL.
 - The shared controller auto-picks a business-aware starting layout, density, and safe toggles from the current menu before any owner action or AI call.
@@ -93,6 +94,7 @@ Mobile uses:
 - Same template registry.
 - Same device-local export history model.
 - Same artifact download flow.
+- Same legacy PDF compatibility bridge for flag-off direct-download paths.
 - Same `createArtifact` controller action for dashboard and mobile outputs.
 - Same Pro/Premium layout suggestion API.
 - Same preflight engine.
@@ -147,3 +149,4 @@ Avoid:
 | Performance | Style browsing does not generate server PDFs. |
 | Parity | Dashboard and mobile call the same controller output action and create the same PDF/packet for the same project, preset, style, density, toggles, and source hash. |
 | Edited menu | Opening Print Menu from the mobile Menu command sheet waits for pending menu saves before route navigation. |
+| PWA navigation | Mobile Share, Mobile Menu, and More open `more/printMenu` inside `MobileShell`, so the app does not reload like a full page navigation. |

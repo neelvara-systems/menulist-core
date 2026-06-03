@@ -1722,6 +1722,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 </Flex>
             </Popup>
             <MobileQrCodeSheet
+                activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}
                 downloadSuccessMessage={tShare('qrDownloaded')}

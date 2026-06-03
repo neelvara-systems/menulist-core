@@ -16,6 +16,7 @@ import { formatClockTime } from '@util/dateTime';
 export interface MessageTemplateInput {
     storeName: string;
     businessType: string;
+    businessCategory?: string;
     menuLink: string;
     obpLink?: string;
     projectName?: string;
@@ -42,7 +43,7 @@ export interface MessageTemplate {
  * Quick Reply is first — most frequently used by SMB owners.
  */
 export function generateMessageTemplates(input: MessageTemplateInput): MessageTemplate[] {
-    const labels = getOfferingLabels(input.businessType);
+    const labels = getOfferingLabels(input.businessType, input.businessCategory);
     const templates: MessageTemplate[] = [];
     const offeringReference = getOfferingReference(labels.offeringLower, input.projectName);
     const offeringTitleReference = getOfferingReference(labels.offeringTitle, input.projectName);

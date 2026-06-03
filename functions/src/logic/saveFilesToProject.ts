@@ -14,6 +14,8 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from "../firebaseAdmin";
+import type { ExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
+import { getSuggestionValue } from '../sharedData/extractedBusinessProfile';
 import { ExtractedData, ExtractedDataItem, autoMergeItems } from "./redistributeUtils";
 
 const PROJECTS_COLLECTION = DB_COLLECTIONS.PROJECTS;
@@ -111,6 +113,75 @@ function getDetectedDefaultLanguage(detectedLanguages: LanguageInput[] = []): st
     return firstLanguage ? String(firstLanguage).trim().toLowerCase() : CANONICAL_SOURCE_LANGUAGE;
 }
 
+function resolvePlainText(value: unknown): string {
+    if (typeof value === 'string') return value.replace(/\s+/g, ' ').trim();
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const textMap = value as Record<string, unknown>;
+        const preferred = textMap.en || textMap[Object.keys(textMap)[0]];
+        return resolvePlainText(preferred);
+    }
+    return '';
+}
+
+function isGenericProjectName(value: unknown): boolean {
+    const normalized = resolvePlainText(value).toLowerCase();
+    if (!normalized) return true;
+    return [
+        'menu',
+        'digital menu',
+        'default menu',
+        'main menu',
+        'my menu',
+        'untitled',
+        'untitled menu',
+        'project',
+    ].includes(normalized);
+}
+
+function buildExtractedProfileProjectDefaults(
+    existingProject: any,
+    profile?: ExtractedBusinessProfile,
+): Record<string, any> {
+    if (!profile) return {};
+
+    const updateData: Record<string, any> = {};
+    const accentColor = getSuggestionValue(profile.visualBrand?.brandAccentColor, 'medium');
+    const imageBackgroundColor = getSuggestionValue(profile.visualBrand?.imageBackgroundColor, 'medium');
+    const projectName = getSuggestionValue(profile.project?.projectName, 'high');
+
+    if (accentColor && !existingProject?.config?.design?.brand?.accentColor) {
+        updateData.config = {
+            ...(updateData.config || {}),
+            design: {
+                ...(updateData.config?.design || {}),
+                brand: {
+                    ...(updateData.config?.design?.brand || {}),
+                    accentColor,
+                },
+            },
+        };
+    }
+
+    if (imageBackgroundColor && !existingProject?.aiPreferences?.image?.backgroundColor) {
+        updateData.aiPreferences = {
+            ...(updateData.aiPreferences || {}),
+            image: {
+                ...(updateData.aiPreferences?.image || {}),
+                backgroundColor: imageBackgroundColor,
+            },
+        };
+    }
+
+    if (projectName && isGenericProjectName(existingProject?.name)) {
+        updateData.name = projectName;
+        if (isGenericProjectName(existingProject?.description)) {
+            updateData.description = projectName;
+        }
+    }
+
+    return updateData;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -149,7 +220,8 @@ export async function saveFilesToProject(
     jobFiles: JobFileInput[],
     languages: LanguageInput[],
     enableAutoMerge: boolean = true,
-    _existingProjectData?: any // Ignored — transaction always reads fresh data for safety
+    _existingProjectData?: any, // Ignored — transaction always reads fresh data for safety
+    extractedBusinessProfile?: ExtractedBusinessProfile,
 ): Promise<MergeStats> {
     const logger = functions.logger;
 
@@ -273,6 +345,7 @@ export async function saveFilesToProject(
                 files: [...existingFiles, ...newFiles],
                 languages: mergedLanguages,
                 defaultLanguage: resolvedDefaultLanguage,
+                ...buildExtractedProfileProjectDefaults(existingProject, extractedBusinessProfile),
             };
 
             // 6b. Document size safety guard (Firestore 1MB limit)

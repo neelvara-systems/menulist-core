@@ -122,7 +122,7 @@ export const DEFAULT_OUTLET_POLICY: OutletPolicy = {
   canGenerateDescriptions: true, // Outlets CAN generate descriptions
   canGenerateImages: false, // Outlets CANNOT generate images
   canOverrideTheme: false, // Outlets CANNOT customize theme
-  canOverrideBrandIdentity: false, // Outlets CANNOT change branding
+  canOverrideBrandIdentity: false, // Outlets CANNOT change brand identity or business classification
   canOverrideLayout: false, // Outlets CANNOT modify layout
   canAddLanguages: true, // Outlets CAN add languages
 };

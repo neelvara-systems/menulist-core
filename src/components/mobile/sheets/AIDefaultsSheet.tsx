@@ -9,7 +9,7 @@ import type { Project, ProjectAIImagePreferences } from '../../templates/main-ap
 import AspectRatioSelector from '../../templates/main-app/projects/editorView/AiImageGenerator/AspectRatioSelector';
 import MultiSelectAttributeSelector from '../../templates/main-app/projects/editorView/AiImageGenerator/MultiSelectAttributeSelector';
 import StyleSelector from '../../templates/main-app/projects/editorView/AiImageGenerator/StyleSelector';
-import { IMAGE_VIEW_TYPES } from '../../templates/main-app/projects/editorView/AiImageGenerator/imageViewType';
+import { getImageViewTypeForBusiness } from '../../templates/main-app/projects/editorView/AiImageGenerator/imageViewType';
 import { DESCRIPTION_TONE_OPTIONS, type DescriptionTone } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { Button, Card, Flex, NavBar, Popup, Switch, Text, TextArea } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
@@ -18,6 +18,7 @@ type DescriptionContentLength = 'Standard' | 'Detailed';
 
 interface AIDefaultsSheetProps {
     businessType?: string;
+    businessCategory?: string;
     onClose: () => void;
     onSaved: (updatedProject: Project) => void;
     projectData: Project;
@@ -41,13 +42,6 @@ const DESCRIPTION_OPTIONS: Array<{
     },
 ];
 
-function getImageDefaults(businessType?: string) {
-    const normalizedBusinessType = businessType?.trim().toLowerCase();
-    return IMAGE_VIEW_TYPES.find((type) => type.businessType?.trim().toLowerCase() === normalizedBusinessType)
-        || IMAGE_VIEW_TYPES.find((type) => type.businessType === 'Restaurant')
-        || IMAGE_VIEW_TYPES[0];
-}
-
 function normalizeMenuItemImagePreferences(preferences: ProjectAIImagePreferences): ProjectAIImagePreferences {
     return {
         ...preferences,
@@ -57,6 +51,7 @@ function normalizeMenuItemImagePreferences(preferences: ProjectAIImagePreference
 
 export default function AIDefaultsSheet({
     businessType,
+    businessCategory,
     onClose,
     onSaved,
     projectData,
@@ -67,9 +62,9 @@ export default function AIDefaultsSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
-    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType), [businessType, projectData]);
-    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType), [businessType]);
-    const imageDefaults = useMemo(() => getImageDefaults(businessType), [businessType]);
+    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType, businessCategory), [businessType, businessCategory, projectData]);
+    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType, businessCategory), [businessType, businessCategory]);
+    const imageDefaults = useMemo(() => getImageViewTypeForBusiness(businessType, businessCategory), [businessType, businessCategory]);
     const [descriptionLength, setDescriptionLength] = useState<DescriptionContentLength>(resolvedPreferences.description.contentLength);
     const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(resolvedPreferences.description.tone);
     const [imagePreferences, setImagePreferences] = useState<ProjectAIImagePreferences>(() => normalizeMenuItemImagePreferences(resolvedPreferences.image));
@@ -77,11 +72,11 @@ export default function AIDefaultsSheet({
 
     useEffect(() => {
         if (!visible) return;
-        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType);
+        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType, businessCategory);
         setDescriptionLength(nextResolved.description.contentLength);
         setDescriptionTone(nextResolved.description.tone);
         setImagePreferences(normalizeMenuItemImagePreferences(nextResolved.image));
-    }, [businessType, projectData, visible]);
+    }, [businessType, businessCategory, projectData, visible]);
 
     const hasChanges = useMemo(() => {
         const currentState = JSON.stringify({
@@ -546,6 +541,7 @@ export default function AIDefaultsSheet({
 
             <StyleSelector
                 businessType={businessType}
+                businessCategory={businessCategory}
                 onChange={(styles, stylesCategory) => setImagePreferences((current) => ({ ...current, styles, stylesCategory }))}
                 open={isStyleSelectorOpen}
                 selectedStyles={imagePreferences.styles || []}

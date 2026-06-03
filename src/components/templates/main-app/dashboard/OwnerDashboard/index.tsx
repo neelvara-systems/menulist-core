@@ -22,6 +22,7 @@
 
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
+import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -30,6 +31,7 @@ import React, { useCallback, useContext, useEffect, useState } from 'react';
 import DailyView from './DailyView';
 import { DashboardProjectSelector } from './DashboardProjectSelector';
 import LoadingState from './LoadingState';
+import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import MenuQualitySignals from '../MenuQualitySignals';
 import MonthlyView from './MonthlyView';
 import OverallFooter from './OverallFooter';
@@ -43,7 +45,6 @@ import OBPMetricsCard from './OBPMetricsCard';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
-const DASHBOARD_PROJECT_STORAGE_KEY = 'menulist_dashboard_project_id';
 const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 
 const OwnerDashboard: React.FC = () => {
@@ -56,8 +57,7 @@ const OwnerDashboard: React.FC = () => {
 
     // Project selection state — seed with fallback so dashboard can start fetching immediately
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        if (typeof window === 'undefined') return null;
-        return window.sessionStorage.getItem(DASHBOARD_PROJECT_STORAGE_KEY);
+        return getStoredOwnerProjectId(storeDetails?.storeId);
     });
     const [showHistorical, setShowHistorical] = useState(false);
 
@@ -66,18 +66,22 @@ const OwnerDashboard: React.FC = () => {
 
     const handleProjectChange = useCallback((projectId: string, _projectName: string) => {
         setSelectedProjectId(projectId);
-    }, []);
+        setStoredOwnerProjectId(projectId, storeDetails?.storeId);
+    }, [storeDetails?.storeId]);
 
     const handleProjectSelectorReady = useCallback(() => {
         // no-op — we no longer block on selector ready
     }, []);
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (activeProjectId) {
-            window.sessionStorage.setItem(DASHBOARD_PROJECT_STORAGE_KEY, activeProjectId);
+        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId));
+    }, [storeDetails?.storeId]);
+
+    useEffect(() => {
+        if (selectedProjectId) {
+            setStoredOwnerProjectId(selectedProjectId, storeDetails?.storeId);
         }
-    }, [activeProjectId]);
+    }, [selectedProjectId, storeDetails?.storeId]);
 
     const {
         data,
@@ -151,6 +155,7 @@ const OwnerDashboard: React.FC = () => {
                                 />
                             </div>
                         </Flex>
+                        <MenuAnalyticsDetailsCard data={data?.today || null} />
                     </Space>
                 );
             case 'overview':
@@ -178,7 +183,7 @@ const OwnerDashboard: React.FC = () => {
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         <Title level={4} style={{ margin: 0 }}>Yesterday</Title>
                         <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
-                        {data?.daily ? <DailyView data={data.daily} /> : null}
+                        <DailyView data={data?.daily || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}
@@ -193,7 +198,7 @@ const OwnerDashboard: React.FC = () => {
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         <Title level={4} style={{ margin: 0 }}>Last 7 Days</Title>
                         <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
-                        {data?.weekly ? <WeeklyView data={data.weekly} /> : null}
+                        <WeeklyView data={data?.weekly || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}
@@ -208,7 +213,7 @@ const OwnerDashboard: React.FC = () => {
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         <Title level={4} style={{ margin: 0 }}>This Month</Title>
                         <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
-                        {data?.monthly ? <MonthlyView data={data.monthly} /> : null}
+                        <MonthlyView data={data?.monthly || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}
@@ -224,6 +229,7 @@ const OwnerDashboard: React.FC = () => {
                         <Title level={4} style={{ margin: 0 }}>Overall</Title>
                         <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
                         {data?.overall ? <OverallFooter data={data.overall} /> : null}
+                        <MenuAnalyticsDetailsCard data={data?.overall || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}

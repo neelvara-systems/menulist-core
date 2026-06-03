@@ -58,7 +58,7 @@ Based on the \`businessType\`, suggest only low-risk metadata fields that help c
 Never infer or return \`allergens\`, \`nutritionInfo\`, \`materials\`, \`warranty\`, \`skillLevel\`, or \`targetAudience\`. Those fields require owner verification or are too easy to become stale.
 
 *   **Food businesses** (Restaurant, Cafe, Bakery, etc.): Optionally include:
-    - \`dietaryTags\`: array of strings from ["vegetarian","vegan","gluten-free","halal","kosher","keto","dairy-free","organic"] — include only when strongly implied by the item name/description (e.g., "Veg Biryani" → ["vegetarian"])
+    - \`dietaryTags\`: array of strings from ["vegetarian","non-vegetarian","vegan","gluten-free","halal","kosher","keto","dairy-free","organic"] — include only when the item name/description explicitly says a dietary label or accepted abbreviation (e.g., "Veg Biryani" → ["vegetarian"], "Non-Veg Platter" → ["non-vegetarian"], "GF Brownie" → ["gluten-free"]); do not infer from ingredients alone
     - \`spiceLevel\`: one of "none","mild","medium","hot","very-hot" — include only when explicit or obvious from item wording
 
 *   **Service businesses** (Salon, Spa, Cleaning, etc.): Optionally include:

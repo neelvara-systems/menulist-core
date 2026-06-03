@@ -29,6 +29,7 @@ type FeaturedBlockLabels = {
 
 interface SmartRecommendationsSheetProps {
     businessType?: string;
+    businessCategory?: string;
     onClose: () => void;
     onSaved: (updatedProject: Project) => void;
     projectData: Project;
@@ -37,6 +38,7 @@ interface SmartRecommendationsSheetProps {
 
 export default function SmartRecommendationsSheet({
     businessType,
+    businessCategory,
     onClose,
     onSaved,
     projectData,
@@ -49,7 +51,7 @@ export default function SmartRecommendationsSheet({
         borderRadius: 14,
     } as const;
     const activeLang = getProjectDefaultLanguage(projectData);
-    const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
+    const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType, businessCategory), [businessType, businessCategory]);
     const initialSettings = useMemo(() => getDecisionBlockSettings(projectData), [projectData]);
 
     const [enablePopular, setEnablePopular] = useState(initialSettings.enablePopular);

@@ -71,7 +71,7 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
         model?: string;
         redistributedFiles?: Record<string, unknown>;
     } | null;
-    error: { code: string; message: string; retryable: boolean } | null;
+    error: { code: string; message: string; retryable: boolean; retryAfterSeconds?: number } | null;
     fileResults: Record<string, { categoriesCount: number; itemsCount: number }> | null;
     transaction: {
         transactionId: string;

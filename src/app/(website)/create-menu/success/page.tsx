@@ -29,8 +29,10 @@ export default function SuccessPage() {
     const t = useTranslations('Website');
     const searchParams = useSearchParams();
     const menuUrl = searchParams.get('menuUrl') || '';
+    const officialPageUrl = searchParams.get('officialPageUrl') || '';
     const businessName = searchParams.get('name') || t('CreateMenuSuccess.defaultBusinessName');
     const hasMenuUrl = Boolean(menuUrl);
+    const hasOfficialPageUrl = Boolean(officialPageUrl);
 
     const [copied, setCopied] = useState(false);
     const recordedSignalsRef = useRef(new Set<StarterActivationSignal>());
@@ -147,6 +149,31 @@ export default function SuccessPage() {
                                 >
                                     {menuUrl} <LuExternalLink size={14} style={{ verticalAlign: 'middle' }} />
                                 </a>
+                                {hasOfficialPageUrl && (
+                                    <div style={{
+                                        borderTop: '1px solid var(--ws-border-default)',
+                                        marginTop: '16px',
+                                        paddingTop: '14px',
+                                    }}>
+                                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: 0 }}>
+                                            {t('CreateMenuSuccess.officialPageLabel')}
+                                        </p>
+                                        <a
+                                            href={officialPageUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: 'var(--ws-text-secondary)',
+                                                textDecoration: 'none',
+                                                wordBreak: 'break-all',
+                                            }}
+                                        >
+                                            {officialPageUrl} <LuExternalLink size={13} style={{ verticalAlign: 'middle' }} />
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </AnimateOnScroll>
                     )}

@@ -1,9 +1,10 @@
 import countryData from "@atoms/phoneNumberInput/countryData";
-import { resolveBusinessCategory } from "@constant/common";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
+import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { buildPhoneUsername, getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
@@ -63,7 +64,13 @@ export async function executeMessagingOnboardingPublish(
   sessionId: string,
   params: MessagingOnboardingPublishParams,
 ): Promise<MessagingOnboardingPublishResult> {
-  const { businessName, businessType, address, sessionData } = params;
+  const { businessName, address, phone, sessionData } = params;
+  const menuData = sessionData.extractedMenuData;
+  const extractedProfile = sessionData.extractedBusinessProfile || menuData?.extractedBusinessProfile || null;
+  const businessType = params.businessType ||
+    sessionData.detectedBusinessType ||
+    getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
+    FALLBACK_BUSINESS_TYPE;
 
   logPublishEvent(sessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {
     businessName,
@@ -73,22 +80,31 @@ export async function executeMessagingOnboardingPublish(
   // Infer country/currency from phone (uses frontend countryData.ts — 252 countries)
   const countryInfo = inferCountryFromPhone(sessionData.providerDisplayId || "");
   const country = countryInfo.code;
+  const extractedCurrencyCode = getSuggestionValue(extractedProfile?.identity?.currencyCode, "medium");
+  const resolvedCurrencyInfo = extractedCurrencyCode
+    ? countryData.find((entry) => entry.currencyCode === extractedCurrencyCode)
+    : null;
   const currency = {
-    code: countryInfo.currencyCode,
-    symbol: countryInfo.currencySymbol,
+    code: extractedCurrencyCode || countryInfo.currencyCode,
+    symbol: resolvedCurrencyInfo?.currencySymbol || countryInfo.currencySymbol,
     timezone: countryInfo.timeZone,
   };
 
   // Generate placeholder email
   const generatedEmail = getGeneratedEmail(sessionData.providerDisplayId || "");
 
-  const menuData = sessionData.extractedMenuData;
   const extractedLanguageCodes = getCanonicalExtractionLanguages(menuData?.languages);
   const detectedDefaultLanguage = getDetectedDefaultLanguage(menuData?.languages);
-  const resolvedBusinessCategory =
-    sessionData.detectedBusinessCategory ||
-    resolveBusinessCategory(businessType) ||
-    undefined;
+  const resolvedBusinessCategory = resolveStoreBusinessCategory(
+    businessType,
+    sessionData.detectedBusinessCategory || getSuggestionValue(extractedProfile?.identity?.businessCategory, "medium"),
+  );
+  const brandAccentColor = getSuggestionValue<string>(extractedProfile?.visualBrand?.brandAccentColor, "medium");
+  const imageBackgroundColor = getSuggestionValue<string>(extractedProfile?.visualBrand?.imageBackgroundColor, "medium");
+  const profileProjectName = getSuggestionValue<string>(extractedProfile?.project?.projectName, "medium");
+  const projectName = typeof profileProjectName === "string" && profileProjectName.trim()
+    ? profileProjectName.trim()
+    : "Menu";
   const recommendedDesignPreset = getRecommendedMenuDesignPresets({
     businessType,
     businessCategory: resolvedBusinessCategory,
@@ -106,7 +122,12 @@ export async function executeMessagingOnboardingPublish(
         showCategoryIcons: DEFAULTS.menu.showCategoryIcons,
         showCategoryTabs: DEFAULTS.menu.showCategoryTabs,
       },
-      ...(designPresetPatch?.brand ? { brand: designPresetPatch.brand } : {}),
+      ...(designPresetPatch?.brand || brandAccentColor ? {
+        brand: {
+          ...(designPresetPatch?.brand || {}),
+          ...(brandAccentColor ? { accentColor: brandAccentColor } : {}),
+        },
+      } : {}),
     },
   };
 
@@ -164,6 +185,7 @@ export async function executeMessagingOnboardingPublish(
     const core = await createTenantStoreInTransaction(transaction, db, {
       businessName,
       businessType,
+      businessCategory: resolvedBusinessCategory,
       email: generatedEmail,
       onboardingSource: "MESSAGING_ONBOARDING",
       subdomain: { preChecked: preCheckedSubdomain },
@@ -172,7 +194,8 @@ export async function executeMessagingOnboardingPublish(
         activationDeadline: Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS),
         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
         starterActivatedAt: Timestamp.now(),
-        phoneNumber: sessionData.providerDisplayId || "",
+        phoneNumber: phone || sessionData.providerDisplayId || "",
+        phone: phone || sessionData.providerDisplayId || "",
         addressLine: address || "",
         activeLanguages: extractedLanguageCodes,
         defaultLanguage: detectedDefaultLanguage,
@@ -268,7 +291,7 @@ export async function executeMessagingOnboardingPublish(
 
     transaction.set(projectRef, {
       projectId,
-      name: "Menu",
+      name: projectName,
       description: projectDescription,
       tenantId: core.tenantId,
       storeId: core.storeId,
@@ -284,6 +307,7 @@ export async function executeMessagingOnboardingPublish(
       ...(resolvedBusinessCategory ? { businessCategory: resolvedBusinessCategory } : {}),
       isDefault: true,
       config: projectConfig,
+      ...(imageBackgroundColor ? { aiPreferences: { image: { backgroundColor: imageBackgroundColor } } } : {}),
       files: projectFiles,
       languages: extractedLanguageCodes,
       defaultLanguage: detectedDefaultLanguage,
@@ -295,12 +319,12 @@ export async function executeMessagingOnboardingPublish(
 
     // URL Routing Architecture: Create projectsSummary with slug
     // Ensures slug-based URL routing works for messaging-onboarded stores
-    const projectSlug = slugify("Menu") || "menu-1";
+    const projectSlug = slugify(projectName) || "menu-1";
     const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${core.storeId}`);
     transaction.set(projectsSummaryRef, {
       lastUpdated: core.now,
       [`projects.${projectId}`]: {
-        name: "Menu",
+        name: projectName,
         description: `Digital menu for ${businessName}`,
         active: true,
         isDefault: true,

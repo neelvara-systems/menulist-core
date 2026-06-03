@@ -1,8 +1,8 @@
 /**
  * Public Menu Entry — Upload Page
  * 
- * /create-menu — Public page for upload-before-auth menu preview.
- * Page is public; owner sign-in is required only before claiming/publishing.
+ * /create-menu — Public page for auth-protected menu upload/link import.
+ * Page is public; source upload and extraction require owner sign-in.
  * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md
@@ -19,13 +19,13 @@ import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
     title: 'Upload or Import Your Current Menu — MenuList',
-    description: 'Start with a menu photo or public menu link and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
+    description: 'Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
         title: 'Upload or Import Your Current Menu — MenuList',
-        description: 'Start with a menu photo or public menu link and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
+        description: 'Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
         url: '/create-menu',
     },
 };
@@ -37,7 +37,7 @@ export default function CreateMenuPage() {
                 <WebsitePageStructuredData
                     path="/create-menu"
                     title="Upload or Import Your Current Menu - MenuList"
-                    description="Start with a menu photo or public menu link and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+                    description="Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
                 />
                 <Header />
                 <div style={{
@@ -70,7 +70,7 @@ export default function CreateMenuPage() {
             <WebsitePageStructuredData
                 path="/create-menu"
                 title="Upload or Import Your Current Menu - MenuList"
-                description="Start with a menu photo or public menu link and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+                description="Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
             />
             <Header />
             <CreateMenuClient />

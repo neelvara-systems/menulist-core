@@ -143,6 +143,12 @@ export interface SourceQuality {
     actionRate: number;
 }
 
+export interface TrafficBreakdown {
+    key: string;
+    label: string;
+    views: number;
+}
+
 export interface AttributeFilterInterest {
     filterId: string;
     label: string;
@@ -201,6 +207,10 @@ export interface DailyViewData {
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
     ownerConfidence?: OwnerConfidence;
     aiSummary?: AISummary;
     isLowActivity: boolean; // < 20 views
@@ -229,6 +239,10 @@ export interface WeeklyViewData {
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
     ownerConfidence?: OwnerConfidence;
     aiSummary?: WeeklyAISummary;
 }
@@ -252,6 +266,10 @@ export interface MonthlyViewData {
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
     ownerConfidence?: OwnerConfidence;
     aiSummary?: AISummary;
 }
@@ -275,6 +293,10 @@ export interface WTDViewData {
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
     ownerConfidence?: OwnerConfidence;
 }
 
@@ -299,6 +321,10 @@ export interface MTDViewData {
     topZeroResultSearchTerms?: SearchTerm[];
     unavailableItems?: TopItem[];
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
     ownerConfidence?: OwnerConfidence;
     avgDailyScans: number;
 }
@@ -363,6 +389,14 @@ export interface OverallData {
     topAttributeFilters?: AttributeFilterInterest[];
     menuActions?: MenuActionBreakdown;
     sourceQuality?: SourceQuality[];
+    utmSources?: TrafficBreakdown[];
+    utmMediums?: TrafficBreakdown[];
+    utmCampaigns?: TrafficBreakdown[];
+    utmContent?: TrafficBreakdown[];
+    blockPerformance?: BlockPerformance;
+    topSearchTerms?: SearchTerm[];
+    topZeroResultSearchTerms?: SearchTerm[];
+    unavailableItems?: TopItem[];
     ownerConfidence?: OwnerConfidence;
     firstDataDate?: string; // When tracking started
     lastUpdated?: Date;

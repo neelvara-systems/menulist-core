@@ -25,6 +25,7 @@ import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
 import { recordStarterActivationSignal } from '@database/stores';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -37,7 +38,7 @@ import {
 } from '@lib/onboarding/starterActivation';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
-import { buildQrCodeFilename, downloadQrCode, generateQrCodeDataUrl } from '@lib/utils/qrCode';
+import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
@@ -80,13 +81,20 @@ export default function UseMenuList() {
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
 
-    const labels = useMemo(() => getOfferingLabels(storeDetails?.businessType), [storeDetails?.businessType]);
+    const labels = useMemo(
+        () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
     const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
         getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
     );
     const storeDisplayName = useMemo(
         () => getStoreContextName(storeDetails as any, 'Your Business'),
         [storeDetails]
+    );
+    const storeBrandColor = useMemo(
+        () => resolveStoreBrandColor(storeDetails as any),
+        [storeDetails],
     );
 
     // Guide modal state
@@ -263,7 +271,10 @@ export default function UseMenuList() {
                 menuUrl: data.menuLink,
                 shortLink,
                 logoUrl: data.storeLogo || undefined,
+                brandColor: storeBrandColor,
                 businessType: data.businessType,
+                businessCategory: storeDetails?.businessCategory,
+                activePlanType: (storeDetails as any)?.activePlanType,
             });
             const safeName = data.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
             downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
@@ -286,7 +297,10 @@ export default function UseMenuList() {
                 menuUrl: data.menuLink,
                 shortLink,
                 logoUrl: data.storeLogo || undefined,
+                brandColor: storeBrandColor,
                 businessType: data.businessType,
+                businessCategory: storeDetails?.businessCategory,
+                activePlanType: (storeDetails as any)?.activePlanType,
             });
             const asset = result.assets[assetIndex];
             if (asset) {
@@ -300,11 +314,10 @@ export default function UseMenuList() {
         }
     };
 
-    // G-04 (§11 + D-08 + D-09 PUBLIC-ROUTING-DOCTRINE): plain-QR download for
+    // G-04 (§11 + D-08 + D-09 PUBLIC-ROUTING-DOCTRINE): branded QR downloads for
     // Business Profile, Store Menu (Layer 2 alias), and Project Menu URLs.
-    // The print assets above include branded QR layouts; this handler emits a
-    // raw QR PNG for contexts where the owner wants to paste the code into
-    // their own design (Instagram bio banner, Google Maps profile, flyer).
+    // This keeps every owner-visible download consistent with the premium PDF
+    // and Menu Kit output while preserving QR entry-source tracking.
     const handleDownloadQr = async (
         url: string,
         label: string,
@@ -314,7 +327,15 @@ export default function UseMenuList() {
         if (!url) return;
         setGeneratingAsset(label);
         try {
-            const dataUrl = await generateQrCodeDataUrl(url);
+            const dataUrl = await generateBrandedQrCodeDataUrl(url, {
+                brandColor: storeBrandColor,
+                footer: url.replace(/^https?:\/\//, ''),
+                logoUrl: data?.storeLogo || undefined,
+                storeName: data?.storeName,
+                subtitle: `Scan to open ${labels.offeringLower}`,
+                title: label,
+                activePlanType: (storeDetails as any)?.activePlanType,
+            });
             downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
             message.success(`${label} downloaded`);
             recordStarterSignal(starterSignal);
@@ -332,9 +353,21 @@ export default function UseMenuList() {
             const { generateMenuPdf, downloadPdf } = await import('@lib/export/menuPdfGenerator');
             const { getProjectData } = await import('@database/projects');
             const projectData = data.projectId ? await getProjectData(data.projectId) : null;
-            const extractedData = (projectData as any)?.extractedData;
+            const extractedData = (projectData as any)?.extractedData || {};
+            const fileItems = Array.isArray((projectData as any)?.files)
+                ? (projectData as any).files.flatMap((file: any) => file?.extractedData?.data?.items || [])
+                : [];
+            const fileCategories = Array.isArray((projectData as any)?.files)
+                ? (projectData as any).files.flatMap((file: any) => file?.extractedData?.data?.categories || [])
+                : [];
+            const items = Array.isArray(extractedData.items) && extractedData.items.length > 0
+                ? extractedData.items
+                : fileItems;
+            const categories = Array.isArray(extractedData.categories) && extractedData.categories.length > 0
+                ? extractedData.categories
+                : fileCategories;
 
-            if (!extractedData?.items?.length) {
+            if (!items.length) {
                 message.warning(`No ${labels.offeringLower} items to export`);
                 setGeneratingAsset(null);
                 return;
@@ -345,10 +378,22 @@ export default function UseMenuList() {
                 storeName: data.storeName,
                 language: 'en',
                 menuUrl: data.menuLink,
-                currency: '',
+                currency: (storeDetails as any)?.currencySymbol || '',
+                currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
                 showDescriptions: true,
-                items: extractedData.items.filter((i: any) => i.active !== false),
-                categories: extractedData.categories || [],
+                projectId: data.projectId || undefined,
+                projectData: projectData as any,
+                storeData: storeDetails as any,
+                logoUrl: data.storeLogo || (storeDetails as any)?.logo || undefined,
+                businessType: (storeDetails as any)?.businessType || data.businessType,
+                businessCategory: (storeDetails as any)?.businessCategory,
+                activePlanType: (storeDetails as any)?.activePlanType,
+                brandColor: (storeDetails as any)?.publicPresence?.accentColor
+                    || (storeDetails as any)?.primaryColor
+                    || (storeDetails as any)?.brandColor
+                    || (storeDetails as any)?.themeColor,
+                items: items.filter((i: any) => i.active !== false),
+                categories,
             });
             downloadPdf(pdfResult);
             message.success('Menu PDF downloaded');
@@ -731,7 +776,7 @@ export default function UseMenuList() {
                                             loading={generatingAsset === assetLabel}
                                             style={{ flexShrink: 0 }}
                                             onClick={() => handleDownloadQr(
-                                                outletUrl,
+                                                withEntrySource(outletUrl, 'qr'),
                                                 assetLabel,
                                                 `${outlet.name || outlet.outletSlug}-store-menu-qr`,
                                             )}
@@ -775,6 +820,7 @@ export default function UseMenuList() {
                     <CommunicationKit
                         storeName={data.storeName}
                         businessType={data.businessType}
+                        businessCategory={storeDetails?.businessCategory}
                         menuLink={data.menuLink}
                         address={buildStoreAddress(storeDetails)}
                         phone={storeDetails.phoneNumber || undefined}
@@ -948,8 +994,14 @@ export default function UseMenuList() {
                                 }
                                 setGeneratingAsset('Feedback QR');
                                 try {
-                                    const { generateFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
-                                    const qrDataUrl = await generateFeedbackQrCode(data.projectId!);
+                                    const { generateBrandedFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
+                                    const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
+                                        brandColor: storeBrandColor,
+                                        footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
+                                        logoUrl: data.storeLogo || undefined,
+                                        storeName: data.storeName,
+                                        activePlanType: (storeDetails as any)?.activePlanType,
+                                    }, data.obpLink);
                                     downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
                                     message.success('Feedback QR downloaded');
                                 } catch {

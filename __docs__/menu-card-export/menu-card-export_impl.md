@@ -3,7 +3,7 @@
 **Status:** Production-ready client-first with Pro/Premium layout suggestion
 **Primary route:** `/use-menulist/menu-card-export`
 **Predecessor:** `src/lib/export/menuPdfGenerator.ts`
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -19,12 +19,12 @@ The implementation must not be a modal-only extension. The route owns job preset
 
 | Current code | Evidence | Reuse decision |
 | --- | --- | --- |
-| `generateMenuPdf()` exists and returns a Blob plus snapshot hash. | `src/lib/export/menuPdfGenerator.ts:274`, `src/lib/export/menuPdfGenerator.ts:549` | Reuse concepts, not as final module shape. |
-| It builds a snapshot projection before rendering. | `src/lib/export/menuPdfGenerator.ts:175` | Keep and expand into `MenuCardPrintSource`. |
-| It renders A4 portrait via `jsPDF`. | `src/lib/export/menuPdfGenerator.ts:294` | Keep as initial renderer adapter. |
-| Desktop Share modal now opens the route when the feature flag is on. | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` | Keep legacy direct generator only as flag-off fallback. |
-| Use MenuList opens the route when the feature flag is on. | `src/components/templates/main-app/useMenuList/index.tsx:951` | Keep legacy direct generator only as flag-off fallback. |
-| Mobile Share opens the route when the feature flag is on. | `src/components/mobile/screens/MobileShareScreen.tsx:889` | Keep legacy direct generator only as flag-off fallback. |
+| `generateMenuPdf()` exists for older buttons and returns a Blob plus snapshot hash. | `src/lib/export/menuPdfGenerator.ts` | Keep as a compatibility wrapper only. |
+| Legacy quick export builds a `MenuCardPrintSource` through the Menu Card Export source builder. | `src/lib/export/menuPdfGenerator.ts`, `src/lib/menu-card-export/source/buildPrintSource.ts` | No second snapshot model. |
+| Legacy quick export renders through `renderPdf()`. | `src/lib/export/menuPdfGenerator.ts`, `src/lib/menu-card-export/render/renderPdf.ts` | No second visual renderer. |
+| Desktop Share modal now opens the route when the feature flag is on. | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` | Flag-off direct download must use the Menu Card Export bridge. |
+| Use MenuList opens the route when the feature flag is on. | `src/components/templates/main-app/useMenuList/index.tsx:951` | Flag-off direct download must use the Menu Card Export bridge. |
+| Mobile Share opens the route when the feature flag is on. | `src/components/mobile/screens/MobileShareScreen.tsx:889` | Flag-off direct download must use the Menu Card Export bridge. |
 | Mobile Menu command sheet opens the route after saving pending local edits. | `src/components/mobile/screens/MobileMenuScreen.tsx:2742`, `src/components/mobile/screens/MobileMenuScreen.tsx:2749`, `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` | Do not let just-edited in-memory menu data be skipped by route navigation. |
 | More > Modules opens the route with the current mobile project selection. | `src/components/mobile/screens/MobileMoreScreen.tsx:399`, `src/components/mobile/screens/MobileMoreScreen.tsx:442` | Keep as discovery, not an analytics-dashboard control. |
 | Menu Kit already has client-side print asset generation patterns. | `src/lib/menu-kit/menuKitGenerator.ts:36`, `src/lib/menu-kit/menuKitGenerator.ts:76` | Reuse QR, naming, and download discipline where useful. |
@@ -119,7 +119,7 @@ Batch export remains off because it creates additional multi-project scope. AI a
 
 Rollout rule:
 
-- `ENABLE_MENU_CARD_EXPORT=false`: existing PDF Surface remains the only download path.
+- `ENABLE_MENU_CARD_EXPORT=false`: existing PDF buttons remain direct download actions, but their output still uses the Menu Card Export branded renderer through `src/lib/export/menuPdfGenerator.ts`.
 - `ENABLE_MENU_CARD_EXPORT=true`: route appears and existing PDF buttons navigate into the route.
 - `ENABLE_MENU_CARD_EXPORT_HISTORY=true`: local browser export history appears. It does not write Firestore.
 - `ENABLE_MENU_CARD_EXPORT_PRINT_SHOP=true`: client-side print-shop packet appears.
@@ -252,6 +252,7 @@ Brand source rules:
 - Logo comes from the existing store logo fields, primarily `store.logo`.
 - Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
 - The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices.
+- The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Premium stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `premium`; missing, Starter, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
 - The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
 
 Business-type source rules:
@@ -585,7 +586,7 @@ Desktop layout:
 Mobile layout:
 
 - Dedicated `MobileMenuCardExportScreen` with mobile-native cards, sheets, large controls, and sticky export actions.
-- `/use-menulist/menu-card-export` bypasses the generic mobile shell so the route can choose the mobile Print Menu screen instead of being absorbed by Mobile Share.
+- `/use-menulist/menu-card-export` maps into the mobile shell as `more/printMenu` on handheld devices, matching the existing More/settings screen model instead of using a route-level mobile bypass.
 - Desktop and mobile renderers both use `useMenuCardExportController` for project loading, source building, auto print design, preflight, export generation, local history, and Pro/Premium layout suggestion.
 - Mobile Menu command sheet flushes pending local menu edits before route navigation.
 - More > Modules exposes Print Menu beside Dashboard for discoverability; the analytics dashboard screen remains metric-only.
@@ -623,9 +624,11 @@ Flag behavior:
 14. Add multi-location batch behind flag.
 15. Replace Share modal and Use MenuList PDF buttons with route links.
 16. Add Mobile Share, Mobile Menu command sheet, and More > Modules entries.
-17. Add Compact and Premium templates.
-18. Add test fixtures and verification script.
-19. Remove or hide legacy one-click PDF path after parity is confirmed.
+17. Keep legacy `generateMenuPdf()` as a compatibility bridge into Menu Card Export for any flag-off or old print-copy path; do not keep a standalone plain PDF renderer.
+18. Thread `activePlanType` from loaded store context into PDF, QR, Menu Kit, physical-surface, public-menu, OBP, compliance, and screen attribution paths so Premium branding removal stays centralized and cost-neutral.
+19. Add Compact and Premium templates.
+20. Add test fixtures and verification script.
+21. Remove or hide legacy one-click PDF path after parity is confirmed.
 
 ---
 

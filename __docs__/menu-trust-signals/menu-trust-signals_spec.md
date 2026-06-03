@@ -68,7 +68,7 @@
 
 **Where:** Second row, centered.
 
-**Source:** `getOfferingLabels(businessType).offeringTitle`
+**Source:** `getOfferingLabels(businessType, businessCategory).offeringTitle` (`Menu`, `Services`, `Catalog`, etc.)
 
 ### Signal 4: Freshness Date
 

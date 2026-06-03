@@ -82,6 +82,9 @@ interface DailyMetrics {
     viewsByDevice?: Record<string, number>;
     viewsByLocation?: Record<string, number>;
     viewsBySource?: Record<string, number>;
+    viewsByMedium?: Record<string, number>;
+    viewsByCampaign?: Record<string, number>;
+    viewsByContent?: Record<string, number>;
     viewsByEntrySource?: Record<string, number>;
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
@@ -481,6 +484,9 @@ async function updateSummaryDocument(
     addMapUpdates('viewsByDevice');
     addMapUpdates('viewsByLocation');
     addMapUpdates('viewsBySource');
+    addMapUpdates('viewsByMedium');
+    addMapUpdates('viewsByCampaign');
+    addMapUpdates('viewsByContent');
 
     for (const field of [
         'viewsByEntrySource',
@@ -710,6 +716,9 @@ function buildLateCorrectionSummaryUpdates(
     addMapDelta('viewsByDevice', 'viewsByDevice');
     addMapDelta('viewsByLocation', 'viewsByLocation');
     addMapDelta('viewsBySource', 'viewsBySource');
+    addMapDelta('viewsByMedium', 'viewsByMedium');
+    addMapDelta('viewsByCampaign', 'viewsByCampaign');
+    addMapDelta('viewsByContent', 'viewsByContent');
     addMapDelta('viewsByEntrySource', 'viewsByEntrySource');
     addMapDelta('menuSessionsBySource', 'menuSessionsBySource');
     addMapDelta('actionSessionsBySource', 'actionSessionsBySource');
@@ -1001,6 +1010,9 @@ function aggregateDailyDocs(docs: any[]): any {
         viewsByDevice: {},
         viewsByLocation: {},
         viewsBySource: {},
+        viewsByMedium: {},
+        viewsByCampaign: {},
+        viewsByContent: {},
         viewsByEntrySource: {},
         menuSessionsBySource: {},
         actionSessionsBySource: {},
@@ -1077,6 +1089,9 @@ function aggregateDailyDocs(docs: any[]): any {
         mergeMapField(result.viewsByDevice, readAnalyticsMap(doc, 'viewsByDevice'));
         mergeMapField(result.viewsByLocation, readAnalyticsMap(doc, 'viewsByLocation'));
         mergeMapField(result.viewsBySource, readAnalyticsMap(doc, 'viewsBySource'));
+        mergeMapField(result.viewsByMedium, readAnalyticsMap(doc, 'viewsByMedium'));
+        mergeMapField(result.viewsByCampaign, readAnalyticsMap(doc, 'viewsByCampaign'));
+        mergeMapField(result.viewsByContent, readAnalyticsMap(doc, 'viewsByContent'));
         mergeMapField(result.viewsByEntrySource, readAnalyticsMap(doc, 'viewsByEntrySource'));
         mergeMapField(result.menuSessionsBySource, readAnalyticsMap(doc, 'menuSessionsBySource'));
         mergeMapField(result.actionSessionsBySource, readAnalyticsMap(doc, 'actionSessionsBySource'));

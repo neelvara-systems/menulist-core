@@ -96,7 +96,7 @@ See [ChatGPT Review](./_archive/chatgpt-review.md) for full analysis with 22-poi
 
 ### ✅ SHIPPED — MEDIUM Priority (3/3)
 
-6. ✅ **Dietary info** — `suitableForDiet: VegetarianDiet` from item tags in menu schema
+6. ✅ **Dietary info** — `suitableForDiet: VegetarianDiet` from item `dietaryTags` with legacy item tags fallback in menu schema
 7. ✅ **Availability** — `InStock`/`OutOfStock` from `item.available` in menu Offer schema
 8. ✅ **Shared schema utilities** — `src/lib/schema/index.ts` eliminates duplication
 

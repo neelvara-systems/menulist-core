@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { FALLBACK_BUSINESS_TYPE } from "@constant/common";
+import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { executeMessagingOnboardingPublish } from "@lib/messaging-onboarding/publish";
 import { secureError } from "@lib/security/secureLogger";
@@ -190,9 +192,16 @@ export async function POST(
     }
 
     // Execute publish with retry (§8.2.7 — Publish Failure Recovery)
-    const resolvedBusinessType = businessType || sessionData.detectedBusinessType || "Restaurant";
+    const extractedProfile = sessionData.extractedBusinessProfile || sessionData.extractedMenuData?.extractedBusinessProfile || null;
+    const resolvedBusinessType = businessType ||
+      sessionData.detectedBusinessType ||
+      getSuggestionValue(extractedProfile?.identity?.businessType, "medium") ||
+      FALLBACK_BUSINESS_TYPE;
     const resolvedPhone = phone || sessionData.providerDisplayId;
-    const resolvedAddress = address || sessionData.extractedBusinessInfo?.address || "";
+    const resolvedAddress = address ||
+      sessionData.extractedBusinessInfo?.address ||
+      getSuggestionValue(extractedProfile?.identity?.addressLine, "medium") ||
+      "";
 
     try {
       const result = await executeMessagingOnboardingPublish(sessionId, {

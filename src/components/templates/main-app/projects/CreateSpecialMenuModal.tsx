@@ -64,7 +64,7 @@ export default function CreateSpecialMenuModal({
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({ [referenceLanguage]: '' });
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
 
-    const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType);
+    const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory);
 
     const handleSubmit = async () => {
         try {

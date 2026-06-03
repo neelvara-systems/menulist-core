@@ -11,6 +11,7 @@ import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getGrowthOSTodayTriggerState } from '@lib/growthos/todayTrigger';
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
 import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
@@ -142,6 +143,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tDesign = useTranslations('MobileDesignEditor');
     const tMore = useTranslations('MobileMore');
     const { activeSubscription, storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
+    const storeLogoUrl = (storeDetails as any)?.logo || undefined;
     const { selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
@@ -549,11 +552,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setIsDownloadingTent(true);
         try {
             const blob = await generateTentCardPDF({
+                activePlanType: (storeDetails as any)?.activePlanType,
+                brandColor: storeBrandColor,
+                brandName: getStoreContextName(storeDetails as any, 'Business'),
                 itemName: tentCard.itemName || 'Item',
+                logoUrl: storeLogoUrl,
                 templateId: tentCard.templateId,
                 qrUrl: tentCard.qrUrl,
                 size: 'A6',
-                brandName: getStoreContextName(storeDetails as any, 'Business'),
             });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
@@ -575,7 +581,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setIsDownloadingSticker(true);
         try {
             const blob = await generateStickerPNG({
+                activePlanType: (storeDetails as any)?.activePlanType,
+                brandColor: storeBrandColor,
+                brandName: getStoreContextName(storeDetails as any, 'Business'),
                 itemName: sticker.itemName || 'Item',
+                logoUrl: storeLogoUrl,
                 templateId: sticker.templateId,
                 qrUrl: sticker.qrUrl,
             });

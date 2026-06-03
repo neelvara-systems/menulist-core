@@ -3,15 +3,15 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
-import { extractBrandChanges, propagateBrandToOutlets } from "@database/multiOutlet/brandPropagation";
 import { getPlatformSummary } from "@database/platformSummary";
 import { addStore, updateStore } from "@database/stores";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
-import { updateTenantsStoreslist } from "@database/tenants";
+import { updateTenant, updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
+import { resolveStoreBusinessCategory } from "@constant/common";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
@@ -123,15 +123,26 @@ function resolveStoreContentLanguage(storeDetails: any): string {
     return getStorePreferredLanguage(storeDetails);
 }
 
+function normalizeAnalyticsSettings(analytics?: Record<string, any> | null) {
+    const next = { ...(analytics || {}) };
+    if (!next.googleSearchConsole && next.searchConsoleVerification) {
+        next.googleSearchConsole = next.searchConsoleVerification;
+    }
+    delete next.searchConsoleVerification;
+    return next;
+}
+
 function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
+    const businessCategory = resolveStoreBusinessCategory(storeDetails?.businessType, storeDetails?.businessCategory);
     return {
         ...storeDetails,
+        businessCategory,
         analytics: {
-            ...(storeDetails?.analytics || {}),
+            ...normalizeAnalyticsSettings(storeDetails?.analytics),
             trackCustomerApp: analyticsPreferences.trackCustomerApp,
             trackDecisionBlocks: analyticsPreferences.trackDecisionBlocks,
             trackLocation: analyticsPreferences.trackLocation,
@@ -819,6 +830,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         const obpPhotoDeleteQueue = [...obpPhotoDeleteQueueRef.current];
         delete changesToUpload.__obpPhotoDeleteQueue;
 
+        if (typeof changesToUpload.tenantName === 'string') {
+            changesToUpload.tenantName = changesToUpload.tenantName.trim();
+        }
+        if (typeof changesToUpload.name === 'string') {
+            changesToUpload.name = changesToUpload.name.trim();
+        }
+
         if (selectedFile.url?.includes('base64')) {
             changesToUpload.imageToUpdate = selectedFile.url;
             changesToUpload.imageType = selectedFile.type;
@@ -840,6 +858,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
 
         changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
         changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
+        if (changesToUpload.analytics) {
+            changesToUpload.analytics = normalizeAnalyticsSettings(changesToUpload.analytics);
+        }
         const latitudeInput = changesToUpload.latitude;
         const longitudeInput = changesToUpload.longitude;
         delete changesToUpload.latitude;
@@ -982,8 +1003,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     fieldKeys: businessCopyFieldKeys,
                 });
             }
-            console.log("changesToUpload update request", changesToUpload);
-
             const updatedChanges: any = getObjectDifferance(
                 changesToUpload,
                 storeDetails,
@@ -1009,18 +1028,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         });
                     }
 
-                    // Brand propagation: if master store changed brand fields, propagate to outlets
-                    if (storeDetails?.isMaster && storeDetails?.tenantId) {
-                        const brandChanges = extractBrandChanges({ ...updatedChanges, ...savedDetails });
-                        if (brandChanges) {
-                            propagateBrandToOutlets(
-                                storeDetails.tenantId,
-                                storeDetails.storeId,
-                                brandChanges,
-                            ).catch(() => { }); // Non-blocking
-                        }
-                    }
-
                     //created new store
                     if ("name" in updatedChanges || "tenantName" in updatedChanges) {
                         const savedstoresList = [...tenantDetails.storesList];
@@ -1028,22 +1035,27 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             (s) => s.storeId == storeDetails.storeId,
                         );
                         if (index != -1) {
-                            console.log("stores Updated in tenant");
                             savedstoresList[index] = {
                                 ...savedstoresList[index],
                                 name: updatedChanges.name || storeDetails.name,
                                 tenantName: updatedChanges.tenantName || storeDetails.tenantName || tenantDetails.name,
                             };
-                            const tenantData = {
-                                tenantId: tenantDetails.tenantId,
-                                storesList: savedstoresList,
-                            };
-                            updateTenantsStoreslist(tenantData).then(() => {
-                                setStoreDetails({
-                                    ...storeDetails,
-                                    ...updatedChanges,
-                                    ...savedDetails,
+                            if (updatedChanges.tenantName) {
+                                await updateTenant({
+                                    tenantId: tenantDetails.tenantId,
+                                    name: updatedChanges.tenantName,
+                                    storesList: savedstoresList,
                                 });
+                            } else {
+                                await updateTenantsStoreslist({
+                                    tenantId: tenantDetails.tenantId,
+                                    storesList: savedstoresList,
+                                });
+                            }
+                            setStoreDetails({
+                                ...storeDetails,
+                                ...updatedChanges,
+                                ...savedDetails,
                             });
                         } else {
                             setStoreDetails({
@@ -1061,14 +1073,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     }
                 });
             } else {
-                console.log("No changes detected.");
                 void deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
                 obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
                     (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
                 );
             }
         } else {
-            console.log("changesToUpload create request", changesToUpload);
             let newId = 0;
             const summary = await getPlatformSummary();
             newId = summary.stores?.count + 1;
@@ -1095,7 +1105,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     ],
                 };
                 updateTenantsStoreslist(tenantData).then(() => {
-                    console.log("store details Updated in tenant");
                     setStoreDetails({ ...changesToUpload, ...savedDetails });
                 });
             });

@@ -5,6 +5,7 @@
  */
 
 import { FileMessage } from "./fileMessages.types";
+import type { ExtractedBusinessProfile } from "../sharedData/extractedBusinessProfile";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUT TYPES
@@ -23,6 +24,18 @@ export interface TargetLanguage {
     name: string;
 }
 
+export interface MenuExtractionAuditContext {
+    jobId?: string;
+    tId?: string | number;
+    sId?: string | number;
+    uId?: string;
+    source?: string;
+    destinationType?: string;
+    destinationId?: string;
+    jobMode?: string;
+    skipProjectSave?: boolean;
+}
+
 export interface ProcessMenuImagesRequest {
     files: MenuFileToProcess[];
     targetLanguages: TargetLanguage[];
@@ -31,6 +44,7 @@ export interface ProcessMenuImagesRequest {
     action?: string;
     businessCategory?: string;
     businessType?: string;
+    auditContext?: MenuExtractionAuditContext;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -87,6 +101,7 @@ export interface ExtractedMenuData {
     languages: MenuLanguage[];
     categories: MenuCategory[];
     items: MenuItem[];
+    extractedBusinessProfile?: ExtractedBusinessProfile;
     businessAttributeSuggestions?: BusinessAttributeSuggestion[];
     fileMessages?: FileMessage[]; // Per-file warnings/errors from AI (Section 8.14)
 }
@@ -140,6 +155,9 @@ export interface ProcessMenuImagesResponse {
         processingTime: number;
         transactionId: string | null;
         recorded: boolean;
+        promptTokenCount: number;
+        candidatesTokenCount: number;
+        totalTokenCount: number;
     };
     /** Extraction provenance — raw AI responses + version tracking (P0 hardening) */
     provenance?: {

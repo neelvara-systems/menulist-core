@@ -345,7 +345,11 @@ export default function CommandCenterModal({
 
             if (repairSummary.categoryIconsToRepair > 0) {
                 setRepairStep('Adding category icons');
-                const categoryIconRepair = applyMissingCategoryIconsToProject(updated, businessType || storeDetails?.businessType);
+                const categoryIconRepair = applyMissingCategoryIconsToProject(
+                    updated,
+                    businessType || storeDetails?.businessType,
+                    storeDetails?.businessCategory,
+                );
                 updated = categoryIconRepair.project;
                 repairedCategoryIconCount = categoryIconRepair.updatedCount;
             }
@@ -359,8 +363,8 @@ export default function CommandCenterModal({
                 setRepairStep('Adding missing descriptions');
                 updated = await runDescriptionGeneration({
                     action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
-                    contentLength: getProjectDescriptionContentLength(updated, businessType),
-                    tone: getProjectDescriptionTone(updated, businessType),
+                    contentLength: getProjectDescriptionContentLength(updated, businessType || storeDetails?.businessType, storeDetails?.businessCategory),
+                    tone: getProjectDescriptionTone(updated, businessType || storeDetails?.businessType, storeDetails?.businessCategory),
                     projectData: updated,
                     governance: descriptionGovernance,
                     skipPersist: true,

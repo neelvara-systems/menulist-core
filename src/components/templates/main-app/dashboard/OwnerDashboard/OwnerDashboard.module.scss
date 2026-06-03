@@ -894,6 +894,39 @@ $spacing-xl: 32px;
   }
 }
 
+.analyticsDetailSection {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.analyticsDetailDescription {
+  display: block;
+  margin-bottom: $spacing-xs;
+}
+
+.analyticsDetailRow {
+  padding: $spacing-sm 0;
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.analyticsDetailLabel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.analyticsDetailValue {
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
 // Print styles
 @media print {
   .viewModeTabs {

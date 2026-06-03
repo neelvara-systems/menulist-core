@@ -1,10 +1,11 @@
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 
 interface StarterActivationHoldingPageProps {
+    activePlanType?: string | null;
     storeName?: string | null;
 }
 
-export default function StarterActivationHoldingPage({ storeName }: StarterActivationHoldingPageProps) {
+export default function StarterActivationHoldingPage({ activePlanType, storeName }: StarterActivationHoldingPageProps) {
     const name = storeName?.trim() || 'This business';
 
     return (
@@ -63,7 +64,7 @@ export default function StarterActivationHoldingPage({ storeName }: StarterActiv
                 >
                     Please contact the business directly for the current menu.
                 </p>
-                <PublicMenuListAttribution mode="compact" rightsLabel={null} />
+                <PublicMenuListAttribution activePlanType={activePlanType} mode="compact" rightsLabel={null} />
             </section>
         </main>
     );

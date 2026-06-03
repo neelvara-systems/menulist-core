@@ -15,7 +15,7 @@
 
 ## Subheadline
 
-Table cards, counter stickers, social images, and a placement guide. All with your QR code. Just download, print, and place.
+Table cards, counter stickers, social images, and a placement guide. Your name, logo, colors, and QR are already included. Just download, print, and place.
 
 ---
 
@@ -40,7 +40,7 @@ Table cards, counter stickers, social images, and a placement guide. All with yo
 5. Print the table card and sticker at any local print shop
 6. Post the social images from your phone
 
-Your menu name and QR code are already included in every file. No editing needed.
+Your menu name, logo when available, colors, and QR code are already included in every file. No editing needed.
 
 ---
 

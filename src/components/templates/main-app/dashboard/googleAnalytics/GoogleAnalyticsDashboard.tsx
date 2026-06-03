@@ -26,7 +26,6 @@ const GoogleAnalyticsDashboard = () => {
     });
 
     useEffect(() => {
-        console.log("GoogleAnalyticsDashboard:storeDetails", storeDetails)
         if (storeDetails?.storeId || storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID) {
             setHasAnalytics(!!storeDetails?.analytics?.googleAnalyticsId);
             setLoading(false);

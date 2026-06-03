@@ -76,14 +76,14 @@ export function normalizeTags(
     }
 
     const normalizedTags = tagArray.map(tag => tag.toLowerCase());
+    const isNonVegTag = (tag: string) =>
+        TAG_PATTERNS.nonveg.some(pattern => tag.includes(pattern));
+    const isVegTag = (tag: string) =>
+        !isNonVegTag(tag) && TAG_PATTERNS.veg.some(pattern => tag.includes(pattern));
 
     return {
-        veg: normalizedTags.some(tag =>
-            TAG_PATTERNS.veg.some(pattern => tag.includes(pattern))
-        ),
-        nonveg: normalizedTags.some(tag =>
-            TAG_PATTERNS.nonveg.some(pattern => tag.includes(pattern))
-        ),
+        veg: normalizedTags.some(isVegTag),
+        nonveg: normalizedTags.some(isNonVegTag),
         popular: isBestSeller === true,
         forMen: normalizedTags.some(tag =>
             TAG_PATTERNS.forMen.some(pattern => tag.includes(pattern))
@@ -102,12 +102,13 @@ export function normalizeItemFilterAttributes(item: {
     decisionFacts?: Record<string, { value?: unknown }>;
 }): NormalizedAttributes {
     const fromTags = normalizeTags(item.tags, item.isBestSeller);
-    const dietaryTags = getDecisionFactArray(item as any, 'dietaryTags');
+    const dietaryTags = getDecisionFactArray(item as any, 'dietaryTags')
+        .map(tag => tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-'));
     const targetAudience = getDecisionFactString(item as any, 'targetAudience');
 
     return {
         veg: fromTags.veg || dietaryTags.includes('vegetarian') || dietaryTags.includes('vegan'),
-        nonveg: fromTags.nonveg,
+        nonveg: fromTags.nonveg || dietaryTags.includes('non-vegetarian') || dietaryTags.includes('non-veg') || dietaryTags.includes('nonveg'),
         popular: fromTags.popular,
         forMen: fromTags.forMen || targetAudience === 'for-men',
         forWomen: fromTags.forWomen || targetAudience === 'for-women',

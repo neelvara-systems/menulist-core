@@ -71,10 +71,11 @@ Resources (guides)
 | URL Generation | `src/lib/utils/slugify.ts` | Menu link construction |
 | OBP URL | `src/lib/obp/generateOBPUrl.ts` | Official Page link |
 | Screen URL | `src/lib/screen/utils.ts` | Screen link construction |
-| Feedback QR | `src/lib/utils/feedbackQrCode.ts` | Feedback QR generation |
+| Feedback QR | `src/lib/utils/feedbackQrCode.ts` | Branded feedback QR generation |
+| Branded QR cards | `src/lib/utils/qrCode.ts` + `src/lib/menu-kit/brandTokens.ts` | Standalone QR card generation with logo/color reuse |
 | Menu Kit | `src/lib/menu-kit/menuKitGenerator.ts` | ZIP bundle generation |
 | Menu Card Export | `__docs__/menu-card-export/` | Routed print workflow |
-| Menu PDF | `src/lib/export/menuPdfGenerator.ts` | Legacy lightweight PDF generation while migration is active |
+| Menu PDF bridge | `src/lib/export/menuPdfGenerator.ts` | Compatibility download path that delegates to the Menu Card Export branded renderer |
 | Screen State DAL | `src/database/campaigns/index.ts` | Screen token retrieval |
 
 ## Documents

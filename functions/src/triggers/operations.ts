@@ -18,7 +18,7 @@ import { createAlert } from '../monitoring/alerts';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
-import { resolveBusinessCategory } from '../sharedData/businessTypes';
+import { resolveStoreBusinessCategory } from '../sharedData/businessTypes';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
 
@@ -364,7 +364,7 @@ export const backfillStoresSummary = onCall({
         for (const doc of storesSnapshot.docs) {
             const data = doc.data();
             const businessType = data.businessType || 'unknown';
-            const businessCategory = resolveBusinessCategory(businessType, data.businessCategory) || 'specialty';
+            const businessCategory = resolveStoreBusinessCategory(businessType, data.businessCategory);
             const businessDayEndTime = resolveBusinessDayEndTime(businessType, data.businessDayEndTime, businessCategory);
             const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, businessDayEndTime);
 

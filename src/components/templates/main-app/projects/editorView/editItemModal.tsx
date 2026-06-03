@@ -188,13 +188,22 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [isMasterLinked, isInheritedItem, outletPolicy?.descriptionOverride, outletPolicy?.imageOverride]);
 
     // Get dynamic availability labels based on business type
-    const availabilityLabels = useMemo(() => getOwnerLabels(storeDetails?.businessType), [storeDetails?.businessType]);
+    const availabilityLabels = useMemo(
+        () => getOwnerLabels(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
 
     // Get duration configuration based on business type
-    const durationConfig = useMemo(() => getDurationConfig(storeDetails?.businessType), [storeDetails?.businessType]);
+    const durationConfig = useMemo(
+        () => getDurationConfig(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
 
     // Get metadata fields relevant to this store's business category
-    const metadataFields = useMemo(() => getMetadataFieldsForBusiness(storeDetails?.businessType), [storeDetails?.businessType]);
+    const metadataFields = useMemo(
+        () => getMetadataFieldsForBusiness(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
     const primaryLanguage = selectedLanguages[0] || 'en';
 
     useEffect(() => {
@@ -519,8 +528,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 sourceLang: sourceLanguage as any,
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
-                contentLength: getProjectDescriptionContentLength(projectData, storeDetails.businessType),
-                tone: getProjectDescriptionTone(projectData, storeDetails.businessType),
+                contentLength: getProjectDescriptionContentLength(projectData, storeDetails.businessType, storeDetails.businessCategory),
+                tone: getProjectDescriptionTone(projectData, storeDetails.businessType, storeDetails.businessCategory),
                 businessType: storeDetails.businessType
             }
             const result = await getNewItemMetadataViaAPI(payload)

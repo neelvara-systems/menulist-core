@@ -20,6 +20,7 @@ const { Title, Text } = Typography;
 interface CommunicationKitProps {
     storeName: string;
     businessType: string;
+    businessCategory?: string;
     menuLink: string;
     address?: string;
     phone?: string;
@@ -31,6 +32,7 @@ interface CommunicationKitProps {
 export default function CommunicationKit({
     storeName,
     businessType,
+    businessCategory,
     menuLink,
     address,
     phone,
@@ -43,12 +45,13 @@ export default function CommunicationKit({
     const input: MessageTemplateInput = useMemo(() => ({
         storeName,
         businessType,
+        businessCategory,
         menuLink,
         address,
         phone,
         todayHours: todayResult.hours,
         isClosedToday: todayResult.isClosed,
-    }), [storeName, businessType, menuLink, address, phone, todayResult]);
+    }), [storeName, businessType, businessCategory, menuLink, address, phone, todayResult]);
 
     const templates = useMemo(() => generateMessageTemplates(input), [input]);
     const copyTemplates = useMemo(() => generateMessageTemplates(withEntrySource(input, 'copy_link')), [input]);

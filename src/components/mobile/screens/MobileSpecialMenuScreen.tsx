@@ -163,8 +163,8 @@ function CreateSpecialMenuSheet({
     const t = useTranslations('MobileSpecialMenu');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const capabilities = useMemo(
-        () => getSpecialMenuCapabilities(storeDetails?.businessType),
-        [storeDetails?.businessType]
+        () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory]
     );
     const { token } = theme.useToken();
     const [baseProjectId, setBaseProjectId] = useState(defaultBaseProjectId);
@@ -1049,8 +1049,8 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     const [editingMenu, setEditingMenu] = useState<SpecialMenuListItem | null>(null);
 
     const capabilities = useMemo(
-        () => getSpecialMenuCapabilities(storeDetails?.businessType),
-        [storeDetails?.businessType]
+        () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory]
     );
 
     const baseProjectOptions = useMemo(

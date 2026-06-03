@@ -108,7 +108,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails.analytics);
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
         setFbPixelId(storeDetails.analytics?.facebookPixelId || '');
-        setSearchConsole(storeDetails.analytics?.googleSearchConsole || '');
+        setSearchConsole(storeDetails.analytics?.googleSearchConsole || (storeDetails.analytics as any)?.searchConsoleVerification || '');
         setEnhancedEcommerce(storeDetails.analytics?.enhancedEcommerce || false);
         setTrackMenuViews(analyticsPreferences.trackMenuViews);
         setTrackDecisionBlocks(analyticsPreferences.trackDecisionBlocks);
@@ -413,9 +413,11 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
 
         try {
             setIsAnalyticsSaving(true);
+            const analyticsBase: Record<string, any> = { ...(storeDetails.analytics || {}) };
+            delete analyticsBase.searchConsoleVerification;
             const update = {
                 analytics: {
-                    ...storeDetails.analytics,
+                    ...analyticsBase,
                     ...analyticsDraft,
                 },
                 storeId: storeDetails.storeId,
@@ -1099,7 +1101,7 @@ function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
         enhancedEcommerce: storeDetails?.analytics?.enhancedEcommerce || false,
         facebookPixelId: storeDetails?.analytics?.facebookPixelId || '',
         googleAnalyticsId: storeDetails?.analytics?.googleAnalyticsId || '',
-        googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || '',
+        googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || (storeDetails?.analytics as any)?.searchConsoleVerification || '',
         ...getResolvedAnalyticsPreferences(storeDetails?.analytics),
     };
 }

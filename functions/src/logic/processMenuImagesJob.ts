@@ -20,8 +20,17 @@ import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { isFunctionFeatureEnabled } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
-import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedData/businessTypes";
+import { normalizeBusinessCategory, resolveStoreBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
+import {
+    getSuggestionValue,
+    normalizeCurrencyCode,
+    normalizeLanguageCodes,
+    type ExtractedBusinessProfile,
+    type ExtractedBusinessProfileConfidence,
+    type ExtractedBusinessProfileField,
+    type ExtractedBusinessProfileSuggestion,
+} from "../sharedData/extractedBusinessProfile";
 import {
     MENU_EXTRACTION_DESTINATION_TYPES,
     MENU_EXTRACTION_JOB_LIMITS,
@@ -55,9 +64,14 @@ const PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES = new Set<string>(PUBLIC_CREATE_MENU_I
 const LINK_IMPORT_JOB_FILE_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);
 const MESSAGING_JOB_FILE_TYPES = new Set<string>(MESSAGING_ONBOARDING_MENU_UPLOAD_MIME_TYPES);
 const CANONICAL_SOURCE_LANGUAGE = "en";
+const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number> = {
+    high: 3,
+    medium: 2,
+    low: 1,
+};
 
 function resolveJobBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
-    return resolveBusinessCategory(businessType, businessCategory) || normalizeBusinessCategory(businessType);
+    return resolveStoreBusinessCategory(businessType, businessCategory || normalizeBusinessCategory(businessType));
 }
 
 function parseStoreIdFromProjectId(projectId?: string): string | null {
@@ -213,6 +227,96 @@ function normalizeDraftExtractionLanguages(languages: any): Array<{ code: string
     ];
 }
 
+function cleanProfileText(value: unknown, maxLength = 160): string | null {
+    if (typeof value !== "string" && typeof value !== "number") return null;
+    const normalized = String(value).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    return normalized ? normalized.slice(0, maxLength) : null;
+}
+
+function normalizeProfileConfidence(value: unknown): ExtractedBusinessProfileConfidence {
+    const normalized = cleanProfileText(value, 16)?.toLowerCase();
+    return normalized === "high" || normalized === "medium" || normalized === "low"
+        ? normalized
+        : "low";
+}
+
+function makeIdentityProfileSuggestion<T>(
+    field: ExtractedBusinessProfileField,
+    value: T | null | undefined,
+    confidence: ExtractedBusinessProfileConfidence,
+): ExtractedBusinessProfileSuggestion<T> | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === "string" && !value.trim()) return undefined;
+    if (Array.isArray(value) && value.length === 0) return undefined;
+
+    return {
+        field,
+        value,
+        confidence,
+        source: "menu_intake_identity",
+    };
+}
+
+function buildProfileFromIdentityCheck(job: MenuImageProcessingJob): ExtractedBusinessProfile | undefined {
+    const identity = (job.sourceMetadata?.identityCheck as any)?.identity;
+    if (!identity || typeof identity !== "object") return undefined;
+
+    const confidence = normalizeProfileConfidence(identity.confidence);
+    const currencyCode = normalizeCurrencyCode(identity.currencyHint);
+    const languages = normalizeLanguageCodes(identity.languages);
+    const profile: ExtractedBusinessProfile = {
+        identity: {
+            businessName: makeIdentityProfileSuggestion("businessName", cleanProfileText(identity.businessName, 100), confidence),
+            phoneNumber: makeIdentityProfileSuggestion("phoneNumber", cleanProfileText(identity.phoneNumber, 40), confidence),
+            addressLine: makeIdentityProfileSuggestion("addressLine", cleanProfileText(identity.address, 250), confidence),
+            businessType: makeIdentityProfileSuggestion("businessType", cleanProfileText(identity.businessType, 80), confidence),
+            businessCategory: makeIdentityProfileSuggestion("businessCategory", normalizeBusinessCategory(identity.businessCategory), confidence),
+            currencyCode: makeIdentityProfileSuggestion("currencyCode", currencyCode, confidence),
+            defaultLanguage: makeIdentityProfileSuggestion("defaultLanguage", languages[0], confidence),
+            activeLanguages: makeIdentityProfileSuggestion("activeLanguages", languages, confidence),
+        },
+    };
+
+    return Object.values(profile.identity || {}).some(Boolean) ? profile : undefined;
+}
+
+function chooseProfileSuggestion<T>(
+    existing?: ExtractedBusinessProfileSuggestion<T>,
+    incoming?: ExtractedBusinessProfileSuggestion<T>,
+): ExtractedBusinessProfileSuggestion<T> | undefined {
+    if (!existing) return incoming;
+    if (!incoming) return existing;
+    return PROFILE_CONFIDENCE_RANK[incoming.confidence] > PROFILE_CONFIDENCE_RANK[existing.confidence]
+        ? incoming
+        : existing;
+}
+
+function mergeExtractedBusinessProfiles(
+    extractionProfile?: ExtractedBusinessProfile,
+    identityProfile?: ExtractedBusinessProfile,
+): ExtractedBusinessProfile | undefined {
+    const merged: ExtractedBusinessProfile = {
+        identity: {
+            businessName: chooseProfileSuggestion(extractionProfile?.identity?.businessName, identityProfile?.identity?.businessName),
+            phoneNumber: chooseProfileSuggestion(extractionProfile?.identity?.phoneNumber, identityProfile?.identity?.phoneNumber),
+            addressLine: chooseProfileSuggestion(extractionProfile?.identity?.addressLine, identityProfile?.identity?.addressLine),
+            businessType: chooseProfileSuggestion(extractionProfile?.identity?.businessType, identityProfile?.identity?.businessType),
+            businessCategory: chooseProfileSuggestion(extractionProfile?.identity?.businessCategory, identityProfile?.identity?.businessCategory),
+            currencyCode: chooseProfileSuggestion(extractionProfile?.identity?.currencyCode, identityProfile?.identity?.currencyCode),
+            defaultLanguage: chooseProfileSuggestion(extractionProfile?.identity?.defaultLanguage, identityProfile?.identity?.defaultLanguage),
+            activeLanguages: chooseProfileSuggestion(extractionProfile?.identity?.activeLanguages, identityProfile?.identity?.activeLanguages),
+        },
+        ...(extractionProfile?.visualBrand ? { visualBrand: extractionProfile.visualBrand } : {}),
+        ...(extractionProfile?.project ? { project: extractionProfile.project } : {}),
+    };
+
+    if (!Object.values(merged.identity || {}).some(Boolean)) {
+        delete merged.identity;
+    }
+
+    return Object.values(merged).some(Boolean) ? merged : undefined;
+}
+
 function getIdentityBusinessName(job: MenuImageProcessingJob): string | null {
     const identity = (job.sourceMetadata?.identityCheck as any)?.identity;
     return typeof identity?.businessName === "string" && identity.businessName.trim()
@@ -225,6 +329,25 @@ function getIdentityBusinessType(job: MenuImageProcessingJob): string | null {
     return typeof identity?.businessType === "string" && identity.businessType.trim()
         ? identity.businessType.trim()
         : null;
+}
+
+function getIdentityBusinessCategory(job: MenuImageProcessingJob): string | null {
+    const identity = (job.sourceMetadata?.identityCheck as any)?.identity;
+    return typeof identity?.businessCategory === "string" && identity.businessCategory.trim()
+        ? identity.businessCategory.trim()
+        : null;
+}
+
+function getProfileBusinessName(menuData: any): string | null {
+    return getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.businessName, "medium") || null;
+}
+
+function getProfileBusinessType(menuData: any): string | null {
+    return getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.businessType, "medium") || null;
+}
+
+function getProfileBusinessCategory(menuData: any): string | null {
+    return getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.businessCategory, "medium") || null;
 }
 
 function normalizeDraftCategory(category: any): any | null {
@@ -307,8 +430,17 @@ async function updatePublicDraftFromExtraction(
     await draftRef.update({
         extractionStatus: "completed",
         extractedData,
-        detectedBusinessName: getIdentityBusinessName(job),
-        detectedBusinessType: getIdentityBusinessType(job) || job.businessType || null,
+        detectedBusinessName: getIdentityBusinessName(job) || getProfileBusinessName(menuData),
+        detectedBusinessType: getIdentityBusinessType(job) || getProfileBusinessType(menuData) || job.businessType || null,
+        detectedBusinessCategory: resolveJobBusinessCategory(
+            getIdentityBusinessType(job) || getProfileBusinessType(menuData) || job.businessType,
+            getIdentityBusinessCategory(job) || getProfileBusinessCategory(menuData) || job.businessCategory,
+        ) || null,
+        detectedCurrencyCode: getSuggestionValue(menuData?.extractedBusinessProfile?.identity?.currencyCode, "medium") || null,
+        extractedBusinessProfile: menuData?.extractedBusinessProfile || null,
+        suggestedProjectName: getSuggestionValue(menuData?.extractedBusinessProfile?.project?.projectName, "medium") || null,
+        detectedBrandAccentColor: getSuggestionValue(menuData?.extractedBusinessProfile?.visualBrand?.brandAccentColor, "medium") || null,
+        detectedImageBackgroundColor: getSuggestionValue(menuData?.extractedBusinessProfile?.visualBrand?.imageBackgroundColor, "medium") || null,
         extractionJobId: jobId,
         updatedAt: Timestamp.now(),
     });
@@ -605,6 +737,23 @@ export async function processMenuImagesJobLogic(
             action: job.action || "IMAGE_PROCESSING",
             businessCategory: job.businessCategory,
             businessType: job.businessType,
+            auditContext: {
+                jobId,
+                tId: job.tId,
+                sId: job.sId,
+                uId: job.uId,
+                source: job.source,
+                destinationType: job.destinationType || job.destination?.type,
+                destinationId: job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT
+                    ? job.destination.draftId
+                    : job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING
+                        ? job.destination.sessionId
+                        : job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT
+                            ? job.destination.projectId
+                            : job.projectId,
+                jobMode: job.jobMode,
+                skipProjectSave,
+            },
         };
 
         // Link imports can arrive as clean text artifacts after safe acquisition
@@ -658,10 +807,20 @@ export async function processMenuImagesJobLogic(
             });
         }
 
+        const mergedBusinessProfile = mergeExtractedBusinessProfiles(
+            result.data.data?.extractedBusinessProfile,
+            buildProfileFromIdentityCheck(job),
+        );
+        result.data.data = {
+            ...result.data.data,
+            ...(mergedBusinessProfile ? { extractedBusinessProfile: mergedBusinessProfile } : {}),
+        };
+
         const extractionShapeError = getExtractionShapeError(result.data.data);
         if (extractionShapeError) {
             throw new Error(extractionShapeError);
         }
+        const extractedBusinessProfile = result.data.data?.extractedBusinessProfile;
 
         // ─────────────────────────────────────────────────────────────
         // Step 3: Check for cancellation after AI processing
@@ -677,6 +836,7 @@ export async function processMenuImagesJobLogic(
                 // Save partial results
                 result: {
                     combinedData: result.data.data,
+                    ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
@@ -747,6 +907,7 @@ export async function processMenuImagesJobLogic(
             businessCategory: businessCategory || null,
             categoriesCount: categoriesBeforeIconDefaults,
             categoriesWithIcons: categoriesWithIconDefaults,
+            hasExtractedBusinessProfile: Boolean(extractedBusinessProfile),
         });
 
         // Detect first extraction vs re-extraction
@@ -848,7 +1009,8 @@ export async function processMenuImagesJobLogic(
                     job.files,
                     result.data.data.languages || [],
                     true, // enableAutoMerge
-                    existingProject
+                    existingProject,
+                    extractedBusinessProfile,
                 );
 
                 let businessAttributeDefaultsApplied = false;
@@ -912,6 +1074,7 @@ export async function processMenuImagesJobLogic(
                 isFirstExtraction: true,
                 result: {
                     combinedData: result.data.data,
+                    ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
@@ -933,9 +1096,9 @@ export async function processMenuImagesJobLogic(
                     totalCharge: result.transaction.totalCharge,
                     unitsConsumed: result.transaction.unitsConsumed || 0,
                     tokenUsage: {
-                        promptTokenCount: (result.transaction as any).promptTokenCount || 0,
-                        candidatesTokenCount: (result.transaction as any).candidatesTokenCount || 0,
-                        totalTokenCount: (result.transaction as any).totalTokenCount || 0,
+                        promptTokenCount: result.transaction.promptTokenCount || 0,
+                        candidatesTokenCount: result.transaction.candidatesTokenCount || 0,
+                        totalTokenCount: result.transaction.totalTokenCount || 0,
                     },
                 },
             });
@@ -974,6 +1137,7 @@ export async function processMenuImagesJobLogic(
                 expiresAt: Timestamp.fromMillis(Date.now() + ttlMs),
                 result: {
                     combinedData: result.data.data, // Raw combined data with sourceFileIndex
+                    ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
@@ -993,9 +1157,9 @@ export async function processMenuImagesJobLogic(
                     totalCharge: result.transaction.totalCharge,
                     unitsConsumed: result.transaction.unitsConsumed || 0,
                     tokenUsage: {
-                        promptTokenCount: (result.transaction as any).promptTokenCount || 0,
-                        candidatesTokenCount: (result.transaction as any).candidatesTokenCount || 0,
-                        totalTokenCount: (result.transaction as any).totalTokenCount || 0,
+                        promptTokenCount: result.transaction.promptTokenCount || 0,
+                        candidatesTokenCount: result.transaction.candidatesTokenCount || 0,
+                        totalTokenCount: result.transaction.totalTokenCount || 0,
                     },
                 },
             });
@@ -1041,6 +1205,7 @@ export async function processMenuImagesJobLogic(
                     code: getErrorCode(error),
                     message: error.message || "Unknown error",
                     retryable: isRetryable(error),
+                    ...(getRetryAfterSeconds(error) ? { retryAfterSeconds: getRetryAfterSeconds(error) } : {}),
                 },
             });
         } catch (updateError: any) {
@@ -1093,4 +1258,15 @@ function isRetryable(error: any): boolean {
     // Rate limits, timeouts, circuit breaker trips, and transient AI errors are retryable
     // FILE_ERROR and INTERNAL_ERROR are NOT retryable (likely persistent issues)
     return code === "RATE_LIMIT" || code === "TIMEOUT" || code === "CIRCUIT_BREAKER" || code === "AI_ERROR";
+}
+
+function getRetryAfterSeconds(error: any): number | null {
+    const message = String(error?.message || error || "");
+    const retryDelayMatch = message.match(/retryDelay["']?\s*:\s*["']?(\d+(?:\.\d+)?)s/i);
+    const retryInMatch = message.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+    const waitSecondsMatch = message.match(/wait\s+(\d+(?:\.\d+)?)\s+seconds/i);
+    const value = retryDelayMatch?.[1] || retryInMatch?.[1] || waitSecondsMatch?.[1];
+    if (!value) return null;
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
 }

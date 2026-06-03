@@ -51,13 +51,13 @@ The protected owner route treats source lineage as server-owned. It does not acc
 - platform tenant/store/user IDs
 - `projectId = 0-public-{draftId}-0`
 
-When the public source is readable by the shared identity helper, the route also attaches `sourceMetadata.identityCheck` to the job. The worker uses that metadata to fill `publicMenuDrafts.detectedBusinessName` and `detectedBusinessType` on completion.
+When the public source is readable by the shared identity helper, the route also attaches `sourceMetadata.identityCheck` to the job. The worker uses that metadata to fill `publicMenuDrafts.detectedBusinessName`, `detectedBusinessType`, and `detectedBusinessCategory` on completion. If the specific type is not identifiable, the claim flow stores canonical `Other` while preserving the best known category.
 
 The worker marks the draft as `processing`, then writes `completed` or `failed`.
 
 Before the draft is marked completed, the worker normalizes public draft extracted data to the same project/editor payload shape used by owner extraction: categories have `active`, items have `category`, `active`, `available`, normalized attribute activity, and languages are normalized objects with `isPrimary`. Claiming a completed public draft then creates a normal project file entry with `active: true`, `deleted: false`, `index: 0`, and `extractedData.message`. This keeps public `/create-menu` output aligned with owner extraction and messaging publish file shapes.
 
-Claimed projects use the normal parseable project ID format `{tenantId}-{timestamp}-{storeId}`. This is required because the public client renderer and several backend helpers derive the nested project path from the project ID before loading `projects/{tenantId}/{storeId}/{projectId}`.
+Claimed projects use the normal parseable project ID format `{tenantId}-{timestamp}-{storeId}`. This is required because the public client renderer and several backend helpers derive the nested project path from the project ID before loading `projects/{tenantId}/{storeId}/{projectId}`. The claim route also stores the resolved `businessType` and `businessCategory` on the project document and `projectsSummary` entry so future project-scoped defaults stay aligned with the store created from the same claim.
 
 ## Retry Handling
 

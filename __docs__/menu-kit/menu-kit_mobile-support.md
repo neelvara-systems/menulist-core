@@ -1,8 +1,8 @@
 # Menu Kit — Mobile Support Assessment
 
-**Version:** 1.1
+**Version:** 1.2
 **Status:** ✅ IMPLEMENTED — Desktop ZIP flow complete, mobile Share tab assets live
-**Last Updated:** May 21, 2026
+**Last Updated:** June 3, 2026
 **Companion:** `menu-kit_spec.md`
 
 ---
@@ -113,12 +113,19 @@ All buttons must be minimum 44px height (ICP compliance). Large, clear, one acti
 
 Print files download directly. Social files use the Web Share API when available and fall back to file download.
 
+All mobile Menu Kit and QR downloads use the same premium output tokens as desktop:
+- existing store logo when available
+- existing store/OBP accent color when available
+- high-contrast white QR panel for scan reliability
+- Premium-only visible MenuList attribution removal from already-loaded store plan context
+- no separate mobile generator or mobile-only design variant
+
 ## Mobile Implementation Notes
 
 1. Detect mobile via `navigator.share` availability (not user agent)
 2. If mobile: show the complete ZIP plus individual print/social asset buttons
 3. If desktop: show "Download Menu Kit" ZIP button, with share buttons where the browser supports file sharing
-4. Both paths use same generator functions — only the delivery mechanism differs
+4. Both paths use same generator functions and brand-token fallback order — only the delivery mechanism differs
 
 ---
 

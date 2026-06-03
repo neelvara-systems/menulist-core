@@ -38,6 +38,9 @@ export type BusinessCatalogKind = 'menu' | 'offerCatalog';
 
 export type BusinessOfferingKind = 'menuItem' | 'product' | 'service';
 
+export const FALLBACK_BUSINESS_TYPE = "Other";
+export const FALLBACK_BUSINESS_CATEGORY = "specialty";
+
 // ═══════════════════════════════════════════════════════════════
 // BUSINESS CATEGORIES
 // ═══════════════════════════════════════════════════════════════
@@ -140,6 +143,7 @@ export const BUSINESS_TYPES: BusinessType[] = [
     { label: "Daycare Center", value: "Daycare Center", category: "specialty", schemaOrgType: "ChildCare" },
     { label: "Coworking Space", value: "Coworking Space", category: "specialty" },
     { label: "Bike Rental Shop", value: "Bike Rental Shop", category: "specialty", schemaOrgType: "Store" },
+    { label: FALLBACK_BUSINESS_TYPE, value: FALLBACK_BUSINESS_TYPE, category: FALLBACK_BUSINESS_CATEGORY },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -207,6 +211,24 @@ export function normalizeBusinessCategory(businessCategory?: string): string | u
  */
 export function resolveBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
     return normalizeBusinessCategory(businessCategory) || getBusinessCategory(businessType);
+}
+
+export function resolveBusinessCategoryOrFallback(businessType?: string, businessCategory?: string): string {
+    return resolveBusinessCategory(businessType, businessCategory) || FALLBACK_BUSINESS_CATEGORY;
+}
+
+/**
+ * Resolve the category that should be persisted on store and summary records.
+ * Concrete canonical business types always own their category; generic `Other`
+ * and legacy free-text types may carry an explicit broad category.
+ */
+export function resolveStoreBusinessCategory(businessType?: string, businessCategory?: string): string {
+    const typeConfig = getBusinessTypeConfig(businessType);
+    if (typeConfig && typeConfig.value.toLowerCase() !== FALLBACK_BUSINESS_TYPE.toLowerCase()) {
+        return typeConfig.category;
+    }
+
+    return normalizeBusinessCategory(businessCategory) || typeConfig?.category || FALLBACK_BUSINESS_CATEGORY;
 }
 
 export function getBusinessSchemaOrgType(businessType?: string, businessCategory?: string): string | undefined {

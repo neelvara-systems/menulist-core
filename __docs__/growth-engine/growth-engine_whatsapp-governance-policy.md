@@ -43,6 +43,7 @@ Do not use WhatsApp for:
 | WhatsApp Business Terms | https://www.whatsapp.com/legal/business-terms/ | Businesses must secure rights, consents, and permissions to share customer contact data with WhatsApp and communicate via WhatsApp. They must honor stop/opt-out requests. |
 | WhatsApp Business Messaging Policy | https://www.whatsapp.com/legal/business-policy/ | Businesses may contact a person only when the person gave the phone number and opted in; they must respect opt-outs; they may initiate only with approved templates; free-form replies are limited to the 24-hour customer service window. |
 | Opt-in best practices | https://www.whatsapp.com/legal/business-policy/ | Users should expect messages. Opt-in should be clear, category-aware, and include opt-out instructions. |
+| Public listing provenance | https://www.whatsapp.com/legal/business-policy/ | Public listing source may explain why a target was reviewed, but it is not WhatsApp opt-in. Do not use "found via Google/Instagram/Maps" as the legal basis for a WhatsApp API send. |
 | Quality enforcement | https://www.whatsapp.com/legal/business-policy/ | Users can block/report businesses. WhatsApp can limit or remove access when quality is low or messaging happens at scale in an unauthorized way. |
 | Pricing and windows | https://whatsappbusiness.com/products/platform-pricing/ | WhatsApp charges by delivered message and category; service messages operate inside the 24-hour customer service window; ads that click to WhatsApp and Facebook Page CTA free entry points can create a 72-hour no-charge window. |
 | WhatsApp Flows | https://whatsappbusiness.com/products/whatsapp-flows/ | Flows can collect structured information and support lead generation and customer actions. For MenuList, use Flows for owner-confirmed business truth, not generic chat. |
@@ -357,6 +358,178 @@ Each rung requires:
 If any quality signal degrades, pause or reduce sends and create an incident or operator work item.
 
 Do not use provider throughput as safe capacity.
+
+## 9A. Governed Claim/Invite Experiment Policy
+
+The June 3, 2026 WhatsApp outreach kit is accepted only as a governed claim/invite experiment. It is rejected as a cold WhatsApp blast plan.
+
+Current execution posture: do not use aggregator/public-listing outreach now. The active MenuList path is real owner validation first. Claim/Invite messaging is limited to existing consented or founder-led owner contexts until MenuList has proven production activation, retention, and owner value with real users.
+
+Allowed use:
+
+- consented owner claim recovery
+- owner-initiated verification follow-up
+- ad-click-to-WhatsApp or claim-page opt-in follow-up
+- assisted operator send where the owner already expects the WhatsApp message
+
+Blocked use:
+
+- 50-200 first sends to public listing phone numbers without explicit opt-in
+- treating public source provenance as consent
+- sending from scraped, enriched, or imported phone numbers unless a matching WhatsApp consent event exists
+- using generic "customers keep asking" or "customers rely on it" claims without evidence
+- using "official menu" language before the owner has reviewed or confirmed the MenuList surface
+
+### Copy Positioning
+
+The Claim and Invite framing is useful, but the approved template posture is stricter.
+
+| Variant | Allowed framing | Required blocker |
+| --- | --- | --- |
+| Claim | "Review your MenuList claim link" and "nothing goes public until you approve it" | Block if the owner did not opt in to a claim/verification message. |
+| Invite | "Start verification" and "get a shareable link + QR after review" | Block if the target is only sourced from a public listing. |
+| Follow-up | One short reminder after the consented window/cadence allows it | Block after opt-out, wrong-contact, complaint, low quality, or missing consent category. |
+
+Approved variable set:
+
+```txt
+{biz_name}
+{city}
+{claim_link}
+{invite_link}
+{sender_name}
+{optout_word}
+{source_context}
+```
+
+`{source_context}` may be logged or shown as source context only. It must not be rendered as "why this is allowed." Use consent-led wording such as "You asked us to send this link" when the owner opted in.
+
+### Safe Template Drafts
+
+These drafts still require Meta template approval and local policy review before API use.
+
+Claim:
+
+```txt
+Hi {biz_name}, this is {sender_name} from MenuList.
+Here is your MenuList claim link for {city}: {claim_link}
+You can review the menu link and QR before anything goes public.
+Reply {optout_word} to opt out.
+```
+
+Invite:
+
+```txt
+Hi {biz_name}, this is {sender_name} from MenuList.
+Start verification here: {invite_link}
+After review, you can get one shareable menu link and QR for tables, WhatsApp, Google, and socials.
+Reply {optout_word} to opt out.
+```
+
+Follow-up:
+
+```txt
+Quick reminder for {biz_name}: your MenuList verification link is here: {invite_link}
+Review first; publish only after approval. Reply {optout_word} to opt out.
+```
+
+### Experiment Design
+
+The pasted 50/50 A/B split is useful after the governance preconditions pass.
+
+Required preconditions:
+
+- consent event exists for the message category
+- suppression check is clear immediately before send
+- template is approved, not paused, and not low quality
+- sender identity is active and healthy
+- channel policy allows the jurisdiction and use case
+- claim/invite link is a tracked noindex/private route until owner confirmation
+- dry-run has a passing decision snapshot
+
+Assignment:
+
+- random 50/50 Claim vs Invite
+- preserve one sender identity per target conversation
+- one variant assignment per target unless a new experiment is approved
+
+Primary metric:
+
+- verified owner action rate, such as claim started, verification completed, or owner-confirmed correction
+
+Secondary metrics:
+
+- non-opt-out response rate
+- unique click-through to claim/invite
+- delivery failure rate
+- opt-out rate
+- complaint/report signal
+- template quality and sender quality
+- cost per verified owner action
+
+Winner rule:
+
+- evaluate only after at least 50 delivered messages per arm or 7 calendar days, whichever comes first
+- a variant cannot win if it breached opt-out, complaint, template quality, sender quality, or cost policy
+- click-through is a tiebreaker only after safety thresholds pass
+
+### Pacing And Auto-Stop Rules
+
+Pacing tiers are maximums, not entitlement.
+
+| Tier | Maximum send count | Delay |
+| --- | ---: | --- |
+| Warm-up | 10 total, split 5/5 | 8-12 minutes |
+| Tier 2 | +20 total, split 10/10 | 5-10 minutes |
+| Tier 3 | +40-80 total, split evenly | 2-5 minutes |
+| Tier 4 | Remaining approved consented audience only | 1-3 minutes |
+
+Daily cap:
+
+- 80-120 messages per account per day only after sender and template health are proven
+- lower cap for a new number, new template, new market, or recent quality warning
+- local business hours only
+
+Hard stops:
+
+| Signal | Action |
+| --- | --- |
+| Delivery failure rate > 8% in the last 20 sends | Pause the experiment; investigate source and number quality. |
+| Opt-out rate > 3% in the last 50 sends | Pause; tighten targeting, copy, consent category, and source policy. |
+| Any block/report signal in a tier of 50 or fewer | Pause that variant; continue another variant only at half speed after compliance review. |
+| Template or sender quality below medium, paused, disabled, or warning | Pause all WhatsApp sends and create an incident/work item. |
+| No non-opt-out engagement after first 20 delivered messages for a variant | Pause that variant and require template/copy review before retry. |
+| Webhook, quality sync, suppression, or consent ledger unavailable | Pause all unattended WhatsApp sends. |
+
+### Data Logging
+
+Every experiment send must be logged without making raw PII the dashboard path.
+
+Required fields:
+
+- timestamp
+- campaignId and experimentId
+- targetId and contactId
+- variant
+- sourcePolicyId and source context
+- consentEventId and proofHash
+- suppressionCheckedAt
+- senderIdentityId
+- templateId and template version
+- messageId
+- delivery status
+- response category
+- click token
+- opt-out flag
+- complaint/report signal where available
+- cost estimate and actual provider cost where available
+
+PII rules:
+
+- phone is stored as masked value plus hash in summary docs
+- raw reply text is not stored in summary docs
+- raw reply text may enter a restricted inbox/event path only when needed for operator handling and retention policy allows it
+- CSV imports are server-side only and must immediately normalize, mask, hash, dedupe, and suppression-check contacts
 
 ## 10. Final Decision
 

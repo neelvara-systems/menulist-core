@@ -14,6 +14,7 @@
  */
 
 import * as functions from 'firebase-functions';
+import type { ExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
 import { FileMessage } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -70,6 +71,7 @@ export interface ExtractedData {
         languages?: ExtractedDataLanguage[];
         categories?: ExtractedDataCategory[];
         items?: ExtractedDataItem[];
+        extractedBusinessProfile?: ExtractedBusinessProfile;
     };
     qualityScore?: number;
     qualityDetails?: {
@@ -114,6 +116,7 @@ export interface CombinedAIResponse {
             evidence?: string;
             sourceFileIndex?: number;
         }>;
+        extractedBusinessProfile?: ExtractedBusinessProfile;
         fileMessages?: FileMessage[]; // Per-file warnings/errors from AI (Section 8.14)
     };
     qualityScore?: number;

@@ -22,7 +22,7 @@ import { useContext, useMemo } from 'react';
 export function useOfferingLabels(): OfferingLabels {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     return useMemo(
-        () => getOfferingLabels(storeDetails?.businessType),
-        [storeDetails?.businessType]
+        () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory]
     );
 }

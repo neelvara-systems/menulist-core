@@ -1,7 +1,7 @@
 # Menu Trust Signals — Mobile Support Assessment
 
 > **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Last Updated:** June 3, 2026
 
 ---
 
@@ -17,9 +17,9 @@ Not applicable — this is not an owner-side operational feature. It's a custome
 
 | Device | Layout |
 |--------|--------|
-| **Mobile (<768px)** | "Official Menu" + freshness inline, compact — e.g., "Official Menu · Updated today" |
-| **Tablet (768-1024px)** | Same as mobile, slightly larger font |
-| **Desktop (≥1024px)** | "Official Menu" on one line, freshness below or inline |
+| **Mobile (<768px)** | Compact factual rows, e.g., "Bandra West · Open" and "Restaurant Menu · Updated today" |
+| **Tablet (768-1024px)** | Same factual rows, slightly larger font |
+| **Desktop (≥1024px)** | Same factual rows with more spacing |
 
 ## Technical Notes
 

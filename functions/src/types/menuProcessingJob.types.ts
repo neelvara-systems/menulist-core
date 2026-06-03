@@ -10,6 +10,7 @@ import type {
     MenuExtractionDestinationType,
     MenuExtractionJobDestination,
 } from "../sharedData/menuExtractionJob";
+import type { ExtractedBusinessProfile } from "../sharedData/extractedBusinessProfile";
 import { FileMessage } from "./fileMessages.types";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -135,8 +136,10 @@ export interface MenuImageProcessingJob {
                 evidence?: string;
                 sourceFileIndex?: number;
             }>;
+            extractedBusinessProfile?: ExtractedBusinessProfile;
             fileMessages?: FileMessage[];
         };
+        extractedBusinessProfile?: ExtractedBusinessProfile;
         qualityScore: number;
         qualityDetails: {
             categoryQuality: number;
@@ -188,6 +191,7 @@ export interface MenuImageProcessingJob {
         code: string;
         message: string;
         retryable: boolean;
+        retryAfterSeconds?: number;
         failedBatches?: number[];
     };
 

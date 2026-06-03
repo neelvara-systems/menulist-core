@@ -60,6 +60,7 @@ const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
   'shortcutClicks',
   'unavailableItemTapsByItem',
   'viewsByCampaign',
+  'viewsByContent',
   'viewsByCategory',
   'viewsByDevice',
   'viewsByEntrySource',

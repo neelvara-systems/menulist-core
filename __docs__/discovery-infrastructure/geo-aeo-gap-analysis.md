@@ -76,7 +76,7 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 | Location | ✅ address, city, state, country, postalCode | ✅ Part of Store | ✅ Store.geo (lat/lng) | `store.ts:252-255` |
 | Hours | ✅ `workingHours: Record<string, string>` | ✅ Part of Store | ✅ OpeningHoursSpecification in schema | `store.ts:101` |
 | Cuisine | ✅ `cuisineTypes?: string[]` | Part of Store | ✅ Emits `servesCuisine` when present | `src/types/platform/store.ts:330-333` |
-| Dietary Tags | ✅ `item.tags: string[]` (e.g., ["Vegetarian"]) | — | — | `extractedData.types.ts:58` |
+| Dietary Tags | ✅ `item.dietaryTags: string[]` (e.g., ["vegetarian", "non-vegetarian"]) with legacy `item.tags` fallback | — | — | `extractedData.types.ts` |
 | Geo Coordinates | ✅ `store.geo: {latitude, longitude}` | — | — | `store.ts:252-255` |
 | Price Range | ✅ `store.priceRange: '$'|'$$'|'$$$'|'$$$$'` | — | — | `store.ts:258` |
 

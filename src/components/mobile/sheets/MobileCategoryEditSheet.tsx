@@ -28,6 +28,7 @@ interface MobileCategoryEditSheetProps {
     category?: MobileCategoryItem | null;
     mode: 'add' | 'edit';
     businessType?: string;
+    businessCategory?: string;
     categoryIconsEnabled?: boolean;
     onAddItem?: (categoryId: string) => void;
     onClose: () => void;
@@ -74,6 +75,7 @@ export default function MobileCategoryEditSheet({
     category,
     mode,
     businessType,
+    businessCategory,
     categoryIconsEnabled = true,
     onAddItem,
     onClose,
@@ -217,7 +219,7 @@ export default function MobileCategoryEditSheet({
 
     if (!visible) return null;
 
-    const suggestedIcons = getSuggestedCategoryIcons(names[primaryLanguage], businessType);
+    const suggestedIcons = getSuggestedCategoryIcons(names[primaryLanguage], businessType, businessCategory);
 
     return (
         <Popup

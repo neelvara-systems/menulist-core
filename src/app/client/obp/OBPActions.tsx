@@ -10,10 +10,12 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPAction, trackOBPLinkClick } from '@lib/analytics/unified';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LuCalendarCheck, LuMessageSquarePlus, LuPhone, LuShoppingBag } from 'react-icons/lu';
 import { TbBrandGoogleFilled, TbBrandWhatsapp, TbMapPinFilled } from 'react-icons/tb';
 import styles from './obp.module.scss';
+
+export type OBPActionPlaceholder = 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'reviews' | 'feedback';
 
 interface OBPActionsProps {
     tenantId: number;
@@ -37,6 +39,8 @@ interface OBPActionsProps {
     showOrder: boolean;
     showGoogleReview: boolean;
     showFeedback: boolean;
+    placeholderActions?: OBPActionPlaceholder[];
+    placeholderMessage?: string;
     labels: {
         call: string;
         whatsapp: string;
@@ -70,9 +74,12 @@ export default function OBPActions({
     showOrder,
     showGoogleReview,
     showFeedback,
+    placeholderActions = [],
+    placeholderMessage,
     labels,
 }: OBPActionsProps) {
-    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl) || (showGoogleReview && !!googleReviewUrl) || (showFeedback && !!feedbackUrl);
+    const [placeholderNotice, setPlaceholderNotice] = useState('');
+    const hasAnyAction = showCall || showWhatsApp || showDirections || (showReservation && !!reservationUrl) || (showOrder && !!orderUrl) || (showGoogleReview && !!googleReviewUrl) || (showFeedback && !!feedbackUrl) || placeholderActions.length > 0;
     if (!hasAnyAction) return null;
 
     const handleAction = (action: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback') => {
@@ -104,6 +111,48 @@ export default function OBPActions({
             {iconVariant === 'emoji' ? <span aria-hidden="true" className={styles.actionEmoji}>{emoji}</span> : icon}
         </span>
     );
+    const handlePlaceholderClick = (label: string) => {
+        setPlaceholderNotice(placeholderMessage || `${label} is not set yet.`);
+    };
+    const renderPlaceholderIcon = (action: OBPActionPlaceholder) => {
+        switch (action) {
+            case 'call':
+                return renderActionIcon('☎️', <LuPhone aria-hidden="true" size={20} />, styles.actionIconCall);
+            case 'whatsapp':
+                return renderActionIcon('🟢', <TbBrandWhatsapp aria-hidden="true" size={19} />, styles.actionIconWhatsapp);
+            case 'directions':
+                return renderActionIcon('📍', <TbMapPinFilled aria-hidden="true" size={19} />, styles.actionIconDirections);
+            case 'reviews':
+                return renderActionIcon('⭐', <TbBrandGoogleFilled aria-hidden="true" size={18} />, styles.actionIconGoogle);
+            case 'reserve':
+                return renderActionIcon('📅', <LuCalendarCheck aria-hidden="true" size={18} />, styles.actionIconReserve);
+            case 'order':
+                return renderActionIcon('🛍️', <LuShoppingBag aria-hidden="true" size={18} />, styles.actionIconOrder);
+            case 'feedback':
+                return renderActionIcon('💬', <LuMessageSquarePlus aria-hidden="true" size={18} />, styles.actionIconFeedback);
+            default:
+                return null;
+        }
+    };
+    const renderedRealActions = new Set<OBPActionPlaceholder>([
+        ...(showCall && phoneNumber ? ['call' as const] : []),
+        ...(showWhatsApp && whatsappNumber ? ['whatsapp' as const] : []),
+        ...(showDirections && directionsUrl ? ['directions' as const] : []),
+        ...(showReservation && reservationUrl ? ['reserve' as const] : []),
+        ...(showOrder && orderUrl ? ['order' as const] : []),
+        ...(showGoogleReview && googleReviewUrl ? ['reviews' as const] : []),
+        ...(showFeedback && feedbackUrl ? ['feedback' as const] : []),
+    ]);
+    const placeholderLabels: Record<OBPActionPlaceholder, string> = {
+        call: labels.call,
+        whatsapp: labels.whatsapp,
+        directions: labels.directions,
+        reserve: labels.reserve,
+        order: labels.order,
+        reviews: labels.reviews,
+        feedback: labels.feedback,
+    };
+    const visiblePlaceholderActions = placeholderActions.filter((action) => !renderedRealActions.has(action));
 
     return (
         <div className={styles.actions}>
@@ -223,6 +272,26 @@ export default function OBPActions({
                     <span>{labels.feedback}</span>
                 </a>
             )}
+            {visiblePlaceholderActions.map((action) => {
+                const label = placeholderLabels[action];
+                return (
+                    <button
+                        key={`placeholder-${action}`}
+                        type="button"
+                        className={`${styles.actionButton} ${styles.actionButtonUtility} ${styles.actionButtonPlaceholder}`}
+                        aria-label={`${label}. ${placeholderMessage || 'Not set yet.'}`}
+                        onClick={() => handlePlaceholderClick(label)}
+                    >
+                        {renderPlaceholderIcon(action)}
+                        <span>{label}</span>
+                    </button>
+                );
+            })}
+            {placeholderNotice ? (
+                <div className={styles.placeholderNotice} role="status">
+                    {placeholderNotice}
+                </div>
+            ) : null}
         </div>
     );
 }

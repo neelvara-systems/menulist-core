@@ -1,14 +1,39 @@
-import { BUSINESS_TYPES } from '@constant/common';
+import countryData from '@atoms/phoneNumberInput/countryData';
+import { BUSINESS_TYPES, normalizeBusinessCategory } from '@constant/common';
+import { normalizeCurrencyCode, normalizeLanguageCodes } from '@data/shared/extractedBusinessProfile';
 import type { MenuIntakeIdentityResponse } from './client';
 import type { StoreDataType } from '@type/platform/store';
 
-export type BusinessIdentitySuggestionField = 'name' | 'phoneNumber' | 'addressLine' | 'businessType';
+export type BusinessIdentitySuggestionField =
+    | 'phoneNumber'
+    | 'addressLine'
+    | 'businessType'
+    | 'businessCategory'
+    | 'currencyCode'
+    | 'activeLanguages'
+    | 'defaultLanguage';
+
+export type BusinessIdentityUpdatePayload = Partial<{
+    phoneNumber: string;
+    addressLine: string;
+    businessType: string;
+    businessCategory: string;
+    currencyCode: string;
+    currencySymbol: string;
+    activeLanguages: string[];
+    defaultLanguage: string;
+}>;
 
 export type BusinessIdentitySuggestion = {
     currentValue: string;
     field: BusinessIdentitySuggestionField;
     label: string;
     value: string;
+    payloadValue?: string | string[];
+    metadata?: {
+        currencySymbol?: string;
+        defaultLanguage?: string;
+    };
 };
 
 type StoreIdentitySuggestionSource = Partial<StoreDataType> & {
@@ -42,12 +67,27 @@ function normalizeBusinessType(value: unknown): string | null {
     return partial?.value || null;
 }
 
+function normalizeLanguageList(value: unknown): string[] {
+    return normalizeLanguageCodes(Array.isArray(value) ? value : String(value || '').split(','));
+}
+
+function formatStringList(value: unknown): string {
+    const list = Array.isArray(value) ? value : normalizeLanguageList(value);
+    return list.map(normalizeValue).filter(Boolean).join(', ');
+}
+
+function getCurrencySymbol(currencyCode: string): string | undefined {
+    return countryData.find((country) => country.currencyCode === currencyCode)?.currencySymbol;
+}
+
 function addSuggestion(
     suggestions: BusinessIdentitySuggestion[],
     params: {
         currentValue?: unknown;
         field: BusinessIdentitySuggestionField;
         label: string;
+        metadata?: BusinessIdentitySuggestion['metadata'];
+        payloadValue?: string | string[];
         value?: unknown;
     },
 ) {
@@ -62,6 +102,8 @@ function addSuggestion(
         field: params.field,
         label: params.label,
         value,
+        ...(params.payloadValue !== undefined ? { payloadValue: params.payloadValue } : {}),
+        ...(params.metadata ? { metadata: params.metadata } : {}),
     });
 }
 
@@ -73,12 +115,6 @@ export function buildBusinessIdentitySuggestions(
     if (result.identity.confidence === 'low') return [];
 
     const suggestions: BusinessIdentitySuggestion[] = [];
-    addSuggestion(suggestions, {
-        currentValue: storeDetails.name,
-        field: 'name',
-        label: 'Store/location name',
-        value: result.identity.businessName,
-    });
     addSuggestion(suggestions, {
         currentValue: storeDetails.phoneNumber,
         field: 'phoneNumber',
@@ -102,17 +138,70 @@ export function buildBusinessIdentitySuggestions(
         });
     }
 
+    const businessCategory = normalizeBusinessCategory(result.identity.businessCategory || '');
+    if (businessCategory) {
+        addSuggestion(suggestions, {
+            currentValue: storeDetails.businessCategory,
+            field: 'businessCategory',
+            label: 'Business category',
+            value: businessCategory,
+        });
+    }
+
+    const currencyCode = normalizeCurrencyCode(result.identity.currencyHint);
+    const currencySymbol = currencyCode ? getCurrencySymbol(currencyCode) : undefined;
+    if (currencyCode) {
+        addSuggestion(suggestions, {
+            currentValue: storeDetails.currencyCode,
+            field: 'currencyCode',
+            label: 'Currency',
+            metadata: currencySymbol ? { currencySymbol } : undefined,
+            value: currencySymbol ? `${currencyCode} (${currencySymbol})` : currencyCode,
+            payloadValue: currencyCode,
+        });
+    }
+
+    const detectedLanguages = normalizeLanguageList(result.identity.languages);
+    const currentLanguages = normalizeLanguageList(storeDetails.activeLanguages || []);
+    const mergedLanguages = Array.from(new Set([...currentLanguages, ...detectedLanguages]));
+    if (detectedLanguages.length > 0 && mergedLanguages.length !== currentLanguages.length) {
+        addSuggestion(suggestions, {
+            currentValue: formatStringList(currentLanguages),
+            field: 'activeLanguages',
+            label: 'Menu languages',
+            metadata: { defaultLanguage: detectedLanguages[0] },
+            value: formatStringList(mergedLanguages),
+            payloadValue: mergedLanguages,
+        });
+    }
+
+    const detectedDefaultLanguage = detectedLanguages[0];
+    if (detectedDefaultLanguage) {
+        addSuggestion(suggestions, {
+            currentValue: storeDetails.defaultLanguage,
+            field: 'defaultLanguage',
+            label: 'Default menu language',
+            value: detectedDefaultLanguage,
+        });
+    }
+
     return suggestions;
 }
 
 export function buildBusinessIdentityUpdatePayload(
     suggestions: BusinessIdentitySuggestion[],
     selectedFields: BusinessIdentitySuggestionField[],
-): Partial<Record<BusinessIdentitySuggestionField, string>> {
+): BusinessIdentityUpdatePayload {
     const selected = new Set(selectedFields);
-    return suggestions.reduce<Partial<Record<BusinessIdentitySuggestionField, string>>>((payload, suggestion) => {
+    return suggestions.reduce<BusinessIdentityUpdatePayload>((payload, suggestion) => {
         if (selected.has(suggestion.field)) {
-            payload[suggestion.field] = suggestion.value;
+            (payload as Record<string, unknown>)[suggestion.field] = suggestion.payloadValue ?? suggestion.value;
+            if (suggestion.field === 'currencyCode' && suggestion.metadata?.currencySymbol) {
+                payload.currencySymbol = suggestion.metadata.currencySymbol;
+            }
+            if (suggestion.field === 'activeLanguages' && suggestion.metadata?.defaultLanguage && selected.has('defaultLanguage')) {
+                payload.defaultLanguage = suggestion.metadata.defaultLanguage;
+            }
         }
         return payload;
     }, {});

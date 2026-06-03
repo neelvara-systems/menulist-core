@@ -243,8 +243,8 @@ const DEFAULT_CONFIG: CategoryDecisionConfig = {
 /**
  * Get decision block configuration for a business type
  */
-export function getDecisionConfig(businessType?: string): CategoryDecisionConfig {
-    const category = resolveBusinessCategory(businessType);
+export function getDecisionConfig(businessType?: string, businessCategory?: string): CategoryDecisionConfig {
+    const category = resolveBusinessCategory(businessType, businessCategory);
     if (category && CATEGORY_CONFIGS[category]) {
         return CATEGORY_CONFIGS[category];
     }
@@ -254,16 +254,16 @@ export function getDecisionConfig(businessType?: string): CategoryDecisionConfig
 /**
  * Get duration configuration for a business type
  */
-export function getDurationConfig(businessType?: string): DurationConfig {
-    return getDecisionConfig(businessType).duration;
+export function getDurationConfig(businessType?: string, businessCategory?: string): DurationConfig {
+    return getDecisionConfig(businessType, businessCategory).duration;
 }
 
 /**
  * Get labels for a specific block type
  * Returns null if the block is not enabled for this business type
  */
-export function getBlockLabels(blockType: DecisionBlockType, businessType?: string): DecisionBlockLabels | null {
-    const config = getDecisionConfig(businessType);
+export function getBlockLabels(blockType: DecisionBlockType, businessType?: string, businessCategory?: string): DecisionBlockLabels | null {
+    const config = getDecisionConfig(businessType, businessCategory);
     if (!config.enabledBlocks.includes(blockType)) return null;
     return config.labels[blockType];
 }
@@ -271,20 +271,20 @@ export function getBlockLabels(blockType: DecisionBlockType, businessType?: stri
 /**
  * Get enabled blocks for a business type
  */
-export function getEnabledBlocks(businessType?: string): DecisionBlockType[] {
-    return getDecisionConfig(businessType).enabledBlocks;
+export function getEnabledBlocks(businessType?: string, businessCategory?: string): DecisionBlockType[] {
+    return getDecisionConfig(businessType, businessCategory).enabledBlocks;
 }
 
 /**
  * Check if an item qualifies for Quick Pick based on duration
  * Returns false if Quick Pick is disabled for this business type
  */
-export function isQuickPickEligible(duration: number | undefined, businessType?: string): boolean {
+export function isQuickPickEligible(duration: number | undefined, businessType?: string, businessCategory?: string): boolean {
     // First check if Quick Pick is even enabled for this category
-    const enabledBlocks = getEnabledBlocks(businessType);
+    const enabledBlocks = getEnabledBlocks(businessType, businessCategory);
     if (!enabledBlocks.includes('quickPick')) return false;
 
-    const config = getDurationConfig(businessType);
+    const config = getDurationConfig(businessType, businessCategory);
     const itemDuration = duration ?? config.default;
     return itemDuration <= config.quickThreshold;
 }
@@ -292,18 +292,18 @@ export function isQuickPickEligible(duration: number | undefined, businessType?:
 /**
  * Get effective duration for an item (falls back to category default)
  */
-export function getEffectiveDuration(duration: number | undefined, businessType?: string): number {
+export function getEffectiveDuration(duration: number | undefined, businessType?: string, businessCategory?: string): number {
     if (duration !== undefined && duration >= 0) {
         return duration;
     }
-    return getDurationConfig(businessType).default;
+    return getDurationConfig(businessType, businessCategory).default;
 }
 
 /**
  * Format duration for display
  */
-export function formatDuration(duration: number, businessType?: string): string {
-    const config = getDurationConfig(businessType);
+export function formatDuration(duration: number, businessType?: string, businessCategory?: string): string {
+    const config = getDurationConfig(businessType, businessCategory);
     if (duration === 0) {
         return 'Instant';
     }
@@ -414,9 +414,10 @@ export const DECISION_REASON_KEYS = {
 export function getReasonKey(
     blockType: DecisionBlockType,
     reasonType: string,
-    businessType?: string
+    businessType?: string,
+    businessCategory?: string,
 ): string {
-    const category = resolveBusinessCategory(businessType) || 'default';
+    const category = resolveBusinessCategory(businessType, businessCategory) || 'default';
     const blockReasons = DECISION_REASON_KEYS[blockType] as Record<string, Record<string, string>>;
 
     // Try category-specific key first

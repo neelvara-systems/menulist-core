@@ -4,6 +4,7 @@ import { calculateOfflineAmount, getResellerTierById, RESELLER_CAPS, RESELLER_SY
 import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
+import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { createResellerTransaction, getResellerProfile, updateResellerStatsOnOnboarding } from "@database/reseller/server";
 import { createInitialSubscription } from "@database/subscriptions/server";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
@@ -258,7 +259,7 @@ export const POST = withAuth(async (request, session) => {
                 // Centralized tenant + store creation
                 const core = await createTenantStoreInTransaction(transaction, db, {
                     businessName,
-                    businessType: businessType || 'Restaurant',
+                    businessType: businessType || FALLBACK_BUSINESS_TYPE,
                     businessIndustry: 'B2C',
                     email: normalizedOwnerEmail || ownerLoginEmail,
                     onboardingSource: 'RESELLER_ONBOARDING',

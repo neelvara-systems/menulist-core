@@ -1,12 +1,14 @@
 'use client'
 
-import { downloadQrCode, generateQrCodeDataUrl } from '@lib/utils/qrCode';
+import { downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuX } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Image, NavBar, Popup, Text, Toast } from '../antd';
 
 interface MobileQrCodeSheetProps {
+    activePlanType?: string | null;
+    brandColor?: string;
     copyErrorMessage: string;
     copySuccessMessage: string;
     downloadSuccessMessage: string;
@@ -14,15 +16,19 @@ interface MobileQrCodeSheetProps {
     generatingLabel: string;
     helperText?: string;
     imageAlt: string;
+    logoUrl?: string | null;
     onClose: () => void;
     onDownload?: () => void;
     qrErrorMessage: string;
+    storeName?: string;
     title: string;
     url: string;
     visible: boolean;
 }
 
 export default function MobileQrCodeSheet({
+    activePlanType,
+    brandColor,
     copyErrorMessage,
     copySuccessMessage,
     downloadSuccessMessage,
@@ -30,9 +36,11 @@ export default function MobileQrCodeSheet({
     generatingLabel,
     helperText,
     imageAlt,
+    logoUrl,
     onClose,
     onDownload,
     qrErrorMessage,
+    storeName,
     title,
     url,
     visible,
@@ -56,7 +64,15 @@ export default function MobileQrCodeSheet({
         const generate = async () => {
             setIsLoading(true);
             try {
-                const dataUrl = await generateQrCodeDataUrl(url);
+                const dataUrl = await generateBrandedQrCodeDataUrl(url, {
+                    brandColor,
+                    footer: url.replace(/^https?:\/\//, ''),
+                    logoUrl,
+                    storeName,
+                    subtitle: helperText,
+                    title,
+                    activePlanType,
+                });
                 if (!cancelled) {
                     setQrDataUrl(dataUrl);
                 }
@@ -77,7 +93,7 @@ export default function MobileQrCodeSheet({
         return () => {
             cancelled = true;
         };
-    }, [visible, url, qrErrorMessage, onClose]);
+    }, [activePlanType, brandColor, helperText, logoUrl, storeName, title, visible, url, qrErrorMessage, onClose]);
 
     const handleCopy = async () => {
         try {

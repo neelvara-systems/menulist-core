@@ -6,6 +6,7 @@
  */
 
 import { Timestamp } from "firebase-admin/firestore";
+import type { ExtractedBusinessProfile } from "../sharedData/extractedBusinessProfile";
 
 // ═══════════════════════════════════════════════════════════════
 // PROVIDER TYPES
@@ -145,6 +146,7 @@ export interface MessagingOnboardingSession {
   // Extraction
   extractionJobId: string | null;
   extractedMenuData: any | null;
+  extractedBusinessProfile?: ExtractedBusinessProfile | null;
   extractedProjectFiles?: any[] | null;
   qualityScore: number | null;
 

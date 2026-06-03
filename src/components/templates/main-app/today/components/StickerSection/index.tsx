@@ -9,6 +9,10 @@ import { LuDownload, LuSticker } from "react-icons/lu";
 const { Text } = Typography;
 
 interface StickerSectionProps {
+    activePlanType?: string | null;
+    brandColor?: string;
+    brandName?: string;
+    logoUrl?: string;
     sticker: NonNullable<PhysicalSurfaceEligibility["counterSticker"]>;
 }
 
@@ -18,7 +22,7 @@ interface StickerSectionProps {
  * Appears only when eligible (confidence ≥ 0.8 + 7 days stability)
  * Higher stakes than tent cards — permanent + every customer sees
  */
-export default function StickerSection({ sticker }: StickerSectionProps) {
+export default function StickerSection({ activePlanType, brandColor, brandName, logoUrl, sticker }: StickerSectionProps) {
     const [downloading, setDownloading] = useState(false);
 
     const handleDownload = async () => {
@@ -27,7 +31,11 @@ export default function StickerSection({ sticker }: StickerSectionProps) {
         setDownloading(true);
         try {
             const blob = await generateStickerPNG({
+                activePlanType,
+                brandColor,
+                brandName,
                 itemName,
+                logoUrl,
                 templateId: sticker.templateId,
                 qrUrl: sticker.qrUrl,
             });

@@ -1,7 +1,34 @@
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import imageViewTypesData from './imageViewTypes.json';
 import platformEditingFeaturesData from './platformEditingFeatures.json';
 
 export const IMAGE_VIEW_TYPES: any[] = imageViewTypesData as any[];
+
+const CATEGORY_IMAGE_VIEW_FALLBACKS: Record<string, string> = {
+    creative: 'Photography Studio',
+    food: 'Restaurant',
+    health: 'Gym',
+    professional: 'Real Estate Agent',
+    retail: 'Fashion Boutique',
+    service: 'Salon',
+    specialty: 'Car Dealership',
+};
+
+export function getImageViewTypeForBusiness(businessType?: string | null, businessCategory?: string | null): any {
+    const normalizedBusinessType = businessType?.trim().toLowerCase();
+    const exact = normalizedBusinessType
+        ? IMAGE_VIEW_TYPES.find((type) => type.businessType?.trim().toLowerCase() === normalizedBusinessType)
+        : null;
+    if (exact) return exact;
+
+    const resolvedCategory = resolveBusinessCategory(businessType || undefined, businessCategory || undefined);
+    const fallbackBusinessType = resolvedCategory ? CATEGORY_IMAGE_VIEW_FALLBACKS[resolvedCategory] : undefined;
+    const categoryFallback = fallbackBusinessType
+        ? IMAGE_VIEW_TYPES.find((type) => type.businessType === fallbackBusinessType)
+        : null;
+
+    return categoryFallback || IMAGE_VIEW_TYPES[0];
+}
 
 export type ImageEditingFeatureType = {
     featureName: string;

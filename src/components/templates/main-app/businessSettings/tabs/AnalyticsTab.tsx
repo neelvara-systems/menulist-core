@@ -21,13 +21,6 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
     const [showSetupWizard, setShowSetupWizard] = useState(false);
     // Using form from parent component
 
-    const validateGA4Id = (rule: any, value: string) => {
-        if (!value) {
-            return Promise.reject('GA4 Measurement ID is required');
-        }
-        return Promise.resolve();
-    };
-
     return (
         <>
             <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -95,7 +88,6 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         )}
                         name={["analytics", "googleAnalyticsId"]}
                         extra={<Text type="secondary">{t('googleAnalyticsIdHelp')}</Text>}
-                        rules={[{ validator: validateGA4Id }]}
                     >
                         <Input placeholder="G-XXXXXXXXXX" />
                     </Form.Item>
@@ -109,7 +101,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                                 </Tooltip>
                             </Space>
                         )}
-                        name={["analytics", "searchConsoleVerification"]}
+                        name={["analytics", "googleSearchConsole"]}
                         extra={<Text type="secondary">{t('googleSearchConsoleHelp')}</Text>}
                     >
                         <Input placeholder="<meta name='google-site-verification' content='...' />" />

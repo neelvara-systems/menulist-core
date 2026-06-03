@@ -181,8 +181,11 @@ export default function ItemEditSheet({
         borderRadius: 16,
         padding: '14px 16px',
     } as const;
-    const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
-    const metadataFields = useMemo(() => getMetadataFieldsForBusiness(storeDetails?.businessType), [storeDetails?.businessType]);
+    const availabilityLabels = getOwnerLabels(storeDetails?.businessType, storeDetails?.businessCategory);
+    const metadataFields = useMemo(
+        () => getMetadataFieldsForBusiness(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
     const isAddMode = mode === 'add';
     const primaryLanguage = selectedLanguages[0] || 'en';
     const hasMultipleLanguages = selectedLanguages.length > 1;
@@ -572,8 +575,8 @@ export default function ItemEditSheet({
                 projectId: projectData.projectId,
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
-                contentLength: getProjectDescriptionContentLength(projectData, storeDetails?.businessType),
-                tone: getProjectDescriptionTone(projectData, storeDetails?.businessType),
+                contentLength: getProjectDescriptionContentLength(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
+                tone: getProjectDescriptionTone(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
             };
 
             const result = await getNewItemMetadataViaAPI(payload);

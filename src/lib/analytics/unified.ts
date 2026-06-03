@@ -595,6 +595,7 @@ export interface TrackingData {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_content?: string;
   entrySource?: EntrySource | string;
 
   // Menu language usage. Counts only current language on existing menu-view
@@ -738,6 +739,16 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     const sessionMilestones = readSessionMilestoneState(sessionMilestoneKey);
     const entrySource = readSessionEntrySource(sessionSourceKey) || inferEntrySource(data);
     const activeAttributeFilter = readActiveAttributeFilter(sessionFilterKey);
+    const normalizeAnalyticsMapKey = (value?: string): string | null => {
+      if (!value) return null;
+      const normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 80);
+      return normalized || null;
+    };
 
     // Prepare update data
     const updateData: any = {
@@ -771,6 +782,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           }
           if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
           if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+          const utmContent = normalizeAnalyticsMapKey(data.utm_content);
+          if (utmContent) updateData[`viewsByContent.${utmContent}`] = 1;
           // T5-N-01: R5 Layer resolution split — lets us measure how often /menu
           // resolves via Layer 1 (owner-claimed slug) vs Layer 2 (universal alias).
           if (data.menuResolutionLayer) {
@@ -921,6 +934,8 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         }
         if (data.utm_medium) updateData[`viewsByMedium.${data.utm_medium}`] = 1;
         if (data.utm_campaign) updateData[`viewsByCampaign.${data.utm_campaign}`] = 1;
+        const obpUtmContent = normalizeAnalyticsMapKey(data.utm_content);
+        if (obpUtmContent) updateData[`viewsByContent.${obpUtmContent}`] = 1;
         break;
 
       case TrackingEvent.OBP_LANGUAGE_ADOPTION:

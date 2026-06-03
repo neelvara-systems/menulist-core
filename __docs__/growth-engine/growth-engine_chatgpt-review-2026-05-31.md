@@ -64,6 +64,28 @@ After reviewing current channel, cost, and market sources, the original docs nee
 
 New mandatory gaps were documented in [Operator Gap Audit](./growth-engine_gap-audit-2026-05-31.md).
 
+## 3B. WhatsApp Outreach Kit Review - June 3, 2026
+
+The pasted WhatsApp outreach kit is operationally useful but policy-unsafe if copied literally.
+
+| Kit item | Verdict | MenuList/Growth Engine decision |
+| --- | --- | --- |
+| Claim vs Invite variants | Accept with controls | Use as consented claim/verification experiment variants only. Copy must avoid unsupported claims and must not say the menu is official before owner review or approved MenuList verification. |
+| 50/50 A/B test | Accept with controls | Keep random split and winner rule, but primary metric is verified owner action rate. A variant cannot win if opt-out, complaint, sender quality, template quality, cost, or consent thresholds fail. |
+| Pacing tiers | Accept with controls | Treat tiers as maximums after opt-in, template, sender, webhook, and reputation checks. Provider throughput is not safe capacity. |
+| Hard stop rules | Accept and strengthen | Add failure, opt-out, block/report, quality, zero-engagement, webhook, consent, and suppression stop conditions to the governance policy and tests. |
+| Public-source consent footer | Reject | "Found via Google/Instagram/Maps" can be source context only. It is not WhatsApp opt-in and must not be rendered as the basis for contacting the owner. |
+| First 50-200 sends from public listings | Reject | WhatsApp API sends from public listing or enriched phone numbers are blocked unless a matching consent event exists. |
+| Raw send logging | Modify | Log experiment state through masked summaries, consent proof refs, template refs, link tokens, and response categories. Do not use raw phone numbers or raw reply text as dashboard inputs. |
+| CSV header | Modify | CSV import is allowed only as server-side source import with source policy, normalization, masking, hashing, dedupe, and suppression checks. It does not create WhatsApp eligibility. |
+
+Resulting doc updates:
+
+- [WhatsApp Governance Policy](./growth-engine_whatsapp-governance-policy.md) now includes a governed Claim/Invite experiment policy.
+- [Firebase Cost](./growth-engine_firebase.md) now defines experiment summary and assignment records with PII/cost guardrails.
+- [Test Cases](./growth-engine_test-cases.md) now block public-source-as-consent, unsupported claims, unsafe follow-ups, stop-rule violations, and raw PII dashboards.
+- [Implementation Readiness](./growth-engine_implementation-readiness.md) now requires the experiment policy seed before any Claim/Invite assignment or send.
+
 ## 4. Accepted Ideas
 
 | Idea | Status | Reason |

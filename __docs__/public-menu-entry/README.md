@@ -3,25 +3,25 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Active funnel
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** May 20, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
 ## What Is This?
 
-A public-facing page at `/create-menu` that lets any business owner upload a current menu image or paste a permission-confirmed public menu link, see a structured owner-review preview, and sign in only before claiming the public starter activation. The public marketing promise is **free to start, review before publishing**, not an unlimited free AI utility.
+A public-facing page at `/create-menu` that lets any business owner start the setup flow, sign in, upload a current menu image or paste a permission-confirmed public menu link, and see a structured owner-review preview. The public marketing promise is **free first setup preview, review before publishing**, not an anonymous free AI utility.
 
-**Core loop:** Upload/paste source → extraction → Preview → sign in → official source setup
+**Core loop:** Open `/create-menu` → sign in → upload/paste source → extraction → owner-bound preview → official source setup
 
 ## Why This Matters
 
-MenuList's long-term asset is **canonical public business pages**. This feature removes the biggest friction: forcing payment or account creation before showing value, while still preventing broad AI-processing cost leakage through SAFE_MODE, IP rate limits, file validation, and TTL cleanup. The owner sees the prepared source before choosing how far to continue.
+MenuList's long-term asset is **canonical public business pages**. This feature removes payment friction while preventing broad AI-processing cost leakage through authentication, user-keyed rate limits, active draft reuse, source dedupe, SAFE_MODE, file validation, and TTL cleanup. The owner sees the prepared source before choosing how far to continue.
 
 ## Architecture Summary
 
 - **Zero new backend infrastructure** — reuses existing AI extraction pipeline, menu rendering, and auth flow
 - **One new public page** — `src/app/(website)/create-menu/page.tsx`
-- **One API route** — `/api/public/create-menu` (POST is public/rate-limited for photo/link source + extraction; GET polls token-based preview status)
+- **One API route** — `/api/public/create-menu` (POST and GET are authenticated, owner-bound, rate-limited, and reusable for photo/link source + extraction status)
 - **Temporary storage** — extracted data stored in `publicMenuDrafts` collection with 24h TTL
 - **Conversion flow** — preview draft is converted after authenticated claim via the existing project/store creation path
 
@@ -40,9 +40,9 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 
 ## Key Decisions
 
-1. **Upload or paste source before account** — value shown before payment and before owner auth; public claiming still requires Google/WhatsApp identity
+1. **Sign in before source processing** — value shown before payment, while expensive extraction stays attached to an owner identity
 2. **24-hour TTL on drafts** — unclaimed drafts auto-deleted (cost control)
-3. **Rate limiting by IP** — 3 extractions per IP per day across photo and link inputs (abuse prevention)
+3. **Rate limiting by owner** — 5 new extractions per user per day across photo and link inputs, with active draft reuse and source dedupe
 4. **Reuses existing extraction pipeline** — same shared extraction/client patterns as the current implementation
 5. **Preview uses existing menu renderer** — same B2C view components
 6. **Feature-flagged** — `ENABLE_PUBLIC_MENU_ENTRY` controls the public flow; `ENABLE_MENU_LINK_IMPORT` additionally gates the public link input

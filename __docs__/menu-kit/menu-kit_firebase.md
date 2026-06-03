@@ -1,17 +1,19 @@
 # Menu Kit — Firebase Cost Analysis
 
-**Version:** 1.2
+**Version:** 1.3
 **Status:** ✅ VERIFIED — Zero Firebase cost confirmed
-**Last Updated:** May 21, 2026 — Mobile Share tab asset delivery verified
+**Last Updated:** June 3, 2026 — Premium logo/color output treatment verified as client-side
 **Companion:** `menu-kit_impl.md`
 
 ---
 
 ## Summary
 
-**Menu Kit has ZERO Firebase cost (₹0).**
+**Menu Kit has zero Firestore writes, zero Firestore reads, zero Cloud Function cost, and zero generated Storage writes.**
 
-All generation happens client-side using browser Canvas API + jsPDF + qrcode. No Firestore reads, no Firestore writes, no Firebase Storage uploads.
+All generation happens client-side using browser Canvas API + jsPDF + qrcode. No Firestore reads, no Firestore writes, no Cloud Functions, and no generated Firebase Storage uploads are introduced. If a store logo URL points to Firebase Storage and is not already cached by the browser, the browser may fetch that existing image once for rendering; the feature still does not create or store any generated assets.
+
+MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.ts` draws the MenuList logo mark, name, and `menulist.ai` domain into generated files without a network fetch, export artifact, Firestore read/write, Storage upload, Cloud Function, rule, or index. Premium attribution removal uses `src/lib/platform/menuListBranding.ts` and the already-loaded `stores/{storeId}.activePlanType`; it does not query subscriptions.
 
 ---
 
@@ -21,7 +23,7 @@ All generation happens client-side using browser Canvas API + jsPDF + qrcode. No
 
 | Operation                          | Count | Source                                     | Notes              |
 | ---------------------------------- | ----- | ------------------------------------------ | ------------------ |
-| Store data (name, logo, subdomain) | 0     | Already in Redux/mobile context            | No additional read |
+| Store data (name, logo, subdomain, brand color) | 0     | Already in Redux/mobile context            | No additional database read |
 | Menu URL                           | 0     | Already computed in Share Modal / Mobile Share tab | No additional read |
 | Last publish date                  | 0     | Already available from project summary when present | No additional read |
 
@@ -49,9 +51,9 @@ All generation happens client-side using browser Canvas API + jsPDF + qrcode. No
 
 | Metric              | Cost  |
 | ------------------- | ----- |
-| Per download        | ₹0 |
-| Per 1,000 downloads | ₹0 |
-| Monthly (any scale) | ₹0 |
+| Per download        | ₹0 database/function/generated-storage cost |
+| Per 1,000 downloads | ₹0 database/function/generated-storage cost |
+| Monthly (any scale) | ₹0 database/function/generated-storage cost |
 
 ---
 
@@ -59,10 +61,21 @@ All generation happens client-side using browser Canvas API + jsPDF + qrcode. No
 
 Menu Kit is designed as a **client-side generation tool**:
 
-1. **Data already loaded** — Store name, logo, subdomain, menu URL are all in the browser's Redux state when the Share Modal opens
+1. **Data already loaded** — Store name, logo URL, brand color, subdomain, and menu URL are all in browser context when the Share Modal or mobile Share screen opens
 2. **No server generation** — Canvas API + jsPDF run in the browser
 3. **No storage** — ZIP is created in memory and downloaded via `URL.createObjectURL()`
 4. **No CDN** — Assets are not hosted anywhere; they're generated fresh each time
+
+### Premium Output Treatment (June 3, 2026)
+
+The premium logo/color treatment remains cost-safe:
+
+- `resolveStoreBrandColor()` reads existing store context only.
+- `resolveMenuKitBrandTokens()` runs locally in the browser.
+- `platformAttribution.ts` draws the MenuList logo/name/domain footer locally for non-Premium stores.
+- `menuListBranding.ts` hides visible attribution only for `activePlanType === "premium"` using already-loaded store context.
+- QR/card/PDF-like image generation remains Canvas/jsPDF in memory.
+- Logo rendering uses the existing logo URL when available and does not upload rendered assets.
 
 This is the most cost-efficient architecture possible.
 

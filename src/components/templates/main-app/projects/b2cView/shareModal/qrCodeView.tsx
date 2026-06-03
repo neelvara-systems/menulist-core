@@ -1,5 +1,6 @@
 import { LOGO_SMALL } from '@constant/common';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { Button, Checkbox, ColorPicker, Flex, QRCode, Typography, message } from 'antd';
 import { useState } from 'react';
 import { LuDownload } from 'react-icons/lu';
@@ -7,14 +8,18 @@ import { LuDownload } from 'react-icons/lu';
 const { Text } = Typography;
 
 interface QRCodeViewProps {
+    activePlanType?: string | null;
+    brandColor?: string;
+    logoUrl?: string;
     shareUrl: string;
+    storeName?: string;
 }
 
 function withQrEntrySource(url: string): string {
     return withAnalyticsSource(url, 'qr');
 }
 
-function QRCodeView({ shareUrl }: QRCodeViewProps) {
+function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName = 'menu' }: QRCodeViewProps) {
     // QR code customization states
     const [qrSize, setQrSize] = useState<number>(200);
     const [qrColor, setQrColor] = useState<string>('#000000');
@@ -22,18 +27,22 @@ function QRCodeView({ shareUrl }: QRCodeViewProps) {
     const [showLogo, setShowLogo] = useState<boolean>(true);
     const qrShareUrl = withQrEntrySource(shareUrl);
 
-    const handleDownloadQRCode = () => {
-        const canvas = document.getElementById('menu-qrcode')?.querySelector<HTMLCanvasElement>('canvas');
-        if (canvas) {
-            const url = canvas.toDataURL();
-            const a = document.createElement('a');
-            a.download = `menu-qrcode.png`;
-            a.href = url;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+    const handleDownloadQRCode = async () => {
+        try {
+            const dataUrl = await generateBrandedQrCodeDataUrl(qrShareUrl, {
+                brandColor,
+                darkColor: qrColor,
+                footer: qrShareUrl.replace(/^https?:\/\//, ''),
+                lightColor: qrBgColor,
+                logoUrl: showLogo ? logoUrl : undefined,
+                storeName,
+                subtitle: 'Scan to view the menu',
+                title: 'Menu QR',
+                activePlanType,
+            });
+            downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
             message.success('QR code downloaded successfully!');
-        } else {
+        } catch {
             message.error('Failed to download QR code');
         }
     };
@@ -50,7 +59,7 @@ function QRCodeView({ shareUrl }: QRCodeViewProps) {
                     errorLevel={"H"}
                     color={qrColor}
                     bgColor={qrBgColor}
-                    icon={showLogo ? LOGO_SMALL : undefined}
+                    icon={showLogo ? (logoUrl || LOGO_SMALL) : undefined}
                     iconSize={showLogo ? qrSize / 3 : undefined}
                     style={{ margin: '16px' }}
                 />

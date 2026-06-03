@@ -134,6 +134,9 @@ export interface AnalyticsSummary {
   viewsByCampaign?: {
     [campaign: string]: number;
   };
+  viewsByContent?: {
+    [content: string]: number;
+  };
 
   // Rolling periods
   last7Days: {

@@ -31,6 +31,7 @@ interface UtmParams {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_content?: string;
   entrySource?: string;
 }
 
@@ -53,6 +54,7 @@ const getUtmParams = () => {
     utm_source: urlParams.get('utm_source') || '',
     utm_medium: urlParams.get('utm_medium') || '',
     utm_campaign: urlParams.get('utm_campaign') || '',
+    utm_content: urlParams.get('utm_content') || '',
     entrySource: urlParams.get('entry_source') || '',
   };
 };

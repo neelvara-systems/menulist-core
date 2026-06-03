@@ -43,5 +43,6 @@
 ### Tips
 
 - All QR codes update automatically when you change your menu — no need to reprint
+- Downloaded QR files include your business name, logo when available, and brand color so they are ready to print or share
 - Print on regular paper and laminate for durability
 - Test scanning from 30-50 cm distance before placing

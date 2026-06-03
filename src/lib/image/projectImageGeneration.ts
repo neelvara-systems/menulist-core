@@ -494,7 +494,7 @@ export async function generateProjectImageCandidate(
 
     const projectId = params.project.projectId || 'project-draft';
     const generatedImages = await generateImageViaApi({
-        businessType: params.businessType || 'restaurant',
+        businessType: params.businessType || params.businessCategory || 'business',
         fileId: 'project-image',
         generationConfig: {
             ...PROJECT_IMAGE_GENERATION_CONFIG,
@@ -537,7 +537,7 @@ export async function generateBusinessCoverCandidate(
 ): Promise<GeneratedProjectImageCandidate | null> {
     const description = buildBusinessCoverDescription(params);
     const generatedImages = await generateImageViaApi({
-        businessType: params.businessType || params.store.businessType || 'restaurant',
+        businessType: params.businessType || params.store.businessType || params.businessCategory || params.store.businessCategory || 'business',
         fileId: 'business-cover',
         generationConfig: {
             ...BUSINESS_COVER_GENERATION_CONFIG,

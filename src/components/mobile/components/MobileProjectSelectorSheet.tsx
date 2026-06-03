@@ -1536,6 +1536,7 @@ export default function MobileProjectSelectorSheet({
             </Popup>
 
             <MobileQrCodeSheet
+                activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('copiedLabel', {
                     label: tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }),

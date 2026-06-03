@@ -2,9 +2,14 @@
 
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 
-export default function ScreenAttribution() {
+interface ScreenAttributionProps {
+    activePlanType?: string | null;
+}
+
+export default function ScreenAttribution({ activePlanType }: ScreenAttributionProps) {
     return (
         <PublicMenuListAttribution
+            activePlanType={activePlanType}
             mode="compact"
             mutedColor="rgba(226, 232, 240, 0.58)"
             containerStyle={{

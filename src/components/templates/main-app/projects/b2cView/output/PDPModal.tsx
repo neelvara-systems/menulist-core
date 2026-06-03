@@ -23,6 +23,7 @@ import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronLeft, LuChevronRight, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -93,6 +94,28 @@ function sanitizePdpTags(value: unknown): string[] {
         acc.push(tag);
         return acc;
     }, []);
+}
+
+function normalizeDietaryTagKey(tag: string): string {
+    return tag.toLowerCase().trim().replace(/_/g, '-').replace(/\s+/g, '-');
+}
+
+function getDietaryTagLabel(tag: string): string {
+    const key = normalizeDietaryTagKey(tag);
+    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) return 'Non-veg';
+    if (key === 'vegetarian') return 'Vegetarian';
+    if (key === 'gluten-free') return 'Gluten free';
+    if (key === 'dairy-free') return 'Dairy free';
+    if (key === 'sugar-free') return 'Sugar free';
+    return tag.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getDietaryTagStyle(tag: string): CSSProperties {
+    const key = normalizeDietaryTagKey(tag);
+    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) {
+        return { background: '#11182710', color: '#374151' };
+    }
+    return { background: '#22c55e20', color: '#16a34a' };
 }
 
 function PDPModal({
@@ -838,8 +861,8 @@ function PDPModal({
                                         }}
                                     >
                                         {dietaryTags.map((tag: string, idx: number) => (
-                                            <span key={`dt-${idx}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#22c55e20', color: '#16a34a', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                {tag.charAt(0).toUpperCase() + tag.slice(1).replace('-', ' ')}
+                                            <span key={`dt-${idx}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, ...getDietaryTagStyle(tag), fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                                {getDietaryTagLabel(tag)}
                                             </span>
                                         ))}
                                         {spiceLevel && spiceLevel !== 'none' && (

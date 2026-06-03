@@ -284,7 +284,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                         </div>
                     )}
                 </div>
-                <ScreenAttribution />
+                <ScreenAttribution activePlanType={storeInfo.activePlanType} />
                 <style jsx>{`
                     .screen-container {
                         width: 100vw;
@@ -378,7 +378,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                 </div>
             )}
 
-            <ScreenAttribution />
+            <ScreenAttribution activePlanType={storeInfo.activePlanType} />
 
             {/* Styles */}
             <style jsx global>{`

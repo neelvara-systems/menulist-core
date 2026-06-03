@@ -55,6 +55,7 @@ import {
     SourceQuality,
     TopCategory,
     TopItem,
+    TrafficBreakdown,
     WeeklyAISummary,
     WeeklyViewData,
     WTDViewData,
@@ -378,6 +379,21 @@ function transformSourceQuality(data: any): SourceQuality[] {
         .slice(0, 6);
 }
 
+function transformTrafficBreakdown(data: any, field: string): TrafficBreakdown[] {
+    const values = readAnalyticsMap(data, field);
+    if (!Object.keys(values).length) return [];
+
+    return Object.entries(values)
+        .map(([key, views]) => ({
+            key,
+            label: String(key).replace(/_/g, ' '),
+            views: Number(views) || 0,
+        }))
+        .filter((entry) => entry.views > 0)
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 6);
+}
+
 function transformTopLanguages(data: any): LanguageUsage[] {
     if (!data?.languageTrackingEnabled) return [];
 
@@ -481,9 +497,14 @@ interface DailyDocData {
         quickPick?: number;
         bestValue?: number;
     };
+    clicksByItem?: Record<string, number>;
     recommendationClicksByItem?: Record<string, number>;
     viewsByCategory?: Record<string, number>;
     clicksByCategory?: Record<string, number>;
+    viewsBySource?: Record<string, number>;
+    viewsByMedium?: Record<string, number>;
+    viewsByCampaign?: Record<string, number>;
+    viewsByContent?: Record<string, number>;
     viewsByEntrySource?: Record<string, number>;
     menuSessionsBySource?: Record<string, number>;
     actionSessionsBySource?: Record<string, number>;
@@ -545,9 +566,14 @@ async function fetchDailyDocs(
                     languageTrackingEnabled: Boolean(data.languageTrackingEnabled),
                     decisionBlocksRendered: readAnalyticsMap(data, 'decisionBlocksRendered'),
                     recommendationClicks: readAnalyticsMap(data, 'recommendationClicks'),
+                    clicksByItem: readAnalyticsMap(data, 'clicksByItem'),
                     recommendationClicksByItem: readAnalyticsMap(data, 'recommendationClicksByItem'),
                     viewsByCategory: readAnalyticsMap(data, 'viewsByCategory'),
                     clicksByCategory: readAnalyticsMap(data, 'clicksByCategory'),
+                    viewsBySource: readAnalyticsMap(data, 'viewsBySource'),
+                    viewsByMedium: readAnalyticsMap(data, 'viewsByMedium'),
+                    viewsByCampaign: readAnalyticsMap(data, 'viewsByCampaign'),
+                    viewsByContent: readAnalyticsMap(data, 'viewsByContent'),
                     viewsByEntrySource: readAnalyticsMap(data, 'viewsByEntrySource'),
                     menuSessionsBySource: readAnalyticsMap(data, 'menuSessionsBySource'),
                     actionSessionsBySource: readAnalyticsMap(data, 'actionSessionsBySource'),
@@ -594,8 +620,12 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
     topSearchTerms: SearchTerm[];
     topZeroResultSearchTerms: SearchTerm[];
     unavailableItems: TopItem[];
-        sourceQuality: SourceQuality[];
-        ownerConfidence: OwnerConfidence;
+    sourceQuality: SourceQuality[];
+    utmSources: TrafficBreakdown[];
+    utmMediums: TrafficBreakdown[];
+    utmCampaigns: TrafficBreakdown[];
+    utmContent: TrafficBreakdown[];
+    ownerConfidence: OwnerConfidence;
 } {
     const metrics: OwnerDashboardMetrics = {
         menuVisits: 0,
@@ -630,6 +660,10 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         menuSessionsBySource: {} as Record<string, number>,
         actionSessionsBySource: {} as Record<string, number>,
         menuActionClicksBySource: {} as Record<string, number>,
+        viewsBySource: {} as Record<string, number>,
+        viewsByMedium: {} as Record<string, number>,
+        viewsByCampaign: {} as Record<string, number>,
+        viewsByContent: {} as Record<string, number>,
     };
     const languageData = {
         languageTrackingEnabled: false,
@@ -676,8 +710,8 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             blockPerformance.bestValue.clicks += doc.recommendationClicks.bestValue || 0;
         }
 
-        if (doc.recommendationClicksByItem) {
-            for (const [itemId, clicks] of Object.entries(doc.recommendationClicksByItem)) {
+        if (doc.clicksByItem) {
+            for (const [itemId, clicks] of Object.entries(doc.clicksByItem)) {
                 if (!itemClicksMap[itemId]) {
                     itemClicksMap[itemId] = { clicks: 0, name: doc.itemNames?.[itemId] };
                 }
@@ -719,6 +753,10 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
             ['menuSessionsBySource', sourceData.menuSessionsBySource],
             ['actionSessionsBySource', sourceData.actionSessionsBySource],
             ['menuActionClicksBySource', sourceData.menuActionClicksBySource],
+            ['viewsBySource', sourceData.viewsBySource],
+            ['viewsByMedium', sourceData.viewsByMedium],
+            ['viewsByCampaign', sourceData.viewsByCampaign],
+            ['viewsByContent', sourceData.viewsByContent],
             ['menuViewsByLanguage', languageData.menuViewsByLanguage],
             ['menuSessionsByLanguage', languageData.menuSessionsByLanguage],
             ['languageAdoptions', languageData.languageAdoptions],
@@ -819,6 +857,10 @@ function aggregateDailyDocs(docs: DailyDocData[]): {
         topZeroResultSearchTerms,
         unavailableItems,
         sourceQuality: transformSourceQuality(sourceData),
+        utmSources: transformTrafficBreakdown(sourceData, 'viewsBySource'),
+        utmMediums: transformTrafficBreakdown(sourceData, 'viewsByMedium'),
+        utmCampaigns: transformTrafficBreakdown(sourceData, 'viewsByCampaign'),
+        utmContent: transformTrafficBreakdown(sourceData, 'viewsByContent'),
         ownerConfidence: transformOwnerConfidence({
             totalViews: metrics.menuVisits,
             menuSessions: metrics.menuSessions,
@@ -853,6 +895,10 @@ function buildDailyViewData(
         topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
         unavailableItems: transformUnavailableItems(data),
         sourceQuality: data.sourceQuality || transformSourceQuality(data),
+        utmSources: data.utmSources || transformTrafficBreakdown(data, 'viewsBySource'),
+        utmMediums: data.utmMediums || transformTrafficBreakdown(data, 'viewsByMedium'),
+        utmCampaigns: data.utmCampaigns || transformTrafficBreakdown(data, 'viewsByCampaign'),
+        utmContent: data.utmContent || transformTrafficBreakdown(data, 'viewsByContent'),
         ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
         aiSummary: options?.includeAiSummary && data.aiSummary ? {
             markdown: data.aiSummary.markdown,
@@ -890,8 +936,20 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
     if (!data) return null;
     return {
         ...data,
+        blockPerformance: data.blockPerformance || transformBlockPerformance(data),
+        topItems: data.topItems || transformToTopItems(data),
+        topCategories: data.topCategories || transformTopCategories(data),
         topLanguages: data.topLanguages || transformTopLanguages(data),
+        topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
+        menuActions: data.menuActions || transformMenuActions(data),
+        topSearchTerms: data.topSearchTerms || transformTopSearchTerms(data),
+        topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
+        unavailableItems: data.unavailableItems || transformUnavailableItems(data),
         sourceQuality: data.sourceQuality || transformSourceQuality(data),
+        utmSources: data.utmSources || transformTrafficBreakdown(data, 'viewsBySource'),
+        utmMediums: data.utmMediums || transformTrafficBreakdown(data, 'viewsByMedium'),
+        utmCampaigns: data.utmCampaigns || transformTrafficBreakdown(data, 'viewsByCampaign'),
+        utmContent: data.utmContent || transformTrafficBreakdown(data, 'viewsByContent'),
         ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
         lastUpdated: parseDateValue(data.lastUpdated),
         aiSummary: data.aiSummary ? {
@@ -901,10 +959,39 @@ function normalizeDailyViewData(data: any): DailyViewData | null {
     } as DailyViewData;
 }
 
+function normalizePeriodViewData<T extends WeeklyViewData | MonthlyViewData | WTDViewData | MTDViewData>(data: any): T | null {
+    if (!data) return null;
+    return {
+        ...data,
+        metrics: data.metrics || transformMetrics(data),
+        blockPerformance: data.blockPerformance || transformBlockPerformance(data),
+        topItems: data.topItems || transformToTopItems(data),
+        topCategories: data.topCategories || transformTopCategories(data),
+        topLanguages: data.topLanguages || transformTopLanguages(data),
+        topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
+        menuActions: data.menuActions || transformMenuActions(data),
+        topSearchTerms: data.topSearchTerms || transformTopSearchTerms(data),
+        topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
+        unavailableItems: data.unavailableItems || transformUnavailableItems(data),
+        sourceQuality: data.sourceQuality || transformSourceQuality(data),
+        utmSources: data.utmSources || transformTrafficBreakdown(data, 'viewsBySource'),
+        utmMediums: data.utmMediums || transformTrafficBreakdown(data, 'viewsByMedium'),
+        utmCampaigns: data.utmCampaigns || transformTrafficBreakdown(data, 'viewsByCampaign'),
+        utmContent: data.utmContent || transformTrafficBreakdown(data, 'viewsByContent'),
+        ownerConfidence: data.ownerConfidence || transformOwnerConfidence(data),
+        aiSummary: data.aiSummary ? {
+            ...data.aiSummary,
+            generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
+        } : undefined,
+    } as T;
+}
+
 function normalizeOverviewData(data: any): OverviewData | null {
     if (!data) return null;
     return {
         ...data,
+        wtd: normalizePeriodViewData<WTDViewData>(data.wtd),
+        mtd: normalizePeriodViewData<MTDViewData>(data.mtd),
         yesterday: normalizeDailyViewData(data.yesterday),
         ownerActionPlan: normalizeOwnerActionPlan(data.ownerActionPlan),
         ownerConfidence: data.ownerConfidence,
@@ -937,17 +1024,35 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
         overview,
         today: null,
         daily,
-        weekly: data.weekly || null,
-        monthly: data.monthly || null,
-        wtd: data.wtd || overview?.wtd || null,
-        mtd: data.mtd || overview?.mtd || null,
+        weekly: normalizePeriodViewData<WeeklyViewData>(data.weekly),
+        monthly: normalizePeriodViewData<MonthlyViewData>(data.monthly),
+        wtd: normalizePeriodViewData<WTDViewData>(data.wtd || overview?.wtd),
+        mtd: normalizePeriodViewData<MTDViewData>(data.mtd || overview?.mtd),
         historicalWeeks: data.historicalWeeks || overview?.historicalWeeks || [],
         overall: data.overall ? {
             ...data.overall,
+            blockPerformance: data.overall.blockPerformance || transformBlockPerformance(data.overall),
             topItems: data.overall.topItems || transformToTopItems(data.overall),
+            topCategories: data.overall.topCategories || transformTopCategories(data.overall),
             topLanguages: data.overall.topLanguages || transformTopLanguages(data.overall),
-            sourceQuality: data.overall.sourceQuality || [],
-            ownerConfidence: data.overall.ownerConfidence,
+            topAttributeFilters: data.overall.topAttributeFilters || transformTopAttributeFilters(data.overall),
+            menuActions: data.overall.menuActions || transformMenuActions(data.overall),
+            topSearchTerms: data.overall.topSearchTerms || transformTopSearchTerms(data.overall),
+            topZeroResultSearchTerms: data.overall.topZeroResultSearchTerms || transformTopSearchTerms(data.overall, 'zeroResultSearchTerms'),
+            unavailableItems: data.overall.unavailableItems || transformUnavailableItems(data.overall),
+            sourceQuality: data.overall.sourceQuality || transformSourceQuality(data.overall),
+            utmSources: data.overall.utmSources || transformTrafficBreakdown(data.overall, 'viewsBySource'),
+            utmMediums: data.overall.utmMediums || transformTrafficBreakdown(data.overall, 'viewsByMedium'),
+            utmCampaigns: data.overall.utmCampaigns || transformTrafficBreakdown(data.overall, 'viewsByCampaign'),
+            utmContent: data.overall.utmContent || transformTrafficBreakdown(data.overall, 'viewsByContent'),
+            ownerConfidence: data.overall.ownerConfidence || transformOwnerConfidence({
+                totalViews: data.overall.lifetimeMetrics?.totalViews || 0,
+                menuSessions: data.overall.lifetimeMetrics?.menuSessions || 0,
+                engagedSessions: data.overall.lifetimeMetrics?.engagedSessions || 0,
+                actionSessions: data.overall.lifetimeMetrics?.actionSessions || 0,
+                zeroResultSearches: data.overall.lifetimeMetrics?.totalZeroResultSearches || 0,
+                totalUnavailableItemTaps: data.overall.lifetimeMetrics?.totalUnavailableItemTaps || 0,
+            }),
             lastUpdated: parseDateValue(data.overall.lastUpdated),
         } as OverallData : null,
         ownerActionPlan,
@@ -1087,6 +1192,10 @@ export async function getOwnerDashboardWeekly(
                 topZeroResultSearchTerms: weeklyData.topZeroResultSearchTerms || transformTopSearchTerms(weeklyData, 'zeroResultSearchTerms'),
                 unavailableItems: transformUnavailableItems(weeklyData),
                 sourceQuality: weeklyData.sourceQuality || transformSourceQuality(weeklyData),
+                utmSources: weeklyData.utmSources || transformTrafficBreakdown(weeklyData, 'viewsBySource'),
+                utmMediums: weeklyData.utmMediums || transformTrafficBreakdown(weeklyData, 'viewsByMedium'),
+                utmCampaigns: weeklyData.utmCampaigns || transformTrafficBreakdown(weeklyData, 'viewsByCampaign'),
+                utmContent: weeklyData.utmContent || transformTrafficBreakdown(weeklyData, 'viewsByContent'),
                 aiSummary: normalizeWeeklyAiSummary(weeklyData),
             } as WeeklyViewData;
         },
@@ -1151,6 +1260,10 @@ export async function getOwnerDashboardMonthly(
                 topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
                 unavailableItems: transformUnavailableItems(data),
                 sourceQuality: data.sourceQuality || transformSourceQuality(data),
+                utmSources: data.utmSources || transformTrafficBreakdown(data, 'viewsBySource'),
+                utmMediums: data.utmMediums || transformTrafficBreakdown(data, 'viewsByMedium'),
+                utmCampaigns: data.utmCampaigns || transformTrafficBreakdown(data, 'viewsByCampaign'),
+                utmContent: data.utmContent || transformTrafficBreakdown(data, 'viewsByContent'),
             } as MonthlyViewData;
         },
         "getOwnerDashboardMonthly"
@@ -1177,7 +1290,7 @@ export async function getOwnerDashboardWTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
 
             return {
                 startDate: dates[0],
@@ -1194,6 +1307,10 @@ export async function getOwnerDashboardWTD(
                 topZeroResultSearchTerms,
                 unavailableItems,
                 sourceQuality,
+                utmSources,
+                utmMediums,
+                utmCampaigns,
+                utmContent,
                 ownerConfidence,
             } as WTDViewData;
         },
@@ -1226,7 +1343,7 @@ export async function getOwnerDashboardMTD(
                 return null;
             }
 
-            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(docs);
+            const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(docs);
 
             // Get month name
             const firstDate = parseAnalyticsDateKey(dates[0]);
@@ -1256,6 +1373,10 @@ export async function getOwnerDashboardMTD(
                 topZeroResultSearchTerms,
                 unavailableItems,
                 sourceQuality,
+                utmSources,
+                utmMediums,
+                utmCampaigns,
+                utmContent,
                 ownerConfidence,
                 avgDailyScans: docs.length > 0
                     ? Math.round(metrics.menuVisits / docs.length)
@@ -1368,7 +1489,7 @@ export async function getOwnerDashboardOverview(
 
             let wtd: WTDViewData | null = null;
             if (wtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(wtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(wtdDocs);
                 wtd = {
                     startDate: wtdDates[0],
                     endDate: wtdDates[wtdDates.length - 1],
@@ -1384,6 +1505,10 @@ export async function getOwnerDashboardOverview(
                     topZeroResultSearchTerms,
                     unavailableItems,
                     sourceQuality,
+                    utmSources,
+                    utmMediums,
+                    utmCampaigns,
+                    utmContent,
                     ownerConfidence,
                 };
             }
@@ -1395,7 +1520,7 @@ export async function getOwnerDashboardOverview(
 
             let mtd: MTDViewData | null = null;
             if (mtdDocs.length > 0) {
-                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, ownerConfidence } = aggregateDailyDocs(mtdDocs);
+                const { metrics, blockPerformance, topItems, topCategories, topLanguages, topAttributeFilters, menuActions, topSearchTerms, topZeroResultSearchTerms, unavailableItems, sourceQuality, utmSources, utmMediums, utmCampaigns, utmContent, ownerConfidence } = aggregateDailyDocs(mtdDocs);
                 const firstDate = parseAnalyticsDateKey(mtdDates[0]);
                 const monthName = formatMonthLabel(mtdDates[0]);
                 const daysInMonth = new Date(Date.UTC(
@@ -1421,6 +1546,10 @@ export async function getOwnerDashboardOverview(
                     topZeroResultSearchTerms,
                     unavailableItems,
                     sourceQuality,
+                    utmSources,
+                    utmMediums,
+                    utmCampaigns,
+                    utmContent,
                     ownerConfidence,
                     avgDailyScans: Math.round(metrics.menuVisits / mtdDocs.length),
                 };
@@ -1537,16 +1666,26 @@ export async function getOwnerDashboardOverall(
                     totalUnavailableItemTaps: data.lifetimeTotalUnavailableItemTaps || 0,
                     totalMenuActionClicks: data.lifetimeTotalMenuActionClicks || 0,
                 },
+                blockPerformance: transformBlockPerformance(data),
+                topItems: transformToTopItems(data),
                 topCategories: transformTopCategories(data),
+                topLanguages: data.topLanguages || transformTopLanguages(data),
                 topAttributeFilters: data.topAttributeFilters || transformTopAttributeFilters(data),
                 menuActions: transformMenuActions(data),
+                topSearchTerms: transformTopSearchTerms(data),
+                topZeroResultSearchTerms: data.topZeroResultSearchTerms || transformTopSearchTerms(data, 'zeroResultSearchTerms'),
+                unavailableItems: transformUnavailableItems(data),
                 sourceQuality: transformSourceQuality(data),
+                utmSources: transformTrafficBreakdown(data, 'viewsBySource'),
+                utmMediums: transformTrafficBreakdown(data, 'viewsByMedium'),
+                utmCampaigns: transformTrafficBreakdown(data, 'viewsByCampaign'),
+                utmContent: transformTrafficBreakdown(data, 'viewsByContent'),
                 ownerConfidence: transformOwnerConfidence({
                     totalViews: data.lifetimeTotalViews || lifetime.totalViews || 0,
                     menuSessions,
                     engagedSessions,
                     actionSessions,
-                    zeroResultSearches: data.lifetimeTotalZeroResultSearches || 0,
+                    zeroResultSearches: data.lifetimeZeroResultSearches || lifetime.zeroResultSearches || 0,
                     totalUnavailableItemTaps: data.lifetimeTotalUnavailableItemTaps || 0,
                 }),
                 firstDataDate: data.firstDataDate,

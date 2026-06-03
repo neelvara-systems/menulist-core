@@ -26,6 +26,7 @@ import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
+import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import { StoreDataType } from '@type/platform/store';
 import {
     LuCalendarCheck,
@@ -236,6 +237,9 @@ export default function MenuFooter({
             businessDayEndTime: analyticsIds?.businessDayEndTime,
         });
     };
+    const showMenuListAttribution = resolveMenuListAttributionPolicy({
+        activePlanType: (storeDetails as any)?.activePlanType,
+    }).showAttribution;
 
     // Get language native names for display
     const getLanguageDisplay = (code: string) => {
@@ -581,8 +585,10 @@ export default function MenuFooter({
             )}
             </div>
 
+            {showMenuListAttribution ? (
             <div style={{ ...footerCardStyle, padding: '13px 16px', textAlign: 'center' }}>
                 <PublicMenuListAttribution
+                    activePlanType={(storeDetails as any)?.activePlanType}
                     mode="compact"
                     rightsLabel="All rights reserved"
                     mutedColor={moodConfig.bodyColor}
@@ -590,6 +596,7 @@ export default function MenuFooter({
                     containerStyle={{ marginTop: 0, paddingBottom: 0 }}
                 />
             </div>
+            ) : null}
         </footer>
     );
 }

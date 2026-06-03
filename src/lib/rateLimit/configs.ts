@@ -277,24 +277,37 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     // ─────────────────────────────────────────────────────────────
-    // PUBLIC MENU ENTRY (No-Auth Menu Creation Pipeline)
+    // PUBLIC MENU ENTRY (Authenticated Menu Creation Pipeline)
     // @see __docs__/public-menu-entry/public-menu-entry_firebase.md
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Public Menu Entry — Anonymous menu upload + AI extraction
-     * Used by: POST /api/public/create-menu
+     * Public Menu Entry — legacy anonymous menu upload + AI extraction.
      *
-     * Why 3/24h per IP:
-     * - Each extraction costs ~₹0.50-1.00 (Gemini API)
-     * - Prevents bot abuse on unauthenticated endpoint
-     * - 3 attempts is generous for legitimate use (retry on bad photo)
-     * - IP-based since no user auth available
+     * Kept for backward compatibility with older public API helpers, but the
+     * active /create-menu extraction route now requires auth and uses
+     * PUBLIC_MENU_ENTRY_AUTH instead.
      */
     PUBLIC_MENU_ENTRY: {
         limit: 3,
         window: 86400,  // 24 hours
         description: 'Public menu entry - 3 per 24 hours per IP'
+    },
+
+    /**
+     * Public Menu Entry — signed-in owner menu upload/link import + AI extraction.
+     * Used by: POST /api/public/create-menu
+     *
+     * Why 5/24h per user:
+     * - Extraction remains initially free to the owner, so MenuList pays for it.
+     * - Auth first prevents anonymous refresh/upload loops and bot traffic.
+     * - Draft reuse/dedupe avoids charging attempts for the same active source.
+     * - User-keyed limits avoid punishing owners on shared public networks.
+     */
+    PUBLIC_MENU_ENTRY_AUTH: {
+        limit: 5,
+        window: 86400,  // 24 hours
+        description: 'Authenticated public menu entry - 5 per 24 hours per user'
     },
 
     // ─────────────────────────────────────────────────────────────

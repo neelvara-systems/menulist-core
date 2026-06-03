@@ -1,7 +1,7 @@
 # Menu Card Export — Test Cases
 
 **Status:** Production-ready baseline; Pro/Premium layout suggestion added
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -141,6 +141,10 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 | Auto design retail | Retail/product catalogs start on Compact/catalog treatment with QR and contact enabled. |
 | Manual override guard | After owner changes style, density, or toggles, auto design does not overwrite that manual choice. |
 | Preset reset | Changing job preset allows auto design to pick a preset-appropriate style/density again. |
+| Legacy Use MenuList PDF | If the routed feature flag is off and Use MenuList calls `generateMenuPdf()`, the downloaded PDF still uses Menu Card Export brand color, logo, business profile, currency formatting, physical styling, metadata, and source hash. |
+| Legacy mobile Share PDF | If the routed feature flag is off and Mobile Share calls `generateMenuPdf()`, the downloaded PDF uses the selected mobile project cache and the same branded renderer output as desktop. |
+| Legacy project Share PDF | If the project Share modal direct-download path runs, it passes store context and uses the same branded renderer output. |
+| Premium attribution removal | When loaded store context has `activePlanType: "premium"`, generated PDFs, QR cards, Menu Kit files, physical cards, OBP/menu footers, compliance pages, and digital screen attribution hide visible MenuList logo/name/domain. Missing, Starter, Pro, and unknown plan data keeps attribution visible. |
 
 ---
 
@@ -196,9 +200,9 @@ Authenticated browser click-through remains a useful manual smoke before a Verce
 
 | Case | Expected Result |
 | --- | --- |
-| Open from Mobile Share | `/use-menulist/menu-card-export?projectId=...` renders the dedicated mobile Print Menu screen with the selected project; the generic mobile shell does not replace it with the Share tab. |
-| Open from Mobile Menu | Command sheet `Print Menu` saves pending local edits, then opens the dedicated mobile Print Menu screen at `/use-menulist/menu-card-export?projectId=...`. If the save is still pending after retry, owner sees a retry-later message instead of exporting stale data. |
-| Open from More | More > Modules `Print Menu` opens the route with the current mobile project selection; it does not create a separate dashboard export surface. |
+| Open from Mobile Share | `Print Menu` switches `MobileShell` to `more/printMenu`, renders the dedicated mobile Print Menu screen with the selected project, and does not leave the mobile shell. |
+| Open from Mobile Menu | Command sheet `Print Menu` saves pending local edits, updates the shared mobile selected project, then switches `MobileShell` to `more/printMenu`. If the save is still pending after retry, owner sees a retry-later message instead of exporting stale data. |
+| Open from More | More > Modules `Print Menu` opens `more/printMenu` with the current mobile project selection; it does not reload the PWA or create a separate dashboard export surface. |
 | Style picker | Horizontal cards are thumb-safe. |
 | Settings | Controls are at least 44px high. |
 | Preview | Pages swipe without layout shift. |
@@ -229,6 +233,9 @@ Script responsibilities at freeze:
 - Verify print-source support for OBP accent color, existing store logo, renderer logo embedding, and brand-aware source hashes.
 - Verify PDF currency fallback, whole-number price formatting, and dynamic price-width handling.
 - Verify physical output page styling, page borders, category treatments, dotted price leaders, business-type-aware visual profiles, and auto print design remain wired.
+- Verify the legacy `generateMenuPdf()` bridge delegates to Menu Card Export and receives store/project brand context from Use MenuList, mobile Share, and project Share.
+- Verify Premium attribution removal uses already-loaded `activePlanType` and does not add subscription reads or server generation.
 - Verify no export-storage API route or artifact Firebase write path was added.
 - Verify unused placeholder modules stay removed.
 - Verify the Pro/Premium AI advisor route uses auth, tenant access, rate limit, plan gate, capacity check, provider call, output normalization, operation logging, and credit consumption.
+- Verify Mobile Share, Mobile Menu, and More Print Menu entry points use `MobileShell` screen state and do not force a PWA reload.

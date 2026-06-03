@@ -30,6 +30,7 @@ export function countMissingCategoryIcons(projectData: Project | null | undefine
 export function applyMissingCategoryIconsToProject(
     projectData: Project,
     businessType?: string,
+    businessCategory?: string,
 ): { project: Project; updatedCount: number } {
     const updated = removeObjRef(projectData);
     const updatedCategoryIds = new Set<string>();
@@ -39,7 +40,7 @@ export function applyMissingCategoryIconsToProject(
         if (categories.length === 0) return;
 
         const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
-        const repairedCategories = applyCategoryIconDefaults(categories, items, businessType);
+        const repairedCategories = applyCategoryIconDefaults(categories, items, businessType, businessCategory);
 
         const nextCategories = repairedCategories.map((category, index) => {
             const previous = categories[index];

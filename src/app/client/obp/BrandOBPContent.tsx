@@ -28,6 +28,7 @@ import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altT
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
+import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { StoreDataType } from "@type/platform/store";
 import { unstable_cache } from "next/cache";
@@ -324,8 +325,10 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                             switchToLightLabel={t('publicSwitchToLightTheme')}
                         />
                     </div>
+                    {resolveMenuListAttributionPolicy({ activePlanType: (store as any)?.activePlanType }).showAttribution ? (
                     <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
                         <PublicMenuListAttribution
+                            activePlanType={(store as any)?.activePlanType}
                             mode="compact"
                             surfaceLabel={t('publicPoweredBy')}
                             rightsLabel={t('publicAllRightsReserved')}
@@ -334,6 +337,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                             containerStyle={{ marginTop: 0, paddingBottom: 0 }}
                         />
                     </div>
+                    ) : null}
                 </footer>
             </div>
         </main>

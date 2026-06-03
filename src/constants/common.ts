@@ -1,5 +1,5 @@
 // Re-export business types from shared data (primary source for copy-paste to functions)
-export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCatalogKind, getBusinessCategory, getBusinessCategoryConfig, getBusinessOfferingKind, getBusinessSchemaOrgType, getBusinessTypeConfig, normalizeBusinessCategory, resolveBusinessCategory } from "@data/shared/businessTypes";
+export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FALLBACK_BUSINESS_CATEGORY, FALLBACK_BUSINESS_TYPE, FILTER_ALLOWLIST, getBusinessCatalogKind, getBusinessCategory, getBusinessCategoryConfig, getBusinessOfferingKind, getBusinessSchemaOrgType, getBusinessTypeConfig, normalizeBusinessCategory, resolveBusinessCategory, resolveBusinessCategoryOrFallback, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 export type { BusinessCatalogKind, BusinessCategory, BusinessOfferingKind, BusinessType, SystemFilter } from "@data/shared/businessTypes";
 export const APP_NAME = 'MenulistAi'
 export const APP_TAGLINE = 'Your Second Brain'

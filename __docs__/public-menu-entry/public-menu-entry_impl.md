@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -21,8 +21,8 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | Menu Kit (share assets)               | ✅      | `src/components/.../shareModal/MenuKitSection.tsx`         | Available post-publish                          |
 | Auth flow (Google + email)            | ✅      | `src/app/(global-pages)/signin/page.tsx`                   | Redirect with `callbackUrl` param               |
 | Store + project creation              | ✅      | `src/database/stores/`, `src/database/projects/`           | Used in claim/publish flow                      |
-| Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New page in website route group                 |
-| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST public + rate-limited for photo or menu link; GET token-based preview |
+| Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New website entry page; source upload/import is gated by auth |
+| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | API — POST/GET authenticated with owner-bound drafts, user rate limit, active draft reuse, and source dedupe |
 | Preview page                          | ❌ NEW  | `src/app/(website)/create-menu/preview/[draftId]/page.tsx` | New page — reads draft, renders preview         |
 | Draft Firestore collection            | ❌ NEW  | `publicMenuDrafts`                                         | New collection — 24h TTL                        |
 | Claim/convert flow                    | ❌ NEW  | `src/app/api/public/create-menu/claim/route.ts`            | New API — withAuth, converts draft → project    |
@@ -66,7 +66,8 @@ interface PublicMenuDraft {
 
   // AI-detected business info
   detectedBusinessName?: string;
-  detectedBusinessType?: string; // From BUSINESS_TYPES constant
+  detectedBusinessType?: string; // From BUSINESS_TYPES constant, or Other fallback
+  detectedBusinessCategory?: string; // From BUSINESS_CATEGORIES when known
 
   // Metadata
   ipHash: string; // SHA-256 hash of IP (for rate limiting, not PII)
@@ -95,9 +96,9 @@ Public create-menu no longer runs extraction inside `src/app/api/public/create-m
 
 `functions/src/logic/processMenuImagesJob.ts` marks the draft `processing`, then updates `publicMenuDrafts/{draftId}` to `completed` with extracted categories/items/languages or `failed` with an owner-safe error.
 
-This keeps the public preview polling contract unchanged while reusing the same extraction, validation, hardening, and link-text parser path used by authenticated owner extraction.
+This keeps the owner preview polling contract simple while reusing the same extraction, validation, hardening, and link-text parser path used by authenticated owner extraction.
 
-For sources supported by the shared menu-intake identity helper, the public route adds `sourceMetadata.identityCheck` to the queued job. The shared worker uses that metadata to keep `detectedBusinessName` and `detectedBusinessType` populated for the claim form without restoring the old inline public extraction model.
+For sources supported by the shared menu-intake identity helper, the public route adds `sourceMetadata.identityCheck` to the queued job. The shared worker uses that metadata to keep `detectedBusinessName`, `detectedBusinessType`, and `detectedBusinessCategory` populated for the claim form without restoring the old inline public extraction model. Low-confidence specific types claim as canonical `Other`, preserving the broad category when visible.
 
 ### 2.1A Claimed Starter Activation
 
@@ -124,6 +125,28 @@ Rules:
 - Unpaid starter expiration should preserve a recovery path on the same public identity instead of creating a hard broken link.
 - Starter distribution actions are recorded on `stores/{storeId}.starterActivationSignals` from the success page, Use MenuList, mobile Share, and Presence Monitor. The activation target is 2 unique actions in 7 days.
 
+### 2.1B Claimed OBP Defaults
+
+When a draft is claimed, the conversion path creates a real store/project and also fills the first Official Business Page from facts already supplied by the owner or extracted from the menu.
+
+Applied defaults:
+
+- `store.publicPresence.descriptor` from resolved business type, except canonical `Other`.
+- `store.publicPresence.accentColor` from extracted brand accent color when available.
+- `store.publicPresence.whatsappNumber` from the owner-confirmed public phone/WhatsApp number.
+- `store.publicPresence.showCall`, `showWhatsApp`, `showDirections`, and `showFeedback` default to enabled when backed by real phone/address/menu data.
+- `store.businessAttributes` from explicit high-confidence extraction suggestions and deterministic menu dietary tags.
+
+Rules:
+
+- Existing owner values win. Existing stores receive only missing defaults.
+- Unpaid, unexpired starter OBPs show inactive placeholders for missing public profile/action slots such as Call, WhatsApp, Directions, Reserve, Order, Reviews, Instagram, Facebook, YouTube, and Website.
+- Sparse unpaid starter OBPs use a compact centered desktop layout instead of the full two-column desktop grid, preventing empty left/right whitespace when the business has not added cover photos, gallery photos, map embed, or menu project images yet.
+- Sparse unpaid starter OBPs may also show inactive Service Options and Payment Options preview tiles. These tiles are visual setup placeholders, not stored `businessAttributes`.
+- Menu CTAs render a deterministic placeholder thumbnail when a project image is missing, so the menu card/CTA stays visually balanced without a Storage upload or generated image.
+- Placeholder controls are presentation-only buttons. They do not write fake store data, do not use MenuList-owned WhatsApp/Instagram/website/social links, and do not navigate outbound.
+- Paid/live stores show only real owner-configured data. Placeholders are removed once `activePlanType` exists or `starterActivationStatus` is `active_paid`.
+
 ### 2.2 Constants Addition
 
 ```typescript
@@ -138,7 +161,7 @@ PUBLIC_MENU_DRAFTS: 'publicMenuDrafts',
 
 ```typescript
 // src/config/features.ts
-ENABLE_PUBLIC_MENU_ENTRY: true, // Public menu creation without auth
+ENABLE_PUBLIC_MENU_ENTRY: true, // Public page active; source processing requires auth
 
 // functions/src/constants/features.ts (mirror)
 ENABLE_PUBLIC_MENU_ENTRY: true,
@@ -152,7 +175,7 @@ ENABLE_PUBLIC_MENU_ENTRY: true,
 
 ```
 src/app/(website)/create-menu/
-├── page.tsx                          // Upload page (public page, no account before upload)
+├── page.tsx                          // Public entry page with auth gate before source processing
 ├── CreateMenuClient.tsx              // Client component — upload + progress UI
 ├── preview/
 │   └── [draftId]/
@@ -162,7 +185,7 @@ src/app/(website)/create-menu/
     └── page.tsx                      // Post-publish success page (auth required)
 
 src/app/api/public/create-menu/
-├── route.ts                          // POST: upload image or import link + trigger extraction (public/rate-limited); GET: token preview status
+├── route.ts                          // POST: authenticated upload/link import + trigger extraction; GET: owner-bound preview status
 └── claim/
     └── route.ts                      // POST: claim draft → create store + project (withAuth)
 
@@ -186,8 +209,8 @@ firestore.indexes.json                // +2 composite indexes
 
 ### 4.1 POST `/api/public/create-menu`
 
-**Auth:** None (public)
-**Rate Limit:** 3 per IP per 24 hours (using `PUBLIC_MENU_ENTRY` rate limit config)
+**Auth:** `withAuth()` — owner must be signed in before source upload/import
+**Rate Limit:** 5 new extraction attempts per user per 24 hours (using `PUBLIC_MENU_ENTRY_AUTH` rate limit config). Active pending/processing drafts and same-source completed drafts are reused before creating new Storage or AI jobs.
 **Feature Gate:** `ENABLE_PUBLIC_MENU_ENTRY` must be true (returns 404 if false)
 
 **Request — photo upload:**
@@ -226,13 +249,16 @@ const linkSchema = z.object({
 {
   draftId: string; // The URL token (NOT Firestore doc ID)
   previewUrl: string; // /create-menu/preview/{draftId}
+  reusedDraft?: boolean; // true when active/completed owner draft is reused
   status: "processing"; // Extraction is async
 }
 ```
 
 **Error Responses:**
 
-- `429` — Rate limit exceeded
+- `401` — Authentication required
+- `403` — Authenticated owner does not own the draft (GET)
+- `429` — User rate limit exceeded
 - `400` — Invalid file type/size or missing link permission confirmation
 - `404` — Feature disabled
 - `404` — Link input disabled by `ENABLE_MENU_LINK_IMPORT`
@@ -241,19 +267,22 @@ const linkSchema = z.object({
 **Flow:**
 
 1. Validate feature flag
-2. Check IP rate limit
+2. Validate authenticated session
 3. Validate source: image file type/size or permission-confirmed public menu link
-4. For links, acquire the source through the same SSRF-safe helper used by authenticated Menu Link Import
-5. Upload client-optimized image or acquired link artifact to Storage: `publicMenuDrafts/{draftId}/{filename}`
-6. Store a stable Firebase download-token URL for preview and source-file continuity after claim
-7. Create Firestore draft doc with `extractionStatus: 'pending'`
-8. Trigger inline extraction helper (fire-and-forget inside the API route)
-9. Return draftId immediately
+4. Reuse any active pending/processing owner draft before creating new work
+5. Reuse same-source owner drafts by `contentHash` or link `sourceInputHash` when available
+6. Check `PUBLIC_MENU_ENTRY_AUTH` user rate limit before new Storage/AI work
+7. For links, acquire the source through the same SSRF-safe helper used by authenticated Menu Link Import
+8. Upload client-optimized image or acquired link artifact to Storage: `publicMenuDrafts/{draftId}/{filename}`
+9. Store a stable Firebase download-token URL for preview and source-file continuity after claim
+10. Create Firestore draft doc with `createdByUId`, `contentHash`, `extractionStatus: 'pending'`, and 24h TTL
+11. Queue `menuImageProcessingJobs/{jobId}` with `destination.type = "public_menu_draft"`
+12. Return draftId immediately
 
 ### 4.2 GET `/api/public/create-menu?draftId={token}`
 
-**Auth:** None (public)
-**Purpose:** Poll extraction status
+**Auth:** `withAuth()` — only `draft.createdByUId` may poll the draft
+**Purpose:** Poll extraction status for the signed-in owner
 
 **Response (200):**
 
@@ -267,6 +296,7 @@ const linkSchema = z.object({
     };
     detectedBusinessName?: string;
     detectedBusinessType?: string;
+    detectedBusinessCategory?: string;
     sourceType?: "image_upload" | "menu_link_import";
     error?: string;
 }
@@ -296,6 +326,7 @@ const schema = z.object({
   draftId: z.string().min(1),
   businessName: z.string().min(2).max(100),
   businessType: z.string().optional(),
+  businessCategory: z.string().optional(),
   phone: z.string().optional(),
   city: z.string().optional(),
   addressLine: z.string().optional(),
@@ -309,7 +340,8 @@ const schema = z.object({
   storeId: number;
   projectId: string;
   subdomain: string;
-  menuUrl: string; // getMenuUrl(subdomain)
+  officialPageUrl: string; // tenant root / OBP URL
+  menuUrl: string; // canonical published menu URL
   success: true;
 }
 ```
@@ -448,7 +480,7 @@ const schema = z.object({
 **Shows:**
 
 - Confirmation: "Your menu page is live!"
-- Live URL: canonical MenuList customer URL from `getMenuUrl(subdomain)`
+- Live URL: canonical published menu URL, plus the tenant root official business page URL
 - QR code (reuse `QRCodeView` component)
 - Share buttons (WhatsApp, copy link)
 - "Add to Google Maps" guidance
@@ -527,9 +559,9 @@ const schema = z.object({
 
 ### ADR-1: Why keep a separate `publicMenuDrafts` collection?
 
-**Decision:** Keep `publicMenuDrafts` for anonymous preview state, but queue extraction through `menuImageProcessingJobs`.
+**Decision:** Keep `publicMenuDrafts` for temporary owner-bound preview state, but queue extraction through `menuImageProcessingJobs`.
 
-**Reason:** Public drafts have no real tenant/store/project until claim, so preview state and TTL cleanup still belong in `publicMenuDrafts`. The extraction work itself now belongs in the central durable job queue with `destination.type = "public_menu_draft"`.
+**Reason:** Drafts still have no real tenant/store/project until claim, so preview state and TTL cleanup belong in `publicMenuDrafts`. The draft is still attached to `createdByUId` so preview polling, reuse, dedupe, and claim stay owner-bound. Extraction work belongs in the central durable job queue with `destination.type = "public_menu_draft"`.
 
 ### ADR-2: Why durable server-side extraction (not client-side or request-lifecycle AI)?
 
@@ -569,7 +601,8 @@ const schema = z.object({
 | 2     | Claim API route            | ✅     | withAuth, atomic transaction           |
 | 2     | Success page               | ✅     | QR hint, WhatsApp share, GBP hint      |
 | 2     | Auth redirect flow         | ✅     | ?claim=true param handling             |
-| 3     | Rate limiting              | ✅     | PUBLIC_MENU_ENTRY config (3/24h/IP)    |
+| 3     | Rate limiting              | ✅     | PUBLIC_MENU_ENTRY_AUTH config (5/24h/user) |
+| 3     | Auth-first cost guard      | ✅     | POST/GET require auth; active/same-source drafts reuse before new AI |
 | 3     | SAFE_MODE check            | ✅     | Added during audit                     |
 | 3     | Nightly cleanup            | ✅     | Consolidated scheduler task            |
 | 3     | Error states               | ✅     | All edge cases covered                 |

@@ -144,6 +144,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 - **Mandatory Mobile Support**: Every feature needs mobile layer
 - **Inheritance Model**: Mobile inherits auth, localization, settings from shared logic
+- **PWA Shell Contract**: Owner mobile screens reached from Today, Menu, Share, or More must open inside `MobileShell` using shell sub-screen state and existing mobile providers; do not use route bypasses, forced reloads, or separate data loading unless the screen is explicitly outside the mobile PWA shell.
 - **Optimistic Updates**: UI updates instantly, backend syncs after
 - **Touch Optimization**: Large targets, instant feedback, no desktop refactoring
 
@@ -188,6 +189,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Touch Events**: Handle touch interactions properly
 - **Performance**: Mobile-first optimization required
 - **44px Touch Targets**: Mobile owner actions must use large touch targets and instant feedback
+- **PWA Shell Screens**: Mobile tab actions should use `MobileShell` sub-screens and callbacks, with direct routes mapped into shell state only when needed for deep links.
 
 ### Security Rule Summary
 
@@ -218,6 +220,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **DAL-First Architecture**: DAL -> hook -> desktop UI -> mobile UI.
 - **No Desktop Refactoring for Mobile**: Mobile should be a layer over shared logic unless desktop changes are genuinely required.
 - **Inheritance**: Mobile inherits auth, localization, timezone, RTL, and settings from shared systems.
+- **PWA Shell Contract**: Owner mobile PWA features reached from existing tabs stay in `MobileShell`; direct route navigation and desktop-route bypasses are exceptions that need explicit justification.
 - **Icons**: Use `react-icons/lu` only.
 - **ICP Compliance**: Non-technical SMB owner copy, no jargon, large targets, instant feedback.
 - **Optimistic Updates**: Mobile UI updates immediately and syncs after.

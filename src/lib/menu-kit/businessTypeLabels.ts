@@ -394,17 +394,17 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
 };
 
-/** Default labels — used for food/restaurant (most common) and unknown types */
+/** Default labels — used for food/restaurant (most common) and missing context */
 const DEFAULT_LABELS = CATEGORY_LABELS.food;
 
 /**
  * Get businessType-aware labels for Menu Kit assets and copy.
  * @param businessType - The store's businessType value (e.g., "Restaurant", "Salon")
+ * @param businessCategory - Optional broad category when exact type is generic (e.g., "Other")
  * @returns OfferingLabels with appropriate terminology
  */
-export function getOfferingLabels(businessType?: string): OfferingLabels {
-    if (!businessType) return DEFAULT_LABELS;
-    const category = resolveBusinessCategory(businessType);
+export function getOfferingLabels(businessType?: string, businessCategory?: string): OfferingLabels {
+    const category = resolveBusinessCategory(businessType, businessCategory);
     if (!category) return DEFAULT_LABELS;
     return CATEGORY_LABELS[category] || DEFAULT_LABELS;
 }

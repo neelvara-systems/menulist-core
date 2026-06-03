@@ -36,8 +36,9 @@ const CATEGORY_TEMPLATE_MAP: Record<string, SpecialMenuBehaviorTemplate> = {
  */
 export function getBehaviorTemplate(
     businessType?: string,
+    businessCategory?: string,
 ): SpecialMenuBehaviorTemplate {
-    const category = resolveBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType, businessCategory);
     return CATEGORY_TEMPLATE_MAP[category || ""] || "occasional";
 }
 
@@ -86,7 +87,8 @@ export const TEMPLATE_CAPABILITIES: Record<
  */
 export function getSpecialMenuCapabilities(
     businessType?: string,
+    businessCategory?: string,
 ): TemplateCapabilities {
-    const template = getBehaviorTemplate(businessType);
+    const template = getBehaviorTemplate(businessType, businessCategory);
     return TEMPLATE_CAPABILITIES[template];
 }

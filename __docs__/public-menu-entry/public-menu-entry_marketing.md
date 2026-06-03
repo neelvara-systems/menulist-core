@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Active funnel
-**Last Updated:** May 31, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -20,11 +20,11 @@
 Every restaurant owner has the same daily frustration: customers ask for the menu, and the owner sends a blurry photo, an outdated PDF, or says "check our Instagram." There's no single, reliable place where the menu lives.
 
 ### The Solution
-MenuList's public entry lets any business owner upload a menu photo or paste a permission-confirmed public menu link and see it transformed into a clean, structured preview before payment or account creation. The marketing promise is not "anonymous free utility"; it is "free to start, review before publishing." The account gate starts only when the owner wants to claim and publish the starter public source.
+MenuList's public entry lets any business owner sign in, upload a menu photo or paste a permission-confirmed public menu link, and see it transformed into a clean, structured preview before payment. The marketing promise is not "anonymous free utility"; it is "free first setup preview, review before publishing." The account gate starts before extraction so the setup, cost controls, and public claim stay attached to the right owner.
 
 ### Why It Matters
 - The owner doesn't have to pay before seeing value
-- MenuList caps anonymous processing cost with SAFE_MODE, IP rate limits, source validation, and 24-hour cleanup
+- MenuList caps processing cost with auth, user rate limits, draft reuse, source dedupe, SAFE_MODE, source validation, and 24-hour cleanup
 - The menu page becomes the official link for Google, QR codes, WhatsApp shares
 - Every published page strengthens MenuList's network of canonical business truth
 
@@ -34,13 +34,13 @@ MenuList's public entry lets any business owner upload a menu photo or paste a p
 
 | Aspect | MenuList | GloriaFood | Menubly | Square |
 |--------|----------|-----------|---------|--------|
-| Source before account | ✅ Photo or permission-confirmed public link | ❌ Usually no | ⚠️ Varies | ❌ POS setup first |
+| Source before payment | ✅ Photo or permission-confirmed public link after sign-in | ❌ Usually no | ⚠️ Varies | ❌ POS setup first |
 | Structured preview from current source | ✅ Short processing step | ❌ Manual entry | ❌ Manual entry | ❌ Manual entry |
 | Canonical public page | ✅ Subdomain | ❌ Tool-branded | ⚠️ Basic page | ❌ POS-dependent |
 | Time to first preview | Short processing step | 15-30 minutes | 10-20 minutes | 30+ minutes |
 | QR + share assets | ✅ Included | ⚠️ Basic QR | ⚠️ Basic QR | ✅ Included |
 
-**Differentiator:** MenuList shows value before payment and before account creation, but keeps public activation tied to a verified owner account. This is public proof before payment without open-ended anonymous usage.
+**Differentiator:** MenuList shows value before payment while keeping extraction and public activation tied to a verified owner account. This is public proof before payment without open-ended anonymous usage.
 
 ---
 
@@ -62,7 +62,7 @@ Show: phone camera or public menu link → structured menu preview → live page
 
 **Slide 4 — Differentiation:**
 "See the source before you pay."
-Upload first. No credit card for preview. Account setup connects the draft to the owner before it becomes an official source.
+Sign in first. No credit card for preview. Account setup connects the draft to the owner before extraction and before it becomes an official source.
 
 **Slide 5 — Use Cases:**
 1. Restaurant owner takes photo of wall menu → gets a structured owner-review preview
@@ -84,7 +84,7 @@ Free to start. Review before publishing.
 
 **Hero headline:** "Start with your current menu."
 
-**Subheading:** "Upload a photo or paste a public menu link. MenuList prepares a page your customers can actually use."
+**Subheading:** "Sign in, upload a photo, or paste a public menu link. MenuList prepares a page your customers can actually use."
 
 **Key benefit bullets:**
 - Start from a photo or public link — no typing required
@@ -143,12 +143,12 @@ Per Language Governance: infrastructure language, not marketing language.
 
 This feature is a **controlled starter-activation funnel**. The value ladder:
 
-1. **Free preview:** Photo/link source + structured preview, rate-limited and cost-capped
+1. **Free first preview:** Signed-in photo/link source + structured preview, rate-limited and cost-capped
 2. **Owner claim:** Owner identity is confirmed before public activation
 3. **Starter activation:** Permanent public URL and QR work for 7 days with focused workspace access
 4. **Paid plan:** Keeps the same URL live and unlocks ongoing operations according to Starter, Pro, or Premium
 
-The public entry is the top of the funnel. It demonstrates value before asking for payment, but should not be advertised as an anonymous free processing tool.
+The public entry is the top of the funnel. It demonstrates value before asking for payment, but must not be advertised as an anonymous free processing tool.
 
 ---
 

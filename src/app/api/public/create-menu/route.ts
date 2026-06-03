@@ -3,8 +3,8 @@ export const runtime = 'nodejs';
 /**
  * Public Menu Entry API
  *
- * POST /api/public/create-menu — Upload image or owner-provided menu link + queue extraction (no account required)
- * GET  /api/public/create-menu?draftId={token} — Poll extraction status (no auth)
+ * POST /api/public/create-menu — Authenticated upload/link import + queue extraction
+ * GET  /api/public/create-menu?draftId={token} — Authenticated owner-bound preview polling
  *
  * Public drafts are durable. POST creates a public draft and a `menuImageProcessingJobs`
  * document; the shared extraction worker writes completion/failure back to the draft.
@@ -27,18 +27,23 @@ import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { acquireMenuLinkSource, MenuLinkImportError } from '@lib/menu-link-import/sourceAcquisition';
 import { analyzeMenuIntakeIdentity, isSupportedMenuIntakeIdentityMimeType } from '@lib/menu-extraction/menuIntakeIdentityServer';
 import { checkSafeMode } from '@lib/ops/safeMode';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPublicRateLimit, getClientIp } from 'src/middleware/publicApi';
+import { withAuth } from 'src/middleware/auth';
+import { getClientIp } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const ACTIVE_DRAFT_STATUSES = new Set(['pending', 'processing']);
+const REUSABLE_DRAFT_STATUSES = new Set(['pending', 'processing', 'completed']);
 
 const PublicMenuLinkSchema = z.object({
     permissionConfirmed: z.literal(true),
@@ -59,6 +64,16 @@ type PublicDraftSource = {
     storagePath: string;
 };
 
+type ReusableDraft = {
+    data: Record<string, any>;
+    id: string;
+};
+
+type ReusableDraftCriteria = {
+    contentHash?: string | null;
+    sourceInputHash?: string | null;
+};
+
 function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
     return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
 }
@@ -70,6 +85,101 @@ function hashClientIp(req: NextRequest): string {
 
 function buildPublicDraftProjectId(draftToken: string): string {
     return `${ECOMSAI_PLATFORM_TENANT_ID}-public-${draftToken}-${ECOMSAI_PLATFORM_STORE_ID}`;
+}
+
+function hashString(value: string): string {
+    return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function hashBuffer(value: Buffer): string {
+    return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function getTimestampMillis(value: any): number | null {
+    if (!value) return null;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number') return value;
+    return null;
+}
+
+function buildReusableDraftResponse(reusableDraft: ReusableDraft): NextResponse {
+    const status = String(reusableDraft.data.extractionStatus || 'processing');
+    return NextResponse.json({
+        success: true,
+        draftId: reusableDraft.id,
+        previewUrl: `/create-menu/preview/${reusableDraft.id}`,
+        reusedDraft: true,
+        status,
+    });
+}
+
+async function findReusableDraftForUser(
+    userId: string,
+    criteria: ReusableDraftCriteria = {},
+): Promise<ReusableDraft | null> {
+    const snapshot = await firestoreAdmin
+        .collection(COLLECTION)
+        .where('createdByUId', '==', userId)
+        .limit(20)
+        .get();
+
+    let activeDraft: ReusableDraft | null = null;
+    let matchingDraft: ReusableDraft | null = null;
+    const now = Date.now();
+
+    snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const expiresAtMillis = getTimestampMillis(data.expiresAt);
+        const status = String(data.extractionStatus || '');
+
+        if (data.claimed === true) return;
+        if (expiresAtMillis !== null && expiresAtMillis < now) return;
+
+        if (!activeDraft && ACTIVE_DRAFT_STATUSES.has(status)) {
+            activeDraft = { id: doc.id, data };
+        }
+
+        if (matchingDraft || !REUSABLE_DRAFT_STATUSES.has(status)) return;
+
+        if (criteria.contentHash && data.contentHash === criteria.contentHash) {
+            matchingDraft = { id: doc.id, data };
+            return;
+        }
+
+        if (criteria.sourceInputHash && data.sourceInputHash === criteria.sourceInputHash) {
+            matchingDraft = { id: doc.id, data };
+        }
+    });
+
+    return activeDraft || matchingDraft;
+}
+
+async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<NextResponse | null> {
+    const rateLimitConfig = getRateLimitForFeature('PUBLIC_MENU_ENTRY_AUTH');
+    const rateLimitResult = await checkRateLimit({
+        key: `public-menu-entry:${userId}`,
+        ...rateLimitConfig,
+    });
+
+    if (rateLimitResult.allowed) return null;
+
+    const waitSeconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+    return NextResponse.json(
+        {
+            success: false,
+            error: 'Too many menu setup attempts. Please try again later.',
+        },
+        {
+            status: 429,
+            headers: {
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(rateLimitConfig.limit),
+                'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+                'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+            },
+        },
+    );
 }
 
 async function runPublicDraftIdentityCheck(draftToken: string, projectId: string, source: PublicDraftSource, sourceUrl: string) {
@@ -107,14 +217,14 @@ async function runPublicDraftIdentityCheck(draftToken: string, projectId: string
     };
 }
 
-async function createPublicDraftExtractionJob(draftToken: string, source: PublicDraftSource, sourceUrl: string): Promise<string> {
+async function createPublicDraftExtractionJob(draftToken: string, source: PublicDraftSource, sourceUrl: string, userId: string): Promise<string> {
     const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
     const now = Timestamp.now();
     const projectId = buildPublicDraftProjectId(draftToken);
     const identityCheck = await runPublicDraftIdentityCheck(draftToken, projectId, source, sourceUrl);
 
     await jobRef.set({
-        action: AI_ACTIONS_TYPES.IMAGE_PROCESSING,
+        action: AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION,
         createdAt: now,
         currentStep: 'Queued',
         ...buildMenuExtractionRoutingFields(buildPublicDraftMenuExtractionDestination(draftToken, source.kind)),
@@ -144,6 +254,7 @@ async function createPublicDraftExtractionJob(draftToken: string, source: Public
             } : {}),
             ...(identityCheck ? { identityCheck } : {}),
             publicDraftId: draftToken,
+            requestedByUId: userId,
             sourceType: source.kind,
             storagePath: source.storagePath,
         },
@@ -162,7 +273,7 @@ async function createPublicDraftExtractionJob(draftToken: string, source: Public
     return jobRef.id;
 }
 
-async function createImageDraft(req: NextRequest, imageFile: File) {
+async function createImageDraft(req: NextRequest, userId: string, imageFile: File) {
     if (!ALLOWED_TYPES.has(imageFile.type)) {
         return NextResponse.json(
             { success: false, error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.' },
@@ -177,8 +288,24 @@ async function createImageDraft(req: NextRequest, imageFile: File) {
         );
     }
 
-    const draftToken = crypto.randomUUID();
     const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const contentHash = hashBuffer(buffer);
+    const reusableDraft = await findReusableDraftForUser(userId, { contentHash });
+    if (reusableDraft) {
+        secureLog('[PublicMenuEntry] Reusing owner draft', {
+            draftToken: reusableDraft.id,
+            reason: reusableDraft.data.contentHash === contentHash ? 'content_hash' : 'active_draft',
+            sourceType: reusableDraft.data.sourceType || 'image_upload',
+            status: reusableDraft.data.extractionStatus,
+            userId,
+        });
+        return buildReusableDraftResponse(reusableDraft);
+    }
+
+    const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const draftToken = crypto.randomUUID();
     const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
     const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
     const downloadToken = crypto.randomUUID();
@@ -210,13 +337,20 @@ async function createImageDraft(req: NextRequest, imageFile: File) {
             fileType: imageFile.type,
             fileSize: imageFile.size,
             sourceType: 'image_upload',
+            contentHash,
             extractedData: null,
             extractionStatus: 'pending' as const,
             extractionJobId: null,
             detectedBusinessName: null,
             detectedBusinessType: null,
+            detectedBusinessCategory: null,
+            detectedCurrencyCode: null,
+            detectedBrandAccentColor: null,
+            detectedImageBackgroundColor: null,
+            suggestedProjectName: null,
+            extractedBusinessProfile: null,
             ipHash,
-            createdByUId: null,
+            createdByUId: userId,
             createdAt: now,
             updatedAt: now,
             expiresAt,
@@ -230,7 +364,7 @@ async function createImageDraft(req: NextRequest, imageFile: File) {
             originalFileName: imageFile.name || 'menu.jpg',
             size: imageFile.size,
             storagePath,
-        }, imageUrl);
+        }, imageUrl, userId);
 
         secureLog('[PublicMenuEntry] Draft created', {
             draftToken,
@@ -238,6 +372,7 @@ async function createImageDraft(req: NextRequest, imageFile: File) {
             ipHash,
             jobId,
             sourceType: 'image_upload',
+            userId,
         });
 
         return NextResponse.json({
@@ -259,7 +394,7 @@ async function createImageDraft(req: NextRequest, imageFile: File) {
     }
 }
 
-async function createMenuLinkDraft(req: NextRequest, body: unknown) {
+async function createMenuLinkDraft(req: NextRequest, userId: string, body: unknown) {
     if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) {
         return NextResponse.json(
             { success: false, error: 'Menu link import is not available.' },
@@ -275,11 +410,40 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
         );
     }
 
+    const requestedSourceUrl = validation.data.url.trim();
+    const sourceInputHash = hashString(requestedSourceUrl);
+    const reusableDraft = await findReusableDraftForUser(userId, { sourceInputHash });
+    if (reusableDraft) {
+        secureLog('[PublicMenuEntry] Reusing owner link draft', {
+            draftToken: reusableDraft.id,
+            reason: reusableDraft.data.sourceInputHash === sourceInputHash ? 'source_input_hash' : 'active_draft',
+            sourceType: reusableDraft.data.sourceType || 'menu_link_import',
+            status: reusableDraft.data.extractionStatus,
+            userId,
+        });
+        return buildReusableDraftResponse(reusableDraft);
+    }
+
+    const rateLimitResponse = await checkAuthenticatedPublicMenuEntryLimit(userId);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const draftToken = crypto.randomUUID();
     const createdStoragePaths: string[] = [];
 
     try {
-        const acquisition = await acquireMenuLinkSource(validation.data.url);
+        const acquisition = await acquireMenuLinkSource(requestedSourceUrl);
+        const matchingDraft = await findReusableDraftForUser(userId, { contentHash: acquisition.contentHash });
+        if (matchingDraft) {
+            secureLog('[PublicMenuEntry] Reusing owner link draft after acquisition', {
+                draftToken: matchingDraft.id,
+                reason: matchingDraft.data.contentHash === acquisition.contentHash ? 'content_hash' : 'active_draft',
+                sourceKind: acquisition.sourceKind,
+                status: matchingDraft.data.extractionStatus,
+                userId,
+            });
+            return buildReusableDraftResponse(matchingDraft);
+        }
+
         const bucket = storageAdmin.bucket();
         const storagePath = `publicMenuDrafts/${draftToken}/source.${acquisition.artifactExtension}`;
         const downloadToken = crypto.randomUUID();
@@ -298,7 +462,7 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
         });
         createdStoragePaths.push(storagePath);
 
-        const sourceUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
+        const sourceArtifactUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
         const now = Timestamp.now();
         const expiresAt = Timestamp.fromMillis(Date.now() + DRAFT_TTL_MS);
         const ipHash = hashClientIp(req);
@@ -306,12 +470,14 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
 
         await firestoreAdmin.collection(COLLECTION).doc(draftToken).set({
             token: draftToken,
-            imageUrl: sourceUrl,
+            imageUrl: sourceArtifactUrl,
             imagePath: storagePath,
             originalFileName: fileName,
             fileType: acquisition.artifactContentType,
             fileSize: acquisition.size,
             sourceType: 'menu_link_import',
+            contentHash: acquisition.contentHash,
+            sourceInputHash,
             sourceMetadata: {
                 acquisitionProvider: 'direct-http',
                 contentHash: acquisition.contentHash,
@@ -321,7 +487,8 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
                 sourceContentType: acquisition.sourceContentType,
                 sourceKind: acquisition.sourceKind,
                 sourceTextPreview: acquisition.sourceTextPreview || null,
-                sourceUrl: validation.data.url.trim(),
+                sourceInputHash,
+                sourceUrl: requestedSourceUrl,
                 storagePath,
             },
             extractedData: null,
@@ -329,8 +496,14 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
             extractionJobId: null,
             detectedBusinessName: null,
             detectedBusinessType: null,
+            detectedBusinessCategory: null,
+            detectedCurrencyCode: null,
+            detectedBrandAccentColor: null,
+            detectedImageBackgroundColor: null,
+            suggestedProjectName: null,
+            extractedBusinessProfile: null,
             ipHash,
-            createdByUId: null,
+            createdByUId: userId,
             createdAt: now,
             updatedAt: now,
             expiresAt,
@@ -346,9 +519,9 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
             sourceContentType: acquisition.sourceContentType,
             sourceKind: acquisition.sourceKind,
             sourceTextPreview: acquisition.sourceTextPreview,
-            sourceUrl: validation.data.url.trim(),
+            sourceUrl: requestedSourceUrl,
             storagePath,
-        }, sourceUrl);
+        }, sourceArtifactUrl, userId);
 
         secureLog('[PublicMenuEntry] Link draft created', {
             draftToken,
@@ -356,6 +529,7 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
             ipHash,
             jobId,
             sourceKind: acquisition.sourceKind,
+            userId,
         });
 
         return NextResponse.json({
@@ -387,7 +561,7 @@ async function createMenuLinkDraft(req: NextRequest, body: unknown) {
     }
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
             { success: false, error: 'This feature is not available.' },
@@ -398,15 +572,20 @@ export async function POST(req: NextRequest) {
     const safeModeResponse = await checkSafeMode();
     if (safeModeResponse) return safeModeResponse;
 
-    const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_MENU_ENTRY');
-    if (rateLimitResponse) return rateLimitResponse;
+    const userId = String(session?.user?.id || '');
+    if (!userId) {
+        return NextResponse.json(
+            { success: false, error: 'Authentication required.' },
+            { status: 401 },
+        );
+    }
 
     try {
         const contentType = req.headers.get('content-type') || '';
 
         if (contentType.includes('application/json')) {
             const body = await req.json().catch(() => null);
-            return createMenuLinkDraft(req, body);
+            return createMenuLinkDraft(req, userId, body);
         }
 
         const formData = await req.formData();
@@ -419,7 +598,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        return createImageDraft(req, imageFile);
+        return createImageDraft(req, userId, imageFile);
     } catch (error) {
         secureError('[PublicMenuEntry] Upload failed', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json(
@@ -427,9 +606,9 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
             { success: false, error: 'This feature is not available.' },
@@ -439,6 +618,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const draftId = searchParams.get('draftId');
+    const userId = String(session?.user?.id || '');
 
     if (!draftId) {
         return NextResponse.json(
@@ -459,6 +639,13 @@ export async function GET(req: NextRequest) {
 
         const draft = draftDoc.data()!;
 
+        if (draft.createdByUId !== userId) {
+            return NextResponse.json(
+                { success: false, error: 'You do not have access to this draft.' },
+                { status: 403 },
+            );
+        }
+
         if (draft.expiresAt && draft.expiresAt.toMillis() < Date.now()) {
             return NextResponse.json(
                 { success: false, error: 'Draft expired. Please upload again.', status: 'expired' },
@@ -472,6 +659,12 @@ export async function GET(req: NextRequest) {
             extractedData: draft.extractedData || null,
             detectedBusinessName: draft.detectedBusinessName || null,
             detectedBusinessType: draft.detectedBusinessType || null,
+            detectedBusinessCategory: draft.detectedBusinessCategory || null,
+            detectedCurrencyCode: draft.detectedCurrencyCode || null,
+            detectedBrandAccentColor: draft.detectedBrandAccentColor || null,
+            detectedImageBackgroundColor: draft.detectedImageBackgroundColor || null,
+            suggestedProjectName: draft.suggestedProjectName || null,
+            extractedBusinessProfile: draft.extractedBusinessProfile || null,
             imageUrl: draft.imageUrl,
             sourceType: draft.sourceType || 'image_upload',
             error: draft.extractionError || null,
@@ -483,4 +676,4 @@ export async function GET(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

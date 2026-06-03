@@ -1,4 +1,4 @@
-import { PLATFORM_URL } from '@constant/urls';
+import { PLATFORM_DOMAIN, PLATFORM_URL } from '@constant/urls';
 import {
     DISCOVERY_CRAWLERS,
     PUBLIC_DISCOVERY_DISALLOWED_PATHS,
@@ -13,7 +13,7 @@ function getTenantBaseUrl() {
     const customDomain = headersList.get('x-tenant-custom-domain');
 
     if (customDomain) return `https://${customDomain}`;
-    if (subdomain) return `https://${subdomain}.menulist.ai`;
+    if (subdomain) return `https://${subdomain}.${PLATFORM_DOMAIN}`;
     return PLATFORM_URL;
 }
 

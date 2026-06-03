@@ -299,6 +299,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
             </Flex>
 
             <MobileQrCodeSheet
+                activePlanType={(storeDetails as any)?.activePlanType}
                 copyErrorMessage={t('failedToUpdate')}
                 copySuccessMessage={t('linkCopied')}
                 downloadSuccessMessage={t('qrDownloaded')}

@@ -12,8 +12,10 @@
  */
 
 import QRCode from 'qrcode';
+import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
+import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type DeliveryInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -21,9 +23,10 @@ type DeliveryInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 const SIZE = 709; // 60mm at 300dpi
 
 export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<Blob> {
-    const { storeName, menuUrl, shortLink, businessType, _logo } = input;
-    const labels = getOfferingLabels(businessType);
+    const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
+    const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
+    const brand = resolveMenuKitBrandTokens(input.brandColor);
 
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
@@ -32,17 +35,20 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // White background
-    ctx.fillStyle = '#ffffff';
+    // Premium paper background
+    ctx.fillStyle = brand.paper;
     ctx.fillRect(0, 0, SIZE, SIZE);
 
-    // Subtle border
-    ctx.strokeStyle = '#e0e0e0';
+    // Brand border
+    ctx.strokeStyle = brand.border;
     ctx.lineWidth = 3;
     ctx.strokeRect(16, 16, SIZE - 32, SIZE - 32);
 
+    ctx.fillStyle = brand.softAccent;
+    ctx.fillRect(36, 34, SIZE - 72, 74);
+
     // "VIEW MENU" / "VIEW SERVICES" — bold, centered
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = brand.accent;
     ctx.font = 'bold 44px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -53,12 +59,17 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 340,
         margin: 2,
-        color: { dark: '#000000', light: '#ffffff' },
+        color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
 
     const qrX = (SIZE - 340) / 2;
     const qrY = 120;
+    ctx.fillStyle = brand.surface;
+    ctx.fillRect(qrX - 24, qrY - 24, 388, 388);
+    ctx.strokeStyle = brand.border;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(qrX - 24, qrY - 24, 388, 388);
     ctx.drawImage(qrCanvas, qrX, qrY, 340, 340);
 
     // Logo — small, centered (if available)
@@ -75,7 +86,7 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
 
     // Store name — small, centered, grey
     ctx.font = '30px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#666666';
+    ctx.fillStyle = brand.text;
     ctx.textBaseline = 'middle';
 
     // Truncate long names
@@ -90,9 +101,19 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     // Short link fallback — tiny, bottom
     if (shortLink) {
         ctx.font = '18px system-ui, -apple-system, sans-serif';
-        ctx.fillStyle = '#aaaaaa';
+        ctx.fillStyle = brand.muted;
         ctx.fillText(shortLink, SIZE / 2, SIZE - 38);
     }
+
+    drawMenuListAttribution(ctx, {
+        activePlanType: input.activePlanType,
+        color: brand.border,
+        font: '12px system-ui, -apple-system, sans-serif',
+        gap: 4,
+        logoHeight: 11,
+        x: SIZE / 2,
+        y: SIZE - 22,
+    });
 
     return new Promise((resolve, reject) => {
         canvas.toBlob(

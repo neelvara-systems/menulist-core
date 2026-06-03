@@ -7,7 +7,7 @@ import { Button, Card, Checkbox, ColorPicker, Flex, Input, Skeleton, Switch, Tag
 import React, { Fragment, useContext, useState } from 'react';
 import { LuBadgeInfo, LuPen, LuSparkles } from 'react-icons/lu';
 import AspectRatioSelector from '../AspectRatioSelector';
-import { IMAGE_VIEW_TYPES } from '../imageViewType';
+import { getImageViewTypeForBusiness } from '../imageViewType';
 import MultiSelectAttributeSelector from '../MultiSelectAttributeSelector';
 import StyleSelector from '../StyleSelector';
 
@@ -21,7 +21,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    const selectedBusinessData = storeDetails?.businessType ? IMAGE_VIEW_TYPES.find(type => type.businessType === storeDetails?.businessType) : null;
+    const selectedBusinessData = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory);
     const [showStyleSelector, setShowStyleSelector] = useState(false)
     const [useSmartDefaults, setUseSmartDefaults] = useState(true)
 
@@ -117,6 +117,8 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                 </Flex>
 
                                 <StyleSelector
+                                    businessType={storeDetails?.businessType}
+                                    businessCategory={storeDetails?.businessCategory}
                                     open={showStyleSelector}
                                     setShowStyleSelector={setShowStyleSelector}
                                     selectedStyles={generationConfig.styles || ['Natural Light']}

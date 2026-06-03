@@ -4,9 +4,10 @@
  * Displays: location · operational status · offering label · freshness.
  * Factual signals, not badges. Builds trust through evidence, not declarations.
  *
- * v2: ChatGPT feedback applied — replaced "OFFICIAL MENU" badge with neutral
- * offering label, switched vague freshness to exact dates, added location +
- * operational status. All data from existing SSR payload. Zero new reads.
+ * v2: ChatGPT feedback applied — replaced old badge-style wording with a
+ * neutral offering label, switched vague freshness to exact dates, and added
+ * location + operational status. All data from existing SSR payload. Zero new
+ * reads.
  *
  * @see __docs__/menu-trust-signals/menu-trust-signals_impl.md
  */
@@ -18,6 +19,7 @@ import { resolveHoursOutput } from '@lib/outputControl';
 
 interface TrustSignalsProps {
     businessType: string;
+    businessCategory?: string | null;
     lastPublishedAt: any; // Date | Timestamp | { seconds: number } | string | null
     locationArea?: string | null;
     city?: string | null;
@@ -119,6 +121,7 @@ const META_ROW_STYLE: React.CSSProperties = {
 
 export default function TrustSignals({
     businessType,
+    businessCategory,
     lastPublishedAt,
     locationArea,
     city,
@@ -129,7 +132,7 @@ export default function TrustSignals({
     showBorder = true,
     showContextLine = true,
 }: TrustSignalsProps) {
-    const labels = getOfferingLabels(businessType);
+    const labels = getOfferingLabels(businessType, businessCategory || undefined);
     const offeringLabel = labels.offeringTitle;
     const freshnessText = getFreshnessText(lastPublishedAt);
     const locationText = getLocationText(locationArea, city);

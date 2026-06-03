@@ -122,6 +122,7 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData, st
             </Card>
             <AIDefaultsModal
                 businessType={storeDetails?.businessType}
+                businessCategory={storeDetails?.businessCategory}
                 onClose={() => setIsAIDefaultsOpen(false)}
                 open={isAIDefaultsOpen}
                 projectData={projectData}

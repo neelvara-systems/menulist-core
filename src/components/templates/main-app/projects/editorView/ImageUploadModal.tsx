@@ -148,7 +148,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             ? loadImageGenPreferences(storeDetails.tenantId, storeDetails.storeId)
             : null;
         const configWithPrefs: ImageGenerationConfigType = projectData?.aiPreferences?.image
-            ? applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType)
+            ? applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType, storeDetails?.businessCategory)
             : savedPrefs
                 ? {
                     ...DefaultGenerationConfig,
@@ -166,7 +166,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     transparentBg: savedPrefs.transparentBg || false,
                     isMultiMode: savedPrefs.isMultiMode,
                 }
-                : applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType);
+                : applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType, storeDetails?.businessCategory);
         configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
         configWithPrefs.aspectRatio = getSafeMediaAspectRatio('menuItem', configWithPrefs.aspectRatio);
         setGenerationConfig(configWithPrefs);

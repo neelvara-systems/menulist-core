@@ -95,7 +95,7 @@ export default function BulkActionsSheet({
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
-    const availabilityLabels = getOwnerLabels(storeDetails?.businessType);
+    const availabilityLabels = getOwnerLabels(storeDetails?.businessType, storeDetails?.businessCategory);
     const unselectedFilterColor = 'rgba(0,0,0,0.35)';
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const [workingProject, setWorkingProject] = useState<Project | null>(projectData);
@@ -435,7 +435,11 @@ export default function BulkActionsSheet({
 
                 if (aiRepairSummary.categoryIconsToRepair > 0) {
                     setApplyDetail('Adding category icons');
-                    const categoryIconRepair = applyMissingCategoryIconsToProject(updated, businessType || storeDetails?.businessType);
+                    const categoryIconRepair = applyMissingCategoryIconsToProject(
+                        updated,
+                        businessType || storeDetails?.businessType,
+                        storeDetails?.businessCategory,
+                    );
                     updated = categoryIconRepair.project;
                     repairedCategoryIconCount = categoryIconRepair.updatedCount;
                 }
@@ -449,8 +453,8 @@ export default function BulkActionsSheet({
                     setApplyDetail(t('repairMenuAiDescriptionsStep'));
                     updated = await runDescriptionGeneration({
                         action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
-                        contentLength: getProjectDescriptionContentLength(updated, businessType),
-                        tone: getProjectDescriptionTone(updated, businessType),
+                        contentLength: getProjectDescriptionContentLength(updated, businessType || storeDetails?.businessType, storeDetails?.businessCategory),
+                        tone: getProjectDescriptionTone(updated, businessType || storeDetails?.businessType, storeDetails?.businessCategory),
                         projectData: updated,
                         governance: descriptionGovernance,
                         skipPersist: true,

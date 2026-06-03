@@ -90,6 +90,7 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
                 selectedProjectSlug,
             ),
             currencySymbol: storeData?.currencySymbol || "₹",
+            activePlanType: storeData?.activePlanType || null,
         };
 
         return {

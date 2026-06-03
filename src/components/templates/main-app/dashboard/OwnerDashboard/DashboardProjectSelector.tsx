@@ -7,6 +7,7 @@ import { getMetadataProjectsList } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { resolveProjectImageUrl } from '@lib/image/projectImageDisplay';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { resolveSelectableProject } from '@lib/projects/projectSelection';
 import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
@@ -141,7 +142,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
     const { data, isLoading } = useSWR(
         sessionReady ? `dashboard-projects-${session!.tId}-${session!.sId}` : null,
         () => getMetadataProjectsList(true),
-        { dedupingInterval: 3600000, revalidateOnFocus: false, revalidateOnMount: false }
+        { dedupingInterval: 3600000, revalidateOnFocus: false }
     );
 
     const projects: DashboardProject[] = data?.projects || [];
@@ -152,12 +153,10 @@ export const DashboardProjectSelector: React.FC<Props> = ({
         // Don't do anything while SWR is still fetching
         if (isLoading) return;
 
-        if (!selectedProjectId && projects.length > 0) {
-            const def = projects.find(p => p.isDefault) || projects[0];
-            if (def.projectId) {
-                onProjectChange(def.projectId, resolveProjectName(def.name));
-                return;
-            }
+        const resolvedProject = resolveSelectableProject(projects, selectedProjectId);
+        if (resolvedProject?.projectId && resolvedProject.projectId !== selectedProjectId) {
+            onProjectChange(resolvedProject.projectId, resolveProjectName(resolvedProject.name));
+            return;
         }
 
         // Session resolved + projects fetched (even if empty) — unblock dashboard

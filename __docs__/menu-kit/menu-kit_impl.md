@@ -1,8 +1,8 @@
 # Menu Kit — Implementation Blueprint
 
-**Version:** 1.4
+**Version:** 1.5
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** May 21, 2026 — Mobile Share tab print/social downloads and 9-asset ZIP count verified
+**Last Updated:** June 3, 2026 — Premium branded output tokens shared across Menu Kit, QR downloads, and active legacy Today cards
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -19,6 +19,7 @@ Client generates 9 asset files using:
     - Canvas API (sticker PNG, social images, placement guide)
     - qrcode npm package (QR codes)
     - UTM-tagged URLs per surface (if ENABLE_MENU_KIT_UTM)
+    - shared brand tokens from existing store logo/color context
     ↓
 JSZip bundles into single ZIP (9 assets + PRINT_INSTRUCTIONS.txt)
     ↓
@@ -37,6 +38,8 @@ Staff script text shown inline (not in ZIP)
 
 ```
 src/lib/menu-kit/
+├── brandTokens.ts                  # Shared premium logo/color/QR readability tokens
+├── imageLoader.ts                  # Logo preloader used once per generation request
 ├── menuKitGenerator.ts            # Main orchestrator — generates all assets + ZIP
 ├── businessTypeLabels.ts          # BusinessType-aware labels (menu/services/catalog)
 ├── templates/
@@ -83,7 +86,12 @@ export interface MenuKitInput {
   menuUrl: string; // Full URL: {subdomain}.menulist.ai/{slug}
   shortLink: string; // Display: menulist.ai/{slug}
   logoUrl?: string; // Optional store logo
+  brandColor?: string; // Store/OBP accent color
   lastPublishedAt?: Date; // For "Updated on" footer
+  businessType?: string;
+  businessCategory?: string;
+  activePlanType?: string | null; // Premium hides visible MenuList attribution
+  locale?: string;
 }
 
 export interface MenuKitAsset {
@@ -100,6 +108,23 @@ export interface MenuKitResult {
   zipBlob: Blob;
 }
 ```
+
+### Premium Output Tokens (`src/lib/menu-kit/brandTokens.ts`)
+
+`resolveMenuKitBrandTokens()` normalizes the store/OBP accent color and returns paper, surface, border, text, muted, softAccent, and QR colors. QR modules may use the brand accent, but every downloadable QR sits on a high-contrast white panel for scan reliability.
+
+`resolveStoreBrandColor()` uses the same store fallback order as premium print output: `publicPresence.accentColor` -> `primaryColor` -> `brandColor` -> `themeColor`.
+
+This shared contract is used by Menu Kit, standalone branded QR cards, OBP QR downloads, feedback QR downloads, and the active legacy Today/mobile Hours card generators.
+
+`src/lib/menu-kit/platformAttribution.ts` is the shared MenuList attribution contract for generated assets. It draws the MenuList logo mark and standard text:
+
+- `Powered by MenuList | menulist.ai`
+- `Menu powered by MenuList | menulist.ai`
+
+`src/lib/platform/menuListBranding.ts` is the entitlement gate for visible MenuList attribution. It hides printable/downloadable attribution only when `activePlanType` normalizes to `premium`; missing, Starter, Pro, and unknown plan data keep attribution visible. The check uses plan data already present in store context and does not read subscriptions.
+
+Menu Kit templates, standalone QR cards, Menu Card Export PDFs, and active legacy physical-surface downloads use this helper or its PDF-safe logo data URL so every printed/downloaded output includes the MenuList name and domain without making the owner configure another setting.
 
 ### 2. Main Orchestrator (`src/lib/menu-kit/menuKitGenerator.ts`)
 
@@ -398,10 +423,12 @@ npm install jszip
 | UTM tagging in orchestrator not templates     | Templates don't know their surface name. Orchestrator builds per-surface input. Clean separation. | Mar 8, 2026  |
 | `MENU_KIT_DOWNLOAD` GA4-only (no Firestore)   | Owner-side event, not customer-side. Zero Firebase cost. Skip Firestore write in switch.          | Mar 8, 2026  |
 | Feature flag `ENABLE_MENU_KIT_UTM`            | Allows toggling UTM params without touching template code. Defaults ON.                           | Mar 8, 2026  |
+| Shared premium output tokens                  | All active QR/card downloads reuse store logo/color and a scan-safe QR panel.                     | Jun 3, 2026  |
+| Premium attribution removal                   | Only Premium stores hide visible MenuList logo/name/domain in generated files and public footers. | Jun 3, 2026  |
 
 ---
 
 **Document Signature:** Implementation Blueprint
 **Created:** February 21, 2026
-**Last Updated:** March 14, 2026
+**Last Updated:** June 3, 2026
 **Review:** Implementation complete — all code matches spec. Parity audit passed.

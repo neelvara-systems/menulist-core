@@ -42,6 +42,10 @@
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 
+**Starter placeholders:** Unpaid starter OBP placeholders are computed from the already-loaded store document and missing publicPresence/social/service/payment fields. They add no Firestore read, write, listener, index, Cloud Function, or Storage operation, and they do not persist fake links, service modes, payment methods, or attributes. Compact starter layout and deterministic menu placeholder thumbnails are CSS/React render behavior only. Payment entitlement sync already revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`, so paid pages render without placeholders after the cache purge.
+
+**Premium attribution removal:** OBP footer branding uses the already-loaded `stores/{storeId}.activePlanType` field through the shared MenuList branding policy. This adds no subscription lookup, Firestore read, write, listener, Cloud Function, rule, index, or Storage operation. Missing/non-Premium plan data keeps attribution visible.
+
 **Custom attribute icons:** Desktop and mobile settings use the shared category icon/emoji picker for owner-defined custom attributes. This changes only the value stored in `publicPresence.customAttributes[].icon`; it adds no reads, writes, listeners, indexes, Storage operations, or Cloud Functions beyond the existing OBP settings save.
 
 **Language usage:** Multi-language OBP page views attach `obpViewsByLanguage`, `obpSessionsByLanguage`, and `obpLanguageNames` to the existing page-view write. Language switch links stay URL-based for SEO/AEO, preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters, and de-dupe accepted adoption counters by store-local analytics day. Legacy `src` / `source` query parameters are not preserved or consumed by analytics.
@@ -76,11 +80,11 @@
 
 **Observability:** OBP settlement logs actionable Sentry/Firebase warnings only for cache rebuild fallback and late-event correction. Store-level OBP aggregation failures include `tId`, `sId`, and timezone context. Normal OBP page views and successful counter writes are not logged.
 
-### Brand Propagation (Client-Side)
+### Master Identity Propagation (Client-Side DAL)
 
 | Operation                  | Collection | Trigger                                               | Docs Written | Notes                                                                                                                                                                                             |
 | -------------------------- | ---------- | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Propagate brand to outlets | `stores`   | Master store saves brand fields via Business Settings | 1 per outlet | Updates `logo`, `phoneNumber`, `currencyCode`, `currencySymbol`, `country`, `timeZone`, `defaultLanguage` on each outlet. Skipped if `outletPolicy.allowBrandingOverride === true`. Non-blocking. |
+| Propagate master identity/classification to outlets | `stores`, `platformSummary/storesSummary` | Master store saves propagated fields via `updateStore()` | 1 store write per outlet; 1 summary merge per outlet when summary fields changed | Updates `logo`, `phoneNumber`, `currencyCode`, `currencySymbol`, `country`, `timeZone`, `defaultLanguage`, `businessType`, and `businessCategory` on each outlet. Summary merge includes `businessType`, `businessCategory`, `logo`, `timeZone`, and `modifiedOn` when present. Skipped if `outletPolicy.canOverrideBrandIdentity === true` or legacy `allowBrandingOverride === true`. |
 
 ---
 

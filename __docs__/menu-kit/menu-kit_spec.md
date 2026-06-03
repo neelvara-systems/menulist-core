@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flags ON (`ENABLE_MENU_KIT`, `ENABLE_MENU_KIT_UTM`)  
 **Authority:** Founder  
 **Source:** ChatGPT Session #11 → Cascade Review + Codebase Cross-Check  
-**Last Updated:** March 14, 2026 — Entrance poster, print instructions, QR hardening, placement guide enhancements
+**Last Updated:** June 3, 2026 — Premium store logo/color treatment added without owner design controls
 
 ---
 
@@ -29,16 +29,16 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 ---
 
-## Scope (Frozen — 10 Assets + Print Instructions)
+## Scope (Frozen — 9 Generated Asset Files + Staff Script + Print Instructions)
 
 ### Print Assets (Offline Deployment)
 
-#### 1. Table Tent — A6 PDF
+#### 1. Table Tent — A5 Fold PDF
 
 | Attribute       | Value                          |
 | --------------- | ------------------------------ |
 | **File format** | PDF                            |
-| **Size**        | 105mm × 148mm (A6 portrait)    |
+| **Size**        | 148mm × 210mm (A5 portrait), folds to A6 |
 | **Print spec**  | 300 GSM matte recommended      |
 | **Filename**    | `{StoreName}_TableTent_A6.pdf` |
 
@@ -292,6 +292,7 @@ Not a file. A text line included in the delivery message and optionally shown in
 | Short link        | Same as menu link | Displayed as `menulist.ai/{slug}`                        |
 | "Updated on" date | Last publish      | `projects/{docId}.modifiedOn`                            |
 | Store logo        | Store document    | `stores/{sId}.logoUrl` (optional, for premium templates) |
+| Brand color       | Store document    | `publicPresence.accentColor`, then existing color fallbacks |
 
 ---
 
@@ -333,6 +334,17 @@ A lightweight GA4-only event (`MENU_KIT_DOWNLOAD`) is fired when the owner:
 
 This is an owner-side event — **zero Firestore writes**. GA4 only.
 
+### Print Claim Pilot Boundary
+
+Menu Kit QR assets point customers to the current public menu for stores that already exist in MenuList. Menu Kit does not generate owner-claim postcards, staff PINs, audit-bound claim links, or signed short-link redirects.
+
+If physical acquisition collateral is needed before a store is claimed, route it through Public Menu Entry:
+
+- Interim target: `/create-menu` with print UTM parameters.
+- Future target, only after feature docs and security review: a signed resolver such as `go.menulist.ai/claim?...`.
+
+Owner-acquisition print variants may test offer/no-offer copy. Customer-facing Menu Kit assets must stay stable and identity-based.
+
 ---
 
 ## UI Integration
@@ -371,6 +383,8 @@ Separate tab/section in project B2C view. Less discoverable but cleaner separati
 | ❌ Takeaway stickers (4×4)          | Low priority, owners can crop counter sticker | P2 at best                                         |
 | ❌ WiFi password field              | Scope creep, not menu infrastructure          | Product Taste: "Should this exist at all?"         |
 | ❌ Custom colors/fonts/backgrounds  | Design tool territory                         | Product Taste: "No Cognitive Load"                 |
+
+Automatic store logo and brand-color reuse is allowed and required. It is not a design editor: owners do not choose fonts, colors, backgrounds, or layouts inside Menu Kit. The system reuses existing business identity and enforces QR readability.
 
 ---
 

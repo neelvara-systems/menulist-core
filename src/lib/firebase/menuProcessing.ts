@@ -16,6 +16,7 @@ import type {
     MenuExtractionDestinationType,
     MenuExtractionJobDestination,
 } from '@data/shared/menuExtractionJob';
+import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { Timestamp, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -99,6 +100,7 @@ export interface MenuProcessingJobStatus {
         promptVersion?: string;
         rawBatchResponses?: Array<{ batchIndex: number; rawText: string; truncated: boolean }>;
         redistributedFiles?: Record<string, unknown>;
+        extractedBusinessProfile?: ExtractedBusinessProfile;
     };
     error?: {
         code: string;

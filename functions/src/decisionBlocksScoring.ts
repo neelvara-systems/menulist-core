@@ -18,6 +18,7 @@ import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunConte
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
+import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
 
@@ -803,7 +804,7 @@ async function runNightlySchedulerForStore(
     const logger = functions.logger;
     const tId = storeInfo?.tId != null ? String(storeInfo.tId) : '';
     const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime, storeInfo?.businessCategory);
-    const businessCategory = storeInfo?.businessCategory || 'specialty';
+    const businessCategory = resolveBusinessCategoryOrFallback(storeInfo?.businessType, storeInfo?.businessCategory);
     const storeRun: StoreNightlySchedulerResult = {
         tId,
         sId,
@@ -1184,8 +1185,7 @@ export const computeDecisionBlocksScores = onSchedule({
             const storeInfo = storesSummary[sId];
             const tId = storeInfo.tId != null ? String(storeInfo.tId) : '';
             const businessDayEndTime = resolveBusinessDayEndTime(storeInfo.businessType, storeInfo.businessDayEndTime, storeInfo.businessCategory);
-            // Use businessCategory directly from storesSummary (derived at store creation/update)
-            const businessCategory = storeInfo.businessCategory || 'specialty';
+            const businessCategory = resolveBusinessCategoryOrFallback(storeInfo.businessType, storeInfo.businessCategory);
 
             // Skip inactive stores
             if (storeInfo.active === false) {
@@ -2381,7 +2381,7 @@ export const triggerDecisionBlocksScoring = onCall({
             projectId,
             projectData,
             storeData?.businessType,
-            undefined,
+            storeData?.businessCategory,
             storeData?.timeZone,
             storeData?.businessDayEndTime,
         );
@@ -2431,7 +2431,7 @@ export const triggerDecisionBlocksScoring = onCall({
                     pId,
                     projectData,
                     storeData?.businessType,
-                    undefined,
+                    storeData?.businessCategory,
                     storeData?.timeZone,
                     storeData?.businessDayEndTime,
                 );
@@ -2484,7 +2484,7 @@ export const triggerDecisionBlocksScoring = onCall({
                     pId,
                     projectData,
                     storeData.businessType,
-                    undefined,
+                    storeData.businessCategory,
                     storeData.timeZone,
                     storeData.businessDayEndTime,
                 );

@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flag OFF (`ENABLE_EXTRACTION_MONITORING_DASHBOARD`)  
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -46,7 +46,7 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 | Source              | Collection                                   | What It Provides                           |
 | ------------------- | -------------------------------------------- | ------------------------------------------ |
 | Job documents       | `menuImageProcessingJobs`                    | Job status, timing, errors, quality scores |
-| AI operations       | `MENULIST_AI_OPERATIONS`                     | Token usage, cost per extraction           |
+| AI operations       | `MENULIST_AI_OPERATIONS`                     | Token usage, cost per extraction, job/tenant/store context |
 | Extraction learning | `platformSummary/extractionLearning`         | Correction patterns (10.2)                 |
 | AI usage log        | `aiUsageLog` (Phase 2 — not yet implemented) | Cross-feature AI cost (future)             |
 
@@ -56,7 +56,7 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 2. **Quality Metrics** — Avg quality score, confidence distribution, HCR trend
 3. **Job Feed** — Recent jobs with status, scores, timing
 4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, and retry status
-5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR.
+5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps.
 6. **Ops Alerts** — Scheduler-driven alerts for stuck jobs, failure spikes, and quality drops
 
 ---

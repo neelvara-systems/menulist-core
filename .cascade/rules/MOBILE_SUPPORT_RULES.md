@@ -112,6 +112,16 @@ If sync fails → show non-intrusive "Retry" option
 
 For v1: NO complex offline queue. Simple try-save, show-retry-on-fail pattern.
 
+## Rule 11: Mobile PWA Shell Navigation Contract
+
+Owner mobile PWA screens that are reached from existing mobile tabs (`Today`, `Menu`, `Share`, or `More`) MUST stay inside the existing `MobileShell` screen system.
+
+- Use `MobileShell` state (`activeTab`, `todayScreen`, `moreScreen`) and local callbacks such as `openSubScreen()` / `onOpen...` to move between mobile screens.
+- Use existing mobile providers and caches such as `MobileProjectsProvider` for selected project and project data. Do not create a separate project-loading path unless the screen is intentionally usable outside the PWA shell.
+- Direct mobile links may map a route into shell state in `MobileShell`, but mobile tab actions must not use `window.location`, forced reloads, or desktop-route bypasses.
+- A standalone Next route is acceptable for login, public pages, desktop-only owner routes, or features explicitly outside the mobile PWA shell. For owner PWA features, shell sub-screen integration is the default.
+- Feature docs and verification scripts should guard this pattern when a new mobile screen is added.
+
 ---
 
 ## Reference Documents
@@ -126,5 +136,5 @@ For v1: NO complex offline queue. Simple try-save, show-retry-on-fail pattern.
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** February 14, 2026
+**Version:** 1.1
+**Last Updated:** June 3, 2026

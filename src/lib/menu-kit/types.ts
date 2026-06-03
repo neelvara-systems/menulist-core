@@ -12,8 +12,11 @@ export interface MenuKitInput {
     menuUrl: string;           // Full URL: {subdomain}.menulist.ai/{slug}
     shortLink: string;         // Display-friendly: menulist.ai/{slug}
     logoUrl?: string;          // Optional store logo
+    brandColor?: string;       // Store/OBP accent color for print/social surfaces
     lastPublishedAt?: Date;    // For "Updated on" footer
     businessType?: string;     // Store businessType for category-aware labels
+    businessCategory?: string; // Broad category when businessType is generic
+    activePlanType?: string | null; // Premium hides MenuList attribution; missing/non-premium keeps it visible
     locale?: string;           // BCP 47 locale (e.g., 'en-US', 'hi-IN') for surface copy translation
 }
 

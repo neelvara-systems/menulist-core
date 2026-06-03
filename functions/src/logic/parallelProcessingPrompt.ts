@@ -160,16 +160,16 @@ EXAMPLE - Item extracted but price unclear:
 # DATA FIELD
 The data field must contain a valid JSON object.
 If the image is too blurry or low resolution and data cannot be extracted, then the data field will be an empty JSON object {}.
-The data field should contain the extracted data as a structure in provided languages, categories, items, descriptions, prices and tags.
+The data field should contain the extracted data as a structure in provided languages, categories, items, descriptions, prices, structured item metadata, and explicit legacy audience tags when relevant.
 JSON Structure: The JSON output must always return a single JSON object, regardless of the number of input images.
 String Values: All string values within the JSON must be enclosed in double quotes.
 Comments: There should be no comments within the JSON output.
-Data Extraction: Extract all categories, item names, descriptions, prices and tags accurately (if present) from the input image(s).
+Data Extraction: Extract all categories, item names, descriptions, prices, and safe item metadata accurately (if present) from the input image(s).
 Accuracy: Prioritize accuracy over all other factors during data extraction.
 Category Identification: Identify and return the category name from the image. If a category cannot be clearly identified, group the items under a general category like 'Uncategorized' and include a message in the message field.
 Data Transcription: Transcribe data carefully from all images. Double-check for errors and request clearer images or crops as necessary.
 Text Preservation: Preserve all item names, category names, and descriptions exactly as written in the document. Do not rewrite, shorten, translate, or normalize text.
-Tags Handling: If an item has tags (For Food Menu: veg, non-veg, etc. for salon/spa: male, female, etc.), extract them and include them in the JSON using the items array. The tags field should be an object with language codes as keys same as category and item names. If tags are not visually present on the menu, OMIT the tags field entirely — do NOT generate or infer tags.
+Tags Handling: Food dietary labels MUST be returned through structured "dietaryTags" values, not legacy "tags". Spice labels MUST be returned through "spiceLevel". Use legacy "tags" only for explicit non-food audience labels such as "For Men" or "For Women" in service businesses. If labels are not visually present on the menu, OMIT the field entirely — do NOT generate or infer tags.
 
 Mandatory Fields: Category ID and Item names are mandatory. Descriptions and prices should be included only if visible in the document.
 Schema Stability: Do not add fields beyond the defined output schema. Return only the specified fields.
@@ -226,25 +226,27 @@ The attribute array is omitted if the item does not have any attributes.
 If an item has only one price, use the price field and omit the attribute field.
 If an item has multiple prices and sizes or attributes, then consider it as an attribute and add it in the attribute field.
 
-# TAGS EXTRACTION (CRITICAL - NO HALLUCINATION)
-Extract tags ONLY when they are VISUALLY PRESENT in the image. Do NOT infer or guess tags.
+# VISUAL SIGNAL EXTRACTION (CRITICAL - NO HALLUCINATION)
+Extract metadata labels ONLY when they are VISUALLY PRESENT in the image. Do NOT infer or guess labels.
 
 ## Dietary Tags (Restaurants, Cafes, Food businesses)
-- Look for: V (Vegetarian), VG (Vegan), GF (Gluten-Free), 🌶️ (Spicy), 🌱 (Plant-based), DF (Dairy-Free), N (Contains Nuts)
+- Look for: V (Vegetarian), VG (Vegan), GF (Gluten-Free), 🌶️ (Spicy), 🌱 (Plant-based), DF (Dairy-Free)
 - Look for: Green dot (Vegetarian in India), Red dot (Non-Vegetarian in India)
-- Look for text labels: "Vegetarian", "Vegan", "Gluten-Free", "Spicy", "Hot", "Mild", etc.
-- Format: {"en": "Vegetarian"} or {"en": "Non-Vegetarian"}
+- Look for text labels: "Vegetarian", "Veg", "Non-Veg", "Non-Vegetarian", "Vegan", "Gluten-Free", "Spicy", "Hot", "Mild", etc.
+- Return dietary labels through "dietaryTags" only, using canonical string values such as ["vegetarian"] or ["non-vegetarian"].
+- Return spice labels through "spiceLevel" only.
+- Do NOT return allergens such as nuts/dairy/gluten as "allergens"; owner verification is required for allergens.
 
 ## Audience Tags (Salons, Spas, Gyms, Service businesses)
 - Look for: ♂ (Male), ♀ (Female), gender symbols, icons
 - Look for text labels: "For Men", "For Women", "Ladies", "Gents", "Unisex", "Men's", "Women's"
 - Look for separate sections labeled by gender
-- Format: {"en": "For Men"} or {"en": "For Women"}
+- Return through legacy "tags" only when the label is explicit. Format: {"en": "For Men"} or {"en": "For Women"}.
 
 ## General Rules
-- If NO marker is visible for an item, OMIT the tags field entirely
-- NEVER add tags based on item name or description - only from explicit visual markers
-- Example: A "Chicken Biryani" without a red dot marker should have NO tags field
+- If NO marker is visible for an item, OMIT the metadata/tag field entirely
+- NEVER add labels based on item name or description - only from explicit visual markers
+- Example: A "Chicken Biryani" without a red dot marker should have NO dietaryTags field
 - Example: A "Haircut" without gender label should have NO tags field
 
 # SAFE STRUCTURED ITEM METADATA
@@ -257,8 +259,9 @@ Never return "allergens", "nutritionInfo", "materials", "warranty",
 are maintained in the owner editor, not by extraction.
 
 ## Food & Beverage businesses
-- "dietaryTags": array of strings — extract ONLY from explicit labels/icons. Values: "vegetarian", "vegan", "gluten-free", "halal", "kosher", "keto", "dairy-free", "organic"
+- "dietaryTags": array of strings — extract ONLY from explicit labels/icons. Values: "vegetarian", "non-vegetarian", "vegan", "gluten-free", "halal", "kosher", "keto", "dairy-free", "organic"
 - "spiceLevel": single string — extract ONLY from spice indicators (🌶️, chili icons, "Mild"/"Medium"/"Hot" labels). Values: "none", "mild", "medium", "hot", "very-hot"
+- Dietary label normalization: "VEG", "V", green-dot vegetarian symbols -> "vegetarian"; "NON-VEG", "NV", red-dot non-veg symbols, "non vegetarian" -> "non-vegetarian"; "GF" -> "gluten-free"; "DF" -> "dairy-free"; "KETO" -> "keto".
 
 ## Service businesses (Salons, Spas, Cleaning, etc.)
 - "duration": number (minutes) — extract ONLY if service duration is printed (e.g., "30 min", "1 hour", "45 minutes")
@@ -271,6 +274,28 @@ are maintained in the owner editor, not by extraction.
 
 ## Creative businesses
 - "duration": number (minutes) — extract if service/session duration is printed
+
+# EXTRACTED BUSINESS PROFILE SUGGESTIONS
+Return optional "extractedBusinessProfile" when the uploaded document visibly provides reusable business setup information. These are suggestions used to prefill MenuList settings. Do not invent values. Omit fields when evidence is unclear.
+
+## Identity suggestions
+- "businessName": only when a business/brand name is printed on the menu/header/logo.
+- "phoneNumber": only when a phone/WhatsApp number is printed.
+- "addressLine": only when an address/location line is printed.
+- "businessType": only when visibly supported by the document, for example Restaurant, Cafe, Salon, Spa, Bakery, Gym, Boutique. If unsure, use "Other".
+- "businessCategory": only one of "food", "service", "retail", "professional", "creative", "health", "specialty". Use "specialty" when businessType is Other and no narrower category is clear.
+- "currencyCode": infer only from printed currency symbols/codes around prices, for example INR, USD, EUR, GBP, AED.
+- "defaultLanguage" and "activeLanguages": reuse the detected language evidence from the document.
+
+## Project suggestion
+- "projectName": suggest a short project/menu name only when the document has a title such as "Breakfast Menu", "Dinner Menu", "Spa Services", or when the menu content strongly indicates a neutral name like "Food Menu". Do not create marketing names.
+
+## Visual brand suggestions
+- "brandAccentColor": return a hex color only when a repeated logo/header/accent/brand color is visible. Do not use random food colors, photo backgrounds, shadows, paper color, or one-off decorative colors.
+- "imageBackgroundColor": return a hex color suitable for generated menu item image backgrounds only when a brand background/accent color is visible. Prefer a softer brand-adjacent background if explicitly visible. Omit if unsure.
+- Do not return pure black, pure white, or gray as brandAccentColor unless it is clearly the brand accent. Use confidence "high" only for clear repeated brand colors; use "medium" for partially visible but consistent brand colors; omit low-confidence visual colors.
+
+For every suggestion include: field, value, confidence, evidence, sourceFileIndex, and source "menu_extraction".
 
 # BUSINESS ATTRIBUTE SUGGESTIONS FOR OFFICIAL BUSINESS PAGE
 Return optional store-level "businessAttributeSuggestions" only when the attribute is explicitly visible in the uploaded document or directly supported by extracted safe metadata. These suggestions are used as owner-editable defaults, not final truth.
@@ -332,8 +357,9 @@ Suggestion rules:
                         "price": "number|string|null"
                     }
                 ],
+                "tags": { "language code": "string" }, // OPTIONAL legacy non-food audience labels only; do not use for food dietary labels
                 // OPTIONAL safe metadata — include ONLY if visually present:
-                "dietaryTags": ["string"],           // Food: e.g., ["vegetarian", "vegan"]
+                "dietaryTags": ["string"],           // Food: e.g., ["vegetarian", "non-vegetarian", "keto"]
                 "spiceLevel": "string",              // Food: "none"|"mild"|"medium"|"hot"|"very-hot"
                 "duration": number                   // Service/Health/Creative/Professional: minutes
             }
@@ -347,6 +373,25 @@ Suggestion rules:
                 "sourceFileIndex": number
             }
         ],
+        "extractedBusinessProfile": { // OPTIONAL: business/store/project setup suggestions, only when visibly supported
+            "identity": {
+                "businessName": { "field": "businessName", "value": "string", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "phoneNumber": { "field": "phoneNumber", "value": "string", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "addressLine": { "field": "addressLine", "value": "string", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "businessType": { "field": "businessType", "value": "string", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "businessCategory": { "field": "businessCategory", "value": "food|service|retail|professional|creative|health|specialty", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "currencyCode": { "field": "currencyCode", "value": "INR|USD|EUR|GBP|AED", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "defaultLanguage": { "field": "defaultLanguage", "value": "language code", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "activeLanguages": { "field": "activeLanguages", "value": ["language code"], "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number }
+            },
+            "visualBrand": {
+                "brandAccentColor": { "field": "brandAccentColor", "value": "#RRGGBB", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number },
+                "imageBackgroundColor": { "field": "imageBackgroundColor", "value": "#RRGGBB", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number }
+            },
+            "project": {
+                "projectName": { "field": "projectName", "value": "string", "confidence": "high|medium|low", "evidence": "string", "source": "menu_extraction", "sourceFileIndex": number }
+            }
+        },
         "fileMessages": [  // OPTIONAL: Only include for files with issues
             {
                 "sourceFileIndex": number,  // Which image (0-indexed)

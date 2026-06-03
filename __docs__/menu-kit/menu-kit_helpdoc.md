@@ -29,7 +29,7 @@ When you download Menu Kit, you get a ZIP file with ready-to-use files:
 | **Google Maps Image**             | A ready image for Google                    | Upload to your Google Business Profile photos |
 | **Placement Guide**               | Shows where to place your QR                | Follow the simple checklist                   |
 
-All files already have your restaurant name and QR code. No editing needed.
+All files already have your restaurant name, logo when available, brand color, and QR code. No editing needed.
 
 ---
 
@@ -173,4 +173,4 @@ If you need any help with Menu Kit, message us on WhatsApp. We'll help you set i
 
 **Document Signature:** Public Help Documentation  
 **Created:** February 21, 2026  
-**Updated:** March 14, 2026 — Dual-sided tent card, entrance poster, QR safety section, logo on assets
+**Updated:** June 3, 2026 — Store logo/color output treatment and QR safety preserved

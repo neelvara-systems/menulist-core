@@ -1,7 +1,7 @@
 # Menu Card Export — Firebase Cost And Operations
 
 **Status:** Implemented client-first export / Pro-Premium AI advisor metered separately
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 **Pricing references reviewed:** June 1, 2026
 
 ---
@@ -11,6 +11,8 @@
 The current implementation preserves the PDF Surface cost model for exports: Menu Card Export renders preview, preflight, PDF, print-shop packet ZIP, freshness, and export history in the browser. It does **not** add export Firestore writes, Storage uploads, export-storage API routes, Firestore rules, Storage rules, Cloud Functions, or indexes.
 
 PDF document properties, generated-date/source-reference filenames, and print-shop source summaries are also generated in the browser. They add no Firestore reads/writes and no Storage operations.
+
+Visible MenuList attribution in exported PDFs is browser-rendered from `src/lib/menu-kit/platformAttribution.ts`. It adds the MenuList logo mark, name, and `menulist.ai` domain to the footer for non-Premium stores without a network fetch, Firestore read/write, Storage upload, Cloud Function, rule, or index. `src/lib/platform/menuListBranding.ts` hides that visible attribution only when the already-loaded store context has `activePlanType === "premium"`; no subscription lookup is added.
 
 Brand color and logo reuse comes from the already-loaded platform store context used by the owner app and OBP. When `Include logo` is on, the final renderer may download the existing logo image once to embed it into the PDF; this is cached in memory for repeat exports in the same route session and does not create an export artifact, Storage upload, Firestore document, rule, index, or Cloud Function.
 
@@ -23,6 +25,8 @@ Business-type-aware output is cost-neutral. The print source reuses `store.busin
 Auto print design is also cost-neutral. It runs in the browser after the print source is built, using item count, category count, description coverage, variant presence, business profile, and selected preset to choose the initial style, density, and safe toggles. It does not call the Pro/Premium AI advisor, consume AI capacity, write Firestore, upload Storage, invoke Cloud Functions, or require rules/index changes.
 
 The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, checks rate limit and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
+
+Legacy `generateMenuPdf()` direct-download paths are cost-neutral compatibility bridges. They now call the same Menu Card Export print source and browser renderer with existing store/project context. This changes visual output only; it adds no export Firestore write, Storage upload, Cloud Function, rule, index, or server artifact.
 
 Real-data runtime QA on June 1, 2026 generated PDFs and print-shop packet ZIPs from an active multi-project account with no export collection, export-storage API route, Storage object, rule change, index change, or Cloud Function path.
 
@@ -46,14 +50,14 @@ Sources:
 
 | Operation | Current PDF Surface behavior | Cost |
 | --- | --- | --- |
-| Desktop PDF generation | Uses already-loaded items/categories from Share modal. | No extra Firestore read |
-| Mobile PDF generation | May read selected project if missing from cache. | 0-1 project read |
+| Desktop PDF generation | Uses existing project/store data and delegates to Menu Card Export renderer. | No extra export write/upload |
+| Mobile PDF generation | Uses mobile selected-project cache; may read selected project if missing from cache. | 0-1 project read |
 | PDF artifact | Blob URL downloaded directly to device. | No Storage |
 | Freshness marker | Browser `localStorage`. | No Firebase |
 
 Evidence:
 
-- Current generator returns a Blob in browser: `src/lib/export/menuPdfGenerator.ts:537`.
+- Compatibility generator returns a Blob in browser: `src/lib/export/menuPdfGenerator.ts`.
 - Desktop stores download markers in `localStorage`: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:235`.
 - Mobile stores download markers in `localStorage`: `src/components/mobile/screens/MobileShareScreen.tsx:447`.
 - Current docs describe zero generation cost: `__docs__/pdf-surface/pdf-surface_firebase.md:11`.

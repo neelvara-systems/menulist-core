@@ -83,7 +83,7 @@ Industry-standard pattern (Square POS, Toast, Lightspeed) with simple boolean pe
 | Permission                 | Owner | Manager | Staff | Description            |
 | -------------------------- | :---: | :-----: | :---: | ---------------------- |
 | `canOverrideTheme`         |  ✅   |   ❌    |  ❌   | Override colors, fonts |
-| `canOverrideBrandIdentity` |  ✅   |   ❌    |  ❌   | Override logo, brand   |
+| `canOverrideBrandIdentity` |  ✅   |   ❌    |  ❌   | Override brand identity and business classification |
 | `canOverrideLayout`        |  ✅   |   ❌    |  ❌   | Override UI layout     |
 
 #### Content Control — Multi-Outlet (3)
@@ -166,7 +166,7 @@ Only the master store has this field. Outlet stores inherit the policy through `
 | Policy Flag                | Default | What It Controls                     |
 | -------------------------- | :-----: | ------------------------------------ |
 | `canOverrideTheme`         | `false` | Outlets can customize colors/fonts   |
-| `canOverrideBrandIdentity` | `false` | Outlets can change logo/brand images |
+| `canOverrideBrandIdentity` | `false` | Outlets can keep separate brand identity and business classification |
 | `canOverrideLayout`        | `false` | Outlets can modify UI layout         |
 
 #### Language (1)

@@ -12,7 +12,7 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { LuCheckCircle, LuCircleDot, LuEye, LuImagePlus, LuPalette, LuPenTool, LuScissors, LuShirt, LuSparkles, LuTrash2, LuUploadCloud, LuWand2, LuZap } from 'react-icons/lu';
 import { NavBar, Popup } from '../../../../../mobile/antd';
 import { ItemForDropdown } from '../../types';
-import { BUSINESS_FEATURE_MAP, IMAGE_VIEW_TYPES, ImageEditingFeatureType, PLATFORM_EDITING_FEATURES, UNIVERSAL_FEATURES } from './imageViewType';
+import { BUSINESS_FEATURE_MAP, getImageViewTypeForBusiness, ImageEditingFeatureType, PLATFORM_EDITING_FEATURES, UNIVERSAL_FEATURES } from './imageViewType';
 
 // Icon mapping for feature icons stored as strings
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -50,7 +50,8 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
     // Filter platform features based on business type relevance
     const getRelevantPlatformFeatures = () => {
         const businessType = storeDetails?.businessType || '';
-        const additionalFeatures = BUSINESS_FEATURE_MAP[businessType] || [];
+        const fallbackBusinessType = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory)?.businessType || '';
+        const additionalFeatures = BUSINESS_FEATURE_MAP[businessType] || BUSINESS_FEATURE_MAP[fallbackBusinessType] || [];
         const relevantFeatureNames = [...UNIVERSAL_FEATURES, ...additionalFeatures];
         return PLATFORM_EDITING_FEATURES.filter(f => relevantFeatureNames.includes(f.featureName));
     };
@@ -131,7 +132,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                 },
                 projectId: activeProject?.projectId || '',
                 fileId: sourceImage?.uid || '',
-                businessType: storeDetails?.businessType || '',
+                businessType: storeDetails?.businessType || storeDetails?.businessCategory || 'business',
             })
 
             if (editedImages.length === 0) {
@@ -203,7 +204,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
     });
 
     const getBusinessFeatures = (): ImageEditingFeatureType[] => {
-        return (IMAGE_VIEW_TYPES.find((type) => type.businessType === storeDetails?.businessType)?.editingFeatures || []) as ImageEditingFeatureType[];
+        return (getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory)?.editingFeatures || []) as ImageEditingFeatureType[];
     };
 
     const renderFeatureCard = (feature: ImageEditingFeatureType) => {

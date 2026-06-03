@@ -19,7 +19,7 @@ storeDetails (area, city, workingHours, timeZone, businessType)
 TrustSignals.tsx
   ├── getLocationText(area, city)
   ├── getStoreStatus(workingHours, timeZone) — from @lib/hours
-  ├── getOfferingLabels(businessType).offeringTitle
+  ├── getOfferingLabels(businessType, businessCategory).offeringTitle
   └── getFreshnessText(lastPublishedAt)
   ↓
 Rendered above ClientMenuRenderer
@@ -73,7 +73,7 @@ const status =
 ### 3.3 Offering Label
 
 ```typescript
-const offeringLabel = getOfferingLabels(businessType).offeringTitle;
+const offeringLabel = getOfferingLabels(businessType, businessCategory).offeringTitle;
 // "Menu" | "Services" | "Catalog" | "Programs" | "Offerings"
 ```
 
@@ -181,8 +181,8 @@ Styling: 11px, slate-500 (#64748b), system-ui font, flexbox centered, no icons, 
 
 | v1                                       | v2                                  | Reason                                                               |
 | ---------------------------------------- | ----------------------------------- | -------------------------------------------------------------------- |
-| "OFFICIAL MENU" badge                    | "Restaurant Menu" label             | Self-declared authority is weak; neutral labels feel factual         |
-| "Updated this week" / "Updated recently" | "Updated Mar 12" (exact date)       | Specific dates feel like evidence, vague phrases feel like marketing |
+| Badge-style official wording             | "Restaurant Menu" label             | Self-declared authority is weak; neutral labels feel factual         |
+| Vague freshness wording                  | "Updated Mar 12" (exact date)       | Specific dates feel like evidence, vague phrases feel like marketing |
 | No location                              | `area, city` displayed              | Location anchors page to real physical business                      |
 | No status                                | Open/Closed from `getStoreStatus()` | Real-time status communicates living system                          |
 | Checkmark SVG icon                       | No icon                             | Icons make it feel like a badge/promotion                            |

@@ -102,6 +102,8 @@ Not:
 - WhatsApp generic AI assistant distribution
 - WhatsApp templates misclassified as utility when the content is marketing
 - WhatsApp Flows that collect unnecessary personal data or hidden marketing consent
+- aggregator-style public listing outreach before MenuList is proven with real production owners
+- broad public/source-provider acquisition runs before real production owner activation, retention, and value are validated
 - lead marketplace, lead resale, or buyer/seller routing product outside MenuList distribution
 - generic CRM pipeline management
 - generic lead database/enrichment replacement
@@ -335,6 +337,7 @@ WhatsApp assisted remains available only when the channel policy, opt-in model, 
 | WhatsApp opt-in proof coverage | WhatsApp-eligible contacts with auditable opt-in proof. |
 | WhatsApp template health | Approved templates with acceptable quality and no paused/disabled state. |
 | WhatsApp verified-owner conversations | Consented WhatsApp conversations that result in owner verification, correction, or support outcome. |
+| WhatsApp Claim/Invite experiment health | Consented experiments with safe delivery, opt-out, complaint, quality, and cost signals. |
 | WhatsApp opt-out and complaint rate | Channel trust and account-health risk. |
 | WhatsApp Flow completion rate | Structured truth capture success. |
 
@@ -357,6 +360,7 @@ WhatsApp assisted remains available only when the channel policy, opt-in model, 
 - All source, channel, artifact, and vendor decisions must be policy-backed.
 - All email sends must pass sender-domain readiness and unsubscribe checks.
 - All WhatsApp API sends must pass consent, suppression, template, conversation-window, reputation, sender identity, pacing, and governance-audit checks.
+- All WhatsApp Claim/Invite experiments must use consented audiences only; public source provenance is context, not opt-in.
 - All WhatsApp webhooks must be signature-verified, idempotent, and mapped to message outcomes.
 - All WhatsApp Flows must collect only approved business-truth fields and attach proof to the target.
 - All artifacts must have expiry and takedown state.

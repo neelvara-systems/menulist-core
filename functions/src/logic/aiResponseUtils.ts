@@ -15,13 +15,13 @@
 
 import { BusinessAttributeSuggestion, ExtractedMenuData } from '../types';
 import { getAllBusinessAttributeInferenceKeys } from '../sharedData/businessAttributeInference';
+import { normalizeExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
 
 const SAFE_DIETARY_TAGS = new Set([
     'vegetarian',
+    'non-vegetarian',
     'vegan',
     'gluten-free',
-    'gluten_free',
-    'glutenfree',
     'halal',
     'kosher',
     'keto',
@@ -140,10 +140,29 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
         sourceFileIndex: typeof cat.sourceFileIndex === 'number' ? cat.sourceFileIndex : Number(cat.sourceFileIndex),
     }));
 
-    const normalizeStringArray = (value: unknown, allowlist?: Set<string>): string[] | undefined => {
+    const normalizeDietaryTag = (value: string): string => {
+        const normalized = value
+            .trim()
+            .toLowerCase()
+            .replace(/_/g, '-')
+            .replace(/\s+/g, '-');
+
+        if (['veg', 'vegetarian'].includes(normalized)) return 'vegetarian';
+        if (['non-veg', 'nonveg', 'nonvegetarian', 'non-vegetarian'].includes(normalized)) return 'non-vegetarian';
+        if (['gf', 'glutenfree', 'gluten-free'].includes(normalized)) return 'gluten-free';
+        if (['df', 'dairyfree', 'dairy-free'].includes(normalized)) return 'dairy-free';
+        return normalized;
+    };
+
+    const normalizeStringArray = (
+        value: unknown,
+        allowlist?: Set<string>,
+        canonicalize?: (value: string) => string,
+    ): string[] | undefined => {
         if (!Array.isArray(value)) return undefined;
         const normalized = value
             .map((entry) => String(entry || '').trim().toLowerCase())
+            .map((entry) => canonicalize ? canonicalize(entry) : entry)
             .filter((entry) => entry.length > 0)
             .filter((entry) => !allowlist || allowlist.has(entry));
         return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
@@ -230,7 +249,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             }
         }
 
-        const dietaryTags = normalizeStringArray(item.dietaryTags, SAFE_DIETARY_TAGS);
+        const dietaryTags = normalizeStringArray(item.dietaryTags, SAFE_DIETARY_TAGS, normalizeDietaryTag);
         const rawSpiceLevel = String(item.spiceLevel || '').trim().toLowerCase();
         const spiceLevel = SAFE_SPICE_LEVELS.has(rawSpiceLevel)
             ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
@@ -291,6 +310,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
         }))
         : undefined;
     const businessAttributeSuggestions = normalizeBusinessAttributeSuggestions(extractedData.businessAttributeSuggestions);
+    const extractedBusinessProfile = normalizeExtractedBusinessProfile(extractedData.extractedBusinessProfile);
 
     return {
         message: data.message || '',
@@ -298,6 +318,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             languages,
             categories,
             items,
+            ...(extractedBusinessProfile ? { extractedBusinessProfile } : {}),
             ...(businessAttributeSuggestions ? { businessAttributeSuggestions } : {}),
             // Only include if there are fileMessages
             ...(fileMessages && fileMessages.length > 0 ? { fileMessages } : {}),

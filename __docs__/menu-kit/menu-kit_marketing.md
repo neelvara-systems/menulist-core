@@ -60,8 +60,8 @@ Menu Kit is not a feature. It is a **deployment system** — the bridge between 
 
 | What others do | What MenuList does |
 |---------------|-------------------|
-| Give a QR code image | Give a complete deployment pack (9 assets + guide + staff script) |
-| Owner figures out what to print | Print-ready A6 PDF — take to any shop |
+| Give a QR code image | Give a complete deployment pack (9 asset files + print instructions + staff script) |
+| Owner figures out what to print | Print-ready A5 fold PDF — take to any shop |
 | Owner creates social posts manually | Social images pre-made (IG, WA, Google Maps) |
 | No placement guidance | Placement guide with exact sizes and locations |
 | No staff training | One-line staff script included |
@@ -79,6 +79,43 @@ During pilot acquisition, Menu Kit is the "wow moment":
 5. Owner realizes: "This is more than a QR code. This is a system."
 
 **The handover feels premium.** That's the conversion trigger.
+
+---
+
+## Print Acquisition Pilot Notes
+
+A June 2026 print-claim proposal is partially valid for acquisition, not for replacing Menu Kit.
+
+### Use Now
+
+- Use Menu Kit for claimed stores and existing customers.
+- Use a separate owner-acquisition postcard only as a pilot asset.
+- Point acquisition QR codes to `/create-menu` unless a signed claim resolver has been specified and implemented.
+- Split pilot links with `utm_source=print` and `utm_medium=postcard` or `utm_medium=tabletent`.
+- Use `utm_content=offer` or `utm_content=no_offer` for acquisition-copy variants.
+
+### Approved Pilot Copy
+
+- Headline: "Claim your official MenuList menu."
+- Offer subhead: "Free first menu setup from your current menu."
+- No-offer subhead: "Keep one official customer menu current."
+- CTA: "Claim menu"
+- Privacy note: "Scanning records a visit for security and claim protection. No marketing without consent."
+
+### Do Not Say
+
+- "Keep your public menu accurate everywhere."
+- "Publish the correct version everywhere."
+- "Automatic Google updates."
+- "Staff pin" unless the staff PIN system is built and documented.
+
+### Pilot Success Criteria
+
+- Claim-start rate per 100 scans.
+- Claim-completion rate.
+- Published starter activation within 48 hours.
+- Menu Kit download or QR download after claim.
+- WhatsApp support assists per location.
 
 ---
 

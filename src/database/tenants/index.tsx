@@ -1,10 +1,11 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { updateTenantsCountInPlatformSummary } from "@database/platformSummary";
+import { mergeStoreSummaryFields, updateTenantsCountInPlatformSummary } from "@database/platformSummary";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { doc, getDoc, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 
@@ -159,10 +160,17 @@ export const updateTenant = async (data: any) => {
 
                 if (!storesSnapshot.empty) {
                     const batch = writeBatch(firebaseClient);
+                    const storeIds: Array<string | number> = [];
                     storesSnapshot.forEach((storeDoc) => {
+                        const storeId = storeDoc.data()?.storeId || storeDoc.id;
+                        storeIds.push(storeId);
                         batch.update(storeDoc.ref, { tenantName: nextTenantName });
                     });
                     await batch.commit();
+                    await Promise.all(storeIds.map(async (storeId) => {
+                        await mergeStoreSummaryFields(storeId, { tenantName: nextTenantName });
+                        await revalidatePublicClientCache(storeId, "updateTenantName");
+                    }));
                 }
             }
             return data;

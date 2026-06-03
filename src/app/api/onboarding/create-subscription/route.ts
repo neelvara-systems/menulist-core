@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
+import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { createInitialSubscription } from "@database/subscriptions/server";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -131,7 +132,7 @@ export const POST = withAuth(async (request, session) => {
             // Centralized tenant + store creation
             const core = await createTenantStoreInTransaction(transaction, db, {
                 businessName,
-                businessType: businessIndustry || 'Restaurant',
+                businessType: businessIndustry || FALLBACK_BUSINESS_TYPE,
                 businessIndustry: userType,
                 timeZone,
                 businessDayEndTime,

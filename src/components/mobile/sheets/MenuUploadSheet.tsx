@@ -9,6 +9,7 @@ import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
+import { buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import createProcessingJob from '@template/main-app/projects/getProcessedFile';
@@ -63,9 +64,11 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
 };
 
 function BusinessIdentitySuggestionList({
+    details,
     onSelectionChange,
     suggestions,
 }: {
+    details?: OwnerDetectedDetail[];
     onSelectionChange: (fields: BusinessIdentitySuggestionField[]) => void;
     suggestions: BusinessIdentitySuggestion[];
 }) {
@@ -79,7 +82,8 @@ function BusinessIdentitySuggestionList({
 
     return (
         <Flex gap={10} vertical>
-            <Text>We found business details in the upload. Save only the details you want to use.</Text>
+            <Text>We found these details in the upload. Save only what should update this location.</Text>
+            <OwnerDetectedDetails details={details || []} />
             {suggestions.map((suggestion) => (
                 <Checkbox
                     checked={selectedFields.includes(suggestion.field)}
@@ -98,6 +102,52 @@ function BusinessIdentitySuggestionList({
                     </Flex>
                 </Checkbox>
             ))}
+        </Flex>
+    );
+}
+
+function OwnerDetectedDetails({
+    concerns = [],
+    details,
+}: {
+    concerns?: string[];
+    details: OwnerDetectedDetail[];
+}) {
+    if (!details.length && !concerns.length) return null;
+
+    return (
+        <Flex gap={8} vertical>
+            {details.length ? (
+                <Flex gap={6} wrap="wrap">
+                    {details.map((detail) => (
+                        <Tag key={detail.key} style={{ alignItems: 'center', display: 'inline-flex', gap: 6 }}>
+                            {detail.color ? (
+                                <span
+                                    aria-hidden="true"
+                                    style={{
+                                        background: detail.color,
+                                        border: '1px solid rgba(0,0,0,0.12)',
+                                        borderRadius: 999,
+                                        display: 'inline-block',
+                                        height: 10,
+                                        width: 10,
+                                    }}
+                                />
+                            ) : null}
+                            {detail.label}: {detail.value}
+                        </Tag>
+                    ))}
+                </Flex>
+            ) : null}
+            {concerns.length ? (
+                <Flex gap={4} vertical>
+                    {concerns.map((concern) => (
+                        <Text key={concern} style={{ color: 'var(--adm-color-warning)' }}>
+                            {concern}
+                        </Text>
+                    ))}
+                </Flex>
+            ) : null}
         </Flex>
     );
 }
@@ -305,12 +355,14 @@ export default function MenuUploadSheet({
     ) => {
         const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
         if (!suggestions.length || !storeDetails?.storeId) return;
+        const detectedDetails = buildOwnerDetectedUploadDetails(result);
 
         let selectedFields = suggestions.map((suggestion) => suggestion.field);
         await Dialog.confirm({
             title: 'Save detected business details?',
             content: (
                 <BusinessIdentitySuggestionList
+                    details={detectedDetails}
                     suggestions={suggestions}
                     onSelectionChange={(fields) => {
                         selectedFields = fields;
@@ -366,16 +418,14 @@ export default function MenuUploadSheet({
             }
 
             const canCreateNewProject = decision.secondaryAction === 'create_new_project';
+            const detectedDetails = buildOwnerDetectedUploadDetails(result);
+            const concernDetails = buildOwnerUploadConcernDetails(result);
             const confirmed = await Dialog.confirm({
                 title: decision.title,
                 content: (
                     <Flex gap={8} vertical>
                         <Text>{decision.message}</Text>
-                        {result?.identity?.businessName ? (
-                            <Text style={{ color: token.colorTextSecondary }}>
-                                Uploaded menu: {result.identity.businessName}
-                            </Text>
-                        ) : null}
+                        <OwnerDetectedDetails details={detectedDetails} concerns={concernDetails} />
                     </Flex>
                 ),
                 confirmText: decision.severity === 'confirm' ? 'Add here anyway' : 'Continue',

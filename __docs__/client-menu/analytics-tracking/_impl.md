@@ -3,7 +3,7 @@
 **Sub-Feature of:** Client Menu  
 **Document Type:** Technical Implementation  
 **Status:** ✅ Implemented  
-**Last Updated:** May 1, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -19,6 +19,9 @@ src/database/analytics/
 src/database/ownerDashboard/
 └── index.ts                          # Owner dashboard read adapter
 
+src/lib/analytics/
+└── ownerDashboardDetails.ts           # Shared desktop/mobile owner detail sections
+
 src/components/templates/website/clientWebsite/
 ├── AnalyticsContext.tsx              # React context for tracking
 ├── UnifiedAnalyticsTracking.tsx      # Wrapper component
@@ -32,6 +35,14 @@ functions/src/
 ├── analytics/obpAnalyticsAggregation.ts # OBP nightly settlement
 └── decisionBlocksScoring.ts          # Unified timezone-aware scheduler
 ```
+
+## Owner Dashboard Parity
+
+- Desktop and mobile owner analytics use the same tab labels and the same menu-detail section builder: `Menu Signals`, `Visitor Sources`, `Campaign Tracking`, `Top Items`, `Categories`, `Customer Actions`, `Search Demand`, `Unavailable Interest`, `Languages`, `Filters`, and `Smart Picks`.
+- The shared builder lives in `src/lib/analytics/ownerDashboardDetails.ts`; desktop renders it with `MenuAnalyticsDetailsCard`, while mobile renders the same rows with `MobileMenuAnalyticsDetailsCard`.
+- `Today`, `Yesterday`, `This Week`, `This Month`, and `Overall` all use the same section builder. `Overview` renders the same builder for WTD and MTD data.
+- The owner dashboard read adapter normalizes older/lazy period documents so top items, categories, source quality, UTM traffic, search demand, unavailable demand, actions, filters, languages, and Smart Picks stay available when the raw maps exist.
+- WTD/MTD fallback aggregation ranks top items from `clicksByItem` item taps, matching the nightly dashboard summary path.
 
 ---
 
@@ -200,12 +211,12 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - If a night is missed, the next local nightly run catches up pending store-local dates in order, capped per run for Firebase cost safety.
 - Summary lifetime counters are idempotent: a date already recorded as aggregated is skipped instead of incremented again.
 - Settled owner dashboard views end on the latest settled business date. They are intentionally not mixed with the current partial business day or the just-ended day before scheduler settlement.
-- The Dashboard has six explicit display tabs on desktop and mobile: `Today`, `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall`.
+- The Dashboard has six explicit display tabs on desktop and mobile: `Today`, `Overview`, `Yesterday`, `This Week`, `This Month`, and `Overall`.
 - Every dashboard tab renders its own Menu card/section and matching Official Business Page card/section so owners do not have to mentally combine separate surfaces.
 - Desktop Dashboard is analytics-only like mobile. Operational cards such as menu quality repair, temporary status, official-link setup, Google listing setup, and review reply tools are not mounted inside Dashboard; they belong to their own owner workflow surfaces.
 - The default `Today` tab reads only the current day Menu and OBP daily docs directly through the owner-dashboard DAL.
 - The live card uses SWR plus local cache with a short TTL only for that slice, so Firebase cost stays bounded.
-- Settled / past analytics stay gated until the owner opens `Overview`, `Daily`, `Weekly`, `Monthly`, or `Overall`. Menu and OBP settled reads then use SWR/localStorage with the store-local scheduler cycle key. The cache survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.
+- Settled / past analytics stay gated until the owner opens `Overview`, `Yesterday`, `This Week`, `This Month`, or `Overall`. Menu and OBP settled reads then use SWR/localStorage with the store-local scheduler cycle key. The cache survives midnight and business-day cutoff changes, then invalidates after the next expected local scheduler completion window.
 - The existing overview / daily / weekly / monthly / overall historical flow is served from the read-model doc. Legacy daily-doc rebuilds are not used on the owner display path.
 - The deep analytics dashboard uses the same read-model doc via SWR/local cache:
   - recent settled ranges are served from `{tId}_{sId}_{projectId}_dashboard_summary`
@@ -232,6 +243,12 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
   - `Today so far` final customer actions
   - `Today so far` engaged-session rate
   - `Today so far` action rate
+- Desktop and mobile analytics parity rule:
+  - both layouts use `useOwnerDashboard` and `useOBPDashboard` for the owner analytics data flow
+  - both layouts use the same shared project selection resolver and per-store selected-catalog storage before falling back to the default catalog
+  - both layouts render explicit Menu and OBP empty states for every period instead of hiding one surface when only the other has data
+  - dashboard labels for top items, categories, languages, filters, sources, and actions come from the analytics read model; mobile must not silently enrich dashboard rows from a separate project-data read
+  - blank GA4, Search Console, and Meta Pixel fields are valid on both desktop and mobile because empty IDs disable external scripts
 - AI owner summaries now also reference:
   - top search demand
   - no-result search friction
@@ -310,7 +327,7 @@ trackItemClick({ itemId, itemName, categoryId, projectId });
 
 ## Third-Party Integration
 
-Google Analytics and Meta Pixel are loaded only when the owner saves the matching ID in Analytics Settings. These scripts are external owner-owned integrations; MenuList internal attribution uses `entry_source`, while `utm_source`, `utm_medium`, and `utm_campaign` remain intentional campaign parameters that third-party tools may read from the public URL. No separate UTM toggle is implemented because UTM is controlled by the campaign link, and external script loading is controlled by whether the GA4 / Meta Pixel ID is present.
+Google Analytics and Meta Pixel are loaded only when the owner saves the matching ID in Analytics Settings. These scripts are external owner-owned integrations; MenuList internal attribution uses `entry_source`, while `utm_source`, `utm_medium`, `utm_campaign`, and `utm_content` remain intentional campaign parameters that third-party tools may read from the public URL. No separate UTM toggle is implemented because UTM is controlled by the campaign link, and external script loading is controlled by whether the GA4 / Meta Pixel ID is present.
 
 ### Google Analytics 4
 

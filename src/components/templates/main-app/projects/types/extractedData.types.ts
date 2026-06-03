@@ -5,6 +5,7 @@
  */
 
 import { UserUploadedFileType } from "@type/common";
+import type { ExtractedBusinessProfile } from "@data/shared/extractedBusinessProfile";
 import { FileMessage } from "./fileMessages.types";
 
 /**
@@ -91,9 +92,9 @@ export interface ExtractedDataItem {
      * as compatibility mirrors for legacy data and integrations.
      */
     decisionFacts?: ItemDecisionFacts;
-    // Note: Dietary info (Veg/Non-Veg) is stored in `tags` field as strings
-    // e.g., tags: ["Vegetarian"] or tags: ["Non-Vegetarian"]
-    // Extracted from visual markers in menu images (see parallelProcessingPrompt.ts)
+    // Note: Structured dietary info (Veg/Non-Veg/GF/etc.) is stored in
+    // `dietaryTags` and may also be mirrored in `decisionFacts.dietaryTags`.
+    // Legacy `tags` can still contain free-text dietary labels for fallback.
 
     // ── Structured Item Metadata (SMB-Compatible) ──
     // Fields are universal on the type but conditionally visible in editor UI
@@ -101,7 +102,7 @@ export interface ExtractedDataItem {
     //
     // Food & Beverage fields:
     allergens?: string[]; // e.g., ["dairy", "nuts", "gluten", "shellfish", "soy", "eggs"]
-    dietaryTags?: string[]; // e.g., ["vegan", "vegetarian", "gluten-free", "halal", "kosher", "keto"]
+    dietaryTags?: string[]; // e.g., ["vegan", "vegetarian", "non-vegetarian", "gluten-free", "halal", "kosher", "keto"]
     spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'; // Standardized spice scale
     nutritionInfo?: {
         calories?: number; // kcal per serving
@@ -152,6 +153,7 @@ export interface ExtractedData {
         categories: ExtractedDataCategory[];
         items: ExtractedDataItem[];
         languages: ExtractedDataLanguage[];
+        extractedBusinessProfile?: ExtractedBusinessProfile;
         businessAttributeSuggestions?: BusinessAttributeSuggestion[];
     };
 }

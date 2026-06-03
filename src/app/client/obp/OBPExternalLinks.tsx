@@ -3,7 +3,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
-import type { ElementType } from 'react';
+import { useState, type ElementType } from 'react';
 import { LuGlobe } from 'react-icons/lu';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import styles from './obp.module.scss';
@@ -19,6 +19,8 @@ interface OBPExternalLinksProps {
     googleReviewUrl?: string;
     labels?: Partial<Record<Exclude<OBPTrackedLink, 'google_review'>, string>>;
     socialAriaLabelTemplate?: string;
+    placeholderPlatforms?: OBPSocialLink[];
+    placeholderMessage?: string;
     instagram?: string | null;
     facebook?: string | null;
     twitter?: string | null;
@@ -29,6 +31,7 @@ interface OBPExternalLinksProps {
 }
 
 type OBPTrackedLink = 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
+type OBPSocialLink = Exclude<OBPTrackedLink, 'google_review'>;
 
 const SOCIAL_ICONS: Partial<Record<OBPTrackedLink, ElementType>> = {
     instagram: TbBrandInstagram,
@@ -57,6 +60,8 @@ export default function OBPExternalLinks({
     googleReviewUrl,
     labels,
     socialAriaLabelTemplate,
+    placeholderPlatforms = [],
+    placeholderMessage,
     instagram,
     facebook,
     twitter,
@@ -65,7 +70,8 @@ export default function OBPExternalLinks({
     whatsapp,
     website,
 }: OBPExternalLinksProps) {
-    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || whatsapp || website);
+    const [placeholderNotice, setPlaceholderNotice] = useState('');
+    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || whatsapp || website || placeholderPlatforms.length);
     const hasReview = !!(googleReviewUrl && googleReviewLabel);
 
     if (!hasSocials && !hasReview) return null;
@@ -94,12 +100,30 @@ export default function OBPExternalLinks({
     const LinkedinIcon = SOCIAL_ICONS.linkedin;
     const YoutubeIcon = SOCIAL_ICONS.youtube;
     const WhatsappIcon = SOCIAL_ICONS.whatsapp;
-    const getSocialLabel = (platform: Exclude<OBPTrackedLink, 'google_review'>) => labels?.[platform] || platform;
-    const getSocialAriaLabel = (platform: Exclude<OBPTrackedLink, 'google_review'>) => (
+    const realPlatforms = new Set<OBPSocialLink>([
+        ...(instagram ? ['instagram' as const] : []),
+        ...(facebook ? ['facebook' as const] : []),
+        ...(twitter ? ['twitter' as const] : []),
+        ...(linkedin ? ['linkedin' as const] : []),
+        ...(youtube ? ['youtube' as const] : []),
+        ...(whatsapp ? ['whatsapp' as const] : []),
+        ...(website ? ['website' as const] : []),
+    ]);
+    const visiblePlaceholderPlatforms = placeholderPlatforms.filter((platform) => !realPlatforms.has(platform));
+    const getSocialLabel = (platform: OBPSocialLink) => labels?.[platform] || platform;
+    const getSocialAriaLabel = (platform: OBPSocialLink) => (
         socialAriaLabelTemplate
             ? socialAriaLabelTemplate.replace('{platform}', getSocialLabel(platform))
             : getSocialLabel(platform)
     );
+    const handlePlaceholderClick = (platform: OBPSocialLink) => {
+        const label = getSocialLabel(platform);
+        setPlaceholderNotice(placeholderMessage || `${label} is not set yet.`);
+    };
+    const renderSocialIcon = (platform: OBPSocialLink) => {
+        const Icon = platform === 'website' ? LuGlobe : SOCIAL_ICONS[platform];
+        return Icon ? <Icon aria-hidden="true" size={platform === 'website' ? 16 : 20} /> : null;
+    };
 
     return (
         <>
@@ -240,6 +264,22 @@ export default function OBPExternalLinks({
                         >
                             <LuGlobe aria-hidden="true" size={16} />
                         </a>
+                    ) : null}
+                    {visiblePlaceholderPlatforms.map((platform) => (
+                        <button
+                            key={`placeholder-${platform}`}
+                            type="button"
+                            className={`${styles.socialLink} ${styles.socialPlaceholder}`}
+                            aria-label={`${getSocialAriaLabel(platform)}. ${placeholderMessage || 'Not set yet.'}`}
+                            onClick={() => handlePlaceholderClick(platform)}
+                        >
+                            {renderSocialIcon(platform)}
+                        </button>
+                    ))}
+                    {placeholderNotice ? (
+                        <div className={styles.socialPlaceholderNotice} role="status">
+                            {placeholderNotice}
+                        </div>
                     ) : null}
                 </div>
             ) : null}

@@ -38,6 +38,7 @@ interface DecisionBlocksSettingsModalProps {
     open: boolean;
     projectData: Project;
     businessType?: string;
+    businessCategory?: string;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
 }
@@ -46,6 +47,7 @@ const DecisionBlocksSettingsModal = ({
     open,
     projectData,
     businessType,
+    businessCategory,
     onClose,
     onApply
 }: DecisionBlocksSettingsModalProps) => {
@@ -74,7 +76,7 @@ const DecisionBlocksSettingsModal = ({
     }, [projectData.files, activeLang]);
 
     // Get enabled blocks for this business type
-    const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType), [businessType]);
+    const enabledBlockTypes = useMemo(() => getEnabledBlocks(businessType, businessCategory), [businessType, businessCategory]);
 
     // Reset to initial state when modal opens
     const handleOpen = () => {

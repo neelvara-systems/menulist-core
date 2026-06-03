@@ -29,7 +29,7 @@
 
 ### Canonical Implementation Scope
 
-The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. The public `/create-menu` funnel now supports both a menu photo and an owner-provided public menu link before sign-in. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
+The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. The public `/create-menu` funnel now supports both a menu photo and an owner-provided public menu link after sign-in, with the first setup preview still free before payment. It intentionally does **not** edit pricing, payment, subscription, Razorpay, or onboarding runtime logic.
 
 Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, safer pricing/setup claims, and a unified website palette. Pricing payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
 
@@ -53,7 +53,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Print files placement policy (June 2, 2026):** do not add a separate Menu Card Export homepage section. The homepage may show `Print files` as one output of the approved menu source, while the Features page and `/resources/digital-menu-vs-pdf-menu` carry the fuller PDF/printer handoff explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
-**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination accepts a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
+**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
 ---
 

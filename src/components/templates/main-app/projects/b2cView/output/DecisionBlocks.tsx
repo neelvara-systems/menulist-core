@@ -48,6 +48,7 @@ interface DecisionBlocksProps {
     activeLanguage: string;
     primaryLanguage?: string;
     businessType?: string;
+    businessCategory?: string;
     moodConfig: MenuMoodConfig;
     onItemClick?: (item: ExtractedDataItem) => void;
     currency?: string;
@@ -311,12 +312,13 @@ function computeFromPrecomputed(
     items: ExtractedDataItem[],
     categories: ExtractedDataCategory[],
     businessType?: string,
+    businessCategory?: string,
     ownerControls?: OwnerControls,
     showItemPrices = true
 ): ComputedBlock[] {
     const stats = precomputed.statsUsed;
     const lifecycle = getLifecycleState(stats);
-    const enabledBlocks = getEnabledBlocks(businessType);
+    const enabledBlocks = getEnabledBlocks(businessType, businessCategory);
     const blocks: ComputedBlock[] = [];
     const usedItemIds = new Set<string>();
 
@@ -425,10 +427,11 @@ function computeBlocksFallback(
     items: ExtractedDataItem[],
     categories: ExtractedDataCategory[],
     businessType?: string,
+    businessCategory?: string,
     ownerControls?: OwnerControls,
     showItemPrices = true
 ): ComputedBlock[] {
-    const enabledBlocks = getEnabledBlocks(businessType);
+    const enabledBlocks = getEnabledBlocks(businessType, businessCategory);
     const blocks: ComputedBlock[] = [];
     const usedItemIds = new Set<string>();
 
@@ -500,6 +503,7 @@ export default function DecisionBlocks({
     activeLanguage,
     primaryLanguage = activeLanguage,
     businessType,
+    businessCategory,
     moodConfig,
     onItemClick,
     currency = '',
@@ -580,7 +584,7 @@ export default function DecisionBlocks({
         // Hard stale guard: if scheduler hasn't run in >72h, keep owner pins only.
         // Owner pins are explicit menu truth; stale analytics should not suppress them.
         if (isHardStale(precomputedBlocks)) {
-            return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
+            return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
         }
 
         const usePrecomputed = isPrecomputedValid(precomputedBlocks);
@@ -591,7 +595,7 @@ export default function DecisionBlocks({
                 // Automatic recommendations need enough behavior data. Owner pins
                 // are owner-authored menu truth, so they can still render as
                 // pinned-only blocks while the automatic system is learning.
-                return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
+                return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
             }
 
             // Layer 1 + 2: Precomputed candidates with lifecycle-aware gating + runtime filter
@@ -600,6 +604,7 @@ export default function DecisionBlocks({
                 items,
                 categories,
                 businessType,
+                businessCategory,
                 ownerControls,
                 showItemPrices
             );
@@ -607,8 +612,8 @@ export default function DecisionBlocks({
 
         // Fallback: Only show owner-pinned items (client never ranks)
         // This ensures single source of truth - scheduler ranks, client filters
-        return computeBlocksFallback(items, categories, businessType, ownerControls, showItemPrices);
-    }, [items, categories, businessType, ownerControls, precomputedBlocks, showItemPrices]);
+        return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
+    }, [items, categories, businessType, businessCategory, ownerControls, precomputedBlocks, showItemPrices]);
 
     // Handle block click
     const handleClick = useCallback((rec: ComputedBlock) => {
@@ -784,7 +789,7 @@ export default function DecisionBlocks({
                     }}
                 >
                     {featuredBlockEntries.map(({ rec, imageKey, imageUrl: itemImage }) => {
-                        const labels = getBlockLabels(rec.blockType, businessType);
+                        const labels = getBlockLabels(rec.blockType, businessType, businessCategory);
                         // Guard: labels should never be null here since blocks are pre-filtered by enabledBlocks
                         // But we check for type safety
                         if (!labels) return null;

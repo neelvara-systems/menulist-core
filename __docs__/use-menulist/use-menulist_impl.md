@@ -2,7 +2,7 @@
 
 > **Version:** 1.1
 > **Feature Flag:** `ENABLE_USE_MENULIST`
-> **Last Updated:** May 22, 2026
+> **Last Updated:** June 3, 2026
 
 ## 1. Architecture
 
@@ -21,8 +21,13 @@ UseMenuListPage (client component)
     ├── buildScreenUrl() → screen link
     ├── getFeedbackUrl() → feedback link
     ├── generateMenuKit() → ZIP/downloadable assets (on-demand, client-side)
+    ├── generateBrandedQrCodeDataUrl() → branded standalone QR cards (on-demand, client-side)
+    ├── generateBrandedFeedbackQrCode() → branded feedback QR card (on-demand, client-side)
+    ├── generateMenuPdf() → branded Menu Card Export renderer bridge (on-demand, client-side)
     └── downloadMenuData() → XLSX/JSON export (on-demand, client-side)
 ```
+
+All generated QR/card/PDF paths pass the already-loaded store `activePlanType` into the shared MenuList branding policy. Premium stores hide visible MenuList logo/name/domain attribution; Starter, Pro, missing, and unknown plan data keep it visible.
 
 ## 3. Data Contract
 
@@ -77,7 +82,7 @@ UseMenuListPage
 
 Mobile implements the same owner output jobs in `src/components/mobile/screens/MobileShareScreen.tsx` using mobile cards and sheets:
 - project/OBP/customer app/feedback link cards
-- raw QR sheet for Store Menu, Business Profile, Project Menu, and outlet aliases
+- branded QR sheet for Store Menu, Business Profile, Project Menu, and outlet aliases
 - Print Menu route entry, Menu Kit ZIP, print assets, social assets, and feedback QR downloads
 - XLSX/JSON export from the selected project cache
 - Menu Board and Highlights links from `getScreenState()`
@@ -110,9 +115,12 @@ Mobile implements the same owner output jobs in `src/components/mobile/screens/M
 | `src/lib/utils/slugify.ts` | `generateProjectUrl()` |
 | `src/lib/obp/generateOBPUrl.ts` | `generateOBPUrl()` |
 | `src/lib/screen/utils.ts` | `buildScreenUrl()` |
-| `src/lib/utils/feedbackQrCode.ts` | `generateFeedbackQrCode()`, `getFeedbackUrl()` |
+| `src/lib/utils/feedbackQrCode.ts` | `generateBrandedFeedbackQrCode()`, `getFeedbackUrl()` |
+| `src/lib/utils/qrCode.ts` | branded QR card generation + download helper |
+| `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | shared MenuList logo/name/domain footer for generated QR, print, PDF, and public attribution outputs; hidden only for Premium stores |
+| `src/lib/menu-kit/brandTokens.ts` | shared logo/color/QR readability tokens |
 | `src/lib/menu-kit/menuKitGenerator.ts` | `generateMenuKit()` |
-| `src/lib/export/menuPdfGenerator.ts` | `generateMenuPdf()` |
+| `src/lib/export/menuPdfGenerator.ts` | `generateMenuPdf()` compatibility bridge into Menu Card Export |
 | `src/components/templates/main-app/projects/utils/excelUtils.ts` | `downloadMenuData()` |
 | `src/database/campaigns/index.ts` | `getScreenState()` |
 | `src/lib/menu-kit/businessTypeLabels.ts` | `getOfferingLabels()` |
@@ -141,5 +149,7 @@ No Redux changes. Uses existing:
 - Page load target: < 1 second
 - No heavy computations on load
 - Menu Kit ZIP generated on-demand (click), not pre-loaded
+- Direct PDF fallback generated on-demand through the Menu Card Export renderer bridge, not pre-loaded
+- Branded standalone QR cards generated on-demand; no background generation or server upload
 - Individual asset previews lazy-loaded
 - Screen state fetched once via DAL

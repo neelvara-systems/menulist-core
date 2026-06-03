@@ -10,7 +10,7 @@ export const ANALYTICS_SETTINGS_GROUPING_NOTE =
   'These switches control tracking categories, not individual events. Expand a category to see exactly what is included before you turn it on or off.';
 
 export const EXTERNAL_ANALYTICS_INTEGRATION_NOTE =
-  'Google Analytics and Meta Pixel are owner-provided external scripts. MenuList loads them only when you add the ID here. They may read the public page URL and intentional utm_source, utm_medium, and utm_campaign parameters on campaign links. MenuList internal source reporting uses entry_source instead, and normal MenuList share links do not need a separate UTM toggle. Remove the ID to stop loading that external script.';
+  'Google Analytics and Meta Pixel are owner-provided external scripts. MenuList loads them only when you add the ID here. They may read the public page URL and intentional utm_source, utm_medium, utm_campaign, and utm_content parameters on campaign links. MenuList internal source reporting uses entry_source instead, and normal MenuList share links do not need a separate UTM toggle. Remove the ID to stop loading that external script.';
 
 export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryDisclosure[] = [
   {

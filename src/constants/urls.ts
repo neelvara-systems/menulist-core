@@ -6,6 +6,7 @@
  *
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
+ *   Local tenant URL host: menulist.online — local generated customer links mirror staging
  *   Local: /__answerlattice        — Answerlattice website
  *   QA: menulist.online       — MenuList preview/staging
  *   QA: ecomsai.com           — Answerlattice preview/staging
@@ -13,7 +14,8 @@
  *   Prod: answerlattice.com        — Answerlattice production
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
- *   {subdomain}.menulist.ai  — Customer-facing digital menu (public)
+ *   {subdomain}.menulist.online — Customer-facing digital menu in local/staging
+ *   {subdomain}.menulist.ai     — Customer-facing digital menu in production
  *   help.menulist.ai         — Help center / knowledge base (future)
  *   support.menulist.ai      — Support portal (future)
  *   msg.menulist.ai          — Messaging-onboarding placeholder email domain
@@ -27,6 +29,7 @@ import { ALL_PRODUCT_DOMAINS } from './productDomains';
 import {
     getActiveProductDomains,
     getDeploymentStage,
+    getProductDeploymentTarget,
 } from './deploymentTargets';
 
 // ═══════════════════════════════════════════════════════════════
@@ -50,8 +53,9 @@ const activeExternalMenulistDomains = activeMenulistDomains.filter((domain) =>
     && domain !== '127.0.0.1'
     && !domain.startsWith('192.168.')
 );
+const localGeneratedTenantDomain = getProductDeploymentTarget('menulist', 'preview').domains[0] || 'menulist.online';
 const defaultPlatformDomain = getDeploymentStage() === 'local'
-    ? 'menulist.ai'
+    ? localGeneratedTenantDomain
     : activeExternalMenulistDomains[0] || 'menulist.ai';
 
 const configuredPlatformDomain = sanitizeDomain(process.env.NEXT_PUBLIC_PLATFORM_DOMAIN);

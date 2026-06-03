@@ -26,6 +26,7 @@ const { Text } = Typography;
 
 interface DescriptionGenerationModalProps {
     businessType?: string;
+    businessCategory?: string;
     modalData: any;
     onClose: () => void;
     setFileProcessingId: (id: string | null) => void;
@@ -44,6 +45,7 @@ interface DescriptionGenerationModalProps {
 
 const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     businessType,
+    businessCategory,
     modalData,
     onClose,
     setFileProcessingId,
@@ -65,8 +67,8 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const labels = useOfferingLabels();
-    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData, businessType));
-    const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(getProjectDescriptionTone(projectData, businessType));
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData, businessType, businessCategory));
+    const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(getProjectDescriptionTone(projectData, businessType, businessCategory));
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
@@ -77,9 +79,9 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     );
 
     useEffect(() => {
-        setContentLength(getProjectDescriptionContentLength(projectData, businessType));
-        setDescriptionTone(getProjectDescriptionTone(projectData, businessType));
-    }, [businessType, projectData]);
+        setContentLength(getProjectDescriptionContentLength(projectData, businessType, businessCategory));
+        setDescriptionTone(getProjectDescriptionTone(projectData, businessType, businessCategory));
+    }, [businessType, businessCategory, projectData]);
 
     const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength, nextDescriptionTone: DescriptionTone) => {
         setIsProcessing(true);

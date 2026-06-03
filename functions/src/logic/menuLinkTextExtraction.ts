@@ -347,6 +347,9 @@ export async function tryExtractMenuLinkTextFromJob(
                 processingTime,
                 transactionId: null,
                 recorded: false,
+                promptTokenCount: 0,
+                candidatesTokenCount: 0,
+                totalTokenCount: 0,
             },
             provenance: {
                 rawBatchResponses: [],

@@ -112,8 +112,8 @@ const EditCategoryModal = ({
         return selectedLanguages.slice(1).some((language) => !categoryData.name?.[language]?.trim());
     }, [categoryData, primaryLanguage, selectedLanguages]);
     const suggestedIcons = useMemo(
-        () => getSuggestedCategoryIcons(categoryData?.name?.[primaryLanguage], storeDetails?.businessType).map((entry) => entry.replace('lu:', '')),
-        [categoryData?.name, primaryLanguage, storeDetails?.businessType]
+        () => getSuggestedCategoryIcons(categoryData?.name?.[primaryLanguage], storeDetails?.businessType, storeDetails?.businessCategory).map((entry) => entry.replace('lu:', '')),
+        [categoryData?.name, primaryLanguage, storeDetails?.businessType, storeDetails?.businessCategory]
     );
 
     useEffect(() => {

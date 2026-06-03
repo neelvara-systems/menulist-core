@@ -3,7 +3,7 @@
 **Status:** Production-ready client-first route with Pro/Premium layout suggestion
 **Route:** `/use-menulist/menu-card-export`
 **Feature flags:** `ENABLE_MENU_CARD_EXPORT`, `ENABLE_MENU_CARD_EXPORT_HISTORY`, `ENABLE_MENU_CARD_EXPORT_PRINT_SHOP`, `ENABLE_MENU_CARD_EXPORT_BATCH`, `ENABLE_MENU_CARD_EXPORT_AI_ADVISOR`
-**Last Updated:** June 2, 2026
+**Last Updated:** June 3, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 Menu Card Export turns MenuList's current business truth into print-ready files. The owner opens a dedicated route, chooses the job they need, selects a controlled style, reviews preflight warnings, checks a preview, and exports a PDF or packet that can point customers back to the live menu, service list, or catalog.
 
-The current PDF Surface is useful but too small as a product surface: it is a single download button in Share Modal and Use MenuList, backed by one `jsPDF` generator. The long-term feature needs its own route because style choice, page preview, export history, stale detection, and mobile parity need more room than a modal action can safely provide.
+The original PDF Surface proved demand but was too small as a product surface: it was a single download button in Share Modal and Use MenuList. The long-term feature needs its own route because style choice, page preview, export history, stale detection, and mobile parity need more room than a modal action can safely provide. The remaining direct-download path is now only a compatibility bridge into the Menu Card Export renderer.
 
 One-sentence product definition:
 
@@ -77,9 +77,9 @@ Verdict: approved as a routed print workflow, not as a design tool.
 
 The live code already proves demand and a basic path:
 
-- `src/lib/export/menuPdfGenerator.ts:274` exports `generateMenuPdf()`.
-- `src/lib/export/menuPdfGenerator.ts:283` builds a renderable snapshot before drawing.
-- `src/lib/export/menuPdfGenerator.ts:498` writes footer metadata on every page.
+- `src/lib/export/menuPdfGenerator.ts` exports `generateMenuPdf()` as a compatibility bridge.
+- The bridge builds a `MenuCardPrintSource` and delegates to the Menu Card Export renderer.
+- The bridge returns the renderer Blob, deterministic filename, and source hash so older print-copy actions do not create a different PDF style.
 - `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` opens Print Menu from the project Share modal when the feature flag is on.
 - `src/components/templates/main-app/useMenuList/index.tsx:951` opens Print Menu from Use MenuList when the feature flag is on.
 - `src/lib/menu-card-export/navigation.ts:1` centralizes the route path and `projectId` query construction.
@@ -105,7 +105,7 @@ The live code already proves demand and a basic path:
 | Mobile Share | `Print Menu` tile opens the dedicated mobile Print Menu screen with the selected menu. |
 | Mobile Menu | Command sheet `Print Menu` opens the dedicated mobile Print Menu screen after saving pending edits. |
 | More > Modules | `Print Menu` opens the route with the current mobile project selection; it is listed beside Dashboard for discovery, not inside analytics. |
-| Existing `Menu PDF` action | May stay behind legacy flag during migration, but it is no longer the main feature. |
+| Existing `Menu PDF` action | May stay behind the route flag as a direct download, but it must use the same Menu Card Export renderer and brand context. |
 
 ### Route Flow
 
@@ -364,7 +364,7 @@ Do not show hash values to owners unless support mode is active.
 | MCE-7 | Final export downloads directly from the browser by default; no Firebase artifact path is created. |
 | MCE-8 | Local export history shows style, preset, date, page count, and freshness on the same device. |
 | MCE-9 | Duplicate source/template/settings hashes reuse a ready export. |
-| MCE-10 | Legacy PDF Surface remains available only as migration fallback until removed. |
+| MCE-10 | Legacy PDF Surface path remains only as a compatibility bridge into Menu Card Export until removed. |
 | MCE-11 | QR output preserves quiet zone, adequate module size, and a live-menu destination. |
 | MCE-12 | Print-shop packet includes print instructions and QR test checklist when enabled. |
 | MCE-13 | Multi-location batch export is feature-flagged and shares the same access checks per selected store/project. |

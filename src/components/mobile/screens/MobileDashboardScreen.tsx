@@ -3,14 +3,13 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
-import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
+import { VIEW_MODE_CONFIG, type OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { LuAlertTriangle, LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -25,6 +24,10 @@ const MobileCustomerAppMetrics = dynamic(
 );
 const MobileOBPMetricsCard = dynamic(
     () => import('./dashboardSections/MobileOBPMetricsCard'),
+    { ssr: false },
+);
+const MobileMenuAnalyticsDetailsCard = dynamic(
+    () => import('./dashboardSections/MobileMenuAnalyticsDetailsCard'),
     { ssr: false },
 );
 const MobileOwnerActionPlanCard = dynamic(
@@ -55,58 +58,14 @@ function formatUpdatedTime(value: Date | string | undefined, formatter: IntlForm
     return formatDateTime(parsed, 'time', formatter);
 }
 
-function resolveDashboardText(value: unknown, language: string, fallback = ''): string {
-    if (typeof value === 'string') return value.trim() || fallback;
-    if (!value || typeof value !== 'object') return fallback;
-
-    const localized = value as Record<string, unknown>;
-    const direct = localized[language];
-    if (typeof direct === 'string' && direct.trim()) return direct.trim();
-    const english = localized.en;
-    if (typeof english === 'string' && english.trim()) return english.trim();
-    const firstValue = Object.values(localized).find((entry): entry is string => (
-        typeof entry === 'string' && entry.trim().length > 0
-    ));
-
-    return firstValue?.trim() || fallback;
-}
-
-function buildProjectAnalyticsLabels(project: any, language: string) {
-    const itemNames: Record<string, string> = {};
-    const categoryNames: Record<string, string> = {};
-    const files = Array.isArray(project?.files)
-        ? project.files
-        : Array.isArray(project?.projectData?.files)
-            ? project.projectData.files
-            : [];
-
-    files.forEach((file: any) => {
-        const data = file?.extractedData?.data;
-        (data?.categories || []).forEach((category: any) => {
-            if (!category?.id) return;
-            const label = resolveDashboardText(category.name, language, category.id);
-            if (label) categoryNames[category.id] = label;
-        });
-        (data?.items || []).forEach((item: any) => {
-            if (!item?.id) return;
-            const label = resolveDashboardText(item.name, language, item.id);
-            if (label) itemNames[item.id] = label;
-        });
-    });
-
-    return { categoryNames, itemNames };
-}
-
 export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
     const formatter = useFormatter();
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
     const {
         isLoading: loadingProjects,
         projectsList,
-        selectedProject,
         selectedProjectId,
         selectedProjectSummary,
         selectProject,
@@ -116,37 +75,32 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
     const {
         data,
+        error,
         loading,
         refetch,
         viewMode,
         setViewMode,
+        loadingDaily,
+        loadingMonthly,
         loadingToday,
+        loadingWeekly,
     } = useOwnerDashboard(selectedProjectId ? {
         projectId: selectedProjectId,
         loadHistorical: showHistorical,
     } : undefined);
     const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
+    const refetchOBPDashboard = obpDashboard.refetch;
 
-    const viewModeLabel = viewMode === 'today'
-        ? 'Today'
-        : viewMode === 'overview'
-            ? t('overview')
-            : viewMode === 'daily'
-                ? t('daily')
-                : viewMode === 'weekly'
-                    ? t('weekly')
-                    : viewMode === 'monthly'
-                        ? t('monthly')
-                        : 'Overall';
+    const viewModeLabel = VIEW_MODE_CONFIG[viewMode].label;
 
     const handleRefresh = useCallback(async () => {
         try {
-            await refetch();
+            await Promise.all([refetch(), refetchOBPDashboard()]);
             Toast.show({ content: t('refreshed'), duration: 1000 });
         } catch {
             Toast.show({ content: t('failedToRefresh'), duration: 1500 });
         }
-    }, [refetch]);
+    }, [refetch, refetchOBPDashboard, t]);
 
     const handleViewModeChange = useCallback((key: string) => {
         const nextMode = key as OwnerDashboardViewMode;
@@ -154,85 +108,23 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         setViewMode(nextMode);
     }, [setViewMode]);
 
-    const dashboardLanguage = selectedProject?.defaultLanguage
-        || selectedProjectSummary?.defaultLanguage
-        || storeDetails?.defaultLanguage
-        || 'en';
-    const dashboardLabels = useMemo(
-        () => buildProjectAnalyticsLabels(selectedProject, dashboardLanguage),
-        [dashboardLanguage, selectedProject]
-    );
-    const enrichTopItems = useCallback((items?: any[]) => (
-        Array.isArray(items)
-            ? items.map((item) => ({
-                ...item,
-                name: dashboardLabels.itemNames[item.itemId] || item.name,
-            }))
-            : items
-    ), [dashboardLabels.itemNames]);
-    const enrichTopCategories = useCallback((categories?: any[]) => (
-        Array.isArray(categories)
-            ? categories.map((category) => ({
-                ...category,
-                name: dashboardLabels.categoryNames[category.categoryId] || category.name,
-            }))
-            : categories
-    ), [dashboardLabels.categoryNames]);
-    const enrichViewData = useCallback((viewData?: any) => (
-        viewData
-            ? {
-                ...viewData,
-                topCategories: enrichTopCategories(viewData.topCategories),
-                topItems: enrichTopItems(viewData.topItems),
-                unavailableItems: enrichTopItems(viewData.unavailableItems),
-            }
-            : viewData
-    ), [enrichTopCategories, enrichTopItems]);
-    const enrichedData = useMemo(() => {
-        if (!data) return data;
-        return {
-            ...data,
-            daily: enrichViewData(data.daily),
-            monthly: enrichViewData(data.monthly),
-            mtd: enrichViewData(data.mtd),
-            overall: data.overall
-                ? {
-                    ...data.overall,
-                    topCategories: enrichTopCategories(data.overall.topCategories),
-                    topItems: enrichTopItems(data.overall.topItems),
-                }
-                : data.overall,
-            overview: data.overview
-                ? {
-                    ...data.overview,
-                    mtd: enrichViewData(data.overview.mtd),
-                    wtd: enrichViewData(data.overview.wtd),
-                    yesterday: enrichViewData(data.overview.yesterday),
-                }
-                : data.overview,
-            today: enrichViewData(data.today),
-            weekly: enrichViewData(data.weekly),
-            wtd: enrichViewData(data.wtd),
-        };
-    }, [data, enrichTopCategories, enrichTopItems, enrichViewData]);
-
     const currentViewData = useMemo(() => {
         switch (viewMode) {
             case 'today':
-                return enrichedData?.today || null;
+                return data?.today || null;
             case 'daily':
-                return enrichedData?.daily || null;
+                return data?.daily || null;
             case 'weekly':
-                return enrichedData?.weekly || null;
+                return data?.weekly || null;
             case 'monthly':
-                return enrichedData?.monthly || null;
+                return data?.monthly || null;
             case 'overall':
-                return enrichedData?.overall || null;
+                return data?.overall || null;
             case 'overview':
             default:
-                return enrichedData?.overview || null;
+                return data?.overview || null;
         }
-    }, [enrichedData?.daily, enrichedData?.monthly, enrichedData?.overall, enrichedData?.overview, enrichedData?.today, enrichedData?.weekly, viewMode]);
+    }, [data?.daily, data?.monthly, data?.overall, data?.overview, data?.today, data?.weekly, viewMode]);
 
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
@@ -267,9 +159,32 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         );
     }
 
-    const overview = enrichedData?.overview;
-    const today = enrichedData?.today;
-    const overall = enrichedData?.overall;
+    if (error) {
+        return (
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <MobileSettingsScreenHeader
+                    description={t('subtitle', { offering: labels.offeringLower })}
+                    onBack={onBack}
+                    title={t('title')}
+                />
+                <Flex gap={16} style={{ padding: 16 }} vertical>
+                    <Card>
+                        <Flex align="center" gap={12} vertical>
+                            <LuAlertTriangle color={token.colorWarning} size={36} />
+                            <Text strong>Unable to load dashboard</Text>
+                            <Text type="secondary" style={{ textAlign: 'center' }}>
+                                Please try refreshing this screen. If the problem persists, contact support.
+                            </Text>
+                        </Flex>
+                    </Card>
+                </Flex>
+            </Flex>
+        );
+    }
+
+    const overview = data?.overview;
+    const today = data?.today;
+    const overall = data?.overall;
     const wtd = overview?.wtd;
     const mtd = overview?.mtd;
     const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
@@ -287,10 +202,18 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     ? Boolean(obpDashboard.data?.overview?.mtd || obpDashboard.data?.overall)
                     : Boolean(obpDashboard.data?.overall);
     const isLoading = viewMode === 'today'
-        ? loadingToday && !today && obpDashboard.loadingToday && !obpDashboard.data?.today
+        ? false
         : viewMode === 'overview'
-        ? loading && !data
-        : loading && !currentViewData;
+            ? loading && !overview && !hasOBPSettledData
+            : viewMode === 'daily'
+                ? loadingDaily
+                : viewMode === 'weekly'
+                    ? loadingWeekly
+                    : viewMode === 'monthly'
+                        ? loadingMonthly
+                        : viewMode === 'overall'
+                            ? loading && !overall && !hasOBPSettledData
+                            : loading && !currentViewData;
 
     const overviewStatus = (() => {
         if (!overview) return { color: 'default', text: t('noDataYet') };
@@ -354,68 +277,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             ) : null}
         </Flex>
     );
-
-    const renderDemandAndActions = (data?: any) => {
-        const hasActions = Object.values(data?.menuActions || {}).some((value) => Number(value) > 0);
-        const hasTopCategories = Boolean(data?.topCategories?.length);
-        const hasTopLanguages = Boolean(data?.topLanguages?.length);
-        const hasTopFilters = Boolean(data?.topAttributeFilters?.length);
-        const hasSearchTerms = Boolean(data?.topSearchTerms?.length);
-        const hasZeroResultTerms = Boolean(data?.topZeroResultSearchTerms?.length);
-        const hasUnavailable = Boolean(data?.unavailableItems?.length);
-        const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
-
-        return (
-            <Card size="small" title={<Text strong>Customer Intent</Text>}>
-                <Flex gap={8} vertical>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
-                    </Text>
-                    {!hasActions && !hasTopCategories && !hasTopLanguages && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches ? (
-                        <Text type="secondary">No customer intent yet for this period.</Text>
-                    ) : null}
-                    {hasActions ? (
-                        <Text type="secondary">
-                            {`Actions: Call ${data.menuActions?.call || 0}, WhatsApp ${data.menuActions?.whatsapp || 0}, Directions ${data.menuActions?.directions || 0}, Reserve ${data.menuActions?.reserve || 0}, Order ${data.menuActions?.order || 0}`}
-                        </Text>
-                    ) : null}
-                    {hasTopCategories ? (
-                        <Text type="secondary">
-                            {`Top category: ${data.topCategories.slice(0, 3).map((category: any) => `${category.name || category.categoryId} (${category.views} views, ${category.clicks} taps)`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                    {hasTopLanguages ? (
-                        <Text type="secondary">
-                            {`Top languages: ${data.topLanguages.slice(0, 3).map((language: any) => `${language.label || language.language} (${language.menuSessions || language.menuViews} sessions/views, ${language.adoptions || 0} stayed switches)`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                    {hasTopFilters ? (
-                        <Text type="secondary">
-                            {`Top filters: ${data.topAttributeFilters.slice(0, 3).map((filter: any) => `${filter.label || filter.filterId} (${filter.interactions} intent, ${filter.actionClicks} actions)`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                    {hasSearchTerms ? (
-                        <Text type="secondary">
-                            {`Top searches: ${data.topSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                    <Text type="secondary">
-                        {`No-result searches: ${data?.metrics?.zeroResultSearches || 0}`}
-                    </Text>
-                    {hasZeroResultTerms ? (
-                        <Text type="secondary">
-                            {`No-result terms: ${data.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                    {hasUnavailable ? (
-                        <Text type="secondary">
-                            {`Unavailable interest: ${data.unavailableItems.map((item: any) => `${item.name || item.itemId} (${item.clicks})`).join(', ')}`}
-                        </Text>
-                    ) : null}
-                </Flex>
-            </Card>
-        );
-    };
 
     const renderTodaySoFar = () => {
         if (loadingToday) {
@@ -515,25 +376,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             </Card>
         );
     };
-
-    const renderTopItems = (items?: any[]) => (
-        <Card size="small" title={<Text strong>{t('topItems')}</Text>}>
-            {items?.length ? (
-                <List>
-                    {items.slice(0, 5).map((item: any, index: number) => (
-                        <List.Item
-                            key={item.itemId || index}
-                            prefix={<Tag>{index + 1}</Tag>}
-                            extra={<Tag>{`${item.clicks} clicks`}</Tag>}
-                            title={<Text>{item.name || item.itemId}</Text>}
-                        />
-                    ))}
-                </List>
-            ) : (
-                <Text type="secondary">No top items yet for this period.</Text>
-            )}
-        </Card>
-    );
 
     const renderAiSummary = (summary?: any) => summary?.bulletPoints?.length ? (
         <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
@@ -659,12 +501,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     <Card className="mobile-dashboard-tabs-card" size="small">
                         <div className="mobile-dashboard-tabs">
                             <Tabs activeKey={viewMode} centered onChange={handleViewModeChange}>
-                                <Tabs.Tab title="Today" key="today" />
-                                <Tabs.Tab title={t('overview')} key="overview" />
-                                <Tabs.Tab title={t('daily')} key="daily" />
-                                <Tabs.Tab title={t('weekly')} key="weekly" />
-                                <Tabs.Tab title={t('monthly')} key="monthly" />
-                                <Tabs.Tab title="Overall" key="overall" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.today.label} key="today" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.overview.label} key="overview" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.daily.label} key="daily" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.weekly.label} key="weekly" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.monthly.label} key="monthly" />
+                                <Tabs.Tab title={VIEW_MODE_CONFIG.overall.label} key="overall" />
                             </Tabs>
                         </div>
                     </Card>
@@ -719,8 +561,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             loadingToday={obpDashboard.loadingToday}
                             mode="today"
                         />
-                        {renderTopItems(today?.topItems)}
-                        {renderDemandAndActions(today)}
+                        <MobileMenuAnalyticsDetailsCard data={today} />
                     </>
                 ) : viewMode === 'overall' ? (
                     <>
@@ -731,13 +572,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             loadingToday={obpDashboard.loadingToday}
                             mode="overall"
                         />
-                        {renderTopItems(overall?.topItems)}
-                        {renderDemandAndActions(overall ? {
-                            ...overall,
-                            metrics: {
-                                zeroResultSearches: overall.lifetimeMetrics?.totalZeroResultSearches || 0,
-                            },
-                        } : null)}
+                        <MobileMenuAnalyticsDetailsCard data={overall} />
 
                         {!overall && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -759,8 +594,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             loadingToday={obpDashboard.loadingToday}
                             mode={viewMode}
                         />
-                        {renderTopItems((currentViewData as any)?.topItems)}
-                        {renderDemandAndActions(currentViewData)}
+                        <MobileMenuAnalyticsDetailsCard data={currentViewData as any} />
                         {renderAiSummary((currentViewData as any)?.aiSummary)}
 
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
@@ -791,14 +625,12 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         />
 
                         <MobileCustomerAppMetrics />
-                        {renderTopItems(wtd?.topItems)}
-                        {renderDemandAndActions(wtd)}
 
                         <MobileOwnerActionPlanCard
-                            actionPlan={enrichedData?.ownerActionPlan || overview?.ownerActionPlan}
-                            confidence={enrichedData?.ownerConfidence || overview?.ownerConfidence}
-                            sourceQuality={enrichedData?.sourceQuality || overview?.sourceQuality || []}
-                            analyticsAiEntitlement={enrichedData?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
+                            actionPlan={data?.ownerActionPlan || overview?.ownerActionPlan}
+                            confidence={data?.ownerConfidence || overview?.ownerConfidence}
+                            sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
+                            analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
                             title="Menu Intelligence Action Plan"
                         />
 
@@ -882,6 +714,8 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 ) : null}
                             </Card>
                         ) : null}
+                        <MobileMenuAnalyticsDetailsCard data={wtd} title="Last 7 Days Menu Details" />
+                        <MobileMenuAnalyticsDetailsCard data={mtd} title={`${mtd?.monthName || 'This Month'} Menu Details`} />
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>

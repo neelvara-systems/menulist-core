@@ -18,7 +18,7 @@ import { NavBar, Popup } from '../../../../../mobile/antd';
 import { ImageGenerationConfigType, ItemForDropdown } from '../../types';
 import AspectRatioSelector from './AspectRatioSelector';
 import ChatWidgetUi from './ChatWidgetUi'; // Import the new component
-import { IMAGE_VIEW_TYPES } from './imageViewType';
+import { getImageViewTypeForBusiness } from './imageViewType';
 import MultiSelectAttributeSelector from './MultiSelectAttributeSelector';
 import StyleSelector from './StyleSelector';
 
@@ -45,10 +45,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    const normalizedBusinessType = storeDetails?.businessType?.trim().toLowerCase();
-    const selectedBusinessData = IMAGE_VIEW_TYPES.find(type => type.businessType?.trim().toLowerCase() === normalizedBusinessType)
-        || IMAGE_VIEW_TYPES.find(type => type.businessType === 'Restaurant')
-        || IMAGE_VIEW_TYPES[0];
+    const selectedBusinessData = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory);
     const imageTypes = selectedBusinessData?.imageTypes || [];
     const [selectedGeneratedForUpload, setSelectedGeneratedForUpload] = useState<UserUploadedFileType[]>([]);
     const [selectedReferenceImageMeta, setSelectedReferenceImageMeta] = useState<{ width: number; height: number } | null>(null);
@@ -864,6 +861,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                         selectedStyles={generationConfig.styles || []}
                                         stylesCategory={generationConfig.stylesCategory || 'Photorealism'}
                                         businessType={storeDetails?.businessType}
+                                        businessCategory={storeDetails?.businessCategory}
                                         onChange={(styles, stylesCategory) => setGenerationConfig({ ...generationConfig, styles, stylesCategory })}
                                     />
 

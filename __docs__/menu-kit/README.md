@@ -29,6 +29,7 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 | [ChatGPT Review #11](./_archive/chatgpt-review.md)                                           | Session #11 review + implementation plan (7 gaps)                                              | Engineering         |
 | [ChatGPT Review #12](./_archive/chatgpt-review-session12.md)                                 | Session #12 ecosystem deep dive — 85% already built                                            | Engineering         |
 | [ChatGPT Review #13](./_archive/chatgpt-review-session13.md)                                 | Session #13 hardening — entrance poster, print instructions, QR reliability                    | Engineering         |
+| [Print Claim Pilot ChatGPT Review](./_archive/chatgpt-review-print-claim-pilot.md)            | June 2026 print acquisition proposal review: what to adopt, reject, and defer                  | Engineering         |
 | [Physical Surfaces ChatGPT Review](../physical-surfaces/_archive/chatgpt-review.md)          | Session #14 — strategic validation: identity surfaces > recommendation surfaces (85% accuracy) | Engineering         |
 | [Deep Architecture Review](../digital-screens/_archive/digital-screens_chatgpt-review-v4.md) | Mar 15 — scan network, growth loops, moats, 10-year evolution. 159 items, 72% accuracy         | Engineering         |
 
@@ -36,9 +37,11 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ## Quick Reference
 
-### What's in the Kit (Frozen — 10 Assets + Print Instructions)
+### What's in the Kit (Frozen — 9 Generated Asset Files + Staff Script + Print Instructions)
 
-1. **Table Tent (A6 PDF)** — "Scan to view menu" + QR + instruction line + short link fallback + branding
+All visual assets use the store's existing logo and brand accent color when available. The QR itself stays on a high-contrast white scan panel so the output feels premium without reducing scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
+
+1. **Table Tent (A5 fold PDF)** — "Scan to view menu" + QR + instruction line + short link fallback + branding
 2. **Counter Sticker (8×8 PNG)** — "Scan for menu" + QR + short link fallback
 3. **Entrance Poster (A4 PDF)** — Large QR (80mm) for entrance/window scanning from distance
 4. **Delivery Bag Sticker (6×6 PNG)** — "View menu" + QR for delivery bags/boxes (off-site discovery)
@@ -59,15 +62,30 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 - ❌ Campaign-based recommendation cards (see `__docs__/physical-surfaces/` — legacy system)
 - ❌ Item-specific printed surfaces (volatile, undermines trust)
 - ❌ A/B testing of surface copy
+- ❌ Owner-claim postcards, staff PINs, and signed public claim links — those belong to a separate Public Menu Entry/acquisition extension
 
 ---
+
+## Print Claim Pilot Boundary (June 2026)
+
+A June 2026 external print-kit proposal was reviewed against the live repo. The useful pieces are QR print guardrails, acquisition-postcard copy, and print-pilot success criteria. The proposal's customer table-tent idea is already covered by Menu Kit.
+
+Do not treat `go.menulist.ai/claim?...`, `sig={hmac}`, `audit_id`, or staff PIN handling as existing Menu Kit behavior. Those are future Public Menu Entry/acquisition-extension concepts that require docs-first security, Firebase cost, privacy, and route design before code.
+
+Safe interim use:
+
+- Existing Menu Kit assets for claimed stores.
+- `/create-menu` for owner acquisition until a signed claim resolver exists.
+- Acquisition postcard copy that says "Claim your official MenuList menu" and avoids external-platform sync claims.
 
 ## Existing Infrastructure (Reusable)
 
 | Component                     | File                                             | Reusable?                           |
 | ----------------------------- | ------------------------------------------------ | ----------------------------------- |
-| Tent card PDF generator       | `src/lib/physical-surfaces/tentCardGenerator.ts` | ✅ Extend with store-level template |
-| Counter sticker PNG generator | `src/lib/physical-surfaces/stickerGenerator.ts`  | ✅ Extend with store-level template |
+| Premium output tokens         | `src/lib/menu-kit/brandTokens.ts`                | ✅ Shared logo/color/QR readability defaults |
+| Platform attribution          | `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | ✅ Shared MenuList logo/name/domain footer for printable/downloadable outputs, hidden only for Premium stores |
+| Tent card PDF generator       | `src/lib/physical-surfaces/tentCardGenerator.ts` | ✅ Legacy Today cards now reuse premium output tokens |
+| Counter sticker PNG generator | `src/lib/physical-surfaces/stickerGenerator.ts`  | ✅ Legacy Today stickers now reuse premium output tokens |
 | QR code generation            | `qrcode` npm package + Ant Design QRCode         | ✅ Direct reuse                     |
 | Share Modal                   | `src/components/.../shareModal/index.tsx`        | ✅ Add "Menu Kit" section           |
 | Social sharing                | `src/lib/campaigns/executionSurfaces.ts`         | ✅ Extend for image sharing         |
@@ -94,7 +112,7 @@ An independent ChatGPT strategic review of the original Physical Surfaces spec (
 
 1. **Identity surfaces > Recommendation surfaces** — "SCAN TO VIEW MENU" creates infrastructure dependency; "Most customers order Butter Chicken" creates marketing noise
 2. **Physical surfaces = offline distribution nodes** — Every restaurant with Menu Kit assets becomes a MenuList discovery point
-3. **"Powered by" growth loop** — Customers encountering MenuList branding across restaurants builds platform recognition
+3. **"Powered by" growth loop** — Customers encountering MenuList branding across non-Premium stores builds platform recognition; Premium stores receive visible branding removal as paid value
 4. **Zero campaign dependency** — Printed objects must remain valid for months/years; campaign-tied content becomes stale
 5. **Staff script is critical** — Staff behavior determines whether QR systems succeed or fail
 
@@ -137,11 +155,11 @@ See `__docs__/digital-screens/_archive/digital-screens_chatgpt-review-v4.md` for
 
 ## Relationship to Physical Surfaces (Legacy)
 
-The original Physical Surfaces feature (`src/lib/physical-surfaces/`, `__docs__/physical-surfaces/`) generates **campaign-based recommendation cards** shown in the Today tab. Menu Kit **supersedes** it for all identity/infrastructure surface needs. The old code remains functional but receives no further investment. See `__docs__/physical-surfaces/README.md` for the comparison table.
+The original Physical Surfaces feature (`src/lib/physical-surfaces/`, `__docs__/physical-surfaces/`) generates **campaign-based recommendation cards** shown in the Today tab. Menu Kit **supersedes** it for all identity/infrastructure surface needs. The old code remains functional for Today/mobile Hours and is maintenance-only; it now reuses the same premium logo/color/QR treatment so active downloads do not regress to plain black-and-white output. See `__docs__/physical-surfaces/README.md` for the comparison table.
 
 ---
 
 **Document Signature:** Feature Documentation  
 **Created:** February 21, 2026  
-**Last Updated:** March 15, 2026 — Deep architecture review added (growth loops, moats, future enhancements updated)  
+**Last Updated:** June 3, 2026 — Premium branded output treatment shared across Menu Kit, QR downloads, and active legacy Today cards
 **Cross-References:** `__docs__/constitution/15-category-dominance-doctrine.md` (physical dependency creation), `__docs__/constitution/11-product-evolution-doctrine.md` (5-minute rule), `__docs__/physical-surfaces/_archive/chatgpt-review.md` (strategic validation), `__docs__/digital-screens/_archive/digital-screens_chatgpt-review-v4.md` (deep architecture review)

@@ -155,7 +155,7 @@ export interface OutletPolicy {
     canGenerateDescriptions: boolean;
     canGenerateImages: boolean;
     canOverrideTheme: boolean;
-    canOverrideBrandIdentity: boolean;
+    canOverrideBrandIdentity: boolean; // Also controls whether HQ identity/classification propagation skips the outlet.
     canOverrideLayout: boolean;
     canAddLanguages: boolean;
 }

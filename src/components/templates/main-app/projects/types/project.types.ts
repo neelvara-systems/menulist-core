@@ -103,6 +103,8 @@ export interface ProjectSummaryData {
     name: string | LocalizedText;
     description?: string | LocalizedText;
     projectImage?: string | null;
+    businessCategory?: string;
+    businessType?: string;
     active: boolean;
     isDefault?: boolean;
 

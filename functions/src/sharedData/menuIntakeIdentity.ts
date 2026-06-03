@@ -345,7 +345,7 @@ Return ONLY valid JSON in this exact structure:
     "confidence": "high"
   },
   "detected_business_type": {
-    "business_type": "Restaurant",
+    "business_type": "Restaurant or null",
     "business_category": "food",
     "type_confidence": "high"
   },
@@ -386,6 +386,8 @@ Rules:
 - Files may be preceded by "File N" labels. Use those labels for valid_menu_files and invalid_files indexes.
 - Extract identity aggressively, but mark confidence low when uncertain.
 - Do not invent phone, address, or business name when not visible.
+- Business category must be one of: food, service, retail, professional, creative, health, specialty.
+- If the specific business type is not identifiable, return business_type null, the best visible business_category if any, and type_confidence "low". The system will store this as Other.
 - Mark business name, phone, address, business type, currency, and languages as suggestion_fields when visible. They are suggestions only, not confirmed truth.
 - If this is the same business but a mostly different menu structure, classify likely_intent as replace_existing_menu unless it is clearly seasonal/event-only.
 - If this is a seasonal, festival, event, brunch, drinks-only, dessert-only, limited-time, or section-only upload for the same business, classify likely_intent as add_special_menu.
@@ -408,11 +410,13 @@ export function normalizeMenuIntakeIdentityResult(
     : Array.from({ length: totalFiles }, (_, index) => index + 1);
   const identityConfidence = normalizeConfidence(raw.extracted_business_info?.confidence || raw.confidence);
   const confidence = normalizeConfidence(raw.confidence);
+  const businessTypeConfidence = normalizeConfidence(raw.detected_business_type?.type_confidence || raw.confidence);
+  const useDetectedBusinessType = businessTypeConfidence === "high" || businessTypeConfidence === "medium";
   const identity: MenuIntakeIdentity = {
     businessName: cleanText(raw.extracted_business_info?.business_name),
     phoneNumber: cleanText(raw.extracted_business_info?.phone_number),
     address: cleanText(raw.extracted_business_info?.address),
-    businessType: cleanText(raw.detected_business_type?.business_type),
+    businessType: useDetectedBusinessType ? cleanText(raw.detected_business_type?.business_type) : null,
     businessCategory: cleanText(raw.detected_business_type?.business_category),
     currencyHint: cleanText(raw.currency_hint),
     languages: normalizeLanguages(raw.languages),

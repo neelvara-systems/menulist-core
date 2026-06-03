@@ -470,7 +470,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 )}
             </footer>
 
-            <ScreenAttribution />
+            <ScreenAttribution activePlanType={storeInfo.activePlanType} />
 
             <style jsx>{`
                 .menu-board {

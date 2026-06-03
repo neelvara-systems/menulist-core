@@ -1,6 +1,6 @@
 # Menu Trust Signals
 
-> **Status:** ✅ IMPLEMENTED — Feature Flag OFF by Default
+> **Status:** ✅ IMPLEMENTED — Feature Flag Available
 > **Feature Flag:** `ENABLE_MENU_TRUST_SIGNALS`
 > **Location:** Customer-facing client menu (`src/app/_client/`)
 > **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
@@ -38,7 +38,7 @@ Most QR menu tools show bare item lists. MenuList can answer these questions thr
 | ---------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------- |
 | **Location**           | Business area + city (e.g., "Bandra West, Mumbai")                           | `store.area`, `store.city`                      |
 | **Operational Status** | "Open · Closes at 11 PM" or "Closed · Opens tomorrow at 9 AM" (green/red)    | `getStoreStatus(workingHours, timeZone)`        |
-| **Offering Label**     | "Restaurant Menu" / "Service List" / "Product Catalog" (business-type-aware) | `getOfferingLabels(businessType).offeringTitle` |
+| **Offering Label**     | "Menu" / "Services" / "Catalog" (business-type/category-aware) | `getOfferingLabels(businessType, businessCategory).offeringTitle` |
 | **Freshness Date**     | "Updated today" or "Updated Mar 12" (exact date, hidden if >30 days)         | `project.lastPublishedAt`                       |
 
 ## Architecture Principle
@@ -70,11 +70,11 @@ Most QR menu tools show bare item lists. MenuList can answer these questions thr
 | System         | File                                | Reused For               |
 | -------------- | ----------------------------------- | ------------------------ |
 | Menu version   | `project.menuVersion`               | Freshness computation    |
-| Last published | `project.lastPublishedAt`           | "Updated recently" text  |
+| Last published | `project.lastPublishedAt`           | Exact freshness date     |
 | Store data     | Store document in page.tsx          | Restaurant name, logo    |
 | MenuFooter     | `src/components/.../MenuFooter.tsx` | Existing version display |
 
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** March 15, 2026
+**Last Updated:** June 3, 2026

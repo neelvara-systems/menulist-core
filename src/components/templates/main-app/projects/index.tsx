@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
+import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
 import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
@@ -22,6 +23,7 @@ import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
+import { buildExtractedProfileHighlights, buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import {
     clearExpiredMenuProcessingJobDismissals,
@@ -37,7 +39,7 @@ import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { getBase64, removeObjRef } from '@util/utils';
-import { Button, Checkbox, Flex, Form, Input, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Checkbox, Flex, Form, Input, message, Modal, Spin, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
 import { useTranslations } from 'next-intl';
@@ -122,10 +124,65 @@ const normalizeProjectsData = (data: any) => ({
     lastDoc: data?.lastDoc ?? null,
 });
 
+function mergeProjectWithExtractedProfileDefaults(projectData: any, profile: any): any {
+    if (!profile) return projectData;
+    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
+    if (!imageBackgroundColor) return projectData;
+
+    return {
+        ...(projectData || {}),
+        aiPreferences: {
+            ...(projectData?.aiPreferences || {}),
+            image: {
+                ...(projectData?.aiPreferences?.image || {}),
+                backgroundColor: projectData?.aiPreferences?.image?.backgroundColor || imageBackgroundColor,
+            },
+        },
+    };
+}
+
+function buildExtractedProfileProjectPatch(projectData: any, profile: any): Partial<Project> | null {
+    if (!projectData?.projectId || !profile) return null;
+
+    const patch: any = { projectId: projectData.projectId };
+    if (projectData.masterProjectId) {
+        patch.masterProjectId = projectData.masterProjectId;
+    }
+    const brandAccentColor = getSuggestionValue(profile?.visualBrand?.brandAccentColor, 'medium');
+    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
+
+    if (brandAccentColor && !projectData?.config?.design?.brand?.accentColor) {
+        patch.config = {
+            ...(projectData?.config || {}),
+            design: {
+                ...(projectData?.config?.design || {}),
+                brand: {
+                    ...(projectData?.config?.design?.brand || {}),
+                    accentColor: brandAccentColor,
+                },
+            },
+        };
+    }
+
+    if (imageBackgroundColor && !projectData?.aiPreferences?.image?.backgroundColor) {
+        patch.aiPreferences = {
+            ...(projectData?.aiPreferences || {}),
+            image: {
+                ...(projectData?.aiPreferences?.image || {}),
+                backgroundColor: imageBackgroundColor,
+            },
+        };
+    }
+
+    return patch.config || patch.aiPreferences ? patch : null;
+}
+
 function BusinessIdentitySuggestionList({
+    details,
     onSelectionChange,
     suggestions,
 }: {
+    details?: OwnerDetectedDetail[];
     onSelectionChange: (fields: BusinessIdentitySuggestionField[]) => void;
     suggestions: BusinessIdentitySuggestion[];
 }) {
@@ -140,8 +197,9 @@ function BusinessIdentitySuggestionList({
     return (
         <Flex gap={10} vertical>
             <Typography.Text>
-                We found business details in the upload. Save only the details you want to use.
+                We found these details in the upload. Save only what should update this location.
             </Typography.Text>
+            <OwnerDetectedDetails details={details || []} />
             {suggestions.map((suggestion) => (
                 <Checkbox
                     checked={selectedFields.includes(suggestion.field)}
@@ -160,6 +218,52 @@ function BusinessIdentitySuggestionList({
                     </Flex>
                 </Checkbox>
             ))}
+        </Flex>
+    );
+}
+
+function OwnerDetectedDetails({
+    concerns = [],
+    details,
+}: {
+    concerns?: string[];
+    details: OwnerDetectedDetail[];
+}) {
+    if (!details.length && !concerns.length) return null;
+
+    return (
+        <Flex gap={8} vertical>
+            {details.length ? (
+                <Flex gap={6} wrap="wrap">
+                    {details.map((detail) => (
+                        <Tag key={detail.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginInlineEnd: 0 }}>
+                            {detail.color ? (
+                                <span
+                                    aria-hidden="true"
+                                    style={{
+                                        background: detail.color,
+                                        border: '1px solid rgba(0,0,0,0.12)',
+                                        borderRadius: 999,
+                                        display: 'inline-block',
+                                        height: 10,
+                                        width: 10,
+                                    }}
+                                />
+                            ) : null}
+                            {detail.label}: {detail.value}
+                        </Tag>
+                    ))}
+                </Flex>
+            ) : null}
+            {concerns.length ? (
+                <Flex gap={4} vertical>
+                    {concerns.map((concern) => (
+                        <Typography.Text key={concern} type="warning">
+                            {concern}
+                        </Typography.Text>
+                    ))}
+                </Flex>
+            ) : null}
         </Flex>
     );
 }
@@ -533,6 +637,7 @@ function ProjectsPage() {
         qualityDetails?: { categoryQuality: number; itemQuality: number; priceQuality: number; descriptionQuality: number };
         categoriesCount?: number;
         itemsCount?: number;
+        profileHighlights?: OwnerDetectedDetail[];
     } | null>(null);
 
     const updateProjectImageInLocalState = useCallback((projectId: string, projectImage: string) => {
@@ -653,6 +758,28 @@ function ProjectsPage() {
         }
     }, [setStoreDetails, storeDetails]);
 
+    const applyExtractedProfileProjectDefaults = useCallback(async (profile: any) => {
+        const projectId = activeProject?.projectId || selectedProject?.projectId;
+        if (!projectId || !profile) return;
+
+        const projectData = {
+            ...(activeProject || {}),
+            projectId,
+        };
+        const patch = buildExtractedProfileProjectPatch(projectData, profile);
+        if (!patch) return;
+
+        try {
+            await updateProjectWithoutLoader(patch);
+            mutateProject((current: any) => current ? {
+                ...current,
+                ...patch,
+            } : current, false);
+        } catch (error) {
+            console.warn('[Projects] Could not apply extracted profile defaults', error);
+        }
+    }, [activeProject, mutateProject, selectedProject?.projectId]);
+
     // Handle job completion - refetch project data since server saved results
     useEffect(() => {
         if (!activeProcessingJobId) {
@@ -669,16 +796,21 @@ function ProjectsPage() {
             // Capture extraction stats from job result before clearing
             const result = activeJob?.result;
             if (result) {
+                const extractedProfile = result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile;
                 setExtractionStats({
                     qualityScore: result.qualityScore,
                     qualityDetails: result.qualityDetails,
                     categoriesCount: result.combinedData?.categories?.length || 0,
                     itemsCount: result.combinedData?.items?.length || 0,
+                    profileHighlights: buildExtractedProfileHighlights(extractedProfile),
                 });
                 void maybeAutoGenerateProjectImage({
                     categories: result.combinedData?.categories || [],
                     items: result.combinedData?.items || [],
-                    projectData: activeProject,
+                    projectData: mergeProjectWithExtractedProfileDefaults(
+                        activeProject,
+                        result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
+                    ),
                     projectId: selectedProject?.projectId || activeProject?.projectId,
                     projectSummary: selectedProject,
                 });
@@ -699,11 +831,13 @@ function ProjectsPage() {
                 // Capture extraction stats for the success modal (after review save)
                 const previewResult = activeJob.result;
                 if (previewResult) {
+                    const extractedProfile = previewResult.extractedBusinessProfile || previewResult.combinedData?.extractedBusinessProfile;
                     setExtractionStats({
                         qualityScore: previewResult.qualityScore,
                         qualityDetails: previewResult.qualityDetails,
                         categoriesCount: previewResult.combinedData?.categories?.length || 0,
                         itemsCount: previewResult.combinedData?.items?.length || 0,
+                        profileHighlights: buildExtractedProfileHighlights(extractedProfile),
                     });
                 }
                 // Re-extraction: raw data ready for client-side comparison
@@ -771,13 +905,15 @@ function ProjectsPage() {
     const handleReviewSaveComplete = useCallback(() => {
         console.log('[ExtractionReview] Save complete');
         const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
+        const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
         void maybeAutoGenerateProjectImage({
             categories: previewData.categories,
             items: previewData.items,
-            projectData: activeProject,
+            projectData: mergeProjectWithExtractedProfileDefaults(activeProject, extractedProfile),
             projectId: selectedProject?.projectId || activeProject?.projectId,
             projectSummary: selectedProject,
         });
+        void applyExtractedProfileProjectDefaults(extractedProfile);
         const attributePreviewData = {
             ...previewData,
             businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
@@ -789,7 +925,7 @@ function ProjectsPage() {
         setFileProcessingId(null);
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
-    }, [activeJob?.result?.combinedData?.businessAttributeSuggestions, activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
+    }, [activeJob?.result, activeProject, applyExtractedProfileProjectDefaults, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     const handleReviewDiscard = useCallback(() => {
         console.log('[ExtractionReview] Changes discarded');
@@ -1522,6 +1658,7 @@ function ProjectsPage() {
     ) => {
         const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
         if (!suggestions.length || !storeDetails?.storeId) return;
+        const detectedDetails = buildOwnerDetectedUploadDetails(result);
 
         let selectedFields = suggestions.map((suggestion) => suggestion.field);
         await new Promise<void>((resolve) => {
@@ -1529,6 +1666,7 @@ function ProjectsPage() {
                 title: 'Save detected business details?',
                 content: (
                     <BusinessIdentitySuggestionList
+                        details={detectedDetails}
                         suggestions={suggestions}
                         onSelectionChange={(fields) => {
                             selectedFields = fields;
@@ -1597,16 +1735,14 @@ function ProjectsPage() {
 
             return await new Promise<MenuIntakeDecisionResult>((resolve) => {
                 const canCreateNewProject = decision.secondaryAction === 'create_new_project';
+                const detectedDetails = buildOwnerDetectedUploadDetails(result);
+                const concernDetails = buildOwnerUploadConcernDetails(result);
                 Modal.confirm({
                     title: decision.title,
                     content: (
                         <Flex gap={8} vertical>
                             <Typography.Text>{decision.message}</Typography.Text>
-                            {result?.identity?.businessName ? (
-                                <Typography.Text type="secondary">
-                                    Uploaded menu: {result.identity.businessName}
-                                </Typography.Text>
-                            ) : null}
+                            <OwnerDetectedDetails details={detectedDetails} concerns={concernDetails} />
                         </Flex>
                     ),
                     okText: decision.severity === 'confirm' ? 'Add here anyway' : 'Continue',
@@ -2808,6 +2944,7 @@ function ProjectsPage() {
                             ),
                         )}
                         storeLogo={storeDetails?.logo}
+                        storeData={storeDetails as any}
                         subdomain={storeDetails?.subdomain}
                         customDomain={storeDetails?.customDomain}
                         // PDF freshness awareness
@@ -2818,7 +2955,13 @@ function ProjectsPage() {
                         language={activeProject?.languages?.[0] || 'en'}
                         languages={activeProject?.languages || []}
                         currency={storeDetails?.currencySymbol || ''}
+                        currencyCode={storeDetails?.currencyCode || (storeDetails as any)?.currency}
                         businessType={storeDetails?.businessType}
+                        businessCategory={storeDetails?.businessCategory}
+                        brandColor={(storeDetails as any)?.publicPresence?.accentColor
+                            || (storeDetails as any)?.primaryColor
+                            || (storeDetails as any)?.brandColor
+                            || (storeDetails as any)?.themeColor}
                     />
                 )}
                 {/* Preview modal for Upload/Editor views (UI Editor has its own in B2CView) */}

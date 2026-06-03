@@ -8,8 +8,11 @@ import { LuDownload, LuPrinter } from "react-icons/lu";
 const { Text } = Typography;
 
 interface TentCardSectionProps {
-    tentCard: NonNullable<PhysicalSurfaceEligibility["tentCard"]>;
+    activePlanType?: string | null;
+    brandColor?: string;
     brandName?: string;
+    logoUrl?: string;
+    tentCard: NonNullable<PhysicalSurfaceEligibility["tentCard"]>;
 }
 
 /**
@@ -27,8 +30,11 @@ function getSystemSize(placementHint?: "table" | "counter"): "A6" | "A5" {
  * Appears only when eligible (confidence ≥ 0.7)
  */
 export default function TentCardSection({
-    tentCard,
+    activePlanType,
+    brandColor,
     brandName,
+    logoUrl,
+    tentCard,
 }: TentCardSectionProps) {
     const [downloading, setDownloading] = useState(false);
 
@@ -42,11 +48,14 @@ export default function TentCardSection({
         try {
             const { generateTentCardPDF } = await import("@lib/physical-surfaces/tentCardGenerator");
             const blob = await generateTentCardPDF({
+                activePlanType,
+                brandColor,
+                brandName,
                 itemName,
+                logoUrl,
                 templateId: tentCard.templateId,
                 qrUrl: tentCard.qrUrl,
                 size,
-                brandName,
             });
 
             const url = URL.createObjectURL(blob);

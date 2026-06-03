@@ -310,7 +310,10 @@ function MenuPageNew({
         ) || businessType,
         [businessType, storeDetails?.businessType, storeDetails?.businessIndustry],
     );
-    const labels = useMemo(() => getOfferingLabels(effectiveBusinessType), [effectiveBusinessType]);
+    const labels = useMemo(
+        () => getOfferingLabels(effectiveBusinessType, storeDetails?.businessCategory),
+        [effectiveBusinessType, storeDetails?.businessCategory],
+    );
     const currencySymbol = storeDetails?.currencySymbol || '₹';
     const currencyCode = storeDetails?.currencyCode || 'INR';
     const primaryLanguage = projectData?.defaultLanguage || storeDetails?.defaultLanguage || projectData?.languages?.[0] || 'en';
@@ -430,7 +433,10 @@ function MenuPageNew({
     }, [projectData?.projectId]);
 
     // Get unavailable label based on business type
-    const unavailableLabel = useMemo(() => getUnavailableLabel(effectiveBusinessType), [effectiveBusinessType]);
+    const unavailableLabel = useMemo(
+        () => getUnavailableLabel(effectiveBusinessType, storeDetails?.businessCategory),
+        [effectiveBusinessType, storeDetails?.businessCategory],
+    );
     const clearSearch = useCallback(() => {
         setSearchTerm('');
         setDebouncedSearch('');
@@ -1000,7 +1006,9 @@ function MenuPageNew({
         if (normalizedAttributes.forWomen) addChip('For women');
         if (normalizedAttributes.popular) addChip('Popular');
 
+        const canonicalDietaryFilterTags = new Set(['vegetarian', 'non-vegetarian', 'non-veg', 'nonveg']);
         getDecisionFactArray(item, 'dietaryTags')
+            .filter((tag) => !canonicalDietaryFilterTags.has(tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')))
             .slice(0, 2)
             .forEach((tag) => addChip(normalizeFactLabel(tag)));
 
@@ -2120,6 +2128,7 @@ function MenuPageNew({
                             activeLanguage={activeLanguage}
                             primaryLanguage={primaryLanguage}
                             businessType={effectiveBusinessType}
+                            businessCategory={storeDetails?.businessCategory}
                             moodConfig={moodConfig}
                             onItemClick={handleItemClick}
                             currency={currencySymbol}
@@ -2613,6 +2622,7 @@ function MenuPageNew({
                         {FEATURE_FLAGS.ENABLE_MENU_TRUST_SIGNALS && (
                             <TrustSignals
                                 businessType={effectiveBusinessType || storeDetails?.businessType || ''}
+                                businessCategory={storeDetails?.businessCategory}
                                 lastPublishedAt={projectData?.lastPublishedAt || null}
                                 locationArea={storeDetails?.area || null}
                                 city={storeDetails?.city || null}

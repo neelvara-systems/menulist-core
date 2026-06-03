@@ -156,5 +156,5 @@ function MyComponent() {
 
 // Outside React (e.g., utility functions):
 import { getOfferingLabels } from "@lib/menu-kit/businessTypeLabels";
-const labels = getOfferingLabels(businessType);
+const labels = getOfferingLabels(businessType, businessCategory);
 ```

@@ -1393,15 +1393,15 @@ export const FEATURE_FLAGS = {
      * Menu Trust Signals — Subtle visual indicators on customer-facing menu
      *
      * When enabled:
-     * - "Official Menu" badge (business-type-aware: Menu/Services/Catalog)
-     * - "Updated today" / "Updated this week" freshness indicator
-     * - Signals appear below restaurant name, above menu content
+     * - Location and open/closed status when reliable store data exists
+     * - Business-type-aware offering label: Menu, Services, Catalog, etc.
+     * - Exact freshness text: "Updated today" or "Updated Mar 12" when current
      *
      * When disabled:
      * - No trust signals shown on customer menus
      * - Zero UI impact
      *
-     * Pure UI enhancement — reads existing data (lastPublishedAt, businessType).
+     * Pure UI enhancement — reads existing data already loaded for the menu.
      * Zero new Firebase reads. Zero cost.
      *
      * @see __docs__/menu-trust-signals/menu-trust-signals_impl.md
@@ -1696,6 +1696,7 @@ export const FEATURE_FLAGS = {
     ENABLE_MENU_CARD_EXPORT_BATCH: false,
     ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
     MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"] as string[],
+    ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)
@@ -2724,15 +2725,15 @@ export const FEATURE_FLAGS = {
     /**
      * Public Menu Entry — Controlled free preview pipeline
      *
-     * Allows public users to open /create-menu, upload a menu before
-     * account creation, and sign in only before claiming/publishing.
+     * Allows public users to open /create-menu, then requires sign-in before
+     * source upload, link import, preview polling, and extraction.
      * Creates draft in publicMenuDrafts collection with 24h TTL.
      *
-     * true: /create-menu page active, API accepts public rate-limited uploads
+     * true: /create-menu page active, API accepts authenticated owner uploads
      * false: /create-menu returns 404, API returns 404
      *
      * Cost: ~₹0.50-1.00 per extraction (Gemini 2.5 Flash)
-     * Rate limit: 3 per IP per 24 hours
+     * Rate limit: 5 per user per 24 hours, with active draft reuse and source dedupe
      *
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */

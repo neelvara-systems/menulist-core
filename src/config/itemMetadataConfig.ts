@@ -57,6 +57,7 @@ export const ALLERGEN_OPTIONS = [
 
 export const DIETARY_TAG_OPTIONS = [
     { label: 'Vegetarian', value: 'vegetarian' },
+    { label: 'Non-Vegetarian', value: 'non-vegetarian' },
     { label: 'Vegan', value: 'vegan' },
     { label: 'Gluten-Free', value: 'gluten-free' },
     { label: 'Halal', value: 'halal' },
@@ -309,7 +310,7 @@ export const BUSINESS_TYPE_METADATA_FIELDS: Record<string, MetadataFieldKey[]> =
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 
-export function getMetadataFieldKeysForBusiness(businessType?: string): MetadataFieldKey[] {
+export function getMetadataFieldKeysForBusiness(businessType?: string, businessCategory?: string): MetadataFieldKey[] {
     const normalizedBusinessType = businessType?.trim().toLowerCase();
     const exactOverride = normalizedBusinessType
         ? Object.entries(BUSINESS_TYPE_METADATA_FIELDS).find(([type]) => type.toLowerCase() === normalizedBusinessType)?.[1]
@@ -319,7 +320,7 @@ export function getMetadataFieldKeysForBusiness(businessType?: string): Metadata
         return exactOverride;
     }
 
-    const category = resolveBusinessCategory(businessType) || 'food'; // default to food
+    const category = resolveBusinessCategory(businessType, businessCategory) || 'food'; // default to food only when no context exists
     return CATEGORY_METADATA_FIELDS[category] || CATEGORY_METADATA_FIELDS.food;
 }
 
@@ -330,8 +331,8 @@ export function getMetadataFieldKeysForBusiness(businessType?: string): Metadata
  * @param businessType — e.g., "Restaurant", "Salon", "Gym"
  * @returns Array of field configs to show in the editor
  */
-export function getMetadataFieldsForBusiness(businessType?: string): MetadataFieldConfig[] {
-    const fieldKeys = getMetadataFieldKeysForBusiness(businessType);
+export function getMetadataFieldsForBusiness(businessType?: string, businessCategory?: string): MetadataFieldConfig[] {
+    const fieldKeys = getMetadataFieldKeysForBusiness(businessType, businessCategory);
     return fieldKeys.map(key => METADATA_FIELDS[key]).filter(Boolean);
 }
 

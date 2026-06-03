@@ -8,6 +8,7 @@
  */
 
 import { getPublicBaseUrl, normalizeBaseUrl } from '@constant/urls';
+import { generateBrandedQrCodeDataUrl, type BrandedQrCodeOptions } from '@lib/utils/qrCode';
 import QRCode from 'qrcode';
 /**
  * QR code generation options
@@ -79,6 +80,19 @@ export async function generateFeedbackQrCode(
 
     // Generate as data URL (base64 PNG)
     return await QRCode.toDataURL(feedbackUrl, qrOptions);
+}
+
+export async function generateBrandedFeedbackQrCode(
+    projectId: string,
+    options?: BrandedQrCodeOptions,
+    baseUrlOverride?: string,
+): Promise<string> {
+    const feedbackUrl = getFeedbackUrl(projectId, 'feedback_qr', baseUrlOverride);
+    return generateBrandedQrCodeDataUrl(feedbackUrl, {
+        ...options,
+        title: options?.title || 'Feedback QR',
+        subtitle: options?.subtitle || 'Scan to leave feedback',
+    });
 }
 
 /**

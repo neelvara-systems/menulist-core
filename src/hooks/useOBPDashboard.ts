@@ -12,7 +12,7 @@ import {
 import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import useSWR from 'swr';
 
 const SETTLED_SWR_CONFIG = {
@@ -85,13 +85,6 @@ function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, da
     return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
 }
 
-function logObpDashboardDalResponse(label: string, payload: unknown, meta: Record<string, unknown>) {
-    console.log(`[MobileDashboard][OBP][DAL] ${label} response`, {
-        ...meta,
-        response: payload,
-    });
-}
-
 export function useOBPDashboard(options?: UseOBPDashboardOptions) {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const loadHistorical = options?.loadHistorical ?? true;
@@ -114,20 +107,15 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
 
     const {
         data: settledData,
+        error: settledError,
         isLoading: settledLoading,
+        mutate: mutateSettled,
     } = useSWR(
         canFetch && loadHistorical ? ['obpDashboard', 'settled', tId, sId] : null,
         () => cachedFetcher(
             settledCacheKey!,
             async () => {
                 const response = await getOBPDashboardData(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logObpDashboardDalResponse('getOBPDashboardData', response, {
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    schedulerCacheKey,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             schedulerCacheKey,
@@ -141,20 +129,15 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
 
     const {
         data: todayData,
+        error: todayError,
         isLoading: todayLoading,
+        mutate: mutateToday,
     } = useSWR(
         canFetch ? ['obpDashboard', 'today', tId, sId] : null,
         () => cachedFetcherWithTTL(
             todayCacheKey!,
             async () => {
                 const response = await getOBPDashboardToday(tId!, sId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
-                logObpDashboardDalResponse('getOBPDashboardToday', response, {
-                    analyticsDayKey,
-                    businessDayEndTime: storeDetails?.businessDayEndTime,
-                    storeId: sId,
-                    tenantId: tId,
-                    timeZone: storeDetails?.timeZone,
-                });
                 return response;
             },
             600000,
@@ -176,10 +159,16 @@ export function useOBPDashboard(options?: UseOBPDashboardOptions) {
         } as OBPDashboardViewData;
     }, [settledData, todayData]);
 
+    const refetch = useCallback(async () => {
+        await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);
+    }, [loadHistorical, mutateSettled, mutateToday]);
+
     return {
         data,
+        error: (loadHistorical ? settledError || todayError : todayError) || null,
         loading: (loadHistorical ? settledLoading && !settledData : false) || (todayLoading && !todayData),
         loadingToday: todayLoading,
+        refetch,
     };
 }
 

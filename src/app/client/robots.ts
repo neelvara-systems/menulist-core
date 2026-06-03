@@ -12,7 +12,7 @@ import {
     DISCOVERY_CRAWLERS,
     PUBLIC_DISCOVERY_DISALLOWED_PATHS,
 } from '@lib/seo/discoveryPolicy';
-import { PLATFORM_URL } from '@constant/urls';
+import { PLATFORM_DOMAIN, PLATFORM_URL } from '@constant/urls';
 
 export default function robots(): MetadataRoute.Robots {
     const headersList = headers();
@@ -24,7 +24,7 @@ export default function robots(): MetadataRoute.Robots {
     if (customDomain) {
         baseUrl = `https://${customDomain}`;
     } else if (subdomain) {
-        baseUrl = `https://${subdomain}.menulist.ai`;
+        baseUrl = `https://${subdomain}.${PLATFORM_DOMAIN}`;
     } else {
         baseUrl = PLATFORM_URL;
     }

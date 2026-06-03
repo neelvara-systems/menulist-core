@@ -9,7 +9,7 @@ import type { Project, ProjectAIImagePreferences } from '../types';
 import AspectRatioSelector from './AiImageGenerator/AspectRatioSelector';
 import MultiSelectAttributeSelector from './AiImageGenerator/MultiSelectAttributeSelector';
 import StyleSelector from './AiImageGenerator/StyleSelector';
-import { IMAGE_VIEW_TYPES } from './AiImageGenerator/imageViewType';
+import { getImageViewTypeForBusiness } from './AiImageGenerator/imageViewType';
 import { DESCRIPTION_TONE_OPTIONS, type DescriptionTone } from './descriptionGeneration.shared';
 
 const { Text } = Typography;
@@ -33,13 +33,6 @@ const DESCRIPTION_OPTIONS: Array<{
     },
 ];
 
-function getImageDefaults(businessType?: string) {
-    const normalizedBusinessType = businessType?.trim().toLowerCase();
-    return IMAGE_VIEW_TYPES.find((type) => type.businessType?.trim().toLowerCase() === normalizedBusinessType)
-        || IMAGE_VIEW_TYPES.find((type) => type.businessType === 'Restaurant')
-        || IMAGE_VIEW_TYPES[0];
-}
-
 function normalizeMenuItemImagePreferences(preferences: ProjectAIImagePreferences): ProjectAIImagePreferences {
     return {
         ...preferences,
@@ -49,6 +42,7 @@ function normalizeMenuItemImagePreferences(preferences: ProjectAIImagePreference
 
 interface AIDefaultsModalProps {
     businessType?: string;
+    businessCategory?: string;
     onClose: () => void;
     open: boolean;
     projectData: Project;
@@ -57,15 +51,16 @@ interface AIDefaultsModalProps {
 
 export default function AIDefaultsModal({
     businessType,
+    businessCategory,
     onClose,
     open,
     projectData,
     setProjectData,
 }: AIDefaultsModalProps) {
     const { token } = theme.useToken();
-    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType), [businessType, projectData]);
-    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType), [businessType]);
-    const imageDefaults = useMemo(() => getImageDefaults(businessType), [businessType]);
+    const resolvedPreferences = useMemo(() => getResolvedProjectAIPreferences(projectData, businessType, businessCategory), [businessType, businessCategory, projectData]);
+    const recommendedPreferences = useMemo(() => getRecommendedProjectAIPreferences(businessType, businessCategory), [businessType, businessCategory]);
+    const imageDefaults = useMemo(() => getImageViewTypeForBusiness(businessType, businessCategory), [businessType, businessCategory]);
     const [descriptionLength, setDescriptionLength] = useState<DescriptionContentLength>(resolvedPreferences.description.contentLength);
     const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(resolvedPreferences.description.tone);
     const [imagePreferences, setImagePreferences] = useState<ProjectAIImagePreferences>(() => normalizeMenuItemImagePreferences(resolvedPreferences.image));
@@ -73,11 +68,11 @@ export default function AIDefaultsModal({
 
     useEffect(() => {
         if (!open) return;
-        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType);
+        const nextResolved = getResolvedProjectAIPreferences(projectData, businessType, businessCategory);
         setDescriptionLength(nextResolved.description.contentLength);
         setDescriptionTone(nextResolved.description.tone);
         setImagePreferences(normalizeMenuItemImagePreferences(nextResolved.image));
-    }, [businessType, open, projectData]);
+    }, [businessType, businessCategory, open, projectData]);
 
     const hasChanges = useMemo(() => {
         const currentState = JSON.stringify({
@@ -385,6 +380,7 @@ export default function AIDefaultsModal({
 
             <StyleSelector
                 businessType={businessType}
+                businessCategory={businessCategory}
                 onChange={(styles, stylesCategory) => setImagePreferences((current) => ({ ...current, styles, stylesCategory }))}
                 open={isStyleSelectorOpen}
                 selectedStyles={imagePreferences.styles || []}

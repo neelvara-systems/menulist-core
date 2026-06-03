@@ -2,7 +2,7 @@
 
 > **Feature:** Physical Menu Surfaces (Campaign-Based Recommendation Cards)  
 > **Status:** ⚠️ LEGACY — Superseded by [Menu Kit](../menu-kit/README.md) for identity surfaces  
-> **Last Updated:** March 14, 2026
+> **Last Updated:** June 3, 2026
 
 ---
 
@@ -26,6 +26,8 @@ In Feb-Mar 2026, **[Menu Kit](../menu-kit/README.md)** was built as the **canoni
 | **Strategic value** | Marketing suggestions (weak)          | Infrastructure identity (strong)                                             |
 
 **For all new physical surface work, use Menu Kit.**
+
+Maintenance note: the legacy Today/mobile Hours download buttons are still active for campaign recommendation tent cards and counter stickers. Those active downloads now reuse the shared Menu Kit premium output tokens (`src/lib/menu-kit/brandTokens.ts`) and platform attribution helper (`src/lib/menu-kit/platformAttribution.ts`) so they include store logo/color treatment, a scan-safe QR panel, and subtle MenuList logo/name/domain footer instead of plain black-and-white output.
 
 ---
 
@@ -52,7 +54,7 @@ In Feb-Mar 2026, **[Menu Kit](../menu-kit/README.md)** was built as the **canoni
 
 ## One-Liner
 
-Campaign-based recommendation cards for Today tab. **For identity infrastructure surfaces (table tents, entrance posters, stickers), see [Menu Kit](../menu-kit/README.md).**
+Campaign-based recommendation cards for Today tab. Active downloads are maintenance-only and share Menu Kit's premium output treatment. **For identity infrastructure surfaces (table tents, entrance posters, stickers), see [Menu Kit](../menu-kit/README.md).**
 
 ## Problem Solved
 

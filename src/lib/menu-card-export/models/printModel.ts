@@ -46,6 +46,7 @@ export type MenuCardPrintSource = {
         catalogKind: BusinessCatalogKind;
         offeringKind: BusinessOfferingKind;
         publicMenuUrl: string;
+        activePlanType?: string | null;
         brandColor?: string;
         brandTokens: MenuCardBrandTokens;
     };

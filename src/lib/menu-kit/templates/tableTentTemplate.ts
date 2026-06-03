@@ -15,9 +15,10 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import { MenuKitBrandTokens, resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
-import { drawMenuListAttribution } from '../platformAttribution';
+import { drawMenuListAttribution, MENU_LIST_MENU_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type TentCardInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -42,14 +43,19 @@ function drawHalf(
         qrCanvas: HTMLCanvasElement;
         lastPublishedAt?: Date;
         logo: PreloadedLogo | null;
+        brand: MenuKitBrandTokens;
+        activePlanType?: string | null;
     }
 ) {
-    const { labels, storeName, shortLink, qrCanvas, lastPublishedAt, logo } = opts;
+    const { labels, storeName, shortLink, qrCanvas, lastPublishedAt, logo, brand, activePlanType } = opts;
     const cx = w / 2;
     const fontBase = 'system-ui, -apple-system, sans-serif';
 
     // "SCAN TO VIEW MENU"
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = brand.softAccent;
+    ctx.fillRect(Math.round(22 * PX_PER_MM), Math.round(5 * PX_PER_MM), w - Math.round(44 * PX_PER_MM), Math.round(18 * PX_PER_MM));
+
+    ctx.fillStyle = brand.accent;
     ctx.font = `bold ${Math.round(16 * PX_PER_MM)}px ${fontBase}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -64,10 +70,18 @@ function drawHalf(
 
     // QR Code
     const qrSize = Math.round(35 * PX_PER_MM);
-    ctx.drawImage(qrCanvas, cx - qrSize / 2, Math.round(24 * PX_PER_MM), qrSize, qrSize);
+    const qrPanel = qrSize + Math.round(8 * PX_PER_MM);
+    const qrPanelX = cx - qrPanel / 2;
+    const qrPanelY = Math.round(25 * PX_PER_MM);
+    ctx.fillStyle = brand.surface;
+    ctx.fillRect(qrPanelX, qrPanelY, qrPanel, qrPanel);
+    ctx.strokeStyle = brand.border;
+    ctx.lineWidth = Math.max(2, Math.round(0.45 * PX_PER_MM));
+    ctx.strokeRect(qrPanelX, qrPanelY, qrPanel, qrPanel);
+    ctx.drawImage(qrCanvas, cx - qrSize / 2, qrPanelY + (qrPanel - qrSize) / 2, qrSize, qrSize);
 
     // Logo (if available)
-    let nameY = Math.round(66 * PX_PER_MM);
+    let nameY = Math.round(72 * PX_PER_MM);
     if (logo) {
         const maxLH = Math.round(10 * PX_PER_MM);
         const maxLW = Math.round(20 * PX_PER_MM);
@@ -80,7 +94,7 @@ function drawHalf(
 
     // Store name
     ctx.font = `bold ${Math.round(12 * PX_PER_MM)}px ${fontBase}`;
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = brand.text;
     let displayName = storeName;
     while (ctx.measureText(displayName).width > w - 60 && displayName.length > 3) {
         displayName = displayName.slice(0, -1);
@@ -90,18 +104,18 @@ function drawHalf(
 
     // "Menu & prices updated regularly"
     ctx.font = `${Math.round(8 * PX_PER_MM)}px ${fontBase}`;
-    ctx.fillStyle = '#646464';
+    ctx.fillStyle = brand.muted;
     ctx.fillText(labels.updatedRegularly, cx, nameY + Math.round(10 * PX_PER_MM));
 
     // "Open camera → point at QR"
     ctx.font = `${Math.round(7 * PX_PER_MM)}px ${fontBase}`;
-    ctx.fillStyle = '#828282';
+    ctx.fillStyle = brand.muted;
     ctx.fillText('Open camera \u2192 point at QR', cx, nameY + Math.round(18 * PX_PER_MM));
 
     // Short link fallback
     if (shortLink) {
         ctx.font = `${Math.round(6 * PX_PER_MM)}px ${fontBase}`;
-        ctx.fillStyle = '#8c8c8c';
+        ctx.fillStyle = brand.muted;
         ctx.fillText(`Or open: ${shortLink}`, cx, nameY + Math.round(24 * PX_PER_MM));
     }
 
@@ -111,26 +125,28 @@ function drawHalf(
             day: 'numeric', month: 'short', year: 'numeric',
         });
         ctx.font = `${Math.round(6 * PX_PER_MM)}px ${fontBase}`;
-        ctx.fillStyle = '#969696';
+        ctx.fillStyle = brand.muted;
         ctx.fillText(`Updated on: ${dateStr}`, cx, h - Math.round(10 * PX_PER_MM));
     }
 
     // Branding footer
     drawMenuListAttribution(ctx, {
-        color: '#b4b4b4',
+        activePlanType,
+        color: brand.border,
         font: `${Math.round(5 * PX_PER_MM)}px ${fontBase}`,
         gap: Math.round(1.5 * PX_PER_MM),
         logoHeight: Math.round(3.4 * PX_PER_MM),
-        text: 'Menu powered by MenuList',
+        text: MENU_LIST_MENU_ATTRIBUTION_TEXT,
         x: cx,
         y: h - Math.round(4 * PX_PER_MM),
     });
 }
 
 export async function generateTableTent(input: TentCardInput): Promise<Blob> {
-    const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, _logo } = input;
-    const labels = getOfferingLabels(businessType);
+    const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, businessCategory, _logo } = input;
+    const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
+    const brand = resolveMenuKitBrandTokens(input.brandColor);
 
     const W = Math.round(W_MM * PX_PER_MM);
     const H = Math.round(H_MM * PX_PER_MM);
@@ -141,7 +157,7 @@ export async function generateTableTent(input: TentCardInput): Promise<Blob> {
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 400,
         margin: 2,
-        color: { dark: '#000000', light: '#ffffff' },
+        color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
 
@@ -152,12 +168,12 @@ export async function generateTableTent(input: TentCardInput): Promise<Blob> {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // White background
-    ctx.fillStyle = '#ffffff';
+    // Premium paper background
+    ctx.fillStyle = brand.paper;
     ctx.fillRect(0, 0, W, H);
 
     // Fold line (dashed, subtle)
-    ctx.strokeStyle = '#dcdcdc';
+    ctx.strokeStyle = brand.border;
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 6]);
     ctx.beginPath();
@@ -166,7 +182,7 @@ export async function generateTableTent(input: TentCardInput): Promise<Blob> {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const halfOpts = { labels, storeName, shortLink, qrCanvas, lastPublishedAt, logo };
+    const halfOpts = { labels, storeName, shortLink, qrCanvas, lastPublishedAt, logo, brand, activePlanType: input.activePlanType };
 
     // BOTTOM HALF — right-side-up (faces up when tent card stands)
     ctx.save();

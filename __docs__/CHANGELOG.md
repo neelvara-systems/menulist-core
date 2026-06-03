@@ -6,6 +6,81 @@
 
 ---
 
+## June 3, 2026 — Premium QR And Print Output Parity
+
+### Changed
+
+- **Standalone QR downloads now use branded cards** - Use MenuList, mobile Share, project Share modal, feedback QR, and Official Business Link QR downloads now reuse the store logo and brand color instead of exporting plain black-and-white QR snapshots.
+- **Menu Kit assets now share one premium treatment** - Table tents, counter stickers, entrance posters, delivery bag stickers, takeaway cards, social images, Google Maps upload images, and placement guides now use shared brand tokens with scan-safe QR panels.
+- **Printable outputs now show MenuList attribution** - Menu Card Export PDFs, standalone QR cards, Menu Kit files, and active legacy Today/mobile physical cards now include subtle MenuList logo/name/domain attribution.
+- **Premium removes visible MenuList attribution** - The shared attribution policy hides MenuList logo/name/domain on Premium stores only. Starter, Pro, missing, and unknown plan data keeps attribution visible.
+- **Active Today/mobile campaign cards were aligned** - Legacy recommendation tent cards and counter stickers still exposed in Today/mobile Hours now use the same logo/color/QR treatment while remaining maintenance-only behind Menu Kit.
+
+### Cost
+
+- **No new database or server generation cost** - The output treatment and Premium attribution check are client-side over already-loaded `stores/{storeId}.activePlanType`. They add no Firestore reads/writes, no Cloud Functions, and no generated Storage uploads; existing store logo URLs may be fetched by the browser if not already cached.
+
+## June 3, 2026 — Public Create Menu Auth And Cost Guard
+
+### Changed
+
+- **Create-menu source processing now requires sign-in** - `/create-menu` remains a public website page, but photo upload, menu-link import, extraction draft creation, preview polling, and claim now require the owner session.
+- **Public create-menu drafts are owner-bound** - Drafts now store `createdByUId`; preview polling and claim reject cross-account or legacy anonymous draft access.
+- **Repeated sources reuse existing drafts** - Active pending/processing drafts and same-source completed drafts return the existing preview instead of creating another Storage artifact or extraction job.
+- **Rate limiting is user-keyed** - Public create-menu extraction now uses `PUBLIC_MENU_ENTRY_AUTH` at 5 new source attempts per user per 24 hours instead of the old shared IP limiter.
+
+### Cost
+
+- **Anonymous upload cost is removed** - Unauthenticated visitors can no longer create `publicMenuDrafts`, upload to Storage, acquire menu links, or queue extraction jobs. The first signed-in setup preview remains free to the owner, with MenuList-side cost guarded by auth, rate limits, reuse, dedupe, SAFE_MODE, and 24-hour TTL cleanup.
+
+## June 3, 2026 — Owner Analytics Detail Parity
+
+### Changed
+
+- **Desktop and mobile analytics detail now use one source** - Menu details for Today, Overview, Yesterday, This Week, This Month, and Overall now render from the same shared section builder across desktop and mobile.
+- **Stored campaign detail is surfaced consistently** - UTM source, medium, campaign, and content are preserved through daily aggregation, dashboard summaries, client normalization, and owner display cards.
+- **Overall now carries lifetime detail** - Lifetime Smart Picks, search demand, no-result demand, unavailable interest, actions, source quality, campaign tracking, categories, languages, filters, and top items can display from the same detail card as other periods.
+
+### Fixed
+
+- **WTD/MTD top items use item taps** - Client fallback aggregation now ranks top items from `clicksByItem`, matching the nightly summary path instead of using Smart Picks recommendation taps.
+
+### Cost
+
+- **No extra owner reads** - The parity detail cards consume the existing daily doc and dashboard summary reads. Additional UTM fields are additive counters on existing analytics documents and do not create a new collection or write path.
+
+## June 3, 2026 — Menu Extraction Metadata And Failure Audit
+
+### Changed
+
+- **Dietary labels are canonicalized during extraction** - Visible `VEG`, `NON-VEG`, `NV`, `GF`, `DF`, and `KETO` labels now persist as stable `dietaryTags` values such as `vegetarian`, `non-vegetarian`, `gluten-free`, `dairy-free`, and `keto`.
+- **Owner dietary editing matches extraction** - Desktop and mobile item editors now expose `Non-Vegetarian` in the shared food `dietaryTags` options.
+- **Non-veg filtering no longer collides with veg** - Public menu filter normalization treats `non-vegetarian` and `nonveg` as non-veg only, not as veg through substring matching.
+- **Unknown business type now uses canonical Other** - Menu intake identity no longer turns low-confidence business type detection into `Restaurant`. The shared business type catalog now includes `Other`, messaging/public create-menu fallbacks use `Other` with the best known `businessCategory`, and public drafts carry `detectedBusinessCategory` through claim.
+- **Public claim keeps business type on the project** - Public `/create-menu` claims now copy the resolved `businessType` and `businessCategory` onto the created project and project summary, keeping future project-scoped metadata and design defaults aligned with store truth.
+- **Business category now drives generic Other behavior** - Store creation, updates, default time slots, Decision Blocks, special menus, trust signals, Menu Kit assets, customer messages, editor metadata fields, availability labels, AI image defaults, and category icon suggestions now resolve from `businessType + businessCategory`, so `Other + food` behaves like a food menu without pretending the exact type is Restaurant.
+- **Owner business type changes keep category aligned** - Dashboard and mobile owner saves now use one persisted-store resolver: exact canonical types own their category, while `Other` and legacy/free-text types can keep the best known broad category. Store summary, onboarding, outlet creation, messaging publish, and extraction worker paths use the same rule.
+- **Master business type changes now reach outlets** - Master-store identity propagation now includes `businessType` and `businessCategory`, runs through the shared `updateStore()` path for desktop and mobile owner saves, updates outlet `storesSummary`, and respects `outletPolicy.canOverrideBrandIdentity` plus the legacy `allowBrandingOverride` field.
+- **Failed extraction attempts are auditable** - Provider failures now write platform extraction audit rows with failed status, error code, retry-after seconds when available, and zero owner credits/charge.
+- **Prompt version bumped** - Menu image extraction prompt version is now `parallel_v5` for the dietary label mapping and legacy tag boundary change.
+
+### Cost
+
+- **Owner credits remain unchanged** - Initial extraction remains a zero-unit setup operation. Failed provider attempts also record zero tokens, zero owner charge, and zero units consumed.
+
+## June 3, 2026 — Growth Engine WhatsApp Outreach Guardrails
+
+### Changed
+
+- **WhatsApp outreach kit validated** - The Claim/Invite variant plan, A/B split, pacing tiers, stop rules, and send-log fields were accepted only as a consented Growth Engine micro-experiment, not as cold WhatsApp outreach.
+- **Public listing provenance is not consent** - Growth Engine docs now block treating Google, Instagram, Maps, CSV imports, or enriched phone availability as WhatsApp opt-in.
+- **Experiment controls are implementation gates** - WhatsApp Claim/Invite sends now require consent proof, suppression checks, approved templates, sender health, webhook readiness, stop rules, masked summaries, and dry-run approval before any assignment, send, follow-up, or winner selection.
+- **MenuList production validation gate added** - Aggregator-style public listing outreach, broad source-provider acquisition, and cold WhatsApp/public-phone paths stay blocked until MenuList is proven with real production owners.
+
+### Cost
+
+- **No runtime cost change** - This was documentation and validation only. No Firestore collection, Cloud Function, API route, index, Storage path, provider call, sender, template, or deploy was added.
+
 ## June 2, 2026 — Platform Notification Tracking Dashboard
 
 ### Changed
@@ -63,6 +138,7 @@
 - **AI action cost lookup fails closed** - Every `AI_ACTIONS_TYPES` value must have explicit unit-cost and real-cost entries. Unknown AI actions no longer default to zero units.
 - **Free setup operations stay explicit** - Initial extraction, first-pass descriptions, menu intake identity, public create-menu extraction, and structural setup actions remain zero-unit operations. Extraction audit rows now also store `unitsConsumed: 0`.
 - **AI transaction dashboards are audience-scoped** - Owner desktop/mobile Transactions now load through an owner-allowlisted server API and show date, action, menu/project, result summary, credits used, no-credit setup actions, and processing time without token, provider-cost, margin, model, raw provider payload, ID, or generation-config internals. Desktop pagination now uses cursor-backed Previous/Next controls. Platform-role debug can inspect the full AI transaction object and paise-safe provider cost fields.
+- **Extraction audit rows carry job context** - Menu image extraction provider audit rows now store `jobId`, tenant/store/user context, source, destination, destination id, job mode, and token counts so platform monitoring can drill from AI spend to the exact extraction job without exposing provider internals to owners.
 
 ### Fixed
 
@@ -71,6 +147,7 @@
 - **Batch image operation logs keep tenant/store scope** - The Cloud Task worker passes tenant/store ids directly into the server operation logger instead of relying on a browser session.
 - **Extraction monitor separates owner units from token audit cost** - Platform extraction review now labels owner units separately from token-credit and estimated AI-cost telemetry.
 - **Extraction monitor cost is paise-safe** - Desktop and mobile platform cost cards now format paise-denominated AI costs as INR, and the job inspector shows raw provider responses plus token breakdown.
+- **Extraction audit timestamps stay queryable** - The Firebase worker now preserves `Date`/timestamp values while sanitizing undefined transaction fields, so `MENULIST_AI_OPERATIONS.createdAt` remains usable for daily cost filtering.
 
 ### Verification
 

@@ -73,6 +73,7 @@ const DEFAULT_PRESETS: PresetTemplate[] = [
  * Get default time slot presets for a business type
  * 
  * @param businessType - The store's business type (e.g., "Restaurant", "Salon")
+ * @param businessCategory - Optional broad category when exact type is generic
  * @param tenantId - Tenant ID for generating preset IDs
  * @param storeId - Store ID for generating preset IDs
  * @returns Array of TimeSlotPreset with generated IDs and colors
@@ -80,9 +81,10 @@ const DEFAULT_PRESETS: PresetTemplate[] = [
 export function getDefaultTimeSlotPresets(
     businessType: string | undefined,
     tenantId: number,
-    storeId: number
+    storeId: number,
+    businessCategory?: string,
 ): TimeSlotPreset[] {
-    const category = resolveBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType, businessCategory);
     const templates = category && CATEGORY_PRESETS[category]
         ? CATEGORY_PRESETS[category]
         : DEFAULT_PRESETS;
@@ -100,8 +102,8 @@ export function getDefaultTimeSlotPresets(
  * Get preset templates for a business category (without IDs)
  * Useful for previewing what presets will be created
  */
-export function getPresetTemplatesForCategory(businessType?: string): PresetTemplate[] {
-    const category = resolveBusinessCategory(businessType);
+export function getPresetTemplatesForCategory(businessType?: string, businessCategory?: string): PresetTemplate[] {
+    const category = resolveBusinessCategory(businessType, businessCategory);
     if (category && CATEGORY_PRESETS[category]) {
         return CATEGORY_PRESETS[category];
     }

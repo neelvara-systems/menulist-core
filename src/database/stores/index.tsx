@@ -1,7 +1,12 @@
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
-import { resolveBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
+import {
+    extractMasterStorePropagationChanges,
+    hasMasterStorePropagationFields,
+    propagateMasterStoreChangesToOutlets,
+} from "@database/multiOutlet/brandPropagation";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
@@ -176,12 +181,16 @@ export const addStore = async (data: any, from: string = "") => {
                 delete data.imageType;
             }
 
+            const businessCategory = resolveStoreBusinessCategory(data.businessType || '', data.businessCategory);
+            data.businessCategory = businessCategory;
+
             // Assign default time slot presets based on business type
             if (!data.timeSlotPresets && data.businessType && data.tenantId && data.storeId) {
                 data.timeSlotPresets = getDefaultTimeSlotPresets(
                     data.businessType,
                     data.tenantId,
-                    data.storeId
+                    data.storeId,
+                    businessCategory,
                 );
             }
 
@@ -191,10 +200,6 @@ export const addStore = async (data: any, from: string = "") => {
                 const createdBy = data.email || data.createdBy || 'system';
                 data.roles = createDefaultRoles(data.storeId, createdBy);
             }
-
-            // Stored businessCategory wins; derive from businessType only as fallback.
-            const businessCategory = resolveBusinessCategory(data.businessType || '', data.businessCategory);
-            data.businessCategory = businessCategory;
 
             data.businessDayEndTime = resolveBusinessDayEndTime(data.businessType, data.businessDayEndTime, businessCategory);
 
@@ -217,6 +222,7 @@ export const addStore = async (data: any, from: string = "") => {
                 blocked: data.blocked ?? false,
                 name: data.name || '',
                 tenantName: data.tenantName || '',
+                subdomain: data.subdomain,
                 isMaster: data.isMaster,
                 outletSlug: data.outletSlug,
                 city: data.city,
@@ -303,6 +309,7 @@ export const updateStore = async (data: any) => {
                 'blocked',
                 'name',
                 'tenantName',
+                'subdomain',
                 'isMaster',
                 'outletSlug',
                 'city',
@@ -318,15 +325,19 @@ export const updateStore = async (data: any) => {
             const hasSummaryFieldChanges = summaryFields.some(field => data[field] !== undefined);
             const needsSchedulerRecompute = data.timeZone !== undefined || data.businessDayEndTime !== undefined;
             const needsBusinessCategoryResolution = hasSummaryFieldChanges || needsSchedulerRecompute;
-            const existingStore = needsBusinessCategoryResolution ? await getCurrentStoreData() : {};
+            const hasPropagationFieldChanges = hasMasterStorePropagationFields(data);
+            const existingStore = (needsBusinessCategoryResolution || hasPropagationFieldChanges) ? await getCurrentStoreData() : {};
             const effectiveBusinessType = data.businessType ?? existingStore.businessType;
-            const effectiveBusinessCategory = data.businessCategory ?? existingStore.businessCategory;
+            const effectiveBusinessCategory = data.businessCategory !== undefined
+                ? data.businessCategory
+                : data.businessType !== undefined
+                    ? undefined
+                    : existingStore.businessCategory;
             const effectiveTimeZone = data.timeZone ?? existingStore.timeZone;
             const effectiveBusinessDayEndTime = data.businessDayEndTime ?? existingStore.businessDayEndTime;
 
-            // Stored businessCategory wins; derive from businessType only as fallback.
             const businessCategory = needsBusinessCategoryResolution
-                ? resolveBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory)
+                ? resolveStoreBusinessCategory(effectiveBusinessType || '', effectiveBusinessCategory)
                 : undefined;
             if (needsBusinessCategoryResolution && businessCategory) {
                 data.businessCategory = businessCategory;
@@ -369,6 +380,7 @@ export const updateStore = async (data: any) => {
                     blocked: data.blocked ?? existingStore.blocked ?? false,
                     name: data.name ?? existingStore.name ?? '',
                     tenantName: data.tenantName ?? existingStore.tenantName ?? '',
+                    subdomain: data.subdomain ?? existingStore.subdomain,
                     isMaster: data.isMaster ?? existingStore.isMaster,
                     outletSlug: data.outletSlug ?? existingStore.outletSlug,
                     city: data.city ?? existingStore.city,
@@ -385,6 +397,21 @@ export const updateStore = async (data: any) => {
                 console.warn('Skipping syncStoreToSummary: tenantId is undefined for store', data.storeId);
             }
             // Skip sync if no summary-relevant fields present in update
+
+            const propagationSource = data.businessCategory !== undefined && effectiveBusinessType
+                ? { ...data, businessType: effectiveBusinessType }
+                : data;
+            const propagationChanges = hasPropagationFieldChanges
+                ? extractMasterStorePropagationChanges(propagationSource)
+                : null;
+            const isMasterStore = (data.isMaster ?? existingStore.isMaster) === true;
+            if (propagationChanges && isMasterStore && summaryTenantId && data.storeId) {
+                await propagateMasterStoreChangesToOutlets(
+                    Number(summaryTenantId),
+                    Number(data.storeId),
+                    propagationChanges,
+                );
+            }
 
             return data;
         },

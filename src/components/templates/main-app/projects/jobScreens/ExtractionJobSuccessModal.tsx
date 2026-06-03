@@ -1,6 +1,7 @@
 'use client';
 
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { Button, Flex, Modal, Progress, theme, Typography } from 'antd';
 import { LuCheckCircle, LuDollarSign, LuFileText, LuLayoutGrid, LuList } from 'react-icons/lu';
 
@@ -16,6 +17,7 @@ interface ExtractionStats {
     };
     categoriesCount?: number;
     itemsCount?: number;
+    profileHighlights?: OwnerDetectedDetail[];
 }
 
 interface ExtractionJobSuccessModalProps {
@@ -46,6 +48,7 @@ export default function ExtractionJobSuccessModal({
     const qualityDetails = extractionStats?.qualityDetails;
     const categoriesCount = extractionStats?.categoriesCount ?? 0;
     const itemsCount = extractionStats?.itemsCount ?? 0;
+    const profileHighlights = extractionStats?.profileHighlights || [];
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return token.colorSuccess;
@@ -128,6 +131,44 @@ export default function ExtractionJobSuccessModal({
                                         />
                                     </Flex>
                                 ))}
+                            </Flex>
+                        )}
+
+                        {profileHighlights.length > 0 && (
+                            <Flex vertical gap={8}>
+                                <Text strong>Details picked up</Text>
+                                <Flex gap={8} wrap="wrap">
+                                    {profileHighlights.map((detail) => (
+                                        <Flex
+                                            align="center"
+                                            gap={6}
+                                            key={detail.key}
+                                            style={{
+                                                background: token.colorBgContainer,
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 6,
+                                                padding: '6px 8px',
+                                            }}
+                                        >
+                                            {detail.color ? (
+                                                <span
+                                                    aria-hidden="true"
+                                                    style={{
+                                                        background: detail.color,
+                                                        border: '1px solid rgba(0,0,0,0.12)',
+                                                        borderRadius: 999,
+                                                        display: 'inline-block',
+                                                        height: 12,
+                                                        width: 12,
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <Text style={{ fontSize: 12 }}>
+                                                {detail.label}: {detail.value}
+                                            </Text>
+                                        </Flex>
+                                    ))}
+                                </Flex>
                             </Flex>
                         )}
                     </Flex>

@@ -23,6 +23,7 @@ import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLa
 
 interface GenerateDescriptionsSheetProps {
     businessType?: string;
+    businessCategory?: string;
     onClose: () => void;
     onSaved: (updatedProject: Project) => void;
     persistProject?: (updatedProject: Project) => Promise<Project | void>;
@@ -35,6 +36,7 @@ interface GenerateDescriptionsSheetProps {
 
 export default function GenerateDescriptionsSheet({
     businessType,
+    businessCategory,
     onClose,
     onSaved,
     persistProject,
@@ -50,16 +52,16 @@ export default function GenerateDescriptionsSheet({
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
     } as const;
-    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData, businessType));
-    const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(getProjectDescriptionTone(projectData, businessType));
+    const [contentLength, setContentLength] = useState<DescriptionContentLength>(getProjectDescriptionContentLength(projectData, businessType, businessCategory));
+    const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(getProjectDescriptionTone(projectData, businessType, businessCategory));
     const [isProcessing, setIsProcessing] = useState(false);
     const [processedCount, setProcessedCount] = useState(0);
     const [totalFiles, setTotalFiles] = useState(0);
 
     useEffect(() => {
-        setContentLength(getProjectDescriptionContentLength(projectData, businessType));
-        setDescriptionTone(getProjectDescriptionTone(projectData, businessType));
-    }, [businessType, projectData]);
+        setContentLength(getProjectDescriptionContentLength(projectData, businessType, businessCategory));
+        setDescriptionTone(getProjectDescriptionTone(projectData, businessType, businessCategory));
+    }, [businessType, businessCategory, projectData]);
 
     const governance = useMemo(() => (
         isMasterLinked && itemStates && !allowInheritedDescriptionOverride

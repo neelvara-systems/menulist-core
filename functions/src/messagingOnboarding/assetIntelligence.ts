@@ -14,6 +14,11 @@ import {
   normalizeMenuIntakeIdentityResult,
   RawMenuIntakeIdentityResult,
 } from "../sharedData/menuIntakeIdentity";
+import {
+  FALLBACK_BUSINESS_CATEGORY,
+  FALLBACK_BUSINESS_TYPE,
+  resolveStoreBusinessCategory,
+} from "../sharedData/businessTypes";
 import { AssetValidationResult, SessionUpload } from "../types/messagingOnboarding.types";
 
 const logger = functions.logger;
@@ -124,8 +129,8 @@ function fallbackValidationResult(uploads: SessionUpload[]): AssetValidationResu
       confidence: "low",
     },
     detected_business_type: {
-      business_type: "Restaurant",
-      business_category: "food",
+      business_type: FALLBACK_BUSINESS_TYPE,
+      business_category: FALLBACK_BUSINESS_CATEGORY,
       type_confidence: "low",
     },
   };
@@ -133,6 +138,12 @@ function fallbackValidationResult(uploads: SessionUpload[]): AssetValidationResu
 
 function toAssetValidationResult(raw: RawMenuIntakeIdentityResult, totalFiles: number): AssetValidationResult {
   const normalized = normalizeMenuIntakeIdentityResult(raw, totalFiles);
+  const resolvedBusinessType = normalized.identity.businessType || FALLBACK_BUSINESS_TYPE;
+  const resolvedBusinessCategory = resolveStoreBusinessCategory(
+    resolvedBusinessType,
+    normalized.identity.businessCategory || undefined,
+  );
+
   return {
     valid_menu_files: normalized.validation.validMenuFileIndexes,
     invalid_files: normalized.validation.invalidFileIndexes,
@@ -147,9 +158,9 @@ function toAssetValidationResult(raw: RawMenuIntakeIdentityResult, totalFiles: n
       confidence: normalized.identity.confidence,
     },
     detected_business_type: {
-      business_type: normalized.identity.businessType || "Restaurant",
-      business_category: normalized.identity.businessCategory || "food",
-      type_confidence: normalized.identity.confidence,
+      business_type: resolvedBusinessType,
+      business_category: resolvedBusinessCategory,
+      type_confidence: normalized.identity.businessType ? normalized.identity.confidence : "low",
     },
   };
 }

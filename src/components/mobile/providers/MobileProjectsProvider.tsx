@@ -95,12 +95,6 @@ export default function MobileProjectsProvider({
 
         const request = getProjectDataWithoutLoader(nextProjectId)
             .then((project) => {
-                console.log('[MobileDashboard][DAL] getProjectDataWithoutLoader response', {
-                    projectId: nextProjectId,
-                    response: project,
-                    storeId: sessionStoreId,
-                    tenantId: sessionTenantId,
-                });
                 const sanitizedProject = removeObjRef(project);
                 setProjectsById((prev) => ({
                     ...prev,
@@ -155,13 +149,6 @@ export default function MobileProjectsProvider({
             }
 
             const result = await getProjectsListWithoutLoader(true);
-            console.log('[MobileDashboard][DAL] getProjectsListWithoutLoader response', {
-                force: shouldForce,
-                preferredProjectId: options?.preferredProjectId || null,
-                response: result,
-                storeId,
-                tenantId: sessionTenantId,
-            });
             const summaries = (result?.projects || []) as ProjectSummary[];
             const resolvedProject = resolveMobileSelectedProject(
                 summaries,
@@ -278,21 +265,10 @@ export default function MobileProjectsProvider({
         setStoredMobileProjectId(nextProjectId, storeDetails?.storeId);
 
         try {
-            let selectedProjectData = nextProjectId ? projectsByIdRef.current[nextProjectId] || null : null;
             if (needsFetch) {
-                selectedProjectData = await loadProjectIntoCache(nextProjectId);
+                await loadProjectIntoCache(nextProjectId);
             }
 
-            if (!needsFetch && nextProjectId) {
-                selectedProjectData = projectsByIdRef.current[nextProjectId] || null;
-            }
-
-            if (nextProjectId) {
-                console.log('[MobileProjectSelect] Selected project', {
-                    projectSummary: resolvedProject || null,
-                    projectData: selectedProjectData,
-                });
-            }
         } finally {
             if (needsFetch) {
                 setIsLoading(false);

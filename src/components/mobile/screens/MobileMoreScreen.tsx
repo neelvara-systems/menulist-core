@@ -7,7 +7,6 @@ import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { logger } from '@lib/monitoring/logger';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
@@ -89,6 +88,7 @@ const MobileDigitalScreensScreen = dynamic(() => import('./MobileDigitalScreensS
 const MobileLocationsScreen = dynamic(() => import('./MobileLocationsScreen'), { ssr: false });
 const MobileUsersScreen = dynamic(() => import('./MobileUsersScreen'), { ssr: false });
 const MobileDashboardScreen = dynamic(() => import('./MobileDashboardScreen'), { ssr: false });
+const MobileMenuCardExportScreen = dynamic(() => import('../menu-card-export/MobileMenuCardExportScreen'), { ssr: false });
 const MobileTransactionsScreen = dynamic(() => import('./MobileTransactionsScreen'), { ssr: false });
 const MobileHelpScreen = dynamic(() => import('./MobileHelpScreen'), { ssr: false });
 const MobileFeedbackScreen = dynamic(() => import('./MobileFeedbackScreen'), { ssr: false });
@@ -156,6 +156,7 @@ export type MoreSubScreen =
     | 'locations'
     | 'users'
     | 'dashboard'
+    | 'printMenu'
     | 'feedback'
     | 'transactions'
     | 'help'
@@ -397,8 +398,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     };
 
     const openMenuCardExport = useCallback(() => {
-        window.location.href = buildMenuCardExportUrl(selectedProjectId);
-    }, [selectedProjectId]);
+        openSubScreen('printMenu');
+    }, []);
 
     const openOfficialPage = (backTarget: MoreSubScreen) => {
         setOfficialPageBackTarget(backTarget);
@@ -469,7 +470,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ];
 
     const businessPresenceItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'analyticsSettings', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['google analytics', 'search console', 'facebook pixel', 'tracking'], label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') }] : []),
+        ...(canManageStore ? [{ key: 'analyticsSettings', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['google analytics', 'search console', 'facebook pixel', 'tracking'], label: t('analyticsSettings'), description: t('analyticsSettingsDesc'), onClick: () => openSubScreen('analyticsSettings') }] : []),
         ...(canManageFeedback ? [{ key: 'feedbackSettings', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['feedback form', 'ask for name', 'ask for phone', 'comment form'], label: tBusiness('feedback'), description: t('feedbackSettingsDesc'), statusTag: feedbackTag, onClick: () => openSubScreen('feedbackSettings') }] : []),
         ...(FEATURE_FLAGS.ENABLE_POS_SYNC && canManageIntegrations ? [{ key: 'posSync', icon: <LuShield color={token.colorTextSecondary} size={20} />, keywords: ['external sync', 'connected systems', 'provider', 'pos', 'webhook', 'integration secret', 'menu sync'], label: tPosSync('title'), description: tPosSync('enablePosSyncDesc'), onClick: () => openSubScreen('posSync') }] : []),
     ];
@@ -537,7 +538,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'roles') return userPermissions?.canAssignRoles === true;
         if (screen === 'users') return userPermissions?.canManageUsers === true;
         if (screen === 'locations') return canManageLocations;
-        if (screen === 'dashboard' || screen === 'analyticsSettings') return canViewAnalytics;
+        if (screen === 'dashboard') return canViewAnalytics;
+        if (screen === 'analyticsSettings') return canManageStore;
         if (screen === 'feedback' || screen === 'feedbackSettings') return canManageFeedback;
         if (screen === 'designEditor') return canManageMenuDesign;
         if (screen === 'digitalScreens') return canManageDigitalScreens;
@@ -643,6 +645,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'locations') subScreenContent = <MobileLocationsScreen onBack={() => setSubScreen('main')} onOpenBilling={() => setSubScreen('billing')} />;
     else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
+    else if (subScreen === 'printMenu') subScreenContent = <MobileMenuCardExportScreen initialProjectId={selectedProjectId} onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'feedback') subScreenContent = <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'transactions') subScreenContent = <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'help') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;

@@ -15,6 +15,8 @@
  * @see __docs__/menu-kit/menu-kit_impl.md
  */
 
+import { MENU_LIST_ATTRIBUTION_TEXT } from './platformAttribution';
+
 export interface SurfaceStrings {
     /** "Open camera → point at QR" */
     cameraInstruction: string;
@@ -24,7 +26,7 @@ export interface SurfaceStrings {
     updatedOn: string;
     /** "Updated regularly" */
     updatedRegularly: string;
-    /** "Powered by MenuList" */
+    /** "Powered by MenuList | menulist.ai" */
     poweredBy: string;
     /** "WHERE TO PLACE YOUR QR CODE" */
     placementTitle: string;
@@ -62,7 +64,7 @@ const EN_STRINGS: SurfaceStrings = {
     orOpen: 'Or open:',
     updatedOn: 'Updated on:',
     updatedRegularly: 'Updated regularly',
-    poweredBy: 'Powered by MenuList',
+    poweredBy: MENU_LIST_ATTRIBUTION_TEXT,
     placementTitle: 'WHERE TO PLACE\nYOUR QR CODE',
     printSizes: 'PRINT SIZES',
     beforeOpening: 'BEFORE OPENING',
@@ -92,7 +94,7 @@ const HI_STRINGS: SurfaceStrings = {
     orOpen: '\u092f\u093e \u0916\u094b\u0932\u0947\u0902:',
     updatedOn: '\u0905\u092a\u0921\u0947\u091f:',
     updatedRegularly: '\u0928\u093f\u092f\u092e\u093f\u0924 \u0930\u0942\u092a \u0938\u0947 \u0905\u092a\u0921\u0947\u091f \u0939\u094b\u0924\u093e \u0939\u0948',
-    poweredBy: 'Powered by MenuList',
+    poweredBy: MENU_LIST_ATTRIBUTION_TEXT,
     placementTitle: 'QR \u0915\u094b\u0921 \u0915\u0939\u093e\u0901\n\u0930\u0916\u0947\u0902',
     printSizes: '\u092a\u094d\u0930\u093f\u0902\u091f \u0938\u093e\u0907\u091c\u093c',
     beforeOpening: '\u0916\u094b\u0932\u0928\u0947 \u0938\u0947 \u092a\u0939\u0932\u0947',

@@ -40,9 +40,6 @@ const { Content } = Layout;
 const DESKTOP_ONLY_ROUTE_PREFIXES: string[] = [];
 const DESKTOP_ONLY_ROUTES = [
     '/platform/test-sentry',
-    // Route-level Print Menu workflow launched from desktop and mobile entry points.
-    // Handheld devices bypass MobileShell so the route can render its dedicated mobile screen.
-    '/use-menulist/menu-card-export',
 ];
 
 export default function AntdLayoutWrapper(props: any) {

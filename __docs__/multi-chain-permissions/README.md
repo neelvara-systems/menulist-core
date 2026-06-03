@@ -98,7 +98,7 @@ User tries action (e.g., "Generate AI Image")
 | Local Content    | 3     | Local items, categories, projects                 |
 | Structural       | 1     | Project deactivation                              |
 | AI Features      | 3     | Menu extraction, descriptions, images             |
-| Branding         | 3     | Theme, brand identity, layout                     |
+| Branding         | 3     | Theme, brand identity, business classification, layout |
 | Language         | 1     | Add languages                                     |
 
 ---

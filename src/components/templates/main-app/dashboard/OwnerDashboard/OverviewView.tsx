@@ -13,16 +13,16 @@
  * - Expandable sections for detail
  */
 
-import { useOfferingLabels } from '@hook/useOfferingLabels';
 import {
     HistoricalWeek,
     OVERVIEW_GUARDRAILS,
     OverviewData,
 } from '@template/main-app/projects/types';
-import { Card, Col, Collapse, Empty, Progress, Row, Statistic, Tag, Typography, theme } from 'antd';
+import { Card, Col, Empty, Progress, Row, Tag, Typography, theme } from 'antd';
 import React from 'react';
-import { LuAlertTriangle, LuCalendar, LuCheckCircle, LuClock, LuEye, LuFlame, LuHistory, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuAlertTriangle, LuCheckCircle, LuClock, LuHistory, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
+import MenuAnalyticsDetailsCard from './MenuAnalyticsDetailsCard';
 import OwnerActionPlanCard from './OwnerActionPlanCard';
 
 const { Text, Title, Paragraph } = Typography;
@@ -34,17 +34,11 @@ interface OverviewViewProps {
 }
 
 const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot }) => {
-    const labels = useOfferingLabels();
     const { token } = useToken();
     const primaryTagStyle = {
         backgroundColor: token.colorPrimaryBg,
         borderColor: token.colorPrimaryBorder,
         color: token.colorPrimaryText,
-    };
-    const successTagStyle = {
-        backgroundColor: token.colorSuccessBg,
-        borderColor: token.colorSuccessBorder,
-        color: token.colorSuccessText,
     };
 
     if (!data) {
@@ -131,345 +125,6 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
             </div>
         );
     };
-
-    const renderActionSummary = (actions?: any) => {
-        if (!actions) return null;
-        const entries = Object.entries(actions).filter(([, count]) => Number(count) > 0);
-        if (entries.length === 0) return null;
-
-        return (
-            <Col span={24}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Customer Actions:</Text>
-                <div style={{ marginTop: 4 }}>
-                    {entries.map(([action, count]) => (
-                        <Tag key={action} style={{ marginBottom: 4 }}>
-                            {action} ({Number(count)})
-                        </Tag>
-                    ))}
-                </div>
-            </Col>
-        );
-    };
-
-    const renderDemandSummary = (terms?: any[], unavailableItems?: any[], zeroResultTerms?: any[]) => {
-        if ((!terms || terms.length === 0) && (!unavailableItems || unavailableItems.length === 0) && (!zeroResultTerms || zeroResultTerms.length === 0)) {
-            return null;
-        }
-
-        return (
-            <Col span={24}>
-                {terms?.length ? (
-                    <>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Top Searches:</Text>
-                        <div style={{ marginTop: 4, marginBottom: 8 }}>
-                            {terms.map((term) => (
-                                <Tag key={term.term} style={{ marginBottom: 4 }}>
-                                    {term.term} ({term.count})
-                                </Tag>
-                            ))}
-                        </div>
-                    </>
-                ) : null}
-                {zeroResultTerms?.length ? (
-                    <>
-                        <Text type="secondary" style={{ fontSize: 12 }}>No-result Terms:</Text>
-                        <div style={{ marginTop: 4, marginBottom: 8 }}>
-                            {zeroResultTerms.map((term) => (
-                                <Tag key={term.term} style={{ marginBottom: 4 }}>
-                                    {term.term} ({term.count})
-                                </Tag>
-                            ))}
-                        </div>
-                    </>
-                ) : null}
-                {unavailableItems?.length ? (
-                    <>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Unavailable Interest:</Text>
-                        <div style={{ marginTop: 4 }}>
-                            {unavailableItems.map((item) => (
-                                <Tag key={item.itemId} style={{ marginBottom: 4 }}>
-                                    {item.name || item.itemId} ({item.clicks})
-                                </Tag>
-                            ))}
-                        </div>
-                    </>
-                ) : null}
-            </Col>
-        );
-    };
-
-    const collapseItems = [
-        {
-            key: 'wtd',
-            label: (
-                <span>
-                    <LuZap style={{ marginRight: 8 }} />
-                    Last 7 Days
-                    {wtd && (
-                        <Tag style={{ ...primaryTagStyle, marginLeft: 8 }}>
-                            {wtd.metrics.menuVisits.toLocaleString()} scans
-                        </Tag>
-                    )}
-                </span>
-            ),
-            children: wtd ? (
-                <Row gutter={[16, 16]}>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title={labels.scansLabel}
-                            value={wtd.metrics.menuVisits}
-                            prefix={<LuEye />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Item Taps"
-                            value={wtd.metrics.itemClicks}
-                            prefix={<LuFlame />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Engaged Sessions"
-                            value={wtd.metrics.engagedSessionRate || 0}
-                            suffix="%"
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Action Rate"
-                            value={wtd.metrics.actionRate || 0}
-                            suffix="%"
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Suggestions Shown"
-                            value={wtd.metrics.smartPicksRendered}
-                            prefix={<LuZap />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Suggestions Selected"
-                            value={wtd.metrics.smartPicksClicks}
-                            prefix={<LuTrendingUp />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Searches"
-                            value={wtd.metrics.searches || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="No-result Searches"
-                            value={wtd.metrics.zeroResultSearches || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Customer Actions"
-                            value={wtd.metrics.menuActionClicks || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Unavailable Interest"
-                            value={wtd.metrics.unavailableItemTaps || 0}
-                        />
-                    </Col>
-                    {wtd.topItems && wtd.topItems.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Top Items:
-                            </Text>
-                            <div style={{ marginTop: 4 }}>
-                                {wtd.topItems.slice(0, OVERVIEW_GUARDRAILS.SHOW_TOP_ITEMS).map((item, idx) => (
-                                    <Tag key={item.itemId} style={{ marginBottom: 4 }}>
-                                        {idx + 1}. {item.name || item.itemId} ({item.clicks})
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {wtd.topCategories && wtd.topCategories.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Top Category:
-                            </Text>
-                            <div style={{ marginTop: 4 }}>
-                                {wtd.topCategories.slice(0, 3).map((category) => (
-                                    <Tag key={category.categoryId} style={{ marginBottom: 4 }}>
-                                        {category.name || category.categoryId} ({category.views} views, {category.clicks} taps)
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {wtd.topLanguages && wtd.topLanguages.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Top Languages:
-                            </Text>
-                            <div style={{ marginTop: 4 }}>
-                                {wtd.topLanguages.slice(0, 3).map((language) => (
-                                    <Tag key={language.language} style={{ marginBottom: 4 }}>
-                                        {language.label || language.language} ({language.menuSessions || language.menuViews} sessions/views)
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {wtd.topAttributeFilters && wtd.topAttributeFilters.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Top Filters:
-                            </Text>
-                            <div style={{ marginTop: 4 }}>
-                                {wtd.topAttributeFilters.slice(0, 3).map((filter) => (
-                                    <Tag key={filter.filterId} style={{ marginBottom: 4 }}>
-                                        {filter.label || filter.filterId} ({filter.interactions} intent, {filter.actionClicks} actions)
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {renderActionSummary(wtd.menuActions)}
-                    {renderDemandSummary(wtd.topSearchTerms, wtd.unavailableItems, wtd.topZeroResultSearchTerms)}
-                </Row>
-            ) : (
-                <Text type="secondary">No data for the last 7 days</Text>
-            ),
-        },
-        {
-            key: 'mtd',
-            label: (
-                <span>
-                    <LuCalendar style={{ marginRight: 8 }} />
-                    {mtd?.monthName || 'This Month'}
-                    {mtd && (
-                        <Tag style={{ ...successTagStyle, marginLeft: 8 }}>
-                            {mtd.metrics.menuVisits.toLocaleString()} scans ({mtd.daysWithData} days)
-                        </Tag>
-                    )}
-                </span>
-            ),
-            children: mtd ? (
-                <Row gutter={[16, 16]}>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Total Scans"
-                            value={mtd.metrics.menuVisits}
-                            prefix={<LuEye />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Daily Average"
-                            value={mtd.avgDailyScans}
-                            suffix="/ day"
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Active Days"
-                            value={mtd.daysWithData}
-                            suffix={`/ ${mtd.daysInMonth}`}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Item Taps"
-                            value={mtd.metrics.itemClicks}
-                            prefix={<LuFlame />}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Engaged Sessions"
-                            value={mtd.metrics.engagedSessionRate || 0}
-                            suffix="%"
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Action Rate"
-                            value={mtd.metrics.actionRate || 0}
-                            suffix="%"
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Searches"
-                            value={mtd.metrics.searches || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="No-result Searches"
-                            value={mtd.metrics.zeroResultSearches || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Customer Actions"
-                            value={mtd.metrics.menuActionClicks || 0}
-                        />
-                    </Col>
-                    <Col xs={12} sm={6}>
-                        <Statistic
-                            title="Unavailable Interest"
-                            value={mtd.metrics.unavailableItemTaps || 0}
-                        />
-                    </Col>
-                    {renderActionSummary(mtd.menuActions)}
-                    {mtd.topCategories && mtd.topCategories.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Top Category:</Text>
-                            <div style={{ marginTop: 4 }}>
-                                {mtd.topCategories.slice(0, 3).map((category) => (
-                                    <Tag key={category.categoryId} style={{ marginBottom: 4 }}>
-                                        {category.name || category.categoryId} ({category.views} views, {category.clicks} taps)
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {mtd.topLanguages && mtd.topLanguages.length > 0 && (
-                        <Col span={24}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Top Languages:</Text>
-                            <div style={{ marginTop: 4 }}>
-                                {mtd.topLanguages.slice(0, 3).map((language) => (
-                                    <Tag key={language.language} style={{ marginBottom: 4 }}>
-                                        {language.label || language.language} ({language.menuSessions || language.menuViews} sessions/views)
-                                    </Tag>
-                                ))}
-                            </div>
-                        </Col>
-                    )}
-                    {renderDemandSummary(mtd.topSearchTerms, mtd.unavailableItems, mtd.topZeroResultSearchTerms)}
-                </Row>
-            ) : (
-                <Text type="secondary">Month data will appear as days pass</Text>
-            ),
-        },
-        {
-            key: 'history',
-            label: (
-                <span>
-                    <LuHistory style={{ marginRight: 8 }} />
-                    Last 4 Weeks Comparison
-                </span>
-            ),
-            children: historicalWeeks && historicalWeeks.length > 0 ? (
-                renderHistoricalWeeksChart(historicalWeeks)
-            ) : (
-                <Text type="secondary">Historical data will appear after a few weeks</Text>
-            ),
-        },
-    ];
 
     return (
         <div className={styles.overviewView}>
@@ -574,17 +229,24 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                 </Card>
             )}
 
-            {/* Expandable Detail Sections */}
+            <MenuAnalyticsDetailsCard data={wtd} title="Last 7 Days Menu Details" />
+            <MenuAnalyticsDetailsCard data={mtd} title={`${mtd?.monthName || 'This Month'} Menu Details`} />
+
             <Card
                 className={styles.detailCard}
-                title="Detailed Breakdown"
+                title={(
+                    <span>
+                        <LuHistory style={{ marginRight: 8 }} />
+                        Last 4 Weeks Comparison
+                    </span>
+                )}
                 variant="borderless"
             >
-                <Collapse
-                    items={collapseItems}
-                    defaultActiveKey={['wtd']}
-                    ghost
-                />
+                {historicalWeeks && historicalWeeks.length > 0 ? (
+                    renderHistoricalWeeksChart(historicalWeeks)
+                ) : (
+                    <Text type="secondary">Historical data will appear after a few weeks</Text>
+                )}
             </Card>
         </div>
     );

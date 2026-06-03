@@ -186,7 +186,7 @@ Upload → Extract (run 1) → Preview → Owner sends new photos → Extract (r
 - Influence tone (OBP styling, extraction hints)
 - Pre-fill preview dropdown (owner can always correct)
 
-**Fallback chain:** AI detection → "Restaurant" / "food" (safe default)
+**Fallback chain:** AI detection → `Other` / best known category, defaulting to `specialty`
 
 ### INV-5: No Conversation Intelligence (NEVER)
 
@@ -451,10 +451,10 @@ interface MessagingOnboardingSession {
   detectedBusinessCategory: string | null; // e.g., "food", "service", "health" — from BUSINESS_CATEGORIES[].value
   typeConfidence: "high" | "medium" | "low" | null;
   typeSource: "ai" | "fallback" | "manual"; // How businessType was determined (INV-4)
-  // "ai" = detected by Asset Intelligence, "fallback" = default "Restaurant", "manual" = owner corrected on preview
+  // "ai" = detected by Asset Intelligence, "fallback" = default "Other", "manual" = owner corrected on preview
   // Shown on preview page as pre-filled editable dropdown. Owner can correct before publish.
   // On publish: stored as store.businessType + store.businessCategory (drives schema, prompts, OBP, defaults)
-  // Fallback: "Restaurant" / "food" if confidence=low or detection fails
+  // Fallback: "Other" plus the best known businessCategory, or "specialty" if category is unknown
 
   // Extraction
   extractionJobId: string | null; // menuImageProcessingJobs/{jobId}
@@ -880,8 +880,8 @@ const jobData: MenuImageProcessingJob = {
   })),
   targetLanguages: [{ code: "en", name: "English" }],
   action: "IMAGE_PROCESSING",
-  businessType: detectedBusinessType || "Restaurant",
-  businessCategory: detectedBusinessCategory || "food",
+  businessType: detectedBusinessType || "Other",
+  businessCategory: detectedBusinessCategory || "specialty",
   source: "MESSAGING_ONBOARDING",
   skipProjectSave: true,
   status: "pending",
@@ -937,7 +937,7 @@ Key functions reused:
 
 - `createDefaultRoles(storeId, email)` from `src/data/defaultRoles.ts`
 - `getDefaultTimeSlotPresets(businessType, tId, sId)` from `src/config/defaultTimeSlotPresets.ts`
-- `getBusinessCategory(businessType)` from `src/constants/common.ts`
+- `resolveStoreBusinessCategory(businessType, businessCategory)` from `src/constants/common.ts`
 - `getOwnerRoleId()` from `src/data/defaultRoles.ts`
 - platformSummary counter update pattern
 - storesSummary sync pattern
@@ -949,7 +949,7 @@ Key functions reused:
 ```typescript
 {
   name: businessName, // From preview (owner-edited)
-  businessType: session.detectedBusinessType || 'Restaurant', // AI-detected or owner-corrected on preview
+  businessType: session.detectedBusinessType || 'Other', // AI-detected or owner-corrected on preview
   businessIndustry: '', // Not applicable for messaging onboarding
   email: generatedEmail, // See §8.2.2 Email Handling
   active: true,
@@ -971,8 +971,8 @@ Key functions reused:
 ```typescript
 {
   name: `${businessName} - Main Store`,
-  businessType: session.detectedBusinessType || 'Restaurant', // AI-detected or owner-corrected
-  businessCategory: getBusinessCategory(session.detectedBusinessType || 'Restaurant') || 'food',
+  businessType: session.detectedBusinessType || 'Other', // AI-detected or owner-corrected
+  businessCategory: resolveStoreBusinessCategory(session.detectedBusinessType || 'Other', session.detectedBusinessCategory),
   businessIndustry: '',
   email: generatedEmail,
   active: true,
@@ -980,7 +980,7 @@ Key functions reused:
   tenantId: newTenantId,
   storeId: newStoreId,
   storeKey: storeName.toLowerCase().replaceAll(" ", "_"),
-  timeSlotPresets: getDefaultTimeSlotPresets(session.detectedBusinessType || 'Restaurant', newTenantId, newStoreId),
+  timeSlotPresets: getDefaultTimeSlotPresets(session.detectedBusinessType || 'Other', newTenantId, newStoreId, businessCategory),
   roles: createDefaultRoles(newStoreId, generatedEmail),
   isMaster: true, // First store is always master
   onboardingSource: 'MESSAGING_ONBOARDING', // Identifies messaging-onboarded stores (§17)
@@ -1300,7 +1300,7 @@ Return this exact JSON structure:
     "confidence": "high" | "medium" | "low"
   },
   "detected_business_type": {
-    "business_type": "Restaurant",
+    "business_type": "Restaurant or null",
     "business_category": "food",
     "type_confidence": "high" | "medium" | "low"
   }
@@ -1309,7 +1309,7 @@ Return this exact JSON structure:
 ALLOWED BUSINESS TYPES (choose ONLY from this list):
 ${JSON.stringify(BUSINESS_TYPES.map((bt) => ({ value: bt.value, category: bt.category })))}
 
-If unsure, use: { "business_type": "Restaurant", "business_category": "food", "type_confidence": "low" }
+If unsure about the specific type, use: { "business_type": null, "business_category": "food|service|retail|professional|creative|health|specialty", "type_confidence": "low" }. The system stores this as `Other` with the best known category.
 
 RULES:
 - Valid menu: contains item names AND prices OR service list
@@ -2046,8 +2046,8 @@ if (type_confidence === "high" || type_confidence === "medium") {
   session.typeConfidence = type_confidence;
 } else {
   // Low confidence or missing → safe fallback
-  session.detectedBusinessType = "Restaurant";
-  session.detectedBusinessCategory = "food";
+  session.detectedBusinessType = "Other";
+  session.detectedBusinessCategory = business_category || "specialty";
   session.typeConfidence = "low";
 }
 // Owner can correct on preview page (editable dropdown, pre-filled with detected value)
@@ -2057,11 +2057,11 @@ if (type_confidence === "high" || type_confidence === "medium") {
 
 | Function                                  | File                                   | What It Does                    |
 | ----------------------------------------- | -------------------------------------- | ------------------------------- |
-| `getDefaultTimeSlotPresets(businessType)` | `src/config/defaultTimeSlotPresets.ts` | Time slot defaults per category |
+| `getDefaultTimeSlotPresets(businessType, tId, sId, businessCategory)` | `src/config/defaultTimeSlotPresets.ts` | Time slot defaults per category |
 | `getBusinessCategory(businessType)`       | `src/constants/common.ts:297`          | Category lookup from type       |
 | `getSchemaType(businessType)`             | `src/lib/schema/index.ts:149`          | schema.org @type mapping        |
-| `getAvailabilityLabels(businessType)`     | `src/config/businessLabels.ts:74`      | UI labels per category          |
-| `getDecisionConfig(businessType)`         | `src/config/decisionBlocks.ts:246`     | Decision block config           |
+| `getAvailabilityLabels(businessType, businessCategory)` | `src/config/businessLabels.ts:74`      | UI labels per category          |
+| `getDecisionConfig(businessType, businessCategory)`     | `src/config/decisionBlocks.ts:246`     | Decision block config           |
 | `FILTER_ALLOWLIST[category]`              | `src/constants/common.ts:284`          | Menu filters per category       |
 
 **On publish:** `store.businessType = session.detectedBusinessType` (or owner-corrected value from preview page).
@@ -2091,9 +2091,9 @@ if (type_confidence === "high" || type_confidence === "medium") {
 
 **FIX APPLIED (Feb 17, 2026):** The inconsistency has been fixed in `create-subscription/route.ts:146-197`. Values are now swapped:
 
-- `store.businessType = businessIndustry || 'Restaurant'` (actual type from onboarding form)
+- `store.businessType = businessIndustry || 'Other'` (actual type from onboarding form, or canonical fallback)
 - `store.businessIndustry = userType` ('B2C'/'B2B' plan type)
-- `getDefaultTimeSlotPresets()` and `getBusinessCategory()` now receive the actual type
+- `getDefaultTimeSlotPresets()` and `resolveStoreBusinessCategory()` now receive the actual type and best known broad category
 - Migration script at `scripts/migrate-business-type-swap.ts` for existing stores
 - See `__docs__/business-type-data-model/README.md` for full tracking
 
@@ -2145,7 +2145,7 @@ const currency = COUNTRY_CURRENCY_MAP[inferredCountry] || {
 
 **Existing behavior:** `tenant.businessType = 'B2C'` or `'B2B'` (plan type, not business type).
 
-**Messaging onboarding:** We set `tenant.businessType = session.detectedBusinessType || 'Restaurant'` (actual business type).
+**Messaging onboarding:** We set `tenant.businessType = session.detectedBusinessType || 'Other'` (actual detected type when confident, canonical fallback otherwise).
 
 **Decision:** This is intentionally different. The tenant `businessType` field in the existing system is effectively unused for logic (only the store's `businessType` drives behavior). Storing the actual type is more useful long-term. Dashboard-onboarded tenants may have `'B2C'` — this is acceptable legacy.
 

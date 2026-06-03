@@ -32,7 +32,7 @@ MenuList must **NEVER** become: discovery platform, ranking system, review platf
 - Assumed schema.org was 0-10% → actually **~90%** (721 core schema lines, 18+ types)
 - Assumed geo coordinates missing → `store.geo: {lat, lng}` exists (`store.ts:252-255`)
 - Assumed priceRange missing → `store.priceRange` exists (`store.ts:258`)
-- Assumed no dietary tags → `item.tags: string[]` exists (`extractedData.types.ts:58`)
+- Assumed no dietary tags → `item.dietaryTags: string[]` exists with legacy `item.tags` fallback (`extractedData.types.ts`)
 - Assumed no sameAs → `buildSameAs()` fully implemented (`schema/index.ts:121-142`)
 
 ---
@@ -140,7 +140,7 @@ Tenant (tId: number)
 | Category → Item[] | `item.category === category.id` | ✅ `hasMenuItem` for food, `Offer.itemOffered` for non-food | `src/app/client/[[...slug]]/page.tsx` |
 | Item → Price | `item.price: string` | ✅ `offers.price` | `page.tsx:565-574` |
 | Item → Availability | `item.available: boolean` | ✅ `InStock/OutOfStock` | `page.tsx:570-572` |
-| Item → Dietary | `item.tags[]` | ✅ `suitableForDiet` | `page.tsx:575-577` |
+| Item → Dietary | `item.dietaryTags[]` with legacy `item.tags[]` fallback | ✅ `suitableForDiet` | `page.tsx` |
 | Store → Location | `store.geo`, address fields | ✅ `address` + `geo` | `schema/index.ts:61-86` |
 | Store → Hours | `store.workingHours` | ✅ `openingHoursSpecification` | `schema/index.ts:93-114` |
 | Store → Social | `store.socialMedia` | ✅ `sameAs` | `schema/index.ts:121-142` |

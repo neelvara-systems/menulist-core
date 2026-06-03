@@ -11,12 +11,14 @@
 
 import {
     downloadQrCode,
-    generateFeedbackQrCode,
+    generateBrandedFeedbackQrCode,
     getFeedbackUrl,
     getQrCodeFilename,
 } from '@lib/utils/feedbackQrCode';
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Flex, Modal, Spin, Typography, message, theme } from 'antd';
-import React, { useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -33,6 +35,8 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     storeName = 'store',
 }) => {
     const { token } = theme.useToken();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -43,7 +47,12 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
         if (!qrDataUrl) {
             setIsGenerating(true);
             try {
-                const dataUrl = await generateFeedbackQrCode(projectId);
+                const dataUrl = await generateBrandedFeedbackQrCode(projectId, {
+                    brandColor: storeBrandColor,
+                    logoUrl: (storeDetails as any)?.logo || undefined,
+                    storeName,
+                    activePlanType: (storeDetails as any)?.activePlanType,
+                });
                 setQrDataUrl(dataUrl);
             } catch (error) {
                 message.error('Failed to generate QR code');

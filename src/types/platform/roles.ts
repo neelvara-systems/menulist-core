@@ -39,7 +39,7 @@ export type RolePermissions = {
 
     // 🎨 Branding (Multi-outlet override control)
     canOverrideTheme?: boolean;        // Override colors, fonts
-    canOverrideBrandIdentity?: boolean; // Override logo, brand images
+    canOverrideBrandIdentity?: boolean; // Override brand identity and business classification
     canOverrideLayout?: boolean;       // Override UI layout
 
     // 🏗️ Content Control (Multi-outlet)

@@ -412,6 +412,7 @@ export interface ScreenStoreInfo {
     logoUrl?: string;
     menuQrUrl: string;
     currencySymbol?: string;
+    activePlanType?: string | null;
 }
 
 /**

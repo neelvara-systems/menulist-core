@@ -33,9 +33,9 @@ Both layers work together: a staff member can only do something if their role al
 
 - Menu Extraction, AI Descriptions, AI Images
 
-**Branding** — Visual identity controls:
+**Branding** — Visual identity and business classification controls:
 
-- Theme/Colors, Brand Identity, Layout
+- Theme/Colors, Brand Identity, Business Classification, Layout
 
 **Language** — Multi-language controls:
 
@@ -88,7 +88,7 @@ Both must be enabled for the feature to appear.
 
 - Start with the defaults — they're conservative and safe for most chains
 - Only enable AI image generation for stores that need it — it consumes credits
-- Keep branding locked unless an outlet has a genuinely different brand identity
+- Keep branding locked unless an outlet has a genuinely different brand identity or business classification
 - Use custom roles if the 3 default roles don't fit your team structure
 - **Keep "Availability Override" enabled** (the default) — if you disable it, your outlets can't mark items as sold out, which means customers might try to order unavailable items
 

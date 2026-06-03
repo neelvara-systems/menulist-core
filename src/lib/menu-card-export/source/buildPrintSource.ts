@@ -67,6 +67,12 @@ function resolveStoreBusinessCategory(store: any): string | undefined {
         || undefined;
 }
 
+function resolveStoreActivePlanType(store: any): string | null {
+    return store?.activePlanType
+        || store?.publicPresence?.activePlanType
+        || null;
+}
+
 function appendUnique(target: any[], seen: Set<string>, entries: any[]) {
     entries.forEach((entry, index) => {
         if (!entry) return;
@@ -136,6 +142,7 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
             catalogKind,
             offeringKind,
             publicMenuUrl: menuUrl,
+            activePlanType: resolveStoreActivePlanType(store),
             brandColor: brandTokens.accentColor,
             brandTokens,
         },

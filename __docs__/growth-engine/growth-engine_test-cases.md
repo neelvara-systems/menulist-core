@@ -210,23 +210,35 @@
 | --- | --- |
 | WhatsApp API send is requested without explicit opt-in proof | Blocked. |
 | Phone number came only from public listing, scraping, Google Places, Foursquare, or enrichment | WhatsApp API send is blocked. |
+| Public source provenance is used as the consent reason in WhatsApp copy or governance audit | Blocked; source context is not opt-in. |
+| 50-200 WhatsApp outreach experiment is created from public listing numbers without matching consent events | Blocked before dry-run approval. |
 | Consent exists for verification but template is marketing | Blocked. |
 | Consent text, source, timestamp, privacy version, or proof hash is missing | Blocked. |
 | Contact has STOP, unsubscribe, complaint, wrong-contact, invalid-number, or revoked-consent suppression | Pending WhatsApp work is cancelled or quarantined. |
 | Customer service window is closed and no approved template is selected | Blocked. |
 | Free-form WhatsApp message is attempted outside an open service window | Blocked. |
 | Template is pending, rejected, paused, disabled, wrong category, or low quality | Blocked or human review required by policy. |
+| Claim/Invite template says customers rely on or keep asking for the menu without evidence | Blocked by message guardrails. |
+| Claim/Invite template says the menu is official before owner confirmation or approved MenuList verification | Blocked by message guardrails. |
+| Follow-up is scheduled after opt-out, wrong-contact, complaint, low-quality template, or missing consent category | Follow-up is cancelled and suppression or incident state is updated. |
+| Follow-up cadence exceeds the approved experiment policy | Blocked or requires compliance review. |
 | Governance audit is missing before provider send | Provider send is blocked. |
 | Webhook signature validation fails | Event is rejected, incident/work item is created, and no state mutation happens. |
 | Duplicate webhook event arrives | Event processing is idempotent. |
 | WhatsApp sender identity is shared across unrelated tenants | Blocked. |
 | Sender identity changes in the same target conversation | Blocked unless incident-owner recovery exists. |
 | Pacing policy would exceed sender, template, recipient, country, or campaign limit | Send is held. |
+| Delivery failure rate exceeds 8% in the last 20 sends | Experiment pauses and source/number quality review work item is created. |
+| Opt-out rate exceeds 3% in the last 50 sends | Experiment pauses and copy/targeting/consent review work item is created. |
+| Any block/report signal appears in a tier of 50 or fewer sends | Affected variant pauses; other variant can continue only at reduced speed after review. |
+| Variant has zero non-opt-out engagement after first 20 delivered messages | Variant pauses and requires template/copy review before retry. |
+| Experiment winner is selected while safety thresholds are breached | Winner selection is blocked. |
 | Template or sender quality drops outside policy | Affected sends pause and work item is created. |
 | WhatsApp Flow collects hidden marketing consent or unapproved fields | Flow is blocked. |
 | WhatsApp Flow output writes public truth directly | Test fails; output can create candidate graph edges only until confirmation. |
 | AI writes unrestricted WhatsApp copy | Blocked; AI may fill approved variables only. |
 | Reply says HELP or HUMAN | Support handoff work item is created. |
+| Experiment dashboard reads raw phone numbers or raw reply text from summary docs | Test fails; dashboard must use masked/hash fields and response categories. |
 
 ## 7. Inbox And Classifier Tests
 

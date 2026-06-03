@@ -2,6 +2,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { LOGO_SMALL } from '@constant/common';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
+import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl, slugify } from '@lib/utils/slugify';
@@ -23,6 +25,7 @@ interface ShareModalProps {
     storeName?: string;
     storeDescription?: string;
     storeLogo?: string;
+    storeData?: Record<string, any>;
     // Multi-tenant domain settings
     subdomain?: string;       // e.g., "joespizza" → joespizza.menulist.ai
     customDomain?: string;    // e.g., "joespizza.com"
@@ -36,6 +39,9 @@ interface ShareModalProps {
     language?: string;
     languages?: string[];
     currency?: string;
+    currencyCode?: string;
+    businessCategory?: string;
+    brandColor?: string;
 }
 
 // Calculate color contrast ratio (WCAG formula)
@@ -69,6 +75,7 @@ function ShareModal({
     storeName = 'Your Menu',
     storeDescription,
     storeLogo,
+    storeData,
     subdomain,
     customDomain,
     items = [],
@@ -76,11 +83,16 @@ function ShareModal({
     language = 'en',
     languages = [],
     currency = '',
+    currencyCode,
     menuModifiedOn,
     businessType,
+    businessCategory,
+    brandColor,
 }: ShareModalProps) {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
+    const brandTokens = useMemo(() => resolveMenuKitBrandTokens(brandColor), [brandColor]);
+    const activePlanType = storeData?.activePlanType || storeData?.publicPresence?.activePlanType || null;
 
     // PDF freshness: Check if menu was modified since last PDF download
     const PDF_DOWNLOAD_KEY = `menulist_last_pdf_download_${projectId}`;
@@ -120,9 +132,14 @@ function ShareModal({
     const [copied, setCopied] = useState(false);
 
     // QR customization (hidden by default)
-    const [qrColor, setQrColor] = useState('#000000');
-    const [qrBgColor, setQrBgColor] = useState('#ffffff');
+    const [qrColor, setQrColor] = useState(brandTokens.qrDark);
+    const [qrBgColor, setQrBgColor] = useState(brandTokens.qrLight);
     const [showLogo, setShowLogo] = useState(true);
+
+    useEffect(() => {
+        setQrColor(brandTokens.qrDark);
+        setQrBgColor(brandTokens.qrLight);
+    }, [brandTokens.qrDark, brandTokens.qrLight]);
 
     // Auto-correct QR contrast if too low (impossibility-by-design)
     useEffect(() => {
@@ -144,17 +161,23 @@ function ShareModal({
         }
     };
 
-    const handleDownloadQR = () => {
-        const canvas = document.getElementById('share-qrcode')?.querySelector<HTMLCanvasElement>('canvas');
-        if (canvas) {
-            const url = canvas.toDataURL();
-            const a = document.createElement('a');
-            a.download = `${storeName.replace(/\s+/g, '-')}-qr.png`;
-            a.href = url;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+    const handleDownloadQR = async () => {
+        try {
+            const dataUrl = await generateBrandedQrCodeDataUrl(qrShareUrl, {
+                brandColor,
+                darkColor: qrColor,
+                footer: qrShareUrl.replace(/^https?:\/\//, ''),
+                lightColor: qrBgColor,
+                logoUrl: showLogo ? storeLogo : undefined,
+                storeName,
+                subtitle: `Scan to view ${labels.offeringLower}`,
+                title: 'Menu QR',
+                activePlanType,
+            });
+            downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
             message.success('QR code downloaded');
+        } catch {
+            message.error('Failed to download QR code');
         }
     };
 
@@ -227,6 +250,13 @@ function ShareModal({
                 language,
                 menuUrl: shareUrl,
                 currency,
+                currencyCode,
+                storeData,
+                logoUrl: storeLogo,
+                businessType,
+                businessCategory,
+                activePlanType,
+                brandColor,
                 showDescriptions: true,
                 items,
                 categories,
@@ -315,7 +345,7 @@ function ShareModal({
                                     errorLevel="H"
                                     color={qrColor}
                                     bgColor={qrBgColor}
-                                    icon={showLogo ? LOGO_SMALL : undefined}
+                                    icon={showLogo ? (storeLogo || LOGO_SMALL) : undefined}
                                     iconSize={showLogo ? 28 : undefined}
                                 />
                             </div>
@@ -433,6 +463,9 @@ function ShareModal({
                         logoUrl={storeLogo}
                         menuModifiedOn={menuModifiedOn}
                         businessType={businessType}
+                        businessCategory={businessCategory}
+                        brandColor={brandColor}
+                        activePlanType={activePlanType}
                     />
                 )}
 
