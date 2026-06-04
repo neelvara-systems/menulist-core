@@ -1,9 +1,10 @@
 'use client';
+import PhoneNumberInput from '@atoms/phoneNumberInput';
 import { BUSINESS_CATEGORIES, BUSINESS_TYPES, resolveStoreBusinessCategory } from '@constant/common';
 import { Card, Col, Divider, Form, Input, Row, Select, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, memo, useMemo } from 'react';
-import { LuBuilding2, LuMail, LuMapPin, LuPhoneCall } from 'react-icons/lu';
+import { LuBuilding2, LuMail, LuMapPin } from 'react-icons/lu';
 
 const { Title } = Typography;
 
@@ -109,12 +110,33 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                     </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
+                    <Form.Item name="countryCode" hidden>
+                        <Input type="hidden" />
+                    </Form.Item>
+                    <Form.Item name="dialCode" hidden>
+                        <Input type="hidden" />
+                    </Form.Item>
+                    <Form.Item name="phoneNumber" hidden>
+                        <Input type="hidden" />
+                    </Form.Item>
                     <Form.Item
-                        name="phoneNumber"
                         label={t('phoneNumber')}
                         rules={[{ message: t('phonePlaceholder') }]}
                     >
-                        <Input prefix={<LuPhoneCall />} placeholder={t('phonePlaceholder')} />
+                        <Form.Item noStyle shouldUpdate={(previous, current) => (
+                            previous.countryCode !== current.countryCode
+                            || previous.dialCode !== current.dialCode
+                            || previous.phoneNumber !== current.phoneNumber
+                        )}>
+                            {() => (
+                                <PhoneNumberInput
+                                    countryCode={form.getFieldValue('countryCode') || 'IN'}
+                                    dialCode={form.getFieldValue('dialCode') || ''}
+                                    phoneNumber={form.getFieldValue('phoneNumber') || ''}
+                                    onChange={(value) => form.setFieldsValue(value)}
+                                />
+                            )}
+                        </Form.Item>
                     </Form.Item>
                 </Col>
             </Row>

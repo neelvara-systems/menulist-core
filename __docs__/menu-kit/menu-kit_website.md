@@ -36,7 +36,7 @@ Table cards, counter stickers, social images, and a placement guide. Your name, 
 1. Open your menu project
 2. Click **Share**
 3. Click **Download Menu Kit**
-4. A ZIP file downloads with all 9 asset files inside
+4. A ZIP file downloads with all 10 asset files inside
 5. Print the table card and sticker at any local print shop
 6. Post the social images from your phone
 

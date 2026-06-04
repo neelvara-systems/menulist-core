@@ -45,6 +45,7 @@ export const STAFF_SCRIPT = 'Menu? Please scan the QR on the table or at the cou
  */
 export const MENU_KIT_UTM_SOURCES: Record<string, string> = {
     tableTent: 'table_tent',
+    singleTableCard: 'single_table_card',
     counterSticker: 'counter_sticker',
     entrancePoster: 'entrance_poster',
     deliveryBag: 'delivery_bag',
@@ -88,48 +89,55 @@ export function validateMenuUrl(url: string): string | null {
 }
 
 export function buildPrintInstructions(storeName: string): string {
-    return `MENU KIT — PRINT INSTRUCTIONS
+    return `MENU KIT - PRINT INSTRUCTIONS
 ${storeName}
 ${'='.repeat(40)}
 
 1. TABLE CARD
-   Size: A6 (105mm × 148mm)
+   Size: A5 landscape sheet, folds into two A6 portrait faces
    Material: 300 GSM card
    Finish: Matte recommended
    Quantity: 1 per table + 20% extra
-   Use: Place at center of each table
+   Use: Fold down the center and place upright at the center of each table
 
-2. COUNTER STICKER
-   Size: 80mm × 80mm
+2. SINGLE TABLE / COUNTER CARD
+   Size: A6 portrait (105mm x 148mm)
+   Material: 300 GSM card
+   Finish: Matte recommended
+   Quantity: 1 per table/counter stand + 20% extra
+   Use: Place flat in acrylic holders, counter stands, wall clips, or table stands
+
+3. COUNTER STICKER
+   Size: 80mm x 80mm
    Material: Vinyl sticker
    Finish: Matte preferred (avoids glare)
    Quantity: 1
    Use: Place near payment counter
 
-3. ENTRANCE POSTER
-   Size: A4 (210mm × 297mm)
+4. ENTRANCE POSTER
+   Size: A4 (210mm x 297mm)
    Material: 200–300 GSM card
    Finish: Matte recommended
    Quantity: 1
    Use: Place at restaurant entrance
 
-4. DELIVERY BAG STICKER
-   Size: 60mm × 60mm
+5. DELIVERY BAG STICKER
+   Size: 60mm x 60mm
    Material: Vinyl sticker
    Finish: Matte preferred
    Quantity: 1 roll (50–100 stickers)
    Use: Stick on delivery bags/boxes
 
-5. TAKEAWAY CARD
-   Size: 85mm × 55mm (business card)
+6. TAKEAWAY CARD
+   Size: 85mm x 55mm (business card)
    Material: 250–300 GSM card
    Finish: Matte recommended
    Quantity: 50–100 cards
    Use: Drop into takeaway bags/boxes
 
 TIPS:
-• Matte finish prevents reflection when scanning
-• Replace damaged QR cards immediately
-• Test QR from different tables before service
+- Matte finish prevents reflection when scanning
+- Replace damaged QR cards immediately
+- Test QR from different tables before service
 `;
 }

@@ -51,6 +51,17 @@ const MOBILE_OTHER_LINKS = [
     { label: 'Contact', href: '/contact' },
 ];
 
+const RESOURCE_MENU_LINKS = [
+    { label: 'Launch Checklist', href: '/resources/launch-support-checklist', icon: LuRocket },
+    { label: 'Pre-Onboarding Package', href: '/resources/pre-onboarding-source-package', icon: LuFileInput },
+    { label: 'Safe Page Context', href: '/resources/safe-page-context', icon: LuShieldCheck },
+    { label: 'Widget Verification', href: '/resources/widget-install-verification', icon: LuMessageSquare },
+    { label: 'Approved Answers', href: '/resources/approved-answers-before-fallback', icon: LuBookOpen },
+    { label: 'Hosted Help Setup', href: '/resources/hosted-help-setup', icon: LuHelpCircle },
+    { label: 'Runtime Safety', href: '/resources/support-runtime-safety', icon: LuZap },
+    { label: 'All Resources', href: '/resources', icon: LuLayoutDashboard },
+];
+
 const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/product': LuLayoutDashboard,
     '/product/launch-setup': LuRocket,
@@ -71,6 +82,13 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/install': LuDownload,
     '/pricing': LuCreditCard,
     '/resources': LuBookOpen,
+    '/resources/launch-support-checklist': LuRocket,
+    '/resources/pre-onboarding-source-package': LuFileInput,
+    '/resources/safe-page-context': LuShieldCheck,
+    '/resources/widget-install-verification': LuMessageSquare,
+    '/resources/approved-answers-before-fallback': LuBookOpen,
+    '/resources/hosted-help-setup': LuHelpCircle,
+    '/resources/support-runtime-safety': LuZap,
     '/comparisons': LuFileText,
     '/developers': LuFileText,
     '/pre-onboarding': LuFileInput,
@@ -96,6 +114,14 @@ function MegaMenuIcon({ icon: Icon }: { icon: IconType }) {
     return (
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200 transition-colors group-hover/menu-item:border-teal-200/20 group-hover/menu-item:bg-teal-300/[0.12] group-hover/menu-item:text-white">
             <Icon size={17} aria-hidden />
+        </span>
+    );
+}
+
+function CompactMenuIcon({ icon: Icon }: { icon: IconType }) {
+    return (
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#d6d6ef] transition-colors group-hover/menu-item:text-teal-200">
+            <Icon size={18} aria-hidden />
         </span>
     );
 }
@@ -289,11 +315,64 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 </div>
                             </div>
                         </div>
-                        {NAV_LINKS.filter((link) => link.href !== '/product').map((link) => (
-                            <L key={link.href} href={link.href} className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">
-                                {link.label}
-                            </L>
-                        ))}
+                        {NAV_LINKS.filter((link) => link.href !== '/product').map((link) => {
+                            if (link.href !== '/resources') {
+                                return (
+                                    <L key={link.href} href={link.href} className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">
+                                        {link.label}
+                                    </L>
+                                );
+                            }
+
+                            return (
+                                <div key={link.href} className="group/resources relative flex h-16 items-center">
+                                    <L
+                                        href="/resources"
+                                        className="inline-flex h-16 items-center gap-1 text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white focus:outline-none focus-visible:text-white"
+                                    >
+                                        Resources
+                                        <LuChevronDown size={14} className="transition group-hover/resources:rotate-180 group-focus-within/resources:rotate-180" aria-hidden />
+                                    </L>
+
+                                    <div
+                                        className="
+                                            absolute left-1/2 top-full z-[80] w-[min(44rem,calc(100vw-3rem))]
+                                            -translate-x-1/2 pt-3
+                                            origin-top scale-95 opacity-0
+                                            invisible translate-y-2
+                                            transition-all duration-200 ease-out
+                                            pointer-events-none
+                                            group-hover/resources:visible
+                                            group-hover/resources:translate-y-0
+                                            group-hover/resources:scale-100
+                                            group-hover/resources:opacity-100
+                                            group-hover/resources:pointer-events-auto
+                                            group-focus-within/resources:visible
+                                            group-focus-within/resources:translate-y-0
+                                            group-focus-within/resources:scale-100
+                                            group-focus-within/resources:opacity-100
+                                            group-focus-within/resources:pointer-events-auto
+                                            motion-safe:transition-all
+                                        "
+                                    >
+                                        <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-6 shadow-2xl shadow-black/50">
+                                            <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                                                {RESOURCE_MENU_LINKS.map((resourceLink) => (
+                                                    <L
+                                                        key={resourceLink.href}
+                                                        href={resourceLink.href}
+                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-base font-medium text-[#d6d6ef] transition hover:bg-white/[0.035] hover:text-white"
+                                                    >
+                                                        <CompactMenuIcon icon={resourceLink.icon} />
+                                                        <span>{resourceLink.label}</span>
+                                                    </L>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </nav>
 
                     <div className="hidden items-center gap-3 md:flex">

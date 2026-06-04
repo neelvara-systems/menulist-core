@@ -123,6 +123,7 @@ type DownloadAssetKey =
     | 'menu_pdf'
     | 'menu_kit'
     | 'table_tent'
+    | 'single_table_card'
     | 'counter_sticker'
     | 'entrance_poster'
     | 'feedback_qr'
@@ -964,6 +965,14 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     loading={generatingDownload === 'table_tent'}
                                     onClick={() => void handleMenuKitAsset('table_tent', 0, t('tableTent'))}
                                     title={t('tableTent')}
+                                />
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('singleTableCardDesc')}
+                                    icon={<LuQrCode size={18} />}
+                                    loading={generatingDownload === 'single_table_card'}
+                                    onClick={() => void handleMenuKitAsset('single_table_card', 9, t('singleTableCard'))}
+                                    title={t('singleTableCard')}
                                 />
                                 <DownloadTile
                                     compact={isCompactHandheld}

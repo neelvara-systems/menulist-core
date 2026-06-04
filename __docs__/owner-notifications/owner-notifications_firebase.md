@@ -124,6 +124,8 @@ Estimated Firestore operations: 2-3 reads, 3-4 writes.
 
 ### Happy path email + WhatsApp
 
+WhatsApp delivery hashes the canonical international recipient digits, not the owner-entered local display number. This keeps rate limits and delivery rows stable when the same phone is stored as `phone`, `phoneNumber` + `dialCode`, notification settings WhatsApp number, or an explicit manual recipient hint.
+
 | Operation | Count |
 | --- | ---: |
 | Event write | 1 |

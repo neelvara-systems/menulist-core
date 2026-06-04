@@ -6,6 +6,34 @@
 
 ---
 
+## June 4, 2026 — Print Menu Surfaces Feature Split
+
+### Changed
+
+- **Print Menu Surfaces now owns tabletop print layouts** - Table tents are treated as physical scan-first menu objects, separate from full menu PDFs and social Menu Kit images.
+- **Table tent output now prints as an A5 fold file** - The bundled table tent is generated as `{StoreName}_TableTent_A5_Fold.pdf`, with two A6 portrait faces, one rotated for opposite-side table viewing.
+- **Table tent visual contract finalized** - The output now follows the established card view with a brand-color top band, floating white rounded card, centered scan-safe QR, short link, and MenuList footer for non-Premium stores.
+- **Single table/counter card added** - Menu Kit now also includes `{StoreName}_SingleTableCard_A6.pdf`, a normal upright A6 card for acrylic holders, counter stands, wall clips, and single-sided table stands.
+- **Menu Kit consumes the physical renderer** - Menu Kit still bundles the table tent, but the renderer now lives under `src/lib/print-menu-surfaces/` and the old Menu Kit table tent file is only a compatibility wrapper.
+- **Mobile and desktop keep one output source** - Desktop Use MenuList and mobile Share continue to use `generateMenuKit()`, so owners get the same table-tent PDF from both entry points.
+
+### Cost
+
+- **No Firebase cost change** - Print Menu Surfaces generates the table-tent PDF locally with Canvas/jsPDF/qrcode from already-loaded store/logo/color/plan context. It adds no Firestore reads/writes, no generated Storage uploads, no Cloud Functions, no rules, and no indexes.
+
+## June 4, 2026 — QR Output Visual Quality
+
+### Changed
+
+- **QR downloads now keep dark scan modules** - Menu Kit, Use MenuList QR cards, feedback QR cards, social/status cards, and active legacy physical cards now default to near-black QR modules instead of tinting the QR with the business accent color.
+- **Brand color now frames the asset** - Store/OBP accent color is used for gradient backgrounds, accent panels, borders, and labels so outputs feel branded without weakening QR readability.
+- **Social QR images now contain long names** - Instagram Story and WhatsApp Status outputs use fitted text inside a contained card layout instead of fixed oversized headings that can cross layout boundaries.
+- **Entrance poster got the same premium treatment** - The A4 entrance poster now uses a branded gradient header, white content sheet, controlled type, and a dark QR on a white scan panel.
+
+### Cost
+
+- **No Firebase cost change** - The visual treatment is generated locally in Canvas/jsPDF from already-loaded store logo, brand color, and plan context. It adds no Firestore reads/writes, no Cloud Functions, and no generated Storage uploads.
+
 ## June 3, 2026 — Premium QR And Print Output Parity
 
 ### Changed

@@ -45,6 +45,7 @@ Every major SaaS platform (Shopify, Square, Toast, Clover) uses globally unique 
 | R3   | One user can belong to MULTIPLE stores within that tenant (stores[] array)                  |
 | R4   | Firebase Auth creation is required for login — server-side via Admin SDK                    |
 | R4a  | Staff can have email, Staff ID, and phone aliases at the same time; all aliases resolve to one Firebase Auth account |
+| R4c  | Staff IDs are displayed with `S-` prefix while `loginUsername` stays canonical digits for backward-compatible auth lookup |
 | R4b  | Owner-triggered staff reset creates a one-time temporary passcode; staff self-service reset remains email-based |
 | R5   | Adding existing staff to another store (same tenant) = update stores[], not create new user |
 | R6   | Adding email that exists at a DIFFERENT tenant = reject with clear error                    |
@@ -58,7 +59,7 @@ Owner clicks "Add Staff" →
      a. YES, same tenant → add store to their stores[] array → return { mode: 'existing' }
      b. YES, different tenant → reject 409 "Email belongs to another business"
      c. NO → create Firebase Auth user + Firestore user doc → return { mode: 'new' }
-  3. Server creates or keeps Staff ID alias (`staffLoginId` / `loginUsername`) for the user
+  3. Server creates or keeps Staff ID alias (`staffLoginId` display value such as `S-8812345678`, plus canonical `loginUsername` digits) for the user
   4. If email is missing, server creates an internal Firebase Auth email and returns Staff ID + one-time passcode
   5. If email is present, email staff receives a password setup email
   6. UI updates user list based on response mode

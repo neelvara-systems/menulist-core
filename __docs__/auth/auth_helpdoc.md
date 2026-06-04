@@ -1,39 +1,50 @@
 # Authentication — Help Documentation
 
-**Last Updated:** February 19, 2026
+**Last Updated:** June 3, 2026
 
 ## Quick Summary
 
-MenuList supports three ways to sign in: **Google Sign-In**, **email + password**, and **Staff ID + passcode** for staff who do not have their own email.
+MenuList supports four ways to sign in: **WhatsApp phone code**, **Google Sign-In**, **email + password**, and **Staff ID + passcode** for staff who do not have their own email.
 
 ---
 
 ## How-To Guides
 
+### How to sign in with WhatsApp phone code
+
+1. Go to **menulist.ai**
+2. Click **Sign In**
+3. Enter your WhatsApp phone number in the email, phone, or staff ID field
+4. Click **Send WhatsApp code**
+5. Enter the one-time code sent to WhatsApp
+6. You're signed in
+
 ### How to sign in with Google
 
 1. Go to **menulist.ai**
 2. Click **Sign In**
-3. Click **Continue with Google**
+3. Choose the Google option
 4. Select your Google account
-5. You're signed in!
+5. You're signed in
 
 ### How to sign in with email and password
 
 1. Go to **menulist.ai** and click **Sign In**
-2. Enter your email and password
-3. Click **Log in**
+2. Enter your email
+3. Enter your password
+4. Click **Log in**
 
-### How to sign in with WhatsApp number
+### How to sign in with WhatsApp number and passcode
 
 1. Go to **menulist.ai** and click **Sign In**
 2. Enter the WhatsApp number used during onboarding
-3. Enter the passcode you chose
-4. Click **Log in**
+3. Click **Use passcode instead**
+4. Enter the passcode you chose
+5. Click **Log in**
 
 ### How to sign in with Staff ID
 
-1. Ask the owner for your Staff ID and passcode
+1. Ask the owner for your Staff ID and passcode. Staff IDs look like `S-8812345678`.
 2. Go to **menulist.ai** and click **Sign In**
 3. Enter the Staff ID in the first field
 4. Enter the passcode in the password field
@@ -114,7 +125,7 @@ If you received a link from WhatsApp to claim your digital menu:
 
 ### I am a staff member and just got added
 
-If the owner gave you a Staff ID and passcode, use those on the MenuList sign-in page.
+If the owner gave you a Staff ID and passcode, use those on the MenuList sign-in page. Staff IDs usually start with `S-`.
 
 If the owner gave you only a phone number and passcode, enter the phone number in the first field.
 

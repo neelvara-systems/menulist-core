@@ -80,6 +80,35 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Phone OTP Auth - WhatsApp code delivery.
+     * Used by: POST /api/auth/phone-otp/start
+     *
+     * Why 3/15min:
+     * - WhatsApp OTP is a paid outbound operation.
+     * - Normal owners need one send and sometimes one resend.
+     * - IP and phone-hash keys are both applied by the route.
+     */
+    AUTH_PHONE_OTP_SEND: {
+        limit: 3,
+        window: 900,
+        description: 'Phone OTP send - 3 per 15 minutes per IP/phone'
+    },
+
+    /**
+     * Phone OTP Auth - code verification attempts.
+     * Used by: POST /api/auth/phone-otp/verify
+     *
+     * Why 5/10min:
+     * - A six-digit OTP has enough entropy only when attempts stay bounded.
+     * - Challenge documents also enforce per-challenge maxAttempts.
+     */
+    AUTH_PHONE_OTP_VERIFY: {
+        limit: 5,
+        window: 600,
+        description: 'Phone OTP verify - 5 per 10 minutes per IP/challenge'
+    },
+
+    /**
      * File Operations - Expensive
      * Used by: File upload, image processing
      */

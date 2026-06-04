@@ -24,11 +24,13 @@ import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotif
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
 import { resolveTemplate } from '../messaging/templates';
 import { SendMessagePayload } from '../messaging/types';
+import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
 
 const logger = functions.logger;
 const MAX_PER_RECIPIENT_PER_DAY = 20;
 const MAX_PER_STORE_PER_DAY = 10;
 const FLAG_CACHE_TTL = 60_000;
+const GRAPH_API_VERSION = 'v21.0';
 
 type EventStatus = 'pending' | 'processing' | 'delivered' | 'partial' | 'failed' | 'skipped';
 
@@ -111,10 +113,28 @@ function isValidEmail(value?: string): value is string {
   return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
 }
 
-function cleanPhone(value?: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const phone = value.replace(/[^\d+]/g, '');
-  return phone.length >= 8 ? phone : undefined;
+function cleanString(value?: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function cleanPhone(value?: unknown, context?: Record<string, any> | null): string | undefined {
+  const raw = cleanString(value);
+  if (!raw) return undefined;
+  const phone = buildWhatsAppPhoneParam({
+    countryCode: cleanString(context?.countryCode),
+    dialCode: cleanString(context?.dialCode),
+    phone: raw,
+    phoneNumber: raw,
+  });
+  return phone.length >= 10 && phone.length <= 15 ? phone : undefined;
+}
+
+function resolveFirstPhone(context: Record<string, any> | null | undefined, ...values: unknown[]): string | undefined {
+  for (const value of values) {
+    const phone = cleanPhone(value, context);
+    if (phone) return phone;
+  }
+  return undefined;
 }
 
 function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
@@ -142,6 +162,25 @@ function sanitizeForFirestore(value: any): any {
   return value;
 }
 
+function htmlToPlainText(html: string, fallback: string): string {
+  const text = String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+  return text || fallback;
+}
+
 async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo | null> {
   const storeDoc = await db
     .collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)
@@ -151,12 +190,26 @@ async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo
   const data = storeDoc.exists ? storeDoc.data() || {} : {};
   const settings = data.notificationSettings || {};
   const primaryEmail = settings.primaryEmail || data.contactPersonEmail || data.email || event.recipientHints?.email;
+  const phoneContext = {
+    countryCode: data.countryCode || settings.countryCode,
+    dialCode: data.dialCode || settings.dialCode,
+    phone: data.phone,
+    phoneNumber: data.phoneNumber,
+  };
 
   return {
     email: isValidEmail(primaryEmail) ? primaryEmail.trim() : undefined,
     billingEmail: isValidEmail(settings.billingEmail) ? settings.billingEmail.trim() : undefined,
     storeName: event.recipientHints?.name || data.name || data.businessName || 'Your Business',
-    whatsappNumber: cleanPhone(settings.whatsappNumber || data.ownerWhatsappNumber || data.whatsappNumber || event.recipientHints?.whatsappNumber),
+    whatsappNumber: resolveFirstPhone(
+      phoneContext,
+      settings.whatsappNumber,
+      data.ownerWhatsappNumber,
+      data.whatsappNumber,
+      event.recipientHints?.whatsappNumber,
+      data.phone,
+      data.phoneNumber,
+    ),
     whatsappConsent: hasWhatsAppConsent(settings),
     formattingSource: data,
   };
@@ -325,8 +378,83 @@ async function writeDelivery(params: {
     }), { merge: true });
 }
 
-async function sendWhatsApp(): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
-  return { success: false, error: 'whatsapp_not_configured' };
+async function sendWhatsApp(params: {
+  to: string;
+  text: string;
+  metadata: Record<string, any>;
+}): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!phoneNumberId || !accessToken) return { success: false, error: 'whatsapp_not_configured' };
+
+  const to = buildWhatsAppPhoneParam({ phoneNumber: params.to });
+  if (to.length < 10 || to.length > 15) return { success: false, error: 'whatsapp_recipient_missing' };
+
+  const templateName = typeof params.metadata.whatsappTemplateName === 'string'
+    ? params.metadata.whatsappTemplateName
+    : undefined;
+  const templateLanguage = typeof params.metadata.whatsappTemplateLanguage === 'string'
+    ? params.metadata.whatsappTemplateLanguage
+    : 'en';
+  const templateParameters = Array.isArray(params.metadata.whatsappTemplateParameters)
+    ? params.metadata.whatsappTemplateParameters.map(String)
+    : undefined;
+  const sessionActive = params.metadata.whatsappSessionActive === true;
+
+  const body = templateName
+    ? {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: templateLanguage },
+        ...(templateParameters?.length
+          ? {
+            components: [{
+              type: 'body',
+              parameters: templateParameters.map((text) => ({ type: 'text', text })),
+            }],
+          }
+          : {}),
+      },
+    }
+    : sessionActive
+      ? {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: params.text },
+      }
+      : null;
+
+  if (!body) return { success: false, error: 'whatsapp_template_or_session_required' };
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const responseText = await response.text();
+    if (!response.ok) {
+      return { success: false, error: `WhatsApp send failed: ${response.status} ${responseText.slice(0, 180)}` };
+    }
+
+    let providerMessageId: string | undefined;
+    try {
+      const parsed = JSON.parse(responseText);
+      providerMessageId = parsed?.messages?.[0]?.id;
+    } catch {
+      providerMessageId = undefined;
+    }
+    return { success: true, providerMessageId };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'unknown_whatsapp_error' };
+  }
 }
 
 function getDedupeKey(payload: SendMessagePayload): string {
@@ -477,7 +605,11 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
 
       const result = channel === 'email'
         ? await sendEmailViaSMTP({ to: recipientValue, subject: template.subject, html: template.html })
-        : await sendWhatsApp();
+        : await sendWhatsApp({
+          to: recipientValue,
+          text: htmlToPlainText(template.html, template.subject),
+          metadata: event.metadata,
+        });
 
       if (result.success) sent++;
       else failed++;

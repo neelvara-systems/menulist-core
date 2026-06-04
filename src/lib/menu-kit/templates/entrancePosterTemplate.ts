@@ -10,7 +10,7 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
+import { resolveMenuKitBrandTokens, type RgbColor } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
 import {
@@ -22,6 +22,30 @@ import { resolveMenuListAttributionPolicy } from '../../platform/menuListBrandin
 import { MenuKitInput } from '../types';
 
 type PosterInput = MenuKitInput & { _logo?: PreloadedLogo | null };
+
+function drawPdfVerticalGradient(
+    doc: jsPDF,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    from: RgbColor,
+    to: RgbColor,
+    steps = 32,
+): void {
+    const stripeH = height / steps;
+
+    for (let i = 0; i < steps; i += 1) {
+        const t = steps <= 1 ? 0 : i / (steps - 1);
+        const color: RgbColor = [
+            Math.round(from[0] + (to[0] - from[0]) * t),
+            Math.round(from[1] + (to[1] - from[1]) * t),
+            Math.round(from[2] + (to[2] - from[2]) * t),
+        ];
+        doc.setFillColor(...color);
+        doc.rect(x, y + stripeH * i, width, stripeH + 0.2, 'F');
+    }
+}
 
 export async function generateEntrancePoster(input: PosterInput): Promise<Blob> {
     const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, businessCategory, _logo } = input;
@@ -42,25 +66,26 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     // Premium paper background
     doc.setFillColor(...brand.paperRgb);
     doc.rect(0, 0, W, H, 'F');
+    drawPdfVerticalGradient(doc, 0, 0, W, 94, brand.gradientFromRgb, brand.gradientToRgb);
 
-    // Brand border
+    // Premium content sheet
+    doc.setFillColor(...brand.surfaceRgb);
     doc.setDrawColor(...brand.borderRgb);
-    doc.setLineWidth(0.5);
-    doc.rect(10, 10, W - 20, H - 20);
-
+    doc.setLineWidth(0.45);
+    doc.roundedRect(14, 22, W - 28, 244, 6, 6, 'FD');
     doc.setFillColor(...brand.softAccentRgb);
-    doc.roundedRect(20, 26, W - 40, 42, 4, 4, 'F');
+    doc.roundedRect(28, 34, W - 56, 32, 4, 4, 'F');
 
     // Heading — "OUR MENU" / "OUR SERVICES" etc.
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(36);
+    doc.setFontSize(30);
     doc.setTextColor(...brand.accentRgb);
-    doc.text(`OUR ${labels.offeringUpper}`, W / 2, 50, { align: 'center' });
+    doc.text(`OUR ${labels.offeringUpper}`, W / 2, 54, { align: 'center' });
 
     // Decorative line
     doc.setDrawColor(...brand.accentRgb);
-    doc.setLineWidth(0.8);
-    doc.line(W / 2 - 40, 58, W / 2 + 40, 58);
+    doc.setLineWidth(0.6);
+    doc.line(W / 2 - 34, 63, W / 2 + 34, 63);
 
     // QR Code — large, centered (80mm for entrance scanning distance)
     const qrDataUrl = await QRCode.toDataURL(menuUrl, {
@@ -72,7 +97,7 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
 
     const qrSize = 80;
     const qrX = (W - qrSize) / 2;
-    const qrY = 72;
+    const qrY = 82;
     doc.setFillColor(...brand.surfaceRgb);
     doc.setDrawColor(...brand.borderRgb);
     doc.roundedRect(qrX - 7, qrY - 7, qrSize + 14, qrSize + 14, 4, 4, 'FD');
@@ -80,35 +105,35 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
 
     // "Scan to view menu" — medium
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(18);
+    doc.setFontSize(17);
     doc.setTextColor(...brand.textRgb);
-    doc.text(`Scan to view ${labels.offeringLower}`, W / 2, 168, { align: 'center' });
+    doc.text(`Scan to view ${labels.offeringLower}`, W / 2, 181, { align: 'center' });
 
-    // "Open camera → point at QR" — instruction line
-    doc.setFontSize(12);
-    doc.setTextColor(...brand.mutedRgb);
-    doc.text('Open camera \u2192 point at QR', W / 2, 180, { align: 'center' });
-
-    // Short link fallback
+    // Instruction line
     doc.setFontSize(11);
     doc.setTextColor(...brand.mutedRgb);
-    doc.text(`Or open: ${shortLink}`, W / 2, 194, { align: 'center' });
+    doc.text('Open camera and point at QR', W / 2, 193, { align: 'center' });
+
+    // Short link fallback
+    doc.setFontSize(9.5);
+    doc.setTextColor(...brand.mutedRgb);
+    doc.text(`Or open: ${shortLink}`, W / 2, 205, { align: 'center', maxWidth: W - 44 });
 
     // Logo — centered, above store name (if available)
-    let storeNameY = 220;
+    let storeNameY = 229;
     if (logo) {
-        const maxLogoH = 18; // mm
-        const maxLogoW = 40; // mm
+        const maxLogoH = 15; // mm
+        const maxLogoW = 36; // mm
         const scale = Math.min(maxLogoW / (logo.width || 1), maxLogoH / (logo.height || 1), 1);
         const lw = (logo.width || 40) * scale;
         const lh = (logo.height || 18) * scale;
-        doc.addImage(logo.dataUrl, 'PNG', W / 2 - lw / 2, 206, lw, lh);
-        storeNameY = 206 + lh + 6;
+        doc.addImage(logo.dataUrl, 'PNG', W / 2 - lw / 2, 216, lw, lh);
+        storeNameY = 216 + lh + 6;
     }
 
     // Store name — large, centered
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
+    doc.setFontSize(19);
     doc.setTextColor(...brand.textRgb);
     doc.text(storeName, W / 2, storeNameY, { align: 'center', maxWidth: W - 40 });
 
@@ -122,7 +147,7 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(...brand.mutedRgb);
-        doc.text(`Updated on: ${dateStr}`, W / 2, 240, { align: 'center' });
+        doc.text(`Updated on: ${dateStr}`, W / 2, 252, { align: 'center' });
     }
 
     if (resolveMenuListAttributionPolicy({ activePlanType: input.activePlanType }).showAttribution) {

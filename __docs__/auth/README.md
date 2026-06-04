@@ -32,6 +32,7 @@ This folder contains the **complete authentication guide** split into manageable
 
 📖 **[firebase-auth-sync.md](./firebase-auth-sync.md)** - Firebase Auth sync pattern
 📖 **[login-source-tracking.md](../security/login-source-tracking.md)** - Security logging
+📖 **[phone-otp-auth](../phone-otp-auth/README.md)** - WhatsApp OTP auth, country-code handling, and canonical phone storage contract
 
 ---
 
@@ -51,6 +52,7 @@ This folder contains the **complete authentication guide** split into manageable
 | ------------------------ | ---------------------------------------------------------------- |
 | **Add OAuth provider**   | Part 1: NextAuth Deep Dive                                       |
 | **Fix Firebase sync**    | [firebase-auth-sync.md](./firebase-auth-sync.md)                 |
+| **Work on phone login**  | [phone-otp-auth](../phone-otp-auth/README.md)                    |
 | **Add security logging** | [login-source-tracking.md](../security/login-source-tracking.md) |
 | **Debug session issues** | Part 5: Token Management                                         |
 | **Implement logout**     | Part 4: Logout Flow                                              |
@@ -456,7 +458,7 @@ console.log("Claims:", tokenResult.claims);
 
 ### `POST /api/auth/create-staff`
 
-Compatibility route for staff creation. Current owner UI uses `POST /api/staff`, which creates a Firebase Auth user via Admin SDK. Staff receive a Staff ID alias. Staff with email also receive a Firebase password setup email; staff without email receive an owner-issued one-time temporary passcode.
+Compatibility route for staff creation. Current owner UI uses `POST /api/staff`, which creates a Firebase Auth user via Admin SDK. Staff receive a Staff ID alias displayed as `S-...`. Staff with email also receive a Firebase password setup email; staff without email receive an owner-issued one-time temporary passcode.
 
 - **Body:** `{ email?, name, tenantId, storeId }`
 - **Auth:** Requires active NextAuth session
@@ -464,11 +466,30 @@ Compatibility route for staff creation. Current owner UI uses `POST /api/staff`,
 
 ### `POST /api/staff/password-reset`
 
-Resets staff access for a staff member assigned to the current store. Owner reset creates a new one-time temporary passcode shown to the owner. Staff can use that passcode with email, Staff ID, or phone aliases on the same account.
+Resets staff access for a staff member assigned to the current store. Owner reset creates a new one-time temporary passcode shown to the owner. Staff can use that passcode with email, `S-...` Staff ID, or phone aliases on the same account.
 
 - **Body:** `{ userId, tenantId, storeId }`
 - **Auth:** Requires active NextAuth session with `canManageUsers`
 - **Returns:** `{ success, userId, passwordResetEmailSent?, staffLoginId?, temporaryPasscode? }`
+
+### `POST /api/auth/phone-otp/start`
+
+Starts WhatsApp phone OTP login for dashboard and `/create-menu`.
+
+- **Body:** `{ phone, purpose }`
+- **Auth:** Public endpoint; OTP is the proof
+- **Rate limit:** `AUTH_PHONE_OTP_SEND` by IP and phone hash
+- **Returns:** `{ success, challengeId, phoneMasked, expiresInSeconds, resendAfterSeconds }`
+
+### `POST /api/auth/phone-otp/verify`
+
+Verifies the OTP challenge and returns a short-lived one-time login token for the existing NextAuth credentials provider.
+
+- **Body:** `{ challengeId, code }`
+- **Auth:** Public endpoint; valid unexpired OTP is required
+- **Rate limit:** `AUTH_PHONE_OTP_VERIFY` by IP and challenge hash
+- **Returns:** `{ success, loginToken, phoneMasked, expiresInSeconds }`
+- **Follow-up:** Client calls `signIn('credentials', { phoneOtpLoginToken })`; dashboard Firebase sync continues through `/api/auth/set-claims`.
 
 ### `POST /api/auth/claim-account`
 

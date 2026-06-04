@@ -252,7 +252,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 1. **Dark theme** — Deep navy with verdigris/teal controls. Infrastructure-grade support knowledge visual direction without generic AI-product indigo.
 2. **Tailwind CSS** — Same build pipeline as rest of app. AnswerLattice `@tailwind` directives and scoped theme rules are root-loaded through `src/app/layout.tsx` so public routes do not depend on a nested CSS chunk.
-3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the mobile hamburger can open a right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
+3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the desktop Product and Resources dropdowns can stay CSS-driven while the mobile hamburger opens a right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **AnswerlatticeLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
@@ -265,6 +265,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-04 | Added a compact desktop Resources dropdown in the AnswerLattice public header, linking to the highest-priority resource articles and the resources hub without adding runtime or dashboard routes |
 | 2026-06-02 | Added a typed AnswerLattice public content module and ten explicit resource article routes with Article/FAQ structured data, resource analytics, sitemap registry coverage, LLM context, and verifier checks |
 | 2026-06-01 | Reworked the homepage from a setup-first story into a conversion-first story: clearer page-aware support-answer hero, inline sample workspace preview, new conversion proof band, earlier product proof/demo, Pre-Onboarding moved lower as a source-preparation accelerator, refreshed metadata, and final asset-preparation plan added |
 | 2026-06-01 | Extended the homepage conversion pattern across the rest of the public site: product, product-area, feature, SEO/use-case, setup, pricing, resources, proof, security, install, FAQ, contact, legal, and updates pages now expose compact proof strips, clearer CTAs, grouped FAQ scanning, and safer sample-state wording |

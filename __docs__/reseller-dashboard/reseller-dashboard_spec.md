@@ -214,7 +214,7 @@ Reseller enters:
 
 - **Business Name** (required, text)
 - **Business Type** (required, dropdown — uses existing `BUSINESS_TYPES` from `src/constants/common.ts`)
-- **Owner Phone** (required — for client's login/contact)
+- **Owner Phone** (required — country dropdown + local phone number for client's login/contact)
 - **Owner Email** (optional contact email — dashboard access is delivered through the claim link unless an existing unclaimed user is found)
 
 ### Step 2: Menu Upload

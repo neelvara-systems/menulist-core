@@ -26,6 +26,7 @@ import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
+import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import { StoreDataType } from '@type/platform/store';
 import {
@@ -140,17 +141,18 @@ export default function MenuFooter({
 
     const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : undefined;
     const publicPresence = storeDetails?.publicPresence;
-    const normalizedPhone = storeDetails?.phoneNumber?.replace(/\s+/g, '');
-    const callHref = storeDetails?.phoneNumber
-        ? storeDetails.phoneNumber.startsWith('+')
-            ? `tel:${normalizedPhone}`
-            : storeDetails?.dialCode
-                ? `tel:${storeDetails.dialCode.startsWith('+') ? storeDetails.dialCode : `+${storeDetails.dialCode}`}${normalizedPhone?.replace(/^0+/, '') || ''}`
-                : `tel:${normalizedPhone}`
-        : undefined;
+    const callHref = buildTelHref({
+        countryCode: storeDetails?.countryCode,
+        dialCode: storeDetails?.dialCode,
+        phoneNumber: storeDetails?.phoneNumber,
+    }) || undefined;
     const showCall = (publicPresence?.showCall !== false) && !!callHref;
-    const whatsappNumber = (publicPresence?.whatsappNumber || storeDetails?.phoneNumber || '').replace(/[^0-9+]/g, '');
-    const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : undefined;
+    const whatsappNumber = buildWhatsAppPhoneParam({
+        countryCode: storeDetails?.countryCode,
+        dialCode: storeDetails?.dialCode,
+        phoneNumber: publicPresence?.whatsappNumber || storeDetails?.phoneNumber,
+    });
+    const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined;
     const showWhatsApp = (publicPresence?.showWhatsApp !== false) && !!whatsappHref;
     const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
     const showDirections = (publicPresence?.showDirections !== false) && !!directionsHref;

@@ -2,7 +2,7 @@
 
 **Version:** 1.5
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** June 3, 2026 — Premium branded output tokens shared across Menu Kit, QR downloads, and active legacy Today cards
+**Last Updated:** June 4, 2026 — Premium branded output tokens shared across Menu Kit, QR downloads, and active legacy Today cards
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -14,14 +14,14 @@ Menu Kit is **100% client-side**. No server endpoints. No Firebase writes. No st
 ```
 Owner clicks "Download Menu Kit"
     ↓
-Client generates 9 asset files using:
-    - jsPDF (tent card PDF, entrance poster PDF)
+Client generates 10 asset files using:
+    - jsPDF (table tent PDF, single table/counter card PDF, entrance poster PDF)
     - Canvas API (sticker PNG, social images, placement guide)
     - qrcode npm package (QR codes)
     - UTM-tagged URLs per surface (if ENABLE_MENU_KIT_UTM)
     - shared brand tokens from existing store logo/color context
     ↓
-JSZip bundles into single ZIP (9 assets + PRINT_INSTRUCTIONS.txt)
+JSZip bundles into single ZIP (10 assets + PRINT_INSTRUCTIONS.txt)
     ↓
 Browser downloads ZIP + GA4 event tracked
     ↓
@@ -43,7 +43,7 @@ src/lib/menu-kit/
 ├── menuKitGenerator.ts            # Main orchestrator — generates all assets + ZIP
 ├── businessTypeLabels.ts          # BusinessType-aware labels (menu/services/catalog)
 ├── templates/
-│   ├── tableTentTemplate.ts       # Store-level A6 tent card (businessType-aware)
+│   ├── tableTentTemplate.ts       # Compatibility wrapper for Print Menu Surfaces table tent
 │   ├── counterStickerTemplate.ts  # Store-level 8×8 sticker (businessType-aware)
 │   ├── entrancePosterTemplate.ts  # Store-level A4 entrance poster (businessType-aware)
 │   ├── instagramStoryTemplate.ts  # 1080×1920 story image (businessType-aware)
@@ -51,6 +51,14 @@ src/lib/menu-kit/
 │   ├── googleMapsTemplate.ts      # 1200×900 maps image (businessType-aware)
 │   └── placementGuideTemplate.ts  # 1080×1080 guide image
 └── types.ts                        # MenuKit types, UTM helpers, print instructions, surface constants
+```
+
+```
+src/lib/print-menu-surfaces/
+└── templates/
+    ├── printMenuCardFace.ts        # Shared premium face renderer for tabletop print cards
+    ├── tableTentTemplate.ts        # A5 landscape PDF, folded into two A6 portrait faces
+    └── singleTableCardTemplate.ts  # A6 portrait PDF for acrylic holders/counter stands
 ```
 
 ### Modified Files
@@ -70,8 +78,8 @@ src/components/mobile/screens/MobileShareScreen.tsx
     → Menu Kit section with individual share buttons, copy share message,
       GBP hint, businessType-aware WhatsApp message
 
-public/locales/menulist.ai/en-US.json + en-GB.json
-    → Added shareMessageCopied translation key
+public/locales/menulist.ai/*.json
+    → Added Menu Kit/Print Menu download labels for mobile Share where supported
 ```
 
 ---
@@ -111,7 +119,7 @@ export interface MenuKitResult {
 
 ### Premium Output Tokens (`src/lib/menu-kit/brandTokens.ts`)
 
-`resolveMenuKitBrandTokens()` normalizes the store/OBP accent color and returns paper, surface, border, text, muted, softAccent, and QR colors. QR modules may use the brand accent, but every downloadable QR sits on a high-contrast white panel for scan reliability.
+`resolveMenuKitBrandTokens()` normalizes the store/OBP accent color and returns paper, surface, border, text, muted, softAccent, gradient, and QR colors. Brand color is used for premium framing and accents; default QR modules stay near-black (`#111827`) on a high-contrast white panel for scan reliability.
 
 `resolveStoreBrandColor()` uses the same store fallback order as premium print output: `publicPresence.accentColor` -> `primaryColor` -> `brandColor` -> `themeColor`.
 
@@ -128,79 +136,47 @@ Menu Kit templates, standalone QR cards, Menu Card Export PDFs, and active legac
 
 ### 2. Main Orchestrator (`src/lib/menu-kit/menuKitGenerator.ts`)
 
+The table tent asset is bundled by Menu Kit but owned by Print Menu Surfaces. `src/lib/menu-kit/templates/tableTentTemplate.ts` remains only as a compatibility wrapper; new tabletop print layout work belongs under `src/lib/print-menu-surfaces/`.
+
 ```typescript
 import JSZip from "jszip";
-import { generateTableTent } from "./templates/tableTentTemplate";
+import { generatePrintMenuTableTent } from "../print-menu-surfaces/templates/tableTentTemplate";
 import { generateCounterSticker } from "./templates/counterStickerTemplate";
-import { generateInstagramStory } from "./templates/instagramStoryTemplate";
-import { generateWhatsappStatus } from "./templates/whatsappStatusTemplate";
+import { generateDeliveryBagSticker } from "./templates/deliveryBagTemplate";
+import { generateEntrancePoster } from "./templates/entrancePosterTemplate";
 import { generateGoogleMapsImage } from "./templates/googleMapsTemplate";
+import { generateInstagramStory } from "./templates/instagramStoryTemplate";
 import { generatePlacementGuide } from "./templates/placementGuideTemplate";
-import {
-  MenuKitAsset,
-  MenuKitInput,
-  MenuKitResult,
-  STAFF_SCRIPT,
-} from "./types";
-// STAFF_SCRIPT exported from types.ts (shared with UI component)
+import { generateTakeawayCard } from "./templates/takeawayCardTemplate";
+import { generateWhatsappStatus } from "./templates/whatsappStatusTemplate";
 
-export async function generateMenuKit(
-  input: MenuKitInput,
-): Promise<MenuKitResult> {
-  const safeName =
-    input.storeName
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .trim()
-      .replace(/\s+/g, "_") || "Menu";
+export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
+  const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_") || "Menu";
 
-  // Generate all assets in parallel
-  const [tentCard, sticker, igStory, waStatus, gmImage, guide] =
-    await Promise.all([
-      generateTableTent(input),
-      generateCounterSticker(input),
-      generateInstagramStory(input),
-      generateWhatsappStatus(input),
-      generateGoogleMapsImage(input),
-      generatePlacementGuide(input),
-    ]);
+  const [tentCard, sticker, entrancePoster, deliveryBag, takeawayCard, igStory, waStatus, gmImage, guide, singleTableCard] = await Promise.all([
+    generatePrintMenuTableTent(buildInput(MENU_KIT_UTM_SOURCES.tableTent)),
+    generateCounterSticker(buildInput(MENU_KIT_UTM_SOURCES.counterSticker)),
+    generateEntrancePoster(buildInput(MENU_KIT_UTM_SOURCES.entrancePoster)),
+    generateDeliveryBagSticker(buildInput(MENU_KIT_UTM_SOURCES.deliveryBag)),
+    generateTakeawayCard(buildInput(MENU_KIT_UTM_SOURCES.takeawayCard)),
+    generateInstagramStory(buildInput(MENU_KIT_UTM_SOURCES.instagramStory)),
+    generateWhatsappStatus(buildInput(MENU_KIT_UTM_SOURCES.whatsappStatus)),
+    generateGoogleMapsImage(buildInput(MENU_KIT_UTM_SOURCES.googleMaps)),
+    generatePlacementGuide(enrichedInput),
+    generatePrintMenuSingleTableCard(buildInput(MENU_KIT_UTM_SOURCES.singleTableCard)),
+  ]);
 
   const assets = [
-    {
-      filename: `${safeName}_TableTent_A6.pdf`,
-      blob: tentCard,
-      mimeType: "application/pdf",
-      label: "Table Tent (A6)",
-    },
-    {
-      filename: `${safeName}_CounterSticker_8x8.png`,
-      blob: sticker,
-      mimeType: "image/png",
-      label: "Counter Sticker (8×8 cm)",
-    },
-    {
-      filename: `${safeName}_InstagramStory.png`,
-      blob: igStory,
-      mimeType: "image/png",
-      label: "Instagram Story",
-    },
-    {
-      filename: `${safeName}_WhatsAppStatus.png`,
-      blob: waStatus,
-      mimeType: "image/png",
-      label: "WhatsApp Status",
-    },
-    {
-      filename: `${safeName}_GoogleMaps.png`,
-      blob: gmImage,
-      mimeType: "image/png",
-      label: "Google Maps Upload",
-    },
-    {
-      filename: `${safeName}_PlacementGuide.png`,
-      blob: guide,
-      mimeType: "image/png",
-      label: "Placement Guide",
-    },
+    { filename: `${safeName}_TableTent_A5_Fold.pdf`, blob: tentCard, mimeType: "application/pdf", label: "Table Tent (A5 fold)" },
+    { filename: `${safeName}_CounterSticker_8x8.png`, blob: sticker, mimeType: "image/png", label: "Counter Sticker (8x8 cm)" },
+    { filename: `${safeName}_EntrancePoster_A4.pdf`, blob: entrancePoster, mimeType: "application/pdf", label: "Entrance Poster (A4)" },
+    { filename: `${safeName}_DeliveryBag_6x6.png`, blob: deliveryBag, mimeType: "image/png", label: "Delivery Bag Sticker (6x6 cm)" },
+    { filename: `${safeName}_TakeawayCard_85x55.png`, blob: takeawayCard, mimeType: "image/png", label: "Takeaway Card" },
+    { filename: `${safeName}_InstagramStory.png`, blob: igStory, mimeType: "image/png", label: "Instagram Story" },
+    { filename: `${safeName}_WhatsAppStatus.png`, blob: waStatus, mimeType: "image/png", label: "WhatsApp Status" },
+    { filename: `${safeName}_GoogleMaps.png`, blob: gmImage, mimeType: "image/png", label: "Google Maps Upload" },
+    { filename: `${safeName}_PlacementGuide.png`, blob: guide, mimeType: "image/png", label: "Placement Guide" },
+    { filename: `${safeName}_SingleTableCard_A6.pdf`, blob: singleTableCard, mimeType: "application/pdf", label: "Single Table / Counter Card (A6)" },
   ];
 
   // Bundle into ZIP
@@ -214,24 +190,24 @@ export async function generateMenuKit(
 }
 ```
 
-### 3. Table Tent Template (`src/lib/menu-kit/templates/tableTentTemplate.ts`)
+### 3. Print Menu Tabletop PDFs (`src/lib/print-menu-surfaces/templates/`)
 
-**Extends existing pattern from** `src/lib/physical-surfaces/tentCardGenerator.ts`
+Tabletop print PDFs are owned by Print Menu Surfaces and bundled by Menu Kit.
 
-Key differences from existing tent card:
+| Renderer | Output | Use |
+| --- | --- | --- |
+| `generatePrintMenuTableTent()` | A5 landscape PDF, folded into two A6 portrait faces | Center of table, readable from both sides |
+| `generatePrintMenuSingleTableCard()` | A6 portrait PDF, one upright face | Acrylic holders, counter stands, wall clips, or single-sided table stands |
 
-- **Store-level** (not item-specific)
-- **Text:** "SCAN TO VIEW MENU" (not "Most customers order {{item}}")
-- **Includes:** Store name + QR + "Updated on" footer
-- **No confidence gate** (always available)
+Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card stay visually identical:
 
-```typescript
-// Uses jsPDF (already installed)
-// A6: 105mm × 148mm
-// QR generated via qrcode.toDataURL()
-// Store name from input.storeName
-// "Updated on" from input.lastPublishedAt
-```
+- Store name and optional logo from existing store context.
+- Business-type-aware label such as MENU, SERVICES, or CATALOG.
+- Large near-black QR on a white panel for scan reliability.
+- Store brand color for the top band, badge, rule, and border accents.
+- MenuList attribution unless `activePlanType` is Premium.
+
+`src/lib/menu-kit/templates/tableTentTemplate.ts` remains a compatibility wrapper only. New physical tabletop layout work belongs under `src/lib/print-menu-surfaces/`.
 
 ### 4. Counter Sticker Template (`src/lib/menu-kit/templates/counterStickerTemplate.ts`)
 
@@ -269,7 +245,7 @@ Key differences:
 ```typescript
 // Canvas API
 // 1080 × 1920 pixels
-// Layout: Store name (top) → "MENU IS LIVE ✅" → QR (center) → short link (bottom)
+// Layout: Gradient background → contained store name/logo card → "MENU IS LIVE" → black QR on white panel → short link
 // Colors: White background, black text (safe for all brands)
 // QR size: ~400px (scannable even from screenshot)
 ```
@@ -281,7 +257,7 @@ Key differences:
 ```typescript
 // Canvas API
 // 1080 × 1920 pixels
-// Layout: Store name → "Updated Menu ✅" → QR → "Scan / Tap to view menu" → short link
+// Layout: Gradient background → contained store name/logo card → "UPDATED MENU" → black QR on white panel → short link
 // Same white/black safe palette
 ```
 
@@ -360,7 +336,7 @@ npm install jszip
 
 1. Open Share Modal for any project
 2. Click "Download Menu Kit"
-3. Verify ZIP contains 9 asset files + PRINT_INSTRUCTIONS.txt
+3. Verify ZIP contains 10 asset files + PRINT_INSTRUCTIONS.txt
 4. Open each file — verify store name, QR code, layout
 5. Scan QR from tent card PDF → should open menu
 6. Scan QR from sticker PNG → should open menu
@@ -388,7 +364,7 @@ npm install jszip
 6. **Create orchestrator** (`menuKitGenerator.ts`)
 7. **Create UI component** (`MenuKitSection.tsx`)
 8. **Integrate into Share Modal**
-9. **Test all 9 assets + ZIP download**
+9. **Test all 10 assets + ZIP download**
 
 ---
 
@@ -423,12 +399,12 @@ npm install jszip
 | UTM tagging in orchestrator not templates     | Templates don't know their surface name. Orchestrator builds per-surface input. Clean separation. | Mar 8, 2026  |
 | `MENU_KIT_DOWNLOAD` GA4-only (no Firestore)   | Owner-side event, not customer-side. Zero Firebase cost. Skip Firestore write in switch.          | Mar 8, 2026  |
 | Feature flag `ENABLE_MENU_KIT_UTM`            | Allows toggling UTM params without touching template code. Defaults ON.                           | Mar 8, 2026  |
-| Shared premium output tokens                  | All active QR/card downloads reuse store logo/color and a scan-safe QR panel.                     | Jun 3, 2026  |
+| Shared premium output tokens                  | All active QR/card downloads reuse store logo/color, premium gradient accents, and a near-black scan-safe QR panel.                     | Jun 4, 2026  |
 | Premium attribution removal                   | Only Premium stores hide visible MenuList logo/name/domain in generated files and public footers. | Jun 3, 2026  |
 
 ---
 
 **Document Signature:** Implementation Blueprint
 **Created:** February 21, 2026
-**Last Updated:** June 3, 2026
+**Last Updated:** June 4, 2026
 **Review:** Implementation complete — all code matches spec. Parity audit passed.

@@ -28,6 +28,7 @@ import type {
   PlatformNotificationSnapshot,
   PlatformNotificationStatusFilter,
 } from '@lib/ops/platformNotificationTypes';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { buildSecurityContext } from '@lib/security/securityContext';
@@ -115,7 +116,8 @@ function isEmail(value: string): boolean {
 }
 
 function isPhone(value: string): boolean {
-  return value.replace(/[^\d+]/g, '').replace(/^\+/, '').length >= 8;
+  const phone = buildWhatsAppPhoneParam({ phoneNumber: value });
+  return phone.length >= 10 && phone.length <= 15;
 }
 
 function maskDestination(channel: 'email' | 'whatsapp_web', destination: string): string {
@@ -123,7 +125,7 @@ function maskDestination(channel: 'email' | 'whatsapp_web', destination: string)
     const [name, domain] = destination.split('@');
     return domain ? `${name.slice(0, 2)}***@${domain}` : '***';
   }
-  const digits = destination.replace(/\D/g, '');
+  const digits = buildWhatsAppPhoneParam({ phoneNumber: destination });
   return digits ? `***${digits.slice(-4)}` : '***';
 }
 

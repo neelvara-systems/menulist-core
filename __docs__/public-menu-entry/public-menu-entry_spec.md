@@ -23,13 +23,14 @@ Allow any business owner to reach a public upload entry point, sign in, upload a
 | Confirm business basics + publish starter activation | Payment/billing during upload/extraction |
 | QR code + share link generation post-publish | Public directory/listing pages |
 | Mobile-first responsive design | WhatsApp onboarding integration |
-| Rate limiting (5/day per signed-in owner, with draft reuse/dedupe) | New phone-only auth system |
+| Phone/WhatsApp OTP as primary sign-in path, with Google/password fallback | Anonymous auth bypass |
+| Rate limiting (5/day per signed-in owner, with draft reuse/dedupe) | Separate auth session system |
 | 24-hour unclaimed draft TTL; 7-day claimed starter activation | Custom domain setup |
 
 ### Success Metric
 
 **Primary:** Number of verified starter activations created through `/create-menu`
-**Secondary:** Conversion rate from upload → preview → sign-in → starter activation → payment
+**Secondary:** Conversion rate from phone verification/sign-in → upload → preview → starter activation → payment
 
 ---
 
@@ -160,7 +161,7 @@ Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 | R6 | SSRF/crawler abuse from public URLs | Same bounded acquisition helper as authenticated Menu Link Import; blocks unsafe protocols, private IPs, unsafe redirects, and unbounded crawling |
 | OQ1 | Should we support PDF file upload in v1? | DECISION: Direct public file upload remains image-only; public links may resolve to readable PDFs through Menu Link Import. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |
-| OQ3 | Should we require account before extraction? | DECISION: No. The first proof moment happens before auth; account/identity is required before public claim/publish. |
+| OQ3 | Should we require account before extraction? | DECISION: Yes. Phone/WhatsApp OTP or existing sign-in happens before upload/extraction so free processing stays owner-bound. |
 
 ### 5.1 Physical Claim Acquisition Boundary
 

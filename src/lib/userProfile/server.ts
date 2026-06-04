@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { NextRequest, NextResponse } from "next/server";
@@ -37,16 +38,36 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
       return NextResponse.json({ error: "Invalid profile details" }, { status: 400 });
     }
 
-    const updates: Record<string, any> = {};
     const data = validation.data;
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const existingData = userDoc.data() || {};
+    const updates: Record<string, any> = {};
     if (data.name !== undefined) updates.name = data.name;
-    if (data.countryCode !== undefined) updates.countryCode = data.countryCode;
-    if (data.dialCode !== undefined) updates.dialCode = data.dialCode;
     if (data.displayEmail !== undefined) updates.displayEmail = data.displayEmail.toLowerCase();
-    if (data.phone !== undefined) updates.phone = data.phone;
-    if (data.phoneNumber !== undefined) {
-      updates.phoneNumber = data.phoneNumber;
-      updates.phone = data.phoneNumber;
+
+    const shouldNormalizePhone = data.phone !== undefined
+      || data.phoneNumber !== undefined
+      || data.countryCode !== undefined
+      || data.dialCode !== undefined;
+
+    if (shouldNormalizePhone) {
+      const normalizedPhone = normalizePhoneNumberForStorage({
+        countryCode: data.countryCode ?? existingData.countryCode,
+        dialCode: data.dialCode ?? existingData.dialCode,
+        phone: data.phone,
+        phoneNumber: data.phoneNumber ?? existingData.phoneNumber ?? existingData.phone,
+      });
+      updates.countryCode = normalizedPhone.countryCode;
+      updates.dialCode = normalizedPhone.dialCode;
+      updates.phone = normalizedPhone.phone;
+      updates.phoneNumber = normalizedPhone.phoneNumber;
+      updates.phoneUsername = normalizedPhone.phoneUsername;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -54,13 +75,6 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
     }
 
     updates.modifiedOn = admin.firestore.Timestamp.now();
-
-    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
-    const userDoc = await userRef.get();
-
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     await userRef.update(updates);
 

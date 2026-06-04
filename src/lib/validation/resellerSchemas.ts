@@ -11,7 +11,9 @@ import { z } from 'zod';
 export const ResellerOnboardSchema = z.object({
     businessName: z.string().min(2, 'Business name must be at least 2 characters').max(100, 'Business name too long'),
     businessType: z.string().min(2).max(50),
-    ownerPhone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number too long'),
+    ownerCountryCode: z.string().trim().max(8).optional(),
+    ownerDialCode: z.string().trim().max(12).optional(),
+    ownerPhone: z.string().trim().min(6, 'Phone number is required').max(40, 'Phone number too long'),
     ownerEmail: z.string().email('Invalid email address').optional(),
     ownerPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password too long'),
     pricingTier: z.enum(['FOUNDER_400', 'FOUNDER_500', 'STANDARD']),

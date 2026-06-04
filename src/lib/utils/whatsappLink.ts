@@ -7,6 +7,8 @@
  * @see __docs__/projects/internal-feedback-system/
  */
 
+import { buildWhatsAppPhoneParam, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+
 /**
  * Generate WhatsApp deep link
  * 
@@ -30,8 +32,7 @@ export function generateWhatsAppLink(
     phone: string,
     message?: string
 ): string {
-    // Clean phone number (remove spaces, dashes, parentheses, plus signs, etc.)
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = buildWhatsAppPhoneParam({ phoneNumber: phone });
 
     if (!cleanPhone) {
         return '';
@@ -58,8 +59,8 @@ export function generateWhatsAppLink(
  */
 export function isValidWhatsAppNumber(phone?: string): boolean {
     if (!phone) return false;
-    
-    const cleanPhone = phone.replace(/\D/g, '');
+
+    const cleanPhone = buildWhatsAppPhoneParam({ phoneNumber: phone });
     return cleanPhone.length >= 10;
 }
 
@@ -70,18 +71,5 @@ export function isValidWhatsAppNumber(phone?: string): boolean {
  * @returns Formatted phone number or original if can't parse
  */
 export function formatPhoneForDisplay(phone: string): string {
-    const cleanPhone = phone.replace(/\D/g, '');
-    
-    // Indian format: +91 XXXXX XXXXX
-    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
-        return `+91 ${cleanPhone.slice(2, 7)} ${cleanPhone.slice(7)}`;
-    }
-    
-    // Indian without country code
-    if (cleanPhone.length === 10) {
-        return `${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`;
-    }
-    
-    // Return original if can't parse
-    return phone;
+    return normalizePhoneNumberForStorage({ phoneNumber: phone }).displayNumber || phone;
 }

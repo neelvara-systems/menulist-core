@@ -5,6 +5,7 @@ import {
 } from '../sharedData/platformNotificationRegistry';
 import { isFunctionFeatureEnabled } from '../constants/features';
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
+import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
 
 type PlatformAlertPayload = {
   id?: string;
@@ -81,7 +82,7 @@ function buildHtml(alert: PlatformAlertPayload, entry: PlatformNotificationRegis
 }
 
 function normalizeWhatsAppNumber(value: string): string {
-  return value.replace(/[^\d]/g, '');
+  return buildWhatsAppPhoneParam({ phoneNumber: value });
 }
 
 async function sendWhatsAppAlert(params: {

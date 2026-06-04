@@ -68,6 +68,8 @@ Email is the baseline. WhatsApp is not a blanket mirror of every email.
 
 No trigger may send to a recipient field that was not resolved through the product-specific resolver.
 
+WhatsApp recipient fields are resolved to canonical international digits before delivery. The resolver may use `notificationSettings.whatsappNumber`, owner/store/workspace WhatsApp fields, explicit recipient hints, canonical `phone`, or local `phoneNumber` with stored `countryCode`/`dialCode`; it must not send a local number directly to the WhatsApp API.
+
 ## Formatting Rules
 
 Every owner notification must use product/store/workspace preferences:

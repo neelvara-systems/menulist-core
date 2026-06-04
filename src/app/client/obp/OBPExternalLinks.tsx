@@ -3,6 +3,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPLinkClick } from '@lib/analytics/unified';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { useState, type ElementType } from 'react';
 import { LuGlobe } from 'react-icons/lu';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
@@ -15,6 +16,8 @@ interface OBPExternalLinksProps {
     includeLocation?: boolean;
     storeTimeZone?: string;
     businessDayEndTime?: string;
+    countryCode?: string;
+    dialCode?: string;
     googleReviewLabel?: string;
     googleReviewUrl?: string;
     labels?: Partial<Record<Exclude<OBPTrackedLink, 'google_review'>, string>>;
@@ -56,6 +59,8 @@ export default function OBPExternalLinks({
     includeLocation = true,
     storeTimeZone,
     businessDayEndTime,
+    countryCode,
+    dialCode,
     googleReviewLabel,
     googleReviewUrl,
     labels,
@@ -92,7 +97,8 @@ export default function OBPExternalLinks({
     const twitterUrl = twitter ? normalizeUrl(twitter, 'https://twitter.com/') : '';
     const linkedinUrl = linkedin ? normalizeUrl(linkedin, 'https://linkedin.com/in/') : '';
     const youtubeUrl = youtube ? normalizeUrl(youtube, 'https://youtube.com/') : '';
-    const whatsappUrl = whatsapp ? normalizeUrl(whatsapp.replace(/[^0-9+]/g, '').replace('+', ''), 'https://wa.me/') : '';
+    const whatsappDigits = whatsapp ? buildWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber: whatsapp }) : '';
+    const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
     const websiteUrl = website ? normalizeUrl(website, 'https://') : '';
     const InstagramIcon = SOCIAL_ICONS.instagram;
     const FacebookIcon = SOCIAL_ICONS.facebook;

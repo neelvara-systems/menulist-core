@@ -35,9 +35,9 @@ Zero. This page does not write any data.
 
 ## Asset Generation
 
-Hub-owned asset generation (Menu Kit ZIP, individual QRs, PDF fallback bridge, XLSX, and JSON) happens **client-side** using existing browser generators. The PDF fallback bridge delegates to the Menu Card Export renderer and still creates only a browser Blob. Zero server cost for the hub itself.
+Hub-owned asset generation (Menu Kit ZIP, Print Menu Surfaces table-tent and single-card assets, individual QRs, PDF fallback bridge, XLSX, and JSON) happens **client-side** using existing browser generators. The PDF fallback bridge delegates to the Menu Card Export renderer and still creates only a browser Blob. Zero server cost for the hub itself.
 
-Branded QR/card treatment reuses already-loaded store logo URL and brand color from context. It adds no Firestore reads/writes and no generated Storage uploads; if the logo image is not already cached, the browser may fetch the existing logo URL once while rendering the local file.
+Branded QR/card treatment reuses already-loaded store logo URL and brand color from context. Gradient framing, fitted text, white scan panels, and near-black QR modules are generated locally in the browser. This adds no Firestore reads/writes and no generated Storage uploads; if the logo image is not already cached, the browser may fetch the existing logo URL once while rendering the local file.
 
 MenuList logo/name/domain attribution on generated QR cards and print/PDF outputs is drawn locally from `src/lib/menu-kit/platformAttribution.ts`. The Premium removal check uses already-loaded `stores/{storeId}.activePlanType` through `src/lib/platform/menuListBranding.ts`. It adds no extra database read, write, Storage upload, Cloud Function, rule, or index.
 

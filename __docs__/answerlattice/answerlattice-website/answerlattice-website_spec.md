@@ -1,6 +1,6 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.35
+> **Version:** 1.2.36
 > **Last Updated:** 2026-06-02
 > **Audience:** CEO / PM / Marketing
 
@@ -470,6 +470,8 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
+The desktop Resources nav item should open a compact icon/link dropdown for the highest-priority public resource articles: launch checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
+
 The mobile hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Developers, Comparisons, Updates, and Contact. The mobile drawer must open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers.
 
 Route naming must avoid conflicts with AnswerLattice dashboard roots. Public website learning content uses `/resources`, public implementation content uses `/developers`, public category education uses `/comparisons`, and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
@@ -585,6 +587,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-04 | 1.2.36 | Added the desktop Resources dropdown requirement for high-priority public resource articles, preserving private-route and runtime-route boundaries |
 | 2026-06-02 | 1.2.35 | Added resource article requirements, typed public content source, Article/FAQ structured data rules, resource analytics, sitemap/LLM coverage, and claim guardrails for ten resource article routes |
 | 2026-03-07 | 1.0.0 | Initial spec |
 | 2026-05-21 | 1.1.0 | Repositioned website for small SaaS self-serve funnel, added demo/security/FAQ/legal pages, AnswerLattice sitemap/robots, structured data, and removed enterprise/private-beta-first spec language |

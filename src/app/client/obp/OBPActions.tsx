@@ -10,6 +10,7 @@
 import { getSessionId } from '@lib/analytics/session';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPAction, trackOBPLinkClick } from '@lib/analytics/unified';
+import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { useState, type ReactNode } from 'react';
 import { LuCalendarCheck, LuMessageSquarePlus, LuPhone, LuShoppingBag } from 'react-icons/lu';
 import { TbBrandGoogleFilled, TbBrandWhatsapp, TbMapPinFilled } from 'react-icons/tb';
@@ -24,6 +25,8 @@ interface OBPActionsProps {
     includeLocation?: boolean;
     storeTimeZone?: string;
     businessDayEndTime?: string;
+    countryCode?: string;
+    dialCode?: string;
     phoneNumber?: string;
     whatsappNumber?: string;
     directionsUrl?: string;
@@ -59,6 +62,8 @@ export default function OBPActions({
     includeLocation = true,
     storeTimeZone,
     businessDayEndTime,
+    countryCode,
+    dialCode,
     phoneNumber,
     whatsappNumber,
     directionsUrl,
@@ -104,8 +109,9 @@ export default function OBPActions({
         });
     };
 
-    const callHref = phoneNumber ? `tel:${phoneNumber}` : '';
-    const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : '';
+    const callHref = buildTelHref({ countryCode, dialCode, phoneNumber }) || '';
+    const whatsappDigits = buildWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber: whatsappNumber });
+    const whatsappHref = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
     const renderActionIcon = (emoji: string, icon: ReactNode, className?: string) => (
         <span className={`${styles.actionIcon} ${className || ''} ${iconVariant === 'emoji' ? styles.actionIconEmojiMode : ''}`}>
             {iconVariant === 'emoji' ? <span aria-hidden="true" className={styles.actionEmoji}>{emoji}</span> : icon}

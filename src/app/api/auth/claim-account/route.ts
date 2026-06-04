@@ -26,8 +26,9 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail } from "@constant/urls";
 import { authOptions } from "@lib/auth";
-import { buildPhoneUsername, isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
+import { isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -154,7 +155,13 @@ export async function POST(request: NextRequest) {
     const now = admin.firestore.Timestamp.now();
 
     const messagingPhone = getMessagingPhone(messagingUser);
-    const phoneUsername = buildPhoneUsername(messagingPhone);
+    const normalizedPhone = normalizePhoneNumberForStorage({
+      countryCode: messagingUser.countryCode,
+      dialCode: messagingUser.dialCode,
+      phone: messagingUser.phone,
+      phoneNumber: messagingUser.phoneNumber || messagingPhone,
+    });
+    const phoneUsername = normalizedPhone.phoneUsername;
 
     // ━━━ MODE 3: WhatsApp Phone + Passcode Setup (no session required) ━━━
     if (useWhatsappPhone && password) {
@@ -189,7 +196,10 @@ export async function POST(request: NextRequest) {
       batch.update(messagingUserDoc.ref, {
         email: loginEmail,
         name: displayName,
-        phone: messagingPhone,
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phone: normalizedPhone.phone,
+        phoneNumber: normalizedPhone.phoneNumber,
         phoneUsername,
         phoneLoginEnabled: true,
         isVerified: true,
@@ -289,7 +299,10 @@ export async function POST(request: NextRequest) {
       batch.update(messagingUserDoc.ref, {
         email: lowerEmail,
         name: name || messagingUser.name,
-        phone: messagingPhone || messagingUser.phone,
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phone: normalizedPhone.phone || messagingUser.phone,
+        phoneNumber: normalizedPhone.phoneNumber || messagingUser.phoneNumber,
         phoneUsername: phoneUsername || undefined,
         phoneLoginEnabled: Boolean(phoneUsername),
         isVerified: true,

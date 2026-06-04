@@ -1,0 +1,188 @@
+.phoneOtpPanel {
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #067a7f;
+  background: rgba(6, 122, 127, 0.1);
+}
+
+.title {
+  margin: 0 0 4px;
+  color: var(--ws-text-primary, #111827);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.hint {
+  margin: 0;
+  color: var(--ws-text-secondary, #5b6472);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.label {
+  display: grid;
+  gap: 6px;
+  color: var(--ws-text-secondary, #4b5563);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phoneRow {
+  display: grid;
+  grid-template-columns: minmax(112px, 132px) minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+.countrySelect {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 9px;
+  border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
+  border-radius: 8px;
+  color: var(--ws-text-primary, #111827);
+  background: var(--ws-bg-primary, #fff);
+  font-size: 13px;
+  outline: none;
+}
+
+.input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
+  border-radius: 8px;
+  color: var(--ws-text-primary, #111827);
+  background: var(--ws-bg-primary, #fff);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.input:focus {
+  border-color: #067a7f;
+  box-shadow: 0 0 0 3px rgba(6, 122, 127, 0.12);
+}
+
+.countrySelect:focus {
+  border-color: #067a7f;
+  box-shadow: 0 0 0 3px rgba(6, 122, 127, 0.12);
+}
+
+.primaryButton,
+.secondaryButton,
+.textButton {
+  min-height: 46px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  color: #fff;
+  background: var(--ws-cta-default, #087c80);
+}
+
+.secondaryButton {
+  width: 100%;
+  border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
+  color: var(--ws-text-primary, #111827);
+  background: transparent;
+}
+
+.textButton {
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  color: #067a7f;
+  background: transparent;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.textButton:disabled,
+.input:disabled,
+.countrySelect:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.inlineActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.message {
+  margin: 0;
+  color: var(--ws-text-secondary, #5b6472);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.error {
+  margin: 0;
+  color: var(--ws-error, #b42318);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.success {
+  margin: 0;
+  color: var(--ws-success, #15803d);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.spin {
+  animation: phoneOtpSpin 900ms linear infinite;
+}
+
+@keyframes phoneOtpSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 420px) {
+  .phoneRow {
+    grid-template-columns: 1fr;
+  }
+}

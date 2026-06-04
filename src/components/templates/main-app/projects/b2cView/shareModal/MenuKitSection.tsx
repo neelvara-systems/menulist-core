@@ -189,7 +189,7 @@ export default function MenuKitSection({
                 )}
 
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                    Includes: Table card · Counter sticker · Entrance poster · Delivery bag sticker · Takeaway card · Instagram story · WhatsApp status · Google Maps image · Placement guide · Print instructions
+                    Includes: Table tent · Single table/counter card · Counter sticker · Entrance poster · Delivery bag sticker · Takeaway card · Instagram story · WhatsApp status · Google Maps image · Placement guide · Print instructions
                 </Text>
 
                 {/* Copy share message + WhatsApp quick share */}

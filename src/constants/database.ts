@@ -147,6 +147,11 @@ export const DB_COLLECTIONS = {
     OWNER_NOTIFICATION_DELIVERIES: "ownerNotificationDeliveries",
     OWNER_NOTIFICATION_RATE_LIMITS: "ownerNotificationRateLimits",
 
+    // Phone OTP Auth (WhatsApp-first owner authentication)
+    // Server-only collections used by /api/auth/phone-otp/* and NextAuth.
+    AUTH_PHONE_OTP_CHALLENGES: "authPhoneOtpChallenges",
+    AUTH_PHONE_OTP_LOGIN_TOKENS: "authPhoneOtpLoginTokens",
+
     // Scheduler Monitoring (Nightly Scheduler Run Logs)
     // @see __docs__/decision-intelligence/
     SCHEDULER_RUN_LOGS: "schedulerRunLogs", // Persisted run results for dashboard monitoring

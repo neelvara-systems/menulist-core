@@ -8,6 +8,15 @@
  */
 
 import QRCode from 'qrcode';
+import {
+    fillRoundedRect,
+    fillRoundedVerticalGradient,
+    fillVerticalGradient,
+    fitCanvasText,
+    strokeRoundedRect,
+    stripDecorativeStatusSymbols,
+    truncateCanvasText,
+} from '../canvasPrimitives';
 import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
@@ -35,87 +44,89 @@ export async function generateWhatsappStatus(input: StatusInput): Promise<Blob> 
     // Premium paper background
     ctx.fillStyle = brand.paper;
     ctx.fillRect(0, 0, W, H);
+    fillVerticalGradient(ctx, 0, 0, W, Math.round(H * 0.58), brand.gradientFrom, brand.gradientTo);
 
-    ctx.fillStyle = brand.accent;
-    ctx.fillRect(0, 0, W, 360);
+    const cardX = 86;
+    const cardY = 230;
+    const cardW = W - cardX * 2;
+    const cardH = 1320;
+    const cardRadius = 42;
+    ctx.shadowColor = 'rgba(17, 24, 39, 0.18)';
+    ctx.shadowBlur = 44;
+    ctx.shadowOffsetY = 26;
+    fillRoundedRect(ctx, cardX, cardY, cardW, cardH, cardRadius, brand.surface);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    strokeRoundedRect(ctx, cardX, cardY, cardW, cardH, cardRadius, brand.border, 4);
 
-    // Logo — centered, above store name (if available)
-    let nameY = 340;
-    if (logo) {
-        const maxLH = 100;
-        const maxLW = 280;
-        const scale = Math.min(maxLW / (logo.width || 1), maxLH / (logo.height || 1), 1);
-        const lw = Math.round((logo.width || 100) * scale);
-        const lh = Math.round((logo.height || 100) * scale);
-        ctx.fillStyle = brand.surface;
-        ctx.fillRect(W / 2 - lw / 2 - 24, 220 - 18, lw + 48, lh + 36);
-        ctx.drawImage(logo.element, W / 2 - lw / 2, 220, lw, lh);
-        nameY = 220 + lh + 40;
-    }
-
-    // Store name — bold, top area
-    ctx.fillStyle = brand.accentText;
-    ctx.font = 'bold 64px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let displayName = storeName;
-    while (ctx.measureText(displayName).width > W - 120 && displayName.length > 3) {
-        displayName = displayName.slice(0, -1);
+    let contentY = cardY + 120;
+    if (logo) {
+        const maxLH = 100;
+        const maxLW = 220;
+        const scale = Math.min(maxLW / (logo.width || 1), maxLH / (logo.height || 1), 1);
+        const lw = Math.round((logo.width || 100) * scale);
+        const lh = Math.round((logo.height || 100) * scale);
+        const logoBoxW = lw + 56;
+        const logoBoxH = lh + 42;
+        fillRoundedRect(ctx, W / 2 - logoBoxW / 2, contentY - logoBoxH / 2, logoBoxW, logoBoxH, 18, brand.paper);
+        strokeRoundedRect(ctx, W / 2 - logoBoxW / 2, contentY - logoBoxH / 2, logoBoxW, logoBoxH, 18, brand.border, 2);
+        ctx.drawImage(logo.element, W / 2 - lw / 2, contentY - lh / 2, lw, lh);
+        contentY += logoBoxH / 2 + 54;
     }
-    if (displayName !== storeName) displayName += '\u2026';
-    ctx.fillText(displayName, W / 2, nameY);
 
-    // Decorative line
-    ctx.strokeStyle = brand.softAccent;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(W / 2 - 120, 400);
-    ctx.lineTo(W / 2 + 120, 400);
-    ctx.stroke();
+    fitCanvasText(ctx, storeName, cardW - 128, '700 54px system-ui, -apple-system, sans-serif', 34);
+    ctx.fillStyle = brand.text;
+    ctx.fillText(truncateCanvasText(ctx, storeName, cardW - 128), W / 2, contentY);
 
-    // "Updated Menu ✅"
-    ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+    const label = stripDecorativeStatusSymbols(labels.updatedTitle).toUpperCase();
+    ctx.font = '800 42px system-ui, -apple-system, sans-serif';
+    const labelW = Math.min(cardW - 180, Math.max(430, ctx.measureText(label).width + 130));
+    const labelY = contentY + 92;
+    fillRoundedVerticalGradient(ctx, W / 2 - labelW / 2, labelY - 44, labelW, 88, 22, brand.softAccent, '#ffffff');
     ctx.fillStyle = brand.accent;
-    ctx.fillText(labels.updatedTitle, W / 2, 490);
+    ctx.fillText(label, W / 2, labelY);
 
     // QR Code — large, centered
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
-        width: 500,
+        width: 520,
         margin: 2,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
-    ctx.fillStyle = brand.surface;
-    ctx.fillRect((W - 580) / 2, 560, 580, 580);
-    ctx.strokeStyle = brand.border;
-    ctx.lineWidth = 5;
-    ctx.strokeRect((W - 580) / 2, 560, 580, 580);
-    ctx.drawImage(qrCanvas, (W - 500) / 2, 600, 500, 500);
+    const qrPanel = 630;
+    const qrSize = 520;
+    const qrPanelX = (W - qrPanel) / 2;
+    const qrPanelY = labelY + 100;
+    fillRoundedRect(ctx, qrPanelX, qrPanelY, qrPanel, qrPanel, 24, brand.surface);
+    strokeRoundedRect(ctx, qrPanelX, qrPanelY, qrPanel, qrPanel, 24, brand.border, 5);
+    ctx.drawImage(qrCanvas, (W - qrSize) / 2, qrPanelY + (qrPanel - qrSize) / 2, qrSize, qrSize);
 
     // "Scan / Tap to view menu"
-    ctx.font = '40px system-ui, -apple-system, sans-serif';
+    ctx.font = '500 38px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.text;
-    ctx.fillText(`Scan / Tap to view ${labels.offeringLower}`, W / 2, 1200);
+    ctx.fillText(`Scan / Tap to view ${labels.offeringLower}`, W / 2, qrPanelY + qrPanel + 78);
 
     // Short link
-    ctx.font = '32px system-ui, -apple-system, sans-serif';
+    ctx.font = '30px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.muted;
-    ctx.fillText(shortLink, W / 2, 1280);
+    ctx.fillText(truncateCanvasText(ctx, shortLink, cardW - 180), W / 2, qrPanelY + qrPanel + 150);
 
     // Bottom branding
-    ctx.fillStyle = brand.softAccent;
-    ctx.fillRect(0, H - 120, W, 120);
+    fillRoundedRect(ctx, 132, H - 148, W - 264, 74, 24, 'rgba(255, 255, 255, 0.74)');
     drawMenuListAttribution(ctx, {
         activePlanType: input.activePlanType,
-        color: brand.border,
-        font: '24px system-ui, -apple-system, sans-serif',
+        color: brand.muted,
+        font: '23px system-ui, -apple-system, sans-serif',
         gap: 8,
         logoHeight: 22,
         text: MENU_LIST_ATTRIBUTION_TEXT,
         x: W / 2,
-        y: H - 55,
+        y: H - 111,
     });
 
     return new Promise((resolve, reject) => {

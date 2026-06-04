@@ -18,7 +18,7 @@
 import { MENU_LIST_ATTRIBUTION_TEXT } from './platformAttribution';
 
 export interface SurfaceStrings {
-    /** "Open camera → point at QR" */
+    /** "Open camera and point at QR" */
     cameraInstruction: string;
     /** "Or open:" */
     orOpen: string;
@@ -60,7 +60,7 @@ export interface SurfaceStrings {
 }
 
 const EN_STRINGS: SurfaceStrings = {
-    cameraInstruction: 'Open camera \u2192 point at QR',
+    cameraInstruction: 'Open camera and point at QR',
     orOpen: 'Or open:',
     updatedOn: 'Updated on:',
     updatedRegularly: 'Updated regularly',

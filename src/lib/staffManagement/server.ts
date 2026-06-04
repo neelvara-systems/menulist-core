@@ -3,9 +3,10 @@ import { ALL_PERMISSIONS, PERMISSIONS, PermissionKey } from "@constant/permissio
 import { STAFF_EMAIL_DOMAIN } from "@constant/urls";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { createDefaultRoles, DEFAULT_ROLE_IDS, DEFAULT_ROLE_METADATA, generateCustomRoleId } from "@data/shared/defaultRoles";
-import { buildPhoneUsername, getDisplayEmail, isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
+import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from "@lib/auth/loginIdentifiers";
 import { authAdmin, firestoreAdmin, admin } from "@lib/firebase/firebaseAdmin";
 import { hasPermission, normalizeRolePermissions } from "@lib/permissions/hasPermission";
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -310,6 +311,10 @@ const generateUniqueStaffLoginId = async () => {
     throw new Error("STAFF_LOGIN_ID_GENERATION_FAILED");
 };
 
+const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId(value);
+
+const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
+
 const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
     const stores = Array.isArray(data?.stores)
         ? data.stores
@@ -342,7 +347,7 @@ const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
         role: data?.role || "",
         sessionRevokedAt: serializeStaffTimestamp(data?.sessionRevokedAt),
         staffAuthMode: getStaffAuthMode(data),
-        staffLoginId: data?.staffLoginId || data?.loginUsername || "",
+        staffLoginId: resolveStaffLoginDisplayId(data?.staffLoginId || data?.loginUsername),
         storeId: Number(data?.storeId) || stores[0]?.storeId,
         storeIds: Array.isArray(data?.storeIds)
             ? data.storeIds.filter(isPositiveId).map(Number)
@@ -801,22 +806,28 @@ export const createStaffUser = async (
             message: "Existing staff member added to this store.",
             mode: "existing_user_added_to_store",
             staffAuthMode: getStaffAuthMode(existingData),
-            staffLoginId: existingData.staffLoginId || existingData.loginUsername,
+            staffLoginId: resolveStaffLoginDisplayId(existingData.staffLoginId || existingData.loginUsername),
             user: updated,
             userId: existingDoc.id,
         };
         return NextResponse.json(response);
     }
 
-    const staffLoginId = await generateUniqueStaffLoginId();
+    const staffLoginUsername = await generateUniqueStaffLoginId();
+    const staffLoginId = resolveStaffLoginDisplayId(staffLoginUsername);
     const loginEmail = hasStaffEmail
         ? String(input.email)
-        : buildManagedStaffEmail(input.tenantId, staffLoginId);
+        : buildManagedStaffEmail(input.tenantId, staffLoginUsername);
     const tempPasscode = hasStaffEmail ? "" : generateStaffPasscode();
     const tempPassword = tempPasscode || randomBytes(24).toString("base64url");
     const authMode = hasStaffEmail ? STAFF_AUTH_MODE_EMAIL : STAFF_AUTH_MODE_OWNER_PASSCODE;
-    const displayName = input.name || input.phoneNumber || (hasStaffEmail ? String(input.email).split("@")[0] : `Staff ${staffLoginId.slice(-4)}`);
-    const phoneUsername = buildPhoneUsername(input.dialCode, input.phoneNumber);
+    const normalizedPhone = normalizePhoneNumberForStorage({
+        countryCode: input.countryCode,
+        dialCode: input.dialCode,
+        phoneNumber: input.phoneNumber,
+    });
+    const displayName = input.name || normalizedPhone.phoneNumber || (hasStaffEmail ? String(input.email).split("@")[0] : `Staff ${staffLoginId.slice(-4)}`);
+    const phoneUsername = normalizedPhone.phoneUsername;
     let firebaseUid: string;
 
     try {
@@ -845,20 +856,21 @@ export const createStaffUser = async (
     const newUserDoc = sanitizeFirestoreValue({
         active: true,
         authDisabled: false,
-        countryCode: input.countryCode,
+        countryCode: input.phoneNumber ? normalizedPhone.countryCode : input.countryCode,
         createdBy: session?.user?.email,
         createdOn: now,
         createdVia: hasStaffEmail ? "staff-invite" : "staff-owner-passcode",
         deleted: false,
-        dialCode: input.dialCode,
+        dialCode: input.phoneNumber ? normalizedPhone.dialCode : input.dialCode,
         email: loginEmail,
         firebaseUid,
         isVerified: true,
-        loginUsername: staffLoginId,
+        loginUsername: staffLoginUsername,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         name: displayName,
-        phoneNumber: input.phoneNumber,
+        phone: normalizedPhone.phone || undefined,
+        phoneNumber: input.phoneNumber ? normalizedPhone.phoneNumber : input.phoneNumber,
         platformRole: "USER",
         phoneUsername: phoneUsername || undefined,
         staffAuthMode: authMode,
@@ -1030,19 +1042,26 @@ export const updateStaffUser = async (
             userId: input.userId,
         })
         : {};
+    const shouldNormalizePhone = input.phoneNumber !== undefined || input.dialCode !== undefined || input.countryCode !== undefined;
+    const normalizedPhone = shouldNormalizePhone
+        ? normalizePhoneNumberForStorage({
+            countryCode: input.countryCode ?? existingData.countryCode,
+            dialCode: input.dialCode ?? existingData.dialCode,
+            phoneNumber: input.phoneNumber ?? existingData.phoneNumber,
+        })
+        : null;
     const updateData = sanitizeFirestoreValue({
         active: input.active,
         alternatePhoneNumber: input.alternatePhoneNumber,
         authDisabled: input.active === undefined ? undefined : input.active === false || isPlatformEntityBlocked(existingData),
-        countryCode: input.countryCode,
-        dialCode: input.dialCode,
+        countryCode: normalizedPhone ? normalizedPhone.countryCode : input.countryCode,
+        dialCode: normalizedPhone ? normalizedPhone.dialCode : input.dialCode,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         name: input.name,
-        phoneNumber: input.phoneNumber,
-        phoneUsername: input.phoneNumber !== undefined || input.dialCode !== undefined
-            ? buildPhoneUsername(input.dialCode ?? existingData.dialCode, input.phoneNumber ?? existingData.phoneNumber)
-            : undefined,
+        phone: normalizedPhone ? normalizedPhone.phone : undefined,
+        phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
+        phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
         storeId: input.stores ? nextDefaultStoreId : input.storeId,
         storeIds: input.stores ? nextStoreIds : undefined,
         stores: input.stores ? nextStores : undefined,
@@ -1251,7 +1270,9 @@ export const requestStaffPasswordReset = async (
         throw error;
     }
 
-    const loginId = String(existingData.staffLoginId || existingData.loginUsername || "").trim() || await generateUniqueStaffLoginId();
+    const existingLoginUsername = resolveStaffLoginUsername(existingData.loginUsername || existingData.staffLoginId);
+    const loginUsername = existingLoginUsername || await generateUniqueStaffLoginId();
+    const loginId = resolveStaffLoginDisplayId(loginUsername);
     const temporaryPasscode = generateStaffPasscode();
     const now = admin.firestore.Timestamp.now();
     await authAdmin.updateUser(firebaseUser.uid, {
@@ -1263,7 +1284,7 @@ export const requestStaffPasswordReset = async (
         authDisabled: false,
         authTokensRevokedAt: now,
         isVerified: true,
-        loginUsername: loginId,
+        loginUsername,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         passcodeResetAt: now,

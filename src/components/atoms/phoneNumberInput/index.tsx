@@ -1,8 +1,7 @@
-import { Flex, InputNumber, Select } from 'antd';
-import { CountryCode, isValidPhoneNumber, parsePhoneNumberWithError } from 'libphonenumber-js';
-import React, { useEffect } from 'react';
+import { Flex, Input, Select } from 'antd';
+import React from 'react';
 import { LuPhoneCall } from 'react-icons/lu';
-import countryData from './countryData';
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 
 interface PhoneNumberInputProps {
     countryCode: string;
@@ -12,56 +11,37 @@ interface PhoneNumberInputProps {
 }
 
 const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneNumber, dialCode, onChange }) => {
-
-    const validatePhoneNumber = (number: string, country: string) => {
-        try {
-            if (!number) return true;
-            const isValid = isValidPhoneNumber(number, country as CountryCode);
-            return isValid;
-        } catch (error) {
-            return false;
-        }
-    };
-
-    const formatPhoneNumber = (number: string | number | null | undefined, country: string) => {
-        try {
-            if (!number) return '';
-            const normalizedNumber = String(number);
-            // Remove all non-digit characters for consistent formatting
-            const digitsOnly = normalizedNumber.replace(/\D/g, '');
-            const phoneNumber = parsePhoneNumberWithError(digitsOnly, country as CountryCode);
-            return phoneNumber?.formatNational() || digitsOnly;
-        } catch (error) {
-            return number ? String(number) : '';
-        }
-    };
+    const selectedCountryCode = countryCode || DEFAULT_PHONE_COUNTRY_CODE;
+    const selectedDialCode = getDialCodeForCountry(selectedCountryCode, dialCode);
 
     const handleCountryChange = (country: string) => {
-        // Reformat the existing number for the new country
+        const nextDialCode = getDialCodeForCountry(country);
+        const normalized = normalizePhoneNumberForStorage({
+            countryCode: country,
+            dialCode: nextDialCode,
+            phoneNumber,
+        });
+
         onChange?.({
             countryCode: country,
-            phoneNumber: formatPhoneNumber(phoneNumber, country),
-            dialCode: countryData.find(c => c.code == country)?.dialCode || ''
+            phoneNumber: normalized.phoneNumber,
+            dialCode: nextDialCode
         });
     };
 
-    const handlePhoneNumberChange = (newNumber: any) => {
+    const handlePhoneNumberChange = (newNumber: string) => {
+        const normalized = normalizePhoneNumberForStorage({
+            countryCode: selectedCountryCode,
+            dialCode: selectedDialCode,
+            phoneNumber: newNumber,
+        });
+
         onChange?.({
-            countryCode,
-            phoneNumber: formatPhoneNumber(newNumber, countryCode),
-            dialCode: countryData.find(c => c.code == countryCode)?.dialCode || ''
+            countryCode: normalized.countryCode,
+            phoneNumber: normalized.phoneNumber,
+            dialCode: normalized.dialCode
         });
     };
-
-    useEffect(() => {
-        if (phoneNumber) {
-            onChange?.({
-                countryCode,
-                phoneNumber: formatPhoneNumber(phoneNumber || '', countryCode),
-                dialCode: countryData.find(c => c.code == countryCode)?.dialCode || ''
-            });
-        }
-    }, [phoneNumber, countryCode]);
 
     return (
         <Flex gap={8} style={{ width: '100%' }}>
@@ -69,20 +49,23 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneN
                 placeholder="Country Code"
                 showSearch
                 style={{ width: 150 }}
-                value={countryCode || ''}
+                value={selectedCountryCode}
                 onChange={handleCountryChange}
-                options={countryData.map(country => ({
+                options={getUniquePhoneCountries().map((country) => ({
+                    key: country.code,
                     value: country.code,
                     label: `${country.flag} ${country.code} (${country.dialCode})`
                 }))}
             />
-            <InputNumber
-                controls={false}
+            <Input
+                autoComplete="tel"
+                inputMode="tel"
                 prefix={<LuPhoneCall />}
                 value={phoneNumber}
-                onChange={(e) => handlePhoneNumberChange(e)}
-                placeholder={dialCode ? `(${dialCode})` : ''}
+                onChange={(event) => handlePhoneNumberChange(event.target.value)}
+                placeholder={selectedDialCode ? `(${selectedDialCode})` : ''}
                 style={{ width: '100%' }}
+                type="tel"
             />
         </Flex>
     );

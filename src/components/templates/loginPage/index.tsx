@@ -6,6 +6,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
+import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { useAppSelector } from "@hook/useAppSelector";
 import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
@@ -44,6 +45,29 @@ const validateLoginIdentifier = (value: string) => {
   return { valid: true };
 };
 
+type LoginIdentifierKind = 'empty' | 'email' | 'phone' | 'staff';
+type CredentialMode = 'default' | 'passcode';
+
+const getLoginIdentifierKind = (value: string): LoginIdentifierKind => {
+  const identifier = String(value || '').trim();
+  if (!identifier) return 'empty';
+  if (identifier.includes('@')) return 'email';
+
+  const digits = identifier.replace(/[^0-9]/g, '');
+  const phoneLikeInput = /^[+\d\s().-]+$/.test(identifier);
+  if (phoneLikeInput && digits.length >= 10) return 'phone';
+
+  return 'staff';
+};
+
+const getSecretLabel = (kind: LoginIdentifierKind) => (
+  kind === 'email' ? 'Password' : 'Passcode'
+);
+
+const getSecretPlaceholder = (kind: LoginIdentifierKind) => (
+  kind === 'email' ? 'Password' : 'Passcode'
+);
+
 const sameLoginEmail = (left?: string | null, right?: string | null) => (
   String(left || '').toLowerCase().trim() === String(right || '').toLowerCase().trim()
 );
@@ -62,6 +86,17 @@ function LoginPage() {
   const [error, setError] = useState({ id: '', message: '' });
   const { token } = theme.useToken();
   const isDarkMode = useAppSelector(getDarkModeState)
+  const [loginForm] = Form.useForm();
+  const loginIdentifier = Form.useWatch('email', loginForm) || '';
+  const [credentialMode, setCredentialMode] = useState<CredentialMode>('default');
+  const [otpPanelKey, setOtpPanelKey] = useState(0);
+  const loginIdentifierKind = getLoginIdentifierKind(loginIdentifier);
+  const shouldOfferPhoneOtp = FEATURE_FLAGS.ENABLE_PHONE_OTP_AUTH
+    && loginIdentifierKind === 'phone'
+    && credentialMode !== 'passcode';
+  const shouldShowSecretInput = loginIdentifierKind !== 'empty' && !shouldOfferPhoneOtp;
+  const secretLabel = getSecretLabel(loginIdentifierKind);
+  const secretPlaceholder = getSecretPlaceholder(loginIdentifierKind);
 
   const getPostLoginRedirect = () => {
     const callbackUrl = searchParams?.get('callbackUrl');
@@ -428,8 +463,13 @@ function LoginPage() {
     }
   };
 
-  const onValuesChange = () => {
+  const onValuesChange = (changedValues?: Record<string, unknown>) => {
     setError(EMPTY_ERROR)
+    if (changedValues && Object.hasOwn(changedValues, 'email')) {
+      setCredentialMode('default');
+      setOtpPanelKey((value) => value + 1);
+      loginForm.setFieldsValue({ password: undefined });
+    }
   };
 
   const validateMessages = {
@@ -656,10 +696,14 @@ function LoginPage() {
                 </div>
                 <Divider className={styles.saperator}>Or</Divider>
                 <Form
+                  form={loginForm}
                   name="normal_login"
                   className={`${styles.form} login-form`}
                   initialValues={{}}
-                  onFinish={handleSignIn}
+                  onFinish={(values) => {
+                    if (shouldOfferPhoneOtp) return;
+                    handleSignIn(values);
+                  }}
                   onValuesChange={onValuesChange}
                   validateMessages={validateMessages}
                 >
@@ -689,21 +733,71 @@ function LoginPage() {
                       placeholder="Email, phone, or staff ID"
                     />
                   </Form.Item>
-                  <Form.Item
-                    className={styles.formItem}
-                    name="password"
-                    rules={[{ required: true, message: 'Please input your Password!' }, { min: 6, message: "Password must be at least 6 characters" }]}
-                  >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Password"
+                  {shouldOfferPhoneOtp ? (
+                    <PhoneOtpAuthPanel
+                      key={`${loginIdentifier}-${otpPanelKey}`}
+                      buttonLabel="Send WhatsApp code"
+                      defaultPhone={loginIdentifier}
+                      fallbackLabel="Use passcode instead"
+                      hidePhoneInput
+                      hint="Use the phone number connected to your business. We will send a one-time WhatsApp code."
+                      onAuthenticated={async () => {
+                        await updateSession();
+                      }}
+                      onFallback={() => {
+                        setCredentialMode('passcode');
+                        window.setTimeout(() => {
+                          document.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
+                        }, 0);
+                      }}
+                      purpose="dashboard_login"
+                      showHeader={false}
+                      title="Log in with WhatsApp"
+                      wrapInForm={false}
                     />
-                  </Form.Item>
+                  ) : null}
+                  {shouldShowSecretInput ? (
+                    <>
+                      {loginIdentifierKind === 'phone' && FEATURE_FLAGS.ENABLE_PHONE_OTP_AUTH && credentialMode === 'passcode' ? (
+                        <Button
+                          type="link"
+                          style={{ padding: 0, height: 30, marginTop: -12, marginBottom: 8 }}
+                          onClick={() => {
+                            setCredentialMode('default');
+                            setOtpPanelKey((value) => value + 1);
+                          }}
+                        >
+                          Send WhatsApp code instead
+                        </Button>
+                      ) : null}
+                      <Form.Item
+                        className={styles.formItem}
+                        name="password"
+                        preserve={false}
+                        rules={[
+                          { required: true, message: `Please input your ${secretLabel}!` },
+                          { min: 6, message: `${secretLabel} must be at least 6 characters` },
+                        ]}
+                      >
+                        <Input.Password
+                          className={styles.inputElement}
+                          size="large"
+                          prefix={<LockOutlined className="site-form-item-icon" />}
+                          allowClear
+                          placeholder={secretPlaceholder}
+                        />
+                      </Form.Item>
+                    </>
+                  ) : null}
                   {error.message && <div className={styles.error}>
                     {error.message}
                   </div>}
-                  <Space direction="vertical" align="center" style={{ width: "100%" }} >
-                    <Button type="link" className="login-form-button" onClick={() => router.push(`/${NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD}`)}>Forgot password</Button>
-                    <Button type="primary" size="large" htmlType="submit" style={{ width: 200 }} className="login-form-button">Log in</Button>
-                  </Space>
+                  {shouldShowSecretInput ? (
+                    <Space direction="vertical" align="center" style={{ width: "100%" }} >
+                      <Button type="link" className="login-form-button" onClick={() => router.push(`/${NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD}`)}>Forgot password</Button>
+                      <Button type="primary" size="large" htmlType="submit" style={{ width: 200 }} className="login-form-button">Log in</Button>
+                    </Space>
+                  ) : null}
                   <Divider />
                   <Flex align="center" justify='center' style={{ width: "100%" }} gap={2}>
                     <Text>Dont have an account?</Text>

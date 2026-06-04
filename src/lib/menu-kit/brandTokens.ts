@@ -7,6 +7,10 @@ export interface MenuKitBrandTokens {
     accentTextRgb: RgbColor;
     border: string;
     borderRgb: RgbColor;
+    gradientFrom: string;
+    gradientFromRgb: RgbColor;
+    gradientTo: string;
+    gradientToRgb: RgbColor;
     muted: string;
     mutedRgb: RgbColor;
     paper: string;
@@ -74,9 +78,11 @@ function resolveReadableAccent(brandColor?: string | null): string {
 export function resolveMenuKitBrandTokens(brandColor?: string | null): MenuKitBrandTokens {
     const accent = resolveReadableAccent(brandColor);
     const accentText = getColorBrightness(accent) > 150 ? '#1f1f1f' : '#ffffff';
-    const paper = mixHex(accent, '#ffffff', 0.06);
-    const border = mixHex(accent, '#d7d2ca', 0.34);
-    const softAccent = mixHex(accent, '#ffffff', 0.16);
+    const gradientFrom = mixHex(accent, '#ffffff', 0.9);
+    const gradientTo = mixHex(accent, '#111827', 0.54);
+    const paper = mixHex(accent, '#fbfaf7', 0.045);
+    const border = mixHex(accent, '#c9c0b4', 0.28);
+    const softAccent = mixHex(accent, '#ffffff', 0.12);
 
     return {
         accent,
@@ -85,11 +91,15 @@ export function resolveMenuKitBrandTokens(brandColor?: string | null): MenuKitBr
         accentTextRgb: hexToRgb(accentText),
         border,
         borderRgb: hexToRgb(border),
+        gradientFrom,
+        gradientFromRgb: hexToRgb(gradientFrom),
+        gradientTo,
+        gradientToRgb: hexToRgb(gradientTo),
         muted: '#6f6f6f',
         mutedRgb: hexToRgb('#6f6f6f'),
         paper,
         paperRgb: hexToRgb(paper),
-        qrDark: accent,
+        qrDark: '#111827',
         qrLight: '#ffffff',
         softAccent,
         softAccentRgb: hexToRgb(softAccent),

@@ -12,6 +12,8 @@ Trigger points do not send email or WhatsApp directly. They create an owner noti
 
 This removes direct owner-facing SMTP sends from billing routes, schedulers, and product-specific support code for the implemented trigger set. WhatsApp is implemented as a guarded channel adapter and remains disabled by default until approved template/session rollout is configured.
 
+WhatsApp recipients must be normalized to international digits before hashing, rate limiting, delivery logging, or Graph API calls. Recipient resolution uses the store/workspace `countryCode`, `dialCode`, canonical `phone`, local `phoneNumber`, notification settings WhatsApp number, and explicit recipient hints. Bare local Indian numbers default to `+91`; explicit `+...` / `00...` numbers override the stored/default country.
+
 Internal recovery is handled through a platform-only dashboard. It does not create owner-facing settings or live workflow notifications; it gives the platform team a bounded tracking surface for failed/partial/skipped events, retry, system send to a chosen destination, and manual handoff recording.
 
 ## Implemented Runtime
@@ -111,6 +113,8 @@ Static shared data must follow the repo shared-data rule:
 functions/src/sharedData/ownerNotificationRegistry.ts
 functions/src/ownerNotifications/
   processor.ts
+functions/src/utils/
+  phoneNumber.ts
 ```
 
 The registry file must be edited in `src/data/shared/` first and copied byte-for-byte to `functions/src/sharedData/`.
@@ -149,7 +153,7 @@ Capabilities:
 
 The prefilled Email/WhatsApp Web flow uses the same registered owner notification template that the automated channel uses. The API renders the template only in the selected-event detail response, and the dashboard lets the platform operator review/edit the destination, subject, and body before opening the external tool.
 
-Manual system send writes a new owner notification event with `metadata.manualRecipientOverride === true`; the recipient resolver prefers the entered email or WhatsApp number only for that marked event. Normal event delivery still resolves recipients from owner/store/workspace notification settings.
+Manual system send writes a new owner notification event with `metadata.manualRecipientOverride === true`; the recipient resolver prefers the entered email or WhatsApp number only for that marked event. Normal event delivery still resolves recipients from owner/store/workspace notification settings. WhatsApp manual-send validation and manual-handoff recipient hashes use the same international-recipient normalizer used by automated delivery.
 
 Manual handoff writes a delivery record with `deliveryMode: 'manual_handoff'`, masked/hashed destination, operator audit fields, and `manualHandoffAt` fields on the source event. The original event status is not silently changed, so failed events remain visible for review.
 

@@ -37,21 +37,22 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ## Quick Reference
 
-### What's in the Kit (Frozen — 9 Generated Asset Files + Staff Script + Print Instructions)
+### What's in the Kit (Frozen — 10 Generated Asset Files + Staff Script + Print Instructions)
 
-All visual assets use the store's existing logo and brand accent color when available. The QR itself stays on a high-contrast white scan panel so the output feels premium without reducing scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
+All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
 
-1. **Table Tent (A5 fold PDF)** — "Scan to view menu" + QR + instruction line + short link fallback + branding
-2. **Counter Sticker (8×8 PNG)** — "Scan for menu" + QR + short link fallback
-3. **Entrance Poster (A4 PDF)** — Large QR (80mm) for entrance/window scanning from distance
-4. **Delivery Bag Sticker (6×6 PNG)** — "View menu" + QR for delivery bags/boxes (off-site discovery)
-5. **Takeaway Card (85×55 PNG)** — Business-card insert for takeaway orders (reorder path from home)
-6. **Instagram Story (1080×1920 PNG)** — Menu is live + QR + link + branding
-7. **WhatsApp Status (1080×1920 PNG)** — Updated menu + QR + link + branding
-8. **Google Maps Upload (1200×900 PNG)** — Official menu + QR + link + branding
-9. **Placement Guide (PNG)** — Where to place QR + quantity guidance + QR maintenance + connectivity test
-10. **Staff Script (text)** — "Menu? Please scan the QR on the table/counter."
-11. **PRINT_INSTRUCTIONS.txt** — Specs for print shops (paper size, material, finish, quantity)
+1. **Table Tent (A5 fold PDF)** — Print Menu Surfaces-owned tabletop card with QR + instruction line + short link fallback + branding
+2. **Single Table / Counter Card (A6 PDF)** — Upright non-folded card for acrylic holders, counters, wall clips, and single-sided stands
+3. **Counter Sticker (8×8 PNG)** — "Scan for menu" + QR + short link fallback
+4. **Entrance Poster (A4 PDF)** — Large QR (80mm) for entrance/window scanning from distance
+5. **Delivery Bag Sticker (6×6 PNG)** — "View menu" + QR for delivery bags/boxes (off-site discovery)
+6. **Takeaway Card (85×55 PNG)** — Business-card insert for takeaway orders (reorder path from home)
+7. **Instagram Story (1080×1920 PNG)** — Menu is live + QR + link + branding
+8. **WhatsApp Status (1080×1920 PNG)** — Updated menu + QR + link + branding
+9. **Google Maps Upload (1200×900 PNG)** — Official menu + QR + link + branding
+10. **Placement Guide (PNG)** — Where to place QR + quantity guidance + QR maintenance + connectivity test
+11. **Staff Script (text)** — "Menu? Please scan the QR on the table/counter."
+12. **PRINT_INSTRUCTIONS.txt** — Specs for print shops (paper size, material, finish, quantity)
 
 ### What's NOT in the Kit (Permanently Rejected)
 
@@ -78,12 +79,17 @@ Safe interim use:
 - `/create-menu` for owner acquisition until a signed claim resolver exists.
 - Acquisition postcard copy that says "Claim your official MenuList menu" and avoids external-platform sync claims.
 
+## Print Menu Surfaces Boundary
+
+Menu Kit bundles the table tent file so owners receive one complete deployment pack. The physical table tent layout itself is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). New tabletop, counter-card, folded-card, or in-store scan-first print work belongs there first, then Menu Kit can consume it.
+
 ## Existing Infrastructure (Reusable)
 
 | Component                     | File                                             | Reusable?                           |
 | ----------------------------- | ------------------------------------------------ | ----------------------------------- |
-| Premium output tokens         | `src/lib/menu-kit/brandTokens.ts`                | ✅ Shared logo/color/QR readability defaults |
+| Premium output tokens         | `src/lib/menu-kit/brandTokens.ts`                | ✅ Shared logo/color/gradient/near-black QR readability defaults |
 | Platform attribution          | `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | ✅ Shared MenuList logo/name/domain footer for printable/downloadable outputs, hidden only for Premium stores |
+| Table tent renderer           | `src/lib/print-menu-surfaces/templates/tableTentTemplate.ts` | ✅ Owned by Print Menu Surfaces and bundled by Menu Kit |
 | Tent card PDF generator       | `src/lib/physical-surfaces/tentCardGenerator.ts` | ✅ Legacy Today cards now reuse premium output tokens |
 | Counter sticker PNG generator | `src/lib/physical-surfaces/stickerGenerator.ts`  | ✅ Legacy Today stickers now reuse premium output tokens |
 | QR code generation            | `qrcode` npm package + Ant Design QRCode         | ✅ Direct reuse                     |
@@ -161,5 +167,5 @@ The original Physical Surfaces feature (`src/lib/physical-surfaces/`, `__docs__/
 
 **Document Signature:** Feature Documentation  
 **Created:** February 21, 2026  
-**Last Updated:** June 3, 2026 — Premium branded output treatment shared across Menu Kit, QR downloads, and active legacy Today cards
+**Last Updated:** June 4, 2026 — Premium branded output treatment shared across Menu Kit, QR downloads, and active legacy Today cards
 **Cross-References:** `__docs__/constitution/15-category-dominance-doctrine.md` (physical dependency creation), `__docs__/constitution/11-product-evolution-doctrine.md` (5-minute rule), `__docs__/physical-surfaces/_archive/chatgpt-review.md` (strategic validation), `__docs__/digital-screens/_archive/digital-screens_chatgpt-review-v4.md` (deep architecture review)

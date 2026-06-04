@@ -37,7 +37,7 @@ The Reseller Dashboard lets you set up MenuList accounts for local businesses on
 ### Step 2: Enter Business Details
 - **Business Name** — The restaurant or business name
 - **Business Type** — Select from the dropdown (Restaurant, Cafe, Salon, etc.)
-- **Owner Phone** — The business owner's phone number (required)
+- **Owner Phone** — Select country and enter the business owner's phone number (required)
 - **Owner Email** — Optional, but helps with login
 
 ### Step 3: Upload Menu (Optional)

@@ -13,6 +13,7 @@ import type {
     PlatformNotificationStatusFilter,
     PlatformNotificationSeverityFilter,
 } from '@lib/ops/platformNotificationTypes';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -82,7 +83,7 @@ function formatTimestamp(value: string | null | undefined, formatter: IntlFormat
 }
 
 function normalizeWhatsappPhone(value: string): string {
-    return value.replace(/\D/g, '');
+    return buildWhatsAppPhoneParam({ phoneNumber: value });
 }
 
 function buildMailtoHref(destination: string, subject: string, body: string): string {

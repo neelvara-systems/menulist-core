@@ -45,7 +45,7 @@ Menu Kit is a strong mobile candidate because its primary output (social images)
 
 ### ZIP vs Individual Downloads
 
-On desktop, ZIP bundle makes sense (9 asset files in one download).
+On desktop, ZIP bundle makes sense (10 asset files in one download).
 On mobile, ZIP is awkward — users can't easily open ZIPs on many phones.
 
 **Mobile approach:** Instead of ZIP, show individual share/download buttons per asset. Use Web Share API for direct sharing to WhatsApp/Instagram.
@@ -55,7 +55,7 @@ Desktop: "Download Menu Kit" → ZIP
 Mobile:  Individual buttons:
          [Share to WhatsApp] → WhatsApp Status image
          [Share to Instagram] → Instagram Story image
-         [Download Print Files] → Table Tent + Counter Sticker
+         [Download Print Files] → Table Tent + Single Table Card + Counter Sticker
          [Upload to Google Maps] → Google Maps image
 ```
 
@@ -104,6 +104,7 @@ All buttons must be minimum 44px height (ICP compliance). Large, clear, one acti
 
 - Complete Menu Kit ZIP
 - Table Tent
+- Single Table Card
 - Counter Sticker
 - Entrance Poster
 - Feedback QR when feedback is enabled
@@ -116,8 +117,10 @@ Print files download directly. Social files use the Web Share API when available
 All mobile Menu Kit and QR downloads use the same premium output tokens as desktop:
 - existing store logo when available
 - existing store/OBP accent color when available
-- high-contrast white QR panel for scan reliability
+- brand-color gradient/accent framing with near-black QR modules on a high-contrast white scan panel
 - Premium-only visible MenuList attribution removal from already-loaded store plan context
+
+The table tent and single table/counter card downloads use the same Print Menu Surfaces renderers as desktop through `generateMenuKit()`. Mobile Share must not fork mobile-only table tent, single-card, or QR designs; it should request the same assets and then use mobile-native share/download actions.
 - no separate mobile generator or mobile-only design variant
 
 ## Mobile Implementation Notes

@@ -1521,6 +1521,24 @@ export const FEATURE_FLAGS = {
     ENABLE_CLAIM_ACCOUNT: true,
 
     /**
+     * Phone OTP Auth — WhatsApp-first owner login.
+     *
+     * true: /create-menu and dashboard login can request/verify a WhatsApp OTP.
+     * false: Phone OTP UI hides and /api/auth/phone-otp/* returns 404.
+     *
+     * Server contract:
+     * - OTP challenge docs are server-only and expire quickly.
+     * - Verified OTP returns a short-lived login token consumed by NextAuth.
+     * - Dashboard Firebase custom-claims sync continues through /api/auth/set-claims.
+     *
+     * Cost: one WhatsApp outbound message per accepted send request.
+     * Rate limit: AUTH_PHONE_OTP_SEND + AUTH_PHONE_OTP_VERIFY.
+     *
+     * @see __docs__/phone-otp-auth/phone-otp-auth_impl.md
+     */
+    ENABLE_PHONE_OTP_AUTH: true,
+
+    /**
      * User Profile Management
      *
      * true: "My Profile" in header opens profile modal (edit name, phone, change password)
@@ -1697,6 +1715,21 @@ export const FEATURE_FLAGS = {
     ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
     MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"] as string[],
     ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL: true,
+
+    /**
+     * Print Menu Surfaces — tabletop and in-store scan-first print assets
+     *
+     * When enabled:
+     * - Physical menu placements such as the table tent are treated as a
+     *   separate scan-first feature from the social/menu-kit bundle.
+     * - Menu Kit can bundle these assets, but the physical layout is owned by
+     *   src/lib/print-menu-surfaces.
+     *
+     * Firebase cost: $0.00 (client-side Canvas + jsPDF only)
+     *
+     * @see __docs__/print-menu-surfaces/
+     */
+    ENABLE_PRINT_MENU_SURFACES: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)

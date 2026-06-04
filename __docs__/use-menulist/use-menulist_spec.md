@@ -61,7 +61,8 @@ Two screen link cards:
 
 ### 4.4 Print for Your Restaurant
 Individual asset cards with Preview + Download:
-- Table Tent (A6 PDF)
+- Table Tent (A5 fold PDF)
+- Single Table Card (A6 PDF)
 - Counter Sticker (8×8cm PNG)
 - Entrance Poster (A4 PDF)
 - Feedback QR (PNG)

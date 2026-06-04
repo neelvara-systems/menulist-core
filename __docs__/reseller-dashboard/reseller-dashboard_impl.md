@@ -356,7 +356,9 @@ export const getPlanDetailsFromConstants = (notes: any) => {
 const ResellerOnboardSchema = z.object({
   businessName: z.string().min(2).max(100),
   businessType: z.string().min(2).max(50),
-  ownerPhone: z.string().min(10).max(15),
+  ownerCountryCode: z.string().trim().max(8).optional(),
+  ownerDialCode: z.string().trim().max(12).optional(),
+  ownerPhone: z.string().trim().min(6).max(40),
   ownerEmail: z.string().email().optional(), // Contact email. Login handoff uses claim link unless an unclaimed user already exists.
   pricingTier: z.enum(["FOUNDER_400", "FOUNDER_500", "STANDARD"]),
   billingInterval: z.enum(["MONTH", "YEAR"]).optional().default("MONTH"), // For online only

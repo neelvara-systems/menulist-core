@@ -1,9 +1,10 @@
 import type { OwnerNotificationChannelResult } from '../types';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 
 const GRAPH_API_VERSION = 'v21.0';
 
 function normalizeWhatsAppNumber(value: string): string {
-    return value.replace(/[^\d]/g, '');
+    return buildWhatsAppPhoneParam({ phoneNumber: value });
 }
 
 export function isOwnerNotificationWhatsAppConfigured(): boolean {

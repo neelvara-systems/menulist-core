@@ -12,6 +12,7 @@ import { logger } from '@lib/monitoring/logger';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries } from '@lib/phone/phoneNumber';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
@@ -956,6 +957,7 @@ function MobileAccountProfileScreen({
     userName: string;
 }) {
     const { token } = theme.useToken();
+    const [draftCountryCode, setDraftCountryCode] = useState(countryCode || DEFAULT_PHONE_COUNTRY_CODE);
     const [draftDialCode, setDraftDialCode] = useState(dialCode || '');
     const [draftEmail, setDraftEmail] = useState(email || '');
     const [draftName, setDraftName] = useState(userName || '');
@@ -965,6 +967,7 @@ function MobileAccountProfileScreen({
 
     const phoneLabel = [dialCode, phoneNumber].filter(Boolean).join(' ').trim();
     const openEditProfile = () => {
+        setDraftCountryCode(countryCode || DEFAULT_PHONE_COUNTRY_CODE);
         setDraftDialCode(dialCode || '');
         setDraftEmail(email || '');
         setDraftName(userName || '');
@@ -976,7 +979,8 @@ function MobileAccountProfileScreen({
         const nextName = draftName.trim();
         const nextEmail = draftEmail.trim();
         const nextPhone = draftPhone.trim();
-        const nextDialCode = draftDialCode.trim();
+        const nextCountryCode = draftCountryCode || DEFAULT_PHONE_COUNTRY_CODE;
+        const nextDialCode = getDialCodeForCountry(nextCountryCode, draftDialCode);
 
         if (!nextName) {
             Toast.show({ content: 'Enter your name.', duration: 1500 });
@@ -991,7 +995,7 @@ function MobileAccountProfileScreen({
         try {
             const res = await fetch('/api/auth/update-profile', {
                 body: JSON.stringify({
-                    countryCode,
+                    countryCode: nextCountryCode,
                     dialCode: nextDialCode,
                     displayEmail: nextEmail,
                     name: nextName,
@@ -1006,7 +1010,7 @@ function MobileAccountProfileScreen({
             }
 
             onProfileSaved({
-                countryCode,
+                countryCode: nextCountryCode,
                 dialCode: nextDialCode,
                 displayEmail: nextEmail,
                 name: nextName,
@@ -1088,7 +1092,19 @@ function MobileAccountProfileScreen({
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">Phone</Text>
-                                <Input onChange={setDraftDialCode} placeholder="Dial code, e.g. +91" type="tel" value={draftDialCode} />
+                                <Select
+                                    onChange={(value) => {
+                                        setDraftCountryCode(value);
+                                        setDraftDialCode(getDialCodeForCountry(value));
+                                    }}
+                                    options={getUniquePhoneCountries()
+                                        .map((country) => ({
+                                            label: `${country.flag} ${country.code} (${country.dialCode})`,
+                                            value: country.code,
+                                        }))}
+                                    placeholder="Country code"
+                                    value={draftCountryCode}
+                                />
                                 <Input onChange={setDraftPhone} placeholder="Phone number" type="tel" value={draftPhone} />
                             </Flex>
                         </Card>

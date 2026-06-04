@@ -11,7 +11,7 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { STAFF_EMAIL_DOMAIN } from '@constant/urls';
-import { buildPhoneUsername, getDisplayEmail, isInternalAuthEmail } from '@lib/auth/loginIdentifiers';
+import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import {
     ensureAnswerlatticeRolesForStore,
@@ -24,6 +24,7 @@ import {
 import { answerlatticeAuthAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { validateAPIInput } from '@lib/security/inputValidation';
@@ -266,6 +267,10 @@ const generateUniqueAnswerlatticeStaffLoginId = async () => {
     throw new Error('ANSWERLATTICE_STAFF_LOGIN_ID_GENERATION_FAILED');
 };
 
+const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId(value);
+
+const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
+
 const sendFirebasePasswordResetEmail = async (email: string) => {
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
     if (!apiKey) {
@@ -329,7 +334,7 @@ const sanitizeAnswerlatticeStaffUser = (id: string, data: any, roles: Answerlatt
         roleName: role?.name || roleId,
         sessionRevokedAt: serializeTimestamp(data?.sessionRevokedAt),
         staffAuthMode: getStaffAuthMode(data),
-        staffLoginId: data?.staffLoginId || data?.loginUsername || '',
+        staffLoginId: resolveStaffLoginDisplayId(data?.staffLoginId || data?.loginUsername),
         storeId: Number(data?.storeId || data?.sId) || stores[0]?.storeId,
         storeIds: Array.isArray(data?.storeIds)
             ? data.storeIds.filter(isPositiveId).map(Number)
@@ -388,6 +393,8 @@ const syncDefaultAuthProductAccount = async (params: {
         storeIds: [params.storeId],
         updatedAt: now,
     });
+    const loginUsername = resolveStaffLoginUsername(params.loginUsername || existingDefaultUser?.loginUsername || existingDefaultUser?.staffLoginId);
+    const staffLoginId = resolveStaffLoginDisplayId(params.loginUsername || existingDefaultUser?.staffLoginId || existingDefaultUser?.loginUsername);
     const defaultUserUpdate = sanitizeFirestoreValue({
         email: params.email,
         name: params.name,
@@ -395,9 +402,9 @@ const syncDefaultAuthProductAccount = async (params: {
         authDisabled: existingDefaultUser?.authDisabled === true ? true : false,
         isVerified: true,
         firebaseUid: params.firebaseUid || existingDefaultUser?.firebaseUid,
-        loginUsername: params.loginUsername || existingDefaultUser?.loginUsername,
+        loginUsername,
         staffAuthMode: params.staffAuthMode,
-        staffLoginId: params.loginUsername || existingDefaultUser?.staffLoginId,
+        staffLoginId,
         productAccounts: {
             [PRODUCT_IDS.ANSWERLATTICE]: productAccount,
         },
@@ -687,14 +694,20 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
 
     const hasEmail = Boolean(input.email);
-    const staffLoginId = await generateUniqueAnswerlatticeStaffLoginId();
-    const loginEmail = hasEmail ? String(input.email) : buildManagedStaffEmail(access.scope.tenantId, staffLoginId);
+    const staffLoginUsername = await generateUniqueAnswerlatticeStaffLoginId();
+    const staffLoginId = resolveStaffLoginDisplayId(staffLoginUsername);
+    const loginEmail = hasEmail ? String(input.email) : buildManagedStaffEmail(access.scope.tenantId, staffLoginUsername);
     const existingAnswerlatticeUser = await getAnswerlatticeUserByEmail(loginEmail);
     if (existingAnswerlatticeUser && Number(existingAnswerlatticeUser.data.tenantId) !== access.scope.tenantId) {
         return jsonError('This email is registered with another Answerlattice workspace.', 409, 'EMAIL_OTHER_TENANT');
     }
 
-    const displayName = input.name || input.phoneNumber || (hasEmail ? String(input.email).split('@')[0] : `Support ${staffLoginId.slice(-4)}`);
+    const normalizedPhone = normalizePhoneNumberForStorage({
+        countryCode: input.countryCode,
+        dialCode: input.dialCode,
+        phoneNumber: input.phoneNumber,
+    });
+    const displayName = input.name || normalizedPhone.phoneNumber || (hasEmail ? String(input.email).split('@')[0] : `Support ${staffLoginId.slice(-4)}`);
     const tempPasscode = hasEmail ? '' : generateStaffPasscode();
     const tempPassword = tempPasscode || randomBytes(24).toString('base64url');
     const defaultFirebaseUser = await createOrGetDefaultFirebaseUser({
@@ -705,7 +718,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     const existingDefaultUser = await getDefaultAuthUserByEmail(loginEmail);
     const userId = existingAnswerlatticeUser?.id || existingDefaultUser?.id || defaultFirebaseUser.uid;
     const now = admin.firestore.Timestamp.now();
-    const phoneUsername = buildPhoneUsername(input.dialCode, input.phoneNumber);
+    const phoneUsername = normalizedPhone.phoneUsername;
     const stores = [{
         storeId: access.scope.storeId,
         name: access.storeName,
@@ -716,28 +729,29 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     const userDoc = sanitizeFirestoreValue({
         active: true,
         authDisabled: false,
-        countryCode: input.countryCode,
+        countryCode: input.phoneNumber ? normalizedPhone.countryCode : input.countryCode,
         createdBy: session?.user?.email,
         createdOn: existingAnswerlatticeUser?.data?.createdOn || now,
         createdVia: hasEmail ? 'answerlattice-staff-invite' : 'answerlattice-owner-passcode',
         deleted: false,
-        dialCode: input.dialCode,
+        dialCode: input.phoneNumber ? normalizedPhone.dialCode : input.dialCode,
         email: loginEmail,
         firebaseUid: defaultFirebaseUser.uid,
         isVerified: true,
-        loginUsername: existingAnswerlatticeUser?.data?.loginUsername || staffLoginId,
+        loginUsername: resolveStaffLoginUsername(existingAnswerlatticeUser?.data?.loginUsername || existingAnswerlatticeUser?.data?.staffLoginId) || staffLoginUsername,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         name: displayName,
         pId: PRODUCT_IDS.ANSWERLATTICE,
-        phoneNumber: input.phoneNumber,
+        phone: normalizedPhone.phone || undefined,
+        phoneNumber: input.phoneNumber ? normalizedPhone.phoneNumber : input.phoneNumber,
         phoneUsername: phoneUsername || undefined,
         platformRole: 'USER',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         role: requestedRoleId,
         sId: access.scope.storeId,
         staffAuthMode,
-        staffLoginId: existingAnswerlatticeUser?.data?.staffLoginId || staffLoginId,
+        staffLoginId: resolveStaffLoginDisplayId(existingAnswerlatticeUser?.data?.staffLoginId || existingAnswerlatticeUser?.data?.loginUsername || staffLoginUsername),
         storeId: access.scope.storeId,
         storeIds: [access.scope.storeId],
         stores,
@@ -870,18 +884,25 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
             : store
     ));
     const active = input.active;
+    const shouldNormalizePhone = input.phoneNumber !== undefined || input.dialCode !== undefined || input.countryCode !== undefined;
+    const normalizedPhone = shouldNormalizePhone
+        ? normalizePhoneNumberForStorage({
+            countryCode: input.countryCode ?? existingData.countryCode,
+            dialCode: input.dialCode ?? existingData.dialCode,
+            phoneNumber: input.phoneNumber ?? existingData.phoneNumber,
+        })
+        : null;
     const updateData = sanitizeFirestoreValue({
         active,
         authDisabled: active === undefined ? undefined : active === false,
-        countryCode: input.countryCode,
-        dialCode: input.dialCode,
+        countryCode: normalizedPhone ? normalizedPhone.countryCode : input.countryCode,
+        dialCode: normalizedPhone ? normalizedPhone.dialCode : input.dialCode,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         name: input.name,
-        phoneNumber: input.phoneNumber,
-        phoneUsername: input.phoneNumber !== undefined || input.dialCode !== undefined
-            ? buildPhoneUsername(input.dialCode ?? existingData.dialCode, input.phoneNumber ?? existingData.phoneNumber)
-            : undefined,
+        phone: normalizedPhone ? normalizedPhone.phone : undefined,
+        phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
+        phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
         role: nextRoleId,
         stores: nextStores,
         sessionRevokedAt: active === false ? now : undefined,
@@ -1065,7 +1086,9 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         .map(Number)
         .filter(isPositiveId);
 
-    const loginId = String(existingData.staffLoginId || existingData.loginUsername || '').trim() || await generateUniqueAnswerlatticeStaffLoginId();
+    const existingLoginUsername = resolveStaffLoginUsername(existingData.loginUsername || existingData.staffLoginId);
+    const loginUsername = existingLoginUsername || await generateUniqueAnswerlatticeStaffLoginId();
+    const loginId = resolveStaffLoginDisplayId(loginUsername);
     const temporaryPasscode = generateStaffPasscode();
     const firebaseUser = existingData.firebaseUid
         ? await authAdmin.getUser(String(existingData.firebaseUid))
@@ -1089,7 +1112,7 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     await target.ref.update(sanitizeFirestoreValue({
         authDisabled: false,
         authTokensRevokedAt: now,
-        loginUsername: loginId,
+        loginUsername,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         passcodeResetAt: now,

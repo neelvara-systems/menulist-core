@@ -11,6 +11,7 @@ import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subsc
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
@@ -26,8 +27,6 @@ import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "reseller-onboarding.log";
-
-const normalizeOwnerUsername = (phone: string) => phone.replace(/[^0-9]/g, '');
 
 const removeUndefinedFields = (data: Record<string, unknown>) => Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined),
@@ -159,7 +158,7 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
-        const { businessName, businessType, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
+        const { businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
 
         // 3. Validate reseller profile exists and is active
         const resellerProfile = await getResellerProfile(resellerId, session.user.email);
@@ -198,8 +197,13 @@ export const POST = withAuth(async (request, session) => {
         // Pre-check subdomain uniqueness (must be outside transaction)
         const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
         const normalizedOwnerEmail = ownerEmail?.toLowerCase()?.trim() || '';
-        const ownerUsername = normalizeOwnerUsername(ownerPhone);
-        if (ownerUsername.length < 10) {
+        const normalizedOwnerPhone = normalizePhoneNumberForStorage({
+            countryCode: ownerCountryCode,
+            dialCode: ownerDialCode,
+            phoneNumber: ownerPhone,
+        });
+        const ownerUsername = normalizedOwnerPhone.phoneUsername;
+        if (ownerUsername.length < 10 || ownerUsername.length > 15) {
             return NextResponse.json({ error: "Enter a valid owner phone number." }, { status: 400 });
         }
         const ownerLoginEmail = normalizedOwnerEmail || getGeneratedEmail(ownerUsername);
@@ -265,8 +269,20 @@ export const POST = withAuth(async (request, session) => {
                     onboardingSource: 'RESELLER_ONBOARDING',
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
-                    tenantExtra: { phone: ownerPhone, resellerId },
-                    storeExtra: { phone: ownerPhone, resellerId },
+                    tenantExtra: {
+                        countryCode: normalizedOwnerPhone.countryCode,
+                        dialCode: normalizedOwnerPhone.dialCode,
+                        phone: normalizedOwnerPhone.phone,
+                        phoneNumber: normalizedOwnerPhone.phoneNumber,
+                        resellerId,
+                    },
+                    storeExtra: {
+                        countryCode: normalizedOwnerPhone.countryCode,
+                        dialCode: normalizedOwnerPhone.dialCode,
+                        phone: normalizedOwnerPhone.phone,
+                        phoneNumber: normalizedOwnerPhone.phoneNumber,
+                        resellerId,
+                    },
                 });
 
                 const ownerStoreMapping = { storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() };
@@ -290,7 +306,10 @@ export const POST = withAuth(async (request, session) => {
                         email: ownerLoginEmail,
                         loginEmail: ownerLoginEmail,
                         pendingOwnerEmail: null,
-                        phone: ownerPhone,
+                        countryCode: normalizedOwnerPhone.countryCode,
+                        dialCode: normalizedOwnerPhone.dialCode,
+                        phone: normalizedOwnerPhone.phone,
+                        phoneNumber: normalizedOwnerPhone.phoneNumber,
                         phoneUsername: ownerUsername,
                         username: ownerUsername,
                         modifiedOn: core.now,
@@ -300,7 +319,10 @@ export const POST = withAuth(async (request, session) => {
 
                     transaction.set(userRef, {
                         firebaseUid: authAccount.uid,
-                        phone: ownerPhone,
+                        countryCode: normalizedOwnerPhone.countryCode,
+                        dialCode: normalizedOwnerPhone.dialCode,
+                        phone: normalizedOwnerPhone.phone,
+                        phoneNumber: normalizedOwnerPhone.phoneNumber,
                         phoneUsername: ownerUsername,
                         username: ownerUsername,
                         email: ownerLoginEmail,

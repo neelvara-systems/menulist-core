@@ -13,6 +13,7 @@ import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
+import { consumePhoneOtpLoginToken, PhoneOtpError } from "./phoneOtp";
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
 import {
     addAuthPlatformUser,
@@ -305,6 +306,31 @@ export const authOptions: NextAuthOptions = {
             name: 'Credentials',
             credentials: {},
             async authorize(credentials): Promise<any> {
+                const phoneOtpLoginToken = String((credentials as any)?.phoneOtpLoginToken || '').trim();
+                if (phoneOtpLoginToken) {
+                    try {
+                        let dbUser: any = await consumePhoneOtpLoginToken({ token: phoneOtpLoginToken });
+                        dbUser = await applyInheritedBlockState(dbUser);
+                        logFetchedUserForDebug('phone-otp', dbUser);
+
+                        if (Boolean(dbUser?.isVerified) && Boolean(dbUser?.active) && !isPlatformEntityBlocked(dbUser)) {
+                            await logSuccessfulLogin(dbUser.email, 'phone_otp');
+                            return {
+                                ...getDatabaseUserForSession(dbUser),
+                                loginSource: 'phone_otp',
+                            };
+                        }
+
+                        await logFailedLogin(dbUser?.email || 'phone_otp', 'invalid_account', 'phone_otp');
+                        throw new Error('Invalid phone verification code');
+                    } catch (error) {
+                        if (error instanceof PhoneOtpError) {
+                            await logFailedLogin('phone_otp', error.code, 'phone_otp');
+                        }
+                        throw new Error('Invalid phone verification code');
+                    }
+                }
+
                 // ✅ SECURITY FIX: Normalize login identifier immediately.
                 // This may be an email or a reseller-created phone username.
                 const loginIdentifier = ((credentials as any).email || '').toLowerCase().trim();

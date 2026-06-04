@@ -480,6 +480,79 @@ body:has(.answerlattice-site) {
     min-height: 7.25rem;
 }
 
+.al-cross-diagram {
+    min-height: 42rem;
+    display: grid;
+    grid-template-areas:
+        "top-left core top-right"
+        "bottom-left core bottom-right";
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.54fr) minmax(0, 1fr);
+    grid-template-rows: minmax(13rem, 1fr) minmax(13rem, 1fr);
+    align-items: center;
+    gap: clamp(1rem, 3vw, 3rem);
+    padding-block: clamp(1.75rem, 4vw, 3rem);
+}
+
+.al-cross-diagram__paths {
+    z-index: 0;
+}
+
+.al-cross-diagram__axis {
+    stroke: rgba(255, 255, 255, 0.08);
+    stroke-width: 1.35;
+    vector-effect: non-scaling-stroke;
+}
+
+.al-cross-diagram__line {
+    stroke-dasharray: none;
+    opacity: 0.24;
+}
+
+.al-cross-diagram__core {
+    position: relative;
+    z-index: 2;
+    grid-area: core;
+    display: grid;
+    min-height: 26rem;
+    place-items: center;
+}
+
+.al-cross-diagram__core .al-diagram-core {
+    width: 220px;
+    height: 220px;
+}
+
+.al-cross-diagram__core .al-diagram-ring--outer {
+    width: 260px;
+    height: 260px;
+}
+
+.al-cross-diagram__core .al-diagram-ring--inner {
+    width: 154px;
+    height: 154px;
+}
+
+.al-cross-diagram__card {
+    align-self: center;
+    min-height: 10.4rem;
+}
+
+.al-cross-diagram__card--0 {
+    grid-area: top-left;
+}
+
+.al-cross-diagram__card--1 {
+    grid-area: bottom-left;
+}
+
+.al-cross-diagram__card--2 {
+    grid-area: top-right;
+}
+
+.al-cross-diagram__card--3 {
+    grid-area: bottom-right;
+}
+
 .al-loop-diagram {
     --al-loop-cycle-duration: 8.4s;
 
@@ -835,8 +908,20 @@ body:has(.answerlattice-site) {
 
 @media (max-width: 1024px) {
     .al-diagram--hub,
-    .al-sequence-diagram__rail {
+    .al-sequence-diagram__rail,
+    .al-cross-diagram {
         grid-template-columns: 1fr;
+    }
+
+    .al-cross-diagram {
+        min-height: auto;
+        grid-template-areas:
+            "top-left"
+            "bottom-left"
+            "core"
+            "top-right"
+            "bottom-right";
+        grid-template-rows: none;
     }
 
     .al-diagram-paths--desktop {
@@ -848,8 +933,25 @@ body:has(.answerlattice-site) {
     }
 
     .al-diagram-center,
-    .al-sequence-diagram__core {
+    .al-sequence-diagram__core,
+    .al-cross-diagram__core {
         min-height: 13.5rem;
+    }
+
+    .al-cross-diagram__core .al-diagram-core {
+        width: 100%;
+        height: auto;
+        min-height: 11rem;
+    }
+
+    .al-cross-diagram__core .al-diagram-ring--outer {
+        width: 10rem;
+        height: 10rem;
+    }
+
+    .al-cross-diagram__core .al-diagram-ring--inner {
+        width: 7.8rem;
+        height: 7.8rem;
     }
 
     .al-sequence-diagram__group {

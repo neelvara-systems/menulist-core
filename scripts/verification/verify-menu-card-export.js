@@ -15,6 +15,10 @@ const requiredFiles = [
   'src/lib/menu-card-export/render/renderPreviewModel.ts',
   'src/lib/export/menuPdfGenerator.ts',
   'src/lib/menu-kit/brandTokens.ts',
+  'src/lib/menu-kit/canvasPrimitives.ts',
+  'src/lib/print-menu-surfaces/templates/printMenuCardFace.ts',
+  'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
   'src/lib/platform/menuListBranding.ts',
   'src/lib/utils/qrCode.ts',
   'src/lib/utils/feedbackQrCode.ts',
@@ -34,6 +38,11 @@ const requiredFiles = [
   'src/components/mobile/screens/MobileMoreScreen.tsx',
   '__docs__/menu-card-export/menu-card-export_firebase.md',
   '__docs__/menu-card-export/menu-card-export_test-cases.md',
+  '__docs__/print-menu-surfaces/README.md',
+  '__docs__/print-menu-surfaces/print-menu-surfaces_spec.md',
+  '__docs__/print-menu-surfaces/print-menu-surfaces_impl.md',
+  '__docs__/print-menu-surfaces/print-menu-surfaces_firebase.md',
+  '__docs__/print-menu-surfaces/print-menu-surfaces_mobile-support.md',
 ];
 
 const failures = [];
@@ -53,6 +62,7 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
   'ENABLE_MENU_CARD_EXPORT_AI_ADVISOR',
   'MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS',
   'ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL',
+  'ENABLE_PRINT_MENU_SURFACES',
 ].forEach((flag) => {
   if (!features.includes(flag)) failures.push(`Missing feature flag: ${flag}`);
 });
@@ -363,11 +373,26 @@ const menuKitBrandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-kit/bra
   'resolveMenuKitBrandTokens',
   'resolveStoreBrandColor',
   'qrDark',
+  "qrDark: '#111827'",
   'qrLight',
   'softAccent',
+  'gradientFrom',
+  'gradientTo',
   'normalizeMenuKitBrandColor',
 ].forEach((token) => {
   if (!menuKitBrandTokens.includes(token)) failures.push(`Menu Kit brand token helper missing token: ${token}`);
+});
+
+const canvasPrimitives = fs.readFileSync(path.join(root, 'src/lib/menu-kit/canvasPrimitives.ts'), 'utf8');
+[
+  'fillRoundedRect',
+  'fillRoundedVerticalGradient',
+  'fillVerticalGradient',
+  'fitCanvasText',
+  'truncateCanvasText',
+  'stripDecorativeStatusSymbols',
+].forEach((token) => {
+  if (!canvasPrimitives.includes(token)) failures.push(`Menu Kit canvas primitive missing token: ${token}`);
 });
 
 const platformAttribution = fs.readFileSync(path.join(root, 'src/lib/menu-kit/platformAttribution.ts'), 'utf8');
@@ -390,6 +415,8 @@ const qrCodeUtil = fs.readFileSync(path.join(root, 'src/lib/utils/qrCode.ts'), '
   'loadLogo',
   'brand.qrDark',
   'brand.surface',
+  'fillVerticalGradient',
+  'fitCanvasText',
   'drawMenuListAttribution',
   'activePlanType',
 ].forEach((token) => {
@@ -426,8 +453,14 @@ const publicMenuListAttribution = fs.readFileSync(path.join(root, 'src/component
 
 [
   {
-    label: 'Menu Kit table tent',
-    file: 'src/lib/menu-kit/templates/tableTentTemplate.ts',
+    label: 'Print Menu table tent',
+    file: 'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+    delegatesPaper: true,
+  },
+  {
+    label: 'Print Menu single table card',
+    file: 'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+    delegatesPaper: true,
   },
   {
     label: 'Menu Kit counter sticker',
@@ -470,20 +503,97 @@ const publicMenuListAttribution = fs.readFileSync(path.join(root, 'src/component
     label: 'Physical counter sticker',
     file: 'src/lib/physical-surfaces/stickerGenerator.ts',
   },
-].forEach(({ label, file, noQr }) => {
+].forEach(({ label, file, noQr, delegatesPaper }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   ['resolveMenuKitBrandTokens', ...(noQr ? [] : ['brand.qrDark'])].forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing premium brand token: ${token}`);
   });
-  if (!source.includes('brand.paper') && !source.includes('brand.paperRgb')) {
+  if (!delegatesPaper && !source.includes('brand.paper') && !source.includes('brand.paperRgb')) {
     failures.push(`${label} missing premium brand paper token`);
   }
 });
 
 [
   {
-    label: 'Menu Kit table tent',
-    file: 'src/lib/menu-kit/templates/tableTentTemplate.ts',
+    label: 'Print Menu card face visual treatment',
+    file: 'src/lib/print-menu-surfaces/templates/printMenuCardFace.ts',
+  },
+].forEach(({ label, file }) => {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  [
+    'drawPrintMenuCardFace',
+    'OUR ${menuLabel}',
+    'fillRoundedVerticalGradient',
+    'brand.gradientFrom',
+    'brand.gradientTo',
+    'brand.paper',
+    'drawMenuListAttribution',
+  ].forEach((token) => {
+    if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
+  });
+});
+
+[
+  {
+    label: 'Print Menu table tent physical treatment',
+    file: 'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+    tokens: ['generatePrintMenuTableTent', 'SHEET_W_MM = 210', 'SHEET_H_MM = 148', 'FACE_W_MM', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace', 'rotate(Math.PI)'],
+  },
+  {
+    label: 'Print Menu single table card physical treatment',
+    file: 'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+    tokens: ['generatePrintMenuSingleTableCard', 'CARD_W_MM = 105', 'CARD_H_MM = 148', 'orientation: \'portrait\'', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace'],
+  },
+].forEach(({ label, file, tokens }) => {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  tokens.forEach((token) => {
+    if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
+  });
+});
+
+const menuKitTableTentWrapper = fs.readFileSync(path.join(root, 'src/lib/menu-kit/templates/tableTentTemplate.ts'), 'utf8');
+[
+  'Compatibility wrapper',
+  'generatePrintMenuTableTent as generateTableTent',
+  'print-menu-surfaces',
+].forEach((token) => {
+  if (!menuKitTableTentWrapper.includes(token)) failures.push(`Menu Kit table tent wrapper missing token: ${token}`);
+});
+
+const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuKitGenerator.ts'), 'utf8');
+[
+  '../print-menu-surfaces/templates/tableTentTemplate',
+  '../print-menu-surfaces/templates/singleTableCardTemplate',
+  'generatePrintMenuTableTent(buildInput(MENU_KIT_UTM_SOURCES.tableTent))',
+  'generatePrintMenuSingleTableCard(buildInput(MENU_KIT_UTM_SOURCES.singleTableCard))',
+  'TableTent_A5_Fold.pdf',
+  'Table Tent (A5 fold)',
+  'SingleTableCard_A6.pdf',
+  'Single Table / Counter Card (A6)',
+].forEach((token) => {
+  if (!menuKitGenerator.includes(token)) failures.push(`Menu Kit generator missing Print Menu Surfaces token: ${token}`);
+});
+
+[
+  {
+    label: 'Menu Kit Instagram story visual treatment',
+    file: 'src/lib/menu-kit/templates/instagramStoryTemplate.ts',
+  },
+  {
+    label: 'Menu Kit WhatsApp status visual treatment',
+    file: 'src/lib/menu-kit/templates/whatsappStatusTemplate.ts',
+  },
+].forEach(({ label, file }) => {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  ['fillVerticalGradient', 'fitCanvasText', 'stripDecorativeStatusSymbols', 'brand.qrDark'].forEach((token) => {
+    if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
+  });
+});
+
+[
+  {
+    label: 'Print Menu card face',
+    file: 'src/lib/print-menu-surfaces/templates/printMenuCardFace.ts',
     tokens: ['drawMenuListAttribution', 'MENU_LIST_MENU_ATTRIBUTION_TEXT', 'activePlanType'],
   },
   {

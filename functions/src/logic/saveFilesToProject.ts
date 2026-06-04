@@ -151,10 +151,13 @@ function buildExtractedProfileProjectDefaults(
 
     if (accentColor && !existingProject?.config?.design?.brand?.accentColor) {
         updateData.config = {
+            ...(existingProject?.config || {}),
             ...(updateData.config || {}),
             design: {
+                ...(existingProject?.config?.design || {}),
                 ...(updateData.config?.design || {}),
                 brand: {
+                    ...(existingProject?.config?.design?.brand || {}),
                     ...(updateData.config?.design?.brand || {}),
                     accentColor,
                 },
@@ -164,8 +167,10 @@ function buildExtractedProfileProjectDefaults(
 
     if (imageBackgroundColor && !existingProject?.aiPreferences?.image?.backgroundColor) {
         updateData.aiPreferences = {
+            ...(existingProject?.aiPreferences || {}),
             ...(updateData.aiPreferences || {}),
             image: {
+                ...(existingProject?.aiPreferences?.image || {}),
                 ...(updateData.aiPreferences?.image || {}),
                 backgroundColor: imageBackgroundColor,
             },

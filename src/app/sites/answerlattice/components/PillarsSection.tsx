@@ -1,5 +1,5 @@
 import { ANSWERLATTICE_ENGINE_PILLARS } from '../enginePillars';
-import { AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
+import { AnswerlatticeCrossDiagram } from './AnswerlatticeFlowDiagram';
 import SectionHeader from './SectionHeader';
 
 export default function PillarsSection() {
@@ -13,9 +13,8 @@ export default function PillarsSection() {
                     description="AnswerLattice knows your product structure, serves approved answers before fallback, flags stale guidance, and turns repeated misses into review tasks."
                 />
 
-                <AnswerlatticeSequenceDiagram
+                <AnswerlatticeCrossDiagram
                     idPrefix="al-engine-pillars"
-                    splitAfter={2}
                     items={ANSWERLATTICE_ENGINE_PILLARS.map((pillar) => ({
                         title: pillar.title,
                         detail: pillar.description,

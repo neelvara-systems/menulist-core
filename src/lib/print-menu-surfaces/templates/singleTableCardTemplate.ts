@@ -1,0 +1,66 @@
+/**
+ * Print Menu Single Table / Counter Card Template - A6 portrait PDF.
+ *
+ * This is the non-folded version of the table tent face. It is for acrylic
+ * holders, counter stands, wall clips, takeout counters, or any placement where
+ * a normal upright card is easier than a folded tent.
+ *
+ * @see __docs__/print-menu-surfaces/print-menu-surfaces_impl.md
+ */
+
+import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
+import { resolveMenuKitBrandTokens } from '../../menu-kit/brandTokens';
+import { getOfferingLabels } from '../../menu-kit/businessTypeLabels';
+import { type PreloadedLogo } from '../../menu-kit/imageLoader';
+import { type MenuKitInput } from '../../menu-kit/types';
+import { drawPrintMenuCardFace, printMenuMm } from './printMenuCardFace';
+
+type PrintMenuSingleTableCardInput = MenuKitInput & { _logo?: PreloadedLogo | null };
+
+const CARD_W_MM = 105;
+const CARD_H_MM = 148;
+
+export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTableCardInput): Promise<Blob> {
+    const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
+    const labels = getOfferingLabels(businessType, businessCategory);
+    const logo = _logo || null;
+    const brand = resolveMenuKitBrandTokens(input.brandColor);
+
+    const cardW = printMenuMm(CARD_W_MM);
+    const cardH = printMenuMm(CARD_H_MM);
+
+    const qrCanvas = document.createElement('canvas');
+    await QRCode.toCanvas(qrCanvas, menuUrl, {
+        width: 720,
+        margin: 4,
+        color: { dark: brand.qrDark, light: brand.qrLight },
+        errorCorrectionLevel: 'H',
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cardW;
+    canvas.height = cardH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get canvas context');
+
+    drawPrintMenuCardFace(ctx, cardW, cardH, {
+        activePlanType: input.activePlanType,
+        brand,
+        logo,
+        menuLabel: labels.offeringUpper,
+        qrCanvas,
+        shortLink,
+        storeName,
+    });
+
+    const imgDataUrl = canvas.toDataURL('image/png');
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [CARD_W_MM, CARD_H_MM],
+    });
+    doc.addImage(imgDataUrl, 'PNG', 0, 0, CARD_W_MM, CARD_H_MM);
+
+    return doc.output('blob');
+}

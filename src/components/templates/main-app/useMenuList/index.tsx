@@ -963,6 +963,16 @@ export default function UseMenuList() {
                 <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
+                        title="Single Table Card"
+                        description="Flat card or counter stand"
+                        loading={generatingAsset === 'Single Table Card'}
+                        onDownload={() => handleDownloadAsset(9, 'Single Table Card')}
+                        themeToken={themeToken}
+                    />
+                </Col>
+                <Col xs={24} sm={12} md={8}>
+                    <AssetCard
+                        icon={<LuQrCode size={20} />}
                         title="Counter Sticker"
                         description="Near billing counter"
                         loading={generatingAsset === 'Counter Sticker'}

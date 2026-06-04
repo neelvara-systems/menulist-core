@@ -10,6 +10,7 @@ import {
 import {
   sendOwnerNotificationWhatsApp,
 } from '@lib/owner-notifications/channels/whatsapp';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { classifyPlatformAlert } from './platformNotificationClassifier';
 
 type PlatformAlertPayload = {
@@ -31,11 +32,13 @@ function resolvePlatformRecipientEmail(): string | null {
 }
 
 function resolvePlatformRecipientWhatsApp(): string | null {
-  return (
+  const raw = (
     process.env.PLATFORM_ALERT_WHATSAPP_TO ||
     process.env.INTERNAL_NOTIFICATION_WHATSAPP ||
     ''
-  ).trim() || null;
+  ).trim();
+  const phone = buildWhatsAppPhoneParam({ phoneNumber: raw });
+  return phone.length >= 10 && phone.length <= 15 ? phone : null;
 }
 
 function escapeHtml(value: string): string {

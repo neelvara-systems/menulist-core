@@ -35,6 +35,7 @@ import type {
   OwnerNotificationEventDoc,
   OwnerNotificationEventStatus,
 } from '@lib/owner-notifications/types';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import type {
   OwnerNotificationOpsActionResult,
   OwnerNotificationOpsCost,
@@ -163,7 +164,8 @@ function isEmail(value: string): boolean {
 }
 
 function isPhone(value: string): boolean {
-  return value.replace(/[^\d+]/g, '').replace(/^\+/, '').length >= 8;
+  const phone = buildWhatsAppPhoneParam({ phoneNumber: value });
+  return phone.length >= 10 && phone.length <= 15;
 }
 
 function sanitizeForFirestore(value: any): any {
@@ -179,6 +181,11 @@ function sanitizeForFirestore(value: any): any {
     );
   }
   return value;
+}
+
+function normalizeDestinationForAudit(channel: OwnerNotificationChannel, destination: string): string {
+  if (channel === 'email') return destination.trim().toLowerCase();
+  return buildWhatsAppPhoneParam({ phoneNumber: destination }) || destination.trim();
 }
 
 function sanitizeMetadataPreview(metadata: any): Record<string, string | number | boolean | null> {
@@ -449,6 +456,7 @@ async function runManualSend(params: {
   destination: string;
   reason?: string;
 }): Promise<OwnerNotificationOpsActionResult> {
+  const normalizedDestination = normalizeDestinationForAudit(params.channel, params.destination);
   const result = await enqueueOwnerNotification({
     productId: params.event.productId,
     triggerType: params.event.triggerType,
@@ -459,8 +467,8 @@ async function runManualSend(params: {
     recipientRole: params.event.recipientRole,
     requestedChannels: [params.channel],
     recipientHints: params.channel === 'email'
-      ? { email: params.destination }
-      : { whatsappNumber: params.destination },
+      ? { email: normalizedDestination }
+      : { whatsappNumber: normalizedDestination },
     metadata: sanitizeForFirestore({
       ...params.event.metadata,
       manualRecipientOverride: true,
@@ -497,10 +505,13 @@ async function recordManualHandoff(params: {
   session: any;
 }): Promise<OwnerNotificationOpsActionResult> {
   const now = Timestamp.now();
-  const destinationValue = params.destination || `manual:${params.eventId}:${params.channel}`;
+  const normalizedDestination = params.destination
+    ? normalizeDestinationForAudit(params.channel, params.destination)
+    : undefined;
+  const destinationValue = normalizedDestination || `manual:${params.eventId}:${params.channel}`;
   const deliveryId = safeId(`manual|${params.eventId}|${params.channel}|${destinationValue}|${Date.now()}`);
   const recipientMasked = params.destination
-    ? maskDestination(params.channel, params.destination)
+    ? maskDestination(params.channel, normalizedDestination || params.destination)
     : `manual:${params.channel}`;
 
   await params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId).set(sanitizeForFirestore({

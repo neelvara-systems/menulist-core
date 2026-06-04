@@ -29,34 +29,36 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 ---
 
-## Scope (Frozen — 9 Generated Asset Files + Staff Script + Print Instructions)
+## Scope (Frozen — 10 Generated Asset Files + Staff Script + Print Instructions)
 
 ### Print Assets (Offline Deployment)
 
-#### 1. Table Tent — A5 Fold PDF
+#### 1. Table Tent - A5 Fold PDF
 
 | Attribute       | Value                          |
 | --------------- | ------------------------------ |
 | **File format** | PDF                            |
-| **Size**        | 148mm × 210mm (A5 portrait), folds to A6 |
+| **Size**        | A5 landscape sheet (210mm x 148mm), folds into two A6 portrait faces |
 | **Print spec**  | 300 GSM matte recommended      |
-| **Filename**    | `{StoreName}_TableTent_A6.pdf` |
+| **Filename**    | `{StoreName}_TableTent_A5_Fold.pdf` |
+
+**Feature ownership:** The table tent is included in Menu Kit, but the layout is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). Menu Kit must not become the owner of tabletop print design rules.
 
 **Content layout:**
 
 ```
 ┌─────────────────────┐
 │                     │
-│  SCAN TO VIEW MENU  │  ← Bold, large
+│  SCAN TO VIEW MENU  │  <- Bold, large
 │                     │
-│      ( QR CODE )    │  ← Min 40mm × 40mm
+│      ( QR CODE )    │  <- Black QR on white panel
 │                     │
-│    {Store Name}     │  ← Medium
+│    {Store Name}     │  <- Medium
 │                     │
-│  Menu & prices      │  ← Small, secondary
+│  Menu & prices      │  <- Small, secondary
 │  updated regularly  │
 │                     │
-│  Updated on: {date} │  ← Tiny footer (optional)
+│  Updated on: {date} │  <- Tiny footer (optional)
 │                     │
 └─────────────────────┘
 ```
@@ -67,7 +69,18 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 - QR code (encodes menu URL)
 - "Updated on" date (from last publish timestamp)
 
-#### 2. Counter Sticker — 8×8 PNG
+#### 2. Single Table / Counter Card — A6 PDF
+
+| Attribute       | Value                          |
+| --------------- | ------------------------------ |
+| **File format** | PDF                            |
+| **Size**        | A6 portrait (105mm x 148mm)    |
+| **Print spec**  | 300 GSM matte recommended      |
+| **Filename**    | `{StoreName}_SingleTableCard_A6.pdf` |
+
+**Feature ownership:** This file is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). Use it when the owner needs one normal upright card instead of a folded table tent.
+
+#### 3. Counter Sticker — 8×8 PNG
 
 | Attribute       | Value                                |
 | --------------- | ------------------------------------ |
@@ -108,7 +121,7 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 │     ( QR CODE )          │  ← 80mm × 80mm (scannable from 1–2m)
 │                         │
 │  Scan to view menu       │
-│  Open camera → point at QR │
+│  Open camera and point at QR │
 │  Or open: {short link}   │
 │                         │
 │     {Store Name}         │  ← Large
@@ -314,6 +327,7 @@ When `ENABLE_MENU_KIT_UTM` is ON (default), each asset’s QR code encodes a UTM
 | Asset           | QR URL                                                   | UTM Medium        |
 | --------------- | -------------------------------------------------------- | ----------------- |
 | Table Tent      | `menuUrl?utm_source=menu_kit&utm_medium=table_tent`      | `table_tent`      |
+| Single Table / Counter Card | `menuUrl?utm_source=menu_kit&utm_medium=single_table_card` | `single_table_card` |
 | Counter Sticker | `menuUrl?utm_source=menu_kit&utm_medium=counter_sticker` | `counter_sticker` |
 | Entrance Poster | `menuUrl?utm_source=menu_kit&utm_medium=entrance_poster` | `entrance_poster` |
 | Delivery Bag    | `menuUrl?utm_source=menu_kit&utm_medium=delivery_bag`    | `delivery_bag`    |
@@ -360,7 +374,7 @@ Share your menu
 ├── Print Menu / Menu Card Export (linked route)
 └── 📦 Menu Kit (NEW)
     └── "Download Menu Kit" button
-    └── Downloads ZIP with all 9 asset files + shows staff script
+    └── Downloads ZIP with all 10 asset files + shows staff script
 ```
 
 ### Option B: Standalone "Menu Kit" tab in Project View
@@ -384,7 +398,7 @@ Separate tab/section in project B2C view. Less discoverable but cleaner separati
 | ❌ WiFi password field              | Scope creep, not menu infrastructure          | Product Taste: "Should this exist at all?"         |
 | ❌ Custom colors/fonts/backgrounds  | Design tool territory                         | Product Taste: "No Cognitive Load"                 |
 
-Automatic store logo and brand-color reuse is allowed and required. It is not a design editor: owners do not choose fonts, colors, backgrounds, or layouts inside Menu Kit. The system reuses existing business identity and enforces QR readability.
+Automatic store logo and brand-color reuse is allowed and required. It is not a design editor: owners do not choose fonts, colors, backgrounds, or layouts inside Menu Kit. The system reuses existing business identity for gradient framing and accents while keeping QR modules near-black on white panels for readability.
 
 ---
 

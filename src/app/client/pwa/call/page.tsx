@@ -16,18 +16,11 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
+import { buildTelHref } from '@lib/phone/phoneNumber';
 import PwaCallHandoffClient from './PwaCallHandoffClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-function buildTelUrl(phone: string | undefined, dialCode?: string): string | null {
-    if (!phone) return null;
-    if (phone.startsWith('+')) return `tel:${phone.replace(/\s+/g, '')}`;
-    if (!dialCode) return `tel:${phone.replace(/\s+/g, '')}`;
-    const prefix = dialCode.startsWith('+') ? dialCode : `+${dialCode}`;
-    return `tel:${prefix}${phone.replace(/\s+/g, '').replace(/^0+/, '')}`;
-}
 
 export default async function PwaCallHandoffPage() {
     const tenant = await getTenantFromHeaders('PwaCallHandoff');
@@ -42,7 +35,11 @@ export default async function PwaCallHandoffPage() {
     const showCall = store.publicPresence?.showCall !== false;
     if (!showCall) return notFound();
 
-    const telUrl = buildTelUrl(store.phoneNumber, store.dialCode || store.countryCode);
+    const telUrl = buildTelHref({
+        countryCode: store.countryCode,
+        dialCode: store.dialCode,
+        phoneNumber: store.phoneNumber,
+    });
     if (!telUrl) return notFound();
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store.analytics);

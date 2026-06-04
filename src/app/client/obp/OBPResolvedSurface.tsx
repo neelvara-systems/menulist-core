@@ -578,7 +578,7 @@ export default function OBPResolvedSurface({
         ...((pp.showGoogleReview !== false) && !showGoogleReview ? ['reviews' as const] : []),
         ...((pp.showFeedback !== false) && store?.feedbackEnabled !== false && !showFeedback ? ['feedback' as const] : []),
     ] : [];
-    const whatsappNumber = (pp.whatsappNumber || store?.phoneNumber || '').replace(/[^0-9+]/g, '');
+    const whatsappNumber = pp.whatsappNumber || store?.phoneNumber || '';
     const directionsUrl = pp.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
     const googleMapsEmbedUrl = buildGoogleMapsEmbedUrl({
         address: fullAddress,
@@ -868,6 +868,8 @@ export default function OBPResolvedSurface({
                                         trackingEnabled={runtimeTrackingEnabled}
                                         storeTimeZone={store?.timeZone}
                                         businessDayEndTime={store?.businessDayEndTime}
+                                        countryCode={store?.countryCode}
+                                        dialCode={store?.dialCode}
                                         includeLocation={includeLocation}
                                         googleReviewUrl={googleReviewUrl}
                                         googleReviewLabel={
@@ -918,6 +920,8 @@ export default function OBPResolvedSurface({
                             trackingEnabled={runtimeTrackingEnabled}
                             storeTimeZone={store?.timeZone}
                             businessDayEndTime={store?.businessDayEndTime}
+                            countryCode={store?.countryCode}
+                            dialCode={store?.dialCode}
                             includeLocation={includeLocation}
                             phoneNumber={store?.phoneNumber}
                             whatsappNumber={whatsappNumber}
@@ -1088,6 +1092,8 @@ export default function OBPResolvedSurface({
                                         trackingEnabled={runtimeTrackingEnabled}
                                         storeTimeZone={store?.timeZone}
                                         businessDayEndTime={store?.businessDayEndTime}
+                                        countryCode={store?.countryCode}
+                                        dialCode={store?.dialCode}
                                         includeLocation={includeLocation}
                                         labels={{
                                             facebook: t('publicSocialPlatforms.facebook'),

@@ -9,6 +9,7 @@ import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustMod
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
@@ -41,6 +42,8 @@ function getInitialFormData(storeDetails: any, tenantDetails?: any) {
         contactPersonName: storeDetails?.contactPersonName || '',
         contactPersonNumber: storeDetails?.contactPersonNumber || '',
         country: storeDetails?.country || '',
+        countryCode: storeDetails?.countryCode || DEFAULT_PHONE_COUNTRY_CODE,
+        dialCode: storeDetails?.dialCode || '',
         district: storeDetails?.district || '',
         email: storeDetails?.email || '',
         gstn: storeDetails?.gstn || '',
@@ -98,6 +101,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
         const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
         const businessCategory = resolveStoreBusinessCategory(formData.businessType, storeDetails.businessCategory);
+        const normalizedPhone = normalizePhoneNumberForStorage({
+            countryCode: formData.countryCode,
+            dialCode: formData.dialCode,
+            phoneNumber: formData.phoneNumber,
+        });
         const updates: Record<string, any> = {
             addressLine: formData.addressLine,
             area: formData.area,
@@ -108,12 +116,15 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             contactPersonName: formData.contactPersonName,
             contactPersonNumber: formData.contactPersonNumber,
             country: formData.country,
+            countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : formData.countryCode,
+            dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : formData.dialCode,
             district: formData.district,
             email: formData.email,
             gstn: formData.gstn,
             name: formData.name.trim(),
             tenantName: formData.tenantName.trim(),
-            phoneNumber: formData.phoneNumber,
+            phone: normalizedPhone.phone,
+            phoneNumber: normalizedPhone.phoneNumber,
             postalCode: formData.postalCode,
             state: formData.state,
             tenantId: storeDetails.tenantId, // Ensure tenantId is included for syncStoreToSummary
@@ -332,6 +343,20 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                             <LuPhoneCall size={14} />
                             <Text type="secondary">{tBusiness('phoneNumber')}</Text>
                         </Flex>
+                        <Select
+                            onChange={(value) => setFormData((previous) => ({
+                                ...previous,
+                                countryCode: value,
+                                dialCode: getDialCodeForCountry(value),
+                            }))}
+                            options={getUniquePhoneCountries()
+                                .map((country) => ({
+                                    label: `${country.flag} ${country.code} (${country.dialCode})`,
+                                    value: country.code,
+                                }))}
+                            placeholder="Country code"
+                            value={formData.countryCode || DEFAULT_PHONE_COUNTRY_CODE}
+                        />
                         <Input autoComplete="tel" inputMode="tel" name="businessPhone" onChange={(value) => setFormData((previous) => ({ ...previous, phoneNumber: value }))} placeholder={tBusiness('phonePlaceholder')} type="tel" value={formData.phoneNumber} />
                     </Flex>
                 </Card>

@@ -40,6 +40,7 @@ import {
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
 import { getMenuItemImageAltText } from '@lib/media/altText';
+import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -477,16 +478,17 @@ function MenuPageNew({
         ].filter(Boolean);
         const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : undefined;
         const publicPresence = storeDetails?.publicPresence;
-        const normalizedPhone = storeDetails?.phoneNumber?.replace(/\s+/g, '');
-        const callHref = storeDetails?.phoneNumber
-            ? storeDetails.phoneNumber.startsWith('+')
-                ? `tel:${normalizedPhone}`
-                : storeDetails?.dialCode
-                    ? `tel:${storeDetails.dialCode.startsWith('+') ? storeDetails.dialCode : `+${storeDetails.dialCode}`}${normalizedPhone?.replace(/^0+/, '') || ''}`
-                    : `tel:${normalizedPhone}`
-            : undefined;
-        const whatsappNumber = (publicPresence?.whatsappNumber || storeDetails?.phoneNumber || '').replace(/[^0-9+]/g, '');
-        const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber.replace('+', '')}` : undefined;
+        const callHref = buildTelHref({
+            countryCode: storeDetails?.countryCode,
+            dialCode: storeDetails?.dialCode,
+            phoneNumber: storeDetails?.phoneNumber,
+        }) || undefined;
+        const whatsappNumber = buildWhatsAppPhoneParam({
+            countryCode: storeDetails?.countryCode,
+            dialCode: storeDetails?.dialCode,
+            phoneNumber: publicPresence?.whatsappNumber || storeDetails?.phoneNumber,
+        });
+        const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : undefined;
         const directionsHref = publicPresence?.googleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : undefined);
         const analyticsIds = storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId
             ? {
@@ -539,6 +541,7 @@ function MenuPageNew({
         storeDetails?.addressLine,
         storeDetails?.area,
         storeDetails?.city,
+        storeDetails?.countryCode,
         storeDetails?.dialCode,
         storeDetails?.phoneNumber,
         storeDetails?.postalCode,

@@ -86,6 +86,7 @@ Existing-account claims do not overwrite the existing store.
 - approved business name seeds the permanent public subdomain through the shared onboarding helper
 - project name can come from the menu
 - project brand accent and image background can come from the menu
+- new stores can receive menu-derived business attributes from high-confidence suggestions and deterministic item dietary tags
 
 ## Subdomain Derivation
 

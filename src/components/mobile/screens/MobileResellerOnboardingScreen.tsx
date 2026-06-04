@@ -2,6 +2,7 @@
 
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@constant/common';
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { formatInrPaise } from '@util/formatters';
 import { theme } from 'antd';
 import { useMemo, useState } from 'react';
@@ -18,6 +19,8 @@ type OnboardDraft = {
     businessType: string;
     commitmentMonths: string;
     locationCount: string;
+    ownerCountryCode: string;
+    ownerDialCode: string;
     ownerEmail: string;
     ownerPassword: string;
     ownerPhone: string;
@@ -46,6 +49,8 @@ const initialDraft: OnboardDraft = {
     businessType: '',
     commitmentMonths: '',
     locationCount: '1',
+    ownerCountryCode: DEFAULT_PHONE_COUNTRY_CODE,
+    ownerDialCode: getDialCodeForCountry(DEFAULT_PHONE_COUNTRY_CODE),
     ownerEmail: '',
     ownerPassword: '',
     ownerPhone: '',
@@ -65,6 +70,11 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<OnboardResult | null>(null);
     const selectedTier = tiers.find((tier) => tier.id === draft.pricingTier);
+    const normalizedOwnerPhone = normalizePhoneNumberForStorage({
+        countryCode: draft.ownerCountryCode,
+        dialCode: draft.ownerDialCode,
+        phoneNumber: draft.ownerPhone,
+    });
 
     const updateDraft = (field: keyof OnboardDraft, value: string) => {
         setDraft((current) => ({ ...current, [field]: value }));
@@ -84,7 +94,13 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
 
     const validateStep = () => {
         if (step === 0) {
-            if (!draft.businessName.trim() || !draft.businessType || draft.ownerPhone.trim().length < 10 || draft.ownerPassword.length < 6) {
+            if (
+                !draft.businessName.trim()
+                || !draft.businessType
+                || normalizedOwnerPhone.phoneUsername.length < 10
+                || normalizedOwnerPhone.phoneUsername.length > 15
+                || draft.ownerPassword.length < 6
+            ) {
                 Toast.show({ content: 'Business name, type, phone, and password are required.', duration: 2200 });
                 return false;
             }
@@ -122,8 +138,10 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     businessType: draft.businessType,
                     commitmentMonths: draft.commitmentMonths ? Number(draft.commitmentMonths) : undefined,
                     ownerEmail: draft.ownerEmail.trim() || undefined,
+                    ownerCountryCode: normalizedOwnerPhone.countryCode,
+                    ownerDialCode: normalizedOwnerPhone.dialCode,
                     ownerPassword: draft.ownerPassword,
-                    ownerPhone: draft.ownerPhone.trim(),
+                    ownerPhone: normalizedOwnerPhone.phoneNumber,
                     paymentMode: draft.paymentMode,
                     pricingTier: draft.pricingTier,
                     locationCount: Math.max(1, Number(draft.locationCount || 1)),
@@ -265,7 +283,19 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Flex gap={10} vertical>
                             <Input onChange={(value) => updateDraft('businessName', value)} placeholder="Business name" value={draft.businessName} />
                             <Select onChange={(value) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
-                            <Input inputMode="tel" onChange={(value) => updateDraft('ownerPhone', value)} placeholder="Owner phone" value={draft.ownerPhone} />
+                            <Select
+                                onChange={(value) => {
+                                    updateDraft('ownerCountryCode', value);
+                                    updateDraft('ownerDialCode', getDialCodeForCountry(value));
+                                }}
+                                options={getUniquePhoneCountries().map((country) => ({
+                                    label: `${country.flag} ${country.code} (${country.dialCode})`,
+                                    value: country.code,
+                                }))}
+                                placeholder="Country code"
+                                value={draft.ownerCountryCode}
+                            />
+                            <Input inputMode="tel" onChange={(value) => updateDraft('ownerPhone', value)} placeholder="Owner phone" type="tel" value={draft.ownerPhone} />
                             <Input inputMode="email" onChange={(value) => updateDraft('ownerEmail', value)} placeholder="Owner email (optional)" type="email" value={draft.ownerEmail} />
                             <Input onChange={(value) => updateDraft('ownerPassword', value)} placeholder="Owner login password" type="password" value={draft.ownerPassword} />
                         </Flex>
@@ -375,8 +405,8 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Flex gap={10} vertical>
                             <Flex justify="space-between"><Text type="secondary">Business</Text><Text strong>{draft.businessName}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Type</Text><Text strong>{draft.businessType}</Text></Flex>
-                            <Flex justify="space-between"><Text type="secondary">Phone</Text><Text strong>{draft.ownerPhone}</Text></Flex>
-                            <Flex justify="space-between"><Text type="secondary">Username</Text><Text strong>{draft.ownerPhone.replace(/[^0-9]/g, '')}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Phone</Text><Text strong>{normalizedOwnerPhone.displayNumber || draft.ownerPhone}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Username</Text><Text strong>{normalizedOwnerPhone.phoneUsername}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Tier</Text><Text strong>{selectedTier?.name || draft.pricingTier}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online recurring' : 'Offline prepaid'}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Locations</Text><Text strong>{Math.max(1, Number(draft.locationCount || 1))}</Text></Flex>

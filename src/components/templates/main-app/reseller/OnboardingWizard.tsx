@@ -2,6 +2,7 @@
 
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@constant/common";
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { formatInrPaise } from "@util/formatters";
 import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
@@ -39,6 +40,10 @@ function OnboardingWizard() {
     const businessTypeOptions = BUSINESS_TYPES.map((bt: any) => ({
         label: bt.label || bt.value,
         value: bt.value,
+    }));
+    const countryOptions = getUniquePhoneCountries().map((country) => ({
+        label: `${country.flag} ${country.code} (${country.dialCode})`,
+        value: country.code,
     }));
 
     const steps = [
@@ -88,6 +93,8 @@ function OnboardingWizard() {
                 body: JSON.stringify({
                     businessName: values.businessName,
                     businessType: values.businessType,
+                    ownerCountryCode: values.ownerCountryCode || DEFAULT_PHONE_COUNTRY_CODE,
+                    ownerDialCode: values.ownerDialCode || getDialCodeForCountry(values.ownerCountryCode || DEFAULT_PHONE_COUNTRY_CODE),
                     ownerPhone: values.ownerPhone,
                     ownerEmail: values.ownerEmail || undefined,
                     ownerPassword: values.ownerPassword,
@@ -143,9 +150,47 @@ function OnboardingWizard() {
             <Form.Item name="businessType" label="Business Type" rules={[{ required: true, message: 'Select business type' }]}>
                 <Select placeholder="Select type" size="large" showSearch options={businessTypeOptions} filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())} />
             </Form.Item>
-            <Form.Item name="ownerPhone" label="Owner Phone" rules={[{ required: true, min: 10, message: 'Enter valid phone number' }]}>
-                <Input placeholder="e.g., 9876543210" size="large" />
+            <Form.Item name="ownerDialCode" initialValue={getDialCodeForCountry(DEFAULT_PHONE_COUNTRY_CODE)} hidden>
+                <Input />
             </Form.Item>
+            <Row gutter={8}>
+                <Col xs={24} md={8}>
+                    <Form.Item name="ownerCountryCode" label="Country" initialValue={DEFAULT_PHONE_COUNTRY_CODE} rules={[{ required: true, message: 'Select country' }]}>
+                        <Select
+                            onChange={(value) => form.setFieldsValue({
+                                ownerCountryCode: value,
+                                ownerDialCode: getDialCodeForCountry(value),
+                            })}
+                            options={countryOptions}
+                            placeholder="Country"
+                            showSearch
+                            size="large"
+                        />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} md={16}>
+                    <Form.Item
+                        name="ownerPhone"
+                        label="Owner Phone"
+                        rules={[
+                            { required: true, message: 'Enter valid phone number' },
+                            {
+                                validator: async (_, value) => {
+                                    const normalizedPhone = normalizePhoneNumberForStorage({
+                                        countryCode: form.getFieldValue('ownerCountryCode'),
+                                        dialCode: form.getFieldValue('ownerDialCode'),
+                                        phoneNumber: value,
+                                    });
+                                    if (normalizedPhone.phoneUsername.length >= 10 && normalizedPhone.phoneUsername.length <= 15) return;
+                                    throw new Error('Enter valid phone number');
+                                },
+                            },
+                        ]}
+                    >
+                        <Input inputMode="tel" placeholder="e.g., 9876543210" size="large" type="tel" />
+                    </Form.Item>
+                </Col>
+            </Row>
             <Form.Item name="ownerEmail" label="Owner Email (Optional)">
                 <Input placeholder="e.g., owner@example.com" size="large" type="email" />
             </Form.Item>
@@ -230,6 +275,11 @@ function OnboardingWizard() {
     // Step 3: Confirm
     const renderStep3 = () => {
         const values = form.getFieldsValue(true);
+        const normalizedOwnerPhone = normalizePhoneNumberForStorage({
+            countryCode: values.ownerCountryCode,
+            dialCode: values.ownerDialCode,
+            phoneNumber: values.ownerPhone,
+        });
         return (
             <Card>
                 <Title level={4}>Confirm Onboarding</Title>
@@ -240,7 +290,7 @@ function OnboardingWizard() {
                     <Col span={8}><Text type="secondary">Type</Text></Col>
                     <Col span={16}><Text>{values.businessType}</Text></Col>
                     <Col span={8}><Text type="secondary">Phone</Text></Col>
-                    <Col span={16}><Text>{values.ownerPhone}</Text></Col>
+                    <Col span={16}><Text>{normalizedOwnerPhone.displayNumber || values.ownerPhone}</Text></Col>
                     {values.ownerEmail && (
                         <>
                             <Col span={8}><Text type="secondary">Email</Text></Col>
@@ -248,7 +298,7 @@ function OnboardingWizard() {
                         </>
                     )}
                     <Col span={8}><Text type="secondary">Username</Text></Col>
-                    <Col span={16}><Text>{String(values.ownerPhone || '').replace(/[^0-9]/g, '')}</Text></Col>
+                    <Col span={16}><Text>{normalizedOwnerPhone.phoneUsername}</Text></Col>
                     <Col span={24}><Divider style={{ margin: '8px 0' }} /></Col>
                     <Col span={8}><Text type="secondary">Tier</Text></Col>
                     <Col span={16}><Text strong>{selectedTier?.name || values.pricingTier}</Text></Col>

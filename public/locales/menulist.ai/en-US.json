@@ -2445,6 +2445,8 @@
         "printFiles": "Print files",
         "tableTent": "Table Tent",
         "tableTentDesc": "Place on tables",
+        "singleTableCard": "Single Table Card",
+        "singleTableCardDesc": "Flat card or counter stand",
         "counterSticker": "Counter Sticker",
         "counterStickerDesc": "Near billing counter",
         "entrancePoster": "Entrance Poster",

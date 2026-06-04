@@ -5,12 +5,14 @@ import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
-import { buildPhoneUsername, getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
+import { getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
+import { getBusinessAttributesWithMenuDefaults } from "@lib/obp/inferBusinessAttributesFromMenu";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
+import { inferPhoneCountryFromInternationalNumber, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { secureError } from "@lib/security/secureLogger";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
@@ -77,8 +79,11 @@ export async function executeMessagingOnboardingPublish(
     businessType,
   });
 
+  const sourcePhone = phone || sessionData.providerDisplayId || "";
+  const normalizedPhone = normalizePhoneNumberForStorage({ phoneNumber: sourcePhone });
+
   // Infer country/currency from phone (uses frontend countryData.ts — 252 countries)
-  const countryInfo = inferCountryFromPhone(sessionData.providerDisplayId || "");
+  const countryInfo = inferCountryFromPhone(normalizedPhone.phone || sourcePhone);
   const country = countryInfo.code;
   const extractedCurrencyCode = getSuggestionValue(extractedProfile?.identity?.currencyCode, "medium");
   const resolvedCurrencyInfo = extractedCurrencyCode
@@ -91,7 +96,7 @@ export async function executeMessagingOnboardingPublish(
   };
 
   // Generate placeholder email
-  const generatedEmail = getGeneratedEmail(sessionData.providerDisplayId || "");
+  const generatedEmail = getGeneratedEmail(normalizedPhone.phone || sourcePhone);
 
   const extractedLanguageCodes = getCanonicalExtractionLanguages(menuData?.languages);
   const detectedDefaultLanguage = getDetectedDefaultLanguage(menuData?.languages);
@@ -101,6 +106,13 @@ export async function executeMessagingOnboardingPublish(
   );
   const brandAccentColor = getSuggestionValue<string>(extractedProfile?.visualBrand?.brandAccentColor, "medium");
   const imageBackgroundColor = getSuggestionValue<string>(extractedProfile?.visualBrand?.imageBackgroundColor, "medium");
+  const initialBusinessAttributes = getBusinessAttributesWithMenuDefaults(
+    menuData,
+    {
+      businessCategory: resolvedBusinessCategory,
+      businessType,
+    },
+  );
   const profileProjectName = getSuggestionValue<string>(extractedProfile?.project?.projectName, "medium");
   const projectName = typeof profileProjectName === "string" && profileProjectName.trim()
     ? profileProjectName.trim()
@@ -133,11 +145,11 @@ export async function executeMessagingOnboardingPublish(
 
   // Story 3B: Check if user with this phone already exists (spec §Story 3B)
   // Query BEFORE transaction — if exists, we UPDATE instead of CREATE
-  const phoneUsername = buildPhoneUsername(sessionData.providerDisplayId || "");
+  const phoneUsername = normalizedPhone.phoneUsername;
   let existingUserDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
   for (const [field, candidates] of [
     ["phoneUsername", phoneUsername ? [phoneUsername] : []],
-    ["phone", getPhoneLookupCandidates(sessionData.providerDisplayId || "")],
+    ["phone", getPhoneLookupCandidates(normalizedPhone.phone || sourcePhone)],
   ] as Array<[string, string[]]>) {
     for (const candidate of candidates) {
       const existingUserQuery = await db
@@ -194,8 +206,10 @@ export async function executeMessagingOnboardingPublish(
         activationDeadline: Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS),
         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
         starterActivatedAt: Timestamp.now(),
-        phoneNumber: phone || sessionData.providerDisplayId || "",
-        phone: phone || sessionData.providerDisplayId || "",
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phoneNumber: normalizedPhone.phoneNumber,
+        phone: normalizedPhone.phone,
         addressLine: address || "",
         activeLanguages: extractedLanguageCodes,
         defaultLanguage: detectedDefaultLanguage,
@@ -204,6 +218,7 @@ export async function executeMessagingOnboardingPublish(
         currencySymbol: currency.symbol,
         timeZone: currency.timezone,
         logo: "",
+        ...(initialBusinessAttributes ? { businessAttributes: initialBusinessAttributes } : {}),
       },
     });
 
@@ -218,7 +233,10 @@ export async function executeMessagingOnboardingPublish(
         stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
         provider: sessionData.provider,
         providerUserId: sessionData.providerUserId,
-        phone: sessionData.providerDisplayId || "",
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phone: normalizedPhone.phone,
+        phoneNumber: normalizedPhone.phoneNumber,
         phoneUsername: phoneUsername || undefined,
         phoneLoginEnabled: phoneUsername ? true : undefined,
         onboardingSource: "MESSAGING_ONBOARDING",
@@ -230,7 +248,10 @@ export async function executeMessagingOnboardingPublish(
 
       userRef = db.collection(DB_COLLECTIONS.USERS).doc();
       transaction.set(userRef, {
-        phone: sessionData.providerDisplayId || "",
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phone: normalizedPhone.phone,
+        phoneNumber: normalizedPhone.phoneNumber,
         email: generatedEmail,
         name: businessName,
         isVerified: true,
@@ -433,20 +454,5 @@ const DEFAULT_COUNTRY_INFO = countryData.find((c) => c.code === "IN") || country
  * Sorts dial codes by length DESC so longer codes match first.
  */
 function inferCountryFromPhone(phone: string): typeof countryData[number] {
-  const cleaned = phone.replace(/[^0-9+]/g, "");
-  const withPlus = cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
-
-  // Sort by dial code length DESC for longest-match-first
-  const sorted = [...countryData].sort(
-    (a, b) => b.dialCode.replace(/\s/g, "").length - a.dialCode.replace(/\s/g, "").length,
-  );
-
-  for (const entry of sorted) {
-    const code = entry.dialCode.replace(/\s/g, "");
-    if (withPlus.startsWith(code)) {
-      return entry;
-    }
-  }
-
-  return DEFAULT_COUNTRY_INFO;
+  return inferPhoneCountryFromInternationalNumber(phone) || DEFAULT_COUNTRY_INFO;
 }

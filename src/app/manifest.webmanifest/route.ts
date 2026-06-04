@@ -23,6 +23,7 @@ import { resolveDomain } from '@lib/multiTenant/domainResolver';
 import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
+import { buildTelHref } from '@lib/phone/phoneNumber';
 import { headers } from 'next/headers';
 
 /**
@@ -118,11 +119,11 @@ export async function GET() {
 
         // Tel number: prefer full E.164 with dial code; fall back to raw phone.
         const rawPhone: string | undefined = store.phoneNumber;
-        const dialCode: string | undefined = store.dialCode || store.countryCode;
-        const phoneForTel =
-            rawPhone && dialCode && !rawPhone.startsWith('+')
-                ? `${dialCode.startsWith('+') ? '' : '+'}${dialCode}${rawPhone.replace(/^0+/, '')}`
-                : rawPhone;
+        const phoneForTel = buildTelHref({
+            countryCode: store.countryCode,
+            dialCode: store.dialCode,
+            phoneNumber: rawPhone,
+        })?.replace(/^tel:/, '') || rawPhone;
 
         // Description — short snippet for install dialogs & PWA listings.
         // `store.tagline` is the owner-edited short tagline; fall back to a sensible default.

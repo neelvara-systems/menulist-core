@@ -20,6 +20,7 @@ When you download Menu Kit, you get a ZIP file with ready-to-use files:
 | File                              | What it is                                  | What to do with it                            |
 | --------------------------------- | ------------------------------------------- | --------------------------------------------- |
 | **Table Tent (A5 fold)**          | A card with QR on both sides (fold in half) | Print on A5, fold, place on each table        |
+| **Single Table / Counter Card (A6)** | One upright QR card, no fold             | Print and place in acrylic holders, counter stands, wall clips, or table stands |
 | **Counter Sticker (8×8 cm)**      | A square sticker with your QR code          | Print and stick near your billing counter     |
 | **Entrance Poster (A4)**          | A large poster with QR for your entrance    | Print and place at your door or window        |
 | **Delivery Bag Sticker (6×6 cm)** | A small sticker for delivery bags           | Print and stick on delivery bags/boxes        |
@@ -39,7 +40,7 @@ All files already have your restaurant name, logo when available, brand color, a
 2. Click **Share**
 3. Click **Download Menu Kit**
 4. A ZIP file downloads to your device
-5. Open the ZIP — all 9 asset files are inside
+5. Open the ZIP — all 10 asset files are inside
 
 ---
 
@@ -47,15 +48,24 @@ All files already have your restaurant name, logo when available, brand color, a
 
 ### Table Tent (Dual-Sided)
 
-1. Open the file `YourName_TableTent_A6.pdf`
+1. Open the file `YourName_TableTent_A5_Fold.pdf`
 2. Take it to any print shop
-3. Ask for: "10 copies, A5 size, 300 GSM paper"
+3. Ask for: "10 copies, A5 landscape, 300 GSM matte card"
 4. Fold each card in half along the dotted line
 5. Place one tent on each table (center of table)
 
 Both sides of the tent card show the same QR code — customers can scan from any direction.
 
 **Cost:** Around ₹100–300 for 10 copies
+
+### Single Table / Counter Card
+
+1. Open the file `YourName_SingleTableCard_A6.pdf`
+2. Take it to any print shop
+3. Ask for: "A6 portrait, 300 GSM matte card"
+4. Place it in acrylic holders, counter stands, wall clips, or single-sided table stands
+
+Use this when a folded tent is not needed.
 
 ### Entrance Poster
 

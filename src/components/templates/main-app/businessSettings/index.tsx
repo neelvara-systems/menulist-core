@@ -16,6 +16,7 @@ import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
@@ -922,6 +923,22 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             };
         }
 
+        if (
+            changesToUpload.phoneNumber !== undefined
+            || changesToUpload.countryCode !== undefined
+            || changesToUpload.dialCode !== undefined
+        ) {
+            const normalizedPhone = normalizePhoneNumberForStorage({
+                countryCode: changesToUpload.countryCode ?? storeDetails?.countryCode,
+                dialCode: changesToUpload.dialCode ?? storeDetails?.dialCode,
+                phoneNumber: changesToUpload.phoneNumber ?? storeDetails?.phoneNumber,
+            });
+            changesToUpload.countryCode = normalizedPhone.phone ? normalizedPhone.countryCode : changesToUpload.countryCode;
+            changesToUpload.dialCode = normalizedPhone.phone ? normalizedPhone.dialCode : changesToUpload.dialCode;
+            changesToUpload.phone = normalizedPhone.phone;
+            changesToUpload.phoneNumber = normalizedPhone.phoneNumber;
+        }
+
         changesToUpload.tagline = changesToUpload.__localizedSeoDrafts
             ? applyLocalizedDraftMap(
                 storeDetails?.tagline,
@@ -1082,13 +1099,22 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             let newId = 0;
             const summary = await getPlatformSummary();
             newId = summary.stores?.count + 1;
+            const normalizedTenantPhone = normalizePhoneNumberForStorage({
+                countryCode: tenantDetails.countryCode,
+                dialCode: tenantDetails.dialCode,
+                phone: tenantDetails.phone,
+                phoneNumber: tenantDetails.phoneNumber,
+            });
             changesToUpload = {
                 ...changesToUpload,
                 storeId: newId,
                 tenantId: tenantDetails.tenantId,
                 storeKey: changesToUpload.name?.toLowerCase().replaceAll(" ", "_"),
                 email: tenantDetails.email,
-                phoneNumber: tenantDetails.phoneNumber,
+                countryCode: normalizedTenantPhone.phone ? normalizedTenantPhone.countryCode : tenantDetails.countryCode,
+                dialCode: normalizedTenantPhone.phone ? normalizedTenantPhone.dialCode : tenantDetails.dialCode,
+                phone: normalizedTenantPhone.phone || tenantDetails.phone,
+                phoneNumber: normalizedTenantPhone.phoneNumber || tenantDetails.phoneNumber,
                 tenantName: tenantDetails.name,
             };
 

@@ -1,6 +1,6 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.61
+> **Version:** 1.2.62
 > **Last Updated:** 2026-06-02
 > **Audience:** Developers
 
@@ -201,7 +201,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage includes a restrained sticky product-proof walkthrough on desktop and tabbed product scene on mobile/tablet, showing activation, product surfaces, widget install, feedback review, and governance queue states
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
 - `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
-- header links include `/demo`
+- header links include `/demo`, and the desktop Resources navigation opens a compact two-column menu for high-priority resource articles plus the resources hub
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
 - `/security` uses a trust-page shape of facts, controls, and disclosure while keeping AnswerLattice-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
@@ -384,7 +384,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `components/AnswerlatticeScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product dropdown stays CSS-driven. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
+- `Header.tsx` — Desktop Product and Resources dropdowns stay CSS-driven. The Resources dropdown uses a compact two-column icon/link panel for high-priority public resource articles and `/resources`. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
 
 ---
 
@@ -446,6 +446,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-04 | 1.2.62 | Added the desktop Resources dropdown to `Header.tsx`, mirroring the MenuList resources-menu pattern with AnswerLattice-specific resource article links and no new runtime routes |
 | 2026-06-02 | 1.2.61 | Added the AnswerLattice public content module, ten resource article routes, shared article renderer, Article/FAQ/ItemList structured data, resource analytics, sitemap/LLM wiring, and verifier coverage |
 | 2026-03-07 | 1.0.0 | Initial implementation |
 | 2026-05-21 | 1.1.0 | Self-sellable website pass, demo, pricing update, founder-friendly product funnel, security/FAQ/legal pages, sitemap/robots, manifest/icons, and structured data |

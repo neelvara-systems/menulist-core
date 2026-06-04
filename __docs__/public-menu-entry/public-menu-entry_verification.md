@@ -43,7 +43,7 @@ Result:
 ```text
 PASS: fresh visitor sees auth gate with no upload control
 PASS: unauthenticated POST/GET API calls return 401 before draft/job creation
-PASS: sign-in CTA opens /signin?callbackUrl=/create-menu
+PASS: auth gate shows inline phone OTP with /signin fallback for Google/password
 PASS: disposable owner logs in through credentials form
 PASS: fresh menu image uploads and opens owner-bound preview
 PASS: natural extraction completes and shows business/menu preview

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuLogIn, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
+import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
@@ -26,7 +27,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export default function CreateMenuClient() {
     const t = useTranslations('Website');
     const router = useRouter();
-    const { status: sessionStatus } = useSession();
+    const { status: sessionStatus, update: updateSession } = useSession();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [state, setState] = useState<UploadState>('idle');
     const [error, setError] = useState<string | null>(null);
@@ -259,31 +260,20 @@ export default function CreateMenuClient() {
                                 {t('CreateMenu.authHint')}
                             </p>
                         </div>
-                        <button
-                            disabled={isSessionLoading}
-                            onClick={redirectToSignIn}
-                            style={{
-                                alignItems: 'center',
-                                backgroundColor: 'var(--ws-cta-default)',
-                                border: 'none',
-                                borderRadius: 'var(--ws-radius-lg)',
-                                color: '#fff',
-                                cursor: isSessionLoading ? 'default' : 'pointer',
-                                display: 'inline-flex',
-                                fontSize: '15px',
-                                fontWeight: 700,
-                                gap: '8px',
-                                justifyContent: 'center',
-                                minHeight: '48px',
-                                opacity: isSessionLoading ? 0.7 : 1,
-                                padding: '12px 18px',
-                                width: '100%',
-                            }}
-                            type="button"
-                        >
-                            <LuLogIn size={17} />
-                            {t('CreateMenu.authCta')}
-                        </button>
+                        {!isSessionLoading ? (
+                            <PhoneOtpAuthPanel
+                                buttonLabel="Send WhatsApp code"
+                                fallbackLabel="Use Google or passcode"
+                                hint="Verify your phone first. Then upload your menu and see the live preview."
+                                onAuthenticated={async () => {
+                                    await updateSession();
+                                    router.refresh();
+                                }}
+                                onFallback={redirectToSignIn}
+                                purpose="create_menu"
+                                title="Continue with WhatsApp"
+                            />
+                        ) : null}
                     </div>
                 </AnimateOnScroll>
             ) : (

@@ -22,7 +22,7 @@
 1. Open **Use MenuList**
 2. Scroll to **Print for Your Restaurant**
 3. Download individual assets or the complete **Menu Kit**
-4. Print on regular A4 paper
+4. Print posters on A4 paper and table tents on A5 landscape 300 GSM matte card
 5. Place QR codes on tables, entrance, and counter
 
 ### Create a menu PDF or print-shop packet
@@ -43,6 +43,6 @@
 ### Tips
 
 - All QR codes update automatically when you change your menu — no need to reprint
-- Downloaded QR files include your business name, logo when available, and brand color so they are ready to print or share
-- Print on regular paper and laminate for durability
+- Downloaded QR files include your business name, logo when available, and brand color while keeping the QR itself dark for easier scanning
+- Use matte paper or card so lights do not reflect on the QR code
 - Test scanning from 30-50 cm distance before placing

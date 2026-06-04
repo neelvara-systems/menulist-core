@@ -40,7 +40,7 @@ Mobile covers the owner output actions that previously required desktop:
 - download the selected menu PDF through the Menu Card Export renderer bridge when the routed Print Menu feature is not the active path
 - export the selected menu data as XLSX or JSON
 - download the complete Menu Kit ZIP
-- download/share Menu Kit print and social assets: table tent, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
+- download/share Menu Kit print and social assets: table tent, single table card, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
 - download feedback QR when feedback is enabled
 - copy/open Menu Board and Highlights digital screen links, with setup handoff when screens are not configured
 - menu presence monitor
@@ -53,4 +53,6 @@ Desktop and mobile are now parity for practical owner distribution actions. Desk
 
 ## Branded Output Parity
 
-Mobile Share does not use a mobile-only QR or print renderer. Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs, feedback QR, Menu Kit assets, and Print Menu output all reuse the same store logo/color context, the same scan-safe QR panel treatment, and the same Premium-only MenuList attribution removal rule as desktop. This prevents mobile downloads from looking like plain black-and-white copies while desktop output looks premium.
+Mobile Share does not use a mobile-only QR or print renderer. Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs, feedback QR, Menu Kit assets, Print Menu Surfaces assets, and Print Menu output all reuse the same store logo/color context, the same brand-gradient framing with near-black scan-safe QR panel treatment, and the same Premium-only MenuList attribution removal rule as desktop. This prevents mobile downloads from looking like plain black-and-white copies while desktop output looks premium.
+
+The tabletop table tent and single table/counter card are owned by Print Menu Surfaces and consumed through the same `generateMenuKit()` path on desktop Use MenuList and mobile Share. Mobile must not create separate print-surface renderers or navigate out of the PWA shell to download them.

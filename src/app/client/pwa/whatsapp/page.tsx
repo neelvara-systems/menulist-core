@@ -13,31 +13,19 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import PwaWhatsAppHandoffClient from './PwaWhatsAppHandoffClient';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-function buildWaUrl(waNumber: string | undefined, fallbackPhone?: string, dialCode?: string): string | null {
-    // wa.me expects digits only (no +, no spaces, no dashes).
-    const candidate = (waNumber && waNumber.length > 0 ? waNumber : fallbackPhone) || '';
-    if (!candidate) return null;
-
-    const digitsOnly = candidate.replace(/[^\d]/g, '');
-    if (!digitsOnly) return null;
-
-    // If the number doesn't already start with a country code (heuristic:
-    // 10 digits = India-local, 11 digits US-local-with-1), prepend dial code.
-    let withCountry = digitsOnly;
-    if (!candidate.startsWith('+') && dialCode && digitsOnly.length <= 11) {
-        const dc = dialCode.replace(/[^\d]/g, '');
-        // Avoid double-prefixing if dialCode is already there.
-        if (!digitsOnly.startsWith(dc)) {
-            withCountry = `${dc}${digitsOnly.replace(/^0+/, '')}`;
-        }
-    }
-
-    return `https://wa.me/${withCountry}`;
+function buildWaUrl(waNumber: string | undefined, fallbackPhone?: string, countryCode?: string, dialCode?: string): string | null {
+    const phoneParam = buildWhatsAppPhoneParam({
+        countryCode,
+        dialCode,
+        phoneNumber: waNumber && waNumber.length > 0 ? waNumber : fallbackPhone,
+    });
+    return phoneParam ? `https://wa.me/${phoneParam}` : null;
 }
 
 export default async function PwaWhatsAppHandoffPage() {
@@ -56,7 +44,8 @@ export default async function PwaWhatsAppHandoffPage() {
     const waUrl = buildWaUrl(
         store.publicPresence?.whatsappNumber,
         store.phoneNumber,
-        store.dialCode || store.countryCode,
+        store.countryCode,
+        store.dialCode,
     );
     if (!waUrl) return notFound();
 

@@ -10,6 +10,7 @@ import type {
     OwnerNotificationOpsSnapshot,
     OwnerNotificationOpsStatusFilter,
 } from '@lib/ops/ownerNotificationTypes';
+import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -84,7 +85,7 @@ function canRetry(status: string): boolean {
 }
 
 function normalizeWhatsappPhone(value: string): string {
-    return value.replace(/\D/g, '');
+    return buildWhatsAppPhoneParam({ phoneNumber: value });
 }
 
 function buildMailtoHref(destination: string, subject: string, body: string): string {

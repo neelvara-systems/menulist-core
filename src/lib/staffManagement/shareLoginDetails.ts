@@ -1,4 +1,4 @@
-import countryData from "@atoms/phoneNumberInput/countryData";
+import { buildWhatsAppPhoneParam as buildCanonicalWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
 
 export type StaffLoginDetailsShareInput = {
     countryCode?: string;
@@ -57,32 +57,12 @@ export async function shareStaffLoginDetails(details: StaffLoginDetailsShareInpu
     }
 }
 
-const normalizeDigits = (value?: string) => String(value || '').replace(/\D/g, '');
-
-const getDialDigits = (countryCode?: string, dialCode?: string) => {
-    const directDialDigits = normalizeDigits(dialCode);
-    if (directDialDigits) return directDialDigits;
-
-    const country = String(countryCode || '').trim().toUpperCase();
-    if (!country) return '';
-
-    return normalizeDigits(countryData.find((item) => item.code === country)?.dialCode);
-};
-
 export function buildWhatsAppPhoneParam({
     countryCode,
     dialCode,
     phoneNumber,
 }: Pick<StaffLoginDetailsShareInput, 'countryCode' | 'dialCode' | 'phoneNumber'>) {
-    const phoneDigits = normalizeDigits(phoneNumber);
-    if (!phoneDigits) return '';
-
-    const dialDigits = getDialDigits(countryCode, dialCode);
-    if (dialDigits && !phoneDigits.startsWith(dialDigits)) {
-        return `${dialDigits}${phoneDigits.replace(/^0+/, '')}`;
-    }
-
-    return phoneDigits;
+    return buildCanonicalWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber });
 }
 
 export async function copyTextToClipboard(text: string) {

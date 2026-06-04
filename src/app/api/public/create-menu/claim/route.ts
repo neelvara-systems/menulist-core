@@ -22,6 +22,7 @@ import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/local
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
+import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -181,6 +182,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const businessType = sanitizeString(rawBusinessType) || '';
         const businessCategory = sanitizeString(rawBusinessCategory) || '';
         const phone = sanitizeString(rawPhone) || '';
+        const normalizedPhone = normalizePhoneNumberForStorage({ phoneNumber: phone });
         const city = sanitizeString(rawCity) || '';
         const addressLine = sanitizeString(rawAddressLine) || '';
 
@@ -298,7 +300,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     addressLine,
                     brandAccentColor,
                     businessType: resolvedBusinessType,
-                    phone,
+                    phone: normalizedPhone.phone || phone,
                 });
                 const initialBusinessAttributes = getBusinessAttributesWithMenuDefaults(
                     extractedMenuData,
@@ -317,14 +319,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
                     tenantExtra: {
-                        phone: phone || '',
+                        countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : undefined,
+                        dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : undefined,
+                        phone: normalizedPhone.phone || '',
+                        phoneNumber: normalizedPhone.phoneNumber || '',
                         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
                         starterActivatedAt,
                         activationDeadline,
                     },
                     storeExtra: {
-                        phoneNumber: phone || '',
-                        phone: phone || '',
+                        countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : undefined,
+                        dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : undefined,
+                        phoneNumber: normalizedPhone.phoneNumber || '',
+                        phone: normalizedPhone.phone || '',
                         city: city || '',
                         addressLine: addressLine || '',
                         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,

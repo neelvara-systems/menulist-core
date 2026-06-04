@@ -30,6 +30,12 @@ type AnswerlatticeSequenceDiagramProps = {
     className?: string;
 };
 
+type AnswerlatticeCrossDiagramProps = {
+    idPrefix: string;
+    items: AnswerlatticeDiagramItem[];
+    className?: string;
+};
+
 type AnswerlatticeLoopDiagramProps = {
     idPrefix: string;
     items: AnswerlatticeDiagramItem[];
@@ -234,6 +240,60 @@ export function AnswerlatticeSequenceDiagram({
                         <AnswerlatticeFlowCard key={item.title} item={item} index={before.length + index} role="target" arrivalIndex={index} />
                     ))}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+export function AnswerlatticeCrossDiagram({
+    idPrefix,
+    items,
+    className = '',
+}: AnswerlatticeCrossDiagramProps) {
+    const visibleItems = items.slice(0, 4);
+    const linePaths = [
+        { key: 'left', d: 'M90 280 L430 280', delay: 0 },
+        { key: 'right', d: 'M570 280 L910 280', delay: 0.18 },
+        { key: 'top', d: 'M500 72 L500 216', delay: 0.36 },
+        { key: 'bottom', d: 'M500 344 L500 488', delay: 0.54 },
+    ];
+
+    return (
+        <div className={`al-diagram al-cross-diagram ${className}`.trim()}>
+            <svg className="al-diagram-paths al-cross-diagram__paths al-diagram-paths--desktop" viewBox="0 0 1000 560" aria-hidden="true" focusable="false">
+                <line className="al-cross-diagram__axis" x1="80" y1="280" x2="920" y2="280" />
+                <line className="al-cross-diagram__axis" x1="500" y1="54" x2="500" y2="506" />
+                {linePaths.map((path) => (
+                    <path key={`${path.key}-path`} className="al-diagram-path al-cross-diagram__line" d={path.d} pathLength={1} />
+                ))}
+                {linePaths.map((path) => (
+                    <path
+                        key={`${path.key}-pulse`}
+                        className="al-diagram-pulse"
+                        d={path.d}
+                        pathLength={1}
+                        style={getPulseStyle(path.delay)}
+                    />
+                ))}
+            </svg>
+
+            <svg className="al-diagram-paths al-cross-diagram__paths al-diagram-paths--mobile" viewBox="0 0 360 860" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path className="al-diagram-path al-cross-diagram__line" d="M180 48 L180 812" pathLength={1} />
+                <path className="al-diagram-pulse" d="M180 48 L180 812" pathLength={1} style={getPulseStyle(0.1)} />
+            </svg>
+
+            {visibleItems.map((item, index) => (
+                <AnswerlatticeFlowCard
+                    key={item.title}
+                    item={item}
+                    index={index}
+                    role="neutral"
+                    className={`al-cross-diagram__card al-cross-diagram__card--${index}`}
+                />
+            ))}
+
+            <div className="al-cross-diagram__core">
+                <AnswerlatticeDiagramCore idPrefix={`${idPrefix}-core`} />
             </div>
         </div>
     );

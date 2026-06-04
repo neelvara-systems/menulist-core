@@ -75,10 +75,11 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 
 ### Auth
 
-- No auth required for upload + preview
-- Signin redirect uses existing NextAuth flow with `callbackUrl` parameter
-- After auth, user returns to preview page automatically
-- After claim, the page refreshes the NextAuth session before redirecting to the success/workspace path so new tenant/store IDs are available immediately
+- Phone/WhatsApp OTP is shown inline before upload or link import.
+- Google OAuth and password/passcode login stay available through the sign-in fallback.
+- Source upload, link import, preview polling, and extraction remain authenticated.
+- After OTP auth, the page refreshes the NextAuth session and reveals the upload/link controls without leaving `/create-menu`.
+- After claim, the page refreshes the NextAuth session before redirecting to the success/workspace path so new tenant/store IDs are available immediately.
 
 ### Settings Inheritance
 
