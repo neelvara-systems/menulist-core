@@ -12,6 +12,7 @@ import {
 import { signIn } from 'next-auth/react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuLoader, LuMessageCircle, LuPhone } from 'react-icons/lu';
+import { SiWhatsapp } from 'react-icons/si';
 import styles from './PhoneOtpAuthPanel.module.scss';
 
 type PhoneOtpPurpose = 'dashboard_login' | 'create_menu' | 'login';
@@ -19,17 +20,30 @@ type PhoneOtpPurpose = 'dashboard_login' | 'create_menu' | 'login';
 type PhoneOtpAuthPanelProps = {
     buttonLabel?: string;
     className?: string;
+    changeNumberLabel?: string;
+    codeLabel?: string;
+    codePlaceholder?: string;
     defaultCountryCode?: string;
     defaultDialCode?: string;
     defaultPhone?: string;
     fallbackLabel?: string;
+    getCodeSentMessage?: (phoneLabel: string) => string;
+    getResendInLabel?: (seconds: number) => string;
     hidePhoneInput?: boolean;
     hint?: string;
     onAuthenticated?: () => Promise<void> | void;
     onFallback?: () => void;
+    onPhoneChange?: (value: { countryCode: string; dialCode: string; phone: string }) => void;
+    phoneLabel?: string;
+    phonePlaceholder?: string;
+    primaryIcon?: 'phone' | 'whatsapp';
     purpose: PhoneOtpPurpose;
+    resendCodeLabel?: string;
     showHeader?: boolean;
+    successMessage?: string;
     title?: string;
+    variant?: 'default' | 'createMenu';
+    verifyButtonLabel?: string;
     wrapInForm?: boolean;
 };
 
@@ -47,17 +61,30 @@ const formatPhoneForDisplay = (phone: string, countryCode: string, dialCode: str
 export default function PhoneOtpAuthPanel({
     buttonLabel = 'Send WhatsApp code',
     className,
+    changeNumberLabel = 'Change number',
+    codeLabel = 'Verification code',
+    codePlaceholder = '6-digit code',
     defaultCountryCode = DEFAULT_PHONE_COUNTRY_CODE,
     defaultDialCode,
     defaultPhone = '',
     fallbackLabel,
+    getCodeSentMessage = (phoneLabel) => `Code sent to ${phoneLabel}.`,
+    getResendInLabel = (seconds) => `Resend in ${seconds}s`,
     hidePhoneInput = false,
     hint = 'Use the phone number you use for WhatsApp. We will send a one-time code.',
     onAuthenticated,
     onFallback,
+    onPhoneChange,
+    phoneLabel = 'WhatsApp phone number',
+    phonePlaceholder,
+    primaryIcon = 'phone',
     purpose,
+    resendCodeLabel = 'Resend code',
     showHeader = true,
+    successMessage = 'Phone verified. Opening your account...',
     title = 'Continue with phone',
+    variant = 'default',
+    verifyButtonLabel = 'Verify and continue',
     wrapInForm = true,
 }: PhoneOtpAuthPanelProps) {
     const initialCountry = inferPhoneCountryFromInternationalNumber(defaultPhone)?.code || defaultCountryCode || DEFAULT_PHONE_COUNTRY_CODE;
@@ -176,16 +203,23 @@ export default function PhoneOtpAuthPanel({
 
     const handleCountryChange = (value: string) => {
         const nextCountry = getPhoneCountryInfo(value);
-        setCountryCode(nextCountry?.code || DEFAULT_PHONE_COUNTRY_CODE);
-        setDialCode(nextCountry?.dialCode || '+91');
+        const nextCountryCode = nextCountry?.code || DEFAULT_PHONE_COUNTRY_CODE;
+        const nextDialCode = nextCountry?.dialCode || '+91';
+        setCountryCode(nextCountryCode);
+        setDialCode(nextDialCode);
+        onPhoneChange?.({ countryCode: nextCountryCode, dialCode: nextDialCode, phone });
     };
 
     const handlePhoneChange = (value: string) => {
         setPhone(value);
         const inferredCountry = inferPhoneCountryFromInternationalNumber(value);
-        if (!inferredCountry) return;
+        if (!inferredCountry) {
+            onPhoneChange?.({ countryCode, dialCode, phone: value });
+            return;
+        }
         setCountryCode(inferredCountry.code);
         setDialCode(inferredCountry.dialCode);
+        onPhoneChange?.({ countryCode: inferredCountry.code, dialCode: inferredCountry.dialCode, phone: value });
     };
 
     const countrySelect = (
@@ -197,11 +231,12 @@ export default function PhoneOtpAuthPanel({
         >
             {getUniquePhoneCountries().map((country) => (
                 <option key={country.code} value={country.code}>
-                    {country.flag} {country.code} ({country.dialCode})
+                    {country.flag} {country.code} {country.dialCode}
                 </option>
             ))}
         </select>
     );
+    const PrimaryIcon = primaryIcon === 'whatsapp' ? SiWhatsapp : LuPhone;
 
     const phoneStepFields = (buttonType: 'button' | 'submit') => (
         <>
@@ -217,7 +252,7 @@ export default function PhoneOtpAuthPanel({
                 </>
             ) : (
                 <label className={styles.label}>
-                    WhatsApp phone number
+                    {phoneLabel}
                     <div className={styles.phoneRow}>
                         {countrySelect}
                         <input
@@ -226,7 +261,7 @@ export default function PhoneOtpAuthPanel({
                             disabled={loading}
                             inputMode="tel"
                             onChange={(event) => handlePhoneChange(event.target.value)}
-                            placeholder={`${dialCode || '+91'} 98765 43210`}
+                            placeholder={phonePlaceholder || `${dialCode || '+91'} 98765 43210`}
                             type="tel"
                             value={phone}
                         />
@@ -240,7 +275,7 @@ export default function PhoneOtpAuthPanel({
                 onClick={buttonType === 'button' ? () => requestCode() : undefined}
                 type={buttonType}
             >
-                {loading ? <LuLoader className={styles.spin} size={17} /> : <LuPhone size={17} />}
+                {loading ? <LuLoader className={styles.spin} size={17} /> : <PrimaryIcon size={17} />}
                 {buttonLabel}
             </button>
             {fallbackLabel && onFallback ? (
@@ -254,7 +289,7 @@ export default function PhoneOtpAuthPanel({
     const codeStepFields = (buttonType: 'button' | 'submit') => (
         <>
             <label className={styles.label}>
-                Verification code
+                {codeLabel}
                 <input
                     autoComplete="one-time-code"
                     className={styles.input}
@@ -262,13 +297,13 @@ export default function PhoneOtpAuthPanel({
                     inputMode="numeric"
                     maxLength={6}
                     onChange={(event) => setCode(normalizeCode(event.target.value))}
-                    placeholder="6-digit code"
+                    placeholder={codePlaceholder}
                     type="text"
                     value={code}
                 />
             </label>
             <p className={styles.message}>
-                Code sent to {phoneMasked || 'your phone'}.
+                {getCodeSentMessage(phoneMasked || 'your phone')}
             </p>
             {error ? <p className={styles.error}>{error}</p> : null}
             <button
@@ -278,21 +313,21 @@ export default function PhoneOtpAuthPanel({
                 type={buttonType}
             >
                 {loading ? <LuLoader className={styles.spin} size={17} /> : <LuCheck size={17} />}
-                Verify and continue
+                {verifyButtonLabel}
             </button>
             <div className={styles.inlineActions}>
                 <button className={styles.textButton} disabled={loading} onClick={resetPhone} type="button">
-                    <LuArrowLeft size={14} /> Change number
+                    <LuArrowLeft size={14} /> {changeNumberLabel}
                 </button>
                 <button className={styles.textButton} disabled={loading || cooldown > 0} onClick={() => requestCode()} type="button">
-                    {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
+                    {cooldown > 0 ? getResendInLabel(cooldown) : resendCodeLabel}
                 </button>
             </div>
         </>
     );
 
     return (
-        <div className={`${styles.phoneOtpPanel} ${className || ''}`}>
+        <div className={`${styles.phoneOtpPanel} ${variant === 'createMenu' ? styles.createMenuPanel : ''} ${className || ''}`}>
             {showHeader ? (
                 <div className={styles.header}>
                     <span className={styles.iconWrap}>
@@ -330,7 +365,7 @@ export default function PhoneOtpAuthPanel({
             ) : null}
 
             {step === 'success' ? (
-                <p className={styles.success}>Phone verified. Opening your account...</p>
+                <p className={styles.success}>{successMessage}</p>
             ) : null}
         </div>
     );

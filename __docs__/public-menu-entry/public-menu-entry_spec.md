@@ -23,7 +23,7 @@ Allow any business owner to reach a public upload entry point, sign in, upload a
 | Confirm business basics + publish starter activation | Payment/billing during upload/extraction |
 | QR code + share link generation post-publish | Public directory/listing pages |
 | Mobile-first responsive design | WhatsApp onboarding integration |
-| Phone/WhatsApp OTP as primary sign-in path, with Google/password fallback | Anonymous auth bypass |
+| Phone/WhatsApp OTP as primary sign-in path, with direct Google fallback on `/create-menu` and password/passcode fallback on `/signin` | Anonymous auth bypass |
 | Rate limiting (5/day per signed-in owner, with draft reuse/dedupe) | Separate auth session system |
 | 24-hour unclaimed draft TTL; 7-day claimed starter activation | Custom domain setup |
 

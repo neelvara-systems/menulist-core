@@ -8,7 +8,7 @@ import { Switch } from '@shadcncomponents/switch';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { LuCheck, LuFileText, LuSparkles } from 'react-icons/lu';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
@@ -25,6 +25,7 @@ import CreditPacksCtaSection from './shared/CreditPacksCtaSection';
 import EnterpriseCtaSection from './shared/EnterpriseCtaSection';
 import Loader from './shared/Loader';
 import WelcomeBackBanner from './WelcomeBackBanner';
+import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 
 const FeatureComparisonTable = dynamic(() => import('./FeatureComparisonTable'), { ssr: false });
 const OnboardingModal = dynamic(() => import('./OnboardingModal'), { ssr: false });
@@ -118,7 +119,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         if (session?.user) {
             startPaymentprocessing()
         } else {
-            signIn('google', { callbackUrl: window.location.href });
+            window.location.assign(buildCurrentWebsiteSignInPath());
         }
     };
 

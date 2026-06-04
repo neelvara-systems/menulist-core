@@ -45,7 +45,7 @@ Digital Screens (display)
   Highlights Link
 
 Print for Your Restaurant (assets)
-  Table Tent | Single Table Card | Counter Sticker | Entrance Poster | Feedback QR | Print Menu
+  Print Assets | Table Tent | Single Table Card | Counter Sticker | Entrance Poster | Feedback QR | Print Menu
 
 Resources (guides)
   Setup Guide | Printing Guide | Sharing Guide

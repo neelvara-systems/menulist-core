@@ -19,7 +19,7 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | Menu preview rendering                | ✅      | `src/components/templates/website/clientWebsite/`          | Reuse `MainContentRenderer` with extracted data |
 | QR code generation                    | ✅      | `src/components/.../shareModal/qrCodeView.tsx`             | Reuse QR component on success page              |
 | Menu Kit (share assets)               | ✅      | `src/components/.../shareModal/MenuKitSection.tsx`         | Available post-publish                          |
-| Auth flow (phone OTP + Google/password fallback) | ✅ | `src/components/auth/PhoneOtpAuthPanel.tsx`, `src/app/(global-pages)/signin/page.tsx` | Inline WhatsApp OTP before upload; fallback uses existing sign-in route |
+| Auth flow (phone OTP + direct Google fallback) | ✅ | `src/components/auth/PhoneOtpAuthPanel.tsx`, `src/app/(website)/create-menu/CreateMenuClient.tsx`, `src/app/(global-pages)/signin/page.tsx` | Inline WhatsApp OTP before upload; Google is available directly on `/create-menu`; password/passcode fallback stays on the full sign-in route |
 | Store + project creation              | ✅      | `src/database/stores/`, `src/database/projects/`           | Used in claim/publish flow                      |
 | Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New website entry page; source upload/import is gated by auth |
 | Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | API — POST/GET authenticated with owner-bound drafts, user rate limit, active draft reuse, and source dedupe |

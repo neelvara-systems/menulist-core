@@ -6,10 +6,72 @@
 
 ---
 
+## June 4, 2026 — Website Auth Friction Cleanup
+
+### Changed
+
+- **Website login entry points use the full sign-in page** - Header, mobile drawer, `/get-started`, pricing purchase handoff, and credit-pack handoff now route to `/signin` so phone OTP, Google, and passcode options stay available.
+- **Get Started is a calmer directional page** - `/get-started` now points first-time owners to `/create-menu` and existing owners to dashboard sign-in without implying upload-before-auth.
+- **Footer and preview copy are less defensive** - Public website copy no longer says "protect this setup" or "not a QR menu maker" in active conversion surfaces.
+
+### Cost
+
+- **No Firebase cost change** - This is website routing/copy cleanup. Auth, OTP, payment, extraction, and dashboard data paths are unchanged.
+
+## June 4, 2026 — Sign In Static Brand Surface
+
+### Changed
+
+- **Sign-in page has static brand context** - `/signin` now uses a quiet static background surface with a product-shaped visual on wide screens instead of leaving the page empty around the auth card.
+
+### Cost
+
+- **No Firebase cost change** - This is a frontend presentation update. Auth, OTP, and login data paths are unchanged.
+
+## June 4, 2026 — Sign In Background Cleanup
+
+### Changed
+
+- **Sign-in background is static** - `/signin` no longer renders the animated canvas background layers behind the auth card.
+
+### Cost
+
+- **No Firebase cost change** - This is a frontend presentation cleanup. Auth, OTP, and login data paths are unchanged.
+
+## June 4, 2026 — Sign In Phone Row Polish
+
+### Changed
+
+- **Sign-in phone code entry is one row** - `/signin` now switches phone-like login values into a country code plus phone number row before sending the WhatsApp code.
+- **Passcode fallback stays visible in dark mode** - The fallback button now uses theme-aware text, border, and background values on the sign-in card.
+- **Sign-in auth controls use matched heights** - OTP phone controls and the password/passcode field now use the same mobile-safe control height.
+
+### Cost
+
+- **No Firebase cost change** - This is a frontend presentation fix. The existing OTP send/verify endpoints, rate limits, and auth behavior remain unchanged.
+
+## June 4, 2026 — Create Menu Auth Card Polish
+
+### Changed
+
+- **Create-menu auth card is simpler** - `/create-menu` now shows a short setup-safety line, one-row country code plus WhatsApp phone input, a WhatsApp-code primary action, and a direct Google sign-in button.
+- **Passcode fallback moved out of the public create-menu card** - Existing passcode and staff fallback flows remain on `/signin`, but first-time create-menu visitors are not shown passcode language before upload.
+- **Create-menu phone input no longer repeats the dial code in the placeholder** - The country selector carries the dial code and the phone input now shows only the local-number example.
+
+### Cost
+
+- **No Firebase cost change** - This is a frontend presentation and locale-copy change. The existing OTP send/verify rate limits and authenticated upload guard remain unchanged.
+
 ## June 4, 2026 — Print Menu Surfaces Feature Split
 
 ### Changed
 
+- **Print Assets route added** - Owners now have `/use-menulist/print-assets` as the focused workspace for table, counter, entrance, feedback, full menu, and Menu Kit printable files.
+- **Mobile Print Assets screen added** - Mobile PWA maps `/use-menulist/print-assets` into the More tab `printAssets` sub-screen and the Share tab opens it through shell state.
+- **Printable asset IDs are centralized** - Menu Kit print asset indices now live in `src/lib/print-assets/printAssetCatalog.ts`, reducing future hardcoded index drift.
+- **Single-asset print generation added** - Individual printable/social downloads now use `generateMenuKitAsset()` by semantic asset key instead of rendering the full Menu Kit ZIP and reading `result.assets[index]`.
+- **Print readiness and handoff added** - Desktop and mobile Print Assets now show readiness checks, actual generated output previews, copyable print-shop handoff text, and reprint guidance from a shared helper.
+- **Print route transitions stay inside the app shell** - Desktop Use MenuList, Print Assets, and Print Menu now use App Router transitions instead of full page reloads.
 - **Print Menu Surfaces now owns tabletop print layouts** - Table tents are treated as physical scan-first menu objects, separate from full menu PDFs and social Menu Kit images.
 - **Table tent output now prints as an A5 fold file** - The bundled table tent is generated as `{StoreName}_TableTent_A5_Fold.pdf`, with two A6 portrait faces, one rotated for opposite-side table viewing.
 - **Table tent visual contract finalized** - The output now follows the established card view with a brand-color top band, floating white rounded card, centered scan-safe QR, short link, and MenuList footer for non-Premium stores.
@@ -19,7 +81,7 @@
 
 ### Cost
 
-- **No Firebase cost change** - Print Menu Surfaces generates the table-tent PDF locally with Canvas/jsPDF/qrcode from already-loaded store/logo/color/plan context. It adds no Firestore reads/writes, no generated Storage uploads, no Cloud Functions, no rules, and no indexes.
+- **No Firebase cost change** - Print Assets and Print Menu Surfaces generate printable files locally with Canvas/jsPDF/qrcode/JSZip from already-loaded store/logo/color/plan context. They add no Firestore reads/writes, no generated Storage uploads, no Cloud Functions, no rules, and no indexes.
 
 ## June 4, 2026 — QR Output Visual Quality
 

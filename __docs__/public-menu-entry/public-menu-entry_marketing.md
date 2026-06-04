@@ -84,7 +84,7 @@ Free to start. Review before publishing.
 
 **Hero headline:** "Start with your current menu."
 
-**Subheading:** "Sign in, upload a photo, or paste a public menu link. MenuList prepares a page your customers can actually use."
+**Subheading:** "Sign in, add a menu photo or link, and review the prepared preview before publishing."
 
 **Key benefit bullets:**
 - Start from a photo or public link — no typing required

@@ -59,6 +59,8 @@
 
 .countrySelect {
   width: 100%;
+  box-sizing: border-box;
+  height: 48px;
   min-height: 46px;
   padding: 0 9px;
   border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
@@ -71,6 +73,8 @@
 
 .input {
   width: 100%;
+  box-sizing: border-box;
+  height: 48px;
   min-height: 46px;
   padding: 0 13px;
   border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
@@ -95,7 +99,7 @@
 .primaryButton,
 .secondaryButton,
 .textButton {
-  min-height: 46px;
+  min-height: 48px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 750;
@@ -117,7 +121,7 @@
   width: 100%;
   border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
   color: var(--ws-text-primary, #111827);
-  background: transparent;
+  background: var(--ws-secondary-bg, rgba(255, 255, 255, 0.9));
 }
 
 .textButton {
@@ -171,6 +175,44 @@
   animation: phoneOtpSpin 900ms linear infinite;
 }
 
+.createMenuPanel {
+  .form {
+    gap: 12px;
+  }
+
+  .label {
+    color: var(--ws-text-primary, #111827);
+    font-size: 13px;
+  }
+
+  .phoneRow {
+    grid-template-columns: minmax(106px, 122px) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .countrySelect,
+  .input,
+  .primaryButton {
+    height: 50px;
+    min-height: 50px;
+    border-radius: 10px;
+  }
+
+  .countrySelect {
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .input {
+    font-size: 15px;
+  }
+
+  .primaryButton {
+    background: #128c7e;
+    font-size: 15px;
+  }
+}
+
 @keyframes phoneOtpSpin {
   from {
     transform: rotate(0deg);
@@ -183,6 +225,17 @@
 
 @media (max-width: 420px) {
   .phoneRow {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(96px, 112px) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .countrySelect {
+    padding: 0 7px;
+    font-size: 12px;
+  }
+
+  .input {
+    padding: 0 11px;
+    font-size: 14px;
   }
 }

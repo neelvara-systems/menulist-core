@@ -40,7 +40,7 @@ Staff script text shown inline (not in ZIP)
 src/lib/menu-kit/
 ├── brandTokens.ts                  # Shared premium logo/color/QR readability tokens
 ├── imageLoader.ts                  # Logo preloader used once per generation request
-├── menuKitGenerator.ts            # Main orchestrator — generates all assets + ZIP
+├── menuKitGenerator.ts            # Asset definitions, single-asset generation, and ZIP bundle
 ├── businessTypeLabels.ts          # BusinessType-aware labels (menu/services/catalog)
 ├── templates/
 │   ├── tableTentTemplate.ts       # Compatibility wrapper for Print Menu Surfaces table tent
@@ -139,48 +139,38 @@ Menu Kit templates, standalone QR cards, Menu Card Export PDFs, and active legac
 The table tent asset is bundled by Menu Kit but owned by Print Menu Surfaces. `src/lib/menu-kit/templates/tableTentTemplate.ts` remains only as a compatibility wrapper; new tabletop print layout work belongs under `src/lib/print-menu-surfaces/`.
 
 ```typescript
-import JSZip from "jszip";
-import { generatePrintMenuSingleTableCard } from "../print-menu-surfaces/templates/singleTableCardTemplate";
-import { generatePrintMenuTableTent } from "../print-menu-surfaces/templates/tableTentTemplate";
-import { generateCounterSticker } from "./templates/counterStickerTemplate";
-import { generateDeliveryBagSticker } from "./templates/deliveryBagTemplate";
-import { generateEntrancePoster } from "./templates/entrancePosterTemplate";
-import { generateGoogleMapsImage } from "./templates/googleMapsTemplate";
-import { generateInstagramStory } from "./templates/instagramStoryTemplate";
-import { generatePlacementGuide } from "./templates/placementGuideTemplate";
-import { generateTakeawayCard } from "./templates/takeawayCardTemplate";
-import { generateWhatsappStatus } from "./templates/whatsappStatusTemplate";
+export const MENU_KIT_ASSET_KEYS = [
+  "table_tent",
+  "counter_sticker",
+  "entrance_poster",
+  "delivery_bag",
+  "takeaway_card",
+  "instagram_story",
+  "whatsapp_status",
+  "google_maps",
+  "placement_guide",
+  "single_table_card",
+] as const;
+
+const MENU_KIT_ASSET_DEFINITIONS = [
+  { key: "table_tent", suffix: "TableTent_A5_Fold.pdf", generate: generatePrintMenuTableTent },
+  { key: "counter_sticker", suffix: "CounterSticker_8x8.png", generate: generateCounterSticker },
+  { key: "entrance_poster", suffix: "EntrancePoster_A4.pdf", generate: generateEntrancePoster },
+  // ...remaining print/social assets
+  { key: "single_table_card", suffix: "SingleTableCard_A6.pdf", generate: generatePrintMenuSingleTableCard },
+];
+
+export async function generateMenuKitAsset(input: MenuKitInput, assetKey: MenuKitAssetKey): Promise<MenuKitAsset> {
+  const prepared = await prepareMenuKitInput(input);
+  const definition = MENU_KIT_ASSET_DEFINITIONS.find((asset) => asset.key === assetKey);
+  return renderMenuKitAsset(definition, prepared);
+}
 
 export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
-  const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_") || "Menu";
-
-  const [tentCard, sticker, entrancePoster, deliveryBag, takeawayCard, igStory, waStatus, gmImage, guide, singleTableCard] = await Promise.all([
-    generatePrintMenuTableTent(buildInput(MENU_KIT_UTM_SOURCES.tableTent)),
-    generateCounterSticker(buildInput(MENU_KIT_UTM_SOURCES.counterSticker)),
-    generateEntrancePoster(buildInput(MENU_KIT_UTM_SOURCES.entrancePoster)),
-    generateDeliveryBagSticker(buildInput(MENU_KIT_UTM_SOURCES.deliveryBag)),
-    generateTakeawayCard(buildInput(MENU_KIT_UTM_SOURCES.takeawayCard)),
-    generateInstagramStory(buildInput(MENU_KIT_UTM_SOURCES.instagramStory)),
-    generateWhatsappStatus(buildInput(MENU_KIT_UTM_SOURCES.whatsappStatus)),
-    generateGoogleMapsImage(buildInput(MENU_KIT_UTM_SOURCES.googleMaps)),
-    generatePlacementGuide(enrichedInput),
-    generatePrintMenuSingleTableCard(buildInput(MENU_KIT_UTM_SOURCES.singleTableCard)),
-  ]);
-
-  const assets = [
-    { filename: `${safeName}_TableTent_A5_Fold.pdf`, blob: tentCard, mimeType: "application/pdf", label: "Table Tent (A5 fold)" },
-    { filename: `${safeName}_CounterSticker_8x8.png`, blob: sticker, mimeType: "image/png", label: "Counter Sticker (8x8 cm)" },
-    { filename: `${safeName}_EntrancePoster_A4.pdf`, blob: entrancePoster, mimeType: "application/pdf", label: "Entrance Poster (A4)" },
-    { filename: `${safeName}_DeliveryBag_6x6.png`, blob: deliveryBag, mimeType: "image/png", label: "Delivery Bag Sticker (6x6 cm)" },
-    { filename: `${safeName}_TakeawayCard_85x55.png`, blob: takeawayCard, mimeType: "image/png", label: "Takeaway Card" },
-    { filename: `${safeName}_InstagramStory.png`, blob: igStory, mimeType: "image/png", label: "Instagram Story" },
-    { filename: `${safeName}_WhatsAppStatus.png`, blob: waStatus, mimeType: "image/png", label: "WhatsApp Status" },
-    { filename: `${safeName}_GoogleMaps.png`, blob: gmImage, mimeType: "image/png", label: "Google Maps Upload" },
-    { filename: `${safeName}_PlacementGuide.png`, blob: guide, mimeType: "image/png", label: "Placement Guide" },
-    { filename: `${safeName}_SingleTableCard_A6.pdf`, blob: singleTableCard, mimeType: "application/pdf", label: "Single Table / Counter Card (A6)" },
-  ];
-
-  // Bundle into ZIP
+  const prepared = await prepareMenuKitInput(input);
+  const assets = await Promise.all(
+    MENU_KIT_ASSET_DEFINITIONS.map((definition) => renderMenuKitAsset(definition, prepared)),
+  );
   const zip = new JSZip();
   for (const asset of assets) {
     zip.file(asset.filename, await asset.blob.arrayBuffer());
@@ -190,6 +180,8 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
   return { assets, staffScript: STAFF_SCRIPT, zipBlob };
 }
 ```
+
+Use `generateMenuKitAsset()` for single file actions. Use `generateMenuKit()` only for the complete ZIP. This prevents a table card, social image, or counter sticker action from rendering every Menu Kit file first.
 
 ### 3. Print Menu Tabletop PDFs (`src/lib/print-menu-surfaces/templates/`)
 

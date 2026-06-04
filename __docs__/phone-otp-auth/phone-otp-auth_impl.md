@@ -3,9 +3,9 @@
 ## Runtime Flow
 
 1. Owner opens `/signin`; Google remains first, then the existing login form asks for one identity value.
-2. If the identity looks like a phone number, the form embeds `PhoneOtpAuthPanel` and offers WhatsApp OTP as the primary action.
+2. If the identity looks like a phone number, the form embeds `PhoneOtpAuthPanel` as the active phone row, with country dial code and number aligned together, and offers WhatsApp OTP as the primary action.
 3. If the owner chooses passcode instead, or if the identity is email/staff ID, the same form shows the password/passcode field.
-4. `PhoneOtpAuthPanel` sends `phone`, `countryCode`, and `dialCode`; dashboard embedded mode uses the identity phone value and defaults to India unless the owner entered an international `+...` number.
+4. `PhoneOtpAuthPanel` sends `phone`, `countryCode`, and `dialCode`; dashboard embedded mode syncs phone-row edits back to the identity value and defaults to India unless the owner entered an international `+...` number.
 5. `POST /api/auth/phone-otp/start` validates and rate-limits by IP and normalized phone hash.
 6. `createPhoneOtpChallenge()` normalizes to E.164, stores a server-only challenge with country metadata, and sends WhatsApp OTP.
 7. Owner submits code to `POST /api/auth/phone-otp/verify`.

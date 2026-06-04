@@ -12,9 +12,10 @@ import { useInView } from '@shadcnhooks/useInView';
 import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { IMAGE_VIEW_TYPES } from '@template/main-app/projects/editorView/AiImageGenerator/imageViewType';
 import { motion } from 'framer-motion';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FcGoogle } from 'react-icons/fc';
+import { LuArrowRight } from 'react-icons/lu';
+import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 // import SectionHeading from '@shadcncomponents/SectionHeading';
 
 const SectionHeading = ({ text, highlightedText, as: Tag = 'h2', subheading }) => {
@@ -214,11 +215,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.5, delay: 0.6 }}
                             >
-                                {Boolean(session?.user) ? <Button onClick={handleSubmit} className="w-full text-base" size="lg">
-                                    <FcGoogle className="mr-2 h-5 w-5" /> Continue →
-                                </Button> : <Button onClick={handleSubmit} className="w-full text-base" size="lg">
-                                    <FcGoogle className="mr-2 h-5 w-5" /> Continue with Google →
-                                </Button>}
+                                <Button onClick={handleSubmit} className="w-full text-base" size="lg">
+                                    {Boolean(session?.user) ? 'Continue' : 'Continue to sign in'} <LuArrowRight className="ml-2 h-5 w-5" />
+                                </Button>
                             </motion.div>
 
                             <motion.div
@@ -227,7 +226,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                                 transition={{ duration: 0.5, delay: 0.6 }}
                             >
                                 <div className='flex justify-center items-center mt-6'>
-                                    <p className='text-muted-foreground text-sm'>Already have an account? <span className='text-primary cursor-pointer' onClick={() => signIn('google', { callbackUrl: window.location.href })}>Sign In with Google</span></p>
+                                    <p className='text-muted-foreground text-sm'>Already have an account? <span className='text-primary cursor-pointer' onClick={() => window.location.assign(buildCurrentWebsiteSignInPath())}>Sign in</span></p>
                                 </div>
                             </motion.div>
                         </div>

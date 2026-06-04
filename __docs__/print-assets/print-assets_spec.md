@@ -1,0 +1,58 @@
+# Print Assets Spec
+
+**Status:** Implemented
+**Last Updated:** June 4, 2026
+
+## Problem
+
+SMB owners need physical assets customers can see in the shop: table cards, counter QR, entrance posters, feedback QR, and paper menus. These assets are operationally important, but they were scattered inside Use MenuList and mobile Share.
+
+## Goal
+
+Create one focused owner workspace for printables while keeping Use MenuList as the broad deployment overview.
+
+## Route
+
+- Desktop: `/use-menulist/print-assets`
+- Mobile: same path maps into `MobileShell` as the `printAssets` More sub-screen.
+
+## Included Assets
+
+| Asset | Purpose |
+| --- | --- |
+| Table Tent | Folded tabletop QR card. |
+| Single Table Card | Upright A6 table/counter card. |
+| Counter Sticker | Billing/pickup counter QR. |
+| Entrance Poster | Door/window/host stand QR. |
+| Feedback QR | Private feedback scan point when enabled. |
+| Print Menu PDF | Full printable menu workflow. |
+| Complete Menu Kit | ZIP bundle with print/social/placement files. |
+
+## Included Owner Support
+
+| Support | Purpose |
+| --- | --- |
+| Print readiness | Shows whether live link, logo, brand color, business name length, and feedback QR state are ready before printing. |
+| Actual output preview | Opens the same generated file that Download will save, so owners can inspect before sending to print. |
+| Print-shop handoff | Copies plain file specs that can be sent with the ZIP to a local printer. |
+| Reprint guidance | Explains when reprinting is needed and when live QR updates avoid reprinting. |
+
+## Product Rules
+
+- No design editor.
+- No owner-facing font/layout/background choices.
+- Reuse existing logo, brand color, menu URL, project selection, and plan-aware MenuList attribution.
+- Desktop and mobile outputs must come from the same generator path.
+- Generated artifacts stay client-side unless a separate print-shop fulfillment feature is approved.
+- Do not add quantity estimation in this feature. It adds planning friction and can be handled by the owner/printer without product logic.
+
+## Acceptance Criteria
+
+- Owner can open Print Assets from Use MenuList.
+- Owner can open Print Assets from mobile More.
+- Mobile Share can open the focused Print Assets screen without route reload.
+- Multiple projects use the same project selector behavior as Use MenuList/mobile Share.
+- Menu Kit asset indices are centralized in `src/lib/print-assets/printAssetCatalog.ts`.
+- Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers on desktop and mobile.
+- Table/card/sticker/poster previews render by semantic asset key and do not build the full ZIP.
+- Firebase cost remains zero for generated printable assets.

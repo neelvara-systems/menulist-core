@@ -1730,6 +1730,7 @@ export const FEATURE_FLAGS = {
      * @see __docs__/print-menu-surfaces/
      */
     ENABLE_PRINT_MENU_SURFACES: true,
+    ENABLE_PRINT_ASSETS_ROUTE: true,
 
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)

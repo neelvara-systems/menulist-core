@@ -252,10 +252,10 @@ export function AnswerlatticeCrossDiagram({
 }: AnswerlatticeCrossDiagramProps) {
     const visibleItems = items.slice(0, 4);
     const linePaths = [
-        { key: 'left', d: 'M90 280 L430 280', delay: 0 },
-        { key: 'right', d: 'M570 280 L910 280', delay: 0.18 },
-        { key: 'top', d: 'M500 72 L500 216', delay: 0.36 },
-        { key: 'bottom', d: 'M500 344 L500 488', delay: 0.54 },
+        { key: 'left', d: 'M500 280 L90 280', delay: 0 },
+        { key: 'right', d: 'M500 280 L910 280', delay: 0.18 },
+        { key: 'top', d: 'M500 280 L500 72', delay: 0.36 },
+        { key: 'bottom', d: 'M500 280 L500 488', delay: 0.54 },
     ];
 
     return (
@@ -279,7 +279,8 @@ export function AnswerlatticeCrossDiagram({
 
             <svg className="al-diagram-paths al-cross-diagram__paths al-diagram-paths--mobile" viewBox="0 0 360 860" preserveAspectRatio="none" aria-hidden="true" focusable="false">
                 <path className="al-diagram-path al-cross-diagram__line" d="M180 48 L180 812" pathLength={1} />
-                <path className="al-diagram-pulse" d="M180 48 L180 812" pathLength={1} style={getPulseStyle(0.1)} />
+                <path className="al-diagram-pulse" d="M180 430 L180 48" pathLength={1} style={getPulseStyle(0.1)} />
+                <path className="al-diagram-pulse" d="M180 430 L180 812" pathLength={1} style={getPulseStyle(0.28)} />
             </svg>
 
             {visibleItems.map((item, index) => (

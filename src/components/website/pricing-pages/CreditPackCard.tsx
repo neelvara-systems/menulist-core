@@ -3,10 +3,10 @@ import { AIEnhancementPack, Currency } from '@data/common';
 import { Button } from '@shadcncomponents/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shadcncomponents/card';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
-import { signIn, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import React from 'react';
-import { FcGoogle } from 'react-icons/fc';
 import { LuCoins } from 'react-icons/lu';
+import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 import { formatCurrencyOnPricingPage } from '.';
 import './main.css';
 
@@ -78,9 +78,9 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
             return <Button
                 className={`mt-6 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
                 variant='ghost'
-                onClick={() => signIn('google', { callbackUrl: window.location.href })}
+                onClick={() => window.location.assign(buildCurrentWebsiteSignInPath())}
             >
-                Add more credits<>&nbsp; <FcGoogle /></>
+                Sign in to add credits
             </Button>
         } else if (Boolean(activeSubscription?.id)) {
             return <Button
@@ -112,19 +112,6 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                     <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
                 </div>
                 <CTAButton />
-                {/* {status === 'authenticated' && session?.user ? <Button
-                    className={`mt-8 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
-                    variant='ghost'
-                    onClick={() => onPurchase(pack, currency)}
-                >
-                    Purchase<>&nbsp; {currentStyle.icon}</>
-                </Button> : <Button
-                    className={`mt-8 w-full flex items-center justify-center ${currentStyle.buttonClass}`}
-                    variant='ghost'
-                    onClick={() => signIn('google', { callbackUrl: window.location.href })}
-                >
-                    Sign In to Purchase<>&nbsp; {currentStyle.icon}</>
-                </Button>} */}
             </CardContent>
         </Card>
     );

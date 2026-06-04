@@ -39,6 +39,7 @@ const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
     '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
     '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },
     '/use-menulist': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
+    '/use-menulist/print-assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' },
     '/use-menulist/menu-card-export': { tab: 'more', todayScreen: 'main', moreScreen: 'printMenu' },
     '/qr-code': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
     '/qrCode': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
@@ -95,6 +96,7 @@ const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
 const SELECTED_PROJECT_DATA_MORE_SCREENS: MoreSubScreen[] = [
     'dashboard',
     'designEditor',
+    'printAssets',
     'printMenu',
 ];
 
@@ -420,6 +422,13 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
+    const handleOpenPrintAssets = useCallback(() => {
+        setActiveTab('more');
+        setMoreScreen('printAssets');
+        setIsMoreRootScreen(false);
+        setTodayScreen('main');
+    }, []);
+
     const handleOpenHistory = useCallback(() => {
         if (!FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
             return;
@@ -454,7 +463,7 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} onOpenPrintMenu={handleOpenPrintMenu} />
+            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenPrintMenu={handleOpenPrintMenu} />;

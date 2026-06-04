@@ -17,6 +17,8 @@ MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.
 
 The bundled table tent and single table/counter card now come from `src/lib/print-menu-surfaces/templates/tableTentTemplate.ts` and `src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts`. That ownership split is code organization only; both still use client-side Canvas/jsPDF/qrcode generation and add no Firebase reads, writes, Storage uploads, rules, indexes, Cloud Functions, or artifact APIs.
 
+Individual Menu Kit asset downloads use `generateMenuKitAsset()` by semantic asset key. This renders only the requested file instead of generating the whole ZIP first. The full `generateMenuKit()` path remains the ZIP bundle path and preserves the same asset filenames/order.
+
 ---
 
 ## Operations Breakdown

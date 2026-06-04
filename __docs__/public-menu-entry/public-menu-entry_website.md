@@ -33,14 +33,14 @@ There's no single, reliable place where your menu lives.
 
 **Heading:** "One current menu. One official source."
 
-Sign in, upload a photo of your menu, or paste a public menu link you have permission to use. MenuList prepares a clean, structured preview first, then the owner decides whether to create the public starter link.
+Sign in, add a menu photo or public menu link you have permission to use. MenuList prepares a clean, structured preview first, then the owner decides whether to create the public starter link.
 
 ---
 
 ## 4. How It Works (3 Steps)
 
 **Step 1:** Sign in and add your current menu source
-Protect the setup first, then start with a clear photo from your phone camera, a saved file, or a public menu link you have permission to import.
+Sign in first, then start with a clear photo from your phone camera, a saved file, or a public menu link you have permission to import.
 
 **Step 2:** Review before publishing
 Your menu appears as a clean, structured preview for owner review.

@@ -19,7 +19,7 @@ const productLinks = [
 const sourceLinks = [
   { href: '/#public-proof', key: 'publicProof' },
   { href: '/#public-proof', key: 'officialPage' },
-  { href: '/get-started', key: 'getStarted' },
+  { href: '/create-menu', key: 'getStarted' },
 ];
 
 const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES

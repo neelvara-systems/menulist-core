@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,6 +23,7 @@ import {
 } from "react-icons/lu";
 import BrandWordmark from "./shared/BrandWordmark";
 import { FEATURE_FLAGS } from "@config/features";
+import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -234,12 +235,9 @@ export default function Header() {
               </>
             ) : (
               <>
-                <button
-                  type="button"
+                <Link
+                  href={buildWebsiteSignInPath('/dashboard')}
                   aria-label={t("Header.login")}
-                  onClick={() =>
-                    signIn("google", { callbackUrl: "/dashboard" })
-                  }
                   style={{
                     fontSize: "0.9375rem",
                     fontWeight: 500,
@@ -259,7 +257,7 @@ export default function Header() {
                   }
                 >
                   {t("Header.login")}
-                </button>
+                </Link>
                 <Link
                   href="/create-menu"
                   aria-label={t("Header.ctaAria")}
@@ -470,12 +468,9 @@ export default function Header() {
                   </button>
                 </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeDrawer();
-                    signIn("google", { callbackUrl: "/dashboard" });
-                  }}
+                <Link
+                  href={buildWebsiteSignInPath('/dashboard')}
+                  onClick={closeDrawer}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -486,11 +481,7 @@ export default function Header() {
                     color: "var(--ws-text-secondary)",
                     textDecoration: "none",
                     borderRadius: "10px",
-                    background: "transparent",
-                    border: 0,
-                    cursor: "pointer",
                     width: "100%",
-                    textAlign: "left",
                     transition: "background-color 0.15s",
                   }}
                   onMouseEnter={(e) =>
@@ -502,7 +493,7 @@ export default function Header() {
                 >
                   <LuArrowRight size={18} color="var(--ws-text-muted)" />
                   {t("Header.login")}
-                </button>
+                </Link>
               )}
             </nav>
 

@@ -40,6 +40,7 @@ Mobile covers the owner output actions that previously required desktop:
 - download the selected menu PDF through the Menu Card Export renderer bridge when the routed Print Menu feature is not the active path
 - export the selected menu data as XLSX or JSON
 - download the complete Menu Kit ZIP
+- open Print Assets inside the mobile PWA shell
 - download/share Menu Kit print and social assets: table tent, single table card, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
 - download feedback QR when feedback is enabled
 - copy/open Menu Board and Highlights digital screen links, with setup handoff when screens are not configured

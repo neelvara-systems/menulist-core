@@ -24,10 +24,11 @@ Print Menu Surfaces owns scan-first physical menu placements such as table tents
 | Related area | Boundary |
 | --- | --- |
 | Menu Card Export | Full printable menu/menu-card PDFs from menu data. |
+| Print Assets | Owner-facing desktop route and mobile screen for downloading printable assets. |
 | Menu Kit | Bundles print, social, and placement assets for deployment. |
 | Print Menu Surfaces | Owns physical scan-first print layouts that sit on tables, counters, entrances, and packaging. |
 
-Menu Kit may include these files in its ZIP, but it does not own the table tent layout. The layout owner is `src/lib/print-menu-surfaces/`.
+Print Assets may expose these files to owners and Menu Kit may include them in its ZIP, but neither owns the table tent/card layout. The layout owner is `src/lib/print-menu-surfaces/`.
 
 ## Current Implementation
 

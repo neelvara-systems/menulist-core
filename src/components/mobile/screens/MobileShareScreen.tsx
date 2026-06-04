@@ -10,8 +10,14 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
-import { downloadBlob, generateMenuKit, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import {
+    PRINT_ASSET_REPRINT_GUIDANCE,
+    buildPrintReadinessItems,
+    buildPrintShopHandoffMessage,
+    type PrintReadinessItem,
+} from '@lib/print-assets/ownerPrintGuidance';
 import {
     STARTER_ACTIVATION_SIGNALS,
     isStarterActivationSignal,
@@ -31,8 +37,10 @@ import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, us
 import {
     LuBookOpen,
     LuCheck,
+    LuClipboard,
     LuCopy,
     LuDownload,
+    LuEye,
     LuExternalLink,
     LuFileJson,
     LuFileText,
@@ -117,6 +125,14 @@ type QrSheetState = {
     url: string;
 };
 
+type PreviewAssetState = {
+    blob: Blob;
+    filename: string;
+    isPdf: boolean;
+    title: string;
+    url: string;
+};
+
 type DownloadAssetKey =
     | 'export_json'
     | 'export_xlsx'
@@ -132,13 +148,24 @@ type DownloadAssetKey =
     | 'google_maps';
 
 interface MobileShareScreenProps {
+    mode?: 'full' | 'printAssets';
+    onBack?: () => void;
     onOpenDigitalScreens?: () => void;
     onOpenDesignEditor?: () => void;
     onOpenPosSync?: () => void;
+    onOpenPrintAssets?: () => void;
     onOpenPrintMenu?: () => void;
 }
 
-export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEditor, onOpenPosSync, onOpenPrintMenu }: MobileShareScreenProps) {
+export default function MobileShareScreen({
+    mode = 'full',
+    onBack,
+    onOpenDigitalScreens,
+    onOpenDesignEditor,
+    onOpenPosSync,
+    onOpenPrintAssets,
+    onOpenPrintMenu,
+}: MobileShareScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
@@ -158,6 +185,9 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [activeGuide, setActiveGuide] = useState<GuideKey | null>(null);
     const [generatingDownload, setGeneratingDownload] = useState<DownloadAssetKey | null>(null);
+    const [previewingDownload, setPreviewingDownload] = useState<DownloadAssetKey | null>(null);
+    const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
+    const isPrintAssetsMode = mode === 'printAssets';
     const [screenLinks, setScreenLinks] = useState<ScreenLinksState>({
         highlightsLink: null,
         isLoading: false,
@@ -281,6 +311,12 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
     }, []);
 
     useEffect(() => {
+        return () => {
+            if (previewAsset?.url) URL.revokeObjectURL(previewAsset.url);
+        };
+    }, [previewAsset?.url]);
+
+    useEffect(() => {
         const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
             .filter(isStarterActivationSignal);
         recordedStarterSignalsRef.current = new Set(existingSignals);
@@ -302,6 +338,32 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
             url: `${tenantBase}/${outlet.outletSlug}/menu`,
         }));
     }, [data?.obpLink, isMasterUser, tenantDetails?.storesList]);
+
+    const printReadinessItems = useMemo(() => {
+        if (!data) return [];
+        const shortMenuLink = data.menuLink.replace(/^https?:\/\//, '');
+        return buildPrintReadinessItems({
+            hasFeedbackEnabled: data.hasFeedbackEnabled,
+            menuLink: data.menuLink,
+            shortMenuLink,
+            storeData: storeDetails as any,
+            storeLogo: data.storeLogo,
+            storeName: data.storeName,
+        });
+    }, [data, storeDetails]);
+
+    const printShopMessage = useMemo(() => {
+        if (!data) return '';
+        const shortMenuLink = data.menuLink.replace(/^https?:\/\//, '');
+        return buildPrintShopHandoffMessage({
+            hasFeedbackEnabled: data.hasFeedbackEnabled,
+            menuLink: data.menuLink,
+            shortMenuLink,
+            storeData: storeDetails as any,
+            storeLogo: data.storeLogo,
+            storeName: data.storeName,
+        });
+    }, [data, storeDetails]);
 
     const exportFilenameBase = useMemo(() => {
         const source = data?.projectName || data?.storeName || 'menu_data';
@@ -529,7 +591,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
     const handleMenuKitAsset = async (
         key: DownloadAssetKey,
-        assetIndex: number,
+        assetKey: MenuKitAssetKey,
         label: string,
         trackingAction?: 'share_instagram' | 'share_whatsapp' | 'share_google_maps',
     ) => {
@@ -538,10 +600,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
         setGeneratingDownload(key);
         try {
-            const result = await generateMenuKit(input);
-            const asset = result.assets[assetIndex];
-            if (!asset) throw new Error('Menu Kit asset missing');
-
+            const asset = await generateMenuKitAsset(input, assetKey);
             const shared = trackingAction ? await shareBlob(asset.blob, asset.filename, label) : false;
             if (shared) {
                 void trackMenuKitDownload(trackingAction);
@@ -554,6 +613,33 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
             Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
         } finally {
             setGeneratingDownload(null);
+        }
+    };
+
+    const handlePreviewMenuKitAsset = async (
+        key: DownloadAssetKey,
+        assetKey: MenuKitAssetKey,
+        label: string,
+    ) => {
+        const input = buildMenuKitInput();
+        if (!input) return;
+
+        setPreviewingDownload(key);
+        try {
+            const asset = await generateMenuKitAsset(input, assetKey);
+            const previewBlob = new Blob([asset.blob], { type: asset.mimeType });
+            const previewUrl = URL.createObjectURL(previewBlob);
+            setPreviewAsset({
+                blob: asset.blob,
+                filename: asset.filename,
+                isPdf: asset.mimeType === 'application/pdf',
+                title: label,
+                url: previewUrl,
+            });
+        } catch {
+            Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
+        } finally {
+            setPreviewingDownload(null);
         }
     };
 
@@ -673,6 +759,180 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 <Text type="secondary" style={{ textAlign: 'center' }}>
                     {t('noMenuYetDesc', { offering: labels.offeringLower })}
                 </Text>
+            </Flex>
+        );
+    }
+
+    if (isPrintAssetsMode) {
+        return (
+            <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
+                <NavBar onBack={onBack || (() => window.history.back())}>Print Assets</NavBar>
+
+                {activeProject && data.allProjects.length > 1 ? (
+                    <ProjectSelectorTrigger
+                        clickable
+                        currentProject={{
+                            active: activeProject.active !== false,
+                            deleted: activeProject.deleted === true,
+                            id: activeProject.projectId,
+                            isDefault: activeProject.isDefault,
+                            isSpecialMenu: activeProject.isSpecialMenu === true,
+                            name: activeProject.name,
+                            projectImage: activeProject.projectImage || null,
+                            specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
+                                ? resolveProjectName(
+                                    data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name,
+                                    labels.offeringTitle,
+                                )
+                                : undefined,
+                            specialMenuEndsAt: activeProject.specialMenuEndsAt,
+                            specialMenuStatus: activeProject.specialMenuStatus,
+                        }}
+                        onClick={() => setIsProjectSelectorOpen(true)}
+                    />
+                ) : null}
+
+                <MobilePrintReadinessPanel compact={isCompactHandheld} items={printReadinessItems} />
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={12} vertical>
+                        <SectionHeader
+                            compact={isCompactHandheld}
+                            subtitle="Ready-to-print files for tables, counters, entrances, and full paper menus."
+                            title="Print Assets"
+                        />
+                        <Flex gap={10} wrap="wrap">
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('completeMenuKitDesc')}
+                                icon={<LuPackage size={18} />}
+                                loading={generatingDownload === 'menu_kit'}
+                                onClick={() => void handleDownloadMenuKit()}
+                                title={t('completeMenuKit')}
+                                highlighted
+                            />
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
+                                icon={<LuFileText size={18} />}
+                                loading={generatingDownload === 'menu_pdf'}
+                                onClick={() => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport() : void handleDownloadPdf()}
+                                title={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : t('menuPdf')}
+                            />
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description="Send exact specs with the ZIP"
+                                icon={<LuClipboard size={18} />}
+                                loading={false}
+                                onClick={() => void handleCopy(printShopMessage, 'print-shop message')}
+                                title="Printer Message"
+                            />
+                        </Flex>
+                    </Flex>
+                </Card>
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={12} vertical>
+                        <SectionHeader
+                            compact={isCompactHandheld}
+                            subtitle="Use these where customers scan inside the business."
+                            title={t('printFiles')}
+                        />
+                        <Flex gap={10} wrap="wrap">
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('tableTentDesc')}
+                                icon={<LuQrCode size={18} />}
+                                loading={generatingDownload === 'table_tent'}
+                                onClick={() => void handleMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
+                                onSecondaryClick={() => void handlePreviewMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
+                                secondaryLabel="Preview"
+                                secondaryLoading={previewingDownload === 'table_tent'}
+                                title={t('tableTent')}
+                            />
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('singleTableCardDesc')}
+                                icon={<LuQrCode size={18} />}
+                                loading={generatingDownload === 'single_table_card'}
+                                onClick={() => void handleMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
+                                onSecondaryClick={() => void handlePreviewMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
+                                secondaryLabel="Preview"
+                                secondaryLoading={previewingDownload === 'single_table_card'}
+                                title={t('singleTableCard')}
+                            />
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('counterStickerDesc')}
+                                icon={<LuQrCode size={18} />}
+                                loading={generatingDownload === 'counter_sticker'}
+                                onClick={() => void handleMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
+                                onSecondaryClick={() => void handlePreviewMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
+                                secondaryLabel="Preview"
+                                secondaryLoading={previewingDownload === 'counter_sticker'}
+                                title={t('counterSticker')}
+                            />
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('entrancePosterDesc')}
+                                icon={<LuQrCode size={18} />}
+                                loading={generatingDownload === 'entrance_poster'}
+                                onClick={() => void handleMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
+                                onSecondaryClick={() => void handlePreviewMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
+                                secondaryLabel="Preview"
+                                secondaryLoading={previewingDownload === 'entrance_poster'}
+                                title={t('entrancePoster')}
+                            />
+                            {data.hasFeedbackEnabled ? (
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('feedbackQrDesc')}
+                                    icon={<LuMessageSquare size={18} />}
+                                    loading={generatingDownload === 'feedback_qr'}
+                                    onClick={() => void handleDownloadFeedbackQr()}
+                                    title={t('feedbackQr')}
+                                />
+                            ) : null}
+                        </Flex>
+                    </Flex>
+                </Card>
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={8} vertical>
+                        <Text strong>Print guidance</Text>
+                        <Text type="secondary">Use matte finish where possible and test one scan before printing in bulk.</Text>
+                        <Text type="secondary">Open Preview before sending a file to print. The preview is the same generated output as the download.</Text>
+                    </Flex>
+                </Card>
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={8} vertical>
+                        <Text strong>When to reprint</Text>
+                        {PRINT_ASSET_REPRINT_GUIDANCE.map((item) => (
+                            <Flex align="flex-start" gap={8} key={item}>
+                                <LuCheck color={token.colorSuccess} size={15} style={{ flexShrink: 0, marginTop: 3 }} />
+                                <Text type="secondary">{item}</Text>
+                            </Flex>
+                        ))}
+                    </Flex>
+                </Card>
+
+                <MobileProjectSelectorSheet
+                    currentProjectId={data.projectId}
+                    currentProjectName={resolveProjectName(activeProject?.name, data.projectName || undefined)}
+                    onClose={() => setIsProjectSelectorOpen(false)}
+                    onOpenDesignEditor={onOpenDesignEditor}
+                    onProjectsChanged={async (preferredProjectId) => {
+                        setIsProjectSelectorOpen(false);
+                        await selectProject(preferredProjectId || null);
+                    }}
+                    visible={isProjectSelectorOpen}
+                />
+                <PreviewAssetSheet
+                    asset={previewAsset}
+                    onClose={() => setPreviewAsset(null)}
+                />
             </Flex>
         );
     }
@@ -908,6 +1168,17 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                     />
 
                     <Flex gap={10} wrap="wrap">
+                        {onOpenPrintAssets ? (
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description="Table, counter, entrance, and menu files"
+                                icon={<LuPrinter size={18} />}
+                                loading={false}
+                                onClick={onOpenPrintAssets}
+                                title="Print Assets"
+                                highlighted
+                            />
+                        ) : null}
                         <DownloadTile
                             compact={isCompactHandheld}
                             description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
@@ -963,7 +1234,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('tableTentDesc')}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'table_tent'}
-                                    onClick={() => void handleMenuKitAsset('table_tent', 0, t('tableTent'))}
+                                    onClick={() => void handleMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
                                     title={t('tableTent')}
                                 />
                                 <DownloadTile
@@ -971,7 +1242,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('singleTableCardDesc')}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'single_table_card'}
-                                    onClick={() => void handleMenuKitAsset('single_table_card', 9, t('singleTableCard'))}
+                                    onClick={() => void handleMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
                                     title={t('singleTableCard')}
                                 />
                                 <DownloadTile
@@ -979,7 +1250,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('counterStickerDesc')}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'counter_sticker'}
-                                    onClick={() => void handleMenuKitAsset('counter_sticker', 1, t('counterSticker'))}
+                                    onClick={() => void handleMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
                                     title={t('counterSticker')}
                                 />
                                 <DownloadTile
@@ -987,7 +1258,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('entrancePosterDesc')}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'entrance_poster'}
-                                    onClick={() => void handleMenuKitAsset('entrance_poster', 2, t('entrancePoster'))}
+                                    onClick={() => void handleMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
                                     title={t('entrancePoster')}
                                 />
                                 {data.hasFeedbackEnabled ? (
@@ -1011,7 +1282,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('instagramStoryDesc')}
                                     icon={<LuImage size={18} />}
                                     loading={generatingDownload === 'instagram_story'}
-                                    onClick={() => void handleMenuKitAsset('instagram_story', 5, t('instagramStory'), 'share_instagram')}
+                                    onClick={() => void handleMenuKitAsset('instagram_story', 'instagram_story', t('instagramStory'), 'share_instagram')}
                                     title={t('instagramStory')}
                                 />
                                 <DownloadTile
@@ -1019,7 +1290,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('whatsappStatusDesc')}
                                     icon={<LuShare2 size={18} />}
                                     loading={generatingDownload === 'whatsapp_status'}
-                                    onClick={() => void handleMenuKitAsset('whatsapp_status', 6, t('whatsappStatus'), 'share_whatsapp')}
+                                    onClick={() => void handleMenuKitAsset('whatsapp_status', 'whatsapp_status', t('whatsappStatus'), 'share_whatsapp')}
                                     title={t('whatsappStatus')}
                                 />
                                 <DownloadTile
@@ -1027,7 +1298,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                     description={t('googleMapsImageDesc')}
                                     icon={<LuMapPin size={18} />}
                                     loading={generatingDownload === 'google_maps'}
-                                    onClick={() => void handleMenuKitAsset('google_maps', 7, t('googleMapsImage'), 'share_google_maps')}
+                                    onClick={() => void handleMenuKitAsset('google_maps', 'google_maps', t('googleMapsImage'), 'share_google_maps')}
                                     title={t('googleMapsImage')}
                                 />
                             </Flex>
@@ -1212,6 +1483,135 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
     );
 }
 
+function mobileReadinessTagColor(status: PrintReadinessItem['status']): 'success' | 'warning' | 'default' {
+    if (status === 'ready') return 'success';
+    if (status === 'attention') return 'warning';
+    return 'default';
+}
+
+function MobilePrintReadinessPanel({
+    compact,
+    items,
+}: {
+    compact?: boolean;
+    items: PrintReadinessItem[];
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <Card style={{ borderRadius: 24 }}>
+            <Flex gap={10} vertical>
+                <SectionHeader
+                    compact={compact}
+                    subtitle="Check once before sending files to a print shop."
+                    title="Print readiness"
+                />
+                <Flex gap={8} vertical>
+                    {items.map((item) => (
+                        <Flex
+                            align="flex-start"
+                            gap={8}
+                            key={item.id}
+                            style={{
+                                background: token.colorBgLayout,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 14,
+                                padding: compact ? 10 : 12,
+                            }}
+                        >
+                            <Tag color={mobileReadinessTagColor(item.status)} style={{ flexShrink: 0 }}>
+                                {item.status === 'ready' ? 'Ready' : item.status === 'attention' ? 'Check' : 'Info'}
+                            </Tag>
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text strong style={{ fontSize: compact ? 12 : 13 }}>{item.title}</Text>
+                                <Text style={{ color: token.colorTextSecondary, fontSize: compact ? 11 : 12, lineHeight: 1.35 }}>
+                                    {item.description}
+                                </Text>
+                            </Flex>
+                        </Flex>
+                    ))}
+                </Flex>
+            </Flex>
+        </Card>
+    );
+}
+
+function PreviewAssetSheet({
+    asset,
+    onClose,
+}: {
+    asset: PreviewAssetState | null;
+    onClose: () => void;
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <Popup
+            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+            destroyOnClose
+            onMaskClick={onClose}
+            visible={!!asset}
+        >
+            <Flex style={{ height: '100%', maxHeight: '94vh' }} vertical>
+                <NavBar backIcon={<LuX size={20} />} onBack={onClose}>
+                    {asset?.title || 'Preview'}
+                </NavBar>
+                <Flex gap={10} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                    {asset?.isPdf ? (
+                        <iframe
+                            src={asset.url}
+                            style={{
+                                background: token.colorBgLayout,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 16,
+                                height: '68vh',
+                                width: '100%',
+                            }}
+                            title={`${asset.title} preview`}
+                        />
+                    ) : asset ? (
+                        <img
+                            alt={`${asset.title} preview`}
+                            src={asset.url}
+                            style={{
+                                background: token.colorBgLayout,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 16,
+                                height: 'auto',
+                                width: '100%',
+                            }}
+                        />
+                    ) : null}
+                    {asset ? (
+                        <Flex gap={8} wrap="wrap">
+                            <Button
+                                fill="outline"
+                                onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')}
+                                style={{ flex: '1 1 150px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuExternalLink size={15} />
+                                    <Text>Open Full Preview</Text>
+                                </Flex>
+                            </Button>
+                            <Button
+                                color="primary"
+                                onClick={() => downloadBlob(asset.blob, asset.filename)}
+                                style={{ flex: '1 1 130px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuDownload size={15} />
+                                    <Text>Download</Text>
+                                </Flex>
+                            </Button>
+                        </Flex>
+                    ) : null}
+                </Flex>
+            </Flex>
+        </Popup>
+    );
+}
+
 function DownloadTile({
     compact,
     description,
@@ -1219,6 +1619,9 @@ function DownloadTile({
     icon,
     loading,
     onClick,
+    onSecondaryClick,
+    secondaryLabel = 'Preview',
+    secondaryLoading,
     title,
 }: {
     compact?: boolean;
@@ -1227,12 +1630,19 @@ function DownloadTile({
     icon: ReactNode;
     loading: boolean;
     onClick: () => void;
+    onSecondaryClick?: () => void;
+    secondaryLabel?: string;
+    secondaryLoading?: boolean;
     title: string;
 }) {
     const { token } = theme.useToken();
     const color = highlighted ? token.colorTextLightSolid : token.colorText;
+    const tileStyle = {
+        flex: '1 1 calc(50% - 5px)',
+        minWidth: compact ? 128 : 144,
+    };
 
-    return (
+    const primaryTile = (
         <Button
             block
             color={highlighted ? 'primary' : undefined}
@@ -1240,9 +1650,7 @@ function DownloadTile({
             loading={loading}
             onClick={onClick}
             style={{
-                flex: '1 1 calc(50% - 5px)',
                 minHeight: compact ? 86 : 94,
-                minWidth: compact ? 128 : 144,
                 paddingBlock: compact ? 9 : 11,
                 whiteSpace: 'normal',
             }}
@@ -1257,6 +1665,32 @@ function DownloadTile({
                 </Text>
             </Flex>
         </Button>
+    );
+
+    if (onSecondaryClick) {
+        return (
+            <Flex gap={6} style={tileStyle} vertical>
+                {primaryTile}
+                <Button
+                    block
+                    fill="outline"
+                    loading={secondaryLoading}
+                    onClick={onSecondaryClick}
+                    style={{ minHeight: 34 }}
+                >
+                    <Flex align="center" gap={6} justify="center">
+                        <LuEye size={14} />
+                        <Text strong style={{ fontSize: 12 }}>{secondaryLoading ? 'Opening...' : secondaryLabel}</Text>
+                    </Flex>
+                </Button>
+            </Flex>
+        );
+    }
+
+    return (
+        <div style={tileStyle}>
+            {primaryTile}
+        </div>
     );
 }
 

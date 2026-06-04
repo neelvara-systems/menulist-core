@@ -27,9 +27,18 @@ import { recordStarterActivationSignal } from '@database/stores';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
-import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
+import { downloadBlob, generateMenuKit, generateMenuKitAsset } from '@lib/menu-kit/menuKitGenerator';
+import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { buildPrintAssetsUrl } from '@lib/print-assets/navigation';
+import {
+    PRINT_ASSET_REPRINT_GUIDANCE,
+    buildPrintReadinessItems,
+    buildPrintShopHandoffMessage,
+    type PrintReadinessItem,
+} from '@lib/print-assets/ownerPrintGuidance';
+import { type MenuKitPrintAssetId } from '@lib/print-assets/printAssetCatalog';
 import {
     STARTER_ACTIVATION_SIGNALS,
     isStarterActivationSignal,
@@ -43,6 +52,7 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBookOpen,
@@ -50,6 +60,7 @@ import {
     LuClipboard,
     LuCopy,
     LuDownload,
+    LuEye,
     LuExternalLink,
     LuFileText,
     LuMapPin,
@@ -69,15 +80,25 @@ import { PageState, ProjectLink, UseMenuListData } from './types';
 
 const { Title, Text, Paragraph } = Typography;
 
-export default function UseMenuList() {
+type UseMenuListView = 'overview' | 'print-assets';
+
+interface UseMenuListProps {
+    view?: UseMenuListView;
+}
+
+export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const { storeDetails, tenantDetails, isMasterUser } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     // T4-N-03: QR card labels + descriptions routed through i18n.
     const t = useTranslations('UseMenuList');
+    const projectIdQuery = searchParams.get('projectId') || '';
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<UseMenuListData | null>(null);
     const [generatingKit, setGeneratingKit] = useState(false);
     const [generatingAsset, setGeneratingAsset] = useState<string | null>(null);
+    const [previewingAsset, setPreviewingAsset] = useState<string | null>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
 
@@ -104,7 +125,7 @@ export default function UseMenuList() {
     useEffect(() => {
         if (!FEATURE_FLAGS.ENABLE_USE_MENULIST) return;
         loadData();
-    }, [storeDetails]);
+    }, [projectIdQuery, storeDetails]);
 
     useEffect(() => {
         const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
@@ -132,7 +153,9 @@ export default function UseMenuList() {
             // Get projects list to check if menu exists & is published
             const result = await getProjectsList(true);
             const projects = result?.projects || [];
-            const defaultProject = projects.find((p: any) => p.isDefault) || projects[0];
+            const defaultProject = projects.find((p: any) => p.projectId === projectIdQuery)
+                || projects.find((p: any) => p.isDefault)
+                || projects[0];
 
             if (!projects.length || !defaultProject) {
                 setPageState('no_menu');
@@ -258,25 +281,35 @@ export default function UseMenuList() {
 
     const handleOpenMenuCardExport = () => {
         if (!data?.projectId) return;
-        window.location.href = `/use-menulist/menu-card-export?projectId=${encodeURIComponent(data.projectId)}`;
+        router.push(buildMenuCardExportUrl(data.projectId));
+    };
+
+    const handleOpenPrintAssets = () => {
+        if (!FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) return;
+        router.push(buildPrintAssetsUrl(data?.projectId));
+    };
+
+    const buildMenuKitInput = () => {
+        if (!data) return null;
+        return {
+            storeName: data.storeName,
+            menuUrl: data.menuLink,
+            shortLink: data.menuLink.replace(/^https?:\/\//, ''),
+            logoUrl: data.storeLogo || undefined,
+            brandColor: storeBrandColor,
+            businessType: data.businessType,
+            businessCategory: storeDetails?.businessCategory,
+            activePlanType: (storeDetails as any)?.activePlanType,
+        };
     };
 
     const handleDownloadMenuKit = async () => {
-        if (!data) return;
+        const input = buildMenuKitInput();
+        if (!input) return;
         setGeneratingKit(true);
         try {
-            const shortLink = data.menuLink.replace(/^https?:\/\//, '');
-            const result = await generateMenuKit({
-                storeName: data.storeName,
-                menuUrl: data.menuLink,
-                shortLink,
-                logoUrl: data.storeLogo || undefined,
-                brandColor: storeBrandColor,
-                businessType: data.businessType,
-                businessCategory: storeDetails?.businessCategory,
-                activePlanType: (storeDetails as any)?.activePlanType,
-            });
-            const safeName = data.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
+            const result = await generateMenuKit(input);
+            const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
             downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
             message.success('Menu Kit downloaded');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
@@ -287,30 +320,43 @@ export default function UseMenuList() {
         }
     };
 
-    const handleDownloadAsset = async (assetIndex: number, assetLabel: string) => {
-        if (!data) return;
+    const handleDownloadAsset = async (assetKey: MenuKitPrintAssetId, assetLabel: string) => {
+        const input = buildMenuKitInput();
+        if (!input) return;
         setGeneratingAsset(assetLabel);
         try {
-            const shortLink = data.menuLink.replace(/^https?:\/\//, '');
-            const result = await generateMenuKit({
-                storeName: data.storeName,
-                menuUrl: data.menuLink,
-                shortLink,
-                logoUrl: data.storeLogo || undefined,
-                brandColor: storeBrandColor,
-                businessType: data.businessType,
-                businessCategory: storeDetails?.businessCategory,
-                activePlanType: (storeDetails as any)?.activePlanType,
-            });
-            const asset = result.assets[assetIndex];
-            if (asset) {
-                downloadBlob(asset.blob, asset.filename);
-                message.success(`${assetLabel} downloaded`);
-            }
+            const asset = await generateMenuKitAsset(input, assetKey);
+            downloadBlob(asset.blob, asset.filename);
+            message.success(`${assetLabel} downloaded`);
         } catch {
             message.error(`Failed to generate ${assetLabel}`);
         } finally {
             setGeneratingAsset(null);
+        }
+    };
+
+    const handlePreviewAsset = async (assetKey: MenuKitPrintAssetId, assetLabel: string) => {
+        const input = buildMenuKitInput();
+        if (!input) return;
+        setPreviewingAsset(assetLabel);
+        try {
+            const asset = await generateMenuKitAsset(input, assetKey);
+            const previewBlob = new Blob([asset.blob], { type: asset.mimeType });
+            const previewUrl = URL.createObjectURL(previewBlob);
+            const opened = window.open(previewUrl, '_blank', 'noopener,noreferrer');
+
+            if (!opened) {
+                downloadBlob(asset.blob, asset.filename);
+                message.info('Preview was blocked, so the file was downloaded instead');
+            } else {
+                message.success(`${assetLabel} preview opened`);
+            }
+
+            window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60000);
+        } catch {
+            message.error(`Failed to preview ${assetLabel}`);
+        } finally {
+            setPreviewingAsset(null);
         }
     };
 
@@ -434,6 +480,22 @@ export default function UseMenuList() {
 
     const shortMenuLink = data.menuLink.replace(/^https?:\/\//, '');
     const activeProject = data.allProjects.find((project) => project.projectId === data.projectId) || data.allProjects[0] || null;
+    const printReadinessItems = buildPrintReadinessItems({
+        hasFeedbackEnabled: data.hasFeedbackEnabled,
+        menuLink: data.menuLink,
+        shortMenuLink,
+        storeData: storeDetails as any,
+        storeLogo: data.storeLogo,
+        storeName: data.storeName,
+    });
+    const printShopMessage = buildPrintShopHandoffMessage({
+        hasFeedbackEnabled: data.hasFeedbackEnabled,
+        menuLink: data.menuLink,
+        shortMenuLink,
+        storeData: storeDetails as any,
+        storeLogo: data.storeLogo,
+        storeName: data.storeName,
+    });
     const quickActionButtonStyle = {
         minHeight: 48,
         whiteSpace: 'normal' as const,
@@ -473,6 +535,253 @@ export default function UseMenuList() {
         } : prev);
         setIsProjectSelectorOpen(false);
     };
+
+    if (view === 'print-assets') {
+        return (
+            <div style={{ margin: '0 auto', maxWidth: 1080, padding: '24px clamp(16px, 3vw, 32px)', width: '100%' }}>
+                {activeProject ? (
+                    <div style={{ marginBottom: 16 }}>
+                        <ProjectSelectorTrigger
+                            clickable={data.allProjects.length > 1}
+                            currentProject={{
+                                id: activeProject.projectId,
+                                name: activeProject.name,
+                                isDefault: activeProject.isDefault,
+                                active: activeProject.active,
+                                deleted: activeProject.deleted,
+                                isSpecialMenu: activeProject.isSpecialMenu === true,
+                                projectImage: (activeProject as any).projectImage || null,
+                                specialMenuBaseProjectId: (activeProject as any).specialMenuBaseProjectId,
+                                specialMenuBaseProjectName: (activeProject as any).specialMenuBaseProjectId
+                                    ? resolveProjectName(
+                                        data.allProjects.find((project: any) => project.projectId === (activeProject as any).specialMenuBaseProjectId)?.name,
+                                        labels.offeringTitle,
+                                    )
+                                    : undefined,
+                                specialMenuEndsAt: activeProject.specialMenuEndsAt,
+                                specialMenuStatus: activeProject.specialMenuStatus,
+                            }}
+                            helperText={data.allProjects.length > 1 ? 'Select project' : undefined}
+                            onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                        />
+                    </div>
+                ) : null}
+
+                <Flex align="flex-start" justify="space-between" gap={16} wrap="wrap" style={{ marginBottom: 24 }}>
+                    <Flex vertical gap={4}>
+                        <Title level={3} style={{ margin: 0 }}>Print Assets</Title>
+                        <Text type="secondary">
+                            Ready-to-print files for tables, counters, entrances, and full paper menus
+                        </Text>
+                    </Flex>
+                    <Button onClick={() => router.push('/use-menulist')} style={{ minHeight: 40 }}>
+                        Back to Use MenuList
+                    </Button>
+                </Flex>
+
+                <PrintReadinessPanel items={printReadinessItems} themeToken={themeToken} />
+
+                <Card
+                    size="small"
+                    style={{ marginBottom: 24, background: themeToken.colorBgLayout }}
+                    styles={{ body: { padding: 16 } }}
+                >
+                    <Row gutter={[12, 12]}>
+                        <Col xs={24} md={8}>
+                            <AssetCard
+                                icon={<LuPackage size={20} />}
+                                title="Download All Print Assets"
+                                description="Menu Kit ZIP with print, social, placement guide, and instructions"
+                                loading={generatingKit}
+                                onDownload={handleDownloadMenuKit}
+                                actionLabel="Download ZIP"
+                                highlight
+                                themeToken={themeToken}
+                            />
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <AssetCard
+                                icon={<LuFileText size={20} />}
+                                title="Print Menu PDF"
+                                description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create the full printable menu' : 'Download the printable menu file'}
+                                loading={generatingAsset === 'Menu PDF'}
+                                onDownload={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
+                                actionLabel={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Open' : 'Download'}
+                                themeToken={themeToken}
+                            />
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <AssetCard
+                                icon={<LuClipboard size={20} />}
+                                title="Print-Shop Handoff"
+                                description="Copy exact file specs to send with the ZIP"
+                                loading={false}
+                                onDownload={() => handleCopy(printShopMessage, 'Print-shop message')}
+                                actionLabel="Copy Message"
+                                themeToken={themeToken}
+                            />
+                        </Col>
+                    </Row>
+                </Card>
+
+                <Title level={5} style={{ marginBottom: 12 }}>Tables</Title>
+                <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                    <Col xs={24} sm={12}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title="Table Tent"
+                            description="Folded table card, readable from both sides"
+                            loading={generatingAsset === 'Table Tent'}
+                            onDownload={() => handleDownloadAsset('table_tent', 'Table Tent')}
+                            onSecondaryAction={() => handlePreviewAsset('table_tent', 'Table Tent')}
+                            secondaryActionLabel="Preview"
+                            secondaryLoading={previewingAsset === 'Table Tent'}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title="Single Table Card"
+                            description="Upright card for holders, wall clips, or counter stands"
+                            loading={generatingAsset === 'Single Table Card'}
+                            onDownload={() => handleDownloadAsset('single_table_card', 'Single Table Card')}
+                            onSecondaryAction={() => handlePreviewAsset('single_table_card', 'Single Table Card')}
+                            secondaryActionLabel="Preview"
+                            secondaryLoading={previewingAsset === 'Single Table Card'}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                </Row>
+
+                <Title level={5} style={{ marginBottom: 12 }}>Counter & Entrance</Title>
+                <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                    <Col xs={24} sm={12} md={8}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title="Counter Sticker"
+                            description="For billing counter, pickup counter, or service desk"
+                            loading={generatingAsset === 'Counter Sticker'}
+                            onDownload={() => handleDownloadAsset('counter_sticker', 'Counter Sticker')}
+                            onSecondaryAction={() => handlePreviewAsset('counter_sticker', 'Counter Sticker')}
+                            secondaryActionLabel="Preview"
+                            secondaryLoading={previewingAsset === 'Counter Sticker'}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                        <AssetCard
+                            icon={<LuQrCode size={20} />}
+                            title="Entrance Poster"
+                            description="For door, window, host stand, or front counter"
+                            loading={generatingAsset === 'Entrance Poster'}
+                            onDownload={() => handleDownloadAsset('entrance_poster', 'Entrance Poster')}
+                            onSecondaryAction={() => handlePreviewAsset('entrance_poster', 'Entrance Poster')}
+                            secondaryActionLabel="Preview"
+                            secondaryLoading={previewingAsset === 'Entrance Poster'}
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
+                        {data.hasFeedbackEnabled ? (
+                            <AssetCard
+                                icon={<LuMessageSquare size={20} />}
+                                title="Feedback QR"
+                                description="Use near exit or counter when asking for private feedback"
+                                loading={generatingAsset === 'Feedback QR'}
+                                onDownload={async () => {
+                                    if (!data.feedbackLink) {
+                                        message.info('Feedback is not enabled');
+                                        return;
+                                    }
+                                    setGeneratingAsset('Feedback QR');
+                                    try {
+                                        const { generateBrandedFeedbackQrCode, downloadQrCode } = await import('@lib/utils/feedbackQrCode');
+                                        const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
+                                            brandColor: storeBrandColor,
+                                            footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
+                                            logoUrl: data.storeLogo || undefined,
+                                            storeName: data.storeName,
+                                            activePlanType: (storeDetails as any)?.activePlanType,
+                                        }, data.obpLink);
+                                        downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+                                        message.success('Feedback QR downloaded');
+                                    } catch {
+                                        message.error('Failed to generate Feedback QR');
+                                    } finally {
+                                        setGeneratingAsset(null);
+                                    }
+                                }}
+                                disabled={!data.projectId}
+                                themeToken={themeToken}
+                            />
+                        ) : (
+                            <Card size="small" styles={{ body: { height: '100%', padding: 14 } }} style={{ height: '100%', minHeight: 174 }}>
+                                <Flex vertical gap={8} align="center" justify="center" style={{ textAlign: 'center', height: '100%' }}>
+                                    <div style={{ color: themeToken.colorTextSecondary }}>
+                                        <LuMessageSquare size={20} />
+                                    </div>
+                                    <Text strong style={{ fontSize: 13 }}>Feedback QR</Text>
+                                    <Tag color="default">Feedback is disabled currently</Tag>
+                                </Flex>
+                            </Card>
+                        )}
+                    </Col>
+                </Row>
+
+                <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                    <Col xs={24} md={12}>
+                        <Card size="small" styles={{ body: { padding: 16 } }}>
+                            <Flex gap={10} vertical>
+                                <Text strong>Print guidance</Text>
+                                <Text type="secondary">
+                                    Use matte finish where possible, keep QR panels clean, and test one scan before printing in bulk.
+                                </Text>
+                                <Text type="secondary">
+                                    Open Preview before sending a file to print. The preview is the same generated output as the download.
+                                </Text>
+                            </Flex>
+                        </Card>
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <Card size="small" styles={{ body: { padding: 16 } }}>
+                            <Flex gap={8} vertical>
+                                <Text strong>When to reprint</Text>
+                                {PRINT_ASSET_REPRINT_GUIDANCE.map((item) => (
+                                    <Flex align="flex-start" gap={8} key={item}>
+                                        <LuCheck size={14} style={{ color: themeToken.colorSuccess, flexShrink: 0, marginTop: 3 }} />
+                                        <Text type="secondary">{item}</Text>
+                                    </Flex>
+                                ))}
+                            </Flex>
+                        </Card>
+                    </Col>
+                </Row>
+
+                <Modal
+                    title="Select Project"
+                    open={isProjectSelectorOpen}
+                    onCancel={() => setIsProjectSelectorOpen(false)}
+                    footer={null}
+                    width={520}
+                >
+                    <ProjectSelectorList
+                        currentProjectId={data.projectId}
+                        onSelect={handleSelectProject}
+                        projects={data.allProjects.map((project) => ({
+                            id: project.projectId,
+                            name: project.name,
+                            isDefault: project.isDefault,
+                            active: project.active,
+                            deleted: project.deleted,
+                            projectImage: project.projectImage || null,
+                            secondaryLabel: project.url.replace(/^https?:\/\//, ''),
+                        }))}
+                    />
+                </Modal>
+            </div>
+        );
+    }
 
     // ── Main render ──────────────────────────────────────────────
 
@@ -950,13 +1259,27 @@ export default function UseMenuList() {
             {/* ─── Print for Your Restaurant ─────────────────────── */}
             <Title level={5} style={{ marginBottom: 12 }}>Print for Your Restaurant</Title>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                {FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE ? (
+                    <Col xs={24} sm={12} md={8}>
+                        <AssetCard
+                            icon={<LuPrinter size={20} />}
+                            title="Print Assets"
+                            description="Tables, counters, entrance files, and print guidance"
+                            loading={false}
+                            onDownload={handleOpenPrintAssets}
+                            actionLabel="Open"
+                            highlight
+                            themeToken={themeToken}
+                        />
+                    </Col>
+                ) : null}
                 <Col xs={24} sm={12} md={8}>
                     <AssetCard
                         icon={<LuQrCode size={20} />}
                         title="Table Tent"
                         description="Place on tables"
                         loading={generatingAsset === 'Table Tent'}
-                        onDownload={() => handleDownloadAsset(0, 'Table Tent')}
+                        onDownload={() => handleDownloadAsset('table_tent', 'Table Tent')}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -966,7 +1289,7 @@ export default function UseMenuList() {
                         title="Single Table Card"
                         description="Flat card or counter stand"
                         loading={generatingAsset === 'Single Table Card'}
-                        onDownload={() => handleDownloadAsset(9, 'Single Table Card')}
+                        onDownload={() => handleDownloadAsset('single_table_card', 'Single Table Card')}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -976,7 +1299,7 @@ export default function UseMenuList() {
                         title="Counter Sticker"
                         description="Near billing counter"
                         loading={generatingAsset === 'Counter Sticker'}
-                        onDownload={() => handleDownloadAsset(1, 'Counter Sticker')}
+                        onDownload={() => handleDownloadAsset('counter_sticker', 'Counter Sticker')}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -986,7 +1309,7 @@ export default function UseMenuList() {
                         title="Entrance Poster"
                         description="At restaurant entrance"
                         loading={generatingAsset === 'Entrance Poster'}
-                        onDownload={() => handleDownloadAsset(2, 'Entrance Poster')}
+                        onDownload={() => handleDownloadAsset('entrance_poster', 'Entrance Poster')}
                         themeToken={themeToken}
                     />
                 </Col>
@@ -1257,6 +1580,9 @@ interface AssetCardProps {
     actionLabel?: string;
     disabled?: boolean;
     highlight?: boolean;
+    onSecondaryAction?: () => void;
+    secondaryActionLabel?: string;
+    secondaryLoading?: boolean;
     themeToken: any;
 }
 
@@ -1275,14 +1601,76 @@ function buildStoreAddress(store: any): string | undefined {
     return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
-function AssetCard({ icon, title, description, loading, onDownload, actionLabel = 'Download', disabled, highlight, themeToken }: AssetCardProps) {
+function readinessTagColor(status: PrintReadinessItem['status']): 'success' | 'warning' | 'default' {
+    if (status === 'ready') return 'success';
+    if (status === 'attention') return 'warning';
+    return 'default';
+}
+
+function PrintReadinessPanel({ items, themeToken }: { items: PrintReadinessItem[]; themeToken: any }) {
+    return (
+        <Card size="small" style={{ marginBottom: 24 }} styles={{ body: { padding: 16 } }}>
+            <Flex gap={12} vertical>
+                <Flex align="center" gap={8} wrap="wrap">
+                    <LuPrinter size={18} style={{ color: themeToken.colorPrimary }} />
+                    <Text strong>Print readiness</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Check once before sending files to a print shop.
+                    </Text>
+                </Flex>
+                <Row gutter={[12, 12]}>
+                    {items.map((item) => (
+                        <Col key={item.id} xs={24} md={item.id === 'feedback' ? 24 : 12}>
+                            <Flex
+                                align="flex-start"
+                                gap={10}
+                                style={{
+                                    background: themeToken.colorBgLayout,
+                                    border: `1px solid ${themeToken.colorBorderSecondary}`,
+                                    borderRadius: 8,
+                                    minHeight: 74,
+                                    padding: 12,
+                                }}
+                            >
+                                <Tag color={readinessTagColor(item.status)} style={{ marginTop: 1 }}>
+                                    {item.status === 'ready' ? 'Ready' : item.status === 'attention' ? 'Check' : 'Info'}
+                                </Tag>
+                                <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                    <Text strong style={{ fontSize: 13 }}>{item.title}</Text>
+                                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                                        {item.description}
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                        </Col>
+                    ))}
+                </Row>
+            </Flex>
+        </Card>
+    );
+}
+
+function AssetCard({
+    icon,
+    title,
+    description,
+    loading,
+    onDownload,
+    actionLabel = 'Download',
+    disabled,
+    highlight,
+    onSecondaryAction,
+    secondaryActionLabel = 'Preview',
+    secondaryLoading,
+    themeToken,
+}: AssetCardProps) {
     return (
         <Card
             size="small"
             styles={{ body: { height: '100%', padding: 14 } }}
             style={{
                 height: '100%',
-                minHeight: 174,
+                minHeight: onSecondaryAction ? 212 : 174,
                 borderColor: highlight ? themeToken.colorPrimary : undefined,
                 borderWidth: highlight ? 2 : 1,
             }}
@@ -1302,6 +1690,19 @@ function AssetCard({ icon, title, description, loading, onDownload, actionLabel 
                 >
                     {loading ? 'Generating...' : actionLabel}
                 </Button>
+                {onSecondaryAction ? (
+                    <Button
+                        size="small"
+                        icon={<LuEye size={14} />}
+                        onClick={onSecondaryAction}
+                        loading={secondaryLoading}
+                        disabled={disabled}
+                        block
+                        style={{ minHeight: 34 }}
+                    >
+                        {secondaryLoading ? 'Opening...' : secondaryActionLabel}
+                    </Button>
+                ) : null}
             </Flex>
         </Card>
     );

@@ -76,7 +76,8 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 ### Auth
 
 - Phone/WhatsApp OTP is shown inline before upload or link import.
-- Google OAuth and password/passcode login stay available through the sign-in fallback.
+- Google OAuth is available directly from the `/create-menu` auth card.
+- Password/passcode fallback stays on the full `/signin` page and is not shown in the first-time create-menu card.
 - Source upload, link import, preview polling, and extraction remain authenticated.
 - After OTP auth, the page refreshes the NextAuth session and reveals the upload/link controls without leaving `/create-menu`.
 - After claim, the page refreshes the NextAuth session before redirecting to the success/workspace path so new tenant/store IDs are available immediately.

@@ -1083,20 +1083,20 @@ Description:
 
 **Subline:**
 
-> Start with your current menu, review the prepared source, and choose a plan only when the setup path is clear.
+> Sign in once, add the current menu, and review the prepared preview before publishing.
 
 **Proof strip:**
 
-- Google sign-in only
+- Upload after sign-in
 - Owner review before publishing
 - Dashboard setup comes next
 
 **Primary action:** Upload your menu → (`/create-menu`)
-**Secondary action:** Continue with Google / Sign in (`#sign-in`, redirects to dashboard)
+**Secondary action:** Login (`/signin?callbackUrl=/dashboard`)
 
-**Below button:**
+**Below card:**
 
-> Already have an account? Login
+> Already using MenuList? Open sign-in options.
 
 **Notes:**
 
@@ -1226,7 +1226,7 @@ Secondary CTA:
 
 **Source line:**
 
-> MenuList is not a QR menu maker. It is the source behind your menu, page, QR assets, screens, PDFs, and links.
+> MenuList keeps the menu you approve behind the links and materials customers use.
 
 **Footer preferences:**
 

@@ -16,6 +16,9 @@ const requiredFiles = [
   'src/lib/export/menuPdfGenerator.ts',
   'src/lib/menu-kit/brandTokens.ts',
   'src/lib/menu-kit/canvasPrimitives.ts',
+  'src/lib/print-assets/printAssetCatalog.ts',
+  'src/lib/print-assets/navigation.ts',
+  'src/lib/print-assets/ownerPrintGuidance.ts',
   'src/lib/print-menu-surfaces/templates/printMenuCardFace.ts',
   'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
   'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
@@ -32,12 +35,20 @@ const requiredFiles = [
   'src/app/api/menu-card-export/design-advisor/prompt.ts',
   'src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts',
   'src/components/mobile/screens/MobileShareScreen.tsx',
+  'src/components/mobile/screens/MobilePrintAssetsScreen.tsx',
   'src/components/mobile/components/MobileQrCodeSheet.tsx',
   'src/components/mobile/screens/MobileMenuScreen.tsx',
   'src/components/mobile/components/MobileMenuCommandSheet.tsx',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
+  'src/app/(main)/use-menulist/print-assets/page.tsx',
   '__docs__/menu-card-export/menu-card-export_firebase.md',
   '__docs__/menu-card-export/menu-card-export_test-cases.md',
+  '__docs__/print-assets/README.md',
+  '__docs__/print-assets/print-assets_spec.md',
+  '__docs__/print-assets/print-assets_impl.md',
+  '__docs__/print-assets/print-assets_firebase.md',
+  '__docs__/print-assets/print-assets_mobile-support.md',
+  '__docs__/print-assets/print-assets_test-cases.md',
   '__docs__/print-menu-surfaces/README.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_spec.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_impl.md',
@@ -63,8 +74,54 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
   'MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS',
   'ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL',
   'ENABLE_PRINT_MENU_SURFACES',
+  'ENABLE_PRINT_ASSETS_ROUTE',
 ].forEach((flag) => {
   if (!features.includes(flag)) failures.push(`Missing feature flag: ${flag}`);
+});
+
+const printAssetCatalog = fs.readFileSync(path.join(root, 'src/lib/print-assets/printAssetCatalog.ts'), 'utf8');
+[
+  'PRINT_ASSET_MENU_KIT_INDEX',
+  'table_tent: 0',
+  'single_table_card: 9',
+  'counter_sticker: 1',
+  'entrance_poster: 2',
+  'menuKitAssetKey',
+  'PRINT_ASSET_CATALOG',
+  'getPrintAssetById',
+].forEach((token) => {
+  if (!printAssetCatalog.includes(token)) failures.push(`Print Assets catalog missing token: ${token}`);
+});
+
+const printAssetsRoute = fs.readFileSync(path.join(root, 'src/app/(main)/use-menulist/print-assets/page.tsx'), 'utf8');
+[
+  'FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE',
+  'notFound()',
+  '@template/main-app/useMenuList',
+  'view="print-assets"',
+].forEach((token) => {
+  if (!printAssetsRoute.includes(token)) failures.push(`Print Assets route missing token: ${token}`);
+});
+
+const printAssetsNavigation = fs.readFileSync(path.join(root, 'src/lib/print-assets/navigation.ts'), 'utf8');
+[
+  "PRINT_ASSETS_ROUTE = '/use-menulist/print-assets'",
+  'buildPrintAssetsUrl',
+  'encodeURIComponent(projectId)',
+].forEach((token) => {
+  if (!printAssetsNavigation.includes(token)) failures.push(`Print Assets navigation helper missing token: ${token}`);
+});
+
+const ownerPrintGuidance = fs.readFileSync(path.join(root, 'src/lib/print-assets/ownerPrintGuidance.ts'), 'utf8');
+[
+  'buildPrintReadinessItems',
+  'buildPrintShopHandoffMessage',
+  'PRINT_ASSET_REPRINT_GUIDANCE',
+  'PRINT_SHOP_FILE_SPECS',
+  'hasConfiguredPrintBrandColor',
+  'do not need reprint',
+].forEach((token) => {
+  if (!ownerPrintGuidance.includes(token)) failures.push(`Print Assets owner guidance helper missing token: ${token}`);
 });
 
 const menuListBrandingPolicy = fs.readFileSync(path.join(root, 'src/lib/platform/menuListBranding.ts'), 'utf8');
@@ -180,8 +237,12 @@ if (layoutWrapper.includes("'/use-menulist/menu-card-export'")) {
 const mobileShell = fs.readFileSync(path.join(root, 'src/components/mobile/MobileShell.tsx'), 'utf8');
 [
   "'/use-menulist/menu-card-export': { tab: 'more', todayScreen: 'main', moreScreen: 'printMenu' }",
+  "'/use-menulist/print-assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' }",
   'SELECTED_PROJECT_DATA_MORE_SCREENS',
+  "'printAssets'",
   "'printMenu'",
+  'handleOpenPrintAssets',
+  'onOpenPrintAssets={handleOpenPrintAssets}',
   'handleOpenPrintMenu',
   'onOpenPrintMenu={handleOpenPrintMenu}',
 ].forEach((token) => {
@@ -199,6 +260,21 @@ const navigation = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/nav
 
 const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobileShareScreen.tsx'), 'utf8');
 [
+  "mode?: 'full' | 'printAssets'",
+  "const isPrintAssetsMode = mode === 'printAssets'",
+  'onOpenPrintAssets?: () => void',
+  'onOpenPrintAssets',
+  'generateMenuKitAsset',
+  'buildPrintReadinessItems',
+  'buildPrintShopHandoffMessage',
+  'PRINT_ASSET_REPRINT_GUIDANCE',
+  'handlePreviewMenuKitAsset',
+  'PreviewAssetSheet',
+  'MobilePrintReadinessPanel',
+  "handleMenuKitAsset('table_tent', 'table_tent'",
+  "handleMenuKitAsset('single_table_card', 'single_table_card'",
+  "handleMenuKitAsset('counter_sticker', 'counter_sticker'",
+  "handleMenuKitAsset('entrance_poster', 'entrance_poster'",
   'handleOpenMenuCardExport',
   'FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport()',
   'onOpenPrintMenu?: () => void',
@@ -212,6 +288,12 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'currencyCode: (storeDetails as any)?.currencyCode',
 ].forEach((token) => {
   if (!mobileShare.includes(token)) failures.push(`Mobile Share entry missing token: ${token}`);
+});
+if (mobileShare.includes('result.assets[')) {
+  failures.push('Mobile Share must generate individual Menu Kit files by asset key, not result.assets[index]');
+}
+['tableCount', 'quantityEstimator', 'printQuantity'].forEach((token) => {
+  if (mobileShare.includes(token)) failures.push(`Mobile Share must not add print quantity estimation token: ${token}`);
 });
 
 const mobileMenu = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobileMenuScreen.tsx'), 'utf8');
@@ -239,6 +321,11 @@ const mobileMenuCommandSheet = fs.readFileSync(path.join(root, 'src/components/m
 const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobileMoreScreen.tsx'), 'utf8');
 [
   'useMobileProjects',
+  'MobilePrintAssetsScreen',
+  "openSubScreen('printAssets')",
+  "subScreen === 'printAssets'",
+  "key: 'printAssets'",
+  "label: 'Print Assets'",
   'MobileMenuCardExportScreen',
   "openSubScreen('printMenu')",
   "subScreen === 'printMenu'",
@@ -247,6 +334,17 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
   "label: 'Print Menu'",
 ].forEach((token) => {
   if (!mobileMore.includes(token)) failures.push(`Mobile More entry missing token: ${token}`);
+});
+
+const mobilePrintAssetsScreen = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobilePrintAssetsScreen.tsx'), 'utf8');
+[
+  'MobileShareScreen',
+  'mode="printAssets"',
+  'onBack={onBack}',
+  'onOpenDesignEditor={onOpenDesignEditor}',
+  'onOpenPrintMenu={onOpenPrintMenu}',
+].forEach((token) => {
+  if (!mobilePrintAssetsScreen.includes(token)) failures.push(`Mobile Print Assets screen missing token: ${token}`);
 });
 
 [
@@ -344,6 +442,24 @@ const legacyMenuPdfGenerator = fs.readFileSync(path.join(root, 'src/lib/export/m
 
 const desktopUseMenuList = fs.readFileSync(path.join(root, 'src/components/templates/main-app/useMenuList/index.tsx'), 'utf8');
 [
+  "view = 'overview'",
+  "view === 'print-assets'",
+  'useRouter',
+  'buildPrintAssetsUrl',
+  'buildMenuCardExportUrl',
+  'router.push(buildPrintAssetsUrl',
+  'router.push(buildMenuCardExportUrl',
+  "router.push('/use-menulist')",
+  'generateMenuKitAsset',
+  'buildPrintReadinessItems',
+  'buildPrintShopHandoffMessage',
+  'PRINT_ASSET_REPRINT_GUIDANCE',
+  'handlePreviewAsset',
+  'PrintReadinessPanel',
+  "handleDownloadAsset('table_tent'",
+  "handleDownloadAsset('single_table_card'",
+  "handleDownloadAsset('counter_sticker'",
+  "handleDownloadAsset('entrance_poster'",
   'projectData: projectData as any',
   'storeData: storeDetails as any',
   'logoUrl: data.storeLogo',
@@ -352,6 +468,22 @@ const desktopUseMenuList = fs.readFileSync(path.join(root, 'src/components/templ
   'currencyCode: (storeDetails as any)?.currencyCode',
 ].forEach((token) => {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList print copy missing brand PDF context token: ${token}`);
+});
+if (desktopUseMenuList.includes('result.assets[')) {
+  failures.push('Desktop Use MenuList must generate individual Menu Kit files by asset key, not result.assets[index]');
+}
+[
+  'window.location.href = buildPrintAssetsUrl',
+  'window.location.href = buildMenuCardExportUrl',
+  'window.location.assign(buildPrintAssetsUrl',
+  'window.location.assign(buildMenuCardExportUrl',
+  'window.location.href = `/use-menulist/menu-card-export',
+  'href="/use-menulist"',
+].forEach((token) => {
+  if (desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList must use App Router transitions, not ${token}`);
+});
+['tableCount', 'quantityEstimator', 'printQuantity'].forEach((token) => {
+  if (desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList must not add print quantity estimation token: ${token}`);
 });
 
 const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/index.tsx'), 'utf8');
@@ -367,6 +499,19 @@ const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templa
 ].forEach((token) => {
   if (!projectShareModal.includes(token)) failures.push(`Project Share modal print copy missing brand PDF context token: ${token}`);
 });
+
+const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx'), 'utf8');
+[
+  'generateMenuKitAsset',
+  "handleShareAsset('instagram_story'",
+  "handleShareAsset('whatsapp_status'",
+  "handleShareAsset('google_maps'",
+].forEach((token) => {
+  if (!menuKitSection.includes(token)) failures.push(`Project Share Menu Kit section missing key-based asset token: ${token}`);
+});
+if (menuKitSection.includes('result.assets[')) {
+  failures.push('Project Share Menu Kit section must generate individual files by asset key, not result.assets[index]');
+}
 
 const menuKitBrandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-kit/brandTokens.ts'), 'utf8');
 [
@@ -564,8 +709,11 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
 [
   '../print-menu-surfaces/templates/tableTentTemplate',
   '../print-menu-surfaces/templates/singleTableCardTemplate',
-  'generatePrintMenuTableTent(buildInput(MENU_KIT_UTM_SOURCES.tableTent))',
-  'generatePrintMenuSingleTableCard(buildInput(MENU_KIT_UTM_SOURCES.singleTableCard))',
+  'MENU_KIT_ASSET_DEFINITIONS',
+  'generateMenuKitAsset',
+  'renderMenuKitAsset',
+  "key: 'table_tent'",
+  "key: 'single_table_card'",
   'TableTent_A5_Fold.pdf',
   'Table Tent (A5 fold)',
   'SingleTableCard_A6.pdf',
@@ -898,5 +1046,8 @@ console.log('- Dashboard and mobile output actions use the same controller pipel
 console.log('- Dedicated mobile Print Menu screen exists');
 console.log('- Mobile Share, Menu, and More entry points open the MobileShell Print Menu screen');
 console.log('- Mobile Print Menu stays inside the PWA shell without route bypass or forced reloads');
+console.log('- Dedicated Print Assets route, catalog, and mobile shell screen exist');
+console.log('- Individual Menu Kit asset downloads use key-based single-asset generation');
+console.log('- Print Assets readiness, preview, print-shop handoff, and reprint guidance use shared client-side helpers');
 console.log('- Pro/Premium AI advisor is guarded by plan, capacity, and operation logging');
 console.log('- No export-storage API route or artifact Firebase write path was added');

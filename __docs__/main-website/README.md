@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.24 (Public Truth Indexing Guardrail)
+**Version:** 3.6.25 (Website Auth Friction Cleanup)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 2, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.24** | **Public Truth Indexing Guardrail** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.25** | **Website Auth Friction Cleanup** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+
+Version 3.6.25 reduces public website auth friction without changing pricing, payment, or extraction runtime. Header, mobile drawer, `/get-started`, pricing purchase handoffs, and credit-pack handoffs now route owners to the central `/signin` page so phone OTP, Google, and passcode options remain available from one place. `/get-started` now acts as a calm directional page toward `/create-menu` or dashboard login, and footer/create-menu preview copy avoids defensive setup-protection language.
 
 Version 3.6.15 adds the public `/resources` layer as an evergreen MenuList website surface. It ships a resources hub, 12 server-rendered article routes including Menu Source Audit, QR/Google/PDF/SEO/AI discovery guides, checklists, worksheet content, resource schema, platform discovery registry entries, static sitemap entries, robots crawler-policy sync, `llms.txt`/`llms-full.txt` coverage, a homepage resources section, and header/footer navigation. This is static public website content only; owner dashboard, auth, billing, Firebase, Cloud Functions, customer menu runtime, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
@@ -323,7 +325,7 @@ Reference output:
 
 Implemented change:
 
-- Footer upgraded into a revenue-focused conversion/resource layer with closing CTA, proof cards, product/source/resource/legal navigation, and clearer "not a QR menu maker" positioning.
+- Footer upgraded into a revenue-focused conversion/resource layer with closing CTA, proof cards, product/start/resource/legal navigation, and clearer approved-menu positioning.
 
 Rejected from references:
 

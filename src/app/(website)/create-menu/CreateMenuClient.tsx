@@ -11,9 +11,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useSession } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuLogIn, LuUpload } from 'react-icons/lu';
+import { FcGoogle } from 'react-icons/fc';
+import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
@@ -42,6 +43,10 @@ export default function CreateMenuClient() {
     const redirectToSignIn = useCallback(() => {
         router.push(signInPath);
     }, [router, signInPath]);
+
+    const continueWithGoogle = useCallback(() => {
+        signIn('google', { callbackUrl: '/create-menu' });
+    }, []);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {
@@ -248,31 +253,55 @@ export default function CreateMenuClient() {
                 <AnimateOnScroll delay={0.08}>
                     <div style={authGateStyle}>
                         {isSessionLoading ? (
-                            <LuLoader size={34} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                            <LuLogIn size={34} color="var(--ws-brand-secondary)" />
-                        )}
-                        <div style={{ textAlign: 'center' }}>
+                            <LuLoader size={30} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                        ) : null}
+                        <div style={{ textAlign: 'center', width: '100%' }}>
                             <h2 style={{ color: 'var(--ws-text-primary)', fontSize: '19px', fontWeight: 700, margin: '0 0 6px' }}>
                                 {isSessionLoading ? t('CreateMenu.authChecking') : t('CreateMenu.authTitle')}
                             </h2>
-                            <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
+                            {!isSessionLoading ? (
+                                <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.45, margin: 0 }}>
                                 {t('CreateMenu.authHint')}
-                            </p>
+                                </p>
+                            ) : null}
                         </div>
                         {!isSessionLoading ? (
-                            <PhoneOtpAuthPanel
-                                buttonLabel="Send WhatsApp code"
-                                fallbackLabel="Use Google or passcode"
-                                hint="Verify your phone first. Then upload your menu and see the live preview."
-                                onAuthenticated={async () => {
-                                    await updateSession();
-                                    router.refresh();
-                                }}
-                                onFallback={redirectToSignIn}
-                                purpose="create_menu"
-                                title="Continue with WhatsApp"
-                            />
+                            <>
+                                <PhoneOtpAuthPanel
+                                    buttonLabel={t('CreateMenu.whatsAppCodeCta')}
+                                    changeNumberLabel={t('CreateMenu.otpChangeNumber')}
+                                    codeLabel={t('CreateMenu.otpCodeLabel')}
+                                    codePlaceholder={t('CreateMenu.otpCodePlaceholder')}
+                                    getCodeSentMessage={(phoneLabel) => t('CreateMenu.otpCodeSent', { phone: phoneLabel })}
+                                    getResendInLabel={(seconds) => t('CreateMenu.otpResendIn', { seconds })}
+                                    onAuthenticated={async () => {
+                                        await updateSession();
+                                        router.refresh();
+                                    }}
+                                    phoneLabel={t('CreateMenu.phoneLabel')}
+                                    phonePlaceholder={t('CreateMenu.phonePlaceholder')}
+                                    primaryIcon="whatsapp"
+                                    purpose="create_menu"
+                                    resendCodeLabel={t('CreateMenu.otpResend')}
+                                    showHeader={false}
+                                    successMessage={t('CreateMenu.otpSuccess')}
+                                    variant="createMenu"
+                                    verifyButtonLabel={t('CreateMenu.otpVerifyCta')}
+                                />
+                                <div style={authDividerStyle}>
+                                    <span style={authDividerLineStyle} />
+                                    <span>{t('CreateMenu.authDivider')}</span>
+                                    <span style={authDividerLineStyle} />
+                                </div>
+                                <button
+                                    onClick={continueWithGoogle}
+                                    style={googleAuthButtonStyle}
+                                    type="button"
+                                >
+                                    <FcGoogle size={19} />
+                                    {t('CreateMenu.googleCta')}
+                                </button>
+                            </>
                         ) : null}
                     </div>
                 </AnimateOnScroll>
@@ -663,10 +692,44 @@ const authGateStyle: React.CSSProperties = {
     boxShadow: 'var(--ws-shadow-sm)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '16px',
     marginBottom: '4px',
     minHeight: '240px',
-    padding: '32px 24px',
+    padding: '28px 22px',
+    width: '100%',
+};
+
+const authDividerStyle: React.CSSProperties = {
+    alignItems: 'center',
+    color: 'var(--ws-text-muted)',
+    display: 'grid',
+    fontSize: '12px',
+    gap: '10px',
+    gridTemplateColumns: '1fr auto 1fr',
+    lineHeight: 1,
+    width: '100%',
+};
+
+const authDividerLineStyle: React.CSSProperties = {
+    backgroundColor: 'var(--ws-border-default)',
+    display: 'block',
+    height: '1px',
+};
+
+const googleAuthButtonStyle: React.CSSProperties = {
+    alignItems: 'center',
+    backgroundColor: 'var(--ws-bg-primary)',
+    border: '1px solid var(--ws-border-default)',
+    borderRadius: '10px',
+    color: 'var(--ws-text-primary)',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    fontSize: '15px',
+    fontWeight: 700,
+    gap: '10px',
+    justifyContent: 'center',
+    minHeight: '50px',
+    padding: '12px 16px',
     width: '100%',
 };
 

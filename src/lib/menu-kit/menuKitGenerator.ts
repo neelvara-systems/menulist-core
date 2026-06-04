@@ -22,6 +22,114 @@ import { generateTakeawayCard } from './templates/takeawayCardTemplate';
 import { generateWhatsappStatus } from './templates/whatsappStatusTemplate';
 import { buildMenuKitUrl, buildPrintInstructions, MENU_KIT_UTM_SOURCES, MenuKitAsset, MenuKitInput, MenuKitResult, STAFF_SCRIPT, validateMenuUrl } from './types';
 
+export const MENU_KIT_ASSET_KEYS = [
+    'table_tent',
+    'counter_sticker',
+    'entrance_poster',
+    'delivery_bag',
+    'takeaway_card',
+    'instagram_story',
+    'whatsapp_status',
+    'google_maps',
+    'placement_guide',
+    'single_table_card',
+] as const;
+
+export type MenuKitAssetKey = typeof MENU_KIT_ASSET_KEYS[number];
+
+type PreparedMenuKitInput = MenuKitInput & { _logo: PreloadedLogo | null };
+
+type MenuKitAssetDefinition = {
+    generate: (input: PreparedMenuKitInput) => Promise<Blob>;
+    key: MenuKitAssetKey;
+    label: string;
+    mimeType: string;
+    suffix: string;
+    utmMedium?: string;
+};
+
+const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
+    {
+        generate: generatePrintMenuTableTent,
+        key: 'table_tent',
+        label: 'Table Tent (A5 fold)',
+        mimeType: 'application/pdf',
+        suffix: 'TableTent_A5_Fold.pdf',
+        utmMedium: MENU_KIT_UTM_SOURCES.tableTent,
+    },
+    {
+        generate: generateCounterSticker,
+        key: 'counter_sticker',
+        label: 'Counter Sticker (8×8 cm)',
+        mimeType: 'image/png',
+        suffix: 'CounterSticker_8x8.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.counterSticker,
+    },
+    {
+        generate: generateEntrancePoster,
+        key: 'entrance_poster',
+        label: 'Entrance Poster (A4)',
+        mimeType: 'application/pdf',
+        suffix: 'EntrancePoster_A4.pdf',
+        utmMedium: MENU_KIT_UTM_SOURCES.entrancePoster,
+    },
+    {
+        generate: generateDeliveryBagSticker,
+        key: 'delivery_bag',
+        label: 'Delivery Bag Sticker (6×6 cm)',
+        mimeType: 'image/png',
+        suffix: 'DeliveryBag_6x6.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.deliveryBag,
+    },
+    {
+        generate: generateTakeawayCard,
+        key: 'takeaway_card',
+        label: 'Takeaway Card',
+        mimeType: 'image/png',
+        suffix: 'TakeawayCard_85x55.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.takeawayCard,
+    },
+    {
+        generate: generateInstagramStory,
+        key: 'instagram_story',
+        label: 'Instagram Story',
+        mimeType: 'image/png',
+        suffix: 'InstagramStory.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.instagramStory,
+    },
+    {
+        generate: generateWhatsappStatus,
+        key: 'whatsapp_status',
+        label: 'WhatsApp Status',
+        mimeType: 'image/png',
+        suffix: 'WhatsAppStatus.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.whatsappStatus,
+    },
+    {
+        generate: generateGoogleMapsImage,
+        key: 'google_maps',
+        label: 'Google Maps Upload',
+        mimeType: 'image/png',
+        suffix: 'GoogleMaps.png',
+        utmMedium: MENU_KIT_UTM_SOURCES.googleMaps,
+    },
+    {
+        generate: generatePlacementGuide,
+        key: 'placement_guide',
+        label: 'Placement Guide',
+        mimeType: 'image/png',
+        suffix: 'PlacementGuide.png',
+    },
+    {
+        generate: generatePrintMenuSingleTableCard,
+        key: 'single_table_card',
+        label: 'Single Table / Counter Card (A6)',
+        mimeType: 'application/pdf',
+        suffix: 'SingleTableCard_A6.pdf',
+        utmMedium: MENU_KIT_UTM_SOURCES.singleTableCard,
+    },
+];
+
 /**
  * Build per-surface input with UTM-tagged menuUrl if flag is enabled.
  * Falls back to plain menuUrl when UTM tracking is disabled.
@@ -31,62 +139,86 @@ function buildSurfaceInput(input: MenuKitInput, utmMedium: string): MenuKitInput
     return { ...input, menuUrl: buildMenuKitUrl(input.menuUrl, utmMedium) };
 }
 
-/**
- * Generate complete Menu Kit with all assets + ZIP bundle
- */
-export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
-    // Validate menu URL protocol before encoding into QR codes
+function buildSafeName(storeName: string): string {
+    return storeName
+        .replace(/[^a-zA-Z0-9\s]/g, '')
+        .trim()
+        .replace(/\s+/g, '_') || 'Menu';
+}
+
+async function prepareMenuKitInput(input: MenuKitInput): Promise<{
+    enrichedInput: PreparedMenuKitInput;
+    logo: PreloadedLogo | null;
+    safeName: string;
+}> {
     const validatedUrl = validateMenuUrl(input.menuUrl);
     if (!validatedUrl) {
         throw new Error('Invalid menu URL: must use http:// or https:// protocol');
     }
 
-    const safeName = input.storeName
-        .replace(/[^a-zA-Z0-9\s]/g, '')
-        .trim()
-        .replace(/\s+/g, '_') || 'Menu';
+    const safeName = buildSafeName(input.storeName);
 
-    // Pre-load logo image once, share across all templates (avoids N redundant fetches)
+    // Pre-load logo image once, share across selected template(s).
     let logo: PreloadedLogo | null = null;
     if (input.logoUrl) {
         logo = await loadLogo(input.logoUrl);
     }
 
-    // Enrich input with pre-loaded logo for templates
-    const enrichedInput = { ...input, _logo: logo } as MenuKitInput & { _logo: PreloadedLogo | null };
-
-    // Generate all assets in parallel for speed
-    // Each asset gets a UTM-tagged URL so scans can be attributed to the placement surface
-    const buildInput = (utmMedium: string) => {
-        const surfaceInput = buildSurfaceInput(enrichedInput, utmMedium);
-        return { ...surfaceInput, _logo: logo } as MenuKitInput & { _logo: PreloadedLogo | null };
+    return {
+        enrichedInput: { ...input, _logo: logo },
+        logo,
+        safeName,
     };
+}
 
-    const [tentCard, sticker, entrancePoster, deliveryBag, takeawayCard, igStory, waStatus, gmImage, guide, singleTableCard] = await Promise.all([
-        generatePrintMenuTableTent(buildInput(MENU_KIT_UTM_SOURCES.tableTent)),
-        generateCounterSticker(buildInput(MENU_KIT_UTM_SOURCES.counterSticker)),
-        generateEntrancePoster(buildInput(MENU_KIT_UTM_SOURCES.entrancePoster)),
-        generateDeliveryBagSticker(buildInput(MENU_KIT_UTM_SOURCES.deliveryBag)),
-        generateTakeawayCard(buildInput(MENU_KIT_UTM_SOURCES.takeawayCard)),
-        generateInstagramStory(buildInput(MENU_KIT_UTM_SOURCES.instagramStory)),
-        generateWhatsappStatus(buildInput(MENU_KIT_UTM_SOURCES.whatsappStatus)),
-        generateGoogleMapsImage(buildInput(MENU_KIT_UTM_SOURCES.googleMaps)),
-        generatePlacementGuide(enrichedInput), // Placement guide has no QR — no UTM needed
-        generatePrintMenuSingleTableCard(buildInput(MENU_KIT_UTM_SOURCES.singleTableCard)),
-    ]);
+function buildPreparedSurfaceInput(
+    preparedInput: PreparedMenuKitInput,
+    logo: PreloadedLogo | null,
+    utmMedium?: string,
+): PreparedMenuKitInput {
+    const surfaceInput = utmMedium ? buildSurfaceInput(preparedInput, utmMedium) : preparedInput;
+    return { ...surfaceInput, _logo: logo };
+}
 
-    const assets: MenuKitAsset[] = [
-        { filename: `${safeName}_TableTent_A5_Fold.pdf`, blob: tentCard, mimeType: 'application/pdf', label: 'Table Tent (A5 fold)' },
-        { filename: `${safeName}_CounterSticker_8x8.png`, blob: sticker, mimeType: 'image/png', label: 'Counter Sticker (8×8 cm)' },
-        { filename: `${safeName}_EntrancePoster_A4.pdf`, blob: entrancePoster, mimeType: 'application/pdf', label: 'Entrance Poster (A4)' },
-        { filename: `${safeName}_DeliveryBag_6x6.png`, blob: deliveryBag, mimeType: 'image/png', label: 'Delivery Bag Sticker (6×6 cm)' },
-        { filename: `${safeName}_TakeawayCard_85x55.png`, blob: takeawayCard, mimeType: 'image/png', label: 'Takeaway Card' },
-        { filename: `${safeName}_InstagramStory.png`, blob: igStory, mimeType: 'image/png', label: 'Instagram Story' },
-        { filename: `${safeName}_WhatsAppStatus.png`, blob: waStatus, mimeType: 'image/png', label: 'WhatsApp Status' },
-        { filename: `${safeName}_GoogleMaps.png`, blob: gmImage, mimeType: 'image/png', label: 'Google Maps Upload' },
-        { filename: `${safeName}_PlacementGuide.png`, blob: guide, mimeType: 'image/png', label: 'Placement Guide' },
-        { filename: `${safeName}_SingleTableCard_A6.pdf`, blob: singleTableCard, mimeType: 'application/pdf', label: 'Single Table / Counter Card (A6)' },
-    ];
+async function renderMenuKitAsset(
+    definition: MenuKitAssetDefinition,
+    prepared: {
+        enrichedInput: PreparedMenuKitInput;
+        logo: PreloadedLogo | null;
+        safeName: string;
+    },
+): Promise<MenuKitAsset> {
+    const assetInput = buildPreparedSurfaceInput(prepared.enrichedInput, prepared.logo, definition.utmMedium);
+    const blob = await definition.generate(assetInput);
+    return {
+        blob,
+        filename: `${prepared.safeName}_${definition.suffix}`,
+        label: definition.label,
+        mimeType: definition.mimeType,
+    };
+}
+
+/**
+ * Generate one Menu Kit asset without rendering the whole ZIP.
+ */
+export async function generateMenuKitAsset(input: MenuKitInput, assetKey: MenuKitAssetKey): Promise<MenuKitAsset> {
+    const definition = MENU_KIT_ASSET_DEFINITIONS.find((asset) => asset.key === assetKey);
+    if (!definition) {
+        throw new Error(`Unknown Menu Kit asset: ${assetKey}`);
+    }
+
+    const prepared = await prepareMenuKitInput(input);
+    return renderMenuKitAsset(definition, prepared);
+}
+
+/**
+ * Generate complete Menu Kit with all assets + ZIP bundle
+ */
+export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
+    const prepared = await prepareMenuKitInput(input);
+    const assets = await Promise.all(
+        MENU_KIT_ASSET_DEFINITIONS.map((definition) => renderMenuKitAsset(definition, prepared)),
+    );
 
     // Bundle into ZIP
     const zip = new JSZip();

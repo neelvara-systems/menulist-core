@@ -3,7 +3,7 @@
 /**
  * Menu Kit Section — Share Modal Integration
  *
- * Downloads a ZIP bundle of 6 print-ready + social-ready assets.
+ * Downloads a ZIP bundle of print-ready + social-ready assets.
  * 100% client-side generation — zero Firebase cost.
  * BusinessType-aware: labels adapt to store category (menu/services/catalog).
  *
@@ -13,7 +13,7 @@
 
 import { trackMenuKitDownload } from '@lib/analytics/unified';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
-import { downloadBlob, generateMenuKit, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { secureError } from '@lib/security/secureLogger';
 import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
@@ -95,9 +95,9 @@ export default function MenuKitSection({
         }
     };
 
-    const handleShareAsset = async (assetIndex: number, label: string) => {
+    const handleShareAsset = async (assetKey: MenuKitAssetKey, label: string) => {
         try {
-            const result = await generateMenuKit({
+            const asset = await generateMenuKitAsset({
                 storeName,
                 menuUrl,
                 shortLink,
@@ -108,15 +108,15 @@ export default function MenuKitSection({
                 businessCategory,
                 activePlanType,
                 locale,
-            });
-            const asset = result.assets[assetIndex];
-            if (!asset) return;
+            }, assetKey);
             const shared = await shareBlob(asset.blob, asset.filename, label);
             // Track individual asset share/download
-            const actionMap: Record<number, 'share_instagram' | 'share_whatsapp' | 'share_google_maps'> = {
-                5: 'share_instagram', 6: 'share_whatsapp', 7: 'share_google_maps',
+            const actionMap: Partial<Record<MenuKitAssetKey, 'share_instagram' | 'share_whatsapp' | 'share_google_maps'>> = {
+                google_maps: 'share_google_maps',
+                instagram_story: 'share_instagram',
+                whatsapp_status: 'share_whatsapp',
             };
-            if (actionMap[assetIndex]) trackMenuKitDownload(actionMap[assetIndex]);
+            if (actionMap[assetKey]) trackMenuKitDownload(actionMap[assetKey]!);
             if (!shared) {
                 downloadBlob(asset.blob, asset.filename);
                 message.success(`${label} downloaded`);
@@ -176,13 +176,13 @@ export default function MenuKitSection({
                 {/* Mobile-optimized: individual share buttons via Web Share API */}
                 {supportsNativeShare && (
                     <Flex gap={8} wrap="wrap">
-                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset(5, 'Instagram Story')}>
+                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset('instagram_story', 'Instagram Story')}>
                             Instagram
                         </Button>
-                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset(6, 'WhatsApp Status')}>
+                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset('whatsapp_status', 'WhatsApp Status')}>
                             WA Status
                         </Button>
-                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset(7, 'Google Maps')}>
+                        <Button size="small" icon={<LuShare2 size={14} />} onClick={() => handleShareAsset('google_maps', 'Google Maps')}>
                             Google Maps
                         </Button>
                     </Flex>

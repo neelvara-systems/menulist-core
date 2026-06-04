@@ -120,7 +120,7 @@ All mobile Menu Kit and QR downloads use the same premium output tokens as deskt
 - brand-color gradient/accent framing with near-black QR modules on a high-contrast white scan panel
 - Premium-only visible MenuList attribution removal from already-loaded store plan context
 
-The table tent and single table/counter card downloads use the same Print Menu Surfaces renderers as desktop through `generateMenuKit()`. Mobile Share must not fork mobile-only table tent, single-card, or QR designs; it should request the same assets and then use mobile-native share/download actions.
+The table tent and single table/counter card downloads use the same Print Menu Surfaces renderers as desktop through `generateMenuKitAsset()` for single-file actions and `generateMenuKit()` for the complete ZIP. Mobile Share must not fork mobile-only table tent, single-card, or QR designs; it should request the same assets and then use mobile-native share/download actions.
 - no separate mobile generator or mobile-only design variant
 
 ## Mobile Implementation Notes

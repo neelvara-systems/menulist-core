@@ -83,6 +83,12 @@ Safe interim use:
 
 Menu Kit bundles the table tent file so owners receive one complete deployment pack. The physical table tent layout itself is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). New tabletop, counter-card, folded-card, or in-store scan-first print work belongs there first, then Menu Kit can consume it.
 
+## Print Assets Boundary
+
+[Print Assets](../print-assets/README.md) is the owner-facing desktop/mobile workspace for downloading the printables. Menu Kit remains the bundle generator and Print Menu Surfaces remains the physical layout owner. Do not add route or mobile-shell logic to Menu Kit when the user job is "find and download printable files."
+
+Individual asset downloads should call `generateMenuKitAsset()` with a semantic asset key. `generateMenuKit()` is for the complete ZIP bundle.
+
 ## Existing Infrastructure (Reusable)
 
 | Component                     | File                                             | Reusable?                           |

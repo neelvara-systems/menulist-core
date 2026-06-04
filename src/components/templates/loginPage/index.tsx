@@ -22,8 +22,6 @@ import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { LuMoon, LuSun } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
-import AuthParticleFlowBackground from './AuthParticleFlowBackground';
-import AuthTriangulatedBackground from './AuthTriangulatedBackground';
 import styles from './loginPage.module.scss';
 
 const validateEmail = (email: string) => {
@@ -499,13 +497,17 @@ function LoginPage() {
     </>
   );
 
-  return <div className={styles.loginPageWrap}
-    style={{
-      background: token.colorBgBase,
-      backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
-    }}>
-    <AuthTriangulatedBackground darkMode={isDarkMode} />
-    <AuthParticleFlowBackground darkMode={isDarkMode} />
+  return <div className={`${styles.loginPageWrap} ${isDarkMode ? styles.loginPageDark : styles.loginPageLight}`}>
+    <div className={styles.staticBackdrop} aria-hidden="true">
+      <div className={styles.backdropVisual}>
+        <span className={styles.backdropTopRule} />
+        <span className={styles.backdropLinePrimary} />
+        <span className={styles.backdropLineSecondary} />
+        <span className={styles.backdropLineTertiary} />
+        <span className={styles.backdropQrBlock} />
+        <span className={styles.backdropReceipt} />
+      </div>
+    </div>
     <Space className={styles.headerWrap} align="center">
       <Button
         icon={isDarkMode ? <LuSun /> : <LuMoon />}
@@ -521,7 +523,7 @@ function LoginPage() {
     }}>
       <div className={styles.bodyContent}>
         <div className={styles.rightContent}>
-          <div className={styles.formWrap}
+          <div className={`${styles.formWrap} ${isDarkMode ? styles.formWrapDark : styles.formWrapLight}`}
             style={{
               // background: token.colorBgBase,
               // backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
@@ -708,7 +710,7 @@ function LoginPage() {
                   validateMessages={validateMessages}
                 >
                   <Form.Item
-                    className={styles.formItem}
+                    className={`${styles.formItem} ${shouldOfferPhoneOtp ? styles.hiddenFormItem : ''}`}
                     name="email"
                     rules={[
                       { required: true, message: 'Please input your email, phone, or staff ID!' },
@@ -735,14 +737,16 @@ function LoginPage() {
                   </Form.Item>
                   {shouldOfferPhoneOtp ? (
                     <PhoneOtpAuthPanel
-                      key={`${loginIdentifier}-${otpPanelKey}`}
+                      key={`phone-otp-${otpPanelKey}`}
                       buttonLabel="Send WhatsApp code"
                       defaultPhone={loginIdentifier}
                       fallbackLabel="Use passcode instead"
-                      hidePhoneInput
                       hint="Use the phone number connected to your business. We will send a one-time WhatsApp code."
                       onAuthenticated={async () => {
                         await updateSession();
+                      }}
+                      onPhoneChange={({ phone }) => {
+                        loginForm.setFieldValue('email', phone);
                       }}
                       onFallback={() => {
                         setCredentialMode('passcode');
@@ -750,6 +754,8 @@ function LoginPage() {
                           document.querySelector<HTMLInputElement>('input[name="password"]')?.focus();
                         }, 0);
                       }}
+                      phoneLabel="WhatsApp phone number"
+                      phonePlaceholder="98765 43210"
                       purpose="dashboard_login"
                       showHeader={false}
                       title="Log in with WhatsApp"

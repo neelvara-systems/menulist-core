@@ -1,0 +1,72 @@
+# Print Assets Implementation
+
+**Status:** Implemented
+**Last Updated:** June 4, 2026
+
+## Architecture
+
+Print Assets is a route/screen layer over existing generators.
+
+| Layer | File |
+| --- | --- |
+| Feature flag | `src/config/features.ts` |
+| Asset catalog | `src/lib/print-assets/printAssetCatalog.ts` |
+| Navigation helper | `src/lib/print-assets/navigation.ts` |
+| Owner print guidance | `src/lib/print-assets/ownerPrintGuidance.ts` |
+| Desktop route | `src/app/(main)/use-menulist/print-assets/page.tsx` |
+| Desktop UI | `src/components/templates/main-app/useMenuList/index.tsx` |
+| Mobile route mapping | `src/components/mobile/MobileShell.tsx` |
+| Mobile More entry | `src/components/mobile/screens/MobileMoreScreen.tsx` |
+| Mobile screen wrapper | `src/components/mobile/screens/MobilePrintAssetsScreen.tsx` |
+| Shared mobile logic | `src/components/mobile/screens/MobileShareScreen.tsx` |
+
+## Catalog Contract
+
+`src/lib/print-assets/printAssetCatalog.ts` owns stable owner-facing IDs. Runtime downloads use semantic Menu Kit asset keys through `generateMenuKitAsset()` so one requested file does not render the whole ZIP. `PRINT_ASSET_MENU_KIT_INDEX` is kept only as a guarded ZIP-order compatibility map:
+
+- `table_tent -> 0`
+- `single_table_card -> 9`
+- `counter_sticker -> 1`
+- `entrance_poster -> 2`
+
+New printables must be added to the catalog first, then consumed by desktop and mobile by key. Do not add new owner-facing downloads that depend on `result.assets[index]` outside the catalog/verifier.
+
+## Owner Guidance Contract
+
+`src/lib/print-assets/ownerPrintGuidance.ts` owns shared owner guidance:
+
+- print readiness items for live link, logo, brand color, business name length, and feedback QR state
+- print-shop file specs and copyable handoff message
+- reprint guidance
+
+Do not fork this wording between desktop and mobile. Do not add table-count or quantity estimation here; it is intentionally excluded from the feature.
+
+## Desktop Flow
+
+`/use-menulist/print-assets` renders `UseMenuList` in `print-assets` view and is guarded by `ENABLE_PRINT_ASSETS_ROUTE`. Desktop links use `buildPrintAssetsUrl(projectId)` so selected-project query handling is centralized. Use MenuList, Print Assets, and Print Menu transitions use `router.push(...)` with route builders, not `window.location`, so the dashboard does not perform a full document reload. The page reuses the same data loading, project selector, full Menu Kit ZIP generator, single Menu Kit asset generator, PDF export entry, feedback QR generator, brand color, logo, and plan data as the overview page.
+
+Desktop Print Assets adds readiness, print-shop handoff, generated file preview, and reprint guidance. Preview actions call `generateMenuKitAsset()` with the same semantic key as Download, create a temporary browser blob URL, and open that generated output without uploading it.
+
+Use MenuList keeps an overview shortcut named Print Assets.
+
+## Mobile Flow
+
+Mobile route `/use-menulist/print-assets` maps to:
+
+```ts
+{ tab: 'more', moreScreen: 'printAssets' }
+```
+
+`MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Individual file downloads and previews use `generateMenuKitAsset()` by key, matching desktop output without generating the full ZIP first.
+
+Mobile preview opens in an in-shell popup for the generated blob and includes Open Full Preview / Download actions. It must not route to the desktop print-assets page from inside the PWA shell.
+
+## Validation
+
+Run:
+
+```bash
+npm run verify:menu-card-export
+npx eslint --max-warnings=0 src/lib/print-assets/printAssetCatalog.ts src/components/templates/main-app/useMenuList/index.tsx src/components/mobile/MobileShell.tsx src/components/mobile/screens/MobileMoreScreen.tsx src/components/mobile/screens/MobileShareScreen.tsx src/components/mobile/screens/MobilePrintAssetsScreen.tsx src/lib/menu-kit/menuKitGenerator.ts
+npx tsc --noEmit --incremental false
+```
