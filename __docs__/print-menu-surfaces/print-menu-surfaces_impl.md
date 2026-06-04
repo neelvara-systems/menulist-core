@@ -67,7 +67,7 @@ Run:
 
 ```bash
 npm run verify:menu-card-export
-npx eslint --max-warnings=0 src/lib/print-menu-surfaces/templates/tableTentTemplate.ts src/lib/menu-kit/templates/tableTentTemplate.ts src/lib/menu-kit/menuKitGenerator.ts
+npx eslint --max-warnings=0 src/lib/print-menu-surfaces/templates/printMenuCardFace.ts src/lib/print-menu-surfaces/templates/tableTentTemplate.ts src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts src/lib/menu-kit/templates/tableTentTemplate.ts src/lib/menu-kit/menuKitGenerator.ts
 npx tsc --noEmit --incremental false
 ```
 

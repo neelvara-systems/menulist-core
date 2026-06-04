@@ -66,8 +66,8 @@ export function drawPrintMenuCardFace(
 
     let storeY = cardY + printMenuMm(16);
     if (logo) {
-        const maxLogoW = printMenuMm(22);
-        const maxLogoH = printMenuMm(10);
+        const maxLogoW = printMenuMm(30);
+        const maxLogoH = printMenuMm(12);
         const scale = Math.min(maxLogoW / (logo.width || 1), maxLogoH / (logo.height || 1), 1);
         const logoW = Math.round((logo.width || maxLogoW) * scale);
         const logoH = Math.round((logo.height || maxLogoH) * scale);

@@ -140,6 +140,7 @@ The table tent asset is bundled by Menu Kit but owned by Print Menu Surfaces. `s
 
 ```typescript
 import JSZip from "jszip";
+import { generatePrintMenuSingleTableCard } from "../print-menu-surfaces/templates/singleTableCardTemplate";
 import { generatePrintMenuTableTent } from "../print-menu-surfaces/templates/tableTentTemplate";
 import { generateCounterSticker } from "./templates/counterStickerTemplate";
 import { generateDeliveryBagSticker } from "./templates/deliveryBagTemplate";
@@ -182,7 +183,7 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
   // Bundle into ZIP
   const zip = new JSZip();
   for (const asset of assets) {
-    zip.file(asset.filename, asset.blob);
+    zip.file(asset.filename, await asset.blob.arrayBuffer());
   }
   const zipBlob = await zip.generateAsync({ type: "blob" });
 
@@ -338,7 +339,7 @@ npm install jszip
 2. Click "Download Menu Kit"
 3. Verify ZIP contains 10 asset files + PRINT_INSTRUCTIONS.txt
 4. Open each file — verify store name, QR code, layout
-5. Scan QR from tent card PDF → should open menu
+5. Scan QR from table tent and single table/counter card PDFs -> both should open menu
 6. Scan QR from sticker PNG → should open menu
 7. Verify Instagram Story dimensions (1080×1920)
 8. Verify Google Maps image dimensions (1200×900)

@@ -91,7 +91,7 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
     // Bundle into ZIP
     const zip = new JSZip();
     for (const asset of assets) {
-        zip.file(asset.filename, asset.blob);
+        zip.file(asset.filename, await asset.blob.arrayBuffer());
     }
     // Add print instructions text file for print shops
     zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(input.storeName));
