@@ -128,19 +128,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     return (
         <html lang="en" className={`${interFont.variable}`} suppressHydrationWarning={true}>
             <head>
-                <meta name="color-scheme" content="light" />
                 <meta name="mobile-web-app-capable" content="yes" />
-                <style
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            html,
-                            body {
-                                background: #ffffff !important;
-                                color-scheme: light;
-                            }
-                        `,
-                    }}
-                />
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
                 {/* CSP Violation Monitor (Development Only) */}
                 {isDev && (

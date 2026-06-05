@@ -14,6 +14,7 @@ const withNextIntl = createNextIntlPlugin();
 // Production deploys (VERCEL_ENV=production) get full PWA
 const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
 const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().toISOString();
+const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 class MenuListServerChunkCompatPlugin {
     apply(compiler) {
@@ -97,7 +98,13 @@ const nextConfig = {
         esmExternals: true,
     },
     typescript: {
-        ignoreBuildErrors: false,
+        // Vercel runs `npm run build:verify` before `next build` when this
+        // flag is enabled, so the app still fails on type errors without
+        // repeating Next's remote-only lint/type phase inside the build.
+        ignoreBuildErrors: skipNextBuildChecks,
+    },
+    eslint: {
+        ignoreDuringBuilds: skipNextBuildChecks,
     },
     reactStrictMode: false,
     productionBrowserSourceMaps: false,

@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.29 (Footer Theme Segmented Control)
+**Version:** 3.6.30 (Website Signup Copy Consistency)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 5, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.29** | **Footer Theme Segmented Control** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.30** | **Website Signup Copy Consistency** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+
+Version 3.6.30 aligns the public website copy with the current `/create-menu` sign-in-first setup path. `/get-started`, `/create-menu`, FAQ import copy, pricing guidance, customer-browse wording, supported-business wording, and How It Works setup claims now avoid upload-before-sign-in promises, recommendation-style language, broad catalog positioning, pushy Pro steering, and overbroad handwritten/photoshoot/copywriter claims. This is public website locale copy and docs only; routing, auth runtime, extraction, pricing/payment, billing, owner dashboard behavior, Firebase, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.29 replaces the footer Light/System/Dark theme dropdown with a compact segmented icon control. This fixes the light-mode selected-state contrast issue in the dark footer, keeps Language as the only footer dropdown, preserves the existing website `ThemeProvider` localStorage contract, and changes only public website UI/CSS/docs.
 
@@ -93,7 +95,7 @@ Version 3.6.12 tightens the shared `WebsiteFeatureCard` vertical rhythm after vi
 
 Version 3.6.13 reverses the shared headline/accent gradient so large highlighted text starts with the stronger MenuList blue and resolves into the lighter accent. The official logo mark gradient was not changed. Copy, locale strings, page order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
-Version 3.6.14 makes Menu Link Import a public `/create-menu` input after validating the feature against the existing authenticated importer. The public starter funnel now supports either a menu photo upload or an owner-provided public menu link before sign-in. Link import stays guarded by `ENABLE_MENU_LINK_IMPORT`, requires explicit permission confirmation, reuses the SSRF-safe acquisition helper, stays under the public menu-entry IP rate limit, creates only a temporary review draft, and never publishes imported content until an authenticated owner claims and approves the setup.
+Version 3.6.14 made Menu Link Import a public `/create-menu` input after validating the feature against the existing authenticated importer. The starter input set supports either a menu photo upload or an owner-provided public menu link; current public copy describes the sign-in-first setup path from version 3.6.30 onward. Link import stays guarded by `ENABLE_MENU_LINK_IMPORT`, requires explicit permission confirmation, reuses the SSRF-safe acquisition helper, stays under the public menu-entry IP rate limit, creates only a temporary review draft, and never publishes imported content until an authenticated owner claims and approves the setup.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -663,6 +665,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.30 | June 5, 2026 | Aligned website setup copy with the sign-in-first `/create-menu` path and softened recommendation, ICP, pricing, handwritten-menu, photoshoot, and copywriting claims. |
 | 3.6.29 | June 5, 2026 | Replaced the footer Light/System/Dark theme dropdown with a segmented icon control and fixed the selected light-mode contrast issue. |
 | 3.6.24 | June 2, 2026 | Added the public truth indexing guardrail for tenant OBP/menu metadata and per-tenant sitemap inclusion, and removed generated hidden FAQPage JSON-LD from OBP runtime. |
 | 3.6.23 | June 2, 2026 | Applied the marketing feedback quality pass to the official-source, audit, Google menu, QR menu, multi-location, and restaurant industry pages while deferring comparison/extra industry pages to avoid thin expansion. |

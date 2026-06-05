@@ -8,6 +8,8 @@
     "devhttps": "next dev --experimental-https",
     "build": "NODE_OPTIONS='--max-old-space-size=6144' next build",
     "build:prod": "NODE_OPTIONS='--max-old-space-size=6144' NODE_ENV=production next build",
+    "build:verify": "tsc --noEmit --incremental false --pretty false",
+    "build:vercel": "rm -rf node_modules/@next/swc-linux-x64-musl .next/cache && npm run build:verify && NEXT_SKIP_NEXT_BUILD_CHECKS=1 NODE_OPTIONS='--max-old-space-size=6144' next build",
     "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=6144' npm run build",
     "start": "next start",
     "lint": "next lint",

@@ -391,10 +391,11 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 **Supporting text:**
 
-> A MenuList page is built for real browsing. Customers can search, jump sections, switch language, check details, and decide without asking staff.
+> A MenuList page is built for real browsing. Customers can search, jump sections, switch language, and use guided choices from the approved menu before they choose.
 
-**Proof points (4):**
+**Proof points (5):**
 
+- Decision blocks guide choices.
 - Search is always within reach.
 - Sections keep big menus easy.
 - Language is part of the menu.
@@ -513,7 +514,7 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 **Supporting text:**
 
-> MenuList works for any business with a public menu, price list, catalogue, or service list that customers need to trust.
+> Built first for restaurants, cafes, cloud kitchens, bakeries, salons, spas, and other businesses with customer-facing menus, service lists, or price lists.
 
 **Industry chips:**
 
@@ -553,7 +554,7 @@ Key FAQ topics:
 - Search/AI placement caveat.
 - Staff access without owner access.
 - Pricing entry point.
-- Existing menu link import as a public setup input guarded by owner permission confirmation, not a generic scraper.
+- Existing menu link import after sign-in as a setup input guarded by owner permission confirmation, not a generic scraper.
 - Imported content remains review-first and never publishes automatically.
 
 ---
@@ -615,7 +616,7 @@ Key FAQ topics:
 
 - Works with photo, PDF, existing link, or typed input
 - Items, prices, and categories read for you — no manual entry
-- Handles multiple pages and handwritten menus
+- Can help with multi-page menus and clear handwritten menus
 - Edit anything before publishing — you stay in control, without the setup work
 
 **Source:** `ai-data-extraction_website.md`
@@ -656,7 +657,7 @@ Key FAQ topics:
 **Key points:**
 
 - Professional descriptions for every item — written for you from your menu data
-- Menu images and uploaded photos prepared for you — no photographer, no designer, no formatting needed
+- Menu images and uploaded photos can be prepared from approved menu data — no separate photoshoot, designer, or formatting work needed to get started
 - Multiple languages added with one click — no translator needed
 - Consistent quality across your entire menu — without you writing a single line
 
@@ -985,6 +986,7 @@ Description:
 - Keep existing plan data from `PlatformPlansList`
 - Each plan card: Plan name, price, billing period, key features, CTA button
 - Recommended plan highlighted
+- Plan guidance must leave the choice with the owner: Starter is enough for one current public menu; Pro is for presentation, languages, and owner controls.
 
 ### CTA on Plan Cards
 
@@ -1107,7 +1109,7 @@ Description:
 
 **Proof strip:**
 
-- Upload after sign-in
+- Sign in before upload
 - Owner review before publishing
 - Dashboard setup comes next
 

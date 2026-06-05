@@ -6,6 +6,20 @@
 
 ---
 
+## June 5, 2026 — Website Setup Copy Consistency
+
+### Changed
+
+- **Setup copy now matches the sign-in-first upload path** - `/get-started`, `/create-menu`, and FAQ import wording now describe signing in before adding a photo or menu link.
+- **Website claims are calmer** - Customer-browse copy now uses guided choices instead of recommendation wording, supported-business copy stays food/service-first, and setup copy softens handwritten-menu, photoshoot, and copywriting claims.
+- **Pricing guidance leaves the plan choice clearer** - Starter is described as enough for one current public menu, while Pro is framed around presentation, languages, and owner controls.
+
+### Cost
+
+- **No Firebase cost change** - This is public website locale copy and documentation alignment. Routing, auth runtime, extraction, pricing/payment, billing, owner dashboard behavior, Firestore, Storage, Cloud Functions, rules, and indexes are unchanged.
+
+---
+
 ## June 5, 2026 — Website Footer Theme Control
 
 ### Fixed

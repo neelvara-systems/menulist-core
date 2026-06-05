@@ -2798,8 +2798,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.ws-theme-switcher__trigger,
-.ws-theme-switcher__option {
+.ws-theme-switcher__trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2817,46 +2816,10 @@
   transition: background var(--ws-transition-fast), border-color var(--ws-transition-fast), color var(--ws-transition-fast);
 }
 
-.ws-theme-switcher__trigger:hover,
-.ws-theme-switcher__option:hover {
+.ws-theme-switcher__trigger:hover {
   color: var(--ws-panel-contrast-text);
   border-color: var(--ws-panel-contrast-icon);
   background: var(--ws-panel-contrast-soft);
-}
-
-.ws-theme-switcher__chevron {
-  transition: transform var(--ws-transition-fast);
-}
-
-.ws-theme-switcher__chevron.is-open {
-  transform: rotate(180deg);
-}
-
-.ws-theme-switcher__menu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 6px);
-  z-index: 100;
-  display: grid;
-  min-width: 150px;
-  padding: 4px;
-  border: 1px solid var(--ws-panel-contrast-border);
-  border-radius: var(--ws-radius-lg);
-  background: var(--ws-panel-contrast-raised);
-  box-shadow: var(--ws-shadow-lg);
-}
-
-.ws-theme-switcher__option {
-  justify-content: flex-start;
-  width: 100%;
-  border-color: transparent;
-  background: transparent;
-  color: var(--ws-panel-contrast-secondary);
-}
-
-.ws-theme-switcher__option.is-active {
-  color: var(--ws-panel-contrast-text);
-  background: var(--ws-brand-light);
 }
 
 .ws-theme-switcher__segment {
