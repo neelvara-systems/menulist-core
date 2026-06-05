@@ -162,7 +162,10 @@
 
 .article h1,
 .article h2,
-.article h3 {
+.article h3,
+.article h4,
+.article h5,
+.article h6 {
   color: var(--hosted-help-text);
 }
 
@@ -174,6 +177,65 @@
 
 .article a {
   color: var(--hosted-help-link);
+}
+
+.article blockquote {
+  background: var(--hosted-help-active-bg);
+  border-left: 3px solid var(--hosted-help-active-text);
+  color: var(--hosted-help-muted);
+  margin: 18px 0;
+  padding: 10px 14px;
+}
+
+.article code {
+  background: var(--hosted-help-active-bg);
+  border-radius: 4px;
+  color: var(--hosted-help-text);
+  font-size: 0.92em;
+  padding: 2px 5px;
+}
+
+.article pre {
+  background: #111827;
+  border-radius: 8px;
+  color: #f9fafb;
+  overflow-x: auto;
+  padding: 14px;
+}
+
+.article pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.article img {
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  margin: 18px auto;
+  max-width: 100%;
+}
+
+.article hr {
+  border: 0;
+  border-top: 1px solid var(--hosted-help-border);
+  margin: 24px 0;
+}
+
+.article ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.article li[data-checked] {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+}
+
+.article li[data-checked] input {
+  margin-top: 6px;
 }
 
 .article table {

@@ -35,6 +35,7 @@ export default function HeroSection() {
               <WebsiteHeadline as="h1">
                 {t('Hero.titlePart1')}
                 <br className="ws-hero-title-break" />
+                {' '}
                 <span className="ws-headline__highlight">{t('Hero.titleHighlight')}</span>
                 {t('Hero.titlePart2')}
               </WebsiteHeadline>

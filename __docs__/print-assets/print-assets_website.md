@@ -1,13 +1,26 @@
 # Print Assets Website Copy
 
-**Status:** Public Copy Draft
-**Last Updated:** June 4, 2026
+**Status:** Light website placement applied
+**Last Updated:** June 5, 2026
+
+## Placement Decision
+
+Do not add a dedicated Print Assets homepage section or standalone public website page right now.
+
+For non-technical SMB owners, the main website should keep this capability light and outcome-led:
+
+- Homepage source map: keep the compact `Print files` output.
+- Features page: explain paper menu PDF, table card, counter card, and printer handoff packet from the current approved menu.
+- Features page brand group: explain branded table/counter/entrance/takeaway files with QR code and business color, ready for a local printer.
+- Resources page: keep PDF-vs-digital education in `/resources/digital-menu-vs-pdf-menu`.
+
+The dashboard and mobile PWA carry the full Print Assets workspace. The public website should not expose internal names such as `single-asset generation`, `renderer`, or implementation-specific print asset keys.
 
 ## Feature Section
 
-**Headline:** Print-ready menu assets
+**Headline:** Print-ready menu cards
 
-**Subheadline:** Download table cards, counter QR, entrance posters, feedback QR, and menu PDFs from the same live menu.
+**Subheadline:** Download table cards, counter cards, entrance posters, feedback QR, and menu PDFs from the same live menu.
 
 ## Benefit Blocks
 

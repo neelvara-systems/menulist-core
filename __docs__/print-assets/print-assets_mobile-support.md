@@ -17,6 +17,8 @@
 - Mobile route `/use-menulist/print-assets` stays inside `MobileShell`.
 - More tab opens `printAssets` sub-screen.
 - Share tab opens Print Assets through shell state, not `window.location`.
+- Print Assets opens Print Menu through `onOpenPrintMenu` shell callback, not route navigation.
+- Menu tab opens Print Menu through `onOpenPrintMenu` shell callback after pending menu saves complete.
 - Mobile uses `MobileShareScreen` download handlers in focused mode.
 - Mobile and desktop use the same `generateMenuKit()` bundle output.
 - Mobile and desktop use the same `generateMenuKitAsset()` semantic-key output for individual downloads and previews.

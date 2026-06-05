@@ -351,14 +351,30 @@ const mobilePrintAssetsScreen = fs.readFileSync(path.join(root, 'src/components/
   { label: 'Mobile Share', source: mobileShare },
   { label: 'Mobile Menu', source: mobileMenu },
   { label: 'Mobile More', source: mobileMore },
+  { label: 'Mobile Print Assets', source: mobilePrintAssetsScreen },
+  { label: 'Mobile Menu Card Export', source: fs.readFileSync(path.join(root, 'src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx'), 'utf8') },
 ].forEach(({ label, source }) => {
   [
+    'buildPrintAssetsUrl',
     'buildMenuCardExportUrl',
+    "router.push('/use-menulist/print-assets",
+    "router.push('/use-menulist/menu-card-export",
+    'router.push(buildPrintAssetsUrl',
     'router.push(buildMenuCardExportUrl',
+    'window.location.href = `/use-menulist/print-assets',
+    'window.location.href = `/use-menulist/menu-card-export',
+    "window.location.href = '/use-menulist/print-assets",
+    "window.location.href = '/use-menulist/menu-card-export",
+    'window.location.assign(`/use-menulist/print-assets',
+    'window.location.assign(`/use-menulist/menu-card-export',
+    "window.location.assign('/use-menulist/print-assets",
+    "window.location.assign('/use-menulist/menu-card-export",
+    'window.location.href = buildPrintAssetsUrl',
     'window.location.href = buildMenuCardExportUrl',
+    'window.location.assign(buildPrintAssetsUrl',
     'window.location.assign(buildMenuCardExportUrl',
   ].forEach((token) => {
-    if (source.includes(token)) failures.push(`${label} must open the MobileShell Print Menu screen, not ${token}`);
+    if (source.includes(token)) failures.push(`${label} must open MobileShell print screens by state/callback, not ${token}`);
   });
 });
 

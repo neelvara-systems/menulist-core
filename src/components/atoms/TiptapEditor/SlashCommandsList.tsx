@@ -5,10 +5,8 @@ import {
     LuHeading1,
     LuHeading2,
     LuHeading3,
-    LuImage,
     LuList,
     LuListOrdered,
-    LuText,
     LuTextQuote
 } from 'react-icons/lu';
 
@@ -124,12 +122,22 @@ const SlashCommandsList = forwardRef<SlashCommandsListRef, any>((props, ref) => 
             className='slash-command-list'
             size="small"
             dataSource={props.items}
+            style={{
+                minWidth: 220,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: token.borderRadiusLG,
+                background: token.colorBgElevated,
+                boxShadow: token.boxShadowSecondary,
+                padding: 4,
+            }}
             renderItem={(item: any, index: number) => (
                 <List.Item
                     onClick={() => selectItem(index)}
                     style={{
                         background: index === selectedIndex ? token.colorPrimaryBg : 'transparent',
                         borderRadius: '4px',
+                        color: token.colorText,
+                        cursor: 'pointer',
                         padding: '8px 12px',
                     }}
                 >

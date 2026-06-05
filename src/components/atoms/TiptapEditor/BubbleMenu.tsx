@@ -1,91 +1,78 @@
 import { BubbleMenu as TiptapBubbleMenu } from '@tiptap/react';
-import { Button, Card, ColorPicker, Divider, Space } from 'antd';
+import { Button, ColorPicker, Flex, Tooltip, theme } from 'antd';
 import React from 'react';
 import {
     LuBold,
     LuCode,
     LuHeading1,
     LuHeading2,
-    LuHeading3,
     LuItalic,
+    LuRemoveFormatting,
     LuStrikethrough,
     LuUnderline,
 } from 'react-icons/lu';
 import { BubbleMenuProps } from './types';
 
 const BubbleMenu: React.FC<BubbleMenuProps> = ({ editor }) => {
+    const { token } = theme.useToken();
+
     if (!editor) {
         return null;
     }
 
+    const bubbleButton = (
+        label: string,
+        icon: React.ReactNode,
+        onClick: () => void,
+        active = false,
+    ) => (
+        <Tooltip title={label}>
+            <Button
+                aria-label={label}
+                size="small"
+                type={active ? 'primary' : 'text'}
+                icon={icon}
+                onClick={onClick}
+            />
+        </Tooltip>
+    );
+
     return (
-        <TiptapBubbleMenu tippyOptions={{ duration: 100 }} editor={editor}>
-            <Card size="small" styles={{ body: { padding: '4px' } }}>
-                <Space>
-                    <Button
-                        size="small"
-                        type={editor.isActive('bold') ? 'primary' : 'text'}
-                        icon={<LuBold />}
-                        onClick={() => editor.chain().focus().toggleBold().run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('italic') ? 'primary' : 'text'}
-                        icon={<LuItalic />}
-                        onClick={() => editor.chain().focus().toggleItalic().run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('underline') ? 'primary' : 'text'}
-                        icon={<LuUnderline />}
-                        onClick={() => editor.chain().focus().toggleUnderline().run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('strike') ? 'primary' : 'text'}
-                        icon={<LuStrikethrough />}
-                        onClick={() => editor.chain().focus().toggleStrike().run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('code') ? 'primary' : 'text'}
-                        icon={<LuCode />}
-                        onClick={() => editor.chain().focus().toggleCode().run()}
-                    />
-
-                    <Divider type="vertical" />
-
-                    <Button
-                        size="small"
-                        type={editor.isActive('heading', { level: 1 }) ? 'primary' : 'text'}
-                        icon={<LuHeading1 />}
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('heading', { level: 2 }) ? 'primary' : 'text'}
-                        icon={<LuHeading2 />}
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                    />
-                    <Button
-                        size="small"
-                        type={editor.isActive('heading', { level: 3 }) ? 'primary' : 'text'}
-                        icon={<LuHeading3 />}
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                    />
-
-                    <Divider type="vertical" />
-
-                    <ColorPicker
-                        size="small"
-                        value={editor.getAttributes('textStyle').color || '#000000'}
-                        onChange={(color) => editor.chain().focus().setColor(color.toHexString()).run()}
-                    />
-                </Space>
-            </Card>
+        <TiptapBubbleMenu
+            tippyOptions={{ duration: 100, maxWidth: 'none' }}
+            editor={editor}
+            shouldShow={({ editor }) => editor.isEditable && !editor.state.selection.empty}
+        >
+            <div
+                className="tiptap-bubble-menu"
+                style={{
+                    background: token.colorBgElevated,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: token.borderRadiusLG,
+                    boxShadow: token.boxShadowSecondary,
+                    padding: 4,
+                }}
+            >
+                <Flex gap={2} align="center">
+                    {bubbleButton('Bold', <LuBold />, () => editor.chain().focus().toggleBold().run(), editor.isActive('bold'))}
+                    {bubbleButton('Italic', <LuItalic />, () => editor.chain().focus().toggleItalic().run(), editor.isActive('italic'))}
+                    {bubbleButton('Underline', <LuUnderline />, () => editor.chain().focus().toggleUnderline().run(), editor.isActive('underline'))}
+                    {bubbleButton('Strike', <LuStrikethrough />, () => editor.chain().focus().toggleStrike().run(), editor.isActive('strike'))}
+                    {bubbleButton('Inline code', <LuCode />, () => editor.chain().focus().toggleCode().run(), editor.isActive('code'))}
+                    {bubbleButton('Heading 1', <LuHeading1 />, () => editor.chain().focus().toggleHeading({ level: 1 }).run(), editor.isActive('heading', { level: 1 }))}
+                    {bubbleButton('Heading 2', <LuHeading2 />, () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive('heading', { level: 2 }))}
+                    {bubbleButton('Clear formatting', <LuRemoveFormatting />, () => editor.chain().focus().unsetAllMarks().clearNodes().run())}
+                    <Tooltip title="Text color">
+                        <ColorPicker
+                            size="small"
+                            value={editor.getAttributes('textStyle').color || undefined}
+                            onChange={(color) => editor.chain().focus().setColor(color.toHexString()).run()}
+                        />
+                    </Tooltip>
+                </Flex>
+            </div>
         </TiptapBubbleMenu>
     );
 };
 
 export default BubbleMenu;
-

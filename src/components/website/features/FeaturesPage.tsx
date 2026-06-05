@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
+import LogoMark from '../shared/LogoMark';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
@@ -135,7 +136,7 @@ export default function FeaturesPage() {
       ))}
 
       <SectionWrapper variant="subtle">
-        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
           <AnimateOnScroll>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)', marginBottom: 'var(--ws-space-3)' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--ws-brand-secondary)', backgroundColor: 'var(--ws-bg-accent)', padding: '3px 10px', borderRadius: '20px' }}>
@@ -149,18 +150,44 @@ export default function FeaturesPage() {
             />
           </AnimateOnScroll>
 
-          <div className="ws-feature-card-grid" style={{ marginTop: 'var(--ws-space-10)' }}>
+          <AnimateOnScroll delay={0.08} className="ws-analytics-cross-map">
+            <svg className="ws-analytics-cross-map__paths ws-analytics-cross-map__paths--desktop" viewBox="0 0 1000 560" aria-hidden="true" focusable="false">
+              <line className="ws-analytics-cross-map__axis" x1="80" y1="280" x2="920" y2="280" />
+              <line className="ws-analytics-cross-map__axis" x1="500" y1="54" x2="500" y2="506" />
+              <path className="ws-analytics-cross-map__path" d="M500 280 L80 280" pathLength={1} />
+              <path className="ws-analytics-cross-map__path" d="M500 280 L920 280" pathLength={1} />
+              <path className="ws-analytics-cross-map__path" d="M500 280 L500 54" pathLength={1} />
+              <path className="ws-analytics-cross-map__path" d="M500 280 L500 506" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-0" d="M500 280 L80 280" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-1" d="M500 280 L920 280" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-2" d="M500 280 L500 54" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-3" d="M500 280 L500 506" pathLength={1} />
+            </svg>
+            <svg className="ws-analytics-cross-map__paths ws-analytics-cross-map__paths--mobile" viewBox="0 0 360 860" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <path className="ws-analytics-cross-map__path" d="M180 48 L180 812" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-0" d="M180 430 L180 48" pathLength={1} />
+              <path className="ws-map-pulse ws-map-pulse-delay-1" d="M180 430 L180 812" pathLength={1} />
+            </svg>
+
             {analyticsCards.map((item, index) => (
-              <AnimateStaggerChild key={item.title} index={index}>
+              <AnimateStaggerChild key={item.title} index={index} className={`ws-analytics-cross-map__slot ws-analytics-cross-map__slot--${index}`}>
                 <WebsiteFeatureCard
                   icon={item.icon}
                   title={item.title}
                   description={item.desc}
+                  className="ws-analytics-cross-map__card"
                   compact
                 />
               </AnimateStaggerChild>
             ))}
-          </div>
+
+            <div className="ws-analytics-cross-map__core" aria-label="MenuList">
+              <span className="ws-analytics-cross-map__ring ws-analytics-cross-map__ring--outer" />
+              <div className="ws-analytics-cross-map__logo">
+                <LogoMark height={42} />
+              </div>
+            </div>
+          </AnimateOnScroll>
 
           <AnimateOnScroll delay={0.1}>
             <p

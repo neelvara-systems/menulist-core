@@ -1,5 +1,4 @@
-import ClarityAnalytics from '@/components/website/ClarityAnalytics';
-import GoogleAnalytics from '@/components/website/GoogleAnalytics';
+import WebsiteAnalyticsConsent from '@/components/website/WebsiteAnalyticsConsent';
 import { ThemeProvider } from "@/components/website/shadcn/theme-provider";
 import LocalisationProvider from '@providers/localisationProvider';
 import "@styles/app.scss";
@@ -77,8 +76,7 @@ export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
             <WebsiteAuthProvider>
                 <ThemeProvider>
                     <WebsiteThemeShortcut />
-                    <GoogleAnalytics />
-                    <ClarityAnalytics />
+                    <WebsiteAnalyticsConsent />
                     <>{children}</>
                 </ThemeProvider>
             </WebsiteAuthProvider>

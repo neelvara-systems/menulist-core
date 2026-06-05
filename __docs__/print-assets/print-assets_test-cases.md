@@ -31,6 +31,8 @@
 | Reprint guidance | Explains that content/price updates do not require reprint and lists the cases that do. |
 | Mobile More | Print Assets opens inside More sub-screen. |
 | Mobile Share | Print Assets shortcut opens mobile sub-screen without reload. |
+| Mobile Print Assets to Print Menu | Print Menu opens by shell callback without route reload. |
+| Mobile Menu to Print Menu | Menu command opens Print Menu by shell callback after pending saves, without route reload. |
 | Individual asset performance | Table/card/sticker/poster downloads use `generateMenuKitAsset()` and do not build the ZIP. |
 | Quantity planning | No table-count or print-quantity estimator is shown. |
 
@@ -43,3 +45,4 @@
 - Do not fork readiness, print-shop handoff, or reprint guidance between desktop and mobile.
 - Do not add quantity estimation without reopening product scope.
 - Do not use `window.location` or plain `href` for internal dashboard jumps between Use MenuList, Print Assets, and Print Menu.
+- Do not use `router.push`, `window.location`, or route builders from mobile Share/Menu/More/Print Assets for Print Assets or Print Menu transitions; use `MobileShell` callbacks and sub-screen state.

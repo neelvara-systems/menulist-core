@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 2, 2026
+**Last Updated:** June 5, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -22,6 +22,8 @@
 > Marketing feedback note (June 2, 2026): The priority English resource and restaurant industry pages now use `Official Menu Source` as the category concept and `current approved menu` as the owner-readable explanation. The accepted WhatsApp, price-change, cleanup, and comparison-page candidates remain documented for later content work; they are not part of the live route set until marketing has reviewed content depth and CTA fit.
 
 > Public truth indexing note (June 2, 2026): The business-page strategy is handled in the customer-facing tenant/OBP/menu discovery layer, not by creating more website articles. Existing public tenant pages now use a central indexability gate for metadata and sitemap inclusion. Marketing should not request keyword-variant restaurant pages, AI-written business pages, or city/category directory pages until owner-approval, source-confidence, and claim/update rules are documented.
+
+> Privacy and analytics note (June 5, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Upload your menu` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
 ---
 
@@ -51,7 +53,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
-**Print files placement policy (June 2, 2026):** do not add a separate Menu Card Export homepage section. The homepage may show `Print files` as one output of the approved menu source, while the Features page and `/resources/digital-menu-vs-pdf-menu` carry the fuller PDF/printer handoff explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
+**Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -131,6 +133,7 @@ Industry pages explain how the same official-source layer applies to common food
 
 - Direction A: Current-menu owner action first, official-source proof second.
 - Hero must communicate upload → review → publish one trusted customer version in under 5 seconds.
+- The visual line break in the hero headline must preserve readable whitespace in DOM/accessibility text. The rendered H1 should read `Upload your current menu. Publish one official version customers can trust.`
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 - Existing menu link copy is allowed as a source-intake proof only. Do not call it scraping, marketplace import, automatic cloning, or automatic publishing.
 - Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
@@ -763,6 +766,23 @@ Key FAQ topics:
 - This hero should sell reduced owner work, not an abstract feature catalogue.
 - Keep the phone-first and owner-approval helper lines directly below the hero subline.
 
+### Print Files And Launch Kit Cards
+
+**Placement decision:**
+
+Keep print capability inside existing Features page groups. Do not create a dedicated public feature page or homepage section unless owner demand later proves that printable assets are a primary purchase driver.
+
+**Owner-readable copy contract:**
+
+- `Print files` means paper menu PDF, table card, counter card, or printer handoff packet from the current approved menu.
+- `Instant launch kit` can list table tent, single table card, counter card, entrance poster, delivery bag sticker, takeaway card, WhatsApp link, and Instagram story.
+- `Menu Kit: print-ready cards` can explain branded table/counter/entrance/takeaway files with QR code and business color, ready for a local printer.
+
+**Notes:**
+
+- Keep this copy practical. Avoid internal names like `Print Assets`, `Menu Card Export`, `single-asset generation`, or `renderer`.
+- Do not imply printed paper updates automatically. The printed QR points customers to the current menu; the paper file itself is a generated output.
+
 ### Operations Group
 
 **Mobile owner operations card:**
@@ -1164,6 +1184,9 @@ Description:
 ### Privacy Policy, Terms of Service, Refund Policy
 
 - **Privacy Policy staff-access content:** Disclose staff account details, role/store assignment, account status, reset/session metadata, authorized team access, and that MenuList does not store plain-text staff passcodes.
+- **Privacy Policy analytics content:** Disclose that main website Google Analytics and Microsoft Clarity load only after analytics consent. Keep customer menu analytics separate: they do not ask visitors for names, emails, or payment details, but they are not controlled by the main website banner.
+- **Privacy Policy retention content:** Use purpose-based retention language unless an exact lifecycle is enforced in code or provider configuration. Do not publish fixed 90-day, 35-day, DPA, SCC, or sub-processor commitments until the matching operational artifacts exist.
+- **Privacy/security claim discipline:** Avoid exact encryption algorithms, fixed backup windows, broad model-training guarantees, DPA/SCC/sub-processor readiness, universal export/delete controls, and "all third parties" confidentiality language unless the matching code, provider configuration, or legal artifact is present.
 - **Terms staff-access content:** Make owners responsible for staff access they create, safe sharing of Staff ID/passcode details, correct role assignment, and ending access when staff leave.
 - **Trust/security staff-access content:** Use factual role-scoped access language. Do not claim legal certification, GDPR certification, HR/payroll/attendance coverage, or full workforce management.
 - **Refund Policy:** No staff-specific change required.
@@ -1231,8 +1254,9 @@ Secondary CTA:
 **Footer preferences:**
 
 - Social links live under the company email in the left brand column.
-- The bottom row keeps the copyright on the left, the public-source line centered, and compact Language / Theme dropdowns on the right.
-- Theme control uses one dropdown with three choices: Light, System, Dark.
+- The bottom row keeps the copyright on the left, the public-source line centered, and compact Analytics / Language / Theme controls on the right.
+- Analytics control reopens the website analytics consent panel. It must not imply owner dashboard settings, custom-domain compliance-page settings, or customer menu analytics control.
+- Theme control uses a segmented icon control with three choices: Light, System, Dark. Language remains the dropdown.
 
 **Column 1: Product**
 
@@ -1299,7 +1323,7 @@ The removed global helper components were useful during early conversion hardeni
 | About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |
 | Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for the customer-facing version of your business. |
 | Contact        | Contact MenuList                                       | Have a question about MenuList? Reach out to our team.                                                                                     |
-| Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle and protect your data.                                                                              |
+| Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle data, consent-gated website analytics, and retention.                                               |
 | Terms          | Terms of Service — MenuList                            | MenuList terms of service for all users and businesses.                                                                                    |
 | Refund         | Refund Policy — MenuList                               | MenuList refund and cancellation policy for subscriptions.                                                                                 |
 

@@ -6,6 +6,58 @@
 
 ---
 
+## June 5, 2026 — Website Footer Theme Control
+
+### Fixed
+
+- **Footer theme selection no longer uses a dropdown** - The Light/System/Dark control is now a compact segmented icon switcher with a clear selected state.
+- **Light mode selected state has proper contrast** - The selected Light control uses a pale blue pill with dark icon color so it stays visible on the dark footer surface.
+
+### Cost
+
+- **No Firebase cost change** - This is public website UI/CSS/docs polish only. Routing, auth, billing, Firestore, Storage, Cloud Functions, rules, and indexes are unchanged.
+
+---
+
+## June 5, 2026 — Website Mobile Consent UX Polish
+
+### Fixed
+
+- **Mobile consent panel no longer covers the hero actions** - First-time phone visitors can still tap `Upload your menu` and `See customer preview` while the analytics choice is visible.
+- **Hero headline has readable DOM spacing** - The visual line break now preserves the space between `menu.` and `Publish` for assistive technology and text extraction.
+
+### Cost
+
+- **No Firebase cost change** - This is CSS/accessibility polish on the public website. Routing, auth, billing, print generation, Firestore, Storage, Cloud Functions, rules, and indexes are unchanged.
+
+---
+
+## June 5, 2026 — Website Print Assets Copy Alignment
+
+### Changed
+
+- **Website print wording is clearer for owners** - The homepage keeps Print Assets as the light `Print files` output, while the Features page now explains table cards, counter cards, paper menu PDFs, and printer handoff files from the current approved menu.
+- **Print Assets stay out of a separate public page** - The website keeps this as a practical owner benefit, not a new marketing route or heavy homepage section.
+- **Feature docs match the live placement** - The Print Assets website doc now records the lightweight public placement and keeps the full workspace inside dashboard/mobile.
+
+### Cost
+
+- **No Firebase cost change** - This is public website copy and documentation alignment. Print generation, owner dashboard routes, mobile PWA routes, auth, billing, Firestore, Storage, Cloud Functions, rules, and indexes are unchanged.
+
+---
+
+## June 5, 2026 — Website Analytics Consent
+
+### Changed
+
+- **Website analytics now waits for consent** - Google Analytics and Microsoft Clarity on the main MenuList website load only after a visitor accepts analytics.
+- **Analytics choice can be changed from the footer** - The footer preference controls now include an Analytics button beside Language and Theme.
+- **Privacy and Trust/Security claims match runtime behavior** - Public copy now distinguishes main website analytics from customer menu analytics and avoids unsupported DPA/SCC/sub-processor readiness, fixed backup windows, exact encryption algorithms, broad model-training guarantees, and universal export/delete control claims.
+
+### Cost
+
+- **No Firebase cost change** - This is a public website consent/copy update. Owner analytics, customer menu analytics, Firebase rules, Cloud Functions, billing, and `/create-menu` runtime are unchanged.
+
 ## June 4, 2026 — Website Auth Friction Cleanup
 
 ### Changed

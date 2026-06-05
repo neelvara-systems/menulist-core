@@ -3,15 +3,14 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterChangelogRouting, helpCenterTabRouting } from '@constant/navigations';
 import FeedbackSection from '@molecules/FeedbackSection';
-import { getTiptapExtensions } from '@config/tiptap';
 import { addContentFeedback } from '@database/contentFeedback';
 import { updateChangelogFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useContentViewTracking } from '@hook/useContentViewTracking';
 import { useFeedback } from '@hook/useFeedback';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
+import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { generateHTML } from '@tiptap/core';
 import { ChangelogEntry } from '@type/changelog';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { getYouTubeID } from '@util/utils';
@@ -87,9 +86,6 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
         }
     );
 
-    // Memoize displayExtensions to prevent infinite re-renders
-    const displayExtensions = useMemo(() => getTiptapExtensions({ isEditable: false }), []);
-
     // Memoize title style to prevent re-renders
     const titleStyle = useMemo(() => ({ margin: 0 }), []);
 
@@ -97,13 +93,14 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
         const improvements: any[] = [];
         const bugfixes: any[] = [];
         let hasSections = false;
+        let fullHtml = '';
 
         if (item.description && Array.isArray(item.description.content)) {
             let currentSection: 'improvements' | 'bugfixes' | null = null;
 
             item.description.content.forEach(node => {
                 if (node.type === 'heading' && node.content) {
-                    const text = node.content[0].text.toLowerCase();
+                    const text = String(node.content?.[0]?.text || '').toLowerCase();
                     if (text.includes('improvements') || text.includes('changes')) {
                         currentSection = 'improvements';
                         hasSections = true;
@@ -115,8 +112,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                     const listItems = node.content?.map(listItemNode => {
                         const paragraphNode = listItemNode.content?.[0];
                         if (paragraphNode?.content) {
-                            // Generate HTML only for the paragraph content
-                            return generateHTML({ type: 'doc', content: [{ type: 'paragraph', content: paragraphNode.content }] }, displayExtensions);
+                            return renderPublicTiptapHtml({ type: 'doc', content: paragraphNode.content });
                         }
                         return '';
                     }).filter(Boolean);
@@ -134,12 +130,11 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
 
         // Fallback for descriptions that don't follow the section structure
         if (!hasSections && item.description) {
-            const html = generateHTML(item.description, displayExtensions);
-            improvements.push(html);
+            fullHtml = renderPublicTiptapHtml(item.description);
         }
 
-        return { improvements, bugfixes };
-    }, [item.description, displayExtensions]);
+        return { improvements, bugfixes, fullHtml };
+    }, [item.description]);
 
     return (
         <Card
@@ -150,6 +145,69 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
             }}
             styles={{ body: { padding: 16 } }}
         >
+            <style jsx global>{`
+                .changelog-rich-text {
+                    color: ${token.colorText};
+                }
+                .changelog-rich-text p,
+                .changelog-rich-text li {
+                    line-height: 1.7;
+                }
+                .changelog-rich-text blockquote {
+                    background: ${token.colorFillAlter};
+                    border-left: 3px solid ${token.colorPrimary};
+                    color: ${token.colorTextSecondary};
+                    margin: 16px 0;
+                    padding: 8px 12px;
+                }
+                .changelog-rich-text code {
+                    background: ${token.colorFillSecondary};
+                    border-radius: 4px;
+                    padding: 2px 5px;
+                }
+                .changelog-rich-text pre {
+                    background: #111827;
+                    border-radius: 8px;
+                    color: #f9fafb;
+                    overflow-x: auto;
+                    padding: 12px;
+                }
+                .changelog-rich-text pre code {
+                    background: transparent;
+                    color: inherit;
+                    padding: 0;
+                }
+                .changelog-rich-text img {
+                    border-radius: 8px;
+                    display: block;
+                    height: auto;
+                    margin: 16px auto;
+                    max-width: 100%;
+                }
+                .changelog-rich-text table {
+                    border-collapse: collapse;
+                    display: block;
+                    overflow-x: auto;
+                    width: 100%;
+                }
+                .changelog-rich-text td,
+                .changelog-rich-text th {
+                    border: 1px solid ${token.colorBorderSecondary};
+                    padding: 8px 10px;
+                }
+                .changelog-rich-text ul[data-type="taskList"] {
+                    list-style: none;
+                    padding-left: 0;
+                }
+                .changelog-rich-text li[data-checked] {
+                    align-items: flex-start;
+                    display: flex;
+                    gap: 8px;
+                }
+                .changelog-rich-text li[data-checked] input {
+                    margin-top: 6px;
+                }
+            `}</style>
             <div style={{ maxHeight: mode === 'modal' ? '70vh' : 'max-content', overflowY: 'auto', paddingRight: 16 }}>
                 <Flex vertical gap="large">
                     <Flex gap="small" align={isMobile ? 'flex-start' : 'center'} justify="space-between" vertical={isMobile}>
@@ -166,12 +224,23 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                         {item.tags.map(tag => <ChangelogTagRenderer key={tag} tag={tag} />)}
                     </Flex>
 
+                    {parsedDescription.fullHtml ? (
+                        <div>
+                            <Title level={5}>Details</Title>
+                            <div
+                                className="changelog-rich-text"
+                                style={{ color: token.colorText }}
+                                dangerouslySetInnerHTML={{ __html: parsedDescription.fullHtml }}
+                            />
+                        </div>
+                    ) : null}
+
                     {parsedDescription.improvements.length > 0 && (
                         <div>
                             <Title level={5}>Improvements & Changes</Title>
                             <ul style={{ paddingLeft: 20, margin: 0, color: token.colorText }}>
                                 {parsedDescription.improvements.map((html, i) => (
-                                    <li key={`imp-${i}`} dangerouslySetInnerHTML={{ __html: html.replace(/<p>|<\/p>/g, '') }} />
+                                    <li key={`imp-${i}`} dangerouslySetInnerHTML={{ __html: html }} />
                                 ))}
                             </ul>
                         </div>
@@ -182,7 +251,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                             <Title level={5}>Bugfixes</Title>
                             <ul style={{ paddingLeft: 20, margin: 0, color: token.colorText }}>
                                 {parsedDescription.bugfixes.map((html, i) => (
-                                    <li key={`fix-${i}`} dangerouslySetInnerHTML={{ __html: html.replace(/<p>|<\/p>/g, '') }} />
+                                    <li key={`fix-${i}`} dangerouslySetInnerHTML={{ __html: html }} />
                                 ))}
                             </ul>
                         </div>

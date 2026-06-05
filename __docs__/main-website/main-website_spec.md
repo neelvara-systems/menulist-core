@@ -77,7 +77,7 @@ ChatGPT had zero awareness of these built features:
 11. **AI image generation** — Menu item images without photographer
 12. **AI descriptions** — Professional descriptions without copywriter
 13. **AI translations** — One-click multi-language
-14. **Print files** — PDF and printer handoff files generated from the current approved menu
+14. **Print files** — Paper menu PDFs, table cards, counter cards, and printer handoff files generated from the current approved menu
 15. **Menu Trust Signals** — Location, hours, freshness date on customer-facing pages
 16. **Menu Quality Signals** — Missing descriptions/images/prices flagged with one-tap fix
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces

@@ -5,11 +5,17 @@ export function extractPlainTextFromEditorContent(editorContent: any): string {
     const traverse = (node: any): string => {
         if (!node) return "";
         if (node.type === "text") return node.text || "";
-        if (node.content) return node.content.map(traverse).join(" ");
+        if (node.type === "hardBreak") return " ";
+        if (node.type === "image") {
+            return [node.attrs?.alt, node.attrs?.title].filter(Boolean).join(" ");
+        }
+        if (Array.isArray(node.content)) {
+            return node.content.map(traverse).filter(Boolean).join(" ");
+        }
         return "";
     };
 
-    return traverse(editorContent).trim();
+    return traverse(editorContent).replace(/\s+/g, " ").trim();
 }
 
 export function extractEditortextForComparison(editorContent: any): string {

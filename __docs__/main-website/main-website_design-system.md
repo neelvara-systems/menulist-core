@@ -235,7 +235,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - Language and theme controls live in the footer, not the header, so the header stays focused on navigation, demo evaluation, upload, and account actions.
 - Social links live under the company email in the footer brand column.
 - The footer bottom row keeps copyright on the left, the public-source line centered, and compact Language / Theme controls on the right.
-- Theme controls use a dropdown with three options: Light, System, Dark.
+- Language uses a dropdown. Theme uses a compact three-option segmented icon control: Light, System, Dark.
 - Footer controls must use footer-safe dark surfaces, visible borders, 40px-class tap targets where space allows, and localized labels.
 - Do not add another theme switcher in the hero, header, or sticky CTA unless the website strategy changes.
 

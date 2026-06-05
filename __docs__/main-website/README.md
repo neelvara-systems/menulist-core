@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.25 (Website Auth Friction Cleanup)
+**Version:** 3.6.29 (Footer Theme Segmented Control)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 2, 2026
+**Last Updated:** June 5, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.25** | **Website Auth Friction Cleanup** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.29** | **Footer Theme Segmented Control** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+
+Version 3.6.29 replaces the footer Light/System/Dark theme dropdown with a compact segmented icon control. This fixes the light-mode selected-state contrast issue in the dark footer, keeps Language as the only footer dropdown, preserves the existing website `ThemeProvider` localStorage contract, and changes only public website UI/CSS/docs.
+
+Version 3.6.28 tightens first-load website usability on phones. The analytics consent panel now uses a compact mobile layout so it does not cover the hero `Upload your menu` or `See customer preview` actions, and the hero H1 keeps proper readable spacing across the visual line break for assistive technology and DOM text extraction. This is UI/CSS/accessibility polish only; website structure, routing, pricing, payment, auth, onboarding, Firebase, Cloud Functions, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.27 keeps Print Assets off the homepage as a standalone feature and tightens the existing lightweight website copy around the real owner outcome: branded table cards, counter cards, paper menu PDFs, and printer handoff files can come from the same current approved menu. The homepage source map still uses the compact `Print files` output, while the Features page carries the clearer table/counter/paper wording for owners who want more detail. This is copy/content alignment only; owner dashboard routes, mobile PWA routes, print generation, pricing, payment, subscription, auth, onboarding, Firebase, Cloud Functions, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.26 gates the main MenuList marketing website's Google Analytics and Microsoft Clarity scripts behind an explicit analytics choice. First-time visitors see an analytics privacy banner, accepted choices load the analytics scripts with ads storage denied, declined choices keep analytics scripts blocked and clear known first-party analytics cookies, and the footer now includes an Analytics preference control beside Language and Theme. The Privacy Policy now includes a short data-use summary, consent-gated main-website analytics disclosure, service-provider wording grounded in live runtime, and purpose-based retention language. It intentionally avoids unsupported DPA/SCC/sub-processor readiness, fixed backup windows, exact encryption algorithms, broad model-training guarantees, and universal export/delete control claims. Owner dashboard analytics, customer menu analytics, custom-domain compliance pages, Firebase rules, Cloud Functions, pricing, payment, subscription, and `/create-menu` runtime were not changed.
 
 Version 3.6.25 reduces public website auth friction without changing pricing, payment, or extraction runtime. Header, mobile drawer, `/get-started`, pricing purchase handoffs, and credit-pack handoffs now route owners to the central `/signin` page so phone OTP, Google, and passcode options remain available from one place. `/get-started` now acts as a calm directional page toward `/create-menu` or dashboard login, and footer/create-menu preview copy avoids defensive setup-protection language.
 
@@ -127,9 +135,10 @@ These archived documents are not source-code backups and are not restoration tar
 
 | File                                                        | Purpose                                        |
 | ----------------------------------------------------------- | ---------------------------------------------- |
-| `src/app/(website)/layout.tsx`                              | Shared layout (locale, auth, theme, analytics) |
+| `src/app/(website)/layout.tsx`                              | Shared layout (locale, auth, theme, analytics consent) |
 | `src/app/(website)/page.tsx`                                | Homepage route                                 |
 | `src/app/(website)/WebsiteAuthProvider.tsx`                 | Auth context for pricing/onboarding flows      |
+| `src/components/website/WebsiteAnalyticsConsent.tsx`        | Main website analytics consent gate, banner, and vendor script control |
 | `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
@@ -526,7 +535,17 @@ Stage 7.13 aligns public policy/security pages with the staff access feature:
 
 Protected scope:
 
-- Staff/auth runtime, legal entity details, cookie consent, DPA/SLA pages, pricing, payment, Razorpay, subscription, billing, checkout, and `/create-menu` runtime logic were not changed.
+- Staff/auth runtime, legal entity details, custom-domain compliance-page consent, DPA/SLA pages, pricing, payment, Razorpay, subscription, billing, checkout, and `/create-menu` runtime logic were not changed.
+
+## Stage 7.15 Website Analytics Consent
+
+Stage 7.15 aligns the main marketing website with the Privacy Policy's consent-gated website analytics promise:
+
+- `src/app/(website)/layout.tsx` now renders `WebsiteAnalyticsConsent` instead of loading Google Analytics and Microsoft Clarity directly.
+- `WebsiteAnalyticsConsent` stores only an `accepted` or `declined` analytics choice in `localStorage`, blocks analytics scripts until acceptance, sends analytics-only consent to Google/Clarity when accepted, and clears known first-party analytics cookies when declined.
+- The footer preference controls now include an Analytics button so visitors can reopen the privacy choice later.
+- Privacy and Trust/Security copy now distinguishes the main marketing website analytics gate from customer menu analytics and removes unsupported hard claims such as fixed backup windows, exact encryption algorithms, broad model-training promises, and universal export/delete controls.
+- This is scoped to the main MenuList website. It does not add banners to owner custom-domain compliance pages, OBP/customer menu pages, or the owner dashboard.
 
 ## Stage 7.14 Whole Website Polish
 
@@ -644,6 +663,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.29 | June 5, 2026 | Replaced the footer Light/System/Dark theme dropdown with a segmented icon control and fixed the selected light-mode contrast issue. |
 | 3.6.24 | June 2, 2026 | Added the public truth indexing guardrail for tenant OBP/menu metadata and per-tenant sitemap inclusion, and removed generated hidden FAQPage JSON-LD from OBP runtime. |
 | 3.6.23 | June 2, 2026 | Applied the marketing feedback quality pass to the official-source, audit, Google menu, QR menu, multi-location, and restaurant industry pages while deferring comparison/extra industry pages to avoid thin expansion. |
 | 3.6.22 | June 2, 2026 | Added three resource articles, four industry pages, expanded reviewed locale resource coverage, sitemap/LLM discovery entries, and checklist-copy measurement while leaving downloadable templates absent until real files exist. |

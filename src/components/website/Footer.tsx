@@ -6,6 +6,7 @@ import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlob
 import { FEATURE_FLAGS } from '@config/features';
 import BrandWordmark from './shared/BrandWordmark';
 import WebsiteButton from './shared/WebsiteButton';
+import WebsiteAnalyticsPreferencesButton from './shared/WebsiteAnalyticsPreferencesButton';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
 import WebsiteThemeSwitcher from './shared/WebsiteThemeSwitcher';
 
@@ -168,6 +169,7 @@ export default function Footer() {
           <p>{t('Footer.copyright', { year: currentYear })}</p>
           <span className="ws-footer-bottom__tagline"><LuMapPin size={14} /> {t('Footer.bottomTagline')}</span>
           <div className="ws-footer-bottom__controls" role="group" aria-label={t('Footer.preferencesLabel')}>
+            <WebsiteAnalyticsPreferencesButton />
             <WebsiteLanguageSwitcher surface="footer" />
             <WebsiteThemeSwitcher />
           </div>

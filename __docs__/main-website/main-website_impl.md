@@ -109,7 +109,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Footer revenue pass:** Stage 7.2 reviewed Paper, Kestra, Stripe, Lenis, Upscayl, Linear, Vercel, and Notion reference patterns, then upgraded `Footer.tsx` into a conversion/resource layer. It deliberately borrows structure, not unsupported claims or trend-heavy visuals.
 
-**Footer preferences controls:** v3.5.3 moved preference controls out of the header and into the footer. Social links now sit under the company email, the public-source line is centered in the footer bottom row, and compact Language / Theme dropdowns sit on the bottom-right. This keeps the top navigation focused on product evaluation and upload/login actions while still making preferences discoverable.
+**Footer preferences controls:** v3.5.3 moved preference controls out of the header and into the footer. Social links now sit under the company email, the public-source line is centered in the footer bottom row, and compact preference controls sit on the bottom-right. Language remains a dropdown because it has many options; v3.6.29 makes theme selection a Light/System/Dark segmented icon control backed by the existing `ThemeProvider`. This keeps the top navigation focused on product evaluation and upload/login actions while still making preferences discoverable.
 
 **Card rhythm polish:** v3.5.4 adds `WebsiteFeatureCard.tsx` as the shared public website proof/feature card pattern. It uses spacious card padding, calm border/background treatment, and a consistent top-right icon so homepage and supporting-page card grids do not feel compressed or visually inconsistent. v3.6.12 keeps the same pattern but removes the old vertical `space-between` distribution and fixed-feeling card minimum so subtitle and description copy stay visually connected while each grid row sizes from its tallest card content.
 
@@ -225,7 +225,7 @@ src/pages/
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
 | `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages), mounted in the footer |
-| `WebsiteThemeSwitcher.tsx` | Compact footer theme dropdown backed by the website `ThemeProvider` |
+| `WebsiteThemeSwitcher.tsx` | Compact footer Light/System/Dark segmented control backed by the website `ThemeProvider` |
 
 ---
 
@@ -244,7 +244,7 @@ src/pages/
 - **Long-form resources:** Resource articles use `src/content/websiteResources/`. `en-US` is the source, and `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` are reviewed full packs for the current 15-article registry that pass `npm run verify:website-resource-locales`.
 - **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
   (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
-- **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer dropdown and persists through the existing `ThemeProvider` localStorage contract.
+- **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer segmented control and persists through the existing `ThemeProvider` localStorage contract.
 - Additional locale files (`en-GB`, `gu-IN`, `zh-CN`) exist in `public/locales/menulist.ai/` for broader app usage and fallback-only coverage.
 
 ---
@@ -296,6 +296,6 @@ src/pages/
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
 | Analytics | GA + Clarity in layout | Covers all pages automatically |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
-| Theming | System-aware shadcn ThemeProvider plus footer theme dropdown and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
+| Theming | System-aware shadcn ThemeProvider plus footer theme segmented control and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |
 | Pages Router defaults | Minimal `_app`, `_document`, `_error` | Keeps production builds stable while website routes remain App Router |

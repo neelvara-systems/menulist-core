@@ -104,7 +104,6 @@ export default function InteractiveWorkflowSection() {
 
           <div className="ws-workflow-map__core" aria-label="MenuList">
             <span className="ws-workflow-map__ring ws-workflow-map__ring--outer" />
-            <span className="ws-workflow-map__ring ws-workflow-map__ring--inner" />
             <div className="ws-workflow-map__logo">
               <LogoMark height={42} />
             </div>

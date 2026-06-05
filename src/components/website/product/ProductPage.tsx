@@ -147,7 +147,6 @@ export default function ProductPage() {
 
               <div className="ws-page-source-map__core" aria-label="MenuList">
                 <span className="ws-page-source-map__ring ws-page-source-map__ring--outer" />
-                <span className="ws-page-source-map__ring ws-page-source-map__ring--inner" />
                 <div className="ws-page-source-map__logo">
                   <LogoMark height={42} />
                 </div>

@@ -208,8 +208,27 @@
   }
 
   .primaryButton {
-    background: #128c7e;
+    border: 1px solid var(--ws-border-default, rgba(15, 23, 42, 0.14));
+    color: var(--ws-text-primary, #111827);
+    background: var(--ws-bg-primary, #fff);
     font-size: 15px;
+    font-weight: 700;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .brandWhatsAppIcon {
+    color: #25d366;
+  }
+
+  .primaryButton:disabled {
+    color: var(--ws-text-muted, #94a3b8);
+    opacity: 1;
+  }
+
+  .primaryButton:not(:disabled):hover {
+    border-color: var(--ws-brand-secondary, #0051d1);
+    box-shadow: var(--ws-shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.08));
   }
 }
 

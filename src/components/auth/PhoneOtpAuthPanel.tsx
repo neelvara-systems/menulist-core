@@ -275,7 +275,11 @@ export default function PhoneOtpAuthPanel({
                 onClick={buttonType === 'button' ? () => requestCode() : undefined}
                 type={buttonType}
             >
-                {loading ? <LuLoader className={styles.spin} size={17} /> : <PrimaryIcon size={17} />}
+                {loading ? (
+                    <LuLoader className={styles.spin} size={17} />
+                ) : (
+                    <PrimaryIcon className={primaryIcon === 'whatsapp' ? styles.brandWhatsAppIcon : undefined} size={17} />
+                )}
                 {buttonLabel}
             </button>
             {fallbackLabel && onFallback ? (
