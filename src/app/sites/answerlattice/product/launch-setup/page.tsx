@@ -33,20 +33,6 @@ export default function LaunchSetupProductPage() {
                 description="Create a workspace, add your app, invite team members, import starter knowledge, map the pages where users need help, and verify the widget before support goes live."
                 activeTab="Set up support"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
-                canvasTitle="Your support launch checklist"
-                canvasSubtitle="The first workspace session is organized around what must be ready before users rely on support, not a blank dashboard."
-                canvasBadge="Setup in progress"
-                canvasItems={[
-                    { title: 'Product profile', description: 'Company name, product name, support email, product URL, and workspace identity are captured once.' },
-                    { title: 'Team access', description: 'Add workspace members, assign AnswerLattice roles, and keep support controls scoped to the workspace.' },
-                    { title: 'Starter knowledge', description: 'Docs, FAQs, release notes, and common answers become the seed for reviewed support content.' },
-                    { title: 'Product surfaces', description: 'Billing, onboarding, settings, releases, and other support-heavy pages are mapped early.' },
-                ]}
-                metrics={[
-                    { label: 'Workspace', value: 'Created' },
-                    { label: 'Widget key', value: 'Ready once' },
-                    { label: 'Activation', value: 'Checklist active' },
-                ]}
                 bentoTitle="You always know what is ready and what is missing."
                 bentoDescription="A buyer should know exactly what remains before launch: content, context, widget install, and first approved answers."
                 bentoCards={[

@@ -93,7 +93,6 @@ export default function SupportKnowledgeMapSection({
                     <div className="al-support-map__center" aria-label="AnswerLattice support layer">
                         <div className="al-support-map__core">
                             <span className="al-support-map__ring al-support-map__ring--outer" />
-                            <span className="al-support-map__ring al-support-map__ring--inner" />
                             <div className="al-support-map__mark">
                                 <AnswerlatticeLogoMark height={42} idPrefix={`al-support-map-${context}`} />
                             </div>

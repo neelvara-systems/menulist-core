@@ -22,7 +22,7 @@ const PRE_ONBOARDING_STEPS = [
 
 export default function PreOnboardingHomeSection({ basePath = '' }: { basePath?: string }) {
     return (
-        <section className="border-y border-white/[0.06] bg-[radial-gradient(circle_at_18%_0%,rgba(20,184,166,0.13),transparent_34%),rgba(255,255,255,0.012)] px-4 py-20 sm:px-6">
+        <section className="al-primary-radial-left border-y border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="Source preparation"
@@ -67,7 +67,7 @@ export default function PreOnboardingHomeSection({ basePath = '' }: { basePath?:
                             const Icon = step.icon;
                             return (
                                 <article key={step.title} className="rounded-[1.5rem] border border-white/[0.08] bg-[#101028]/75 p-5">
-                                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05] text-[#1eceff]">
+                                    <span className="al-primary-accent-text flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
                                         <Icon aria-hidden size={20} />
                                     </span>
                                     <h3 className="mt-5 text-lg font-semibold leading-snug text-white">{step.title}</h3>

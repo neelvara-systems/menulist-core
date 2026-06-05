@@ -4,7 +4,7 @@ import SectionHeader from './SectionHeader';
 
 export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?: string }) {
     return (
-        <section className="border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.13),transparent_42%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
+        <section className="al-primary-radial-demo border-y border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="The aha moment"

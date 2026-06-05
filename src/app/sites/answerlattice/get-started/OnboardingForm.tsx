@@ -5,7 +5,6 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { ANSWERLATTICE_THEME } from '../theme';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 type BillingModel = 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
@@ -30,7 +29,21 @@ const SURFACE_OPTIONS = [
     { key: 'release_notes', label: 'Release notes' },
 ];
 
-const { colors } = ANSWERLATTICE_THEME;
+const colors = {
+    primary: 'var(--al-primary)',
+    primaryLight: 'var(--al-primary-light)',
+    border: 'var(--al-border)',
+    borderStrong: 'var(--al-border-strong)',
+    surface: 'var(--al-surface)',
+    surfaceRaised: 'var(--al-surface-raised)',
+    textPrimary: 'var(--al-text)',
+    textBody: 'var(--al-text-body)',
+    textSecondary: 'var(--al-text-secondary)',
+    textMuted: 'var(--al-text-muted)',
+    fieldBackground: 'var(--al-field-bg)',
+    success: 'var(--al-success)',
+    danger: 'var(--al-danger)',
+} as const;
 
 export default function OnboardingForm() {
     return (
@@ -405,7 +418,7 @@ const styles: Record<string, CSSProperties> = {
     cardSubtext: { fontSize: 14, color: colors.textSecondary, margin: '0 0 24px 0', textAlign: 'center', lineHeight: 1.5, maxWidth: '100%', overflowWrap: 'break-word' },
     googleBtn: {
         display: 'flex', alignItems: 'center', gap: 10, padding: '12px 24px',
-        borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)',
+        borderRadius: 8, border: `1px solid ${colors.borderStrong}`, background: colors.surface,
         color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%', justifyContent: 'center',
     },
     terms: { fontSize: 11, color: colors.textMuted, marginTop: 16, textAlign: 'center' },
@@ -419,7 +432,7 @@ const styles: Record<string, CSSProperties> = {
         padding: '12px 14px',
         borderRadius: 10,
         border: `1px solid ${colors.border}`,
-        background: 'rgba(255,255,255,0.035)',
+        background: colors.surface,
         marginBottom: 18,
         boxSizing: 'border-box',
     },
@@ -432,7 +445,7 @@ const styles: Record<string, CSSProperties> = {
         padding: '8px 10px',
         borderRadius: 8,
         border: `1px solid ${colors.primaryLight}`,
-        background: 'rgba(20,184,166,0.1)',
+        background: 'rgb(var(--al-primary-rgb) / 0.1)',
         color: colors.primaryLight,
         fontSize: 12,
         fontWeight: 600,
@@ -442,7 +455,7 @@ const styles: Record<string, CSSProperties> = {
     label: { display: 'block', fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 6 },
     input: {
         width: '100%', padding: '10px 14px', borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
+        border: `1px solid ${colors.borderStrong}`, background: colors.fieldBackground,
         color: colors.textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box',
     },
     select: {
@@ -452,14 +465,14 @@ const styles: Record<string, CSSProperties> = {
     },
     checkboxGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, width: '100%' },
     checkboxOption: {
-        minHeight: 40, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
+        minHeight: 40, borderRadius: 8, border: `1px solid ${colors.border}`,
         background: colors.surfaceRaised, color: colors.textBody, fontSize: 13,
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', boxSizing: 'border-box',
     },
     checkboxInput: { width: 16, height: 16, accentColor: colors.primary },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
-        border: '1px solid rgba(20,184,166,0.3)', background: 'rgba(20,184,166,0.08)',
+        border: '1px solid rgb(var(--al-primary-rgb) / 0.3)', background: 'rgb(var(--al-primary-rgb) / 0.08)',
         marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
     },
     planLabel: { fontSize: 13, fontWeight: 600, color: colors.primaryLight },
@@ -469,17 +482,17 @@ const styles: Record<string, CSSProperties> = {
     existingActions: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
     primaryBtn: {
         display: 'block', width: '100%', minHeight: 44, padding: '12px 24px', borderRadius: 10,
-        background: colors.primary, color: colors.textPrimary, fontSize: 14, fontWeight: 600,
+        background: colors.primary, color: '#ffffff', fontSize: 14, fontWeight: 600,
         border: 'none', cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
         marginTop: 8,
     },
     secondaryBtn: {
         display: 'block', width: '100%', minHeight: 44, padding: '12px 24px', borderRadius: 10,
         background: colors.surfaceRaised, color: colors.textBody, fontSize: 14, fontWeight: 600,
-        border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
+        border: `1px solid ${colors.border}`, cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
     },
     spinner: {
-        width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)',
+        width: 40, height: 40, border: `3px solid ${colors.border}`,
         borderTop: `3px solid ${colors.primary}`, borderRadius: '50%',
         animation: 'spin 1s linear infinite', marginBottom: 16,
     },
@@ -499,7 +512,7 @@ const styles: Record<string, CSSProperties> = {
     detailValue: { display: 'block', fontSize: 14, fontWeight: 600, color: colors.textPrimary },
     apiKey: {
         display: 'block', fontSize: 12, fontFamily: 'monospace', color: colors.primaryLight,
-        background: 'rgba(20,184,166,0.1)', padding: '6px 10px', borderRadius: 6,
+        background: 'rgb(var(--al-primary-rgb) / 0.1)', padding: '6px 10px', borderRadius: 6,
         wordBreak: 'break-all', marginTop: 4,
     },
     nextSteps: { width: '100%', marginBottom: 16 },

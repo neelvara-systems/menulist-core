@@ -140,7 +140,7 @@ export default function AnswerlatticeResourcesPage() {
                                     key={feature.href}
                                     basePath={basePath}
                                     href={feature.href}
-                                    className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                    className="al-primary-hover-surface rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 transition"
                                 >
                                     <div className="text-sm font-semibold text-white">{feature.label}</div>
                                     <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">{feature.heroBullets[0]}</p>

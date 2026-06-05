@@ -2,8 +2,13 @@ import { Metadata } from 'next';
 import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwaAssets';
 import AnswerlatticeAnalytics from './components/AnswerlatticeAnalytics';
 import AnswerlatticeScrollReveal from './components/AnswerlatticeScrollReveal';
+import { AnswerlatticeThemeProvider } from './components/AnswerlatticeThemeProvider';
 import { buildAnswerlatticeUrl, ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE, ANSWERLATTICE_SITE_URL } from './siteConfig';
-import { ANSWERLATTICE_THEME_COLOR } from './theme';
+import {
+    ANSWERLATTICE_DARK_THEME_COLOR,
+    ANSWERLATTICE_LIGHT_THEME_COLOR,
+    ANSWERLATTICE_THEME_STORAGE_KEY,
+} from './theme';
 
 export const metadata: Metadata = {
     applicationName: 'AnswerLattice',
@@ -102,20 +107,52 @@ export const viewport = {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
-    themeColor: ANSWERLATTICE_THEME_COLOR,
+    themeColor: [
+        { media: '(prefers-color-scheme: light)', color: ANSWERLATTICE_LIGHT_THEME_COLOR },
+        { media: '(prefers-color-scheme: dark)', color: ANSWERLATTICE_DARK_THEME_COLOR },
+    ],
 };
 
 interface AnswerlatticeLayoutProps {
     children: React.ReactNode;
 }
 
+function AnswerlatticeThemeBootstrapScript() {
+    const script = `
+        (() => {
+            try {
+                const storedTheme = window.localStorage.getItem(${JSON.stringify(ANSWERLATTICE_THEME_STORAGE_KEY)});
+                const theme = storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' ? storedTheme : 'system';
+                const resolvedTheme = theme === 'system'
+                    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+                    : theme;
+                document.documentElement.dataset.answerlatticeTheme = resolvedTheme;
+                document.documentElement.style.colorScheme = resolvedTheme;
+                const themeColor = resolvedTheme === 'light'
+                    ? ${JSON.stringify(ANSWERLATTICE_LIGHT_THEME_COLOR)}
+                    : ${JSON.stringify(ANSWERLATTICE_DARK_THEME_COLOR)};
+                document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+                    meta.setAttribute('content', themeColor);
+                });
+            } catch (error) {
+                document.documentElement.dataset.answerlatticeTheme = 'dark';
+            }
+        })();
+    `;
+
+    return <script id="answerlattice-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
 export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLayoutProps) {
     return (
-        <div className="answerlattice-site antialiased">
+        <>
+            <AnswerlatticeThemeBootstrapScript />
+            <AnswerlatticeThemeProvider>
             <AnswerlatticeAnalytics />
             <AnswerlatticeScrollReveal />
             {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}
             {children}
-        </div>
+            </AnswerlatticeThemeProvider>
+        </>
     );
 }

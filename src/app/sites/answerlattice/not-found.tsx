@@ -1,7 +1,3 @@
-import { ANSWERLATTICE_THEME } from './theme';
-
-const { colors } = ANSWERLATTICE_THEME;
-
 export default function AnswerlatticeNotFound() {
     return (
         <main style={{
@@ -11,8 +7,8 @@ export default function AnswerlatticeNotFound() {
             alignItems: 'center',
             justifyContent: 'center',
             fontFamily: 'system-ui, -apple-system, sans-serif',
-            background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.backgroundSubtle} 54%, ${colors.backgroundDeep} 100%)`,
-            color: colors.textPrimary,
+            background: 'linear-gradient(135deg, var(--al-bg) 0%, var(--al-bg-subtle) 54%, var(--al-bg-band-deep) 100%)',
+            color: 'var(--al-text)',
             padding: '2rem',
         }}>
             <section style={{
@@ -22,14 +18,14 @@ export default function AnswerlatticeNotFound() {
                 <h1 style={{
                     fontSize: '4rem',
                     fontWeight: 700,
-                    color: colors.primaryLight,
+                    color: 'var(--al-primary-light)',
                     margin: '0 0 1rem 0',
                 }}>
                     404
                 </h1>
                 <p style={{
                     fontSize: '1.25rem',
-                    color: colors.textSecondary,
+                    color: 'var(--al-text-secondary)',
                     margin: '0 0 2rem 0',
                 }}>
                     This page does not exist.
@@ -38,8 +34,8 @@ export default function AnswerlatticeNotFound() {
                     href="/"
                     style={{
                         padding: '0.75rem 1.5rem',
-                        background: colors.primary,
-                        color: colors.textPrimary,
+                        background: 'var(--al-primary)',
+                        color: '#ffffff',
                         borderRadius: '0.5rem',
                         textDecoration: 'none',
                         fontWeight: 500,

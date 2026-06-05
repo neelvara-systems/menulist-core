@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.36
-> **Last Updated:** 2026-06-02
+> **Version:** 1.2.45
+> **Last Updated:** 2026-06-05
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -46,9 +46,9 @@ Public fit and setup copy must not imply founders need existing support volume b
 **Sections:**
 1. **Hero** — Founder-readable page-aware support promise: "Page-aware support answers for SaaS and digital products." Backed by inline sample workspace proof, setup/demo/source-prep CTAs, and chips for page-aware widget, approved answers, hosted help, tickets, feedback, Pre-Onboarding, and safe context.
 2. **Conversion Proof Band** — Compact proof of the must-sell points: exact app-page context, approved answers before fallback, hosted help/FAQs/custom Q&A, tickets and feedback as support gaps, practical widget install, and source preparation.
-3. **Product Scene** — Early restrained product-proof walkthrough showing setup readiness, product pages, widget support, feedback review, and answer review without exposing private workspace data. Desktop uses a sticky chapter layout where the proof frame stays visible while chapters move through setup, surfaces, widget, signals, and governance; mobile/tablet uses compact tabs instead of sticky behavior.
+3. **Product Scene** — Early restrained product-proof preview showing setup readiness, product pages, widget support, feedback review, and answer review without exposing private workspace data. Desktop, tablet, and mobile use compact tabs with one stable proof frame and an active-state explanation. Screen-like product proof must render from fixed-size image/GIF asset slots, not hand-drawn HTML/CSS mockup screens, so final production captures can replace dummy assets without changing page layout.
 4. **Embedded Demo** — Horizontal app-page tabs plus one large product-canvas view showing why a billing question should get billing-specific support rather than a generic reply.
-5. **Support Knowledge Map** — Docs, FAQs, custom owner Q&A, changelogs, setup notes, tickets, feedback, and safe page context flow through a logo-only AnswerLattice center with dotted paths, smooth ripple rings, homepage-style pulse strokes, and border-only output highlights, then out to widget, hosted help, owner answers, approved answers, and review queues.
+5. **Support Knowledge Map** — Docs, FAQs, custom owner Q&A, changelogs, setup notes, tickets, feedback, and safe page context flow through a logo-only AnswerLattice center with dotted paths, a single soft ripple without an inner static strip, endpoint-fading pulse strokes, and border-only output highlights, then out to widget, hosted help, owner answers, approved answers, and review queues.
 6. **How It Works** — Animated sequence for map product, import starter sources, review answers, install widget, and improve from support gaps.
 7. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage. Set Up Support includes workspace team access now that AnswerLattice roles and owner reset are implemented.
 8. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, user-initiated screenshot attachments, approved answers first, published owner FAQ answers before fallback, configured proactive prompts, and support-gap review.
@@ -153,6 +153,8 @@ All non-home pages should preserve the current theme colors and use compact proo
 - what the buyer should do next
 
 Proof strips must not use fake customer logos, fake testimonials, unsupported usage metrics, or random decorative assets. If a number is only sample UI state, prefer a named status such as "Mapped", "Tracked", "Ready for review", or "Checklist active".
+
+Any non-home page section that looks like a product screen must use the shared screen-asset registry and preserve the current `1440 x 1200` slot dimensions unless the asset-preparation document is updated at the same time. Diagrams, proof strips, status cards, and flow visuals can remain HTML/SVG because they are explanatory website components rather than screenshot placeholders.
 
 Mobile page headings and proof-strip text must wrap within the viewport. Non-home pages should keep the shared theme, but small-screen H1 sizing may be slightly tightened so buyer-facing claims remain readable without horizontal clipping.
 
@@ -470,9 +472,11 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
-The desktop Resources nav item should open a compact icon/link dropdown for the highest-priority public resource articles: launch checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
+The desktop Product nav item should open a compact icon/link dropdown for product overview, product areas, and product features. Header navigation must be title-first and scan-friendly; item-level explanatory descriptions belong on the linked product pages, not inside the dropdown. The dropdown must preserve all product routes while staying shorter than the visible viewport on desktop.
 
-The mobile hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Developers, Comparisons, Updates, and Contact. The mobile drawer must open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers.
+The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
+
+The mobile/tablet hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Developers, Comparisons, Updates, and Contact. The mobile drawer must open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers. Full desktop navigation should start only at the `xl` breakpoint because the header includes Product, Pre-Onboarding, Use Cases, Demo, Pricing, Resources, Updates, Contact, and the setup CTA.
 
 Route naming must avoid conflicts with AnswerLattice dashboard roots. Public website learning content uses `/resources`, public implementation content uses `/developers`, public category education uses `/comparisons`, and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
 
@@ -486,24 +490,28 @@ Route naming must avoid conflicts with AnswerLattice dashboard roots. Public web
 | Primary color | Deep teal (#0f766e) |
 | Hover color | Dark teal (#115e59) |
 | Signal accent | Teal 300 (#5eead4) |
-| Background | Dark navy (#0a0a1a) |
-| Surface | White 3% opacity (`rgba(255,255,255,0.03)`) |
-| Border | White 6% opacity (`rgba(255,255,255,0.06)`) |
-| Text primary | White (#ffffff) |
-| Text body | Soft lavender (#d6d6ef) |
-| Text secondary | Muted lavender (#a0a0c0) |
-| Text muted | Deep gray (#6b6b8a) |
+| Theme modes | Light, System, Dark |
+| Dark background | Dark navy (#0a0a1a) |
+| Light background | Pale slate (#f8fafc) |
+| Surface | Theme-scoped surface token (`--al-surface` / `--al-surface-raised`) |
+| Border | Theme-scoped border token (`--al-border`) |
+| Text primary | Theme-scoped primary text (`--al-text`) |
+| Text body | Theme-scoped body text (`--al-text-body`) |
+| Text secondary | Theme-scoped secondary text (`--al-text-secondary`) |
+| Text muted | Theme-scoped muted text (`--al-text-muted`) |
 | Success | Emerald 500 (#10b981) |
 | Warning | Amber 500 (#f59e0b) |
 | Danger | Red 500 (#ef4444) |
 | Cards | White 3% opacity + 6% border |
 | Font | Inter (system fallback) |
 | Border radius | 0.75rem (cards), 0.5rem (buttons) |
-| Max content width | 6xl (1152px) |
+| Max content width | 6xl or 7xl by section; header uses 7xl (1280px) so desktop navigation does not crowd |
 
-The website should stay dark, canonical, and infrastructure-grade. Verdigris/teal is the action and signal accent; deep navy remains the page and PWA theme background so browser chrome does not become a bright band.
+The website must support Light/System/Dark modes end to end while staying canonical and infrastructure-grade. Verdigris/teal remains the action and signal accent in both modes. Dark mode uses the deep-navy AnswerLattice background; light mode uses pale slate surfaces and dark slate text without changing product positioning or adding decorative marketing colors. The selected mode is persisted only for the AnswerLattice public site.
 
-AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-cache public routes should receive Tailwind utilities, dark background, page spacing, and reveal-motion styles from the root `app/layout.css` bundle, while selectors that change colors, layout rhythm, or motion must stay scoped to `.answerlattice-site`, `.al-home-flow`, `.al-page-flow`, or explicit AnswerLattice classes.
+The footer brand column should show social icon links in place of theme controls. Until official profiles are ready, those links may use placeholder URLs. The Light/System/Dark selector belongs in the bottom footer strip and in the mobile drawer, not in the desktop header or brand-column intro block.
+
+AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-cache public routes should receive Tailwind utilities, theme-aware backgrounds, page spacing, reveal-motion styles, and dark/light compatibility rules from the root `app/layout.css` bundle, while selectors that change colors, layout rhythm, or motion must stay scoped to `.answerlattice-site`, `.al-home-flow`, `.al-page-flow`, `html[data-answerlattice-theme]`, or explicit AnswerLattice classes.
 
 ---
 
@@ -587,6 +595,15 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-06 | 1.2.45 | Updated the Resources dropdown requirement to mirror the compact Product dropdown pattern with an overview row and title-only guide rows |
+| 2026-06-05 | 1.2.44 | Added the compact Product dropdown requirement: title-only icon rows in the header, with explanatory content left to destination pages |
+| 2026-06-05 | 1.2.43 | Added the footer placement requirement: social icon links live in the brand column, while the Light/System/Dark selector moves to the bottom footer strip and remains available in the mobile drawer |
+| 2026-06-05 | 1.2.42 | Removed the requirement for desktop-header theme control; Light/System/Dark access stays available through the mobile drawer and footer so the desktop header remains focused on navigation and setup |
+| 2026-06-05 | 1.2.41 | Added the Verdigris primary-token visual requirement: public-site accents, feature-card diagrams, hover states, and section glows must use AnswerLattice primary colors and shared accent utilities rather than ad hoc cyan or sky values; shared feature proof cards must also fit mobile grid width without clipping |
+| 2026-06-05 | 1.2.40 | Replaced the sticky product-proof chapter requirement with a stable tabbed proof-frame requirement after the image-backed screenshot slots made the sticky side-card layout too crowded |
+| 2026-06-05 | 1.2.39 | Added the header breakpoint requirement: full desktop navigation starts at `xl`, narrower tablet/narrow-desktop widths use the drawer, and the wide Product dropdown must remain inside the viewport |
+| 2026-06-05 | 1.2.38 | Added the image-backed screen-slot requirement: product-screen placeholders must use fixed-size 1440 x 1200 image/GIF asset slots so final captures replace dummy assets without changing layout |
+| 2026-06-05 | 1.2.37 | Added the shared diagram-motion requirement: single soft logo ripple, no inner static center strip, synchronized cross-diagram logo-origin pulses, guide-line endpoint alignment, and endpoint fade-out |
 | 2026-06-04 | 1.2.36 | Added the desktop Resources dropdown requirement for high-priority public resource articles, preserving private-route and runtime-route boundaries |
 | 2026-06-02 | 1.2.35 | Added resource article requirements, typed public content source, Article/FAQ structured data rules, resource analytics, sitemap/LLM coverage, and claim guardrails for ten resource article routes |
 | 2026-03-07 | 1.0.0 | Initial spec |
@@ -633,3 +650,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-06-02 | 1.2.32 | Added the market-aligned sticky product-proof layout requirement: desktop keeps a proof frame visible while support-loop chapters scroll; mobile/tablet keeps compact tabs, with no heavy parallax or decorative motion requirement |
 | 2026-06-02 | 1.2.33 | Added the launch-readiness copy requirement so best-fit, FAQ, pricing, Get Started, About, ROI, metadata, and use-case copy include beta and near-launch founders instead of existing-volume-only phrasing |
 | 2026-06-02 | 1.2.34 | Added the public brand/domain decision, claim guardrails, resource/comparison/developer registries, developer docs, category comparisons, Canonica legacy public-host redirect requirement, LLM/sitemap coverage, and discovery verification requirements while preserving existing AnswerLattice runtime routes |
+| 2026-06-05 | 1.2.35 | Added the Light/System/Dark public-site theme requirement, including AnswerLattice-scoped persistence, browser theme-color handling, root-loaded light-mode compatibility styling, and mobile/footer access to the theme control |

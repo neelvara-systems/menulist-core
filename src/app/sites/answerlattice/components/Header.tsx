@@ -30,6 +30,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
 import AnswerlatticeLink from './AnswerlatticeLink';
+import AnswerlatticeThemeSwitcher from './AnswerlatticeThemeSwitcher';
 import useIsMobile from '../../../../hooks/useIsMobile';
 
 const NAV_LINKS = [
@@ -118,14 +119,6 @@ function MegaMenuIcon({ icon: Icon }: { icon: IconType }) {
     );
 }
 
-function CompactMenuIcon({ icon: Icon }: { icon: IconType }) {
-    return (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#d6d6ef] transition-colors group-hover/menu-item:text-teal-200">
-            <Icon size={18} aria-hidden />
-        </span>
-    );
-}
-
 function getMobileNavIcon(href: string) {
     return MOBILE_NAV_ICONS[href] || LuFileText;
 }
@@ -135,8 +128,8 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     const openTimerRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
-    const { isMobile, hasMounted } = useIsMobile();
-    const shouldShowMobileNavigation = hasMounted && isMobile;
+    const { isMobile, hasMounted } = useIsMobile(1280);
+    const shouldShowMobileNavigation = !hasMounted || isMobile;
 
     const clearDrawerTimers = useCallback(() => {
         if (openTimerRef.current !== null) {
@@ -208,14 +201,14 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
     return (
         <>
-            <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a1a]/80 backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+            <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[var(--al-header-bg)] backdrop-blur-xl">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                     <L href="/" className="flex items-center gap-2">
                         <AnswerlatticeLogoMark idPrefix="answerlattice-header" height={32} />
                         <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>
                     </L>
 
-                    <nav className="hidden items-center gap-5 md:flex">
+                    <nav className="hidden items-center gap-5 xl:flex">
                         <div className="group/product relative flex h-16 items-center">
                             <L
                                 href="/product"
@@ -227,8 +220,8 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                             <div
                                 className="
-                                    absolute left-1/2 top-full z-[80] w-[min(52rem,calc(100vw-3rem))]
-                                    -translate-x-1/2 pt-3
+                                    absolute left-0 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
+                                    pt-3
                                     origin-top scale-95 opacity-0
                                     invisible translate-y-2
                                     transition-all duration-200 ease-out
@@ -249,18 +242,15 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                     <L
                                         href="/product"
-                                        className="group/menu-item mb-3 flex items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-sky-400/[0.04] p-3 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
+                                        className="group/menu-item mb-3 flex min-h-12 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-teal-500/[0.04] px-3 py-2.5 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
                                     >
                                         <MegaMenuIcon icon={LuLayoutDashboard} />
                                         <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-semibold text-white">Product overview</span>
-                                            <span className="mt-0.5 block text-xs leading-relaxed text-[#9a9ab8]">
-                                                Setup, widget, hosted help, tickets, team access, and answer review.
-                                            </span>
                                         </span>
                                         <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                     </L>
-                                    <div className="grid gap-3 lg:grid-cols-[0.95fr_1.35fr]">
+                                    <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
                                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
                                             <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
                                                 Product areas
@@ -272,14 +262,11 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                         <L
                                                             key={area.href}
                                                             href={area.href}
-                                                            className="group/menu-item flex items-start gap-3 rounded-xl p-2.5 transition hover:bg-teal-500/[0.06]"
+                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-500/[0.06]"
                                                         >
                                                             <MegaMenuIcon icon={Icon} />
-                                                            <span className="min-w-0">
+                                                            <span className="min-w-0 flex-1">
                                                                 <span className="block text-xs font-semibold text-[#eeeeff]">{area.label}</span>
-                                                                <span className="mt-0.5 line-clamp-2 block text-[11px] leading-relaxed text-[#8585a3]">
-                                                                    {area.description}
-                                                                </span>
                                                             </span>
                                                         </L>
                                                     );
@@ -297,14 +284,11 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                         <L
                                                             key={feature.href}
                                                             href={feature.href}
-                                                            className="group/menu-item flex min-h-[4.25rem] items-start gap-3 rounded-xl p-2.5 transition hover:bg-sky-400/[0.055]"
+                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
                                                         >
                                                             <MegaMenuIcon icon={Icon} />
                                                             <span className="min-w-0 flex-1">
-                                                                <span className="block whitespace-nowrap text-xs font-semibold text-[#eeeeff]">{feature.label}</span>
-                                                                <span className="mt-0.5 line-clamp-2 block text-[11px] leading-relaxed text-[#8585a3]">
-                                                                    {feature.heroBullets[0]}
-                                                                </span>
+                                                                <span className="block truncate text-xs font-semibold text-[#eeeeff]">{feature.label}</span>
                                                             </span>
                                                         </L>
                                                     );
@@ -336,7 +320,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                                     <div
                                         className="
-                                            absolute left-1/2 top-full z-[80] w-[min(44rem,calc(100vw-3rem))]
+                                            absolute left-1/2 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
                                             -translate-x-1/2 pt-3
                                             origin-top scale-95 opacity-0
                                             invisible translate-y-2
@@ -355,18 +339,35 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                             motion-safe:transition-all
                                         "
                                     >
-                                        <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-6 shadow-2xl shadow-black/50">
-                                            <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-                                                {RESOURCE_MENU_LINKS.map((resourceLink) => (
-                                                    <L
-                                                        key={resourceLink.href}
-                                                        href={resourceLink.href}
-                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-base font-medium text-[#d6d6ef] transition hover:bg-white/[0.035] hover:text-white"
-                                                    >
-                                                        <CompactMenuIcon icon={resourceLink.icon} />
-                                                        <span>{resourceLink.label}</span>
-                                                    </L>
-                                                ))}
+                                        <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
+                                            <L
+                                                href="/resources"
+                                                className="group/menu-item mb-3 flex min-h-12 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-teal-500/[0.04] px-3 py-2.5 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
+                                            >
+                                                <MegaMenuIcon icon={LuLayoutDashboard} />
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-sm font-semibold text-white">Resources overview</span>
+                                                </span>
+                                                <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
+                                            </L>
+                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
+                                                <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                    Resource guides
+                                                </div>
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                    {RESOURCE_MENU_LINKS.filter((resourceLink) => resourceLink.href !== '/resources').map((resourceLink) => (
+                                                        <L
+                                                            key={resourceLink.href}
+                                                            href={resourceLink.href}
+                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
+                                                        >
+                                                            <MegaMenuIcon icon={resourceLink.icon} />
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate text-xs font-semibold text-[#eeeeff]">{resourceLink.label}</span>
+                                                            </span>
+                                                        </L>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -375,7 +376,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         })}
                     </nav>
 
-                    <div className="hidden items-center gap-3 md:flex">
+                    <div className="hidden items-center gap-3 xl:flex">
                         <L href="/contact" className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">Contact</L>
                         <L
                             href="/get-started"
@@ -391,7 +392,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         <button
                             aria-expanded={isDrawerVisible}
                             aria-label="Open navigation"
-                            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white"
+                            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:hidden"
                             onClick={openDrawer}
                             onTouchStart={openDrawer}
                             type="button"
@@ -412,7 +413,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                     <aside
                         aria-label="AnswerLattice navigation"
                         aria-modal="true"
-                        className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[#0a0a1a] shadow-2xl shadow-black/60 ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
+                        className={`al-mobile-drawer fixed bottom-0 right-0 top-0 z-[100] flex w-[min(360px,88vw)] flex-col border-l border-white/[0.08] bg-[var(--al-bg)] shadow-2xl shadow-black/60 ${isDrawerVisible ? 'al-mobile-drawer--open' : ''}`}
                         role="dialog"
                     >
                         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] px-5 pt-[env(safe-area-inset-top)]">
@@ -500,7 +501,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                             </div>
                         </nav>
 
-                        <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a1a] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+                        <div className="shrink-0 border-t border-white/[0.06] bg-[var(--al-bg)] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+                            <div className="mb-3 flex justify-center">
+                                <AnswerlatticeThemeSwitcher />
+                            </div>
                             <L
                                 href="/get-started"
                                 data-answerlattice-event="mobile_header_cta_clicked"

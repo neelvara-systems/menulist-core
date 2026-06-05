@@ -12,7 +12,7 @@ const AREA_PROOF: Record<string, string> = {
 
 export default function ProductAreasSection({ basePath = '' }: { basePath?: string }) {
     return (
-        <section className="border-t border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
+        <section className="al-primary-radial-section border-t border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="What AnswerLattice gives you"
@@ -69,7 +69,7 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                                 key={feature.href}
                                 basePath={basePath}
                                 href={feature.href}
-                                className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                className="al-primary-hover-surface rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 transition"
                             >
                                 <h4 className="text-sm font-semibold text-white">{feature.label}</h4>
                                 <p className="mt-2 text-xs leading-relaxed text-[#8f8faa]">{feature.heroBullets[0]}</p>

@@ -1,7 +1,6 @@
 import {
     LuArrowRight,
     LuBookOpen,
-    LuCheck,
     LuDatabase,
     LuFileText,
     LuHelpCircle,
@@ -18,8 +17,10 @@ import type { IconType } from 'react-icons';
 import type { AnswerlatticeProductFeature } from '../productFeatures';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
+import AnswerlatticeAssetImage from './AnswerlatticeAssetImage';
 import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
+import { ANSWERLATTICE_FEATURE_ASSETS } from '../answerlatticeWebsiteAssets';
 
 const CARD_ICONS: IconType[] = [
     LuBookOpen,
@@ -32,60 +33,12 @@ const CARD_ICONS: IconType[] = [
     LuShieldCheck,
 ];
 
-const HERO_ICONS: IconType[] = [LuDatabase, LuSearch, LuLink, LuSparkles];
-
 function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }) {
+    const asset = ANSWERLATTICE_FEATURE_ASSETS[feature.slug];
+
     return (
         <div className="relative mx-auto w-full max-w-xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-            <div className="overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-[#101028] text-white">
-                <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.025] px-5 py-4">
-                    <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ffd166]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
-                    </div>
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.05] px-3 py-1 text-xs font-semibold text-[#d6d6ef]">
-                        {feature.label}
-                    </span>
-                </div>
-                <div className="grid gap-4 p-5 sm:p-6">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">AnswerLattice product layer</p>
-                        <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">{feature.label}</h2>
-                        <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                            The workspace keeps source material, page context, and approval status connected before support reaches users.
-                        </p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {feature.heroBullets.map((bullet, index) => {
-                            const Icon = HERO_ICONS[index % HERO_ICONS.length];
-                            return (
-                                <div key={bullet} className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
-                                    <Icon aria-hidden size={18} className="text-[#1eceff]" />
-                                    <p className="mt-3 text-sm font-semibold leading-snug text-[#d6d6ef]">{bullet}</p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="rounded-2xl border border-white/[0.08] bg-[#070714] p-4 text-white">
-                        <div className="mb-3 flex items-center justify-between">
-                            <span className="text-xs font-semibold uppercase tracking-widest text-[#8ea0c0]">Support truth flow</span>
-                            <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200">Reviewed</span>
-                        </div>
-                        <div className="grid gap-2 text-xs text-[#d9e4ff]">
-                            {['Source content', 'Product context', 'Approved answer'].map((step, index) => (
-                                <div key={step} className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2.5">
-                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/[0.08] text-[10px] font-bold">
-                                        {index + 1}
-                                    </span>
-                                    <span>{step}</span>
-                                    {index < 2 ? <LuArrowRight aria-hidden size={14} className="ml-auto text-[#8ea0c0]" /> : <LuCheck aria-hidden size={14} className="ml-auto text-emerald-300" />}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <AnswerlatticeAssetImage asset={asset} className="rounded-[1.45rem] border border-white/[0.08]" />
         </div>
     );
 }
@@ -98,8 +51,8 @@ function FeatureCardVisual({ index }: { index: number }) {
                     <span className="h-11 w-9 rotate-[-8deg] rounded-md border border-white/[0.08] bg-white/[0.12]" />
                     <span className="h-9 w-14 rounded-md border border-white/[0.08] bg-white/[0.08]" />
                 </div>
-                <LuArrowRight aria-hidden size={24} className="text-[#1eceff]" />
-                <div className="flex h-16 w-20 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#22d3ee,#0f766e)] text-white shadow-lg shadow-teal-500/20">
+                <LuArrowRight aria-hidden size={24} className="al-primary-accent-text" />
+                <div className="al-primary-accent-gradient flex h-16 w-20 items-center justify-center rounded-2xl text-white shadow-lg shadow-teal-500/20">
                     <LuDatabase aria-hidden size={26} />
                 </div>
             </div>
@@ -107,20 +60,20 @@ function FeatureCardVisual({ index }: { index: number }) {
         (
             <div key="flow" className="mt-8 flex items-center justify-center gap-3">
                 <div className="h-12 w-16 rounded-xl border border-white/[0.08] bg-white/[0.08]" />
-                <div className="h-px w-12 bg-[#1eceff]/45" />
+                <div className="al-primary-accent-line h-px w-12" />
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.08]">
-                    <LuSparkles aria-hidden size={24} className="text-[#1eceff]" />
+                    <LuSparkles aria-hidden size={24} className="al-primary-accent-text" />
                 </div>
-                <div className="h-px w-12 bg-[#1eceff]/45" />
+                <div className="al-primary-accent-line h-px w-12" />
                 <div className="h-12 w-20 rounded-xl border border-white/[0.08] bg-white/[0.08]" />
             </div>
         ),
         (
             <div key="list" className="mt-8 flex items-center justify-center">
-                <div className="w-72 rounded-2xl border border-white/[0.08] bg-[#101028] p-3">
+                <div className="w-full max-w-72 rounded-2xl border border-white/[0.08] bg-[#101028] p-3">
                     <div className="mb-2 flex items-center justify-between">
                         <span className="h-3 w-20 rounded-full bg-white/[0.12]" />
-                        <span className="h-5 w-10 rounded-full bg-[#1eceff]" />
+                        <span className="al-primary-accent-fill h-5 w-10 rounded-full" />
                     </div>
                     <div className="space-y-2">
                         <span className="block h-8 rounded-lg bg-white/[0.055]" />
@@ -136,11 +89,11 @@ function FeatureCardVisual({ index }: { index: number }) {
                     <div className="mb-2 h-3 w-20 rounded-full bg-white/[0.12]" />
                     <div className="h-3 w-28 rounded-full bg-white/[0.06]" />
                 </div>
-                <LuArrowRight aria-hidden size={20} className="text-[#1eceff]" />
+                <LuArrowRight aria-hidden size={20} className="al-primary-accent-text" />
                 <div className="flex -space-x-2">
-                    <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#1eceff]" />
-                    <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#0f766e]" />
-                    <span className="h-9 w-9 rounded-full border-2 border-[#09091a] bg-[#06b6d4]" />
+                    <span className="al-primary-accent-fill h-9 w-9 rounded-full border-2 border-[#09091a]" />
+                    <span className="al-primary-accent-fill-main h-9 w-9 rounded-full border-2 border-[#09091a]" />
+                    <span className="al-primary-accent-fill-hover h-9 w-9 rounded-full border-2 border-[#09091a]" />
                 </div>
             </div>
         ),
@@ -160,7 +113,7 @@ export default function ProductFeatureLandingPage({
 
     return (
         <main className="al-page-flow">
-            <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
+            <section className="al-primary-radial-page relative overflow-hidden border-b border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                     <div>
                         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">{feature.eyebrow}</p>
@@ -216,7 +169,7 @@ export default function ProductFeatureLandingPage({
                 </div>
             </section>
 
-            <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.13),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 text-white sm:px-6">
+            <section className="al-primary-radial-section-strong border-b border-white/[0.06] px-4 py-20 text-white sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow={feature.label}
@@ -227,13 +180,13 @@ export default function ProductFeatureLandingPage({
                         {feature.cards.map((card, index) => {
                             const Icon = CARD_ICONS[index % CARD_ICONS.length];
                             return (
-                                <article key={card.title} className="min-h-[22rem] rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025] p-6">
+                                <article key={card.title} className="min-h-[22rem] min-w-0 rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025] p-6">
                                     <div className="flex items-start justify-between gap-4">
                                         <div>
                                             <h3 className="text-xl font-bold leading-snug text-white">{card.title}</h3>
                                             <p className="mt-4 max-w-xl text-base leading-relaxed text-[#a0a0c0]">{card.description}</p>
                                         </div>
-                                        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05] text-[#1eceff]">
+                                        <span className="al-primary-accent-text flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
                                             <Icon aria-hidden size={20} />
                                         </span>
                                     </div>

@@ -225,7 +225,7 @@ export default function AnswerlatticeProductPage() {
                                     key={feature.href}
                                     basePath={basePath}
                                     href={feature.href}
-                                    className="group rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                    className="al-primary-hover-surface group rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5 transition"
                                 >
                                     <span className="mb-5 inline-flex rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[#8f8faa]">
                                         Feature

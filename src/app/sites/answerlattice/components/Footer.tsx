@@ -1,6 +1,14 @@
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
+import AnswerlatticeThemeSwitcher from './AnswerlatticeThemeSwitcher';
+import {
+    LuGithub,
+    LuInstagram,
+    LuLinkedin,
+    LuTwitter,
+    LuYoutube,
+} from 'react-icons/lu';
 
 const FOOTER_LINKS = {
     Product: [
@@ -42,9 +50,17 @@ const FOOTER_LINKS = {
     ],
 };
 
+const SOCIAL_LINKS = [
+    { label: 'LinkedIn', href: 'https://example.com/answerlattice-linkedin', icon: LuLinkedin },
+    { label: 'X', href: 'https://example.com/answerlattice-x', icon: LuTwitter },
+    { label: 'Instagram', href: 'https://example.com/answerlattice-instagram', icon: LuInstagram },
+    { label: 'YouTube', href: 'https://example.com/answerlattice-youtube', icon: LuYoutube },
+    { label: 'GitHub', href: 'https://example.com/answerlattice-github', icon: LuGithub },
+];
+
 export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: string }) {
     return (
-        <footer className="border-t border-white/[0.06] bg-[#070714]">
+        <footer className="border-t border-white/[0.06] bg-[var(--al-footer-bg)]">
             <div className="mx-auto max-w-6xl px-6 py-16">
                 <div className="grid gap-12 md:grid-cols-4">
                     {/* Brand */}
@@ -57,6 +73,24 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                             Support layer for SaaS and digital products.
                             Knowledge intake, page-aware help, hosted docs, owner Q&A, and approved answers before fallback.
                         </p>
+                        <div className="mt-5 flex items-center gap-2" aria-label="AnswerLattice social links">
+                            {SOCIAL_LINKS.map((social) => {
+                                const Icon = social.icon;
+
+                                return (
+                                    <a
+                                        key={social.label}
+                                        aria-label={social.label}
+                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.035] text-[#a0a0c0] transition hover:border-teal-300/25 hover:bg-teal-500/[0.08] hover:text-white"
+                                        href={social.href}
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >
+                                        <Icon size={17} aria-hidden />
+                                    </a>
+                                );
+                            })}
+                        </div>
                     </div>
 
                 {/* Link Columns */}
@@ -83,13 +117,18 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                 </div>
 
                 {/* Bottom bar */}
-                <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/[0.06] pt-8 sm:flex-row">
-                    <p className="text-xs text-[#505070]">
-                        &copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.
-                    </p>
-                    <p className="text-xs text-[#505070]">
-                        Governed answer infrastructure for SaaS and digital-product support.
-                    </p>
+                <div className="mt-12 border-t border-white/[0.06] pt-8">
+                    <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                        <p className="text-xs text-[#505070]">
+                            &copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.
+                        </p>
+                        <p className="text-xs text-[#505070]">
+                            Governed answer infrastructure for SaaS and digital-product support.
+                        </p>
+                    </div>
+                    <div className="mt-6 flex justify-center">
+                        <AnswerlatticeThemeSwitcher />
+                    </div>
                 </div>
             </div>
         </footer>

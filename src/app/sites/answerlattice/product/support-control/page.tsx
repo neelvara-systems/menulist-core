@@ -33,22 +33,6 @@ export default function SupportControlProductPage() {
                 description="AnswerLattice gives you a practical support layer for hosted help, page-aware answers, custom Q&A, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
                 activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
-                canvasTitle="Support operations without support chaos"
-                canvasSubtitle="Support Control is the layer for hosted help, knowledge base, FAQ, custom owner answers, changelog, tickets as fallback, feedback review, conversations, Support Board, workflow notifications, and weekly review output."
-                canvasBadge="Support live"
-                canvasItems={[
-                    { title: 'Hosted help', description: 'Publish docs, FAQ, custom answers, and changelog on a support domain while keeping workspace internals private.' },
-                    { title: 'Ticket fallback', description: 'When an answer is missing, tickets remain a fallback path and become structured support signals.' },
-                    { title: 'Feedback review', description: 'Ratings, product-area issues, feature requests, and suggestions become owner-reviewed support signals.' },
-                    { title: 'Support Board', description: 'Track selected support gaps, private owner notes, status history, and answer-proposal handoff without mirroring every ticket.' },
-                    { title: 'Workflow notifications', description: 'Send digest-first Slack or email updates when governance movement needs owner attention.' },
-                    { title: 'Weekly review', description: 'Owners can review what changed, what failed, and which support content needs attention next.' },
-                ]}
-                metrics={[
-                    { label: 'Help content', value: 'Published' },
-                    { label: 'Ticket path', value: 'Fallback' },
-                    { label: 'Board', value: 'Private' },
-                ]}
                 bentoTitle="Your support surfaces stay connected."
                 bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice keeps customer support connected by product surface."
                 bentoCards={[

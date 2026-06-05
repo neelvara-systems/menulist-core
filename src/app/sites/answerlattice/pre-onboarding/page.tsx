@@ -83,7 +83,7 @@ export default function AnswerlatticePreOnboardingPage() {
             <AnswerlatticePageStructuredData path="/pre-onboarding" />
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
-                <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
+                <section className="al-primary-radial-page relative overflow-hidden border-b border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
                     <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
                         <div>
                             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">Pre-Onboarding Kit</p>
@@ -167,7 +167,7 @@ export default function AnswerlatticePreOnboardingPage() {
                                 const Icon = item.icon;
                                 return (
                                     <article key={item.title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05] text-[#1eceff]">
+                                        <span className="al-primary-accent-text flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
                                             <Icon aria-hidden size={20} />
                                         </span>
                                         <h2 className="mt-5 text-lg font-bold text-white">{item.title}</h2>

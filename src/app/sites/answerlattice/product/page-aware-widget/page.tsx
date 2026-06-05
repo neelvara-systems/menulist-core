@@ -33,22 +33,6 @@ export default function PageAwareWidgetProductPage() {
                 description="Install one widget, pass safe page hints, let users attach screenshots explicitly when visual context helps, and serve canonical answers, owner FAQ answers, related docs, configured proactive prompts, or fallback tickets based on where the user is stuck."
                 activeTab="In-app help widget"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
-                canvasTitle="One widget. Different answers by page."
-                canvasSubtitle="One script gives the product a support layer that can prefer the current page, canonical answer, owner FAQ answer, related article, release note, explicit screenshot context, and configured proactive trigger before fallback."
-                canvasBadge="Widget allowed"
-                canvasItems={[
-                    { title: 'Allowed origins', description: 'Restrict where the widget can run so copied snippets do not become open support endpoints.' },
-                    { title: 'Blocked routes', description: 'Hide the launcher on sensitive screens such as payment cards, auth flows, or private admin routes.' },
-                    { title: 'Safe page hints', description: 'Pass route, feature, workflow, role, or plan context without using raw client data as tenant scope.' },
-                    { title: 'Explicit screenshots', description: 'Let users attach or paste a screenshot when it helps explain an error, without automatic runtime capture.' },
-                    { title: 'Proactive prompts', description: 'When enabled, show configured help suggestions for active page triggers without calling the backend for inactive workspaces.' },
-                ]}
-                metrics={[
-                    { label: 'Context key', value: 'billing_invoices' },
-                    { label: 'Answer path', value: 'Canonical, then FAQ' },
-                    { label: 'Image input', value: 'Manual only' },
-                    { label: 'Proactive', value: 'Configured only' },
-                ]}
                 bentoTitle="Control where the widget appears and what context it receives."
                 bentoDescription="Product owners get practical controls for install, appearance, route behavior, and context without exposing internal IDs."
                 bentoCards={[

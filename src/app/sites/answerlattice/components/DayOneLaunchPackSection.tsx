@@ -79,7 +79,7 @@ export default function DayOneLaunchPackSection({
     const isProduct = context === 'product';
 
     return (
-        <section className={`${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] bg-[radial-gradient(circle_at_22%_0%,rgba(30,206,255,0.08),transparent_34%),radial-gradient(circle_at_80%_18%,rgba(20,184,166,0.12),transparent_32%),rgba(255,255,255,0.012)] px-6 py-20 sm:px-6`}>
+        <section className={`al-primary-radial-launch ${isProduct ? 'border-t' : 'border-y'} border-white/[0.06] px-6 py-20 sm:px-6`}>
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="Day-one launch pack"

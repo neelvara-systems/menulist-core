@@ -294,7 +294,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                                 const Icon = mode.icon;
                                 return (
                                     <article key={mode.title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05] text-[#1eceff]">
+                                        <span className="al-primary-accent-text flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
                                             <Icon aria-hidden size={20} />
                                         </span>
                                         <h2 className="mt-5 text-lg font-bold text-white">{mode.title}</h2>
@@ -341,7 +341,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                                 ['Validate like a package', 'Check JSON, JSONL, CSVs, manifest paths, source sizes, placeholders, and support coverage before final handoff.'],
                             ].map(([title, description]) => (
                                 <article key={title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5">
-                                    <LuBookOpen aria-hidden size={20} className="text-[#1eceff]" />
+                                    <LuBookOpen aria-hidden size={20} className="al-primary-accent-text" />
                                     <h2 className="mt-4 text-lg font-bold text-white">{title}</h2>
                                     <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{description}</p>
                                 </article>

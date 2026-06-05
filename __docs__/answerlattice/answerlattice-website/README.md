@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ IMPLEMENTED — refreshed for page-aware SaaS and digital-product support conversion, self-service AnswerLattice, and agent-readable public discovery
-> **Date:** 2026-06-02
+> **Date:** 2026-06-05
 > **Domain:** answerlattice.com (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -30,7 +30,7 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Page-aware SaaS and digital-product support hero with inline sample workspace preview + conversion proof band + desktop sticky product-proof walkthrough / mobile tabbed proof + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + compact pricing checkpoint + objections + CTA |
+| `/` | Homepage | Page-aware SaaS and digital-product support hero with inline sample workspace preview + conversion proof band + tabbed product-proof preview + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + compact pricing checkpoint + objections + CTA |
 | `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, readiness proof strip, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
@@ -102,10 +102,11 @@
 
 | File | Purpose |
 |------|---------|
-| `src/app/layout.tsx` | Root app layout that imports scoped AnswerLattice CSS so clean-cache public routes receive the dark theme and Tailwind utilities from `app/layout.css` |
-| `src/app/sites/answerlattice/layout.tsx` | AnswerLattice route layout with metadata, OG tags, SEO, analytics, and reveal client islands |
-| `src/app/sites/answerlattice/theme.ts` | AnswerLattice public-site theme contract: Verdigris Answer Layer colors, primary accent, status colors, and browser theme color |
-| `src/app/sites/answerlattice/styles.css` | Root-loaded Tailwind directives, scoped AnswerLattice CSS variables, and page/section rhythm |
+| `src/app/layout.tsx` | Root app layout that imports scoped AnswerLattice CSS so clean-cache public routes receive theme-aware styling and Tailwind utilities from `app/layout.css` |
+| `src/app/sites/answerlattice/layout.tsx` | AnswerLattice route layout with metadata, OG tags, SEO, OS-aware theme-color metadata, pre-hydration theme bootstrap, analytics, reveal, and theme provider islands |
+| `src/app/sites/answerlattice/theme.ts` | AnswerLattice public-site theme contract: Verdigris Answer Layer dark/light colors, theme storage key, primary accent, status colors, and browser theme colors |
+| `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` | Screen-asset registry for image-backed dummy/final website product scenes with fixed 1440 x 1200 dimensions |
+| `src/app/sites/answerlattice/styles.css` | Root-loaded Tailwind directives, scoped AnswerLattice CSS variables, dark/light compatibility rules, diagram theming, and page/section rhythm |
 | `src/app/sites/answerlattice/scroll-reveal.css` | Root-loaded AnswerLattice viewport reveal motion for public website sections, cards, CTAs, and footer groups |
 | `src/app/sites/answerlattice/page.tsx` | Homepage (server component) |
 | `src/app/sites/answerlattice/productAreas.ts` | Shared product-area navigation and descriptions |
@@ -188,16 +189,22 @@
 | `src/app/sites/answerlattice/components/AnswerlatticeLogoMark.tsx` | Shared wrapper for the atom-level inline SVG path logo used across header, footer, diagrams, and dashboard navigation |
 | `src/components/atoms/answerlatticeLogoMark/index.tsx` | Canonical inline SVG-path logo atom that preserves the final design geometry, colors, gradients, filters, stroke widths, and transparent background |
 | `src/components/atoms/answerlatticeLoaderLogo/index.tsx` | Loader atom that animates the shared inline SVG-path logo with the same 3-second stroke-draw cycle used by the MenuList global loader |
-| `src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx` | Reusable SVG-only AnswerLattice hub, column-based sequence, and loop diagrams with logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
+| `src/app/sites/answerlattice/components/AnswerlatticeFlowDiagram.tsx` | Reusable SVG-only AnswerLattice hub, column-based sequence, and loop diagrams with a logo-only core, single soft ripple, dotted SVG paths, endpoint-fading pulse strokes, and border-only output highlights |
 | `src/app/sites/answerlattice/components/AnswerlatticeProofBlocks.tsx` | Reusable proof blocks for before/after examples, status snapshots, and fit/decision tiles that reduce text-heavy sections without adding runtime data calls |
 | `src/app/sites/answerlattice/components/SectionHeader.tsx` | Shared centered section-introduction treatment for eyebrow, heading, and supporting copy across homepage, product, high-intent public pages, and SEO page templates |
+| `src/app/sites/answerlattice/components/AnswerlatticeThemeProvider.tsx` | AnswerLattice-scoped Light/System/Dark theme provider with `answerlattice-theme` localStorage persistence and dynamic browser theme-color updates |
+| `src/app/sites/answerlattice/components/AnswerlatticeThemeSwitcher.tsx` | Shared Light/System/Dark segmented icon control used by the mobile drawer and bottom footer strip |
+| `src/app/sites/answerlattice/components/AnswerlatticeAssetImage.tsx` | Shared image renderer for website screen assets, preserving intrinsic aspect ratio and exposing data attributes for QA |
 | `public/answerlattice-favicon.ico` | AnswerLattice favicon ICO generated from the final SVG logo source |
 | `public/answerlattice-icon-*.png` | AnswerLattice square favicon/PWA icon family generated from the final SVG logo source |
 | `public/answerlattice-splash/apple-splash-*.png` | AnswerLattice iOS startup image family rendered on the PWA startup background with the transparent logo mark composited on top |
 | `public/answerlattice.webmanifest` | AnswerLattice web app manifest |
+| `public/answerlattice-website-assets/dummy/*.png` | Public 1440 x 1200 dummy screen PNG slots used by homepage, product preview, product-area, feature, widget, and demo screens until final assets replace them |
+| `packages/asset-factory/answerlattice-website-assets/dummy-sources/` | Internal source SVGs and manifest for regenerating dummy website screen assets; not referenced by public pages |
+| `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` | Deterministic generator for AnswerLattice dummy website screen PNG assets, with zero npm dependencies |
 | `src/lib/answerlattice/pwaAssets.ts` | AnswerLattice PWA startup image helper that keeps splash metadata out of root app defaults |
-| `src/app/sites/answerlattice/components/Header.tsx` | Shared header with desktop nav and right-side mobile drawer |
-| `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with link columns |
+| `src/app/sites/answerlattice/components/Header.tsx` | Shared header with compact title-only Product and Resources dropdowns plus right-side mobile drawer |
+| `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with link columns, placeholder social icon links, and bottom theme control |
 | `src/app/sites/answerlattice/components/AnswerlatticeLink.tsx` | Dev/production-aware Link component |
 | `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
 | `src/app/sites/answerlattice/components/AnswerlatticeScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across AnswerLattice public pages |
@@ -210,7 +217,7 @@
 | `src/app/sites/answerlattice/components/HomePageAwareDemoSection.tsx` | Homepage tabbed static page-aware demo section |
 | `src/app/sites/answerlattice/components/ClosedLoopSection.tsx` | Homepage animated missed-question loop from page question to reviewed support fix |
 | `src/app/sites/answerlattice/components/BestFitSection.tsx` | Homepage best-fit/not-fit buyer qualification tiles for live, beta, and near-launch products with starter support knowledge |
-| `src/app/sites/answerlattice/components/ProductPreviewSection.tsx` | Early product-proof scene; desktop uses a sticky chapter walkthrough and mobile/tablet keeps the tabbed dashboard/widget/governance preview |
+| `src/app/sites/answerlattice/components/ProductPreviewSection.tsx` | Early product-proof scene with compact tabs, active-state explanation, and image-backed dashboard/widget/governance preview slots |
 | `src/app/sites/answerlattice/components/ProductAreasSection.tsx` | Homepage product-suite cross-link section for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers |
 | `src/app/sites/answerlattice/components/SetupFunnelSection.tsx` | Homepage 10-minute setup visual funnel |
 | `src/app/sites/answerlattice/components/DayOneLaunchPackSection.tsx` | Homepage and Product section packaging quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff without adding another route |
@@ -250,14 +257,16 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 ## Design Decisions
 
-1. **Dark theme** — Deep navy with verdigris/teal controls. Infrastructure-grade support knowledge visual direction without generic AI-product indigo.
+1. **Theme modes** — Light/System/Dark public-site theme control. Dark remains deep navy with verdigris/teal controls; light uses restrained slate text, pale surfaces, and the same verdigris action/signal language. The selected mode is AnswerLattice-scoped and stored under `answerlattice-theme`.
 2. **Tailwind CSS** — Same build pipeline as rest of app. AnswerLattice `@tailwind` directives and scoped theme rules are root-loaded through `src/app/layout.tsx` so public routes do not depend on a nested CSS chunk.
-3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the desktop Product and Resources dropdowns can stay CSS-driven while the mobile hamburger opens a right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
+3. **Server components by default** — Pages stay server-rendered. The public header is a small client island so the desktop Product and Resources dropdowns can stay CSS-driven at `xl` widths while narrower screens use the right-side drawer with route icons, backdrop, Escape close, body scroll lock, and link-close behavior.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **AnswerlatticeLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses existing Tailwind, React, and icon stack.
 7. **Contact boundary** — `/contact` posts to an AnswerLattice-owned API route and AnswerLattice Firestore collection. It does not reuse another product's public enquiry storage.
 8. **Viewport reveal motion** — A single AnswerLattice-specific client island adds restrained section/card/CTA reveal effects across public pages with reduced-motion support. Motion stays product-site polish, not decorative animation.
+9. **Diagram motion** — AnswerLattice diagrams use one soft logo-centered ripple without an inner static strip. Cross-diagram pulses start from the logo together, run to the visible guide-line endpoints, and fade at the endpoint instead of disappearing abruptly.
+10. **Screen assets** — Website product-screen placeholders render from 1440 x 1200 PNG slots instead of HTML/CSS mockup screens. Production screenshots or GIFs should replace the same named slots so layout, crop, and page rhythm stay stable.
 
 ---
 
@@ -265,11 +274,21 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-06 | Reworked the desktop Resources dropdown to match the compact Product dropdown pattern with an overview row, small icon tiles, and title-only resource guide rows |
+| 2026-06-05 | Simplified the desktop Product dropdown into compact title-only rows with icons, keeping all product routes while removing dense explanatory copy from the header |
+| 2026-06-05 | Replaced the brand-column footer theme selector with placeholder social icons and moved the Light/System/Dark control to the bottom footer strip |
+| 2026-06-05 | Removed the Light/System/Dark selector from the desktop header while keeping theme control available in the mobile drawer and footer |
+| 2026-06-05 | Normalized AnswerLattice website accent colors across feature-card layouts, header dropdowns, product/resources cards, onboarding pages, and radial section glows so all public-site visual accents now use the Verdigris primary token system |
+| 2026-06-05 | Reworked the Product proof section from a sticky side-card walkthrough into a stable tabbed product-proof preview with one centered image-backed frame and readable active-state copy |
+| 2026-06-05 | Fixed the desktop header layout: full navigation now starts at `xl`, tablet/narrow desktop widths use the drawer, the header uses a wider container, and the Product dropdown stays inside the viewport |
+| 2026-06-05 | Replaced HTML/CSS product-screen placeholders with image-backed 1440 x 1200 dummy PNG slots, added the screen-asset registry/renderer/generator, and documented the final asset replacement contract |
+| 2026-06-05 | Refined AnswerLattice website diagrams with a single soft logo ripple, removed the inner static center strip, synchronized cross-diagram logo-origin pulses, and made pulse strokes fade at route endpoints |
+| 2026-06-05 | Added AnswerLattice public-site Light/System/Dark mode end to end: scoped theme provider, mobile/footer switcher, pre-hydration preference bootstrap, light/dark browser theme colors, global light-mode compatibility rules, inline-style route updates, and all-route smoke verification |
 | 2026-06-04 | Added a compact desktop Resources dropdown in the AnswerLattice public header, linking to the highest-priority resource articles and the resources hub without adding runtime or dashboard routes |
 | 2026-06-02 | Added a typed AnswerLattice public content module and ten explicit resource article routes with Article/FAQ structured data, resource analytics, sitemap registry coverage, LLM context, and verifier checks |
 | 2026-06-01 | Reworked the homepage from a setup-first story into a conversion-first story: clearer page-aware support-answer hero, inline sample workspace preview, new conversion proof band, earlier product proof/demo, Pre-Onboarding moved lower as a source-preparation accelerator, refreshed metadata, and final asset-preparation plan added |
 | 2026-06-01 | Extended the homepage conversion pattern across the rest of the public site: product, product-area, feature, SEO/use-case, setup, pricing, resources, proof, security, install, FAQ, contact, legal, and updates pages now expose compact proof strips, clearer CTAs, grouped FAQ scanning, and safer sample-state wording |
-| 2026-06-01 | Completed rendered wording QA across all public AnswerLattice routes and root-loaded scoped AnswerLattice CSS through `src/app/layout.tsx` so clean-cache pages keep the dark theme, Tailwind utilities, and route styling without relying on a nested CSS chunk |
+| 2026-06-01 | Completed rendered wording QA across all public AnswerLattice routes and root-loaded scoped AnswerLattice CSS through `src/app/layout.tsx` so clean-cache pages keep theme styling, Tailwind utilities, and route styling without relying on a nested CSS chunk |
 | 2026-06-02 | Broadened the top-level homepage, metadata, Product, About, Contact, and footer positioning from SaaS-only wording to SaaS and digital products while keeping AI-built SaaS as a focused use-case and SEO path |
 | 2026-06-02 | Completed the full rendered page-content cross-check: removed repeated long body copy from shared templates and broadened Resources, Pricing, ROI, FAQ, Proof, homepage CTA, and homepage pricing copy to SaaS plus digital-product framing |
 | 2026-06-02 | Upgraded the homepage product-proof section into a restrained desktop sticky walkthrough for setup, surfaces, widget, feedback, and governance while preserving the mobile tabbed preview and dark/teal theme |

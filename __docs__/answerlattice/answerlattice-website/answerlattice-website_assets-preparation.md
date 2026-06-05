@@ -1,7 +1,7 @@
 # AnswerLattice Website - Final Assets Preparation
 
-> **Status:** Planning artifact for final website media
-> **Last Updated:** 2026-06-02
+> **Status:** Implemented dummy asset contract for final website media
+> **Last Updated:** 2026-06-05
 > **Audience:** Product / Marketing / Design / Engineering
 
 ---
@@ -10,13 +10,26 @@
 
 Prepare the final videos, screenshots, and product-media placeholders needed to make the AnswerLattice website feel concrete, credible, and conversion-ready without using random stock assets, fake customers, or unsupported product claims.
 
-The current homepage uses responsive HTML/CSS sample product scenes. Those are acceptable placeholders. Final assets should replace or support them only after the captured UI is reviewed for accuracy, privacy, and claim parity.
+The current website screen mockups are image-backed dummy assets, not live HTML/CSS product-scene drawings. This gives design and product an exact view of layout, aspect ratio, crop, and spacing before final screenshots or GIFs are approved.
+
+---
+
+## Current Dummy Asset Contract
+
+- Public dummy image slots live in `public/answerlattice-website-assets/dummy/`.
+- Every current screen asset is a PNG at exactly `1440 x 1200`.
+- The site references screen slots through `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts`.
+- Screen-like website placeholders render through `AnswerlatticeAssetImage.tsx`, which preserves the intrinsic asset aspect ratio.
+- The deterministic generator is `scripts/website-assets/generate-answerlattice-website-dummy-assets.js`.
+- Internal source SVGs and the generation manifest live in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
+- The public dummy folder should contain PNG screen slots only. Source SVGs, capture notes, and manifests stay internal.
+- Final production screenshots or GIFs should replace the same named slots and preserve `1440 x 1200` unless the registry and this document are updated together.
 
 ---
 
 ## Asset Rules
 
-1. Keep the current AnswerLattice theme colors: deep navy surfaces, verdigris/teal controls, cyan support accents, and existing logo treatment.
+1. Keep the current AnswerLattice theme colors: deep navy surfaces, Verdigris primary controls, primary-token signal accents, and existing logo treatment.
 2. Do not use fake customer logos, fake testimonials, fake usage metrics, or stock people imagery.
 3. Use one consistent demo workspace: `Sample SaaS workspace`.
 4. Use generic but realistic sample product areas: Billing, Onboarding, Team Settings, Releases, Integrations, and Errors.
@@ -87,14 +100,14 @@ Use this consistent sample data across screenshots and videos:
 
 | Website Surface | Preferred Asset | Fallback Placeholder |
 |-----------------|-----------------|----------------------|
-| Homepage hero | 12-18 sec product loop or high-fidelity dashboard screenshot | Current coded sample workspace card |
-| Conversion proof band | Six small UI crops or icon cards tied to product proof | Current Lucide icon cards |
-| Product preview | Interactive coded tabs plus final screenshots for tab states | Current `ProductPreviewSection` sample tabs |
-| Product and product-area pages | Product overview image plus focused product-area screenshots | Current `PageProofStrip` plus coded browser-style product canvases |
-| Feature pages | One screenshot per feature family where the UI exists | Current `ProductFeatureLandingPage` coded mockups and workflow diagrams |
-| SEO/use-case pages | Problem-to-reviewed-answer short clip or before/after image | Current `SeoLandingPage` and `AnswerlatticeBeforeAfterStrip` rendered examples |
-| Demo section | Short screen recording from public `/demo` | Current account-free demo component |
-| Widget section | Dashboard screenshot plus widget runtime mini-video | Current bento UI scene |
+| Homepage hero | 12-18 sec product loop or high-fidelity dashboard screenshot | `answerlattice-home-hero-workspace.png` |
+| Conversion proof band | Six small UI crops or icon cards tied to product proof | Current compact icon cards, not screen mockups |
+| Product preview | Final screenshots or short GIFs for tab states | Five `answerlattice-product-preview-*.png` slots |
+| Product and product-area pages | Product overview image plus focused product-area screenshots | Four `answerlattice-product-area-*.png` slots plus `PageProofStrip` |
+| Feature pages | One screenshot per feature family where the UI exists | Ten `answerlattice-feature-*.png` slots |
+| SEO/use-case pages | Problem-to-reviewed-answer short clip or before/after image | Current diagrams and proof blocks; no screen-slot requirement yet |
+| Demo section | Short screen recording from public `/demo` | Four `answerlattice-demo-surface-*.png` slots |
+| Widget section | Dashboard screenshot plus widget runtime mini-video | `answerlattice-widget-runtime.png` |
 | Security section | Runtime-controls screenshot and one-pager crop | Current status snapshots |
 | Day-one launch pack | Install Center screenshot and source-prep screenshot | Current link cards |
 | Proof pack | Full capture set with short captions | Current proof examples |
@@ -104,6 +117,7 @@ Use this consistent sample data across screenshots and videos:
 ## Capture Checklist
 
 - Desktop screenshots: 1440 x 1200 minimum, browser UI hidden unless the browser frame is part of the designed mock.
+- Current dummy screen slots are exactly 1440 x 1200 PNGs. Final production screenshots or GIF poster frames should keep that size unless the registry changes.
 - Mobile screenshots: 390 x 844 and 430 x 932 for hero, navigation, demo, widget, and pricing.
 - Videos: 1440p source, export MP4 and WebM, no audio unless a narrated version is intentionally prepared.
 - Cursor movement: slow, purposeful, no random scrolling.
@@ -130,10 +144,20 @@ Use stable names so website implementation can reference assets without churn:
 - `answerlattice-product-area-widget.png`
 - `answerlattice-product-area-support-control.png`
 - `answerlattice-product-area-governance.png`
+- `answerlattice-feature-team-access.png`
 - `answerlattice-feature-knowledge-intake.png`
+- `answerlattice-feature-knowledge-base.png`
+- `answerlattice-feature-faq-management.png`
+- `answerlattice-feature-changelog.png`
+- `answerlattice-feature-tickets.png`
 - `answerlattice-feature-support-board.png`
 - `answerlattice-feature-feedback-review.png`
 - `answerlattice-feature-workflow-notifications.png`
+- `answerlattice-feature-proactive-help.png`
+- `answerlattice-demo-surface-billing.png`
+- `answerlattice-demo-surface-onboarding.png`
+- `answerlattice-demo-surface-settings.png`
+- `answerlattice-demo-surface-release.png`
 - `answerlattice-demo-page-aware-widget.mp4`
 - `answerlattice-setup-walkthrough.mp4`
 - `answerlattice-governance-loop.mp4`

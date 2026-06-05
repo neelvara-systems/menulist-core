@@ -88,7 +88,7 @@ export default function AnswerlatticeIntegrationsPage() {
             <AnswerlatticePageStructuredData path="/integrations" />
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
-                <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
+                <section className="al-primary-radial-page relative overflow-hidden border-b border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
                     <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
                         <div>
                             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">Integrations</p>
@@ -143,7 +143,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                 <div className="grid gap-4 p-5 sm:p-6">
                                     <div className="rounded-2xl border border-teal-300/20 bg-teal-400/10 p-4">
                                         <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-                                            <LuBell aria-hidden size={18} className="text-[#1eceff]" />
+                                            <LuBell aria-hidden size={18} className="al-primary-accent-text" />
                                             Nightly support digest
                                         </div>
                                         <p className="text-sm leading-relaxed text-[#a0a0c0]">
@@ -181,7 +181,7 @@ export default function AnswerlatticeIntegrationsPage() {
                                 const Icon = card.icon;
                                 return (
                                     <article key={card.title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05] text-[#1eceff]">
+                                        <span className="al-primary-accent-text flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
                                             <Icon aria-hidden size={20} />
                                         </span>
                                         <h3 className="mt-5 text-lg font-semibold text-white">{card.title}</h3>
@@ -202,7 +202,7 @@ export default function AnswerlatticeIntegrationsPage() {
                         />
                         <div className="mx-auto max-w-3xl rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-5">
                             <div className="mb-5 flex items-center gap-2">
-                                <LuSlidersHorizontal aria-hidden className="text-[#1eceff]" />
+                                <LuSlidersHorizontal aria-hidden className="al-primary-accent-text" />
                                 <h3 className="text-lg font-bold text-white">Event filters</h3>
                             </div>
                             <div className="space-y-3">
@@ -217,7 +217,7 @@ export default function AnswerlatticeIntegrationsPage() {
                     </div>
                 </section>
 
-                <section className="border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(20,184,166,0.10),transparent_36%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6">
+                <section className="al-primary-radial-section border-b border-white/[0.06] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
                         <SectionHeader
                             eyebrow="Workflow"

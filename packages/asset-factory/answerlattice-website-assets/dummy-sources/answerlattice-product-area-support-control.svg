@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1200" viewBox="0 0 1440 1200">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#070714"/>
+            <stop offset="0.48" stop-color="#0d0d22"/>
+            <stop offset="1" stop-color="#101028"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="10%" r="72%">
+            <stop offset="0" stop-color="#2563eb" stop-opacity="0.32"/>
+            <stop offset="0.45" stop-color="#5eead4" stop-opacity="0.12"/>
+            <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000000" flood-opacity="0.36"/>
+        </filter>
+    </defs>
+    <rect width="1440" height="1200" fill="url(#bg)"/>
+    <rect width="1440" height="1200" fill="url(#glow)"/>
+    <rect x="72" y="64" width="1296" height="1072" rx="52" fill="#09091a" stroke="rgba(255,255,255,0.10)" stroke-width="2" filter="url(#softShadow)"/>
+    <rect x="92" y="88" width="1256" height="96" rx="32" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <circle cx="142" cy="136" r="12" fill="#ff6b6b"/>
+    <circle cx="182" cy="136" r="12" fill="#ffd166"/>
+    <circle cx="222" cy="136" r="12" fill="#06d6a0"/>
+    <rect x="1038" y="114" width="258" height="44" rx="22" fill="rgba(255,255,255,0.055)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+    <text x="1064" y="143" fill="#d6d6ef" font-size="20" font-weight="700">Sample workspace</text>
+
+    <rect x="112" y="218" width="256" height="858" rx="34" fill="#080818" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    <rect x="150" y="258" width="72" height="72" rx="22" fill="#2563eb"/>
+    <text x="174" y="305" fill="#ffffff" font-size="34" font-weight="800">A</text>
+    <text x="242" y="286" fill="#ffffff" font-size="24" font-weight="700">AnswerLattice</text>
+    <text x="242" y="318" fill="#8f8faa" font-size="18">Workspace</text>
+    <rect x="144" y="392" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <text x="164" y="422" fill="#8f8faa" font-size="18" font-weight="700">Activation</text><rect x="144" y="468" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <text x="164" y="498" fill="#8f8faa" font-size="18" font-weight="700">Surfaces</text><rect x="144" y="544" width="180" height="46" rx="16" fill="rgba(94,234,212,0.13)" stroke="rgba(94,234,212,0.22)" stroke-width="1"/>
+            <text x="164" y="574" fill="#ccfbf1" font-size="18" font-weight="700">Widget</text><rect x="144" y="620" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <text x="164" y="650" fill="#8f8faa" font-size="18" font-weight="700">Feedback</text><rect x="144" y="696" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <text x="164" y="726" fill="#8f8faa" font-size="18" font-weight="700">Governance</text>
+
+    <text x="420" y="282" fill="#5eead4" font-size="22" font-weight="800" letter-spacing="4">PRODUCT AREA</text>
+    <text x="420" y="340" fill="#ffffff" font-size="54" font-weight="800">Help center and tickets</text>
+    <text x="420" y="386" fill="#a0a0c0" font-size="25">Hosted help, FAQ, fallback tickets, support gaps</text>
+
+    
+        <rect x="420" y="450" width="452" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
+        <rect x="448" y="478" width="84" height="10" rx="5" fill="#2563eb" opacity="0.78"/>
+        <text x="448" y="526" fill="#f8fafc" font-size="30" font-weight="700">Support context</text>
+        <text x="448" y="568" fill="#a0a0c0" font-size="22">Route, workflow, role, and page hints</text>
+        <rect x="448" y="614" width="396" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
+        <rect x="448" y="650" width="253" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
+    
+    
+        <rect x="904" y="450" width="344" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
+        <rect x="932" y="478" width="84" height="10" rx="5" fill="#5eead4" opacity="0.78"/>
+        <text x="932" y="526" fill="#f8fafc" font-size="30" font-weight="700">Widget result</text>
+        <text x="932" y="568" fill="#a0a0c0" font-size="22">Approved answer before fallback</text>
+        <rect x="932" y="614" width="288" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
+        <rect x="932" y="650" width="184" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
+    
+    
+        <rect x="420" y="732" width="384" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
+        <rect x="448" y="760" width="84" height="10" rx="5" fill="#f59e0b" opacity="0.78"/>
+        <text x="448" y="808" fill="#f8fafc" font-size="30" font-weight="700">Review queue</text>
+        <text x="448" y="850" fill="#a0a0c0" font-size="22">Drafts stay owner-reviewed</text>
+        <rect x="448" y="896" width="328" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
+        <rect x="448" y="932" width="209" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
+    
+    
+        <rect x="836" y="732" width="412" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
+        <rect x="864" y="760" width="84" height="10" rx="5" fill="#2563eb" opacity="0.78"/>
+        <text x="864" y="808" fill="#f8fafc" font-size="30" font-weight="700">Runtime checks</text>
+        <text x="864" y="850" fill="#a0a0c0" font-size="22">Allowed origins and blocked routes</text>
+        <rect x="864" y="896" width="356" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
+        <rect x="864" y="932" width="227" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
+    
+
+    <rect x="420" y="1016" width="828" height="38" rx="19" fill="rgba(255,255,255,0.055)"/>
+    <rect x="420" y="1016" width="662" height="38" rx="19" fill="#2563eb" opacity="0.72"/>
+    <text x="112" y="1120" fill="#6b6b8a" font-size="20">Dummy production asset slot - 1440 x 1200px - replace this PNG with approved capture</text>
+</svg>

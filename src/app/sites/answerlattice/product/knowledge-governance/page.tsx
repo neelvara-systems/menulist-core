@@ -33,19 +33,6 @@ export default function KnowledgeGovernanceProductPage() {
                 description="AnswerLattice keeps approved answers in front, marks fallback clearly, flags stale support, and turns repeated misses into reviewable improvements."
                 activeTab="Review approved answers"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
-                canvasTitle="Review answer health before users get bad help."
-                canvasSubtitle="Missed questions, stale release context, negative feedback, and repeated tickets become visible review work before they become bad support habits."
-                canvasBadge="Human review"
-                canvasItems={[
-                    { title: 'Approved answers', description: 'Approved, scoped answers stay official before fallback or generated help.' },
-                    { title: 'Drift review', description: 'Release, scope, deprecated entity, and signal anomaly drift become visible instead of silently misleading users.' },
-                    { title: 'Signal mutation', description: 'Recurring misses become reviewable proposals or draft answer changes for human approval.' },
-                ]}
-                metrics={[
-                    { label: 'Coverage KPI', value: 'Improving' },
-                    { label: 'Drift pressure', value: 'Visible' },
-                    { label: 'Authority', value: 'Approved' },
-                ]}
                 bentoTitle="Known truth stays stable. Missing truth becomes visible."
                 bentoDescription="The point is not to let AI answer everything. The point is to keep known answers stable, stale answers visible, and missing answers reviewable."
                 bentoCards={[
