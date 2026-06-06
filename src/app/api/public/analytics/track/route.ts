@@ -8,6 +8,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { secureError } from '@lib/security/secureLogger';
+import { unstable_cache } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPublicRateLimit } from 'src/middleware/publicApi';
 import { z } from 'zod';
@@ -36,7 +37,7 @@ const AnalyticsTrackSchema = z.object({
 
 const RESERVED_PROJECT_IDS = new Set(['obp', 'customerApp']);
 
-async function validateAnalyticsTarget(
+async function validateAnalyticsTargetUncached(
     tenantId: string,
     storeId: string,
     projectId: string,
@@ -61,6 +62,12 @@ async function validateAnalyticsTarget(
     const project = projects[projectId];
     return Boolean(project && project.active !== false && project.deleted !== true);
 }
+
+const validateAnalyticsTarget = unstable_cache(
+    validateAnalyticsTargetUncached,
+    ['public-analytics-target'],
+    { revalidate: 300, tags: ['client-stores'] },
+);
 
 function resolveAcceptedDate(
     requestedDate: string | undefined,

@@ -112,6 +112,7 @@ export const getMenuItemsForScreenServer = async (
     storeId: string,
     tenantId: string,
     activeSpecialMenuId?: string | null,
+    baseProjectId?: string | null,
 ): Promise<Array<{
     id: string;
     name: string;
@@ -226,25 +227,33 @@ export const getMenuItemsForScreenServer = async (
             return projectDoc.exists ? projectDoc : null;
         };
 
-        const summarySnap = await firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`projects_${storeId}`)
-            .get();
-        const projectMap = summarySnap.exists ? parseSummaryProjects(summarySnap.data() || {}) : {};
-        const activeProjects = Object.entries(projectMap)
-            .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-            .filter((project: any) => (
-                project?.active !== false
-                && project?.deleted !== true
-                && project?.isSpecialMenu !== true
-            ));
-        const defaultProjectId = activeProjects.find((project: any) => project?.isDefault === true)?.projectId;
-        const orderedProjectIds = [
-            ...(defaultProjectId ? [defaultProjectId] : []),
-            ...activeProjects
-                .map((project: any) => project.projectId)
-                .filter((projectId, index, allProjectIds) => allProjectIds.indexOf(projectId) === index),
-        ];
+        let loadedOrderedProjectIds: string[] | null = null;
+        const loadOrderedProjectIds = async () => {
+            if (loadedOrderedProjectIds) return loadedOrderedProjectIds;
+
+            const summarySnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                .doc(`projects_${storeId}`)
+                .get();
+            const projectMap = summarySnap.exists ? parseSummaryProjects(summarySnap.data() || {}) : {};
+            const activeProjects = Object.entries(projectMap)
+                .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
+                .filter((project: any) => (
+                    project?.active !== false
+                    && project?.deleted !== true
+                    && project?.isSpecialMenu !== true
+                ));
+            const defaultProjectId = activeProjects.find((project: any) => project?.isDefault === true)?.projectId;
+            loadedOrderedProjectIds = [
+                ...(defaultProjectId ? [defaultProjectId] : []),
+                ...activeProjects
+                    .map((project: any) => project.projectId)
+                    .filter((projectId, index, allProjectIds) => allProjectIds.indexOf(projectId) === index),
+            ];
+            return loadedOrderedProjectIds;
+        };
+
+        const orderedProjectIds = baseProjectId ? [baseProjectId] : await loadOrderedProjectIds();
 
         if (activeSpecialMenuId) {
             const specialDoc = await getProjectDoc(activeSpecialMenuId);
@@ -282,8 +291,29 @@ export const getMenuItemsForScreenServer = async (
             const projectDoc = await getProjectDoc(projectId);
             if (!projectDoc) continue;
 
-            const fallbackItems = extractMenuItemsFromProject(projectDoc.data());
+            const projectData = projectDoc.data();
+            if (projectData?.active === false || projectData?.deleted === true || projectData?.isSpecialMenu === true) {
+                continue;
+            }
+
+            const fallbackItems = extractMenuItemsFromProject(projectData);
             if (fallbackItems.length > 0) return fallbackItems;
+        }
+
+        if (baseProjectId) {
+            const fallbackProjectIds = (await loadOrderedProjectIds()).filter((projectId) => projectId !== baseProjectId);
+            for (const projectId of fallbackProjectIds) {
+                const projectDoc = await getProjectDoc(projectId);
+                if (!projectDoc) continue;
+
+                const projectData = projectDoc.data();
+                if (projectData?.active === false || projectData?.deleted === true || projectData?.isSpecialMenu === true) {
+                    continue;
+                }
+
+                const fallbackItems = extractMenuItemsFromProject(projectData);
+                if (fallbackItems.length > 0) return fallbackItems;
+            }
         }
 
         return [];

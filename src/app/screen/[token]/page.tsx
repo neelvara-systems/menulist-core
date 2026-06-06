@@ -12,7 +12,7 @@
  *   3. Default: "menu_board"
  * 
  * Both modes use same data pipeline:
- *   getScreenDataByToken() [2 reads] + getMenuItemsForScreen() [2 reads]
+ *   getScreenDataByToken() [2+ reads] + getMenuItemsForScreen() [1+ reads]
  *   Firebase cost: identical regardless of mode ($0.00 delta)
  */
 
@@ -90,7 +90,8 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
     const menuItems = await getCachedMenuItems(
         screenData.storeId,
         screenData.tenantId,
-        screenData.activeSpecialMenuId || null
+        screenData.activeSpecialMenuId || null,
+        screenData.baseProjectId || null
     );
 
     // ─── MENU BOARD MODE ───────────────────────────────────────

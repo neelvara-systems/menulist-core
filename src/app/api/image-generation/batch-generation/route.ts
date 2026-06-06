@@ -18,6 +18,13 @@ import { getImagePrompts } from "../prompt";
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
 const LOG_FILE = "batch-image-generation.log"
+const TERMINAL_JOB_STATUSES = new Set([
+    BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+    BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+]);
 
 export async function POST(request: Request) {
     // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
@@ -53,6 +60,17 @@ export async function POST(request: Request) {
     const currentJobData: BatchImageGenerationJobType = await getImageBatchProcessingJobById(jobId, { tId, sId });
     logger.debug('Fetched job data', { jobId, projectId, tId, sId, status: currentJobData?.status });
 
+    if (!currentJobData) {
+        logger.warn('Batch image generation task skipped - job not found', { item: itemDetails.name, jobId, projectId });
+        return NextResponse.json({ success: true, message: 'Task acknowledged because job no longer exists.' }, { status: 200 });
+    }
+
+    if (TERMINAL_JOB_STATUSES.has(currentJobData.status)) {
+        logger.info(`Task skipped`, { item: itemDetails.name, jobId, status: currentJobData.status });
+        await writeLogEntry({ logFileName: LOG_FILE, userId: userIdForLog, projectId, logType: 'BATCH_GENERATION_IMAGE_GEN_SKIPPED', error: `Task for item ${itemDetails.name} in job ${jobId} skipped due to ${currentJobData.status}.`, data: { jobId, itemDetails } });
+        return NextResponse.json({ success: true, message: `Task skipped due to job ${currentJobData.status}.` }, { status: 200 });
+    }
+
     // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity (uses tId/sId from projectId)
     const capacityCheck = await checkAICapacity(
         Number(tId),
@@ -70,14 +88,6 @@ export async function POST(request: Request) {
     }
 
     try {
-        if (currentJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED || currentJobData?.status === BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED) {
-            logger.info(`Task skipped`, { item: itemDetails.name, jobId, status: currentJobData?.status });
-            // Return 200 to acknowledge task completion in Cloud Tasks, preventing retries.
-            // The job status is already 'cancelled', so no further action needed here.
-            await writeLogEntry({ logFileName: LOG_FILE, userId: userIdForLog, projectId, logType: 'BATCH_GENERATION_IMAGE_GEN_SKIPPED', error: `Task for item ${itemDetails.name} in job ${jobId} skipped due to ${currentJobData?.status}.`, data: { jobId, itemDetails } });
-            return NextResponse.json({ success: true, message: `Task skipped due to job ${currentJobData?.status}.` }, { status: 200 });
-        }
-
         const startTime = new Date().getTime();
         const promptsToExecute = getImagePrompts({ generationConfig, projectId, itemDetails, businessType }, AI_MODEL);
         const imageGenerationApi = selectImageGenerator(AI_MODEL, generationConfig);

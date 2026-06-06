@@ -746,8 +746,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
     const shouldLoadProjectMetadata = !!projectSlugForLookup || (!FEATURE_FLAGS.ENABLE_OBP && slugSegments.length === 0);
     if (shouldLoadProjectMetadata && metadataStore?.tenantId && metadataStore?.storeId) {
+        const getCachedMetadataProject = unstable_cache(
+            getProjectBySlugOrDefault,
+            ['client-menu-project'],
+            { revalidate: 60, tags: [`menu-store-${metadataStore.storeId}`] }
+        );
+
         const projectResult = await withRetry(() =>
-            getProjectBySlugOrDefault(
+            getCachedMetadataProject(
                 metadataStore.tenantId,
                 metadataStore.storeId,
                 projectSlugForLookup,

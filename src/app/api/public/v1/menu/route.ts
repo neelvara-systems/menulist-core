@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const result = await validatePublicApiKey(apiKey);
+        const result = await validatePublicApiKey(apiKey, { cacheTtlMs: 30_000 });
         if (!result) {
             return apiError('INVALID_API_KEY', 'Invalid API key', 401);
         }
