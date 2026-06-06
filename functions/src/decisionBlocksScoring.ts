@@ -763,6 +763,32 @@ async function computeForProject(
     };
 }
 
+async function saveDecisionBlocksForProject(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    blocks: DecisionBlocksDocument,
+): Promise<string> {
+    const docId = getDecisionBlocksDocId(tId, sId, projectId);
+    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+
+    try {
+        await getProjectDocRef(db, String(tId), String(sId), String(projectId)).set({
+            publicDecisionBlocks: blocks,
+        }, { merge: true });
+    } catch (error: any) {
+        functions.logger.warn('[DecisionBlocks] Failed to mirror public projection into project document', {
+            tId,
+            sId,
+            projectId,
+            error: error?.message || String(error),
+        });
+    }
+
+    return docId;
+}
+
 function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
     return {
         storesAttempted: 0,
@@ -972,8 +998,7 @@ async function runNightlySchedulerForStore(
                 );
 
                 if (blocks) {
-                    const docId = getDecisionBlocksDocId(tId, sId, projectId);
-                    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+                    await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
 
                     logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
                     storeRun.successCount++;
@@ -1332,8 +1357,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
                         if (blocks) {
                             // Save to decisionBlocks collection with projectId in key
-                            const docId = getDecisionBlocksDocId(tId, sId, projectId);
-                            await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+                            await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
 
                             logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
                             results.successCount++;
@@ -2387,8 +2411,7 @@ export const triggerDecisionBlocksScoring = onCall({
         );
 
         if (blocks) {
-            const docId = getDecisionBlocksDocId(tId, sId, projectId);
-            await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+            const docId = await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
             return { success: true, docId, blocks };
         }
 
@@ -2437,8 +2460,7 @@ export const triggerDecisionBlocksScoring = onCall({
                 );
 
                 if (blocks) {
-                    const docId = getDecisionBlocksDocId(tId, sId, pId);
-                    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+                    const docId = await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
                     results.push({ projectId: pId, docId });
                     successCount++;
                 }
@@ -2490,8 +2512,7 @@ export const triggerDecisionBlocksScoring = onCall({
                 );
 
                 if (blocks) {
-                    const docId = getDecisionBlocksDocId(storeTId, storeSId, pId);
-                    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+                    await saveDecisionBlocksForProject(db, storeTId, storeSId, pId, blocks);
                     successCount++;
                 }
             } catch (error) {

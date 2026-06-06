@@ -177,6 +177,40 @@ async function getPrecomputedDecisionBlocks(
     }
 }
 
+function getTimestampMillis(value: unknown): number | null {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
+    if (typeof value === 'string' || typeof value === 'number') {
+        const millis = new Date(value).getTime();
+        return Number.isNaN(millis) ? null : millis;
+    }
+    if (typeof value === 'object') {
+        const timestampLike = value as { toMillis?: () => number; toDate?: () => Date; seconds?: number; _seconds?: number };
+        if (typeof timestampLike.toMillis === 'function') {
+            const millis = timestampLike.toMillis();
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof timestampLike.toDate === 'function') {
+            const date = timestampLike.toDate();
+            return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+        }
+        const seconds = timestampLike.seconds ?? timestampLike._seconds;
+        return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds * 1000 : null;
+    }
+    return null;
+}
+
+function getUsableEmbeddedDecisionBlocks(projectData: any): any | null {
+    const blocks = projectData?.publicDecisionBlocks;
+    if (!blocks || typeof blocks !== 'object') return null;
+    const validUntilMs = getTimestampMillis(blocks.validUntil);
+    if (!validUntilMs || validUntilMs <= Date.now()) return null;
+    if (!Array.isArray(blocks.popular) && !Array.isArray(blocks.quickPick) && !Array.isArray(blocks.bestValue)) {
+        return null;
+    }
+    return blocks;
+}
+
 // Get all projects for a store and find by slug or default.
 // G-05 / R5 (§9 + D-14 PUBLIC-ROUTING-DOCTRINE): when slug === 'menu' AND no
 // project claims that slug (Layer 1 miss), the existing isDefault fallback
@@ -1782,6 +1816,7 @@ async function MenuContent({
     }
 
     // Strip internal metadata before any customer-facing usage (TASK 7)
+    const embeddedDecisionBlocks = getUsableEmbeddedDecisionBlocks(rawProjectData);
     const sanitized = serializeClientValue(sanitizeForClient(rawProjectData));
     const effectiveBusinessType = resolvePublicBusinessType(
         storeDetails?.businessType,
@@ -1807,11 +1842,13 @@ async function MenuContent({
 
     // Fetch precomputed Decision Blocks (optional enhancement — cached)
     const projectId = projectMetadata.projectId || projectMetadata.id;
-    const precomputedBlocks = serializeClientValue(await withTimeout(getCachedBlocks(
-        storeData.tenantId,
-        storeData.storeId,
-        projectId,
-    )));
+    const precomputedBlocks = serializeClientValue(
+        embeddedDecisionBlocks || await withTimeout(getCachedBlocks(
+            storeData.tenantId,
+            storeData.storeId,
+            projectId,
+        ))
+    );
 
     // Build canonical URL based on tenant type and slug
     const baseUrl =

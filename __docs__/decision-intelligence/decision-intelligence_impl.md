@@ -145,7 +145,7 @@ project.menuSettings.decisionBlocks = {
 };
 ```
 
-This keeps generated ranking data (`decisionBlocks`) separate from owner-authored menu truth (`projects/{tId}/{sId}/{projectId}`).
+Generated ranking data remains canonical in `decisionBlocks`. The scheduler also mirrors the same compact customer-safe payload to `project.publicDecisionBlocks` so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. That mirror is a read optimization only; owner-authored controls remain in `project.menuSettings.decisionBlocks`.
 
 Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
 

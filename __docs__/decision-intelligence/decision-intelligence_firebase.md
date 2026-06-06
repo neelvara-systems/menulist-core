@@ -22,7 +22,7 @@
 
 | Operation                          | Collection                               | Trigger              | Frequency                  | Docs Read | Indexed?         | Notes                                                                                                   |
 | ---------------------------------- | ---------------------------------------- | -------------------- | -------------------------- | --------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
-| Customer: fetch precomputed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Customer page load   | Per menu view (cached 60s) | 1         | Direct doc       | Server-side Admin SDK read on public menu page. Cached via `unstable_cache`. File: `src/app/client/[[...slug]]/page.tsx` |
+| Customer: fetch precomputed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks`, fallback `decisionBlocks/{tId}_{sId}_{projectId}` | Customer page load | Per menu cache miss | 0-1 | Direct doc | Public menu prefers the embedded valid projection already loaded with project data. If missing or expired, it falls back to the canonical `decisionBlocks` doc. File: `src/app/client/[[...slug]]/page.tsx` |
 | Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Scheduled scoring    | Per active project         | 1         | Direct doc       | Cloud Function reads full project for item analysis.                                                    |
 | Scoring: read analytics snapshot   | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Scheduled scoring | Per active project | 1 | Direct doc | Uses the scheduler-written compact 7-day snapshot; missing/stale snapshots score as empty instead of running hidden daily range reads. |
 | Scoring: read active project list  | `platformSummary/projects_{sId}`         | Scheduled scoring    | Per store                  | 1         | Direct doc       | Used to resolve active project IDs before nested project reads.                                          |
@@ -33,7 +33,7 @@
 
 | Operation                      | Collection                               | Trigger                  | Frequency          | Docs Written | Fields                                                | Notes                                       |
 | ------------------------------ | ---------------------------------------- | ------------------------ | ------------------ | ------------ | ----------------------------------------------------- | ------------------------------------------- |
-| Scoring: write computed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` | Scheduled scoring complete | Per active project | 1            | popular, quickPick, bestValue candidates + computedAt | Cloud Function writes full scoring results. |
+| Scoring: write computed blocks | `decisionBlocks/{tId}_{sId}_{projectId}` + project `publicDecisionBlocks` mirror | Scheduled scoring complete | Per active project | 1 canonical + 1 best-effort mirror | popular, quickPick, bestValue candidates + computedAt | Cloud Function keeps `decisionBlocks` canonical and mirrors the same compact public projection into the project doc to avoid an extra public read. |
 | Scoring: write run log         | `schedulerRunLogs/{autoId}`              | Scheduled scoring complete | 1 per run          | 1            | status, tasks[], errors[], durations, counts          | Persisted for Scheduler Monitor Dashboard.  |
 | Owner: update pin controls     | `projects/{tId}/{sId}/{projectId}`       | Owner saves Smart Recommendations | Per save | 1 | `menuSettings.decisionBlocks` | Saved through `updateProject()`, which also invalidates public menu/OBP cache tags. |
 
@@ -56,7 +56,7 @@ None — decision blocks documents are overwritten nightly, never deleted.
 
 ### Current Optimizations
 
-- **Precomputed results**: Scoring runs in the nightly scheduler window for each store, results cached. Customer reads are direct server-side doc reads.
+- **Precomputed results**: Scoring runs in the nightly scheduler window for each store, results cached. Customer menu renders use the project-embedded `publicDecisionBlocks` projection when valid, with the old `decisionBlocks` document as fallback.
 - **60s Vercel cache**: Customer-facing reads cached, reducing Firestore reads significantly.
 - **Store-scoped scoring**: Hourly trigger filters stores by local settlement window, avoiding one large global daily run.
 - **Compact analytics input**: Decision Blocks consume the 7-day intelligence snapshot instead of opening daily range reads during normal scheduled scoring.

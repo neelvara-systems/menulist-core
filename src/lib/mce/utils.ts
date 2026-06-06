@@ -34,6 +34,7 @@ export function sanitizeForClient(projectData: any): any {
     delete sanitized.deleted;
     delete sanitized.deletedAt;
     delete sanitized._mce; // MCE verification metadata — internal only
+    delete sanitized.publicDecisionBlocks; // Passed separately as precomputedBlocks when needed
 
     // Sanitize files array
     if (sanitized.files && Array.isArray(sanitized.files)) {
