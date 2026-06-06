@@ -145,7 +145,7 @@ project.menuSettings.decisionBlocks = {
 };
 ```
 
-Generated ranking data is stored as the customer-safe `project.publicDecisionBlocks` projection so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. Owner-authored controls remain separate in `project.menuSettings.decisionBlocks`.
+Generated ranking data is stored as the customer-safe `project.publicDecisionBlocks` projection so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. Owner-authored controls remain separate in `project.menuSettings.decisionBlocks`, and owner-side `updateProject()` saves strip `publicDecisionBlocks` so generated scorer output is not overwritten by dashboard/mobile edit payloads.
 
 Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
 

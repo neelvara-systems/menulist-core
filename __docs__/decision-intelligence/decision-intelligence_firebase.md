@@ -35,7 +35,7 @@
 | ------------------------------ | ---------------------------------------- | ------------------------ | ------------------ | ------------ | ----------------------------------------------------- | ------------------------------------------- |
 | Scoring: write computed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Scheduled scoring complete | Per active project | 1 project merge | popular, quickPick, bestValue candidates + computedAt | Cloud Function writes the compact public projection into the project doc; there is no separate Decision Blocks document. |
 | Scoring: write run log         | `schedulerRunLogs/{autoId}`              | Scheduled scoring complete | 1 per run          | 1            | status, tasks[], errors[], durations, counts          | Persisted for Scheduler Monitor Dashboard.  |
-| Owner: update pin controls     | `projects/{tId}/{sId}/{projectId}`       | Owner saves Smart Recommendations | Per save | 1 | `menuSettings.decisionBlocks` | Saved through `updateProject()`, which also invalidates public menu/OBP cache tags. |
+| Owner: update pin controls     | `projects/{tId}/{sId}/{projectId}`       | Owner saves Smart Recommendations | Per save | 1 | `menuSettings.decisionBlocks` | Saved through `updateProject()`, which strips generated `publicDecisionBlocks` from owner payloads and invalidates public menu/OBP cache tags. |
 
 ### Deletes
 

@@ -771,7 +771,15 @@ export const updateProjectMetadata = async (
     );
 };
 
+const stripGeneratedProjectReadModels = <T extends Partial<Project>>(data: T): T => {
+    const cleanData = { ...data } as T & Record<string, unknown>;
+    delete cleanData.publicDecisionBlocks;
+    return cleanData as T;
+};
+
 const runUpdateProject = async (data: Partial<Project>) => {
+    data = stripGeneratedProjectReadModels(data);
+
     if (Array.isArray(data.languages)) {
         const normalizedPolicy = normalizeProjectLanguagePolicy({
             languages: data.languages || [],
