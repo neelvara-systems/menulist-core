@@ -17,7 +17,7 @@ import AnswerlatticeResourceStructuredData from './ResourceStructuredData';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'AnswerLattice resources for founders launching support for SaaS apps and digital products: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
+    description: 'AnswerLattice resources for founders launching support for SaaS apps: pre-onboarding, demo, fit, knowledge intake, feedback review, install, Support Board, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -44,29 +44,29 @@ export default function AnswerlatticeResourcesPage() {
                         Start here if you are launching support for a SaaS app or digital product.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Start with pre-onboarding, then use the demo, fit checks, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
+                        Start with pre-onboarding, then use the demo, fit checks, knowledge intake, install steps, screenshot boundaries, runtime safety, pricing, and support-day review.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/pre-onboarding"
+                            href="/get-started"
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
-                            Prepare inputs first
+                            Start setup
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/demo"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                         >
-                            See page-aware demo
+                            See demo
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/pre-onboarding"
                             className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
                         >
-                            Start setup
+                            Prepare inputs first
                         </AnswerlatticeLink>
                     </div>
                     <PageProofStrip
@@ -74,7 +74,7 @@ export default function AnswerlatticeResourcesPage() {
                         items={[
                             { label: 'Buyer path', value: 'Demo, proof, pricing, FAQ' },
                             { label: 'Setup path', value: 'Pre-onboarding, intake, install, security' },
-                            { label: 'Product path', value: 'Setup, widget, hosted help, governance' },
+                            { label: 'Product path', value: 'Setup, widget, hosted help, support review' },
                         ]}
                     />
                 </section>
@@ -194,7 +194,7 @@ export default function AnswerlatticeResourcesPage() {
                                     >
                                         <div>
                                             <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-teal-200">
-                                                {article.cluster.replace(/-/g, ' ')}
+                                                {article.cluster === 'knowledge-governance' ? 'approved answer review' : article.cluster.replace(/-/g, ' ')}
                                             </p>
                                             <h3 className="text-xl font-semibold leading-tight text-white">{article.title}</h3>
                                             <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{article.description}</p>

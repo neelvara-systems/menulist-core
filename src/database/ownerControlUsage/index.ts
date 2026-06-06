@@ -21,7 +21,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
 // ================================================================
 // COST OPTIMIZATION: Debounce tracking to reduce writes
@@ -185,43 +185,25 @@ async function executeTrackingWrite(
         const now = new Date();
         const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-        // Get existing doc or create new
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            // Update existing stats
-            const data = docSnap.data();
-            const counts = data.counts || {};
-            const lastUsed = data.lastUsed || {};
-            const monthlyUsage = data.monthlyUsage || {};
-
-            // Increment count
-            counts[controlType] = (counts[controlType] || 0) + 1;
-
-            // Update last used
-            lastUsed[controlType] = Timestamp.fromDate(now);
-
-            // Update monthly breakdown
-            if (!monthlyUsage[yearMonth]) {
-                monthlyUsage[yearMonth] = {};
-            }
-            monthlyUsage[yearMonth][controlType] = (monthlyUsage[yearMonth][controlType] || 0) + 1;
-
-            await setDoc(docRef, sanitizeForFirestore({
-                counts,
-                lastUsed,
-                monthlyUsage,
+        try {
+            await updateDoc(docRef, {
+                [`counts.${controlType}`]: increment(1),
+                [`lastUsed.${controlType}`]: Timestamp.fromDate(now),
+                [`monthlyUsage.${yearMonth}.${controlType}`]: increment(1),
                 lastUpdatedAt: Timestamp.fromDate(now),
-            }), { merge: true });
-        } else {
-            // Create new doc
+            });
+        } catch (error: any) {
+            if (error?.code !== 'not-found') {
+                throw error;
+            }
+
             const initialData: any = {
                 tId,
                 sId,
                 counts: { [controlType]: 1 },
                 lastUsed: { [controlType]: Timestamp.fromDate(now) },
                 monthlyUsage: {
-                    [yearMonth]: { [controlType]: 1 }
+                    [yearMonth]: { [controlType]: 1 },
                 },
                 firstTrackedAt: Timestamp.fromDate(now),
                 lastUpdatedAt: Timestamp.fromDate(now),

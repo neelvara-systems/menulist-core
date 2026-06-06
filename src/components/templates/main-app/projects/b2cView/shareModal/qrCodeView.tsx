@@ -1,4 +1,5 @@
 import { LOGO_SMALL } from '@constant/common';
+import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { Button, Checkbox, ColorPicker, Flex, QRCode, Typography, message } from 'antd';
@@ -20,6 +21,7 @@ function withQrEntrySource(url: string): string {
 }
 
 function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName = 'menu' }: QRCodeViewProps) {
+    const labels = useOfferingLabels();
     // QR code customization states
     const [qrSize, setQrSize] = useState<number>(200);
     const [qrColor, setQrColor] = useState<string>('#000000');
@@ -36,8 +38,8 @@ function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName =
                 lightColor: qrBgColor,
                 logoUrl: showLogo ? logoUrl : undefined,
                 storeName,
-                subtitle: 'Scan to view the menu',
-                title: 'Menu QR',
+                subtitle: labels.scanToView,
+                title: labels.printCardTitle,
                 activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));

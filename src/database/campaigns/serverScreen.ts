@@ -3,19 +3,51 @@ import { getStoreContextName } from "@lib/businessIdentity/names";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
-import {
-    dedupeScreenMenuItems,
-    normalizeScreenCategoryName,
-    normalizeScreenImageUrl,
-    normalizeScreenTags,
-    parseScreenPrice,
-    resolveScreenText,
-} from "@lib/screen/screenContent";
+import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
 import {
     CampaignsSummaryDocument,
     DigitalScreenState,
+    ScreenMenuProjection,
     ScreenStoreInfo,
 } from "@type/campaigns";
+
+const getUsableScreenProjectionContext = (
+    projection: ScreenMenuProjection | null | undefined,
+    params: {
+        activeSpecialMenuId?: string | null;
+        contentVersion?: number | null;
+    },
+): { baseProjectId: string; selectedProjectSlug: string } | null => {
+    if (!projection || !Array.isArray(projection.items) || projection.items.length === 0) {
+        return null;
+    }
+
+    if (!projection.baseProjectId) {
+        return null;
+    }
+
+    const selectedProjectSlug = typeof projection.baseProjectSlug === "string" && projection.baseProjectSlug.trim()
+        ? projection.baseProjectSlug.trim()
+        : null;
+    if (!selectedProjectSlug) {
+        return null;
+    }
+
+    const expectedSpecialMenuId = params.activeSpecialMenuId || null;
+    if ((projection.activeSpecialMenuId || null) !== expectedSpecialMenuId) {
+        return null;
+    }
+
+    const expectedVersion = Number(params.contentVersion || 0);
+    if (!expectedVersion || Number(projection.contentVersion || 0) !== expectedVersion) {
+        return null;
+    }
+
+    return {
+        baseProjectId: projection.baseProjectId,
+        selectedProjectSlug,
+    };
+};
 
 export const getScreenDataByTokenServer = async (token: string): Promise<{
     screen: DigitalScreenState;
@@ -57,28 +89,36 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             return null;
         }
 
-        let selectedProjectSlug: string | undefined;
-        let baseProjectId: string | null = null;
-        try {
-            const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-                .doc(`projects_${storeId}`)
-                .get();
-            if (summarySnap.exists) {
-                const projectMap = parseSummaryProjects(summarySnap.data() || {});
-                const activeProjects = Object.entries(projectMap)
-                    .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
-                    .filter((project: any) => (
-                        project?.active !== false
-                        && project?.deleted !== true
-                        && project?.isSpecialMenu !== true
-                    ));
-                const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
-                baseProjectId = fallbackProject?.projectId || null;
-                selectedProjectSlug = fallbackProject?.slug;
+        const activeSpecialMenuId = storeData?.activeSpecialMenuId || null;
+        const projectionContext = getUsableScreenProjectionContext(data.screen?.menuProjection, {
+            activeSpecialMenuId,
+            contentVersion: data.screen?.contentVersion,
+        });
+
+        let selectedProjectSlug = projectionContext?.selectedProjectSlug;
+        let baseProjectId: string | null = projectionContext?.baseProjectId || null;
+        if (!projectionContext) {
+            try {
+                const summarySnap = await firestoreAdmin
+                    .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                    .doc(`projects_${storeId}`)
+                    .get();
+                if (summarySnap.exists) {
+                    const projectMap = parseSummaryProjects(summarySnap.data() || {});
+                    const activeProjects = Object.entries(projectMap)
+                        .map(([projectId, projectData]) => ({ projectId, ...(projectData || {}) }))
+                        .filter((project: any) => (
+                            project?.active !== false
+                            && project?.deleted !== true
+                            && project?.isSpecialMenu !== true
+                        ));
+                    const fallbackProject = activeProjects.find((project: any) => project?.isDefault === true) || activeProjects[0];
+                    baseProjectId = fallbackProject?.projectId || null;
+                    selectedProjectSlug = fallbackProject?.slug;
+                }
+            } catch {
+                // Silent fallback: alias URL still works through public routing.
             }
-        } catch {
-            // Silent fallback: alias URL still works through public routing.
         }
 
         const storeInfo = {
@@ -99,13 +139,43 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             storeId,
             tenantId: String(storeData?.tenantId || ""),
             baseProjectId,
-            activeSpecialMenuId: storeData?.activeSpecialMenuId || null,
+            activeSpecialMenuId,
             storeInfo,
         };
     } catch (error) {
         console.error("[getScreenDataByTokenServer] Error:", error);
         return null;
     }
+};
+
+export const getUsableScreenMenuProjection = (
+    projection: ScreenMenuProjection | null | undefined,
+    params: {
+        baseProjectId?: string | null;
+        activeSpecialMenuId?: string | null;
+        contentVersion?: number | null;
+    },
+) => {
+    if (!projection || !Array.isArray(projection.items) || projection.items.length === 0) {
+        return null;
+    }
+
+    const expectedBaseProjectId = String(params.baseProjectId || "");
+    if (!expectedBaseProjectId || projection.baseProjectId !== expectedBaseProjectId) {
+        return null;
+    }
+
+    const expectedSpecialMenuId = params.activeSpecialMenuId || null;
+    if ((projection.activeSpecialMenuId || null) !== expectedSpecialMenuId) {
+        return null;
+    }
+
+    const expectedVersion = Number(params.contentVersion || 0);
+    if (!expectedVersion || Number(projection.contentVersion || 0) !== expectedVersion) {
+        return null;
+    }
+
+    return projection.items;
 };
 
 export const getMenuItemsForScreenServer = async (
@@ -129,66 +199,7 @@ export const getMenuItemsForScreenServer = async (
     try {
         if (!tenantId) return [];
 
-        const extractMenuItemsFromProject = (projectData: any) => {
-            const extractedItems: Array<{
-                id: string;
-                name: string;
-                imageUrl?: string;
-                price?: number;
-                available: boolean;
-                isBestSeller?: boolean;
-                categoryName?: string;
-                categoryOrderIndex?: number;
-                orderIndex?: number;
-                description?: string;
-                tags?: string[];
-            }> = [];
-
-            for (const file of (projectData?.files || [])) {
-                const categories = Array.isArray(file?.extractedData?.data?.categories)
-                    ? file.extractedData.data.categories
-                    : [];
-                const categoryMap = categories.reduce((acc: Record<string, { name: string; orderIndex: number }>, category: any, index: number) => {
-                    const categoryName = normalizeScreenCategoryName(category?.name, "");
-                    if (category?.id && categoryName) {
-                        acc[category.id] = {
-                            name: categoryName,
-                            orderIndex: Number.isFinite(Number(category?.orderIndex)) ? Number(category.orderIndex) : index,
-                        };
-                    }
-                    return acc;
-                }, {});
-
-                const items = Array.isArray(file?.extractedData?.data?.items)
-                    ? file.extractedData.data.items
-                    : [];
-
-                for (const [index, item] of items.entries()) {
-                    const itemName = resolveScreenText(item?.name);
-                    if (!itemName) continue;
-
-                    const itemDesc = resolveScreenText(item?.description) || undefined;
-                    const parsedPrice = parseScreenPrice(item?.price);
-                    const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
-
-                    extractedItems.push({
-                        id: item?.id || `item-${extractedItems.length}`,
-                        name: itemName,
-                        imageUrl: normalizeScreenImageUrl(item?.images?.[0]?.url),
-                        price: parsedPrice,
-                        available: item?.available !== false,
-                        isBestSeller: item?.isBestSeller || false,
-                        categoryName: categoryInfo?.name || normalizeScreenCategoryName(item?.category),
-                        categoryOrderIndex: categoryInfo?.orderIndex,
-                        orderIndex: Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : index,
-                        description: itemDesc,
-                        tags: normalizeScreenTags(item?.tags),
-                    });
-                }
-            }
-
-            return dedupeScreenMenuItems(extractedItems);
-        };
+        const extractMenuItemsFromProject = extractScreenMenuItemsFromProject;
 
         const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
             if (!specialProject?.files?.length) return baseProject;

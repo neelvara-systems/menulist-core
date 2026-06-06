@@ -54,7 +54,7 @@ export default function AnswerlatticeComparisonsPage() {
                             className="mb-8"
                             eyebrow="Comparison library"
                             title="Start with the category you are evaluating."
-                            description="Each page keeps the same lens: approved answers, page-aware context, fallback, reviewable support gaps, and human-reviewed answer changes."
+                            description="Each page keeps the same lens: approved answers, safe product context, fallback, reviewable support gaps, and human-reviewed answer changes."
                         />
                         <div className="grid gap-4 md:grid-cols-3">
                             {ANSWERLATTICE_COMPARISONS.map((comparison) => (

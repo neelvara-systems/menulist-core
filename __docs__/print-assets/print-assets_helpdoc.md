@@ -1,18 +1,18 @@
-# Print Assets Help
+# Assets Help
 
 **Status:** Owner Help
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 ## What It Does
 
-Print Assets gives you the files customers scan inside your business.
+Assets gives you the files customers scan inside your business.
 
-## Open Print Assets
+## Open Assets
 
 ### Desktop
 
-1. Open **Use MenuList**.
-2. Click **Print Assets**.
+1. Open MenuList.
+2. Click **Assets** in the left menu.
 3. Select the project if you have more than one.
 4. Download the file you need.
 
@@ -20,7 +20,7 @@ Print Assets gives you the files customers scan inside your business.
 
 1. Open the MenuList mobile app.
 2. Tap **More**.
-3. Tap **Print Assets**.
+3. Tap **Assets**.
 4. Download the file you need.
 
 ## Before You Print

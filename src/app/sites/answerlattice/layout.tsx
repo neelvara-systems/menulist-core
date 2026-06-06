@@ -25,10 +25,9 @@ export const metadata: Metadata = {
     keywords: [
         'support knowledge infrastructure',
         'SaaS support widget',
-        'digital product support',
-        'support widget for digital products',
-        'page-aware support',
-        'page-aware support widget',
+        'founder-led SaaS support',
+        'in-app support widget',
+        'safe page context',
         'support widget for solo founders',
         'support for AI-built SaaS',
         'AI-built SaaS support',
@@ -40,14 +39,14 @@ export const metadata: Metadata = {
         'custom help domain',
         'widget install',
         'ticket debugging context',
-        'canonical answers',
-        'support knowledge governance',
-        'drift detection',
+        'approved answers',
+        'support knowledge review',
+        'support gap review',
         'help center software',
         'support gap tracking',
         'changelog support',
         'product surface mapping',
-        'product support ontology',
+        'reviewable support answers',
     ],
     manifest: '/answerlattice.webmanifest',
     icons: {
@@ -148,10 +147,10 @@ export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLa
         <>
             <AnswerlatticeThemeBootstrapScript />
             <AnswerlatticeThemeProvider>
-            <AnswerlatticeAnalytics />
-            <AnswerlatticeScrollReveal />
-            {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}
-            {children}
+                <AnswerlatticeAnalytics />
+                <AnswerlatticeScrollReveal />
+                {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}
+                {children}
             </AnswerlatticeThemeProvider>
         </>
     );

@@ -5,6 +5,7 @@ type AnswerlatticeAssetImageProps = {
     className?: string;
     imageClassName?: string;
     priority?: boolean;
+    reveal?: boolean;
 };
 
 export default function AnswerlatticeAssetImage({
@@ -12,10 +13,12 @@ export default function AnswerlatticeAssetImage({
     className = '',
     imageClassName = '',
     priority = false,
+    reveal = true,
 }: AnswerlatticeAssetImageProps) {
     return (
         <figure
             className={`w-full max-w-full overflow-hidden bg-[#09091a] ${className}`.trim()}
+            data-answerlattice-reveal={reveal ? true : undefined}
             data-answerlattice-asset-src={asset.src}
             data-answerlattice-asset-width={asset.width}
             data-answerlattice-asset-height={asset.height}

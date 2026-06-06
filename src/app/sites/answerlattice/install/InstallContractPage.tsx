@@ -33,19 +33,19 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
         <>
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
-                <section className="px-6 py-20">
-                    <div className="mx-auto max-w-6xl">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">AnswerLattice Agent Install Layer</p>
+                <section className="al-page-hero">
+                    <div className="al-page-hero__inner">
+                        <p className="al-page-hero__eyebrow">AnswerLattice Agent Install Layer</p>
                         <div className="grid gap-8 lg:grid-cols-[0.8fr_0.2fr] lg:items-end">
                             <div>
-                                <h1 className="max-w-4xl text-4xl font-bold leading-tight text-white sm:text-5xl">
+                                <h1 className="al-page-hero__title">
                                     {doc.title}
                                 </h1>
-                                <p className="mt-5 max-w-3xl text-lg leading-relaxed text-[#a0a0c0]">
+                                <p className="al-page-hero__description">
                                     {doc.description}
                                 </p>
                                 <PageProofStrip
-                                    className="mt-8"
+                                    className="al-page-hero__proof"
                                     items={[
                                         { label: 'Install target', value: 'One v1 widget script in the app shell' },
                                         { label: 'Safe context', value: 'Path, title, feature, workflow, role, locale' },
@@ -57,14 +57,14 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
                                 <AnswerlatticeLink
                                     basePath={basePath}
                                     href="/agents/answerlattice/answerlattice-agent-kit.zip"
-                                    className="rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800"
+                                    className="al-page-hero__button al-page-hero__button--primary"
                                 >
                                     Download agent kit
                                 </AnswerlatticeLink>
                                 <AnswerlatticeLink
                                     basePath={basePath}
                                     href={doc.markdownPath}
-                                    className="rounded-xl border border-white/[0.12] px-5 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]"
+                                    className="al-page-hero__button al-page-hero__button--secondary"
                                 >
                                     View Markdown
                                 </AnswerlatticeLink>

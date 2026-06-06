@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Set Up Support',
-    description: 'Create an AnswerLattice workspace, add team access, import starter knowledge, map important product pages, and verify the widget before launch.',
+    description: 'Create an AnswerLattice workspace, add team access, import starter knowledge, map important product pages, verify the widget, and clear launch proof before rollout.',
     alternates: { canonical: '/product/launch-setup' },
 };
 
@@ -34,9 +34,9 @@ export default function LaunchSetupProductPage() {
                 activeTab="Set up support"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="You always know what is ready and what is missing."
-                bentoDescription="A buyer should know exactly what remains before launch: content, context, widget install, and first approved answers."
+                bentoDescription="A buyer should know exactly what remains before launch: setup, content, product surfaces, widget runtime, governance summaries, and first approved answers."
                 bentoCards={[
-                    { title: 'Activation checklist', description: 'Keep setup focused on the steps that make support usable: profile, team access, import, surfaces, widget, and answer review.' },
+                    { title: 'Launch proof', description: 'Keep setup focused on the proof that support is usable: profile, team access, import, surfaces, widget, governance summaries, signal sources, and answer review.' },
                     { title: 'No enterprise implementation', description: 'Google sign-in and workspace creation get the founder into AnswerLattice without a sales-led project.' },
                     { title: 'Page setup first', description: 'Owners start with the screens where users actually get stuck instead of building a generic docs tree.' },
                     { title: 'Review before authority', description: 'Generated drafts and early support answers stay review work until the owner approves them.' },

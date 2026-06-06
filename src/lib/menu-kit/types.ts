@@ -7,6 +7,8 @@
  * @see __docs__/menu-kit/menu-kit_spec.md
  */
 
+import type { OfferingLabels } from './businessTypeLabels';
+
 export interface MenuKitInput {
     storeName: string;
     menuUrl: string;           // Full URL: {subdomain}.menulist.ai/{slug}
@@ -18,6 +20,7 @@ export interface MenuKitInput {
     businessCategory?: string; // Broad category when businessType is generic
     activePlanType?: string | null; // Premium hides MenuList attribution; missing/non-premium keeps it visible
     locale?: string;           // BCP 47 locale (e.g., 'en-US', 'hi-IN') for surface copy translation
+    templateFamilyId?: string; // Printable Asset Templates style family
 }
 
 export interface MenuKitAsset {
@@ -88,10 +91,20 @@ export function validateMenuUrl(url: string): string | null {
     }
 }
 
-export function buildPrintInstructions(storeName: string): string {
+export function buildPrintInstructions(
+    storeName: string,
+    labels?: Pick<OfferingLabels, 'offeringTitle' | 'offeringLower' | 'staffScript'>,
+): string {
+    const offeringTitle = labels?.offeringTitle || 'Menu';
+    const offeringLower = labels?.offeringLower || 'menu';
+    const staffScript = labels?.staffScript || STAFF_SCRIPT;
+
     return `MENU KIT - PRINT INSTRUCTIONS
 ${storeName}
 ${'='.repeat(40)}
+
+Customer-facing page: ${offeringTitle}
+Staff line: "${staffScript}"
 
 1. TABLE CARD
    Size: A5 landscape sheet, folds into two A6 portrait faces
@@ -112,14 +125,14 @@ ${'='.repeat(40)}
    Material: Vinyl sticker
    Finish: Matte preferred (avoids glare)
    Quantity: 1
-   Use: Place near payment counter
+   Use: Place near payment, pickup, reception, or service counter
 
 4. ENTRANCE POSTER
    Size: A4 (210mm x 297mm)
    Material: 200–300 GSM card
    Finish: Matte recommended
    Quantity: 1
-   Use: Place at restaurant entrance
+   Use: Place at the entrance, window, reception, or host stand
 
 5. DELIVERY BAG STICKER
    Size: 60mm x 60mm
@@ -138,6 +151,7 @@ ${'='.repeat(40)}
 TIPS:
 - Matte finish prevents reflection when scanning
 - Replace damaged QR cards immediately
-- Test QR from different tables before service
+- Test the QR from customer areas before service
+- The QR always opens the latest ${offeringLower}; reprint only when the link, logo, or physical card condition changes
 `;
 }

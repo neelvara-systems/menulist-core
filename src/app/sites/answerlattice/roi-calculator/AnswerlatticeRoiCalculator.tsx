@@ -93,7 +93,7 @@ export default function AnswerlatticeRoiCalculator() {
                 <div className="mt-5 rounded-2xl border border-white/[0.08] bg-[#070714]/70 p-4">
                     <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Plan fit signal</div>
                     <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">
-                        Based only on repeated-question volume, start evaluation around <strong>{result.suggestedPlan}</strong>. Use the free setup first, then choose capacity after real widget and governance activity appears.
+                        Based only on repeated-question volume, start evaluation around <strong>{result.suggestedPlan}</strong>. Use the free setup first, then choose capacity after real widget and review activity appears.
                     </p>
                 </div>
             </div>

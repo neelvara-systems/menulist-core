@@ -9,11 +9,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, digital products, page-aware support, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | AnswerLattice',
-        description: 'Answers to common questions about AnswerLattice setup, knowledge intake, team access, digital products, widget context, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, owner answers, screenshots, pricing, tickets, and data handling.',
         url: `${ANSWERLATTICE_SITE_URL}/faq`,
     },
 };
@@ -33,7 +33,7 @@ const FAQS = [
     },
     {
         question: 'Can I use ChatGPT or a normal chatbot instead?',
-        answer: 'You can, but generic chat is not the same as approved page-aware support. AnswerLattice serves reviewed answers first and turns missing answers into review work.',
+        answer: 'You can, but generic chat is not the same as a support layer. AnswerLattice connects the widget, hosted help, tickets, feedback, changelog, approved answers, and support gaps.',
     },
     {
         question: 'What if I do not have documentation yet?',
@@ -49,11 +49,11 @@ const FAQS = [
     },
     {
         question: 'Do imports use support credits?',
-        answer: 'Selected text sources, public help pages, and normal widget loading do not consume credits. Paid intake media extraction, AI-assisted answers, fallback handling, and governance work can use support credits so processing remains bounded.',
+        answer: 'Selected text sources, public help pages, and normal widget loading do not consume credits. Paid intake media extraction, AI-assisted answers, fallback handling, and review work can use support credits so processing remains bounded.',
     },
     {
         question: 'Does Knowledge Intake publish answers automatically?',
-        answer: 'No. Intake creates review drafts for KB articles, FAQs, surfaces, changelog entries, or canonical answer proposals. Owners accept and publish selected items; authoritative canonical answers still require governance approval.',
+        answer: 'No. Intake creates review drafts for help articles, FAQs, surfaces, changelog entries, or approved-answer proposals. Owners accept and publish selected items; official support answers still require owner approval.',
     },
     {
         question: 'Will AnswerLattice make up answers?',
@@ -61,19 +61,19 @@ const FAQS = [
     },
     {
         question: 'Is this for prototypes?',
-        answer: 'Not for idea-only prototypes. AnswerLattice is for working SaaS apps and digital products that are live, in beta, or close to launch and have starter knowledge to govern.',
+        answer: 'Not for idea-only prototypes. AnswerLattice is for working SaaS apps that are live, in beta, or close to launch and have starter support knowledge to review.',
     },
     {
         question: 'Is AnswerLattice a chatbot?',
-        answer: 'No. AnswerLattice includes AI-assisted support surfaces, but the core product is approved page-aware support: page context, approved answers, stale-answer checks, and owner review.',
+        answer: 'No. AnswerLattice includes AI-assisted support surfaces, but the core product is a support layer: in-app help, hosted help, FAQs, changelog, tickets, feedback, approved answers, and owner review.',
     },
     {
         question: 'Is AnswerLattice a helpdesk?',
         answer: 'No. AnswerLattice is the support knowledge layer behind your help center, widget, tickets, and changelog. Tickets are fallback and signal sources, not the center of the product.',
     },
     {
-        question: 'What is a canonical answer?',
-        answer: 'A canonical answer is an approved, scoped support answer tied to product truth such as a feature, workflow, plan, role, release, state, or product surface.',
+        question: 'What is an approved answer?',
+        answer: 'An approved answer is a reviewed, scoped support answer tied to product truth such as a feature, workflow, plan, role, release, state, or product surface.',
     },
     {
         question: 'How quickly can a small SaaS team start?',
@@ -84,7 +84,7 @@ const FAQS = [
         answer: 'Yes. AnswerLattice supports workspace members, AnswerLattice-specific roles, custom permissions, owner-managed passcode reset, and force sign-out. These controls live inside the AnswerLattice workspace.',
     },
     {
-        question: 'What makes AnswerLattice page-aware?',
+        question: 'How does in-app context work?',
         answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the AnswerLattice widget. AnswerLattice uses those hints to prefer support content connected to that product surface.',
     },
     {
@@ -97,7 +97,7 @@ const FAQS = [
     },
     {
         question: 'Does AnswerLattice answer every question automatically?',
-        answer: 'No. Approved canonical answers are served first. If coverage is missing, fallback can help, but repeated fallback becomes a support gap for owner review.',
+        answer: 'No. Approved answers are served first. If coverage is missing, fallback can help, but repeated fallback becomes a support gap for owner review.',
     },
     {
         question: 'What happens when AnswerLattice does not know the answer?',
@@ -121,15 +121,15 @@ const FAQS = [
     },
     {
         question: 'How are FAQs created?',
-        answer: 'Product owners can manage FAQs and custom Q&A directly. AnswerLattice can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
+        answer: 'Product owners can manage FAQs and custom owner answers directly. AnswerLattice can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
     },
     {
-        question: 'Can I add my own question and answer?',
-        answer: 'Yes. Owners can write exact repeated questions and answers, attach article, tag, entity, and page context, publish them, and let AnswerLattice use them after canonical answers and before fallback when the user question matches.',
+        question: 'Can I add my own repeated answer?',
+        answer: 'Yes. Owners can write exact repeated questions and answers, attach article, tag, entity, and page context, publish them, and let AnswerLattice use them after approved answers and before fallback when the user question matches.',
     },
     {
         question: 'Can AnswerLattice work with an existing helpdesk?',
-        answer: 'Yes. AnswerLattice can complement ticket tools as the governed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
+        answer: 'Yes. AnswerLattice can complement ticket tools as the reviewed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
     },
     {
         question: 'What is the Support Board?',
@@ -145,15 +145,15 @@ const FAQS = [
     },
     {
         question: 'Can AnswerLattice notify my team in Slack or email?',
-        answer: 'Yes. AnswerLattice supports Slack and email workflow notifications for governance events such as digest summaries, coverage drops, repeated answer failures, and test delivery. Broader adapter integrations should stay controlled rollout until they are safe for every workspace.',
+        answer: 'Yes. AnswerLattice supports Slack and email workflow notifications for support review events such as digest summaries, coverage drops, repeated answer failures, and test delivery. Broader adapter integrations should stay controlled rollout until they are safe for every workspace.',
     },
     {
         question: 'Will proactive help interrupt users everywhere?',
-        answer: 'No. Proactive help is configured and page-aware. The widget should only request or show configured prompts when the workspace has active triggers and approved support summaries for that page context.',
+        answer: 'No. Proactive help is configured for specific product pages. The widget should only request or show configured prompts when the workspace has active triggers and approved support summaries for that page context.',
     },
     {
         question: 'Does every widget load scan all support data?',
-        answer: 'No. Runtime paths use compact summaries, cache freshness checks, and compiled approved context. Source data remains governed in AnswerLattice. Public bundles do not include drafts, tickets, audit logs, API keys, or private workspace internals.',
+        answer: 'No. Runtime paths use compact summaries, cache freshness checks, and approved context. Source data remains inside AnswerLattice. Public bundles do not include drafts, tickets, audit logs, API keys, or private workspace internals.',
     },
     {
         question: 'Can coding agents use AnswerLattice through MCP today?',
@@ -161,7 +161,7 @@ const FAQS = [
     },
     {
         question: 'What happens when a product release changes an answer?',
-        answer: 'Changelogs can be tied to product surfaces and affected answers. Drift and release-impact checks then show which support content needs review.',
+        answer: 'Changelogs can be tied to product surfaces and affected answers. Stale-answer and release-impact checks then show which support content needs review.',
     },
     {
         question: 'What should I import first?',
@@ -184,7 +184,7 @@ const FAQ_GROUPS = [
         items: FAQS.slice(0, 9),
     },
     {
-        title: 'Page-aware answers and product boundaries',
+        title: 'Approved answers and product boundaries',
         description: 'How AnswerLattice differs from generic chat, helpdesks, automatic screenshots, and unscoped context.',
         items: FAQS.slice(9, 18),
     },
@@ -226,7 +226,7 @@ export default function AnswerlatticeFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding AnswerLattice.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, knowledge intake, team access, digital products, page-aware support, Support Board, owner Q&A, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, knowledge intake, team access, in-app help, hosted help, approved answers, Support Board, owner answers, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink
@@ -234,7 +234,7 @@ export default function AnswerlatticeFaqPage() {
                                 href="/demo"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                             >
-                                Try page-aware demo
+                                See demo
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}

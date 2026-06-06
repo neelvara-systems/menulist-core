@@ -48,7 +48,7 @@ export default function AnswerlatticeSecurityOnePagerPage() {
                         The short version for founders, developers, and reviewers.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        AnswerLattice can be page-aware and source-backed without collecting secrets. Use this one-page summary for install reviews, developer handoff, intake reviews, and buyer security checks.
+                        AnswerLattice can use safe product context and reviewed sources without collecting secrets. Use this one-page summary for install reviews, developer handoff, intake reviews, and buyer security checks.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-5xl text-left"

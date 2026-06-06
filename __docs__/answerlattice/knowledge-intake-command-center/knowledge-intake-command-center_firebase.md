@@ -24,8 +24,13 @@ Non-negotiable rules:
 - no realtime listener for source/review/job lists
 - no native private connector until credential and retention rules are complete
 - no per-source function trigger fanout for provider work
+- repeated reply import must stay inside the existing source/review/proposal path with no AI call, Storage upload, scheduler, new collection, or connector
 
 Firestore is for compact metadata, capped extracted source text, review decisions, summaries, usage-ledger rows, and live approved records. Browser-side file extraction and server-side media extraction avoid raw file Storage writes; Storage paths below are reserved for a future native-upload/retained-evidence path.
+
+Repeated reply import is an implemented low-cost subpath. It writes one existing source doc, then at most two review item docs during analysis: FAQ and canonical proposal. It does not create the default KB article draft for that source type.
+
+The repeated-reply entity selector is search-gated. It does not load the ontology on page open. Search requests go through a protected, rate-limited Knowledge Intake API route, query the existing `answerlattice_entitySearchIndex` by tenant/store and prefix token, then read only the matched entity docs needed for labels and active/beta filtering. Older index rows without prefix tokens use a capped tenant/store search-index fallback; the route never fetches the full `answerlattice_entities` list for this form.
 
 ---
 

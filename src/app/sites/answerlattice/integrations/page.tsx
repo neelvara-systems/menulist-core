@@ -22,12 +22,12 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 export const metadata: Metadata = {
     title: 'Integrations',
     description:
-        'Slack and email workflow notifications for AnswerLattice support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
+        'Slack and email workflow notifications for AnswerLattice support review: digest-first alerts, test delivery, compact health, and bounded delivery.',
     alternates: { canonical: '/integrations' },
     openGraph: {
         title: 'Integrations | AnswerLattice',
         description:
-            'Notify owners about support governance movement without turning every support event into alert noise.',
+            'Notify owners about support review movement without turning every support event into alert noise.',
         url: `${ANSWERLATTICE_SITE_URL}/integrations`,
     },
 };
@@ -44,7 +44,7 @@ const DELIVERY_CARDS = [
     {
         icon: LuMessageSquare,
         title: 'Slack alerts',
-        description: 'Send owner-approved governance movement to a Slack channel through a workspace webhook.',
+        description: 'Send owner-approved support review movement to a Slack channel through a workspace webhook.',
     },
     {
         icon: LuMail,
@@ -54,7 +54,7 @@ const DELIVERY_CARDS = [
     {
         icon: LuClock3,
         title: 'Digest-first delivery',
-        description: 'Routine drift, gaps, proposals, and summaries can stay grouped instead of becoming noise.',
+        description: 'Routine stale-answer review, gaps, proposals, and summaries can stay grouped instead of becoming noise.',
     },
     {
         icon: LuZap,
@@ -74,7 +74,7 @@ const DELIVERY_CARDS = [
 ];
 
 const EVENT_ROWS = [
-    ['Nightly digest', 'A compact summary of coverage, drift, gaps, and review movement.'],
+    ['Nightly digest', 'A compact summary of coverage, stale answers, gaps, and review movement.'],
     ['Coverage drop', 'A higher-priority alert when approved support coverage materially falls.'],
     ['Repeated answer failure', 'A higher-priority alert when the same support path keeps failing users.'],
     ['Test delivery', 'A controlled message for validating Slack or email setup before relying on it.'],
@@ -96,13 +96,13 @@ export default function AnswerlatticeIntegrationsPage() {
                                 Notify owners when support truth needs attention.
                             </h1>
                             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                AnswerLattice connects support governance to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
+                                AnswerLattice connects support review to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
                             </p>
                             <PageProofStrip
                                 className="mt-8 max-w-2xl"
                                 items={[
                                     { label: 'Channels', value: 'Slack webhook and email recipients' },
-                                    { label: 'Default', value: 'Digest-first support governance updates' },
+                                    { label: 'Default', value: 'Digest-first support review updates' },
                                     { label: 'Safety', value: 'Test delivery, delivery health, and bounded volume' },
                                 ]}
                             />
@@ -222,14 +222,14 @@ export default function AnswerlatticeIntegrationsPage() {
                         <SectionHeader
                             eyebrow="Workflow"
                             title="From support movement to owner attention."
-                            description="Configure destinations, choose events, send a test, then let critical alerts and digest summaries keep support governance visible."
+                            description="Configure destinations, choose events, send a test, then let critical alerts and digest summaries keep support review visible."
                         />
                         <AnswerlatticeSequenceDiagram
                             idPrefix="al-integrations-workflow"
                             splitAfter={3}
                             items={[
                                 { title: 'Connect Slack or email', detail: 'Add the destination in AnswerLattice settings.' },
-                                { title: 'Choose event filters', detail: 'Select the governance events that deserve notification.' },
+                                { title: 'Choose event filters', detail: 'Select the support review events that deserve notification.' },
                                 { title: 'Send a test', detail: 'Verify delivery before relying on the channel.' },
                                 { title: 'Deliver digest or alert', detail: 'Routine movement stays grouped; critical events can alert quickly.' },
                                 { title: 'Review health', detail: 'Use last success, last failure, and disabled state without opening raw logs.' },
@@ -258,7 +258,7 @@ export default function AnswerlatticeIntegrationsPage() {
                             href="/demo"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                         >
-                            Try page-aware demo
+                            See demo
                         </AnswerlatticeLink>
                     </div>
                 </section>

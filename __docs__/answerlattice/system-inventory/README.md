@@ -69,7 +69,7 @@ Management routes are gated by Answerlattice product scope or platform access. C
 | Product website demo | Implemented | `src/app/sites/answerlattice/demo/` | Static demo data | Shows page-aware help, canonical answer, fallback, and gap flow without account setup. |
 | Self-service onboarding | Implemented | `src/app/api/answerlattice/onboard/route.ts`, `src/app/sites/answerlattice/get-started/` | `users`, `stores`, `subscriptions`, `answerlattice_productSurfaces`, `platformSummary/contextContent_*` | Creates Answerlattice workspace and routes users to activation. Payment can stay manual/cash until paid flow is added. |
 | Product details / workspace profile | Implemented | `src/app/api/answerlattice/workspace-profile/route.ts`, `src/components/templates/answerlattice/AnswerlatticeSettings.tsx` | `stores/{sId}.answerlatticeWorkspaceProfile` | Stores product URL, support email, billing model, and initial product context. |
-| Activation Command Center | Implemented | `src/app/(answerlattice)/answerlattice/activation/page.tsx`, `src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx`, `src/components/templates/answerlattice/content/AnswerlatticeContentWorkbench.tsx`, `src/components/templates/answerlattice/content/AnswerlatticeCustomerFlowChecklist.tsx`, `src/lib/answerlattice/activationSummary.ts` | Compact store + `platformSummary` docs | Shows launch readiness, product-owner content workflow, and customer-path testing without scanning large collections at page load. |
+| Activation Command Center | Implemented | `src/app/(answerlattice)/answerlattice/activation/page.tsx`, `src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx`, `src/components/templates/answerlattice/content/AnswerlatticeContentWorkbench.tsx`, `src/components/templates/answerlattice/content/AnswerlatticeCustomerFlowChecklist.tsx`, `src/lib/answerlattice/activationSummary.ts` | Compact store + `platformSummary` docs | Shows launch readiness, first-client launch proof, product-owner content workflow, and customer-path testing without scanning large collections at page load. |
 | Product surfaces | Implemented | `src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx`, `src/database/answerlattice/productSurfaces.ts`, `src/lib/answerlattice/productSurfaceContent*.ts` | `answerlattice_productSurfaces`, `platformSummary/contextContent_{tId}_{sId}` | Maps routes/pages/workflows to entities, tags, articles, changelogs, and tickets. |
 | Content Control workbench | Implemented | `src/components/templates/answerlattice/content/AnswerlatticeContentWorkbench.tsx`, `/answerlattice/activation`, `/answerlattice/dashboard` | Activation summary read model | Gives product owners one low-cost path into product profile, import, articles, surfaces, changelog, signal queue, widget, and tickets. |
 | Surface Readiness matrix | Implemented | `src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx`, `src/lib/answerlattice/activationSummary.ts`, `/answerlattice/dashboard` | `platformSummary/contextContent_{tId}_{sId}` via activation summary | Shows which product areas are ready, missing mapping, missing content, or carrying open ticket signals using 0 extra dashboard reads. |
@@ -81,6 +81,7 @@ Management routes are gated by Answerlattice product scope or platform access. C
 | Help center | Implemented | `src/app/(main)/help-center/`, `src/components/templates/main-app/helpCenter/`, `/answerlattice/help` compatibility route, `/api/answerlattice/public-content` | Cached KB, FAQ, changelog, tickets, search history | Public/customer support home reused by client support surfaces. It is not a primary owner dashboard navigation item; owners manage source content through KB, FAQ, Changelog, Tickets, Support Board, and Widget & Hosted Help. KB categories, article reads, FAQ lists, and changelog pages use tenant/store-tagged public cache with owner-write invalidation. |
 | Feedback, ratings, and feature requests | Implemented | `src/components/templates/main-app/helpCenter/ShareFeedbackView.tsx`, `src/components/templates/main-app/helpCenter/FeatureRequests.tsx`, `src/components/templates/answerlattice/feedback/AnswerlatticeFeedbackReview.tsx`, `src/database/feedback/index.ts`, `src/app/(answerlattice)/answerlattice/feedback/page.tsx`, `src/app/(main)/platform/feedback-admin/page.tsx`, `/answerlattice/help` | `feedback` in Answerlattice Firebase via `answerlatticeRequestBodyComposer`, `answerlattice_signalEvents(type='feedback')`, `answerlattice_supportBoardCards(sourceType='feedback')`, plus `article_feedback/{tId}/{sId}` and `changelog_feedback/{tId}/{sId}` | Customer help surfaces include a Share Feedback tab for ratings, product-area issues, feature requests, and suggestions. Owners review rows at `/answerlattice/feedback`; important feedback can be added directly to Support Board or synced as a signal, then turned into governed answer proposals after entity linking. |
 | Hosted public Help Center | Implemented | `src/app/answerlattice-hosted-help/`, `src/components/templates/answerlattice/hostedHelp/`, `src/app/api/answerlattice/hosted-help-settings/route.ts`, `src/lib/answerlattice/hostedHelpServer.ts` | `stores/{sId}.hostedHelpConfig`, `answerlattice_publicHelpSites/{domain}`, cached KB/FAQ/changelog | Renders anonymous docs, FAQ, changelog, sitemap, and robots on domains such as `help.example.com` without exposing authenticated tickets/chat/user data. |
+| Knowledge Intake | Implemented | `src/components/templates/answerlattice/knowledgeIntake/AnswerlatticeKnowledgeIntake.tsx`, `src/lib/answerlattice/knowledgeIntake.ts`, `src/app/api/answerlattice/knowledge-intake/*` | `answerlattice_knowledgeIntakeJobs`, `answerlattice_knowledgeSources`, `answerlattice_intakeReviewItems`, existing KB/FAQ/product surface/mutation proposal destinations | Imports selected links, files, screenshots/media, pasted content, support macros, and repeated replies into reviewed drafts. Repeated replies create FAQ/canonical proposal drafts only and add no connector, Storage, scheduler, or AI call. |
 | Knowledge base explorer | Implemented | `src/app/(answerlattice)/answerlattice/docs/page.tsx`, `src/app/(answerlattice)/answerlattice/knowledge-base/page.tsx`, KB templates | `kb_categories`, `kb_articles` | Browse and manage support documentation. |
 | KB generation pipeline | Implemented | `src/app/(answerlattice)/answerlattice/kb-generation/page.tsx`, `src/components/templates/platform/KBGeneration/`, `functions-answerlattice/src/logic/*` | `kb_generation_jobs`, `kb_articles`, `kb_categories`, storage | Upload, generate, review, publish, and embed KB content. |
 | Product ontology | Implemented | `src/database/answerlattice/entities.ts`, `src/lib/answerlattice/entityExtraction.ts`, `src/components/templates/answerlattice/governance/EntityManagementDashboard.tsx` | `answerlattice_entities`, `answerlattice_entityRelations`, `answerlattice_entitySearchIndex`, `answerlattice_entityCandidates` | Models product features, plans, roles, workflows, states, integrations, and errors as first-class concepts. |
@@ -346,10 +347,40 @@ The following remain intentional rollout controls:
 
 - public API
 - MCP
+- AI escalation
+- guided workflows
 - multi-language
 - advanced cross-surface white-label branding
+- Jira integration
+- native helpdesk connectors
 
 Those features remain behind intentional rollout controls and should stay conservative in website copy unless enabled for a client.
+
+---
+
+## Expansion Execution Order
+
+The safe next step is not another connector. The safe next step is first-client proof of the governed answer loop:
+
+1. Fresh account completes onboarding and reaches Activation.
+2. Workspace profile captures product URL, support email, billing model, and starting context.
+3. Knowledge Intake or KB-generation compatibility path imports source-backed product material.
+4. Product surfaces map routes, pages, workflows, entities, tags, articles, changelogs, and tickets.
+5. Entity candidates and canonical answer drafts appear in Governance.
+6. Owner approves canonical answers before they become active.
+7. Widget install is verified on a separate client page with safe page context.
+8. Feedback, fallback, ticket, and escalation signals create reviewable mutation proposals.
+9. Weekly digest, coverage, trust, drift, and friction surfaces read compact summaries.
+10. Activation exposes `summary.launchProof` so setup, knowledge, ontology, widget, governance summary, and signal-source blockers are visible before connector rollout.
+
+Expansion gates:
+
+- Public API v1 routes exist, but `ENABLE_ANSWERLATTICE_PUBLIC_API` stays off until approved canonical coverage, `al_*` keys, rate limits, usage logs, and public docs are verified for a target tenant.
+- Workflow integrations stay event-producer-only. Slack/email are self-service; Linear/GitHub are controlled rollout; Jira is not implemented.
+- Jira must be a docs-first feature that converts resolved issues into entity-bound knowledge proposals, not basic ticket sync.
+- Native Zendesk, Intercom, Freshdesk, or Help Scout connectors are not implemented. Start with export/import through Knowledge Intake before considering OAuth/API sync.
+- White-label and multi-language are market expansion controls, not the core launch proof.
+- Distribution expansion should wait until canonical coverage and governance queues are stable.
 
 ---
 

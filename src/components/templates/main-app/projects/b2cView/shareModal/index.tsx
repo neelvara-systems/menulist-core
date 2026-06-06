@@ -9,6 +9,7 @@ import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl, slugify } from '@lib/utils/slugify';
 import { Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa6';
 import { LuAlertTriangle, LuCopy, LuDownload, LuExternalLink, LuFileJson, LuFileText, LuSheet } from 'react-icons/lu';
@@ -89,6 +90,7 @@ function ShareModal({
     businessCategory,
     brandColor,
 }: ShareModalProps) {
+    const router = useRouter();
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const brandTokens = useMemo(() => resolveMenuKitBrandTokens(brandColor), [brandColor]);
@@ -170,8 +172,8 @@ function ShareModal({
                 lightColor: qrBgColor,
                 logoUrl: showLogo ? storeLogo : undefined,
                 storeName,
-                subtitle: `Scan to view ${labels.offeringLower}`,
-                title: 'Menu QR',
+                subtitle: labels.scanToView,
+                title: labels.printCardTitle,
                 activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
@@ -278,7 +280,7 @@ function ShareModal({
     };
 
     const handleOpenMenuCardExport = () => {
-        window.location.href = `/use-menulist/menu-card-export?projectId=${encodeURIComponent(projectId)}`;
+        router.push(`/use-menulist/menu-card-export?projectId=${encodeURIComponent(projectId)}`);
     };
 
     return (

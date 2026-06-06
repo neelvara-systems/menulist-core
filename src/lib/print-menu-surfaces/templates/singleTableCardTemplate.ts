@@ -10,10 +10,10 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../../menu-kit/brandTokens';
 import { getOfferingLabels } from '../../menu-kit/businessTypeLabels';
 import { type PreloadedLogo } from '../../menu-kit/imageLoader';
 import { type MenuKitInput } from '../../menu-kit/types';
+import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 import { drawPrintMenuCardFace, printMenuMm } from './printMenuCardFace';
 
 type PrintMenuSingleTableCardInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -25,7 +25,7 @@ export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTab
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
 
     const cardW = printMenuMm(CARD_W_MM);
     const cardH = printMenuMm(CARD_H_MM);
@@ -46,12 +46,14 @@ export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTab
 
     drawPrintMenuCardFace(ctx, cardW, cardH, {
         activePlanType: input.activePlanType,
+        actionLabel: labels.printCardTitle,
         brand,
+        instructionLabel: labels.scanToView,
         logo,
-        menuLabel: labels.offeringUpper,
         qrCanvas,
         shortLink,
         storeName,
+        templateFamilyId: input.templateFamilyId,
     });
 
     const imgDataUrl = canvas.toDataURL('image/png');

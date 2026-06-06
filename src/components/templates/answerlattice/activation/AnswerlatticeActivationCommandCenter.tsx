@@ -95,6 +95,16 @@ const getStepIcon = (step: AnswerlatticeActivationStep) => {
     return <LuCircle />;
 };
 
+const getLaunchProofIcon = (key: string) => {
+    if (key.includes('setup')) return <LuRocket />;
+    if (key.includes('knowledge')) return <LuBookOpen />;
+    if (key.includes('ontology')) return <LuBoxes />;
+    if (key.includes('widget')) return <LuCode />;
+    if (key.includes('governance')) return <LuShieldCheck />;
+    if (key.includes('signal')) return <LuTicket />;
+    return <LuCircle />;
+};
+
 export default function AnswerlatticeActivationCommandCenter() {
     const screens = Grid.useBreakpoint();
     const router = useRouter();
@@ -235,6 +245,13 @@ export default function AnswerlatticeActivationCommandCenter() {
         superseded: 'warning',
         empty: 'default',
     };
+    const nextProofItem = summary.launchProof?.items?.find(item => item.status !== 'complete') || null;
+    const launchProofStatus = summary.launchProof?.ready
+        ? STATUS_META.complete
+        : nextProofItem?.status === 'pending'
+            ? STATUS_META.pending
+            : STATUS_META.attention;
+    const LaunchProofStatusIcon = launchProofStatus.icon;
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom))' : 0 }}>
@@ -275,6 +292,75 @@ export default function AnswerlatticeActivationCommandCenter() {
                     ? `${needsReview.length} launch setting needs review before customer traffic is enabled.`
                     : 'Your launch status is generated from saved setup checkpoints.'}
             />
+
+            {summary.launchProof && (
+                <Card>
+                    <Flex vertical gap={14}>
+                        <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
+                            <div>
+                                <Flex align="center" gap={8} wrap="wrap">
+                                    <Text strong>First-client launch proof</Text>
+                                    <Tag color={launchProofStatus.color} icon={<LaunchProofStatusIcon />}>
+                                        {summary.launchProof.ready ? 'Ready' : launchProofStatus.label}
+                                    </Tag>
+                                </Flex>
+                                <Text type="secondary">
+                                    {summary.launchProof.completeCount}/{summary.launchProof.totalCount} proof checks complete before connector rollout.
+                                </Text>
+                            </div>
+                            {nextProofItem?.route && (
+                                <Button
+                                    type="primary"
+                                    icon={<LuExternalLink />}
+                                    onClick={() => openRoute(nextProofItem.route)}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    {nextProofItem.actionLabel || 'Continue'}
+                                </Button>
+                            )}
+                        </Flex>
+                        <Progress
+                            percent={summary.launchProof.score}
+                            status={summary.launchProof.ready ? 'success' : 'active'}
+                            strokeColor={summary.launchProof.ready ? token.colorSuccess : token.colorPrimary}
+                        />
+                        <List
+                            dataSource={summary.launchProof.items}
+                            renderItem={(item) => {
+                                const meta = STATUS_META[item.status];
+                                const StatusIcon = meta.icon;
+                                return (
+                                    <List.Item
+                                        actions={item.route ? [
+                                            <Button
+                                                key="action"
+                                                type={item.status === 'complete' ? 'text' : 'link'}
+                                                icon={<LuExternalLink />}
+                                                aria-label={item.actionLabel || `Open ${item.title}`}
+                                                onClick={() => openRoute(item.route)}
+                                                style={{ minHeight: 44 }}
+                                            >
+                                                {isMobile ? '' : item.actionLabel || 'Open'}
+                                            </Button>,
+                                        ] : undefined}
+                                    >
+                                        <List.Item.Meta
+                                            avatar={<span style={{ fontSize: 20 }}>{getLaunchProofIcon(item.key)}</span>}
+                                            title={(
+                                                <Flex align="center" gap={8} wrap="wrap">
+                                                    <Text strong>{item.title}</Text>
+                                                    <Tag color={meta.color} icon={<StatusIcon />}>{meta.label}</Tag>
+                                                </Flex>
+                                            )}
+                                            description={<Text type="secondary">{item.description}</Text>}
+                                        />
+                                    </List.Item>
+                                );
+                            }}
+                        />
+                    </Flex>
+                </Card>
+            )}
 
             <Row gutter={[12, 12]}>
                 {modeCards.map((mode) => (

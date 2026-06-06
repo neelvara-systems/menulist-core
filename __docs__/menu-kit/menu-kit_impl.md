@@ -125,6 +125,8 @@ export interface MenuKitResult {
 
 This shared contract is used by Menu Kit, standalone branded QR cards, OBP QR downloads, feedback QR downloads, and the active legacy Today/mobile Hours card generators.
 
+Standalone branded QR cards and feedback QR cards use a taller portrait card treatment with a brand top panel, logo/initials badge, separator-aware store-name hierarchy, purpose pill, scan-safe neutral QR panel, short-link capsule, and MenuList attribution. The QR modules remain near-black on white for scan reliability.
+
 `src/lib/menu-kit/platformAttribution.ts` is the shared MenuList attribution contract for generated assets. It draws the MenuList logo mark and standard text:
 
 - `Powered by MenuList | menulist.ai`
@@ -168,6 +170,7 @@ export async function generateMenuKitAsset(input: MenuKitInput, assetKey: MenuKi
 
 export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
   const prepared = await prepareMenuKitInput(input);
+  const labels = getOfferingLabels(input.businessType, input.businessCategory);
   const assets = await Promise.all(
     MENU_KIT_ASSET_DEFINITIONS.map((definition) => renderMenuKitAsset(definition, prepared)),
   );
@@ -175,13 +178,16 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
   for (const asset of assets) {
     zip.file(asset.filename, await asset.blob.arrayBuffer());
   }
+  zip.file("PRINT_INSTRUCTIONS.txt", buildPrintInstructions(input.storeName, labels));
   const zipBlob = await zip.generateAsync({ type: "blob" });
 
-  return { assets, staffScript: STAFF_SCRIPT, zipBlob };
+  return { assets, staffScript: labels.staffScript, zipBlob };
 }
 ```
 
 Use `generateMenuKitAsset()` for single file actions. Use `generateMenuKit()` only for the complete ZIP. This prevents a table card, social image, or counter sticker action from rendering every Menu Kit file first.
+
+`PRINT_INSTRUCTIONS.txt` is business-type aware. Food businesses keep menu/table language, while service, retail, professional, and wellness businesses get matching staff and placement copy.
 
 ### 3. Print Menu Tabletop PDFs (`src/lib/print-menu-surfaces/templates/`)
 
@@ -195,9 +201,9 @@ Tabletop print PDFs are owned by Print Menu Surfaces and bundled by Menu Kit.
 Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card stay visually identical:
 
 - Store name and optional logo from existing store context.
-- Business-type-aware label such as MENU, SERVICES, or CATALOG.
+- Business-type-aware print title and instruction from `getOfferingLabels()`, such as `OUR MENU` + `Scan to view our full menu`, `OUR SERVICES` + `Scan to view our services`, or catalog/offering variants.
 - Large near-black QR on a white panel for scan reliability.
-- Store brand color for the top band, badge, rule, and border accents.
+- Store brand color for the top band, badge, and outer card accents; the QR panel keeps a neutral border.
 - MenuList attribution unless `activePlanType` is Premium.
 
 `src/lib/menu-kit/templates/tableTentTemplate.ts` remains a compatibility wrapper only. New physical tabletop layout work belongs under `src/lib/print-menu-surfaces/`.
@@ -227,7 +233,7 @@ Key differences:
 // Uses jsPDF (same as tent card)
 // A4: 210mm × 297mm
 // QR: 80mm (large — scannable from 1–2 meters at entrance)
-// Layout: "OUR MENU" heading → large QR → "Scan to view" + instruction line → short link fallback → store name → branding footer
+// Layout: business-type heading → large QR → business-type scan instruction → short link fallback → store name → branding footer
 // Highest discovery surface: customers check menu before entering
 ```
 

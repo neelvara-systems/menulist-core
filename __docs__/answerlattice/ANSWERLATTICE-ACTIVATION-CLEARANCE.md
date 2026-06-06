@@ -344,7 +344,7 @@ INTEGRATION POINTS (existing system):
 
 ## 6. Feature Flag Control
 
-All flags are in `src/config/features.ts`. All default to `false`.
+All flags are in `src/config/features.ts` unless noted. Defaults now reflect the current controlled-rollout posture: core ontology, canonical answers, drift, signal mutation, widget, activation, governance UI, context-aware support, product surfaces, compiled context, auto knowledge, ticket-to-knowledge, friction intelligence, graph traversal, predictive support, and workflow integrations are enabled with caps/guards. Public API, MCP, AI escalation, guided workflows, advanced white-label, multi-language, and support-board source sync remain deliberate rollout controls.
 
 | Flag                                | Controls                                                         | Safe to Enable Independently                 |
 | ----------------------------------- | ---------------------------------------------------------------- | -------------------------------------------- |
@@ -356,10 +356,15 @@ All flags are in `src/config/features.ts`. All default to `false`.
 
 **Recommended activation order:**
 
-1. `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` — Start collecting friction signals (safe, fire-and-forget)
-2. `ENABLE_ANSWERLATTICE_ONTOLOGY` — Bootstrap entities from KB
-3. `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS` — Enable canonical-first retrieval
-4. `ENABLE_ANSWERLATTICE_DRIFT_DETECTION` — Enable governance monitoring
+1. Prove self-service onboarding and workspace profile for a fresh account.
+2. Import source-backed product knowledge through Knowledge Intake or the KB-generation compatibility path.
+3. Map product surfaces before expanding external integrations.
+4. Review entity candidates and canonical answer drafts in Governance.
+5. Publish 5-10 approved canonical answers for high-traffic entities.
+6. Verify widget install and safe page context on a separate client page.
+7. Confirm feedback, fallback, ticket, and escalation signals create reviewable mutation proposals.
+8. Monitor coverage, drift, trust, friction, and weekly digest summaries.
+9. Enable Public API only for the target tenant after approved canonical coverage, `al_*` keys, rate limits, logs, and docs are verified.
 
 ---
 
@@ -527,12 +532,13 @@ Every integration point is designed to fail silently:
 
 ### Current Limitations (by design for v1)
 
-1. **Entity extraction requires manual trigger** — Not automated (by design — human oversight)
+1. **Entity extraction and draft promotion require human review** — Automation can suggest candidates and drafts, but activation still depends on owner approval.
 2. **No auto-apply of mutations** — All require human approval (governance invariant)
-3. **Pillar 5 (Public API) not fully wired** — Feature flag exists but API not implemented yet
+3. **Public API is implemented but rollout-gated** — Routes exist for answers, entities, and signals; `ENABLE_ANSWERLATTICE_PUBLIC_API` remains off by default.
 4. **Governance authoring is desktop-preferred** — Mobile access is supported for review/recovery, but long structured edits remain desk tasks
-5. **Mutation review UI is minimal** — List + approve/reject only; no inline editing of canonical answers
-6. **Public API still deferred** — Widget/search routes exist, but the full external public API pillar remains behind the roadmap flag
+5. **Mutation review remains approval-first** — Drafts can be generated/regenerated, but publishing still goes through explicit review.
+6. **Jira and native helpdesk connectors are not implemented** — They require separate docs-first work and must feed Governance, not bypass it.
+7. **Advanced white-label, multi-language, guided workflows, MCP, and AI escalation remain rollout controls** — Code exists, but tenant enablement needs a specific product decision.
 
 ### Resolved Limitations (fixed 2026-03-03)
 
@@ -547,12 +553,12 @@ Every integration point is designed to fail silently:
 
 ### Recommended Next Steps
 
-1. **Run the manual scheduler smoke test** — Verify the deployed function writes `answerlattice_schedulerRunLogs/{runLogId}` and discovers tenants from `platformSummary/answerlatticeTenantsSummary`.
-2. **Complete Launch Setup for the first client** — Import KB content, map product surfaces, configure widget allowed origins, and verify widget runtime context.
-3. **Review generated entity candidates and draft canonical answers** — Use `/answerlattice/governance/candidates` and `/answerlattice/governance/signal-queue`.
-4. **Publish 5-10 canonical answers** for highest-traffic entities — Confirm canonical retrieval and cache-version behavior.
-5. **Monitor coverage, drift, and trust metrics** — Use `/answerlattice/dashboard` and `/answerlattice/governance/trust`.
-6. **Keep enabled expansion paths bounded** — predictive support, graph traversal, and workflow integrations are active because they strengthen page-aware guidance, deterministic retrieval, and governance awareness. Keep Redis cooldowns, summary-backed graph reads, event caps, and sanitized workflow delivery in place before wider client rollout.
+1. **Run the first-client launch proof in Activation** — Fresh account, workspace profile, Knowledge Intake, product surfaces, entity candidates, canonical drafts, approval, widget install, safe page context, signal mutation, and summary docs should clear `summary.launchProof`.
+2. **Run the manual scheduler smoke test** — Verify the deployed function writes `answerlattice_schedulerRunLogs/{runLogId}` and discovers tenants from `platformSummary/answerlatticeTenantsSummary`.
+3. **Publish 5-10 canonical answers** for highest-traffic entities — Confirm canonical retrieval, cache-version behavior, and widget/help behavior.
+4. **Verify signal quality** — Negative feedback, fallback, ticket, and escalation signals must become useful reviewable proposals without auto-publishing.
+5. **Keep enabled expansion paths bounded** — predictive support, graph traversal, and workflow integrations are active because they strengthen page-aware guidance, deterministic retrieval, and governance awareness. Keep Redis cooldowns, summary-backed graph reads, event caps, and sanitized workflow delivery in place before wider client rollout.
+6. **Do not start Jira or native helpdesk connectors yet** — Those are new docs-first features and must plug into the existing integration event, signal mutation, and Governance paths.
 
 ---
 
@@ -676,11 +682,11 @@ Every integration point is designed to fail silently:
 
 **Verdict: CLEARED FOR CONTROLLED EXPERIMENT (Operational Loop Complete)**
 
-Ready-to-use defaults now keep the core operational loop on. Optional high-expansion flows remain disabled until usage justifies their additional cost.
+Ready-to-use defaults now keep the core operational loop on. Some optional expansion paths are active with caps because they support retrieval quality and governance awareness. Higher-risk surfaces such as Public API, MCP, AI escalation, advanced white-label, multi-language, guided workflows, Jira, and native helpdesk connectors remain explicit rollout decisions.
 
 > **Important:** Cost estimates in Section 10 are average-case. For worst-case projections (300+ canonical answers per tenant, multi-tenant scaling), see `answerlattice-activation-experiment.md` Section 8.
 
-> **Next Step:** Follow the Activation Experiment Framework in `answerlattice-activation-experiment.md` for the 4-week controlled experiment with hard success/failure criteria.
+> **Next Step:** Follow `ANSWERLATTICE-BUILD-PRIORITY-ROADMAP.md` and prove the first-client governed answer loop before expanding Jira, native helpdesk connectors, broad distribution, white-label, or multi-language.
 
 ---
 

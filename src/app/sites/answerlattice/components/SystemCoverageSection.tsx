@@ -12,8 +12,8 @@ export default function SystemCoverageSection() {
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     className="mb-14"
-                    eyebrow="Product System"
-                    title="One answer layer across setup, support, governance, and runtime."
+                    eyebrow="Product system"
+                    title="One support layer across setup, widget, help center, tickets, and review."
                     description="AnswerLattice is not only a search box. It connects onboarding, help content, product pages, widget context, tickets, release notes, and review queues so support can keep up with fast-moving software."
                 />
 

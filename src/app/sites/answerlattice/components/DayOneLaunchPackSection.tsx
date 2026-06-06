@@ -31,7 +31,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         label: 'First product pages',
         title: 'Starter surfaces for common SaaS screens',
         description:
-            'Seed billing, onboarding, team settings, releases, integrations, and common-error surfaces so page-aware support starts with real product areas.',
+            'Seed billing, onboarding, team settings, releases, integrations, and common-error surfaces so in-app support starts with real product areas.',
         href: '/product/launch-setup',
         cta: 'See setup',
     },
@@ -39,7 +39,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         label: 'Knowledge intake',
         title: 'Teach AnswerLattice from links, docs, files, and media',
         description:
-            'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, and support macros, then review drafts before publishing.',
+            'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, support macros, and repeated replies, then review drafts before publishing.',
         href: '/product/knowledge-intake',
         cta: 'See intake',
     },

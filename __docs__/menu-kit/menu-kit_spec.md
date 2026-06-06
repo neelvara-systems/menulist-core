@@ -116,11 +116,11 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ```
 ┌─────────────────────────┐
 │                         │
-│      OUR MENU           │  ← Bold, large
+│  {Business print title} │  ← e.g. OUR MENU / OUR SERVICES
 │                         │
 │     ( QR CODE )          │  ← 80mm × 80mm (scannable from 1–2m)
 │                         │
-│  Scan to view menu       │
+│  {Business scan text}    │
 │  Open camera and point at QR │
 │  Or open: {short link}   │
 │                         │
@@ -171,8 +171,8 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ┌────────────────────────────────────────┐
 │                                        │
 │  ( QR CODE )    {Store Name}           │  ← QR left, text right
-│                 SAVE OUR MENU          │
-│                 Scan to view menu      │
+│                 {Business save title}  │
+│                 {Business scan text}   │
 │                 {short link}           │
 │                                        │
 └────────────────────────────────────────┘
@@ -289,7 +289,13 @@ PRINT SIZES:
 
 Not a file. A text line included in the delivery message and optionally shown in the UI.
 
-**Text:** `"Menu? Please scan the QR on the table or at the counter."`
+**Text:** Business-type aware staff line from `getOfferingLabels()`.
+
+Examples:
+
+- Food: `"Menu? Please scan the QR on the table or at the counter."`
+- Services: `"Services? Please scan the QR at the reception."`
+- Retail: `"Products? Please scan the QR to browse our catalog."`
 
 **Purpose:** Standardizes staff response. Prevents paper menu fallback. Increases QR scan adoption.
 

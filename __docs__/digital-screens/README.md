@@ -1,7 +1,7 @@
 # Digital Screens — Documentation Hub
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)  
-**Status:** 🔒 v2.2 LOCKED (readability + owner-trust hardening applied June 2, 2026) — Only readability/reliability/scale fixes allowed.
+**Status:** 🔒 v2.2 LOCKED (readability, owner-trust, and public-read hardening applied June 2026) — Only readability/reliability/scale fixes allowed.
 **One-liner:** "Your full menu on your shop TV. Always up to date. Never touch it."
 
 ---
@@ -25,6 +25,7 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Highlights owner-only mode now truly uses custom slides only, with brand fallback if no valid upload remains.
 - Highlights no longer overlays management captions on custom poster slides; owner-uploaded artwork is treated as the screen content.
 - Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
+- Public screen cold renders now use a generated available-item menu projection inside the existing screen summary when it matches the current menu/version and base menu slug context, with the old project-read fallback still intact.
 
 **Problem solved:** Shop TVs showing outdated slideshows or blank screens because nobody remembers to update them. And the 70%+ of restaurants that need a full menu board on screen, not just promotional slides.
 
@@ -60,14 +61,15 @@ Historical docs in `_archive/`:
 src/types/campaigns.ts                      # ScreenSlide, DigitalScreenState types
 src/config/features.ts                      # DIGITAL_SCREENS_* feature flags + MODE
 src/lib/screen/                             # Utilities, slide generators, renderer
-src/lib/screen/screenContent.ts             # Content normalization, price parsing, tags, captions
-src/lib/screen/screenInvalidation.ts       # Public-cache-linked screen content version touch
-src/app/screen/[token]/page.tsx             # Server component (SSR, DAL fetch, mode routing)
+src/lib/screen/screenContent.ts             # Content normalization, price parsing, tags, captions, screen menu extraction
+src/lib/screen/screenInvalidation.ts        # Public-cache-linked screen content version touch + menu projection refresh
+src/app/screen/[token]/page.tsx             # Server component (SSR, projection/fallback menu resolution, mode routing)
 src/app/screen/[token]/ScreenDisplay.tsx    # Highlights mode client (rotation, cache, listener)
 src/app/screen/[token]/MenuBoardDisplay.tsx # Menu Board mode client (v2.0 — full menu, pagination)
 src/app/screen/[token]/ScreenAttribution.tsx # Shared quiet public attribution
 src/app/api/screen/seen/route.ts            # Daily seen signal endpoint
-src/database/campaigns/index.ts             # DAL: getScreenDataByToken + 8 screen functions
+src/database/campaigns/serverScreen.ts      # Public screen DAL: token lookup, projection guard, project fallback
+src/database/campaigns/index.ts             # Owner/session DAL: setup, settings, uploads, version bumps
 src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 ```
 
@@ -102,13 +104,13 @@ src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 
 ## Firebase Cost Summary
 
-- **Per screen/month:** ~$0.0005
-- **1,000 screens:** ~$0.41/month
-- **Menu Board mode:** $0.00 additional (same data pipeline)
-- **Two screens per store (1K stores):** ~$0.82/month
+- **Per screen/month:** ~$0.00027-$0.00041
+- **1,000 screens:** ~$0.27-$0.41/month
+- **Menu Board mode:** $0.00 additional (same menu data resolver)
+- **Two screens per store (1K stores):** ~$0.54-$0.82/month
 
 See `digital-screens_firebase.md` for full breakdown.
 
 ---
 
-**Last Updated:** June 2, 2026
+**Last Updated:** June 6, 2026

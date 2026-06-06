@@ -29,7 +29,7 @@ const PROOF_POINTS: ProofPoint[] = [
     },
     {
         icon: LuBookOpen,
-        title: 'Hosted help, FAQs, and custom Q&A stay connected',
+        title: 'Hosted help, FAQs, and owner answers stay connected',
         detail: 'The same support knowledge can feed public help pages, in-app answers, and review workflows.',
     },
     {
@@ -66,7 +66,7 @@ export default function HomeProofBandSection({ basePath = '' }: { basePath?: str
                             Why founders choose it
                         </p>
                         <h2 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
-                            Specific answers, governed knowledge, visible gaps, and a practical install path.
+                            Specific answers, reviewed knowledge, visible gaps, and a practical install path.
                         </h2>
                     </div>
                     <div className="flex flex-wrap gap-2">

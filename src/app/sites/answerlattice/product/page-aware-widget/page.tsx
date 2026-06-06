@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'In-App Help Widget',
-    description: 'Install AnswerLattice as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, canonical answers, and owner FAQ answers before fallback.',
+    description: 'Install AnswerLattice as an in-app help widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, proactive prompts, approved answers, and owner FAQ answers before fallback.',
     alternates: { canonical: '/product/page-aware-widget' },
 };
 
@@ -30,7 +30,7 @@ export default function PageAwareWidgetProductPage() {
                 canonicalPath="/product/page-aware-widget"
                 eyebrow="In-app help widget"
                 title="A help widget that knows which page the user is on."
-                description="Install one widget, pass safe page hints, let users attach screenshots explicitly when visual context helps, and serve canonical answers, owner FAQ answers, related docs, configured proactive prompts, or fallback tickets based on where the user is stuck."
+                description="Install one widget, pass safe page hints, let users attach screenshots explicitly when visual context helps, and serve approved answers, owner FAQ answers, related docs, configured proactive prompts, or fallback tickets based on where the user is stuck."
                 activeTab="In-app help widget"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="Control where the widget appears and what context it receives."
@@ -51,7 +51,7 @@ export default function PageAwareWidgetProductPage() {
                     { title: 'Configure access', description: 'Add allowed origins and blocked routes so the widget appears only where it should.' },
                     { title: 'Send safe context', description: 'Pass page, feature, workflow, role, or plan hints; screenshot input stays user-initiated, optional, and bounded.' },
                     { title: 'Enable prompts where useful', description: 'Use active triggers for pages that benefit from proactive help; inactive workspaces skip those calls.' },
-                    { title: 'Review gaps', description: 'Use fallback and feedback signals to improve canonical answers, owner FAQs, and source articles over time.' },
+                    { title: 'Review gaps', description: 'Use fallback and feedback signals to improve approved answers, owner FAQs, and source articles over time.' },
                 ]}
             />
             <AnswerlatticeFooter basePath={basePath} />

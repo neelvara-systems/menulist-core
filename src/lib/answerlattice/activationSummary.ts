@@ -9,6 +9,8 @@ import type {
     AnswerlatticeActivationSubscriptionSummary,
     AnswerlatticeActivationSummary,
     AnswerlatticeCompiledContextReadiness,
+    AnswerlatticeLaunchProofItem,
+    AnswerlatticeLaunchProofSummary,
     AnswerlatticeSurfaceReadinessItem,
     AnswerlatticeSurfaceContentSummary,
     AnswerlatticeTrustMetrics,
@@ -48,6 +50,32 @@ const buildStep = (input: {
     required: input.required !== false,
     ...input,
 });
+
+const getCombinedStatus = (steps: AnswerlatticeActivationStep[], keys: string[]): AnswerlatticeActivationStepStatus => {
+    const selected = keys
+        .map(key => steps.find(step => step.key === key)?.status)
+        .filter(Boolean) as AnswerlatticeActivationStepStatus[];
+    if (!selected.length) return 'pending';
+    if (selected.every(status => status === 'complete')) return 'complete';
+    if (selected.some(status => status === 'complete' || status === 'attention')) return 'attention';
+    return 'pending';
+};
+
+const buildLaunchProof = (items: AnswerlatticeLaunchProofItem[]): AnswerlatticeLaunchProofSummary => {
+    const completeCount = items.filter(item => item.status === 'complete').length;
+    const totalCount = items.length;
+
+    return {
+        ready: totalCount > 0 && completeCount === totalCount,
+        score: totalCount > 0 ? Math.round((completeCount / totalCount) * 100) : 0,
+        completeCount,
+        totalCount,
+        blockers: items
+            .filter(item => item.status !== 'complete')
+            .map(item => item.title),
+        items,
+    };
+};
 
 const normalizeSubscription = (value: Record<string, any> | null | undefined): AnswerlatticeActivationSubscriptionSummary | null => {
     if (!value || typeof value !== 'object') return null;
@@ -203,6 +231,14 @@ export function buildAnswerlatticeActivationSummary(params: {
     const notificationReadiness = getNotificationReadiness(PRODUCT_IDS.ANSWERLATTICE);
     const notificationsReady = notificationReadiness.enabled && notificationReadiness.smtpConfigured && hasProductProfile;
     const surfaceReadiness = buildSurfaceReadiness(content);
+    const canonicalCoverageRate = Number.isFinite(Number(params.coverage?.coverage?.rate)) ? Number(params.coverage?.coverage?.rate) : null;
+    const canonicalCoverageTotal = Number.isFinite(Number(params.coverage?.coverage?.total)) ? Number(params.coverage?.coverage?.total) : null;
+    const trustScore = getTrustScore(params.trustMetrics);
+    const compiledContextReady = params.compiledContext?.status === 'ready' && (
+        params.compiledContext?.publicBundlesReady === true
+        || params.compiledContext?.privateBundlesReady === true
+        || Number(params.compiledContext?.bundleVersion || 0) > 0
+    );
 
     const steps: AnswerlatticeActivationStep[] = [
         buildStep({
@@ -369,6 +405,66 @@ export function buildAnswerlatticeActivationSummary(params: {
     const readinessScore = requiredSteps.length > 0
         ? Math.round((completeRequired / requiredSteps.length) * 100)
         : 0;
+    const governanceSummaryStatus: AnswerlatticeActivationStepStatus = canonicalCoverageTotal !== null && trustScore !== null && compiledContextReady
+        ? 'complete'
+        : canonicalCoverageTotal !== null || trustScore !== null || compiledContextReady || entityCount > 0 || activeCanonicalAnswerCount > 0
+            ? 'attention'
+            : 'pending';
+    const signalLoopStatus: AnswerlatticeActivationStepStatus = (content?.ticketCount || 0) > 0
+        ? 'complete'
+        : hasWidgetSeenRecently || hasRuntimeContext
+            ? 'attention'
+            : 'pending';
+    const launchProof = buildLaunchProof([
+        {
+            key: 'self-serve-setup',
+            title: 'Self-serve setup',
+            description: 'Workspace, product profile, and license state are ready without manual provisioning.',
+            status: getCombinedStatus(steps, ['workspace', 'product-profile', 'license']),
+            route: ANSWERLATTICE_ROUTES.SETTINGS,
+            actionLabel: 'Review Setup',
+        },
+        {
+            key: 'knowledge-surfaces',
+            title: 'Knowledge and surfaces',
+            description: 'Imported content is mapped to product pages, workflows, and help-center output.',
+            status: getCombinedStatus(steps, ['knowledge', 'help-center', 'product-surfaces']),
+            route: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
+            actionLabel: 'Import Knowledge',
+        },
+        {
+            key: 'ontology-canonical',
+            title: 'Ontology and canonical answers',
+            description: 'Product entities and approved canonical answers exist before customer traffic.',
+            status: getCombinedStatus(steps, ['entities', 'canonical-answers']),
+            route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+            actionLabel: 'Review Governance',
+        },
+        {
+            key: 'widget-runtime',
+            title: 'Widget runtime proof',
+            description: 'Widget key, allowed origins, install telemetry, and page context have all been verified.',
+            status: getCombinedStatus(steps, ['widget-key', 'allowed-origins', 'widget-install', 'page-context']),
+            route: ANSWERLATTICE_ROUTES.WIDGET,
+            actionLabel: 'Verify Widget',
+        },
+        {
+            key: 'governance-summaries',
+            title: 'Governance summaries',
+            description: 'Coverage, trust, and compiled context summaries are available for launch review.',
+            status: governanceSummaryStatus,
+            route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.TRUST),
+            actionLabel: 'Open Trust Metrics',
+        },
+        {
+            key: 'signal-loop-test',
+            title: 'Signal source test',
+            description: 'A fallback or ticket signal source is visible; open Signal Queue to confirm proposal quality before broader rollout.',
+            status: signalLoopStatus,
+            route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE),
+            actionLabel: 'Test Signal Flow',
+        },
+    ]);
     const signaturePayload = {
         tId: params.tId,
         sId: params.sId,
@@ -401,6 +497,10 @@ export function buildAnswerlatticeActivationSummary(params: {
         activeCanonicalAnswerCount,
         compiledContextStatus: params.compiledContext?.status || null,
         compiledContextVersion: params.compiledContext?.bundleVersion || 0,
+        launchProof: launchProof.items.map(item => ({
+            key: item.key,
+            status: item.status,
+        })),
     };
 
     return {
@@ -443,11 +543,12 @@ export function buildAnswerlatticeActivationSummary(params: {
             surfaceReadiness,
         },
         governance: {
-            canonicalCoverageRate: Number.isFinite(Number(params.coverage?.coverage?.rate)) ? Number(params.coverage?.coverage?.rate) : null,
-            canonicalCoverageTotal: Number.isFinite(Number(params.coverage?.coverage?.total)) ? Number(params.coverage?.coverage?.total) : null,
-            trustScore: getTrustScore(params.trustMetrics),
+            canonicalCoverageRate,
+            canonicalCoverageTotal,
+            trustScore,
         },
         compiledContext: params.compiledContext || null,
+        launchProof,
         steps,
         readModel: {
             firestoreReads: 6,

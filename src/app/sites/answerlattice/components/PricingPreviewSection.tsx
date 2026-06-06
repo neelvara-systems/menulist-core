@@ -3,9 +3,9 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
-    answerlattice_starter: 'Best for one SaaS app or digital product preparing its first support layer.',
-    answerlattice_growth: 'Best for active SaaS apps and digital products that need weekly review and higher capacity.',
-    answerlattice_studio: 'Best for studios or agencies launching multiple digital products.',
+    answerlattice_starter: 'Best for one SaaS app preparing its first support layer.',
+    answerlattice_growth: 'Best for active SaaS apps that need weekly review and higher capacity.',
+    answerlattice_studio: 'Best for studios or agencies launching multiple SaaS products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
@@ -19,9 +19,9 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
         <section className="border-t border-white/[0.06] px-6 py-20">
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
-                    eyebrow="Pricing clarity"
-                    title="Check the pricing shape before setup."
-                    description="This is the short version for homepage buyers: start with the beta setup, then move to predictable INR capacity when support volume grows. The full pricing page explains plan details, support credits, top-ups, and fit."
+                    eyebrow="Pricing preview"
+                    title="Start small. Upgrade when support volume grows."
+                    description="Starter is for solo founders launching support. Growth is for live SaaS products with real support volume. Studio is for agencies and multi-product teams."
                 />
                 <div className="grid gap-4 lg:grid-cols-3">
                     {plans.map((plan) => (
@@ -57,7 +57,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         data-answerlattice-label="view_pricing"
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                     >
-                        View full pricing
+                        View pricing
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}

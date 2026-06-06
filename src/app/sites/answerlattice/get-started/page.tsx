@@ -10,7 +10,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for page-aware support.',
+    description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for in-app support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -36,7 +36,7 @@ const FIRST_SESSION = [
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
     'Seed starter surfaces for key product pages',
-    'Teach AnswerLattice from selected links, docs, FAQs, screenshots, recordings, or support macros',
+    'Teach AnswerLattice from selected links, docs, FAQs, screenshots, recordings, support macros, or repeated replies',
     'Verify widget install and page context',
     'Review the first approved answers',
 ];

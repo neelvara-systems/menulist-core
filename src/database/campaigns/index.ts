@@ -10,13 +10,8 @@ import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import {
-    dedupeScreenMenuItems,
+    extractScreenMenuItemsFromProject,
     normalizeOwnerSlideCaption,
-    normalizeScreenCategoryName,
-    normalizeScreenImageUrl,
-    normalizeScreenTags,
-    parseScreenPrice,
-    resolveScreenText,
 } from "@lib/screen/screenContent";
 import { generateScreenToken } from "@lib/screen/utils";
 import {
@@ -519,66 +514,7 @@ export const getMenuItemsForScreen = async (
     try {
         if (!tenantId) return [];
 
-        const extractMenuItemsFromProject = (projectData: any) => {
-            const extractedItems: Array<{
-                id: string;
-                name: string;
-                imageUrl?: string;
-                price?: number;
-                available: boolean;
-                isBestSeller?: boolean;
-                categoryName?: string;
-                categoryOrderIndex?: number;
-                orderIndex?: number;
-                description?: string;
-                tags?: string[];
-            }> = [];
-
-            for (const file of (projectData?.files || [])) {
-                const categories = Array.isArray(file?.extractedData?.data?.categories)
-                    ? file.extractedData.data.categories
-                    : [];
-                const categoryMap = categories.reduce((acc: Record<string, { name: string; orderIndex: number }>, category: any, index: number) => {
-                    const categoryName = normalizeScreenCategoryName(category?.name, "");
-                    if (category?.id && categoryName) {
-                        acc[category.id] = {
-                            name: categoryName,
-                            orderIndex: Number.isFinite(Number(category?.orderIndex)) ? Number(category.orderIndex) : index,
-                        };
-                    }
-                    return acc;
-                }, {});
-
-                const items = Array.isArray(file?.extractedData?.data?.items)
-                    ? file.extractedData.data.items
-                    : [];
-
-                for (const [index, item] of items.entries()) {
-                    const itemName = resolveScreenText(item?.name);
-                    if (!itemName) continue;
-
-                    const itemDesc = resolveScreenText(item?.description) || undefined;
-                    const parsedPrice = parseScreenPrice(item?.price);
-                    const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
-
-                    extractedItems.push({
-                        id: item?.id || `item-${extractedItems.length}`,
-                        name: itemName,
-                        imageUrl: normalizeScreenImageUrl(item?.images?.[0]?.url),
-                        price: parsedPrice,
-                        available: item?.available !== false,
-                        isBestSeller: item?.isBestSeller || false,
-                        categoryName: categoryInfo?.name || normalizeScreenCategoryName(item?.category),
-                        categoryOrderIndex: categoryInfo?.orderIndex,
-                        orderIndex: Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : index,
-                        description: itemDesc,
-                        tags: normalizeScreenTags(item?.tags),
-                    });
-                }
-            }
-
-            return dedupeScreenMenuItems(extractedItems);
-        };
+        const extractMenuItemsFromProject = extractScreenMenuItemsFromProject;
 
         const mergeOverlayMenu = (baseProject: any, specialProject: any) => {
             if (!specialProject?.files?.length) return baseProject;

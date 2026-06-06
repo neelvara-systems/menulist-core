@@ -24,20 +24,20 @@ export default function ProductTeamsUseCasePage() {
             eyebrow="For product teams"
             title="See where product changes break support."
             description="AnswerLattice connects releases, product pages, support gaps, and approved answers so stale support becomes visible after changes."
-            problem="Fast releases change workflows, limits, roles, and states. Without drift review, old docs and old answers keep misleading users after the product changes."
+            problem="Fast releases change workflows, limits, roles, and states. Without stale-answer review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
             answerlatticeAnswer="The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed."
-            ownerReview="Product changes become support-review work through drift, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
+            ownerReview="Product changes become support-review work through stale-answer checks, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
             setupSteps={[
                 'Define surfaces for release-heavy areas such as billing, limits, and settings.',
                 'Connect changelog entries to affected surfaces and answers.',
-                'Review drift and coverage signals after releases.',
+                'Review stale-answer and coverage signals after releases.',
                 'Approve proposed answer updates.',
                 'Track which surfaces still need support.',
             ]}
             primaryCta="Start support setup"
-            secondaryCta="Try page-aware demo"
+            secondaryCta="See demo"
         />
     );
 }

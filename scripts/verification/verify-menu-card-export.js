@@ -49,6 +49,7 @@ const requiredFiles = [
   '__docs__/print-assets/print-assets_firebase.md',
   '__docs__/print-assets/print-assets_mobile-support.md',
   '__docs__/print-assets/print-assets_test-cases.md',
+  '__docs__/print-assets/print-assets_verification.md',
   '__docs__/print-menu-surfaces/README.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_spec.md',
   '__docs__/print-menu-surfaces/print-menu-surfaces_impl.md',
@@ -237,6 +238,7 @@ if (layoutWrapper.includes("'/use-menulist/menu-card-export'")) {
 const mobileShell = fs.readFileSync(path.join(root, 'src/components/mobile/MobileShell.tsx'), 'utf8');
 [
   "'/use-menulist/menu-card-export': { tab: 'more', todayScreen: 'main', moreScreen: 'printMenu' }",
+  "'/assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' }",
   "'/use-menulist/print-assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' }",
   'SELECTED_PROJECT_DATA_MORE_SCREENS',
   "'printAssets'",
@@ -268,7 +270,11 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'buildPrintReadinessItems',
   'buildPrintShopHandoffMessage',
   'PRINT_ASSET_REPRINT_GUIDANCE',
-  'handlePreviewMenuKitAsset',
+  'PRINTABLE_ASSET_TYPES',
+  'PRINTABLE_TEMPLATE_FAMILIES',
+  'renderPrintableAsset',
+  'selectedPrintableAssetId',
+  'selectedPrintableTemplateId',
   'PreviewAssetSheet',
   'MobilePrintReadinessPanel',
   "handleMenuKitAsset('table_tent', 'table_tent'",
@@ -284,7 +290,7 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'storeData: storeDetails as any',
   'logoUrl: data.storeLogo',
   'businessCategory: (storeDetails as any)?.businessCategory',
-  'brandColor: (storeDetails as any)?.publicPresence?.accentColor',
+  'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
 ].forEach((token) => {
   if (!mobileShare.includes(token)) failures.push(`Mobile Share entry missing token: ${token}`);
@@ -325,7 +331,8 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
   "openSubScreen('printAssets')",
   "subScreen === 'printAssets'",
   "key: 'printAssets'",
-  "label: 'Print Assets'",
+  "label: 'Assets'",
+  'ENABLE_PRINTABLE_ASSET_TEMPLATES',
   'MobileMenuCardExportScreen',
   "openSubScreen('printMenu')",
   "subScreen === 'printMenu'",
@@ -461,9 +468,9 @@ const desktopUseMenuList = fs.readFileSync(path.join(root, 'src/components/templ
   "view = 'overview'",
   "view === 'print-assets'",
   'useRouter',
-  'buildPrintAssetsUrl',
+  'buildPrintableAssetsUrl',
   'buildMenuCardExportUrl',
-  'router.push(buildPrintAssetsUrl',
+  'router.push(buildPrintableAssetsUrl',
   'router.push(buildMenuCardExportUrl',
   "router.push('/use-menulist')",
   'generateMenuKitAsset',
@@ -480,7 +487,7 @@ const desktopUseMenuList = fs.readFileSync(path.join(root, 'src/components/templ
   'storeData: storeDetails as any',
   'logoUrl: data.storeLogo',
   'businessCategory: (storeDetails as any)?.businessCategory',
-  'brandColor: (storeDetails as any)?.publicPresence?.accentColor',
+  'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
 ].forEach((token) => {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList print copy missing brand PDF context token: ${token}`);
@@ -577,17 +584,29 @@ const qrCodeUtil = fs.readFileSync(path.join(root, 'src/lib/utils/qrCode.ts'), '
   'brand.qrDark',
   'brand.surface',
   'fillVerticalGradient',
+  'drawLogoBadge',
+  'splitStoreName',
+  'width * 1.5',
+  '#d7dde3',
   'fitCanvasText',
   'drawMenuListAttribution',
   'activePlanType',
 ].forEach((token) => {
   if (!qrCodeUtil.includes(token)) failures.push(`Branded QR helper missing token: ${token}`);
 });
+if (qrCodeUtil.includes('drawQrCornerBrackets')) {
+  failures.push('Branded QR helper must not use colored QR corner brackets');
+}
 
 const feedbackQrCode = fs.readFileSync(path.join(root, 'src/lib/utils/feedbackQrCode.ts'), 'utf8');
 if (!feedbackQrCode.includes('generateBrandedFeedbackQrCode')) {
   failures.push('Feedback QR utility missing branded feedback QR helper');
 }
+
+const businessTypeLabels = fs.readFileSync(path.join(root, 'src/lib/menu-kit/businessTypeLabels.ts'), 'utf8');
+['printCardTitle', 'OUR MENU', 'OUR SERVICES', 'OUR CATALOG', 'OUR OFFERINGS'].forEach((token) => {
+  if (!businessTypeLabels.includes(token)) failures.push(`Business-type labels missing print card token: ${token}`);
+});
 
 const mobileQrSheet = fs.readFileSync(path.join(root, 'src/components/mobile/components/MobileQrCodeSheet.tsx'), 'utf8');
 [
@@ -666,7 +685,10 @@ const publicMenuListAttribution = fs.readFileSync(path.join(root, 'src/component
   },
 ].forEach(({ label, file, noQr, delegatesPaper }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
-  ['resolveMenuKitBrandTokens', ...(noQr ? [] : ['brand.qrDark'])].forEach((token) => {
+  if (!source.includes('resolveMenuKitBrandTokens') && !source.includes('resolvePrintableTemplateBrandTokens')) {
+    failures.push(`${label} missing premium brand token resolver`);
+  }
+  [...(noQr ? [] : ['brand.qrDark'])].forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing premium brand token: ${token}`);
   });
   if (!delegatesPaper && !source.includes('brand.paper') && !source.includes('brand.paperRgb')) {
@@ -683,27 +705,41 @@ const publicMenuListAttribution = fs.readFileSync(path.join(root, 'src/component
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   [
     'drawPrintMenuCardFace',
-    'OUR ${menuLabel}',
+    'actionLabel',
+    'instructionLabel',
     'fillRoundedVerticalGradient',
     'brand.gradientFrom',
     'brand.gradientTo',
     'brand.paper',
+    'drawLogoBadge',
+    '#d7dde3',
+    'splitStoreName',
+    'getStoreInitials',
     'drawMenuListAttribution',
   ].forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
   });
+  if (source.includes('`650 ${printMenuMm')) {
+    failures.push(`${label} must use standard canvas font weights, not 650`);
+  }
+  ['OUR ${menuLabel}', 'Scan to view ${menuLabel'].forEach((token) => {
+    if (source.includes(token)) failures.push(`${label} must receive dynamic labels from caller, not compose ${token}`);
+  });
+  if (source.includes('drawQrCornerBrackets')) {
+    failures.push(`${label} must not use colored QR corner brackets`);
+  }
 });
 
 [
   {
     label: 'Print Menu table tent physical treatment',
     file: 'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
-    tokens: ['generatePrintMenuTableTent', 'SHEET_W_MM = 210', 'SHEET_H_MM = 148', 'FACE_W_MM', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace', 'rotate(Math.PI)'],
+    tokens: ['generatePrintMenuTableTent', 'SHEET_W_MM = 210', 'SHEET_H_MM = 148', 'FACE_W_MM', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace', 'labels.printCardTitle', 'labels.scanToView', 'rotate(Math.PI)'],
   },
   {
     label: 'Print Menu single table card physical treatment',
     file: 'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
-    tokens: ['generatePrintMenuSingleTableCard', 'CARD_W_MM = 105', 'CARD_H_MM = 148', 'orientation: \'portrait\'', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace'],
+    tokens: ['generatePrintMenuSingleTableCard', 'CARD_W_MM = 105', 'CARD_H_MM = 148', 'orientation: \'portrait\'', 'margin: 4', 'brand.qrDark', 'drawPrintMenuCardFace', 'labels.printCardTitle', 'labels.scanToView'],
   },
 ].forEach(({ label, file, tokens }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');

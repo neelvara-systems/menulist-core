@@ -438,17 +438,32 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
+    const sourceType = normalizeSourceType(input.type);
+    if (
+        sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY
+        && !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT
+    ) {
+        throw new Error('Repeated reply import is not enabled.');
+    }
+
+    const preparedRepeatedReply = sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY
+        ? prepareRepeatedReplySourceText(input)
+        : null;
+
     const job = await ensureJobForScope(scope, jobId);
     assertJobCanAcceptSource(job);
 
-    const sourceType = normalizeSourceType(input.type);
-    const fetched = input.contentText?.trim()
+    const fetched = preparedRepeatedReply
+        ? { text: preparedRepeatedReply.contentText, title: input.title || '' }
+        : input.contentText?.trim()
         ? { text: input.contentText, title: input.title || '' }
         : input.originUrl && sourceType === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.WEBSITE_PAGE
             ? await fetchPublicPageText(input.originUrl)
             : { text: '', title: '' };
-    const redacted = redactSensitiveSourceText(cleanLongText(fetched.text || input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS));
-    const contentText = cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
+    const redacted = preparedRepeatedReply?.redacted
+        || redactSensitiveSourceText(cleanLongText(fetched.text || input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS));
+    const contentText = preparedRepeatedReply?.contentText
+        || cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
     const normalizedOriginUrl = normalizePublicUrl(input.originUrl);
     const computedContentHash = sha256([
         sourceType,
@@ -1244,6 +1259,44 @@ function buildReviewItemsFromSource(
         publishedOn: null,
     };
 
+    if (source.type === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY) {
+        const pair = extractRepeatedReplyPair(source, text);
+        if (!pair) return [];
+        const hasLinkedEntity = Boolean(source.entityIds?.length);
+        const repeatedReplyBase = {
+            ...base,
+            confidenceScore: hasLinkedEntity ? 0.78 : 0.58,
+            reason: hasLinkedEntity
+                ? 'Repeated reply draft linked to selected entities.'
+                : 'Repeated reply draft needs an entity before it can become authoritative.',
+        };
+
+        return [
+            {
+                ...repeatedReplyBase,
+                id: '',
+                target: ANSWERLATTICE_INTAKE_REVIEW_TARGET.FAQ,
+                title: pair.question,
+                question: pair.question,
+                answer: pair.answer,
+                body: pair.answer,
+                sortOrder: sourceIndex * 10,
+                confidenceScore: 0.84,
+                reason: 'Repeated reply prepared as a reviewed FAQ draft.',
+            },
+            {
+                ...repeatedReplyBase,
+                id: '',
+                target: ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL,
+                title: pair.question,
+                question: pair.question,
+                answer: pair.answer,
+                body: pair.answer,
+                sortOrder: sourceIndex * 10 + 1,
+            },
+        ];
+    }
+
     const articleTitle = titleFromText(source.title, text);
     items.push({
         ...base,
@@ -1300,6 +1353,31 @@ function buildReviewItemsFromSource(
     }
 
     return items;
+}
+
+function prepareRepeatedReplySourceText(input: AddSourceInput) {
+    const rawText = cleanLongText(input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
+    const redacted = redactSensitiveSourceText(rawText);
+    const contentText = cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
+    if (!extractRepeatedReplyTextPair(contentText, input.metadata?.replyQuestion, input.title)) {
+        throw new Error('Add one repeated question and a reusable answer before importing a repeated reply.');
+    }
+    return { contentText, redacted };
+}
+
+function extractRepeatedReplyPair(source: AnswerlatticeKnowledgeSource, text: string) {
+    return extractRepeatedReplyTextPair(text, source.metadata?.replyQuestion, source.title);
+}
+
+function extractRepeatedReplyTextPair(text: string, preferredQuestion?: unknown, fallbackQuestion?: unknown) {
+    const [pair] = extractFaqPairs(text);
+    const question = cleanText(preferredQuestion || pair?.question || fallbackQuestion, 240);
+    const answer = cleanLongText(pair?.answer || '', 2000);
+    if (!question || answer.length < 20) return null;
+    return {
+        question: question.endsWith('?') ? question : `${question}?`,
+        answer,
+    };
 }
 
 function dedupeReviewItems(items: AnswerlatticeIntakeReviewItem[]) {

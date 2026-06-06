@@ -12,11 +12,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for AnswerLattice page-aware support: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+    description: 'Security for the AnswerLattice support layer: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | AnswerLattice',
-        description: 'How AnswerLattice protects page-aware support, widget context, and customer workspaces.',
+        description: 'How AnswerLattice protects in-app support, widget context, hosted help, approved answers, and customer workspaces.',
         url: `${ANSWERLATTICE_SITE_URL}/security`,
     },
 };
@@ -36,7 +36,7 @@ const CONTROLS = [
     },
     {
         title: 'Role-scoped workspace access',
-        body: 'AnswerLattice workspace members receive AnswerLattice-specific permission claims so team, billing, widget, knowledge, support, and governance controls can be separated by role.',
+        body: 'AnswerLattice workspace members receive AnswerLattice-specific permission claims so team, billing, widget, knowledge, support, and answer-review controls can be separated by role.',
     },
     {
         title: 'Owner reset and sign-out',
@@ -114,7 +114,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Team permissions',
-        body: 'AnswerLattice team access uses product-specific roles for support, knowledge, widget, billing, governance, and workspace controls.',
+        body: 'AnswerLattice team access uses product-specific roles for support, knowledge, widget, billing, answer review, and workspace controls.',
         points: [
             'Owner, Manager, Support Staff, and custom roles map to AnswerLattice permission keys.',
             'Dashboard routes and protected AnswerLattice APIs check the active role before exposing controls.',
@@ -174,16 +174,16 @@ const TRUST_AREAS = [
             'Public URL discovery imports only owner-selected pages.',
             'Files are capped before processing; screenshots and short recordings are extracted into support text.',
             'Paid OCR and transcription work is support-credit logged and refund-aware on failure.',
-            'Accepted output publishes through existing KB, FAQ, surface, changelog, or canonical proposal workflows.',
+            'Accepted output publishes through existing KB, FAQ, surface, changelog, or approved-answer proposal workflows.',
         ],
     },
     {
-        title: 'Governed answers',
+        title: 'Reviewed answers',
         body: 'Support correctness comes from approved knowledge, not automatic rewriting.',
         points: [
-            'Canonical answers are served before fallback.',
+            'Approved answers are served before fallback.',
             'Drafts and mutation proposals remain review work until approved.',
-            'Drift and signal checks surface stale or missing knowledge.',
+            'Stale-answer and signal checks surface stale or missing knowledge.',
         ],
     },
     {
@@ -191,7 +191,7 @@ const TRUST_AREAS = [
         body: 'AnswerLattice keeps high-cost and public runtime paths bounded so one noisy widget cannot become an uncontrolled backend workload.',
         points: [
             'Public widget config, search, and feedback endpoints are rate limited.',
-            'Repeated canonical hits can use cache with freshness checks.',
+            'Repeated approved-answer hits can use cache with freshness checks.',
             'Ready widget context can be served through versioned bundles and server cache instead of raw collection fanout.',
             'Dashboards prefer summary documents over broad collection scans.',
             'Hosted help content uses cached public payloads and compact display fields.',
@@ -199,9 +199,9 @@ const TRUST_AREAS = [
     },
     {
         title: 'Compiled context separation',
-        body: 'AnswerLattice separates governed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
+        body: 'AnswerLattice separates reviewed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
         points: [
-            'Governed source records remain inside AnswerLattice for drafts, tickets, signals, proposals, and audit state.',
+            'Source records remain inside AnswerLattice for drafts, tickets, signals, proposals, and audit state.',
             'Public widget bundles include only public-safe product and support context.',
             'Private server bundles stay behind authenticated AnswerLattice APIs.',
             'A stale or failed build does not replace the last ready bundle.',
@@ -209,7 +209,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Scheduler cost boundary',
-        body: 'Daily governance work is centralized and workspace-aware rather than split into many scheduled functions.',
+        body: 'Daily support review work is centralized and workspace-aware rather than split into many scheduled functions.',
         points: [
             'The scheduler evaluates due workspaces by local timezone and support-day end time.',
             'Source-version checks decide whether compiled context needs repair.',
@@ -218,7 +218,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Operational separation',
-        body: 'AnswerLattice keeps its product data and support runtime bounded to AnswerLattice workspace, widget, hosted help, and governance surfaces.',
+        body: 'AnswerLattice keeps its product data and support runtime bounded to AnswerLattice workspace, widget, hosted help, and answer review surfaces.',
         points: [
             'AnswerLattice has product-owned routes, constants, schedulers, and dashboard sections.',
             'AnswerLattice Firebase config can run as dedicated product infrastructure.',
@@ -238,7 +238,7 @@ export default function AnswerlatticeSecurityPage() {
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Security</p>
-                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
+                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for support inside your product.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                             AnswerLattice uses safe page hints, explicit screenshot attachments, bounded source intake, allowed origins, blocked routes, compiled approved context, role-scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
@@ -287,7 +287,7 @@ export default function AnswerlatticeSecurityPage() {
                         <div className="mb-8 text-center">
                             <h2 className="text-2xl font-bold text-white">Security at a glance</h2>
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
-                                AnswerLattice is built around product-owned workspace boundaries, widget runtime controls, and governed support-knowledge access.
+                                AnswerLattice is built around product-owned workspace boundaries, widget runtime controls, and reviewed support-knowledge access.
                             </p>
                         </div>
                         <AnswerlatticeHubDiagram

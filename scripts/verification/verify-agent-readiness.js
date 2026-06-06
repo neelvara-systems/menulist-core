@@ -295,7 +295,7 @@ function verifyAnswerlatticeDiscovery() {
   assertIncludes(layout, "applicationName: 'AnswerLattice'", 'AnswerLattice layout metadata brand casing');
   assertIncludes(productDomains, "name: 'AnswerLattice'", 'AnswerLattice product domain display name');
   assertIncludes(middleware, 'buildAnswerlatticeWebsiteRewritePath', 'AnswerLattice homepage internal rewrite helper');
-  assertIncludes(middleware, "`${basePath}/home`", 'AnswerLattice homepage internal rewrite target');
+  assertIncludes(middleware, "(publicPath === '/' || publicPath === '/home') ? basePath", 'AnswerLattice homepage internal rewrite target');
   assertIncludes(middleware, 'isLegacyAnswerlatticePublicHostname', 'AnswerLattice legacy public host redirect');
   assertIncludes(middleware, "'canonica.app'", 'AnswerLattice legacy public host redirect');
   assertIncludes(middleware, "getProductDeploymentTarget('answerlattice', 'production')", 'AnswerLattice legacy public host canonical target');

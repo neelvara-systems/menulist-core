@@ -6,6 +6,7 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 
 - Header remains sticky through `AnswerlatticeHeader`.
 - Primary action stacks below the title.
+- First-client launch proof card stacks status, progress, and proof actions vertically.
 - KPI cards collapse into one-column/two-column rows.
 - Content Control workbench stacks each owner action vertically with full-width action buttons.
 - Test-as-Customer checklist stacks each customer-path check with full-width action buttons.
@@ -19,6 +20,7 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - `/answerlattice/activation` at mobile width
 - Step action buttons
 - Refresh button
+- First-client launch proof card and proof item actions
 - Content Control workbench actions
 - Test-as-Customer checklist actions
 - Surface Readiness matrix actions

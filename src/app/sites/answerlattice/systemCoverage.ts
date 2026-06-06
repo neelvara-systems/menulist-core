@@ -5,7 +5,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
         items: [
             {
                 title: 'Workspace activation',
-                detail: 'Onboarding creates the AnswerLattice workspace, subscription summary, product profile, team access layer, and first launch checklist.',
+                detail: 'Onboarding creates the AnswerLattice workspace, subscription summary, product profile, team access layer, and first launch proof.',
             },
             {
                 title: 'Team access',
@@ -13,7 +13,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Knowledge import',
-                detail: 'Existing docs, FAQs, owner Q&A, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
+                detail: 'Existing docs, FAQs, owner answers, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
             },
             {
                 title: 'Product surfaces',
@@ -38,8 +38,8 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Articles, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
             },
             {
-                title: 'Page-aware widget',
-                detail: 'Embedded support receives safe page context and returns canonical answers, owner FAQ answers, related articles, releases, or ticket fallback.',
+                title: 'In-app widget',
+                detail: 'Embedded support receives safe page context and returns approved answers, owner answers, related articles, releases, or ticket fallback.',
             },
             {
                 title: 'Tickets as fallback',
@@ -55,24 +55,24 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Email notifications',
-                detail: 'Ticket-created, reply, and status events can notify owners while leaving knowledge governance as the core product.',
+                detail: 'Ticket-created, reply, and status events can notify owners while leaving support review as the core product.',
             },
         ],
     },
     {
-        mode: 'Knowledge Governance',
+        mode: 'Support Review',
         summary: 'AnswerLattice treats support knowledge as product truth that must be reviewed, versioned, and kept current.',
         items: [
             {
-                title: 'Product ontology',
-                detail: 'Features, plans, roles, workflows, states, integrations, and errors are first-class concepts.',
+                title: 'Product surfaces',
+                detail: 'Features, plans, roles, workflows, states, integrations, and errors are mapped as support-relevant surfaces.',
             },
             {
-                title: 'Canonical answers',
-                detail: 'Approved, scoped answers are retrieved first; published owner FAQ answers can handle matching repeated questions before fallback.',
+                title: 'Approved answers',
+                detail: 'Approved, scoped answers are served first; published owner answers can handle matching repeated questions before fallback.',
             },
             {
-                title: 'Drift checks',
+                title: 'Stale-answer checks',
                 detail: 'Version mismatch, signal anomaly, scope conflict, and deprecated entity checks flag stale support.',
             },
             {
@@ -81,7 +81,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Trust and readiness metrics',
-                detail: 'Coverage, drift pressure, failing entities, and escalation pressure are summarized for owners without raw log hunting.',
+                detail: 'Coverage, stale-answer pressure, failing entities, and escalation pressure are summarized for owners without raw log hunting.',
             },
         ],
     },
@@ -98,12 +98,12 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Approved public widget context and private server context are generated into versioned bundles so runtime paths avoid repeated source-data fanout.',
             },
             {
-                title: 'Workspace-local governance',
-                detail: 'A centralized AnswerLattice scheduler checks due workspaces by their local support-day end time, then repairs stale compiled context and governance summaries.',
+                title: 'Workspace-local review',
+                detail: 'A centralized AnswerLattice scheduler checks due workspaces by their local support-day end time, then repairs stale compiled context and review summaries.',
             },
             {
                 title: 'Cache freshness',
-                detail: 'Repeated canonical hits can use cache while compact version manifests prevent stale answer serving.',
+                detail: 'Repeated approved-answer hits can use cache while compact version manifests prevent stale answer serving.',
             },
             {
                 title: 'Runtime verification',

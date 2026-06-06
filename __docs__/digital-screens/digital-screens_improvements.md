@@ -9,13 +9,13 @@
 
 ## Current Cost Baseline
 
-| Scale          | Before (v2.0) | After (v2.1) | Delta                    |
-| -------------- | ------------- | ------------ | ------------------------ |
-| 100 screens    | $0.03/mo      | $0.05/mo     | +$0.02 (evergreen reads) |
-| 1,000 screens  | $0.27/mo      | $0.41/mo     | +$0.14 (evergreen reads) |
-| 10,000 screens | $2.70/mo      | $4.14/mo     | +$1.44 (evergreen reads) |
+| Scale          | Current Range | Notes |
+| -------------- | ------------- | ----- |
+| 100 screens    | $0.03-$0.05/mo | Projection hit rate determines lower vs upper bound |
+| 1,000 screens  | $0.27-$0.41/mo | Valid projection avoids the project summary read and project fallback read |
+| 10,000 screens | $2.70-$4.14/mo | Edge cache hits can reduce raw reads further |
 
-**Verdict:** Cost increase is negligible (+2 reads per SSR for menu items). The trade-off is excellent: screens now show actual menu items instead of just brand fallback.
+**Verdict:** Current cost remains negligible. Valid `screen.menuProjection` with base menu slug context reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits, while fallback still shows actual menu items when projection is stale or unavailable.
 
 ---
 
@@ -105,7 +105,7 @@ During the daily campaign sync (which already runs), compute top 3 menu items an
 - `database/campaigns/index.ts:537` — `getScreenDataByToken` now returns `tenantId` from store doc
 - `slideGenerator.ts:34` — `MenuItemForSlide` interface now exported
 
-**Result:** `slideGenerator.ts` and `evergreenSlides.ts` are no longer dead code. Full 4-layer stack is active. Cost: +2 reads per SSR (~$0.14/month at 1K screens).
+**Result:** `slideGenerator.ts` and `evergreenSlides.ts` are no longer dead code. Full 4-layer stack is active. Historical February baseline: +2 reads per SSR (~$0.14/month at 1K screens). June 2026 projection hardening later reduced the typical cold public render; see Finding 12.
 
 ---
 
@@ -270,7 +270,7 @@ const checkHealth = async () => {
 
 ---
 
-## Net Impact After Implementation
+## Net Impact After February Implementation
 
 | Metric              | Before (v1.0)         | After v2.1                                | After v2.0 (IMPLEMENTED)           |
 | ------------------- | --------------------- | ----------------------------------------- | ---------------------------------- |
@@ -282,7 +282,7 @@ const checkHealth = async () => {
 | Rendering modes     | 1 (Highlights only)   | 1 (Highlights only)                       | **✅ 2 (Menu Board + Highlights)** |
 | Market coverage     | ~20-30% (promo only)  | ~20-30% (promo only)                      | **✅ ~90% (menu board + promo)**   |
 
-**Bottom line:** All 7 findings addressed. v2.0 adds Menu Board mode + price display for $0.00/month additional. Total architecture cost at 1K screens remains under $1/month.
+**Bottom line:** All 7 February findings were addressed. v2.0 added Menu Board mode + price display for $0.00/month additional at that baseline. Current June 2026 cost range is lower on projection hits; see Current Cost Baseline and Finding 12.
 
 ---
 
@@ -431,6 +431,23 @@ const checkHealth = async () => {
 
 ---
 
+## FINDING 12: Public Screen Project-Read Rebuild
+
+**Severity:** MEDIUM (public read cost + cold-render stability) | **Status:** ✅ IMPLEMENTED June 6, 2026
+**Impact:** Cold public screen renders rebuilt menu items from project documents even when the same screen summary document was already being read for the token/listener path.
+
+### What Was Done
+
+- Added `ScreenMenuProjection` inside the existing `platformSummary/campaigns_{sId}.screen` state.
+- `touchDigitalScreenContentVersion()` now attempts to refresh a capped available-item projection from the automatic default menu when a screen already exists.
+- `/screen/[token]` uses the projection only when `baseProjectId`, base menu slug context, `activeSpecialMenuId`, and `contentVersion` match current screen data.
+- Missing, stale, special-menu, or failed projection states fall back to the existing project-document reconstruction path.
+- Shared the screen menu extraction helper between client/server fallback paths and projection generation to avoid divergent menu output.
+
+**Firebase cost impact:** No new collection, index, function, scheduler, Storage path, or rule. A valid projection reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits by avoiding both the project summary lookup and project document fallback. Stores with initialized screens can spend up to 2 extra owner-side reads during public cache invalidation to refresh the projection.
+
+---
+
 ## Document History
 
 | Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                     |
@@ -446,3 +463,4 @@ const checkHealth = async () => {
 | 9.0     | 2026-03-15 | Cascade | **v2.3 HARDENING (ChatGPT review v3):** Token entropy 8→22 chars. Reload jitter for mass reload smoothing. MenuBoard: broken image fallback, listener offline+retry, sold-out messaging, MAX_TOTAL_ITEMS=200. Auto-fullscreen recovery. Settings: activity status, Main TV/Second TV labels |
 | 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                       |
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual labels, evergreen category variety, custom-slide artwork rendering, and caption safety.                                                                                                |
+| 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated available-item `screen.menuProjection` inside existing screen summary state with current-version/base-menu guards and project-read fallback.                                                                                                    |

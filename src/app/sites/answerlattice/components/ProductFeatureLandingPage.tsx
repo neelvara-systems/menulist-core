@@ -113,12 +113,12 @@ export default function ProductFeatureLandingPage({
 
     return (
         <main className="al-page-flow">
-            <section className="al-primary-radial-page relative overflow-hidden border-b border-white/[0.06] px-4 py-20 sm:px-6 lg:py-24">
-                <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-                    <div>
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">{feature.eyebrow}</p>
-                        <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{feature.title}</h1>
-                        <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.description}</p>
+            <section className="al-page-hero al-primary-radial-page relative overflow-hidden border-b border-white/[0.06]">
+                <div className="al-page-hero__inner al-page-hero__inner--split">
+                    <div className="al-page-hero__copy">
+                        <p className="al-page-hero__eyebrow">{feature.eyebrow}</p>
+                        <h1 className="al-page-hero__title">{feature.title}</h1>
+                        <p className="al-page-hero__description">{feature.description}</p>
                         <div className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-3">
                             {feature.heroBullets.map((bullet) => (
                                 <div key={bullet} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm font-medium leading-snug text-[#d6d6ef]">
@@ -134,13 +134,13 @@ export default function ProductFeatureLandingPage({
                                 { label: 'Conversion proof', value: 'Shows what the feature changes in the support loop' },
                             ]}
                         />
-                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                        <div className="al-page-hero__actions">
                             <AnswerlatticeLink
                                 basePath={basePath}
                                 href="/get-started"
                                 data-answerlattice-event="feature_page_cta_clicked"
                                 data-answerlattice-label={`${feature.slug}_start_setup`}
-                                className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                                className="al-page-hero__button al-page-hero__button--primary"
                             >
                                 Start support setup
                             </AnswerlatticeLink>
@@ -149,7 +149,7 @@ export default function ProductFeatureLandingPage({
                                 href="/demo"
                                 data-answerlattice-event="feature_page_cta_clicked"
                                 data-answerlattice-label={`${feature.slug}_demo`}
-                                className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                                className="al-page-hero__button al-page-hero__button--secondary"
                             >
                                 Try the demo
                             </AnswerlatticeLink>
@@ -158,7 +158,7 @@ export default function ProductFeatureLandingPage({
                                 href="/pre-onboarding"
                                 data-answerlattice-event="feature_page_cta_clicked"
                                 data-answerlattice-label={`${feature.slug}_pre_onboarding`}
-                                className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-center text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
+                                className="al-page-hero__button al-page-hero__button--tertiary"
                             >
                                 Prepare inputs
                             </AnswerlatticeLink>
@@ -234,7 +234,7 @@ export default function ProductFeatureLandingPage({
                             },
                             {
                                 title: 'Reviewed source',
-                                detail: 'Support content feeds the widget, hosted help, tickets, and governance review from one controlled workspace.',
+                                detail: 'Support content feeds the widget, hosted help, tickets, and answer review from one controlled workspace.',
                             },
                             {
                                 title: 'Page context',

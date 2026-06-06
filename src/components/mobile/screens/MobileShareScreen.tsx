@@ -12,6 +12,14 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { PRINTABLE_ASSET_TYPES, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
+import {
+    DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
+    PRINTABLE_TEMPLATE_FAMILIES,
+    getPrintableTemplateFamily,
+} from '@lib/printable-asset-templates/templateFamilies';
+import type { PrintableAssetRenderInput, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
 import {
     PRINT_ASSET_REPRINT_GUIDANCE,
     buildPrintReadinessItems,
@@ -30,6 +38,7 @@ import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
 import { buildExportDataFromProject, downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -185,8 +194,10 @@ export default function MobileShareScreen({
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [activeGuide, setActiveGuide] = useState<GuideKey | null>(null);
     const [generatingDownload, setGeneratingDownload] = useState<DownloadAssetKey | null>(null);
-    const [previewingDownload, setPreviewingDownload] = useState<DownloadAssetKey | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
+    const [selectedPrintableAssetId, setSelectedPrintableAssetId] = useState<PrintableAssetTypeId>('single_table_card');
+    const [selectedPrintableTemplateId, setSelectedPrintableTemplateId] = useState<PrintableTemplateFamilyId>(DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID);
+    const [printableBusyKey, setPrintableBusyKey] = useState<string | null>(null);
     const isPrintAssetsMode = mode === 'printAssets';
     const [screenLinks, setScreenLinks] = useState<ScreenLinksState>({
         highlightsLink: null,
@@ -325,6 +336,14 @@ export default function MobileShareScreen({
     const activeProject = useMemo(
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
+    );
+    const selectedPrintableAsset = useMemo(
+        () => getPrintableAssetType(selectedPrintableAssetId),
+        [selectedPrintableAssetId],
+    );
+    const selectedPrintableTemplate = useMemo(
+        () => getPrintableTemplateFamily(selectedPrintableTemplateId),
+        [selectedPrintableTemplateId],
     );
 
     const outletQrLinks = useMemo<OutletQrLink[]>(() => {
@@ -478,7 +497,119 @@ export default function MobileShareScreen({
             menuUrl: data.menuLink,
             shortLink: data.menuLink.replace(/^https?:\/\//, ''),
             storeName: data.storeName,
+            templateFamilyId: DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
         };
+    };
+
+    const buildPrintableRenderInput = async (
+        assetTypeId: PrintableAssetTypeId,
+        templateFamilyId: PrintableTemplateFamilyId,
+    ): Promise<PrintableAssetRenderInput | null> => {
+        if (!data) return null;
+
+        const baseInput: PrintableAssetRenderInput = {
+            activePlanType: (storeDetails as any)?.activePlanType,
+            assetTypeId,
+            brandColor: storeBrandColor,
+            businessCategory: (storeDetails as any)?.businessCategory,
+            businessType: (storeDetails as any)?.businessType || data.businessType,
+            feedbackUrl: data.feedbackQrLink,
+            lastPublishedAt: parseTimestamp(data.menuModifiedOn),
+            logoUrl: data.storeLogo || undefined,
+            menuUrl: data.menuLink,
+            obpBaseUrl: data.obpLink,
+            projectId: data.projectId,
+            shortLink: data.menuLink.replace(/^https?:\/\//, ''),
+            storeName: data.storeName,
+            templateFamilyId,
+        };
+
+        if (assetTypeId !== 'print_menu') return baseInput;
+
+        const projectData = await getSelectedProjectData();
+        const exportData = await getSelectedProjectExportData();
+        const items = exportData.items.filter((item: any) => item.active !== false);
+        if (items.length === 0) {
+            Toast.show({ content: t('noMenuItems'), duration: 1500 });
+            return null;
+        }
+
+        const language =
+            (projectData as any)?.defaultLanguage ||
+            exportData.languages[0] ||
+            storeDetails?.defaultLanguage ||
+            storeDetails?.activeLanguages?.[0] ||
+            storeDetails?.language ||
+            'en';
+
+        return {
+            ...baseInput,
+            printMenuOptions: {
+                activePlanType: (storeDetails as any)?.activePlanType,
+                brandColor: storeBrandColor,
+                businessCategory: (storeDetails as any)?.businessCategory,
+                businessType: (storeDetails as any)?.businessType || data.businessType,
+                categories: exportData.categories,
+                currency: storeDetails?.currencySymbol || '',
+                currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
+                items,
+                language,
+                logoUrl: data.storeLogo || (storeDetails as any)?.logo || undefined,
+                menuUrl: data.menuLink,
+                projectData: projectData as any,
+                projectId: data.projectId || undefined,
+                projectName: data.projectName || labels.offeringTitle,
+                showDescriptions: true,
+                storeData: storeDetails as any,
+                storeName: data.storeName,
+            },
+        };
+    };
+
+    const handlePrintableAssetRender = async (mode: 'download' | 'preview') => {
+        if (!data) return;
+
+        const assetType = selectedPrintableAsset;
+        if (assetType.requiresFeedback && !data.hasFeedbackEnabled) {
+            Toast.show({ content: 'Turn on feedback first, then download this QR.', duration: 1600 });
+            return;
+        }
+        if (mode === 'preview' && assetType.outputFormat === 'zip') {
+            Toast.show({ content: 'Download the ZIP to view all files.', duration: 1400 });
+            return;
+        }
+
+        const busyKey = `${mode}:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`;
+        setPrintableBusyKey(busyKey);
+        try {
+            const input = await buildPrintableRenderInput(selectedPrintableAssetId, selectedPrintableTemplateId);
+            if (!input) return;
+            const result = await renderPrintableAsset(input);
+
+            if (mode === 'download') {
+                downloadBlob(result.blob, result.filename);
+                if (selectedPrintableAssetId === 'complete_menu_kit') {
+                    void trackMenuKitDownload('zip_download');
+                    recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
+                }
+                Toast.show({ content: `${assetType.title} downloaded`, duration: 1400, icon: 'success' });
+                return;
+            }
+
+            const previewBlob = new Blob([result.blob], { type: result.mimeType });
+            const previewUrl = URL.createObjectURL(previewBlob);
+            setPreviewAsset({
+                blob: result.blob,
+                filename: result.filename,
+                isPdf: result.mimeType === 'application/pdf',
+                title: `${assetType.title} - ${selectedPrintableTemplate.label}`,
+                url: previewUrl,
+            });
+        } catch {
+            Toast.show({ content: `Could not create ${assetType.title}`, duration: 1600 });
+        } finally {
+            setPrintableBusyKey(null);
+        }
     };
 
     const handleDownloadPdf = async () => {
@@ -520,10 +651,7 @@ export default function MobileShareScreen({
                 businessType: (storeDetails as any)?.businessType || data.businessType,
                 businessCategory: (storeDetails as any)?.businessCategory,
                 activePlanType: (storeDetails as any)?.activePlanType,
-                brandColor: (storeDetails as any)?.publicPresence?.accentColor
-                    || (storeDetails as any)?.primaryColor
-                    || (storeDetails as any)?.brandColor
-                    || (storeDetails as any)?.themeColor,
+                brandColor: storeBrandColor,
                 currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
                 storeName: data.storeName,
             });
@@ -616,33 +744,6 @@ export default function MobileShareScreen({
         }
     };
 
-    const handlePreviewMenuKitAsset = async (
-        key: DownloadAssetKey,
-        assetKey: MenuKitAssetKey,
-        label: string,
-    ) => {
-        const input = buildMenuKitInput();
-        if (!input) return;
-
-        setPreviewingDownload(key);
-        try {
-            const asset = await generateMenuKitAsset(input, assetKey);
-            const previewBlob = new Blob([asset.blob], { type: asset.mimeType });
-            const previewUrl = URL.createObjectURL(previewBlob);
-            setPreviewAsset({
-                blob: asset.blob,
-                filename: asset.filename,
-                isPdf: asset.mimeType === 'application/pdf',
-                title: label,
-                url: previewUrl,
-            });
-        } catch {
-            Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
-        } finally {
-            setPreviewingDownload(null);
-        }
-    };
-
     const handleDownloadFeedbackQr = async () => {
         if (!data?.projectId) return;
 
@@ -654,6 +755,8 @@ export default function MobileShareScreen({
                 footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
                 logoUrl: data.storeLogo || undefined,
                 storeName: data.storeName,
+                subtitle: t('feedbackLinkDesc'),
+                title: t('feedbackQr'),
                 activePlanType: (storeDetails as any)?.activePlanType,
             }, data.obpLink);
             downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
@@ -766,7 +869,7 @@ export default function MobileShareScreen({
     if (isPrintAssetsMode) {
         return (
             <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
-                <NavBar onBack={onBack || (() => window.history.back())}>Print Assets</NavBar>
+                <NavBar onBack={onBack || (() => window.history.back())}>Assets</NavBar>
 
                 {activeProject && data.allProjects.length > 1 ? (
                     <ProjectSelectorTrigger
@@ -799,35 +902,59 @@ export default function MobileShareScreen({
                     <Flex gap={12} vertical>
                         <SectionHeader
                             compact={isCompactHandheld}
-                            subtitle="Ready-to-print files for tables, counters, entrances, and full paper menus."
-                            title="Print Assets"
+                            subtitle="Choose what you need to print or download."
+                            title="Assets"
                         />
-                        <Flex gap={10} wrap="wrap">
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={t('completeMenuKitDesc')}
-                                icon={<LuPackage size={18} />}
-                                loading={generatingDownload === 'menu_kit'}
-                                onClick={() => void handleDownloadMenuKit()}
-                                title={t('completeMenuKit')}
-                                highlighted
-                            />
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
-                                icon={<LuFileText size={18} />}
-                                loading={generatingDownload === 'menu_pdf'}
-                                onClick={() => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport() : void handleDownloadPdf()}
-                                title={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : t('menuPdf')}
-                            />
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description="Send exact specs with the ZIP"
-                                icon={<LuClipboard size={18} />}
-                                loading={false}
-                                onClick={() => void handleCopy(printShopMessage, 'print-shop message')}
-                                title="Printer Message"
-                            />
+                        <Flex gap={10} vertical>
+                            {PRINTABLE_ASSET_TYPES.map((asset) => {
+                                const active = selectedPrintableAssetId === asset.id;
+                                const disabled = asset.requiresFeedback && !data.hasFeedbackEnabled;
+                                return (
+                                    <button
+                                        aria-label={`${asset.title}. ${disabled ? 'Turn on feedback first' : `Output format ${asset.outputFormat.toUpperCase()}`}`}
+                                        aria-pressed={active}
+                                        disabled={disabled}
+                                        key={asset.id}
+                                        onClick={() => {
+                                            if (disabled) return;
+                                            setSelectedPrintableAssetId(asset.id);
+                                            setSelectedPrintableTemplateId(asset.defaultTemplateId);
+                                        }}
+                                        style={{
+                                            alignItems: 'center',
+                                            background: active ? token.colorPrimaryBg : token.colorBgContainer,
+                                            border: `1px solid ${active ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+                                            borderRadius: 18,
+                                            color: disabled ? token.colorTextDisabled : token.colorText,
+                                            cursor: disabled ? 'not-allowed' : 'pointer',
+                                            display: 'flex',
+                                            font: 'inherit',
+                                            gap: 10,
+                                            minHeight: 66,
+                                            padding: '11px 12px',
+                                            textAlign: 'left',
+                                            width: '100%',
+                                            WebkitTapHighlightColor: 'transparent',
+                                        }}
+                                        type="button"
+                                    >
+                                        <span style={{ color: active ? token.colorPrimary : token.colorTextSecondary, display: 'inline-flex' }}>
+                                            {getMobilePrintableAssetIcon(asset.id)}
+                                        </span>
+                                        <span style={{ minWidth: 0 }}>
+                                            <Text strong style={{ display: 'block', fontSize: isCompactHandheld ? 13 : 14 }}>
+                                                {asset.title}
+                                            </Text>
+                                            <Text style={{ color: disabled ? token.colorTextDisabled : token.colorTextSecondary, fontSize: 12, lineHeight: 1.35 }}>
+                                                {disabled ? 'Turn on feedback first' : `${asset.size} · ${asset.description}`}
+                                            </Text>
+                                        </span>
+                                        <Tag color={active ? 'primary' : 'default'} style={{ flexShrink: 0 }}>
+                                            {asset.outputFormat.toUpperCase()}
+                                        </Tag>
+                                    </button>
+                                );
+                            })}
                         </Flex>
                     </Flex>
                 </Card>
@@ -836,64 +963,112 @@ export default function MobileShareScreen({
                     <Flex gap={12} vertical>
                         <SectionHeader
                             compact={isCompactHandheld}
-                            subtitle="Use these where customers scan inside the business."
-                            title={t('printFiles')}
+                            subtitle="Pick one finished look. Logo, color, URL, and MenuList branding are filled automatically."
+                            title="Choose Style"
                         />
                         <Flex gap={10} wrap="wrap">
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={t('tableTentDesc')}
-                                icon={<LuQrCode size={18} />}
-                                loading={generatingDownload === 'table_tent'}
-                                onClick={() => void handleMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
-                                onSecondaryClick={() => void handlePreviewMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
-                                secondaryLabel="Preview"
-                                secondaryLoading={previewingDownload === 'table_tent'}
-                                title={t('tableTent')}
-                            />
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={t('singleTableCardDesc')}
-                                icon={<LuQrCode size={18} />}
-                                loading={generatingDownload === 'single_table_card'}
-                                onClick={() => void handleMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
-                                onSecondaryClick={() => void handlePreviewMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
-                                secondaryLabel="Preview"
-                                secondaryLoading={previewingDownload === 'single_table_card'}
-                                title={t('singleTableCard')}
-                            />
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={t('counterStickerDesc')}
-                                icon={<LuQrCode size={18} />}
-                                loading={generatingDownload === 'counter_sticker'}
-                                onClick={() => void handleMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
-                                onSecondaryClick={() => void handlePreviewMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
-                                secondaryLabel="Preview"
-                                secondaryLoading={previewingDownload === 'counter_sticker'}
-                                title={t('counterSticker')}
-                            />
-                            <DownloadTile
-                                compact={isCompactHandheld}
-                                description={t('entrancePosterDesc')}
-                                icon={<LuQrCode size={18} />}
-                                loading={generatingDownload === 'entrance_poster'}
-                                onClick={() => void handleMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
-                                onSecondaryClick={() => void handlePreviewMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
-                                secondaryLabel="Preview"
-                                secondaryLoading={previewingDownload === 'entrance_poster'}
-                                title={t('entrancePoster')}
-                            />
-                            {data.hasFeedbackEnabled ? (
-                                <DownloadTile
-                                    compact={isCompactHandheld}
-                                    description={t('feedbackQrDesc')}
-                                    icon={<LuMessageSquare size={18} />}
-                                    loading={generatingDownload === 'feedback_qr'}
-                                    onClick={() => void handleDownloadFeedbackQr()}
-                                    title={t('feedbackQr')}
-                                />
+                            {PRINTABLE_TEMPLATE_FAMILIES.map((family) => {
+                                const active = selectedPrintableTemplateId === family.id;
+                                return (
+                                    <button
+                                        aria-label={`${family.label} style. ${family.bestFor}`}
+                                        aria-pressed={active}
+                                        key={family.id}
+                                        onClick={() => setSelectedPrintableTemplateId(family.id)}
+                                        style={{
+                                            background: active ? token.colorPrimaryBg : token.colorBgContainer,
+                                            border: `1px solid ${active ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+                                            borderRadius: 18,
+                                            cursor: 'pointer',
+                                            flex: '1 1 calc(50% - 5px)',
+                                            font: 'inherit',
+                                            minWidth: isCompactHandheld ? 128 : 146,
+                                            padding: 10,
+                                            textAlign: 'left',
+                                            WebkitTapHighlightColor: 'transparent',
+                                        }}
+                                        type="button"
+                                    >
+                                        <TemplateFamilySwatch
+                                            actionLabel={
+                                                selectedPrintableAssetId === 'feedback_qr'
+                                                    ? 'Feedback QR'
+                                                    : selectedPrintableAssetId === 'counter_sticker'
+                                                        ? labels.scanForUpper
+                                                        : labels.printCardTitle
+                                            }
+                                            assetTypeId={selectedPrintableAssetId}
+                                            brandColor={storeBrandColor}
+                                            family={family}
+                                            instructionLabel={
+                                                selectedPrintableAssetId === 'feedback_qr'
+                                                    ? 'Scan to leave feedback'
+                                                    : labels.scanToView
+                                            }
+                                            shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                                            storeLogo={data.storeLogo}
+                                            storeName={data.storeName}
+                                        />
+                                        <Flex align="center" gap={6} justify="space-between" style={{ marginTop: 9 }}>
+                                            <Text strong style={{ fontSize: isCompactHandheld ? 12 : 13 }}>{family.label}</Text>
+                                            {active ? <LuCheck color={token.colorPrimary} size={15} /> : null}
+                                        </Flex>
+                                        <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 11, lineHeight: 1.3, marginTop: 3 }}>
+                                            {family.bestFor}
+                                        </Text>
+                                    </button>
+                                );
+                            })}
+                        </Flex>
+                    </Flex>
+                </Card>
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={12} vertical>
+                        <Flex align="flex-start" gap={10} justify="space-between">
+                            <Flex gap={4} style={{ minWidth: 0 }} vertical>
+                                <Text strong>{selectedPrintableAsset.title}</Text>
+                                <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>
+                                    {selectedPrintableTemplate.label} · {selectedPrintableTemplate.description}
+                                </Text>
+                            </Flex>
+                            <Tag color="primary">{selectedPrintableAsset.outputFormat.toUpperCase()}</Tag>
+                        </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            <Button
+                                color="primary"
+                                loading={printableBusyKey === `download:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`}
+                                onClick={() => void handlePrintableAssetRender('download')}
+                                style={{ flex: '1 1 160px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuDownload size={16} />
+                                    <Text>Download</Text>
+                                </Flex>
+                            </Button>
+                            {selectedPrintableAsset.outputFormat !== 'zip' ? (
+                                <Button
+                                    fill="outline"
+                                    loading={printableBusyKey === `preview:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`}
+                                    onClick={() => void handlePrintableAssetRender('preview')}
+                                    style={{ flex: '1 1 130px' }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuEye size={16} />
+                                        <Text>Preview</Text>
+                                    </Flex>
+                                </Button>
                             ) : null}
+                            <Button
+                                fill="none"
+                                onClick={() => void handleCopy(printShopMessage, 'print-shop message')}
+                                style={{ flex: '1 1 160px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuClipboard size={16} />
+                                    <Text>Printer Message</Text>
+                                </Flex>
+                            </Button>
                         </Flex>
                     </Flex>
                 </Card>
@@ -1168,14 +1343,14 @@ export default function MobileShareScreen({
                     />
 
                     <Flex gap={10} wrap="wrap">
-                        {onOpenPrintAssets ? (
+                        {(FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && onOpenPrintAssets ? (
                             <DownloadTile
                                 compact={isCompactHandheld}
-                                description="Table, counter, entrance, and menu files"
+                                description="Templates for tables, counters, feedback, and menus"
                                 icon={<LuPrinter size={18} />}
                                 loading={false}
                                 onClick={onOpenPrintAssets}
-                                title="Print Assets"
+                                title="Assets"
                                 highlighted
                             />
                         ) : null}
@@ -1487,6 +1662,57 @@ function mobileReadinessTagColor(status: PrintReadinessItem['status']): 'success
     if (status === 'ready') return 'success';
     if (status === 'attention') return 'warning';
     return 'default';
+}
+
+function getMobilePrintableAssetIcon(assetId: PrintableAssetTypeId) {
+    if (assetId === 'print_menu') return <LuFileText size={18} />;
+    if (assetId === 'complete_menu_kit') return <LuPackage size={18} />;
+    if (assetId === 'entrance_poster') return <LuPrinter size={18} />;
+    if (assetId === 'feedback_qr') return <LuMessageSquare size={18} />;
+    return <LuQrCode size={18} />;
+}
+
+function TemplateFamilySwatch({
+    actionLabel,
+    assetTypeId,
+    brandColor,
+    family,
+    instructionLabel,
+    shortLink,
+    storeLogo,
+    storeName,
+}: {
+    actionLabel: string;
+    assetTypeId: PrintableAssetTypeId;
+    brandColor?: string | null;
+    family: PrintableTemplateFamily;
+    instructionLabel: string;
+    shortLink?: string;
+    storeLogo?: string | null;
+    storeName: string;
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <div style={{
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 14,
+            height: 98,
+            overflow: 'hidden',
+        }}>
+            <PrintableTemplatePreview
+                actionLabel={actionLabel}
+                assetTypeId={assetTypeId}
+                brandColor={brandColor}
+                compact
+                family={family}
+                instructionLabel={instructionLabel}
+                shortLink={shortLink}
+                storeLogo={storeLogo}
+                storeName={storeName}
+            />
+        </div>
+    );
 }
 
 function MobilePrintReadinessPanel({

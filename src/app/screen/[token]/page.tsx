@@ -12,12 +12,12 @@
  *   3. Default: "menu_board"
  * 
  * Both modes use same data pipeline:
- *   getScreenDataByToken() [2+ reads] + getMenuItemsForScreen() [1+ reads]
+ *   getScreenDataByToken() [2-3+ reads] + projected menu items or getMenuItemsForScreen() fallback [0-2+ reads]
  *   Firebase cost: identical regardless of mode ($0.00 delta)
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { getMenuItemsForScreenServer, getScreenDataByTokenServer } from "@database/campaigns/serverScreen";
+import { getMenuItemsForScreenServer, getScreenDataByTokenServer, getUsableScreenMenuProjection } from "@database/campaigns/serverScreen";
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
 import { unstable_cache } from "next/cache";
@@ -86,8 +86,19 @@ export default async function ScreenPage({ params, searchParams }: PageProps) {
         notFound();
     }
 
-    // Fetch menu items (used by BOTH modes — same cost) — OPT-6: cached at Vercel edge
-    const menuItems = await getCachedMenuItems(
+    const projectedMenuItems = getUsableScreenMenuProjection(
+        screenData.screen.menuProjection,
+        {
+            baseProjectId: screenData.baseProjectId,
+            activeSpecialMenuId: screenData.activeSpecialMenuId || null,
+            contentVersion: screenData.screen.contentVersion || 1,
+        },
+    );
+
+    // Fetch menu items (used by BOTH modes — same cost) — OPT-6: cached at Vercel edge.
+    // The generated projection is used only when it matches the current screen version;
+    // otherwise this falls back to the existing project-doc reconstruction path.
+    const menuItems = projectedMenuItems || await getCachedMenuItems(
         screenData.storeId,
         screenData.tenantId,
         screenData.activeSpecialMenuId || null,

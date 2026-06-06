@@ -3,9 +3,18 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-const REVEAL_DELAY_STEP = 0.09;
-const REVEAL_MAX_DELAY = 0.9;
-const EXPLICIT_REVEAL_SELECTOR = "[data-answerlattice-reveal], [data-answerlattice-reveal-item]";
+const REVEAL_DELAY_STEP = 0.06;
+const REVEAL_MAX_DELAY = 0.42;
+const EXPLICIT_REVEAL_SELECTOR = [
+    "[data-answerlattice-reveal]",
+    "[data-answerlattice-reveal-item]",
+    "[data-answerlattice-asset-src]",
+    "main h1:not(.al-home-hero-title)",
+    ".al-page-hero__eyebrow",
+    ".al-page-hero__title",
+    ".al-page-hero__description",
+    ".al-page-hero__actions",
+].join(", ");
 const CARD_REVEAL_SELECTOR = [
     "main .grid > a[class*='rounded-']",
     "main .grid > article[class*='rounded-']",
@@ -17,8 +26,8 @@ const CARD_REVEAL_SELECTOR = [
     "main ol > li[class*='rounded-']",
     "main ul > li[class*='rounded-']",
 ].join(", ");
-const REVEAL_DISTANCE = "14px";
-const REVEAL_DURATION = "560ms";
+const REVEAL_DISTANCE = "52px";
+const REVEAL_DURATION = "920ms";
 const FALLBACK_VP_CHECK_DELAY_MS = 120;
 const ROOT_MARGIN = "0px 0px -6% 0px";
 const INTERSECTION_THRESHOLD = 0.1;
@@ -138,8 +147,13 @@ export default function AnswerlatticeScrollReveal() {
             target.classList.add("al-scroll-reveal--pending");
         });
 
-        const initialRevealFrame = window.requestAnimationFrame(() => {
-            initiallyVisibleTargets.forEach(markVisible);
+        targetRegions[0]?.getBoundingClientRect();
+
+        let initialRevealFrame = 0;
+        const initialRevealPrepareFrame = window.requestAnimationFrame(() => {
+            initialRevealFrame = window.requestAnimationFrame(() => {
+                initiallyVisibleTargets.forEach(markVisible);
+            });
         });
 
         const observer = new IntersectionObserver(
@@ -174,6 +188,7 @@ export default function AnswerlatticeScrollReveal() {
 
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(initialRevealPrepareFrame);
             cancelAnimationFrame(initialRevealFrame);
             clearTimeout(fallbackTimer);
         };

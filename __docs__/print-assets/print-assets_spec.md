@@ -1,7 +1,7 @@
 # Print Assets Spec
 
 **Status:** Implemented
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 ## Problem
 
@@ -13,8 +13,9 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 
 ## Route
 
-- Desktop: `/use-menulist/print-assets`
-- Mobile: same path maps into `MobileShell` as the `printAssets` More sub-screen.
+- Desktop primary route: `/assets`
+- Desktop compatibility route: `/use-menulist/print-assets`
+- Mobile: `/assets` and `/use-menulist/print-assets` both map into `MobileShell` as the `printAssets` More sub-screen.
 
 ## Included Assets
 
@@ -48,9 +49,9 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 
 ## Acceptance Criteria
 
-- Owner can open Print Assets from Use MenuList.
-- Owner can open Print Assets from mobile More.
-- Mobile Share can open the focused Print Assets screen without route reload.
+- Owner can open Assets from Use MenuList.
+- Owner can open Assets from mobile More.
+- Mobile Share can open the focused Assets screen without route reload.
 - Multiple projects use the same project selector behavior as Use MenuList/mobile Share.
 - Menu Kit asset indices are centralized in `src/lib/print-assets/printAssetCatalog.ts`.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers on desktop and mobile.

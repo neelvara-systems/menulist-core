@@ -35,22 +35,42 @@ import useIsMobile from '../../../../hooks/useIsMobile';
 
 const NAV_LINKS = [
     { label: 'Product', href: '/product' },
-    { label: 'Pre-Onboarding', href: '/pre-onboarding' },
     { label: 'Use Cases', href: '/use-cases' },
-    { label: 'Demo', href: '/demo' },
-    { label: 'Pricing', href: '/pricing' },
     { label: 'Resources', href: '/resources' },
-    { label: 'Updates', href: '/updates' },
+    { label: 'Pricing', href: '/pricing' },
 ];
 
 const MOBILE_OTHER_LINKS = [
-    ...NAV_LINKS.filter((link) => link.href !== '/product' && link.href !== '/updates'),
+    ...NAV_LINKS.filter((link) => link.href !== '/product'),
+    { label: 'Demo', href: '/demo' },
+    { label: 'Pre-Onboarding', href: '/pre-onboarding' },
     { label: 'Install', href: '/install' },
+    { label: 'Security', href: '/security' },
     { label: 'Developers', href: '/developers' },
     { label: 'Comparisons', href: '/comparisons' },
     { label: 'Updates', href: '/updates' },
     { label: 'Contact', href: '/contact' },
 ];
+
+const PRODUCT_AREA_NAV_LABELS: Record<string, string> = {
+    '/product/launch-setup': 'Set up support',
+    '/product/page-aware-widget': 'In-app support widget',
+    '/product/support-control': 'Help center, FAQ and tickets',
+    '/product/knowledge-governance': 'Review approved answers',
+};
+
+const PRODUCT_FEATURE_NAV_LABELS: Record<string, string> = {
+    '/product/team-access': 'Team access',
+    '/product/knowledge-intake': 'Import support knowledge',
+    '/product/knowledge-base': 'Docs / Knowledge Base',
+    '/product/faq-management': 'FAQ',
+    '/product/changelog': 'Changelog',
+    '/product/tickets': 'Tickets',
+    '/product/support-board': 'Support Board',
+    '/product/feedback-review': 'Feedback review',
+    '/product/workflow-notifications': 'Slack/email notifications',
+    '/product/proactive-help': 'Proactive help',
+};
 
 const RESOURCE_MENU_LINKS = [
     { label: 'Launch Checklist', href: '/resources/launch-support-checklist', icon: LuRocket },
@@ -60,6 +80,8 @@ const RESOURCE_MENU_LINKS = [
     { label: 'Approved Answers', href: '/resources/approved-answers-before-fallback', icon: LuBookOpen },
     { label: 'Hosted Help Setup', href: '/resources/hosted-help-setup', icon: LuHelpCircle },
     { label: 'Runtime Safety', href: '/resources/support-runtime-safety', icon: LuZap },
+    { label: 'Updates', href: '/updates', icon: LuBell },
+    { label: 'FAQ', href: '/faq', icon: LuHelpCircle },
     { label: 'All Resources', href: '/resources', icon: LuLayoutDashboard },
 ];
 
@@ -76,6 +98,7 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/product/changelog': LuFileText,
     '/product/tickets': LuTicket,
     '/product/support-board': LuLayoutDashboard,
+    '/product/feedback-review': LuMessageSquare,
     '/product/workflow-notifications': LuBell,
     '/product/proactive-help': LuZap,
     '/use-cases': LuMapPin,
@@ -123,13 +146,21 @@ function getMobileNavIcon(href: string) {
     return MOBILE_NAV_ICONS[href] || LuFileText;
 }
 
+function getProductAreaNavLabel(area: { label: string; href: string }) {
+    return PRODUCT_AREA_NAV_LABELS[area.href] || area.label;
+}
+
+function getProductFeatureNavLabel(feature: { label: string; href: string }) {
+    return PRODUCT_FEATURE_NAV_LABELS[feature.href] || feature.label;
+}
+
 export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: string }) {
     const [isDrawerMounted, setIsDrawerMounted] = useState(false);
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     const openTimerRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
     const { isMobile, hasMounted } = useIsMobile(1280);
-    const shouldShowMobileNavigation = !hasMounted || isMobile;
+    const shouldShowMobileNavigation = hasMounted && isMobile;
 
     const clearDrawerTimers = useCallback(() => {
         if (openTimerRef.current !== null) {
@@ -220,8 +251,8 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                             <div
                                 className="
-                                    absolute left-0 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
-                                    pt-3
+                                    absolute left-1/2 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
+                                    -translate-x-1/2 pt-3
                                     origin-top scale-95 opacity-0
                                     invisible translate-y-2
                                     transition-all duration-200 ease-out
@@ -250,50 +281,55 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                         </span>
                                         <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                     </L>
-                                    <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
-                                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                            <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                                Product areas
-                                            </div>
-                                            <div className="grid gap-2">
-                                                {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
-                                                    const Icon = getMobileNavIcon(area.href);
-                                                    return (
-                                                        <L
-                                                            key={area.href}
-                                                            href={area.href}
-                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-500/[0.06]"
-                                                        >
-                                                            <MegaMenuIcon icon={Icon} />
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block text-xs font-semibold text-[#eeeeff]">{area.label}</span>
-                                                            </span>
-                                                        </L>
-                                                    );
-                                                })}
-                                            </div>
+
+                                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
+                                        <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            Support areas
                                         </div>
-                                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                            <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                                Product features
-                                            </div>
-                                            <div className="grid gap-2 sm:grid-cols-2">
-                                                {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
-                                                    const Icon = getMobileNavIcon(feature.href);
-                                                    return (
-                                                        <L
-                                                            key={feature.href}
-                                                            href={feature.href}
-                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
-                                                        >
-                                                            <MegaMenuIcon icon={Icon} />
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block truncate text-xs font-semibold text-[#eeeeff]">{feature.label}</span>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
+                                                const Icon = getMobileNavIcon(area.href);
+                                                const label = getProductAreaNavLabel(area);
+                                                return (
+                                                    <L
+                                                        key={area.href}
+                                                        href={area.href}
+                                                        title={label}
+                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
+                                                    >
+                                                        <MegaMenuIcon icon={Icon} />
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-xs font-semibold text-[#eeeeff]">
+                                                                {label}
                                                             </span>
-                                                        </L>
-                                                    );
-                                                })}
-                                            </div>
+                                                        </span>
+                                                    </L>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="mb-2 mt-3 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            Support tools
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
+                                                const Icon = getMobileNavIcon(feature.href);
+                                                const label = getProductFeatureNavLabel(feature);
+                                                return (
+                                                    <L
+                                                        key={feature.href}
+                                                        href={feature.href}
+                                                        title={label}
+                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
+                                                    >
+                                                        <MegaMenuIcon icon={Icon} />
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-xs font-semibold text-[#eeeeff]">
+                                                                {label}
+                                                            </span>
+                                                        </span>
+                                                    </L>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
@@ -377,12 +413,11 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                     </nav>
 
                     <div className="hidden items-center gap-3 xl:flex">
-                        <L href="/contact" className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">Contact</L>
                         <L
                             href="/get-started"
                             data-answerlattice-event="header_cta_clicked"
                             data-answerlattice-label="start_support_setup"
-                            className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
+                            className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
                             Start support setup
                         </L>
@@ -443,7 +478,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 </L>
                                 <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
                                     <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                        Product areas
+                                        Support areas
                                     </div>
                                     {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
                                         const Icon = getMobileNavIcon(area.href);
@@ -455,14 +490,14 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 onClick={closeDrawer}
                                             >
                                                 <MobileNavIcon icon={Icon} />
-                                                <span>{area.label}</span>
+                                                <span>{getProductAreaNavLabel(area)}</span>
                                             </L>
                                         );
                                     })}
                                 </div>
                                 <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
                                     <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                        Product features
+                                        Support tools
                                     </div>
                                     {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
                                         const Icon = getMobileNavIcon(feature.href);
@@ -474,7 +509,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 onClick={closeDrawer}
                                             >
                                                 <MobileNavIcon icon={Icon} />
-                                                <span>{feature.label}</span>
+                                                <span>{getProductFeatureNavLabel(feature)}</span>
                                             </L>
                                         );
                                     })}

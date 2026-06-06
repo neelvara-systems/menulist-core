@@ -2,7 +2,7 @@
 
 **Status:** Implemented
 **Owner:** MenuList
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 Print Menu Surfaces owns scan-first physical menu placements such as table tents, table cards, counter cards, and entrance menu posters. These are not social images and not full menu PDFs. They are the objects customers see in the business when they need to open the live menu.
 
@@ -35,5 +35,6 @@ Print Assets may expose these files to owners and Menu Kit may include them in i
 - Table tent: A5 landscape PDF, folded into two A6 portrait faces.
 - Single table/counter card: A6 portrait PDF for acrylic holders, counters, wall clips, and single-sided stands.
 - QR: near-black modules on white panel with four-module quiet zone.
-- Brand: existing logo/color used for small identity and CTA accents.
+- Brand: existing logo/color used for the top accent band, logo/initials badge, CTA pill, and outer card accents; the QR panel uses a neutral border for scan clarity.
+- Store name: separator-aware hierarchy such as `Business Name - Outlet/Branch` rendered as primary name plus accent subtitle.
 - Cost: client-side Canvas/jsPDF only; no Firestore, Storage, or Cloud Function writes.

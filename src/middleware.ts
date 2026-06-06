@@ -181,7 +181,7 @@ function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {
 }
 
 function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: string): string {
-    return publicPath === '/' ? `${basePath}/home` : `${basePath}${publicPath}`;
+    return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
 }
 
 function buildMyCodexLoginRedirect(request: NextRequest): NextResponse {

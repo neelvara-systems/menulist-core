@@ -32,7 +32,7 @@
 |-------|------|---------|
 | `/` | Homepage | Page-aware SaaS and digital-product support hero with inline sample workspace preview + conversion proof band + tabbed product-proof preview + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + compact pricing checkpoint + objections + CTA |
 | `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
-| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, readiness proof strip, and setup/demo/source-prep CTAs |
+| `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, first-client launch proof, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
 | `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, weekly support review, and connected-runtime proof |
 | `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, trust metrics, and human-review proof |
@@ -49,6 +49,8 @@
 | `/use-cases/ai-built-saas` | Use Case | Support path for AI-built SaaS apps preparing support before first users, docs, tickets, and approved answers fall behind |
 | `/use-cases/vibe-coded-saas` | Use Case Alias | Canonicalized campaign/search alias for the AI-built SaaS use case; do not use as the main navigation label |
 | `/use-cases/founders` | Use Case | Solo-founder support loop for launching before hiring support |
+| `/use-cases/small-saas-teams` | Use Case | Support layer for small SaaS teams before support becomes a team problem |
+| `/use-cases/studios-agencies` | Use Case | Repeatable support layer for studios and agencies launching SaaS products |
 | `/use-cases/support-teams` | Use Case | Reduce repeated tickets while keeping owner-approved answer control |
 | `/use-cases/product-teams` | Use Case | Product-surface drift, release review, and support friction visibility |
 | `/use-cases/engineering` | Use Case | Safe widget install, route context, and governed retrieval for engineering teams |
@@ -131,6 +133,8 @@
 | `src/app/sites/answerlattice/use-cases/ai-built-saas/page.tsx` | AI-built SaaS use-case landing page |
 | `src/app/sites/answerlattice/use-cases/vibe-coded-saas/page.tsx` | Canonicalized campaign/search alias for the AI-built SaaS use-case page |
 | `src/app/sites/answerlattice/use-cases/founders/page.tsx` | Founder use-case landing page |
+| `src/app/sites/answerlattice/use-cases/small-saas-teams/page.tsx` | Small SaaS team use-case landing page |
+| `src/app/sites/answerlattice/use-cases/studios-agencies/page.tsx` | Studio and agency use-case landing page |
 | `src/app/sites/answerlattice/use-cases/support-teams/page.tsx` | Support-team use-case landing page |
 | `src/app/sites/answerlattice/use-cases/product-teams/page.tsx` | Product-team use-case landing page |
 | `src/app/sites/answerlattice/use-cases/engineering/page.tsx` | Engineering use-case landing page |
@@ -204,7 +208,7 @@
 | `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` | Deterministic generator for AnswerLattice dummy website screen PNG assets, with zero npm dependencies |
 | `src/lib/answerlattice/pwaAssets.ts` | AnswerLattice PWA startup image helper that keeps splash metadata out of root app defaults |
 | `src/app/sites/answerlattice/components/Header.tsx` | Shared header with compact title-only Product and Resources dropdowns plus right-side mobile drawer |
-| `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with link columns, placeholder social icon links, and bottom theme control |
+| `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with broad public-route link columns and bottom theme control |
 | `src/app/sites/answerlattice/components/AnswerlatticeLink.tsx` | Dev/production-aware Link component |
 | `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
 | `src/app/sites/answerlattice/components/AnswerlatticeScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across AnswerLattice public pages |
@@ -267,6 +271,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 8. **Viewport reveal motion** — A single AnswerLattice-specific client island adds restrained section/card/CTA reveal effects across public pages with reduced-motion support. Motion stays product-site polish, not decorative animation.
 9. **Diagram motion** — AnswerLattice diagrams use one soft logo-centered ripple without an inner static strip. Cross-diagram pulses start from the logo together, run to the visible guide-line endpoints, and fade at the endpoint instead of disappearing abruptly.
 10. **Screen assets** — Website product-screen placeholders render from 1440 x 1200 PNG slots instead of HTML/CSS mockup screens. Production screenshots or GIFs should replace the same named slots so layout, crop, and page rhythm stay stable.
+11. **Non-home hero treatment** — `styles.css` keeps non-home route heroes aligned through `.al-page-flow` and `.al-page-hero`: centered eyebrows, titles, descriptions, actions, and proof strips use one type scale and color system, while the homepage keeps its own larger first-viewport treatment.
 
 ---
 
@@ -274,9 +279,13 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-06 | Synced public launch-setup and product-proof copy with Activation `summary.launchProof`, keeping proposal-quality confirmation in Signal Queue instead of claiming connector readiness |
+| 2026-06-06 | Hid the mobile hamburger on confirmed desktop viewports and normalized non-home route hero alignment, spacing, type scale, and eyebrow styling through the shared AnswerLattice stylesheet |
+| 2026-06-06 | Added dedicated Small SaaS Teams and Studios/Agencies use-case routes, exposed route-backed use-case links from the footer, and updated the public page registry |
+| 2026-06-06 | Restored full public-route footer discoverability across Product, Features, Evaluate, Resources, and Trust without placeholder social links |
 | 2026-06-06 | Reworked the desktop Resources dropdown to match the compact Product dropdown pattern with an overview row, small icon tiles, and title-only resource guide rows |
 | 2026-06-05 | Simplified the desktop Product dropdown into compact title-only rows with icons, keeping all product routes while removing dense explanatory copy from the header |
-| 2026-06-05 | Replaced the brand-column footer theme selector with placeholder social icons and moved the Light/System/Dark control to the bottom footer strip |
+| 2026-06-05 | Moved the Light/System/Dark control to the bottom footer strip |
 | 2026-06-05 | Removed the Light/System/Dark selector from the desktop header while keeping theme control available in the mobile drawer and footer |
 | 2026-06-05 | Normalized AnswerLattice website accent colors across feature-card layouts, header dropdowns, product/resources cards, onboarding pages, and radial section glows so all public-site visual accents now use the Verdigris primary token system |
 | 2026-06-05 | Reworked the Product proof section from a sticky side-card walkthrough into a stable tabbed product-proof preview with one centered image-backed frame and readable active-state copy |

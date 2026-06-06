@@ -12,7 +12,7 @@ export const ANSWERLATTICE_PUBLIC_DOMAIN_DECISION = {
 
 export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {
     allowedClaims: [
-        'page-aware support',
+        'safe page context',
         'approved answers before fallback',
         'safe page context',
         'reviewable support gaps',
@@ -24,7 +24,7 @@ export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {
         'Canonica',
         'AI-powered',
         'zero hallucinations',
-        'zero drift',
+        'never stale',
         'replaces your helpdesk',
         'fully autonomous support',
         'guaranteed ticket reduction',
@@ -36,4 +36,3 @@ export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {
     forbiddenSchemaTypes: ['Review', 'AggregateRating'],
     privateRoutePrefixes: ['/answerlattice/', '/api/', '/widget/', '/signin', '/unauthorized'],
 } as const;
-

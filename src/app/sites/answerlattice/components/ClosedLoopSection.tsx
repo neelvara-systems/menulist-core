@@ -31,7 +31,7 @@ const LOOP_STEPS = [
 const APPROVAL_POINTS = [
     ['Drafts are assistive', 'AnswerLattice can prepare answer drafts from recurring gaps, but drafts are not official answers.'],
     ['Humans approve authority', 'Owners review proposed changes before they become approved answers.'],
-    ['Drift stays visible', 'Release changes and stale-answer risk become review work instead of silent support debt.'],
+    ['Stale answers stay visible', 'Release changes and stale-answer risk become review work instead of silent support debt.'],
 ];
 
 export default function ClosedLoopSection() {
@@ -42,7 +42,7 @@ export default function ClosedLoopSection() {
                     className="mb-12"
                     eyebrow="Learning loop"
                     title="Every missed question becomes a support fix."
-                    description="AnswerLattice’s aha moment is not that a widget answers questions. It is that page-aware questions, fallback, tickets, private board notes, and feedback become review work that improves future answers."
+                    description="AnswerLattice’s aha moment is not that a widget answers questions. It is that in-app support, fallback, tickets, private board notes, and feedback become review work that improves future answers."
                 />
 
                 <AnswerlatticeLoopDiagram idPrefix="al-closed-loop" items={LOOP_STEPS} />

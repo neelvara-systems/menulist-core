@@ -153,6 +153,7 @@ function verifyWebsiteDiagramVectors() {
   const scrollRevealStyles = read('src/app/sites/answerlattice/scroll-reveal.css');
   const rasterPattern = /(<img\b|from ['"]next\/image['"]|\.png\b|\.jpe?g\b|\.webp\b|\/answerlattice-logo\.svg)/;
   const allowedRasterMetadataFiles = new Set([
+    path.join(componentsRoot, 'AnswerlatticeAssetImage.tsx'),
     path.join(componentsRoot, 'StructuredData.tsx'),
   ]);
   const filesToCheck = [];

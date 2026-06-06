@@ -2,19 +2,21 @@
 
 .al-scroll-reveal {
     opacity: 1;
-    transition-property: opacity, transform;
-    transition-duration: var(--al-reveal-duration, 560ms), var(--al-reveal-duration, 560ms);
-    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition-property: opacity, transform, filter;
+    transition-duration: var(--al-reveal-duration, 760ms);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     transition-delay: var(--al-reveal-delay, 0s);
 }
 
 .al-scroll-reveal--pending {
     opacity: 0;
-    transform: translateY(var(--al-reveal-distance, 14px)) scale(0.992);
-    will-change: opacity, transform;
+    filter: blur(14px);
+    transform: translate3d(0, var(--al-reveal-distance, 52px), 0) scale(0.972);
+    will-change: opacity, transform, filter;
 }
 
 .al-scroll-reveal--visible {
+    filter: blur(0);
     opacity: 1;
     transform: none;
     will-change: auto;
@@ -24,6 +26,7 @@
     .al-scroll-reveal,
     .al-scroll-reveal--pending,
     .al-scroll-reveal--visible {
+        filter: none;
         opacity: 1;
         transform: none;
         transition: none;

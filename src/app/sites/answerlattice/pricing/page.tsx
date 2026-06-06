@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for small SaaS and digital-product teams.',
+    description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for founder-led SaaS teams.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -25,19 +25,19 @@ function getBasePath(): string {
 
 const PLAN_BULLETS: Record<string, string[]> = {
     answerlattice_starter: [
-        'One SaaS or digital-product workspace',
+        'One founder-led SaaS workspace',
         'Team access and role permissions',
         'Knowledge intake from selected links, docs, and supported files',
         'Widget and help center',
-        'Basic canonical coverage tracking',
-        'Product surfaces for page-aware support',
+        'Basic approved-answer coverage tracking',
+        'Product surfaces for in-app support',
     ],
     answerlattice_growth: [
         'Expanded team and custom role controls',
         'Higher intake, answer, and support-gap capacity',
         'Signal-to-knowledge queue',
         'Release-aware answer review',
-        'Weekly governance digest',
+        'Weekly support review digest',
         'Higher signal and surface limits',
     ],
     answerlattice_studio: [
@@ -50,9 +50,9 @@ const PLAN_BULLETS: Record<string, string[]> = {
 };
 
 const PLAN_GUIDANCE: Record<string, string> = {
-    answerlattice_starter: 'For one SaaS app or digital product with early users and repeated setup, billing, or onboarding questions.',
-    answerlattice_growth: 'For active SaaS apps and digital products that need weekly review, support-gap tracking, and higher answer capacity.',
-    answerlattice_studio: 'For builders, agencies, or studios launching multiple digital products.',
+    answerlattice_starter: 'For one SaaS app with early users and repeated setup, billing, or onboarding questions.',
+    answerlattice_growth: 'For active SaaS apps that need weekly review, support-gap tracking, and higher answer capacity.',
+    answerlattice_studio: 'For builders, agencies, or studios launching multiple SaaS products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
@@ -62,12 +62,12 @@ const publicPlans = getAnswerlatticePlans()
     .sort((left, right) => left.priceINR.price - right.priceINR.price);
 
 const SHARED_INCLUDED = [
-    'Canonical answers before fallback',
-    'Page-aware widget context',
+    'Approved answers before fallback',
+    'Safe page context for the widget',
     'Hosted help center',
     'Owner reset and force sign-out',
     'Product surface mapping',
-    'Human-approved governance queue',
+    'Human-approved review queue',
 ];
 
 const supportCreditPack = ANSWERLATTICE_CREDIT_PACKS_LIST[0];
@@ -91,7 +91,7 @@ export default function AnswerlatticePricingPage() {
                         items={[
                             { label: 'Free setup', value: 'Create workspace and verify the first support layer' },
                             { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
-                            { label: 'Credit use', value: 'AI-assisted answers, fallback, governance, and media extraction stay bounded' },
+                            { label: 'Credit use', value: 'AI-assisted answers, fallback, review work, and media extraction stay bounded' },
                             { label: 'Not charged for', value: 'Normal widget loading, selected text import, and public help browsing' },
                         ]}
                     />
@@ -180,7 +180,7 @@ export default function AnswerlatticePricingPage() {
                         <SectionHeader
                             eyebrow="Support credits"
                             title="Credits keep support capacity predictable."
-                            description="Support credits cover AI-assisted answers, fallback handling, governance work, and paid knowledge-intake media extraction such as screenshot OCR or short recording transcription. Public help pages, selected text import, and normal widget loading do not use credits."
+                            description="Support credits cover AI-assisted answers, fallback handling, review work, and paid knowledge-intake media extraction such as screenshot OCR or short recording transcription. Public help pages, selected text import, and normal widget loading do not use credits."
                         >
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
                                 Top-ups are for launch spikes, media-heavy intake, or heavy review periods without forcing a plan change.

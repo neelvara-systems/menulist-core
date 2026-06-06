@@ -12,7 +12,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Help center and tickets',
         href: '/product/support-control',
-        description: 'Publish docs, FAQs, custom Q&A, and release notes; manage fallback tickets, feedback, ratings, and feature requests from one connected support layer.',
+        description: 'Publish docs, FAQs, custom owner answers, and release notes; manage fallback tickets, feedback, ratings, and feature requests from one connected support layer.',
     },
     {
         label: 'Review approved answers',

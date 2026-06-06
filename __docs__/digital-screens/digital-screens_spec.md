@@ -260,14 +260,14 @@ Restaurant screens operate in:
 
 | Operation             | Frequency         | Cost Impact                    |
 | --------------------- | ----------------- | ------------------------------ |
-| Screen page load      | Per TV boot       | 2 reads (summary + store)      |
+| Screen page load      | Per TV boot       | 2-4 typical reads (screen, store, optional project summary/fallback) |
 | Real-time listener    | On content change | 1 read per change (onSnapshot) |
-| 6hr proactive refresh | 3x/day            | 2 reads per refresh            |
+| 6hr proactive refresh | 3x/day            | 2-4 typical reads per refresh  |
 | Daily seen signal     | 1x/day            | 1 read + 1 write               |
-| Owner view            | Occasional        | 0 extra reads (same summary)   |
+| Owner view            | Occasional        | 1 screen summary read          |
 | Owner upload          | Rare              | 1 write + storage              |
 
-**Estimated daily cost per store:** ~12 reads + 1 write = **~$0.0003/month per screen** (see `digital-screens_firebase.md` for full breakdown)
+**Estimated daily cost per store:** ~12-20 reads + 1 write = **~$0.00027-$0.00041/month per screen** (see `digital-screens_firebase.md` for full breakdown)
 
 ---
 
@@ -281,8 +281,8 @@ Restaurant screens operate in:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   page.tsx (Server Component)                               │
-│     ↓ getScreenDataByToken(token)     [2 reads]             │
-│     ↓ getMenuItemsForScreen(storeId)  [2 reads]             │
+│     ↓ getScreenDataByToken(token)     [2 valid / 3 fallback] │
+│     ↓ screen.menuProjection or fallback [0-1+ reads]        │
 │     ↓ generateScreenSlides()          [slide stack]          │
 │     ↓ Read ?mode= query parameter                           │
 │                                                             │
@@ -327,7 +327,7 @@ Both share:
 
 > **Non-Negotiable Rule:** Menu Board shows ALL available items with prices. No confidence gate. No filtering. The full menu = the truth.
 
-Menu Board uses the same data from `getMenuItemsForScreen()` but renders ALL items, not just top 3:
+Menu Board uses the same menu data resolver (`screen.menuProjection` when valid, `getMenuItemsForScreen()` fallback when stale/missing) but renders ALL available items, not just top 3:
 
 | Data            | Source                          | Behavior                                          |
 | --------------- | ------------------------------- | ------------------------------------------------- |
@@ -354,6 +354,7 @@ Menu Board uses the same data from `getMenuItemsForScreen()` but renders ALL ite
 | **Prices always shown**            | Market research: price display is non-negotiable for any restaurant screen.         |
 | **Menu Board: no confidence gate** | Full menu is truth, not recommendation. Confidence gate applies to highlights only. |
 | **Auto-pagination, no config**     | System decides page timing. Owner never thinks about this.                          |
+| **No separate screen menu doc**     | Generated screen menu projection stays inside `platformSummary/campaigns_{sId}.screen` and is validity-checked before use. |
 
 ---
 
@@ -390,7 +391,8 @@ Owner's normal workflow:
   Edit menu in Projects/Editor → save
     ↓
   System automatically:
-    → bumpScreenContentVersion()
+    → bumpScreenContentVersion() / touchDigitalScreenContentVersion()
+    → refresh generated screen.menuProjection when the default menu is available
     → onSnapshot fires on all connected screens
     → Menu Board re-renders with updated data
 
@@ -780,3 +782,4 @@ All three surfaces depend on the same data: menu, prices, availability, hours, i
 | 2.0     | 2026-02-08 | Cascade | **Major update:** Added Menu Board mode (default), Highlights mode (secondary), price display requirement, two-surface architecture, updated user stories, expanded FRs (FR-14 to FR-19), strategic framing, Feature Rejection Gate results, market research findings                                                                       |
 | 3.0     | 2026-02-08 | Cascade | **🔒 v2.2 LOCKED:** Metadata enrichment (description, tags, dietary badges). AI image gen rejected. Architectural Boundaries + Readability First constraints added. QR pairing rejected (2/5). ChatGPT Strategic Review v2 appended. Feature now LOCKED                                                                                     |
 | 4.0     | 2026-03-15 | Cascade | **v2.3 HARDENING:** Token security (22-char), reload jitter, MenuBoard hardening (broken image, offline retry, sold-out, menu cap), auto-fullscreen recovery, Settings UI (activity status, Main TV/Second TV labels). Strategic Appendix D added (three-surface moat, Google positioning, distribution engine). ChatGPT review v3 archived |
+| 5.0     | 2026-06-06 | Codex   | **Public read hardening:** Documented generated `screen.menuProjection` inside existing screen summary state, projection/fallback read economics, base menu slug context, and no separate screen-menu document. |

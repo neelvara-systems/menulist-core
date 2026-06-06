@@ -20,7 +20,8 @@ import { generatePrintMenuSingleTableCard } from '../print-menu-surfaces/templat
 import { generatePrintMenuTableTent } from '../print-menu-surfaces/templates/tableTentTemplate';
 import { generateTakeawayCard } from './templates/takeawayCardTemplate';
 import { generateWhatsappStatus } from './templates/whatsappStatusTemplate';
-import { buildMenuKitUrl, buildPrintInstructions, MENU_KIT_UTM_SOURCES, MenuKitAsset, MenuKitInput, MenuKitResult, STAFF_SCRIPT, validateMenuUrl } from './types';
+import { getOfferingLabels } from './businessTypeLabels';
+import { buildMenuKitUrl, buildPrintInstructions, MENU_KIT_UTM_SOURCES, MenuKitAsset, MenuKitInput, MenuKitResult, validateMenuUrl } from './types';
 
 export const MENU_KIT_ASSET_KEYS = [
     'table_tent',
@@ -216,6 +217,7 @@ export async function generateMenuKitAsset(input: MenuKitInput, assetKey: MenuKi
  */
 export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
     const prepared = await prepareMenuKitInput(input);
+    const labels = getOfferingLabels(input.businessType, input.businessCategory);
     const assets = await Promise.all(
         MENU_KIT_ASSET_DEFINITIONS.map((definition) => renderMenuKitAsset(definition, prepared)),
     );
@@ -226,10 +228,10 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
         zip.file(asset.filename, await asset.blob.arrayBuffer());
     }
     // Add print instructions text file for print shops
-    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(input.storeName));
+    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(input.storeName, labels));
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-    return { assets, staffScript: STAFF_SCRIPT, zipBlob };
+    return { assets, staffScript: labels.staffScript, zipBlob };
 }
 
 /**

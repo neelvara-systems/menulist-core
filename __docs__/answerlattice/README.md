@@ -380,8 +380,9 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 7   | **[Chat Monitoring](./chat-monitoring/README.md)**               | `chat-monitoring/`        | 8 docs | 35 items, 13 DAL functions, 4 Cloud Functions |
 | 8   | **[FAQ Management](./faq-management/README.md)**                 | `faq-management/`         | 7 docs | Bounded FAQ DAL, import generation, public FAQ tab |
 | 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
+| 10  | **[Repeated Reply Import](./repeated-reply-import/README.md)** | `repeated-reply-import/` | 8 docs | Repeated founder replies become FAQ and canonical proposal drafts through Knowledge Intake |
 
-**Total:** 9 deep-dive feature folders, including FAQ Management and planned Knowledge Intake Command Center.
+**Total:** 10 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, and Repeated Reply Import.
 
 Each sub-feature folder contains:
 
@@ -400,6 +401,9 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-06 | 3.4.6   | Added Repeated Reply Import as a Knowledge Intake subpath and documented the SupportLayer-derived support expansion sequence. |
+| 2026-06-06 | 3.4.5   | Added Activation `summary.launchProof` as the first-client launch proof read model before connector/distribution rollout.            |
+| 2026-06-06 | 3.4.4   | Reconciled the build priority roadmap with current runtime truth: first-client governed answer loop first, Public API rollout-gated, Jira/helpdesk connectors docs-first and deferred.            |
 | 2026-05-31 | 3.4.0   | Added Knowledge Intake Command Center documentation for the planned founder-first, paid-gated, source-backed intake architecture that supersedes upload-first KB generation.            |
 | 2026-05-31 | 3.4.1   | Expanded Knowledge Intake docs with selected-page website discovery, app URL crawl boundaries, unchanged-source skip, bounded execution, and provider-safe evidence rules.            |
 | 2026-05-31 | 3.4.2   | Added summary-first intake read model, bucketed scheduler directory, source-version fields, and dirty-summary repair requirements.            |

@@ -5,7 +5,7 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
         title: 'Evaluate AnswerLattice',
         description: 'Start with proof, pricing, and common buying questions.',
         items: [
-            { label: 'See the demo', href: '/demo', description: 'Watch how the answer changes by page.', eventName: 'resource_demo_clicked' },
+            { label: 'See the demo', href: '/demo', description: 'Watch how in-app support changes by product page.', eventName: 'resource_demo_clicked' },
             { label: 'Pricing', href: '/pricing', description: 'See the current Starter, Growth, and Studio packaging.', eventName: 'resource_pricing_clicked' },
             { label: 'ROI calculator', href: '/roi-calculator', description: 'Estimate repeated-question time saved and plan fit.', eventName: 'resource_roi_clicked' },
             { label: 'Proof pack', href: '/proof', description: 'Review example workloads for launch, release, and studio use.', eventName: 'resource_proof_clicked' },
@@ -18,8 +18,10 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
         items: [
             { label: 'Use cases', href: '/use-cases', description: 'Map AnswerLattice to billing, onboarding, settings, releases, and tickets.', eventName: 'resource_use_cases_clicked' },
             { label: 'AI-built SaaS', href: '/use-cases/ai-built-saas', description: 'See the launch support path for apps built quickly with AI.', eventName: 'resource_ai_built_saas_clicked' },
+            { label: 'AI-assisted builders', href: '/use-cases/vibe-coded-saas', description: 'Use the community-facing guide for SaaS products built fast with AI coding tools.', eventName: 'resource_ai_assisted_builders_clicked' },
+            { label: 'Solo-founder widget', href: '/support-widget-for-solo-founders', description: 'See the in-app support widget path for one-person SaaS teams before a support hire.', eventName: 'resource_solo_founder_widget_clicked' },
             { label: 'Comparisons', href: '/comparisons', description: 'Compare AnswerLattice with generic chatbots, helpdesks, and knowledge bases without unsupported vendor claims.', eventName: 'resource_comparisons_clicked' },
-            { label: 'Page-aware support widget', href: '/page-aware-support-widget', description: 'See how product-page context and optional screenshots change the answer.', eventName: 'resource_widget_clicked' },
+            { label: 'In-app support widget', href: '/page-aware-support-widget', description: 'See how product-page context and optional screenshots make support more relevant.', eventName: 'resource_widget_clicked' },
         ],
     },
     {
@@ -30,8 +32,8 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
             { label: 'Pre-Onboarding Guide', href: '/pre-onboarding/guide', description: 'Follow the owner and agent runbook before uploading prepared sources.', eventName: 'resource_pre_onboarding_guide_clicked' },
             { label: 'Starter surface templates', href: '/resources/launch-support-checklist', description: 'Use the launch support checklist to prepare billing, onboarding, settings, release, integration, and error-support pages.', eventName: 'resource_launch_checklist_clicked' },
             { label: 'Team access', href: '/product/team-access', description: 'Plan workspace roles, custom permissions, owner reset, and force sign-out before support work spreads.', eventName: 'resource_team_access_clicked' },
-            { label: 'Knowledge Intake', href: '/product/knowledge-intake', description: 'Teach AnswerLattice from selected product links, docs, FAQs, release notes, setup notes, support macros, supported files, screenshots, and short recordings.', eventName: 'resource_knowledge_intake_clicked' },
-            { label: 'Knowledge Base', href: '/product/knowledge-base', description: 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and governance.', eventName: 'resource_knowledge_base_clicked' },
+            { label: 'Knowledge Intake', href: '/product/knowledge-intake', description: 'Teach AnswerLattice from selected product links, docs, FAQs, release notes, setup notes, support macros, repeated replies, supported files, screenshots, and short recordings.', eventName: 'resource_knowledge_intake_clicked' },
+            { label: 'Knowledge Base', href: '/product/knowledge-base', description: 'Publish reviewed articles that power hosted help, FAQ, widget suggestions, and support review.', eventName: 'resource_knowledge_base_clicked' },
             { label: 'Feedback Review', href: '/resources/feedback-review-workflow', description: 'Plan how ratings, feature requests, and suggestions are sorted by Product Surface before becoming private support signals.', eventName: 'resource_feedback_review_clicked' },
             { label: 'Support Board', href: '/resources/support-board-workflow', description: 'Plan private support cards, internal notes, status history, and answer proposal handoff.', eventName: 'resource_support_board_clicked' },
             { label: 'Install verifier and hosted help', href: '/resources/widget-install-verification', description: 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.', eventName: 'resource_install_clicked' },
@@ -60,4 +62,3 @@ export const ANSWERLATTICE_RESOURCE_PATH_DETAILS = [
     'Prepare source inputs, install boundaries, and runtime checks before implementation.',
     'Move into workspace setup or contact once the rollout decision is clear.',
 ] as const;
-

@@ -23,7 +23,7 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
                 </SectionHeader>
                 <AnswerlatticePublicDemo />
                 <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-[#8f8faa]">
-                    When AnswerLattice does not have a matching canonical or published owner answer, it does not invent one. It records the gap for review.
+                    When AnswerLattice does not have a matching approved or published owner answer, it does not invent one. It records the gap for review.
                 </p>
             </div>
         </section>

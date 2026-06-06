@@ -19,6 +19,8 @@ Activation links directly into:
 
 The Content Control workbench (`src/components/templates/answerlattice/content/AnswerlatticeContentWorkbench.tsx`) is shared by Activation and Readiness Metrics. It reuses the loaded activation summary to give product owners one practical map for profile, import, articles, surfaces, changelog, signal queue, widget, and tickets without adding collection reads.
 
+The First-client launch proof is computed in `src/lib/answerlattice/activationSummary.ts` as `summary.launchProof`. It does not change the existing `readinessScore`; it gives a stricter rollout gate for the first sellable account by grouping self-serve setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source testing. The Activation UI renders the proof as a compact list and routes each incomplete group to its owning Answerlattice surface.
+
 The Test-as-Customer checklist (`src/components/templates/answerlattice/content/AnswerlatticeCustomerFlowChecklist.tsx`) turns the same summary into a practical launch proof: preview help center, ask from the widget, confirm page context, submit a ticket fallback, check release notes, and open the Signal Queue. It is intentionally a checklist, not an automation layer, so owners keep control over what goes live.
 
 Readiness Metrics also renders the Surface Readiness matrix (`src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx`). It uses compact `summary.content.surfaceReadiness` status/count fields, derived from the context summary, to show each mapped surface as Ready, Needs mapping, Needs content, or Open signals. UI recommendations and action labels stay in the component so the persisted activation snapshot does not duplicate long copy.
@@ -32,7 +34,7 @@ The Daily Governance panel (`src/components/templates/answerlattice/activation/A
 1. Resolves tenant/store from `productAccounts.AL` through `resolveAnswerlatticeSessionScope`.
 2. Reads the store document.
 3. Reads compact platform summary docs.
-4. Builds a `AnswerlatticeActivationSummary`.
+4. Builds a `AnswerlatticeActivationSummary`, including `summary.launchProof` from already-read summary fields.
 5. Persists `platformSummary/activation_{tId}_{sId}` only when the readiness signature changes or the snapshot is stale.
 
 The API response includes an internal `readModel` so platform audits can verify Firebase cost behavior. The client-facing dashboard does not show Firebase or cache terminology to Answerlattice customers.
@@ -40,6 +42,8 @@ The API response includes an internal `readModel` so platform audits can verify 
 Entity readiness and canonical-answer readiness are derived from `platformSummary/trustMetrics_{tId}_{sId}`. Activation does not scan `answerlattice_entities` or `answerlattice_canonicalAnswers`.
 
 Surface readiness is derived in `src/lib/answerlattice/activationSummary.ts` from the already-read `platformSummary/contextContent_{tId}_{sId}` document. The readiness signature includes the compact per-surface status so the persisted activation snapshot refreshes when a product area changes from missing content to ready, or when open ticket signals appear.
+
+Launch proof status is also derived in `src/lib/answerlattice/activationSummary.ts`. It adds no Firestore reads and no independent collection scans. The persisted activation signature includes each launch-proof group status so the cached activation snapshot refreshes when a first-client proof blocker changes. The signal-source proof uses the compact context summary; generated proposal quality is still confirmed in Signal Queue and scheduler smoke tests, not by adding mutation-proposal scans to Activation.
 
 Security note: the API must not fall back to the generic MenuList `session.user.tenantId/storeId`. A user needs a real Answerlattice product scope (`productAccounts.AL` or a native Answerlattice session) before any Answerlattice workspace summary is loaded.
 

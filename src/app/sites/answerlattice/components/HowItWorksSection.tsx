@@ -11,7 +11,7 @@ const STEPS = [
     {
         step: '2',
         title: 'Import starter knowledge',
-        description: 'Upload docs, starter articles, FAQs, and repeated owner Q&A. AnswerLattice keeps support working through fallback while it prepares governed answer and FAQ drafts.',
+        description: 'Upload docs, starter articles, FAQs, and repeated owner answers. AnswerLattice keeps support working through fallback while it prepares reviewed answer and FAQ drafts.',
         visual: '✓',
     },
     {
@@ -22,7 +22,7 @@ const STEPS = [
     },
     {
         step: '4',
-        title: 'Install page-aware support',
+        title: 'Install in-app support',
         description: 'Embed the widget, lock allowed origins, block sensitive routes, publish hosted help if needed, and pass route context so billing, onboarding, and settings pages get relevant help.',
         visual: '⚡',
     },
@@ -41,7 +41,7 @@ export default function HowItWorksSection() {
                 <SectionHeader
                     className="mb-16"
                     eyebrow="How it works"
-                    title="From product sources to approved answers in five steps."
+                    title="From product sources to a working support layer in five steps."
                     description="The flow stays practical for founders: map the product, import the first sources, review answers, install the widget, then improve from support gaps."
                 />
 

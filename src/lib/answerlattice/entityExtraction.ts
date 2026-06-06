@@ -18,6 +18,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { addEntityCandidate } from "@database/answerlattice/entityCandidates";
+import { buildAnswerlatticeEntityPrefixTokens } from "@lib/answerlattice/entitySearchTokens";
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
 import { ANSWERLATTICE_ENTITY_TYPES, AnswerlatticeEntityCandidate, AnswerlatticeEntityType } from "@type/answerlattice";
 
@@ -285,10 +286,17 @@ export function buildSearchIndexEntry(entity: { name: string; slug: string; desc
     const nameTokens = answerlatticeTokenize(entity.name);
     const descTokens = answerlatticeTokenize(entity.description, 4).slice(0, 10);
 
+    const normalizedTokens = Array.from(new Set([...nameTokens, ...descTokens]));
+
     return {
         canonicalName: entity.name,
         synonyms: entity.aliases || ([] as string[]),
-        normalizedTokens: Array.from(new Set([...nameTokens, ...descTokens])),
+        normalizedTokens,
+        prefixTokens: buildAnswerlatticeEntityPrefixTokens({
+            canonicalName: entity.name,
+            normalizedTokens,
+            synonyms: entity.aliases || [],
+        }),
         weight: 1.0,
     };
 }

@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Firebase Cost Tracking  
 **Status:** 📋 Ready for Implementation  
-**Last Updated:** May 1, 2026
+**Last Updated:** June 6, 2026
 **Audience:** Engineering, Founder, Cost Auditors
 
 ---
@@ -25,12 +25,12 @@
 
 | Operation                | Collection | Trigger               | Frequency   | Docs Read         | Indexed? | Notes                                                        |
 | ------------------------ | ---------- | --------------------- | ----------- | ----------------- | -------- | ------------------------------------------------------------ |
-| Manifest generation      | stores     | Page load             | Per visit   | 1                 | Yes      | `unstable_cache` 60s TTL (shared with existing menu lookups) |
+| Manifest generation      | stores + `platformSummary` | Page load | Per visit | 1 store lookup + 0-1 cached start-url summary read | Yes | Store lookup uses shared 60s cache; start-url project summary is cached 1h under public menu invalidation tags |
 | Icon existence check     | —          | Icon request          | Per install | 0                 | N/A      | CDN/Storage check, no Firestore                              |
 | Settings fetch           | stores     | Owner opens settings  | Rare        | 1                 | Yes      | Part of store doc                                            |
 | Analytics dashboard read | analytics  | Owner opens dashboard | Rare        | 1                 | Yes      | Reads `{tId}_{sId}_customerApp_dashboard_summary`, cached by scheduler cycle. |
 
-**Total reads per customer visit:** 0 net-new (manifest reuses the same cached store lookup used by the menu page)
+**Total reads per customer visit:** 0-1 net-new after cache. The manifest reuses the shared cached store lookup used by public pages, and its `/menu` start-url summary check is cached for 1 hour and invalidated by `menu-store-{sId}` / `store-{sId}` / `client-stores`.
 
 ### Writes
 
@@ -255,7 +255,7 @@ match /pwa-icons/{storeId}/{size} {
 
 | Route                                  | Method | Firebase Ops      | Rate Limited? | Notes                               |
 | -------------------------------------- | ------ | ----------------- | ------------- | ----------------------------------- |
-| `{tenant-origin}/manifest.webmanifest` | GET    | 1R (shared cache) | No            | Served at tenant origin, cached 60s |
+| `{tenant-origin}/manifest.webmanifest` | GET    | 1R shared store lookup + 0-1 cached summary read | No | Served at tenant origin; manifest response caches 1h and start-url summary uses `unstable_cache` |
 | `/api/app-icons/{id}/{size}`           | GET    | 0 (Storage)       | Yes (100/min) | CDN cached                          |
 | `/api/app-icons/generate`              | POST   | 1R + 3W (Storage) | Yes (5/min)   | Owner only                          |
 

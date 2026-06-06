@@ -2,7 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
-import { useKnowledgeIntake } from '@hook/answerlattice/useKnowledgeIntake';
+import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -35,7 +35,7 @@ import {
     theme,
 } from 'antd';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuArrowRight,
     LuBookOpen,
@@ -109,6 +109,9 @@ const FILE_UPLOAD_ACCEPT = [
 ].join(',');
 
 const splitTags = (value?: string) => String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+const normalizeEntitySelection = (value?: string | string[]) => Array.isArray(value)
+    ? value.map(item => String(item || '').trim()).filter(Boolean)
+    : splitTags(value);
 
 async function extractTextFromFile(file: File): Promise<{ text: string; sourceType: string }> {
     const name = file.name.toLowerCase();
@@ -233,6 +236,7 @@ export default function AnswerlatticeKnowledgeIntake() {
     const isMobile = screens.md !== true;
     const { token } = theme.useToken();
     const [jobForm] = Form.useForm();
+    const [replyForm] = Form.useForm();
     const [textForm] = Form.useForm();
     const [urlForm] = Form.useForm();
     const [editForm] = Form.useForm();
@@ -241,6 +245,10 @@ export default function AnswerlatticeKnowledgeIntake() {
     const [discoveredLinks, setDiscoveredLinks] = useState<Array<{ url: string; title: string; role: string; reason: string }>>([]);
     const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
     const [discovering, setDiscovering] = useState(false);
+    const [entityOptions, setEntityOptions] = useState<KnowledgeIntakeEntityOption[]>([]);
+    const [entitySearching, setEntitySearching] = useState(false);
+    const entitySearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const entitySearchSeqRef = useRef(0);
 
     const {
         activeJob,
@@ -258,6 +266,7 @@ export default function AnswerlatticeKnowledgeIntake() {
         loading,
         publishJob,
         saving,
+        searchEntityOptions,
         setActiveJobId,
         updateReviewItem,
     } = useKnowledgeIntake();
@@ -270,6 +279,58 @@ export default function AnswerlatticeKnowledgeIntake() {
         });
         return Array.from(groups.entries());
     }, [bundle.reviewItems]);
+
+    const repeatedReplyEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT === true;
+
+    const entitySelectOptions = useMemo(() => entityOptions.map(entity => ({
+        value: entity.id,
+        label: (
+            <Space size={6} wrap>
+                <Text strong>{entity.name}</Text>
+                {entity.type ? <Tag>{entity.type}</Tag> : null}
+            </Space>
+        ),
+    })), [entityOptions]);
+
+    const handleEntitySearch = useCallback((queryText: string) => {
+        const normalizedQuery = String(queryText || '').replace(/\s+/g, ' ').trim();
+        if (entitySearchTimerRef.current) {
+            clearTimeout(entitySearchTimerRef.current);
+        }
+
+        if (normalizedQuery.length < 3) {
+            setEntitySearching(false);
+            setEntityOptions([]);
+            return;
+        }
+
+        const searchSeq = entitySearchSeqRef.current + 1;
+        entitySearchSeqRef.current = searchSeq;
+        setEntitySearching(true);
+        entitySearchTimerRef.current = setTimeout(async () => {
+            try {
+                const options = await searchEntityOptions(normalizedQuery);
+                if (entitySearchSeqRef.current === searchSeq) {
+                    setEntityOptions(options);
+                }
+            } catch (err) {
+                if (entitySearchSeqRef.current === searchSeq) {
+                    setEntityOptions([]);
+                    message.error(err instanceof Error ? err.message : 'Could not search product entities.');
+                }
+            } finally {
+                if (entitySearchSeqRef.current === searchSeq) {
+                    setEntitySearching(false);
+                }
+            }
+        }, 400);
+    }, [searchEntityOptions]);
+
+    useEffect(() => () => {
+        if (entitySearchTimerRef.current) {
+            clearTimeout(entitySearchTimerRef.current);
+        }
+    }, []);
 
     const currentStep = activeJob?.status === 'published'
         ? 3
@@ -330,6 +391,30 @@ export default function AnswerlatticeKnowledgeIntake() {
             entityIds: splitTags(values.entityIds),
         });
         if (source) textForm.resetFields();
+    };
+
+    const handleAddRepeatedReply = async () => {
+        if (!activeJobId) return;
+        const values = await replyForm.validateFields();
+        const question = String(values.question || '').replace(/\s+/g, ' ').trim();
+        const answer = String(values.answer || '').trim();
+        const source = await addSource(activeJobId, {
+            type: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY,
+            title: values.title || question,
+            contentText: `Q: ${question}\nA: ${answer}`,
+            tags: splitTags(values.tags),
+            contextKeys: splitTags(values.contextKeys),
+            entityIds: normalizeEntitySelection(values.entityIds),
+            metadata: {
+                inputMode: 'repeated_reply',
+                replyQuestion: question,
+                sourceLabel: 'owner_repeated_reply',
+            },
+        });
+        if (source) {
+            replyForm.resetFields();
+            setEntityOptions([]);
+        }
     };
 
     const handleFiles = async (files: FileList | null) => {
@@ -502,6 +587,75 @@ export default function AnswerlatticeKnowledgeIntake() {
                                         </Flex>
                                     ) : null}
                                 </Card>
+
+                                {repeatedReplyEnabled ? (
+                                    <Card
+                                        title={<Space><LuHelpCircle /> Repeated reply</Space>}
+                                        extra={<Tag color="purple">FAQ + answer proposal</Tag>}
+                                        style={{ borderRadius: 8 }}
+                                    >
+                                        <Form form={replyForm} layout="vertical">
+                                            <Form.Item name="title" label="Title">
+                                                <Input placeholder="Optional: billing card update answer" />
+                                            </Form.Item>
+                                            <Row gutter={[12, 0]}>
+                                                <Col xs={24} lg={10}>
+                                                    <Form.Item name="question" label="Question users ask" rules={[
+                                                        { required: true, message: 'Add the repeated question.' },
+                                                        { min: 8, message: 'Use the reusable question users actually ask.' },
+                                                    ]}>
+                                                        <TextArea rows={5} placeholder="How do I change my billing card?" />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} lg={14}>
+                                                    <Form.Item name="answer" label="Reply you already send" rules={[
+                                                        { required: true, message: 'Add the reply.' },
+                                                        { min: 20, message: 'Add a reusable reply with at least 20 characters.' },
+                                                    ]}>
+                                                        <TextArea rows={5} placeholder="Paste the reusable answer. Remove customer-specific details first." />
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
+                                            <Row gutter={[12, 0]}>
+                                                <Col xs={24} md={8}>
+                                                    <Form.Item name="tags" label="Tags">
+                                                        <Input placeholder="billing, settings" />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} md={8}>
+                                                    <Form.Item name="contextKeys" label="Surface/context keys">
+                                                        <Input placeholder="billing, account-settings" />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} md={8}>
+                                                    <Form.Item name="entityIds" label="Product entities">
+                                                        <Select
+                                                            mode="multiple"
+                                                            showSearch
+                                                            filterOption={false}
+                                                            options={entitySelectOptions}
+                                                            loading={entitySearching}
+                                                            onSearch={handleEntitySearch}
+                                                            onClear={() => setEntityOptions([])}
+                                                            placeholder="Search feature, plan, workflow..."
+                                                            notFoundContent={entitySearching ? 'Searching...' : 'Type 3 characters to search'}
+                                                            maxTagCount="responsive"
+                                                            allowClear
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
+                                            <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile}>
+                                                <Text type="secondary">
+                                                    Creates review drafts only. Canonical answer proposals still need a related entity before approval.
+                                                </Text>
+                                                <Button type="primary" loading={saving} icon={<LuShieldCheck />} onClick={handleAddRepeatedReply}>
+                                                    Add repeated reply
+                                                </Button>
+                                            </Flex>
+                                        </Form>
+                                    </Card>
+                                ) : null}
 
                                 <Row gutter={[16, 16]}>
                                     <Col xs={24} xl={12}>

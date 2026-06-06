@@ -10,10 +10,10 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../../menu-kit/brandTokens';
 import { getOfferingLabels } from '../../menu-kit/businessTypeLabels';
 import { type PreloadedLogo } from '../../menu-kit/imageLoader';
 import { type MenuKitInput } from '../../menu-kit/types';
+import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 import { drawPrintMenuCardFace, printMenuMm } from './printMenuCardFace';
 
 type PrintMenuTableTentInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -27,7 +27,7 @@ export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput)
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
 
     const faceW = printMenuMm(FACE_W_MM);
     const faceH = printMenuMm(FACE_H_MM);
@@ -53,12 +53,14 @@ export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput)
 
     const faceOpts = {
         activePlanType: input.activePlanType,
+        actionLabel: labels.printCardTitle,
         brand,
+        instructionLabel: labels.scanToView,
         logo,
-        menuLabel: labels.offeringUpper,
         qrCanvas,
         shortLink,
         storeName,
+        templateFamilyId: input.templateFamilyId,
     };
 
     // Left face: rotated so it reads upright from the opposite side of the table.

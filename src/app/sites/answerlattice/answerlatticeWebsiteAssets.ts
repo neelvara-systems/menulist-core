@@ -47,7 +47,7 @@ export const ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS = {
     ),
     'Answer review': desktopScreen(
         'answerlattice-product-preview-governance.png',
-        'Sample AnswerLattice answer governance placeholder'
+        'Sample AnswerLattice answer review placeholder'
     ),
 } as const;
 
@@ -60,7 +60,7 @@ export const ANSWERLATTICE_PRODUCT_AREA_ASSETS = {
     ),
     'In-app help widget': desktopScreen(
         'answerlattice-product-area-widget.png',
-        'Sample AnswerLattice page-aware widget product-area placeholder'
+        'Sample AnswerLattice in-app widget product-area placeholder'
     ),
     'Help center and tickets': desktopScreen(
         'answerlattice-product-area-support-control.png',
@@ -68,7 +68,7 @@ export const ANSWERLATTICE_PRODUCT_AREA_ASSETS = {
     ),
     'Review approved answers': desktopScreen(
         'answerlattice-product-area-governance.png',
-        'Sample AnswerLattice knowledge governance product-area placeholder'
+        'Sample AnswerLattice approved answer review product-area placeholder'
     ),
 } as const;
 
@@ -118,18 +118,18 @@ export const ANSWERLATTICE_FEATURE_ASSETS: Record<string, AnswerlatticeWebsiteAs
 export const ANSWERLATTICE_DEMO_SURFACE_ASSETS = {
     billing: desktopScreen(
         'answerlattice-demo-surface-billing.png',
-        'Sample AnswerLattice billing page-aware demo placeholder'
+        'Sample AnswerLattice billing support-loop demo placeholder'
     ),
     onboarding: desktopScreen(
         'answerlattice-demo-surface-onboarding.png',
-        'Sample AnswerLattice onboarding page-aware demo placeholder'
+        'Sample AnswerLattice onboarding support-loop demo placeholder'
     ),
     settings: desktopScreen(
         'answerlattice-demo-surface-settings.png',
-        'Sample AnswerLattice team settings page-aware demo placeholder'
+        'Sample AnswerLattice team settings support-loop demo placeholder'
     ),
     release: desktopScreen(
         'answerlattice-demo-surface-release.png',
-        'Sample AnswerLattice release page-aware demo placeholder'
+        'Sample AnswerLattice release support-loop demo placeholder'
     ),
 } as const;

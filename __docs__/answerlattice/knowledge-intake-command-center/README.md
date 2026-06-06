@@ -17,7 +17,7 @@ Owner-facing name:
 
 Product definition:
 
-Answerlattice intake lets a solo founder or product owner add product links, docs, files, policies, screenshots, transcripts, release notes or existing changelog entries, support exports, and starter answers. Answerlattice turns those inputs into source-backed product understanding, approved support drafts, page-aware support suggestions, and launch readiness without auto-publishing authoritative answers.
+Answerlattice intake lets a solo founder or product owner add product links, docs, files, policies, screenshots, transcripts, release notes or existing changelog entries, support exports, repeated replies, and starter answers. Answerlattice turns those inputs into source-backed product understanding, approved support drafts, page-aware support suggestions, and launch readiness without auto-publishing authoritative answers.
 
 This is not a generic upload widget. It is the entry point into Answerlattice's Governed Answer Infrastructure:
 
@@ -38,7 +38,7 @@ This is not a generic upload widget. It is the entry point into Answerlattice's 
 | --- | --- |
 | Owner route | `/answerlattice/knowledge-intake` is the canonical owner route. `/answerlattice/kb-generation` redirects for compatibility. |
 | Navigation | Launch Setup shows **Teach Answerlattice** and routes to the Answerlattice-owned intake screen. |
-| Inputs | Owners can add pasted text, selected public URLs, browser-extracted text files, screenshots/images, and short audio/video evidence. File bodies are capped before reaching the server. |
+| Inputs | Owners can add pasted text, repeated replies, selected public URLs, browser-extracted text files, screenshots/images, and short audio/video evidence. File bodies are capped before reaching the server. |
 | URL discovery | Public URL discovery is bounded, same-origin, private-network guarded, and owner-selected. Discovered links are not materialized as Firestore source docs until selected. |
 | Entitlement | Mutating and expensive actions require an active Answerlattice beta/subscription summary on the workspace store document. |
 | Processing | Text-friendly files are extracted in the browser. Screenshots/images and short media use gated Gemini extraction with support-credit reservation, AI operation logging, and refund-on-failure. No background crawler, native connector, or scheduler import fanout is enabled. |
@@ -84,6 +84,7 @@ Accepted from the ChatGPT discussion:
 - Add URL/docs import as a first-class, bounded source path.
 - Treat the main product website link as a discovery pack: discover candidate pages cheaply, store candidate manifests in Storage, and create source docs only for owner-selected pages.
 - Support multiple file families, screenshots/images, transcripts/media, helpdesk exports, changelog material, product surfaces, support macros, and policy answers.
+- Turn one repeated user question and one founder reply into focused FAQ and canonical proposal drafts without adding a helpdesk connector.
 - Use source authority and risk domains before generating/publishing.
 - Make a tiny review queue the owner UX, not a long governance dashboard.
 - Publish only after explicit owner approval.

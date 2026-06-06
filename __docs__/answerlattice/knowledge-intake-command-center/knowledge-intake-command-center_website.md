@@ -14,6 +14,7 @@ The public website can now mention the implemented day-one intake flow:
 - Teach Answerlattice / knowledge intake command center
 - selected public product/docs URLs
 - pasted docs, FAQs, release notes, setup notes, and support macros
+- repeated replies founders already send
 - browser-extracted TXT, Markdown, CSV, JSON, DOCX, and text-based PDF content
 - owner-triggered screenshot OCR and short media transcription with caps
 - support-credit logging for paid OCR/transcription work
@@ -21,7 +22,7 @@ The public website can now mention the implemented day-one intake flow:
 - publishing into KB, FAQ, product surfaces, and canonical answer proposals
 - no auto-publishing of authoritative canonical answers
 
-Do not claim native private connectors, unlimited crawling, retained raw media, hidden background retries, or automatic canonical-answer publishing. Website copy can mention screenshot OCR and short media transcription only with limits, support-credit charging, and owner-review wording.
+Do not claim native private connectors, inbox sync, unlimited crawling, retained raw media, hidden background retries, or automatic canonical-answer publishing. Website copy can mention screenshot OCR and short media transcription only with limits, support-credit charging, and owner-review wording.
 
 ---
 
@@ -39,7 +40,7 @@ Page title:
 
 Meta description:
 
-Teach Answerlattice your product from selected links, docs, files, screenshots, short recordings, FAQs, release notes, setup notes, and support macros. Generate source-backed support drafts with owner approval.
+Teach Answerlattice your product from selected links, docs, files, screenshots, short recordings, FAQs, release notes, setup notes, support macros, and repeated replies. Generate source-backed support drafts with owner approval.
 
 Hero:
 
@@ -47,7 +48,7 @@ Hero:
 
 Body:
 
-Paste your product link, choose the support-worthy pages Answerlattice finds, and add any docs, files, screenshots, release notes, or short recordings you already have. Answerlattice prepares source-backed help articles, FAQs, product-surface suggestions, and canonical answer proposals for owner review.
+Paste your product link, choose the support-worthy pages Answerlattice finds, and add any docs, files, screenshots, release notes, repeated replies, or short recordings you already have. Answerlattice prepares source-backed help articles, FAQs, product-surface suggestions, and canonical answer proposals for owner review.
 
 CTA:
 
@@ -69,7 +70,7 @@ Title:
 
 Cards:
 
-1. **Add sources** — Product website, selected public pages, docs, supported files, screenshots, short recordings, FAQs, release notes, setup notes, and support macros.
+1. **Add sources** — Product website, selected public pages, docs, supported files, screenshots, short recordings, FAQs, release notes, setup notes, support macros, and repeated replies.
 2. **Review drafts** — Answerlattice groups KB, FAQ, product-surface, and answer-proposal drafts.
 3. **Approve before publish** — Nothing becomes authoritative until the owner accepts and publishes it.
 4. **Publish support** — Help articles, FAQs, product-page help, and reviewable answer proposals feed the support layer. Changelog publishing stays in the release-note workflow.

@@ -9,8 +9,8 @@ Print Assets adds no Firestore collection, Storage path, Cloud Function, API rou
 
 | Operation | Firebase Cost | Notes |
 | --- | --- | --- |
-| Open desktop Print Assets route | Existing dashboard context + existing project list read | Same pattern as Use MenuList. |
-| Open mobile Print Assets screen | Existing mobile project provider data | Same pattern as mobile Share. |
+| Open desktop Assets route | Existing dashboard context + existing project list read | Same pattern as Use MenuList. |
+| Open mobile Assets screen | Existing mobile project provider data | Same pattern as mobile Share. |
 | Download table/counter/entrance files | 0 reads/writes | Client-side `generateMenuKitAsset()` renders only the requested file and downloads it in the browser. |
 | Preview table/counter/entrance files | 0 reads/writes | Client-side `generateMenuKitAsset()` renders only the requested file and opens a temporary browser blob URL. |
 | Copy print-shop handoff | 0 reads/writes | Uses already-loaded store/project context and clipboard only. |

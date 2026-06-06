@@ -1,14 +1,14 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.45
-> **Last Updated:** 2026-06-05
+> **Version:** 1.2.57
+> **Last Updated:** 2026-06-06
 > **Audience:** CEO / PM / Marketing
 
 ---
 
 ## Purpose
 
-Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for SaaS and digital-product founders considering AnswerLattice as a page-aware support-answer layer with launch setup, support control, in-product widget, custom owner Q&A, branded hosted help domains, safe ticket context, private feedback review, private Support Board follow-up, and knowledge governance.
+Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as their first 24/7 support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
 
 ---
 
@@ -23,7 +23,7 @@ Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves
 | Pain | Support answers drift as the product changes, and users need help on exact product pages |
 | Current tools | Existing docs, FAQs, changelogs, tickets, AI-generated setup notes, or rough starter answers |
 
-Public fit and setup copy must not imply founders need existing support volume before starting. Eligibility language should include live, beta, and near-launch products with a working app, launch path, and starter support truth. Use "expected or recurring questions" when describing launch preparation; reserve "repeated questions" for specific FAQ/governance capabilities rather than buyer qualification gates.
+Public fit and setup copy must not imply founders need existing support volume before starting. Eligibility language should include live, beta, and near-launch products with a working app, launch path, and starter support truth. Use "expected or recurring questions" when describing launch preparation; reserve "repeated questions" for specific FAQ, support-gap, and review-loop capabilities rather than buyer qualification gates.
 
 ## Brand and Domain Requirements
 
@@ -41,29 +41,23 @@ Public fit and setup copy must not imply founders need existing support volume b
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what AnswerLattice is in < 5 seconds. Drive to the static demo or self-service onboarding.
+**Goal:** Communicate what AnswerLattice is in < 5 seconds: the first 24/7 support layer for founder-led SaaS. Drive to self-service setup first, with the static demo as the secondary proof path.
 
 **Sections:**
-1. **Hero** — Founder-readable page-aware support promise: "Page-aware support answers for SaaS and digital products." Backed by inline sample workspace proof, setup/demo/source-prep CTAs, and chips for page-aware widget, approved answers, hosted help, tickets, feedback, Pre-Onboarding, and safe context.
-2. **Conversion Proof Band** — Compact proof of the must-sell points: exact app-page context, approved answers before fallback, hosted help/FAQs/custom Q&A, tickets and feedback as support gaps, practical widget install, and source preparation.
-3. **Product Scene** — Early restrained product-proof preview showing setup readiness, product pages, widget support, feedback review, and answer review without exposing private workspace data. Desktop, tablet, and mobile use compact tabs with one stable proof frame and an active-state explanation. Screen-like product proof must render from fixed-size image/GIF asset slots, not hand-drawn HTML/CSS mockup screens, so final production captures can replace dummy assets without changing page layout.
-4. **Embedded Demo** — Horizontal app-page tabs plus one large product-canvas view showing why a billing question should get billing-specific support rather than a generic reply.
-5. **Support Knowledge Map** — Docs, FAQs, custom owner Q&A, changelogs, setup notes, tickets, feedback, and safe page context flow through a logo-only AnswerLattice center with dotted paths, a single soft ripple without an inner static strip, endpoint-fading pulse strokes, and border-only output highlights, then out to widget, hosted help, owner answers, approved answers, and review queues.
-6. **How It Works** — Animated sequence for map product, import starter sources, review answers, install widget, and improve from support gaps.
-7. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage. Set Up Support includes workspace team access now that AnswerLattice roles and owner reset are implemented.
-8. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, user-initiated screenshot attachments, approved answers first, published owner FAQ answers before fallback, configured proactive prompts, and support-gap review.
-9. **Closed Loop Visual** — Animated loop diagram for user question -> approved answer check -> fallback only when needed -> repeated miss -> owner-reviewed fix -> future approved answer.
-10. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, compiled approved context, owner approval, and workspace-scope controls.
-11. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small product teams while rejecting helpdesk replacement and auto-publish expectations.
-12. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers.
-13. **Pre-Onboarding Kit** — Source-preparation section placed after product value is clear; sends buyers to prompt, guide, source rules, and safety boundary.
-14. **Day-One Launch Pack** — Buyer-facing pack for framework quickstarts, agent install packet, starter surface templates, import starter pack, install verifier, ROI calculator, proof pack, and security one-pager. This section links to existing pages instead of creating another route.
-15. **AnswerLattice Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue.
-16. **Product System** — Animated hub diagram for Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code.
-17. **Comparison** — Contrasts AI chatbot, helpdesk, knowledge base, and AnswerLattice without positioning AnswerLattice as a helpdesk replacement.
-18. **Pricing Preview** — Starter/Growth/Studio guidance and plain-language support-credit explanation.
-19. **Objections** — Top buyer objections before final CTA.
-20. **CTA** — Final conversion section with demo and start-free actions.
+1. **Hero** — Centered founder-readable promise: "Support your SaaS users 24/7 without hiring a support team." The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement.
+2. **Capability Proof Strip** — Compact proof of widget, hosted help, approved answers, ticket fallback, feedback review, changelog, and safe context. Use capability proof until real customer proof exists.
+3. **Founder Support Pressure** — Before/after section for the emotional post-launch moment: building got faster, but user support still becomes the founder's responsibility.
+4. **Support Surface Bento** — Rich bento grid showing the product is broader than questions and answers: in-app widget, hosted help, FAQs, tickets, changelog, feedback, page context, approved answers, and weekly review.
+5. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
+6. **User-Side Product Proof** — Product screenshot/asset section showing the user getting help on a concrete Billing/Onboarding/Settings page.
+7. **Founder-Side Review Proof** — Product screenshot/asset section showing support gaps, stale answers, low-rated replies, and draft improvements awaiting review.
+8. **Differentiation** — Three-card section: not a chatbot, not static docs, not a full helpdesk.
+9. **Use-Case Strip** — Compact navigation cards for AI-built SaaS, solo founders, launch-stage products, active SaaS, small teams, and studios/agencies.
+10. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
+11. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
+12. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
+
+The homepage must stay diagram-controlled: one hero product scene, one capability proof strip, one large support-improvement loop diagram, two product proof screenshots, one comparison card group, pricing, FAQ preview, and final CTA. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
 
 ### 2. Product (`/product`)
 **Goal:** Explain the product in founder/operator language while preserving the real AnswerLattice architecture.
@@ -71,6 +65,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 **Sections:**
 - Hero with SaaS and digital-product support-layer promise, setup/demo/source-prep CTAs, and compact proof strip explaining what AnswerLattice is, what it connects, why it converts, and what stays safe
 - Product area cards that route to landing-style subpages for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers
+- Product feature directory that exposes the support-system details behind team access, knowledge intake, knowledge base, FAQ management, changelog, tickets, Support Board, feedback review, workflow notifications, and proactive help without making the homepage longer
 - Team access should be presented as production readiness inside setup, security, pricing, and a dedicated feature page because it affects workspace trust and buyer evaluation.
 - Day-One Launch Pack section that packages quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
 - Product scene reused from the homepage so buyers see the owner workflow before the architecture deep dive
@@ -83,8 +78,8 @@ Public fit and setup copy must not imply founders need existing support volume b
   - Badge (Launch Setup / Support Control / Knowledge Governance / Release Awareness / Support Gap Loop)
   - Title + description
   - 5 capability bullet points
-- Product page should frame custom help domains as buyer-visible value, owner Q&A as a fast reviewed shortcut for repeated questions, and ticket debugging context as support reliability, not as raw console logging.
-- Product page should include runtime readiness as a core reliability section: Firestore source of truth, approved public widget context, private server context, cache-first delivery, owner-visible bundle readiness, workspace-local governance, and controlled agent-context rollout. Do not create a standalone MCP page while MCP remains rollout-gated.
+- Product page should frame custom help domains as buyer-visible value, owner answers as a fast reviewed shortcut for repeated questions, and ticket debugging context as support reliability, not as raw console logging.
+- Product page should include runtime readiness as a core reliability section: Firestore source of truth, approved public widget context, private server context, cache-first delivery, owner-visible bundle readiness, workspace-local review, and controlled agent-context rollout. Do not create a standalone MCP page while MCP remains rollout-gated.
 - Bottom CTA
 
 Product-area subpages:
@@ -95,7 +90,7 @@ Product-area subpages:
 
 Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, compact proof strip, large browser-style product canvas, bento benefit grid, animated workflow sequence, and CTA. These pages stay static and may only claim implemented AnswerLattice behavior.
 
-Each product-area subpage must include the same proof-and-action treatment above the product canvas: Start support setup, page-aware demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
+Each product-area subpage must include the same proof-and-action treatment above the product canvas: Start support setup, demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
 
 Product-feature subpages:
 - `/product/team-access`
@@ -108,7 +103,7 @@ Product-feature subpages:
 - `/product/workflow-notifications`
 - `/product/proactive-help`
 
-Feature pages must use buyer-facing wording and avoid overclaiming. FAQ Management can claim owner-written Q&A, article-backed FAQ suggestions, article links, tags, entities, surface/context assignment, and published answers before fallback, while preserving canonical-answer priority. Team Access can claim AnswerLattice workspace members, AnswerLattice role permissions, email or owner-passcode login, owner reset, and force sign-out, while keeping access scoped to AnswerLattice workspaces. Support Board can claim private owner/staff cards, internal notes, status history, selected support follow-up, assignee context, and governed answer-proposal handoff, but must not imply every ticket/signal syncs by default or that cards publish answers automatically. Feedback Review can claim private ratings, product-area feedback, feature requests, suggestions, owner review, Support Board handoff, and answer-proposal governance, but must not imply a public roadmap, public voting board, or automatic knowledge publishing. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured page-aware prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior. Each feature page must include a compact proof strip near the hero so the buyer sees how the feature connects to the widget, hosted help, tickets, and review queue before reading deeper workflow detail.
+Feature pages must use buyer-facing wording and avoid overclaiming. FAQ Management can claim owner-written answers, article-backed FAQ suggestions, article links, tags, entities, surface/context assignment, and published answers before fallback, while preserving approved-answer priority. Team Access can claim AnswerLattice workspace members, AnswerLattice role permissions, email or owner-passcode login, owner reset, and force sign-out, while keeping access scoped to AnswerLattice workspaces. Support Board can claim private owner/staff cards, internal notes, status history, selected support follow-up, assignee context, and reviewed answer handoff, but must not imply every ticket/signal syncs by default or that cards publish answers automatically. Feedback Review can claim private ratings, product-area feedback, feature requests, suggestions, owner review, Support Board handoff, and answer-proposal review, but must not imply a public roadmap, public voting board, or automatic knowledge publishing. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior. Each feature page must include a compact proof strip near the hero so the buyer sees how the feature connects to the widget, hosted help, tickets, and review queue before reading deeper workflow detail.
 
 ### 3. Use Cases (`/use-cases`)
 **Goal:** Help small SaaS operators recognize when AnswerLattice is useful.
@@ -129,18 +124,20 @@ Role-specific pages:
 - `/use-cases/ai-built-saas`
 - `/use-cases/vibe-coded-saas` (canonicalized campaign/search alias only)
 - `/use-cases/founders`
+- `/use-cases/small-saas-teams`
+- `/use-cases/studios-agencies`
 - `/use-cases/support-teams`
 - `/use-cases/product-teams`
 - `/use-cases/engineering`
 
 Rules:
-- Use implemented page-aware support, canonical answer, fallback, drift, signal, and widget behavior only
+- Use implemented in-app support, approved answer, fallback, stale-answer review, signal, and widget behavior only
 - Do not claim broad helpdesk integrations or public API availability on these pages
 - Role-specific and SEO landing pages must include proof strips that state the page-context, answer-order, and screenshot/context identity boundaries before the workflow diagrams.
 
 ### Positioning Guardrail
 
-The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "support chaos", and "users need correct answers", but it must not say AnswerLattice "handles all support" or imply human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice keeps support knowledge and answers accurate through page context, approved answers, fallback signals, and human review. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
+The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "24/7", "support pressure", and "users need trusted support", but it must not say AnswerLattice "handles all support" or imply human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a 24/7 support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
 
 ### Non-Home Page Conversion Pattern
 
@@ -240,12 +237,12 @@ Stability:
 **Goal:** Give buyers and new users a website-side learning hub.
 
 **Sections:**
-- Product-area entry cards for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance
+- Product-area entry cards for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers
 - Animated resource path from evaluation to rollout
 - Start guide
 - Widget install guide
 - Support Board guide
-- Knowledge governance guide
+- Approved answer review guide
 - Product surface guide
 - Workflow notification guide
 - Proactive help guide
@@ -255,7 +252,7 @@ Stability:
 - Resource cards are sourced from `ANSWERLATTICE_RESOURCE_GROUPS` in `src/content/answerlatticePublic/` so the hub, sitemap, LLM context, and analytics labels do not drift.
 - Resource article routes are sourced from `ANSWERLATTICE_RESOURCE_ARTICLES` in `src/content/answerlatticePublic/`.
 - Resource article pages must use the shared article renderer, Article/BreadcrumbList JSON-LD, FAQPage JSON-LD only when visible FAQ copy exists, and resource analytics with no Firestore writes.
-- Article copy must stay scoped to implemented behavior: page-aware support, approved answers before fallback, safe page context, reviewable support gaps, human-reviewed answer changes, launch-ready support setup, hosted help, support credits, and runtime safety.
+- Article copy must stay scoped to implemented behavior: in-app support, approved answers before fallback, safe page context, reviewable support gaps, human-reviewed answer changes, launch-ready support setup, hosted help, support credits, and runtime safety.
 - Article copy must not claim perfect answer behavior, guaranteed ticket reduction, autonomous support, helpdesk replacement, public voting, automatic publishing, SOC/GDPR status, ratings/reviews, or competitor rankings.
 
 Resource article routes:
@@ -318,7 +315,7 @@ Rules:
 - No Firebase reads
 - No AI calls
 - Show approved answer, fallback answer, and support gap states
-- Show page-aware behavior by switching product surfaces
+- Show in-app context behavior by switching product surfaces
 
 ### 8. Pricing (`/pricing`)
 **Goal:** Transparent founder-friendly pricing.
@@ -327,7 +324,7 @@ Rules:
 - Starter, Growth, and Studio INR packaging
 - Predictable limits, no public per-resolution pricing
 - Plain-language support-credit definition:
-  - Support credits are plan capacity for governed answers, chat assistance, and knowledge governance work
+  - Support credits are plan capacity for reviewed answers, chat assistance, and support review work
   - Static hosted help pages, docs/FAQ/changelog browsing, and widget loading do not consume support credits
 - Plan guidance:
   - Starter: solo founder launching one SaaS product
@@ -368,7 +365,7 @@ Rules:
 - Hosted help domains
 - Custom help domains
 - Safe ticket debugging context
-- Manual owner Q&A, article-backed FAQ generation, source linking, and review
+- Manual owner answers, article-backed FAQ generation, source linking, and review
 - Support Board as a private owner/staff workboard, with sync/nightly prep called rollout-gated when mentioned
 - Slack/email workflow notifications and adapter boundaries
 - Configured proactive help and widget call gating
@@ -472,11 +469,11 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
-The desktop Product nav item should open a compact icon/link dropdown for product overview, product areas, and product features. Header navigation must be title-first and scan-friendly; item-level explanatory descriptions belong on the linked product pages, not inside the dropdown. The dropdown must preserve all product routes while staying shorter than the visible viewport on desktop.
+The desktop header should stay v1-simple: Product, Use Cases, Resources, Pricing, and the primary `Start support setup` CTA. Demo stays available from page CTAs and Resources instead of becoming another top-level item. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
 
-The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
+The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch proof checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
 
-The mobile/tablet hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Product Features, and an Other card for Use Cases, Demo, Install, Pricing, Resources, Developers, Comparisons, Updates, and Contact. The mobile drawer must open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers. Full desktop navigation should start only at the `xl` breakpoint because the header includes Product, Pre-Onboarding, Use Cases, Demo, Pricing, Resources, Updates, Contact, and the setup CTA.
+The mobile/tablet hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Support Tools, and an Other card for Use Cases, Resources, Pricing, Demo, Pre-Onboarding, Install, Security, Developers, Comparisons, Updates, and Contact. The mobile drawer must use the same founder-readable support labels as the desktop Product dropdown, open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers. Full desktop navigation should start only at the `xl` breakpoint so the header and Product dropdown remain inside the viewport; the hamburger trigger must not render on confirmed desktop viewports.
 
 Route naming must avoid conflicts with AnswerLattice dashboard roots. Public website learning content uses `/resources`, public implementation content uses `/developers`, public category education uses `/comparisons`, and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
 
@@ -509,7 +506,9 @@ Route naming must avoid conflicts with AnswerLattice dashboard roots. Public web
 
 The website must support Light/System/Dark modes end to end while staying canonical and infrastructure-grade. Verdigris/teal remains the action and signal accent in both modes. Dark mode uses the deep-navy AnswerLattice background; light mode uses pale slate surfaces and dark slate text without changing product positioning or adding decorative marketing colors. The selected mode is persisted only for the AnswerLattice public site.
 
-The footer brand column should show social icon links in place of theme controls. Until official profiles are ready, those links may use placeholder URLs. The Light/System/Dark selector belongs in the bottom footer strip and in the mobile drawer, not in the desktop header or brand-column intro block.
+All non-home public routes should use the shared non-home hero treatment: centered eyebrow, title, subheading, CTA row, and proof strip when the route is not intentionally split; split heroes still use the same typography, color tokens, spacing, and eyebrow styling on the copy column. The homepage is excluded because it owns the larger first-viewport product promise and hero asset composition.
+
+The footer should preserve broad public-route discoverability without turning the top navigation into a directory. It uses the brand column plus Product, Features, Evaluate, Resources, and Trust columns. Product and Features should expose all public product-area and product-feature pages. Evaluate should expose use cases, route-backed use-case pages for AI-built SaaS, solo founders, small SaaS teams, studios/agencies, support teams, product teams, and engineering teams, plus demo, pricing, setup, Page-Aware Widget, and Hosted Help Center. Resources should expose the resource hub, pre-onboarding kit and guide, widget install, developer docs, quickstarts, comparisons, integrations, ROI calculator, and proof pack. Trust should expose updates, FAQ, security, security one-pager, company, contact, privacy, and terms. Footer links must target public website routes only, use unique keys even when several labels point to the same hub route, and avoid private dashboard, widget runtime, API, placeholder social, or fake external-profile URLs. Add social icon links only after official profiles exist. The Light/System/Dark selector belongs in the bottom footer strip and in the mobile drawer, not in the desktop header or brand-column intro block.
 
 AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-cache public routes should receive Tailwind utilities, theme-aware backgrounds, page spacing, reveal-motion styles, and dark/light compatibility rules from the root `app/layout.css` bundle, while selectors that change colors, layout rhythm, or motion must stay scoped to `.answerlattice-site`, `.al-home-flow`, `.al-page-flow`, `html[data-answerlattice-theme]`, or explicit AnswerLattice classes.
 
@@ -519,30 +518,32 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | AnswerLattice — Page-Aware Support Answers for SaaS and Digital Products | AnswerLattice helps SaaS and digital-product teams turn docs, FAQs, release notes, screenshots, recordings, support notes, and recurring questions into approved page-aware answers for the app widget, hosted help, and support review queue. |
-| `/product` | Product \| AnswerLattice | AnswerLattice is the support layer for SaaS and digital products: team access, page-aware widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and reviewable support gaps. |
+| `/` | AnswerLattice - 24/7 Support Layer for Founder-Led SaaS | AnswerLattice helps founder-led SaaS products manage support 24/7 with an in-app widget, hosted help center, FAQs, changelog, ticket fallback, feedback review, approved answers, and a weekly support review loop. |
+| `/product` | Product \| AnswerLattice | One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
 | `/product/launch-setup` | Set Up Support \| AnswerLattice | Create an AnswerLattice workspace, add team access, import starter knowledge, map product pages, and verify the widget before launch. |
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |
-| `/product/page-aware-widget` | In-App Help Widget \| AnswerLattice | Install AnswerLattice as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, canonical answers, and owner FAQ answers before fallback. |
-| `/product/support-control` | Help Center and Tickets \| AnswerLattice | Operate AnswerLattice hosted help, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one support layer. |
+| `/product/page-aware-widget` | In-App Help Widget \| AnswerLattice | Install AnswerLattice as an in-app widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, approved answers, and owner answers before fallback. |
+| `/product/support-control` | Help Center and Tickets \| AnswerLattice | Operate AnswerLattice hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one support layer. |
 | `/product/knowledge-governance` | Review Approved Answers \| AnswerLattice | Review approved answers, stale support, repeated-question signals, coverage KPI, and trust/readiness metrics. |
 | `/product/support-board` | Support Board \| AnswerLattice | Private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff. |
 | `/product/feedback-review` | Feedback Review \| AnswerLattice | Collect ratings, product feedback, feature requests, and suggestions, then review useful items as support signals before board or answer-proposal handoff. |
 | `/use-cases` | Use Cases \| AnswerLattice | AnswerLattice use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback. |
-| `/use-cases/ai-built-saas` | AI-Built SaaS \| AnswerLattice | Support path for AI-built SaaS apps with page-aware widget, hosted help, custom owner Q&A, approved answers, ticket fallback, and reviewable support gaps. |
+| `/use-cases/ai-built-saas` | AI-Built SaaS \| AnswerLattice | Support path for AI-built SaaS apps with in-app widget, hosted help, owner answers, approved answers, ticket fallback, and reviewable support gaps. |
 | `/use-cases/vibe-coded-saas` | Vibe-Coded SaaS \| AnswerLattice | Canonicalized campaign/search alias for the AI-built SaaS use case. |
-| `/use-cases/founders` | Support for SaaS Founders \| AnswerLattice | Page-aware support, approved answers, and support-gap review for solo founders launching AI-built SaaS apps. |
+| `/use-cases/founders` | Support for SaaS Founders \| AnswerLattice | In-app support, approved answers, and support-gap review for solo founders launching AI-built SaaS apps. |
+| `/use-cases/small-saas-teams` | Small SaaS Teams \| AnswerLattice | Support layer for small SaaS teams with in-app help, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
+| `/use-cases/studios-agencies` | Studios and Agencies \| AnswerLattice | A repeatable first support layer for studios and agencies launching SaaS products with hosted help, widget support, ticket fallback, feedback review, and owner-approved answers. |
 | `/use-cases/support-teams` | Support Teams \| AnswerLattice | Reduce repeated tickets with approved answers, ticket fallback, private Support Board follow-up, and a signal-to-knowledge queue. |
 | `/use-cases/product-teams` | Product Teams \| AnswerLattice | See which product surfaces create support friction, stale answers, and review work after releases. |
-| `/use-cases/engineering` | Engineering Teams \| AnswerLattice | A support layer with safe page context, widget controls, and governed retrieval. |
-| `/page-aware-support-widget` | Page-Aware Support Widget \| AnswerLattice | A page-aware support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, canonical answers, and owner FAQ answers before fallback. |
+| `/use-cases/engineering` | Engineering Teams \| AnswerLattice | A support layer with safe page context, widget controls, and reviewed support answers. |
+| `/page-aware-support-widget` | In-App Support Widget \| AnswerLattice | An in-app support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, approved answers, and owner answers before fallback. |
 | `/hosted-help-center-for-saas` | Hosted Help Center for SaaS \| AnswerLattice | Hosted SaaS help center for AI-built SaaS with docs, owner FAQ, changelog content, and the same knowledge powering the app widget. |
-| `/support-widget-for-solo-founders` | Support Widget for Solo Founders \| AnswerLattice | A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, owner Q&A, ticket fallback, and approved answers. |
-| `/demo` | Demo \| AnswerLattice | Try a static page-aware support demo with approved answers, fallback, and support gap states. |
+| `/support-widget-for-solo-founders` | Support Widget for Solo Founders \| AnswerLattice | A support widget for solo founders shipping with AI who need in-app help, optional screenshot context, hosted docs, owner answers, ticket fallback, and approved answers. |
+| `/demo` | Demo \| AnswerLattice | Try a static in-app support demo with approved answers, fallback, and support gap states. |
 | `/install` | Install AnswerLattice with your AI coding agent \| AnswerLattice | Copy the AnswerLattice agent packet, install the v1 widget once, pass safe page context, block sensitive routes, and verify the integration. |
 | `/pricing` | Pricing \| AnswerLattice | Founder-friendly INR pricing, beta setup, support credits, and paid AnswerLattice plans for SaaS and digital-product teams. |
 | `/resources` | Resources \| AnswerLattice | AnswerLattice resources for founders launching support for SaaS apps and digital products: demo, fit, team access, feedback review, Support Board, install, screenshot boundaries, pricing, safety, and setup. |
-| `/resources/launch-support-checklist` | Launch Support Checklist \| AnswerLattice Resources | Launch page-aware support with product pages, starter sources, approved answers, widget checks, fallback, and reviewable support gaps. |
+| `/resources/launch-support-checklist` | Launch Support Checklist \| AnswerLattice Resources | Launch in-app support with product pages, starter sources, approved answers, widget checks, fallback, and reviewable support gaps. |
 | `/resources/pre-onboarding-source-package` | Pre-Onboarding Source Package \| AnswerLattice Resources | Prepare repo, website, docs, owner notes, policies, screenshots, and product exclusions before AnswerLattice intake. |
 | `/resources/safe-page-context` | Safe Page Context \| AnswerLattice Resources | Explain which widget context fields are safe and which private identifiers or sensitive fields stay blocked. |
 | `/resources/widget-install-verification` | Widget Install Verification \| AnswerLattice Resources | Verify the v1 widget script, key, origin, blocked routes, safe context, and support output before launch. |
@@ -556,16 +557,16 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 | `/developers/safe-page-context` | Safe Page Context \| AnswerLattice | Pass safe page context to the AnswerLattice widget without tenant IDs, user IDs, billing data, secrets, or private account metadata. |
 | `/developers/widget-verification` | Widget Verification \| AnswerLattice | Verify the AnswerLattice widget script, allowed origin, blocked routes, safe page context, and support output before launch. |
 | `/comparisons` | Comparisons \| AnswerLattice | Compare AnswerLattice with chatbots, helpdesks, and knowledge bases by category without replacement claims or unsupported ratings. |
-| `/comparisons/answerlattice-vs-chatbots` | AnswerLattice vs Chatbots \| AnswerLattice | Compare approved page-aware answers before fallback with open-ended chatbot-style support. |
-| `/comparisons/answerlattice-vs-helpdesks` | AnswerLattice vs Helpdesks \| AnswerLattice | Compare support knowledge governance with ticket-queue ownership while preserving helpdesk boundaries. |
-| `/comparisons/answerlattice-vs-knowledge-bases` | AnswerLattice vs Knowledge Bases \| AnswerLattice | Compare page-aware runtime answers with static article libraries and manual article discovery. |
-| `/updates` | Updates \| AnswerLattice | Product updates for AnswerLattice website, launch setup, team access, feedback review, Support Board, widget management, and knowledge governance. |
+| `/comparisons/answerlattice-vs-chatbots` | AnswerLattice vs Chatbots \| AnswerLattice | Compare approved in-app answers before fallback with open-ended chatbot-style support. |
+| `/comparisons/answerlattice-vs-helpdesks` | AnswerLattice vs Helpdesks \| AnswerLattice | Compare support knowledge review with ticket-queue ownership while preserving helpdesk boundaries. |
+| `/comparisons/answerlattice-vs-knowledge-bases` | AnswerLattice vs Knowledge Bases \| AnswerLattice | Compare in-app runtime answers with static article libraries and manual article discovery. |
+| `/updates` | Updates \| AnswerLattice | Product updates for AnswerLattice website, launch setup, team access, feedback review, Support Board, widget management, and support review. |
 | `/security` | Security \| AnswerLattice | How AnswerLattice protects support knowledge, widget context, screenshot boundaries, ticket debugging context, role-scoped team access, hosted help domains, and customer workspaces. |
 | `/security-one-pager` | Security and Ops One-Pager \| AnswerLattice | Shareable AnswerLattice security and operations summary for allowed origins, blocked routes, safe context, team roles, manual screenshots, hashed keys, owner approval, and rate limits. |
-| `/faq` | FAQ \| AnswerLattice | Answers to common questions founders ask about AnswerLattice setup, team access, digital products, page-aware support, feedback review, Support Board, owner Q&A, screenshots, pricing, tickets, and data handling. |
+| `/faq` | FAQ \| AnswerLattice | Answers to common questions founders ask about AnswerLattice setup, team access, digital products, in-app support, feedback review, Support Board, owner answers, screenshots, pricing, tickets, and data handling. |
 | `/about` | About \| AnswerLattice | AnswerLattice helps SaaS and digital-product teams keep support answers correct as products change. |
 | `/contact` | Contact \| AnswerLattice | Contact AnswerLattice for setup help, demos, pricing, security questions, or partnership requests for your SaaS app or digital product. |
-| `/get-started` | Get Started \| AnswerLattice | Create your AnswerLattice workspace, add your app, invite the first team members, pick pages where users need help, and get a widget key for page-aware support. |
+| `/get-started` | Get Started \| AnswerLattice | Create your AnswerLattice workspace, add your app, invite the first team members, pick pages where users need help, and get a widget key for in-app support. |
 | `/privacy-policy` | Privacy Policy \| AnswerLattice | How AnswerLattice handles product support knowledge, account information, team access data, and widget data. |
 | `/terms-of-service` | Terms of Service \| AnswerLattice | Terms for using AnswerLattice website, dashboard, widget, and support knowledge features. |
 
@@ -580,7 +581,7 @@ AnswerLattice public routes emit server-rendered Organization/WebSite/SoftwareAp
 ```
 Visitor lands on homepage
   ↓
-Reads launch-ready support hero + embedded demo -> "Start support setup" or "Try page-aware demo"
+Reads launch-ready support hero + embedded demo -> "Start support setup" or "View demo"
   ↓
 Demo page → understands approved answer vs fallback vs support gap
   ↓
@@ -595,6 +596,19 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-06 | 1.2.58 | Synced launch-setup, product preview, and updates copy with Activation first-client launch proof while keeping Signal Queue as the proposal-quality confirmation surface |
+| 2026-06-06 | 1.2.57 | Removed desktop hamburger exposure by gating the mobile drawer trigger to confirmed mobile viewports and normalized shared non-home hero alignment, spacing, and typography while leaving the homepage hero unchanged |
+| 2026-06-06 | 1.2.56 | Added route-backed Small SaaS Teams and Studios/Agencies use-case pages, exposed all primary use-case routes from the footer Evaluate column, and synchronized public route metadata |
+| 2026-06-06 | 1.2.55 | Restored footer discoverability for the full old Product and Resources link set because all listed destinations are real public routes; organized them into Product, Features, Evaluate, Resources, and Trust columns with unique link keys |
+| 2026-06-06 | 1.2.54 | Routed product-host `/` and `/home` requests to the working AnswerLattice index route so local and hosted homepage verification do not depend on the internal `/home` wrapper |
+| 2026-06-06 | 1.2.53 | Compact Product dropdown to match the Resources dropdown sizing, spacing, icon scale, and title-only row treatment while preserving all support-area and support-tool links |
+| 2026-06-06 | 1.2.52 | Removed placeholder footer social links from the rendered site and updated the footer contract to avoid fake external profile URLs |
+| 2026-06-06 | 1.2.51 | Replaced the compact Product dropdown with the wider support-system mega menu and founder-readable labels for support areas and support tools |
+| 2026-06-06 | 1.2.50 | Added product-feature directory and restored footer/resource discoverability for hosted help center, solo-founder widget, and AI-assisted builder campaign routes; 71 routes render and 70 are reachable from the public link graph, with `/home` kept as an unlinked homepage alias |
+| 2026-06-06 | 1.2.49 | Repositioned the live website around the first 24/7 support layer for founder-led SaaS, moved support surfaces ahead of answer mechanics, and verified 71 rendered routes against old positioning vocabulary |
+| 2026-06-06 | 1.2.48 | Simplified the v1 header and footer contract so Product, Use Cases, Resources, Pricing, and setup remain primary while deeper pages stay discoverable off the main homepage path |
+| 2026-06-06 | 1.2.47 | Shortened the homepage layout contract from the full planning sitemap to the v1 diagram-controlled homepage: one major loop diagram, product proof, compact use cases, pricing, FAQ, and CTA |
+| 2026-06-06 | 1.2.46 | Repositioned the homepage and Product overview around AnswerLattice as the first support layer for founder-led SaaS, with explicit helpdesk/autopilot guardrails |
 | 2026-06-06 | 1.2.45 | Updated the Resources dropdown requirement to mirror the compact Product dropdown pattern with an overview row and title-only guide rows |
 | 2026-06-05 | 1.2.44 | Added the compact Product dropdown requirement: title-only icon rows in the header, with explanatory content left to destination pages |
 | 2026-06-05 | 1.2.43 | Added the footer placement requirement: social icon links live in the brand column, while the Light/System/Dark selector moves to the bottom footer strip and remains available in the mobile drawer |

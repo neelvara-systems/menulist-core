@@ -18,6 +18,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import { buildAnswerlatticeEntityPrefixTokens } from '@lib/answerlattice/entitySearchTokens';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { markAnswerlatticeTenantHasEntities } from '@lib/answerlattice/tenantSummaryClient';
@@ -361,7 +362,14 @@ export const getEntitySearchIndex = async (tId: number, sId: number) => {
 export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data);
+            const prefixTokens = data.prefixTokens?.length
+                ? data.prefixTokens
+                : buildAnswerlatticeEntityPrefixTokens({
+                    canonicalName: data.canonicalName,
+                    normalizedTokens: data.normalizedTokens,
+                    synonyms: data.synonyms,
+                });
+            const submitData = await answerlatticeRequestBodyComposer({ ...data, prefixTokens });
             if (data.id) {
                 await setDoc(getSearchIndexDocRef(data.id), submitData, { merge: true });
                 return { ...submitData, id: data.id } as AnswerlatticeEntitySearchIndex;

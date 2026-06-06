@@ -31,7 +31,7 @@ import { downloadBlob, generateMenuKit, generateMenuKitAsset } from '@lib/menu-k
 import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { buildPrintAssetsUrl } from '@lib/print-assets/navigation';
+import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import {
     PRINT_ASSET_REPRINT_GUIDANCE,
     buildPrintReadinessItems,
@@ -285,8 +285,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     };
 
     const handleOpenPrintAssets = () => {
-        if (!FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) return;
-        router.push(buildPrintAssetsUrl(data?.projectId));
+        if (!FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES && !FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) return;
+        router.push(buildPrintableAssetsUrl(data?.projectId));
     };
 
     const buildMenuKitInput = () => {
@@ -369,6 +369,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         label: string,
         filenameLabel: string,
         starterSignal?: StarterActivationSignal,
+        cardCopy?: { subtitle?: string; title?: string },
     ) => {
         if (!url) return;
         setGeneratingAsset(label);
@@ -378,8 +379,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 footer: url.replace(/^https?:\/\//, ''),
                 logoUrl: data?.storeLogo || undefined,
                 storeName: data?.storeName,
-                subtitle: `Scan to open ${labels.offeringLower}`,
-                title: label,
+                subtitle: cardCopy?.subtitle || labels.scanToView,
+                title: cardCopy?.title || label,
                 activePlanType: (storeDetails as any)?.activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
@@ -434,10 +435,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 businessType: (storeDetails as any)?.businessType || data.businessType,
                 businessCategory: (storeDetails as any)?.businessCategory,
                 activePlanType: (storeDetails as any)?.activePlanType,
-                brandColor: (storeDetails as any)?.publicPresence?.accentColor
-                    || (storeDetails as any)?.primaryColor
-                    || (storeDetails as any)?.brandColor
-                    || (storeDetails as any)?.themeColor,
+                brandColor: storeBrandColor,
                 items: items.filter((i: any) => i.active !== false),
                 categories,
             });
@@ -702,6 +700,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                             footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
                                             logoUrl: data.storeLogo || undefined,
                                             storeName: data.storeName,
+                                            subtitle: t('feedbackLinkDesc'),
+                                            title: t('feedbackQr'),
                                             activePlanType: (storeDetails as any)?.activePlanType,
                                         }, data.obpLink);
                                         downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
@@ -996,6 +996,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             'Store Menu QR',
                             `${data.storeName}-store-menu-qr`,
                             STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                            { subtitle: labels.scanToView, title: labels.printCardTitle },
                         )}
                         highlight
                         themeToken={themeToken}
@@ -1012,6 +1013,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             'Business Profile QR',
                             `${data.storeName}-business-profile-qr`,
                             STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                            { subtitle: 'Scan to open our business page', title: 'BUSINESS PROFILE' },
                         )}
                         themeToken={themeToken}
                     />
@@ -1027,6 +1029,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             'Project Menu QR',
                             `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
                             STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                            { subtitle: labels.scanToView, title: labels.printCardTitle },
                         )}
                         themeToken={themeToken}
                     />
@@ -1088,6 +1091,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                                 withEntrySource(outletUrl, 'qr'),
                                                 assetLabel,
                                                 `${outlet.name || outlet.outletSlug}-store-menu-qr`,
+                                                undefined,
+                                                { subtitle: labels.scanToView, title: labels.printCardTitle },
                                             )}
                                         >
                                             {t('downloadQrButton')}
@@ -1256,15 +1261,15 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             <Divider />
 
-            {/* ─── Print for Your Restaurant ─────────────────────── */}
-            <Title level={5} style={{ marginBottom: 12 }}>Print for Your Restaurant</Title>
+            {/* ─── Print for Your Business ─────────────────────── */}
+            <Title level={5} style={{ marginBottom: 12 }}>Print for Your Business</Title>
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                {FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE ? (
+                {(FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) ? (
                     <Col xs={24} sm={12} md={8}>
                         <AssetCard
                             icon={<LuPrinter size={20} />}
-                            title="Print Assets"
-                            description="Tables, counters, entrance files, and print guidance"
+                            title="Assets"
+                            description="Choose branded templates for tables, counters, entrance files, and menus"
                             loading={false}
                             onDownload={handleOpenPrintAssets}
                             actionLabel="Open"
@@ -1305,10 +1310,10 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 </Col>
                 <Col xs={24} sm={12} md={8}>
                     <AssetCard
-                        icon={<LuQrCode size={20} />}
-                        title="Entrance Poster"
-                        description="At restaurant entrance"
-                        loading={generatingAsset === 'Entrance Poster'}
+                            icon={<LuQrCode size={20} />}
+                            title="Entrance Poster"
+                            description="Door, window, or reception"
+                            loading={generatingAsset === 'Entrance Poster'}
                         onDownload={() => handleDownloadAsset('entrance_poster', 'Entrance Poster')}
                         themeToken={themeToken}
                     />
@@ -1333,6 +1338,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                         footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
                                         logoUrl: data.storeLogo || undefined,
                                         storeName: data.storeName,
+                                        subtitle: t('feedbackLinkDesc'),
+                                        title: t('feedbackQr'),
                                         activePlanType: (storeDetails as any)?.activePlanType,
                                     }, data.obpLink);
                                     downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);

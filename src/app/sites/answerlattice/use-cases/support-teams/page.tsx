@@ -37,7 +37,7 @@ export default function SupportTeamsUseCasePage() {
                 'Use Support Board for selected follow-up and the signal queue to prioritize recurring gaps.',
             ]}
             primaryCta="Start support setup"
-            secondaryCta="Try page-aware demo"
+            secondaryCta="See demo"
         />
     );
 }

@@ -479,45 +479,6 @@ function mergeOverlayMenu(baseProject: any, specialProject: any): any {
     return merged;
 }
 
-// G-05 / R5 (§9 PUBLIC-ROUTING-DOCTRINE): Layer 2 canonical override helper.
-// Returns the default project's real slug URL when visitor arrived via /menu
-// AND no project on this store claims slug 'menu'. Cached via unstable_cache
-// so generateMetadata and MenuContent share the same summary read — no extra
-// Firestore cost vs. pre-R5 (D-15 performance bound: no additional reads).
-const getMenuAliasCanonicalSlug = unstable_cache(
-    async (storeId: number): Promise<string | null> => {
-        try {
-            const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-                .doc(`projects_${storeId}`)
-                .get();
-            if (!summarySnap.exists) return null;
-            const projects = parseSummaryProjects(summarySnap.data());
-            const activeProjects = Object.values(projects).filter(
-                (p: any) => p.active !== false && p.deleted !== true && !p.isSpecialMenu
-            );
-            // Layer 1 check: if any active project claims slug 'menu', /menu IS
-            // that project's canonical URL — no override needed.
-            const claimed = activeProjects.some((p: any) => p.slug === 'menu');
-            if (claimed) return null;
-            // Layer 2: return the default project's real slug for canonical.
-            const defaultProject: any =
-                activeProjects.find((p: any) => p.isDefault === true) ||
-                activeProjects[0] ||
-                null;
-            if (!defaultProject) return null;
-            const realSlug =
-                defaultProject.slug ||
-                (defaultProject.name ? slugify(defaultProject.name) : '');
-            return realSlug || null;
-        } catch {
-            return null;
-        }
-    },
-    ['menu-alias-canonical-slug'],
-    { revalidate: 60, tags: ['client-stores'] },
-);
-
 function buildProjectCanonicalUrl({
     baseUrl,
     outletSlug,
@@ -635,7 +596,6 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         '',
     );
     const firstSlug = slugSegments[0]?.toLowerCase();
-    const secondSlug = slugSegments[1]?.toLowerCase();
     const slugLen = slugSegments.length;
 
     // AEO-optimized title: when OBP is enabled, emit entity-rich title for AI extraction
@@ -671,39 +631,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     //   - Outlet `/{outletSlug}/menu` → outlet store's default project slug,
     //                                   URL kept rooted at `/{outletSlug}/...`.
     //
-    // Both branches share the same cached helper reads as the render path, so
-    // D-15 (no extra Firestore reads on the alias path) holds.
+    // The normal project resolver already returns `isMenuAliasFallback`, so
+    // metadata derives this from the same project read instead of performing a
+    // separate summary lookup for crawler hits.
     let menuAliasCanonical: string | undefined;
-
-    if (slugLen === 1 && firstSlug === 'menu' && storeData?.storeId) {
-        // Layer 2 alias on the master / single-store tenant.
-        const realDefaultSlug = await getMenuAliasCanonicalSlug(storeData.storeId).catch(() => null);
-        if (realDefaultSlug) {
-            menuAliasCanonical = `${canonicalBase}/${realDefaultSlug}`;
-        }
-    } else if (
-        // G-14: outlet Layer 2 alias. Only fires for master tenants with
-        // multi-outlet enabled — matches the MenuContent outlet-switch gating.
-        slugLen === 2
-        && secondSlug === 'menu'
-        && storeData?.isMaster
-        && FEATURE_FLAGS.ENABLE_MULTI_OUTLET
-        && firstSlug
-    ) {
-        const outletStore = await withRetry(() =>
-            getStoreByOutletSlug(storeData.tenantId, firstSlug),
-        ).catch(() => null);
-        if (outletStore?.storeId) {
-            const realDefaultSlug = await getMenuAliasCanonicalSlug(outletStore.storeId).catch(() => null);
-            if (realDefaultSlug) {
-                // Use the outlet's CURRENT canonical slug, not whatever the
-                // customer typed — this also auto-consolidates rename-chain
-                // hits on the outlet side.
-                const canonicalOutletSlug = (outletStore.outletSlug || firstSlug).toLowerCase();
-                menuAliasCanonical = `${canonicalBase}/${canonicalOutletSlug}/${realDefaultSlug}`;
-            }
-        }
-    }
 
     // Customer App (PWA) — per-tenant apple-touch-icon + theme color.
     // Dynamic icon route handles override / logo / letter fallback.
@@ -734,6 +665,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     let metadataStore = storeData;
     let metadataProject: any = null;
     let metadataProjectRecord: any = null;
+    let metadataProjectResult: Awaited<ReturnType<typeof getProjectBySlugOrDefault>> = null;
     let projectSlugForLookup: string | undefined = slugSegments[0];
     let metadataOutletSlug: string | undefined;
     let contextSegments: string[] = [];
@@ -777,6 +709,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         ).catch(() => null);
 
         if (projectResult) {
+            metadataProjectResult = projectResult;
             metadataProject = projectResult.projectData;
             metadataProjectRecord = projectResult.projectMetadata;
         }
@@ -812,6 +745,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                 language: metadataLanguage,
             }))
         : undefined;
+    if (metadataProjectResult?.isMenuAliasFallback && projectCanonicalUrl) {
+        menuAliasCanonical = projectCanonicalUrl;
+    }
     const canonicalWithoutLanguage = isOBPMetadata
         ? resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase)
         : menuAliasCanonical || projectCanonicalUrl || canonicalBase;

@@ -25,6 +25,52 @@ const ALLOWED_ORIGINS = [
     DASHBOARD_URL,
 ].filter(Boolean) as string[]; // Remove undefined values
 
+const parseOrigin = (value: string | null): URL | null => {
+    if (!value) return null;
+
+    try {
+        return new URL(value);
+    } catch {
+        return null;
+    }
+};
+
+const isConfiguredOriginAllowed = (origin: string, allowedOrigin: string): boolean => {
+    const originUrl = parseOrigin(origin);
+    const allowedUrl = parseOrigin(allowedOrigin);
+    if (!originUrl || !allowedUrl) return false;
+
+    if (originUrl.origin === allowedUrl.origin) return true;
+
+    const sameProtocolAndPort = originUrl.protocol === allowedUrl.protocol && originUrl.port === allowedUrl.port;
+    const isHttpsSubdomain = originUrl.protocol === 'https:'
+        && allowedUrl.protocol === 'https:'
+        && originUrl.hostname.endsWith(`.${allowedUrl.hostname}`);
+
+    return sameProtocolAndPort && isHttpsSubdomain;
+};
+
+const isSameOriginRequest = (request: Request, origin: string | null): boolean => {
+    const originUrl = parseOrigin(origin);
+    if (!originUrl) return false;
+
+    try {
+        const requestUrl = new URL(request.url);
+        if (originUrl.origin === requestUrl.origin) return true;
+
+        const requestHeaders = request.headers;
+        const forwardedHost = requestHeaders.get('x-forwarded-host');
+        const host = forwardedHost || requestHeaders.get('host');
+        if (!host) return false;
+
+        const forwardedProto = requestHeaders.get('x-forwarded-proto');
+        const protocol = forwardedProto || requestUrl.protocol.replace(/:$/, '');
+        return originUrl.origin === `${protocol}://${host}`;
+    } catch {
+        return false;
+    }
+};
+
 /**
  * CORS headers configuration
  */
@@ -45,17 +91,7 @@ export function validateCORSOrigin(origin: string | null): boolean {
     }
 
     // Check if origin is in allowed list
-    const isAllowed = ALLOWED_ORIGINS.some(allowedOrigin => {
-        // Exact match
-        if (origin === allowedOrigin) return true;
-
-        // Allow subdomains for production domains (*.menulist.ai)
-        if (allowedOrigin && origin.endsWith(allowedOrigin.replace('https://', ''))) {
-            return true;
-        }
-
-        return false;
-    });
+    const isAllowed = ALLOWED_ORIGINS.some(allowedOrigin => isConfiguredOriginAllowed(origin, allowedOrigin));
 
     if (!isAllowed) {
         secureLog('[CORS] Blocked request from unauthorized origin', {
@@ -89,7 +125,7 @@ export function addCORSHeaders(
 ): NextResponse {
     const origin = request.headers.get('origin');
 
-    if (origin && validateCORSOrigin(origin)) {
+    if (origin && (isSameOriginRequest(request, origin) || validateCORSOrigin(origin))) {
         response.headers.set('Access-Control-Allow-Origin', origin);
     }
 
@@ -124,6 +160,9 @@ export function validateCORS(request: Request): NextResponse | null {
     // Allow same-origin requests
     if (!origin) return null;
 
+    // Same-origin requests are allowed even on domain-routed local tenants.
+    if (isSameOriginRequest(request, origin)) return null;
+
     // Validate origin
     if (!validateCORSOrigin(origin)) {
         return NextResponse.json(
@@ -150,7 +189,7 @@ export function handleCORSPreflight(request: Request): NextResponse {
     const origin = request.headers.get('origin');
 
     // Validate origin
-    if (origin && !validateCORSOrigin(origin)) {
+    if (origin && !isSameOriginRequest(request, origin) && !validateCORSOrigin(origin)) {
         return new NextResponse(null, { status: 403 });
     }
 

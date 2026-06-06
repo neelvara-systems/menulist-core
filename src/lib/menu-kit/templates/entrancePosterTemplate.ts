@@ -10,7 +10,7 @@
 
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens, type RgbColor } from '../brandTokens';
+import { type RgbColor } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
 import {
@@ -20,6 +20,7 @@ import {
 } from '../platformAttribution';
 import { resolveMenuListAttributionPolicy } from '../../platform/menuListBranding';
 import { MenuKitInput } from '../types';
+import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 
 type PosterInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -51,7 +52,7 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     const { storeName, menuUrl, shortLink, lastPublishedAt, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
 
     // A4 dimensions in mm
     const W = 210;
@@ -66,7 +67,13 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     // Premium paper background
     doc.setFillColor(...brand.paperRgb);
     doc.rect(0, 0, W, H, 'F');
-    drawPdfVerticalGradient(doc, 0, 0, W, 94, brand.gradientFromRgb, brand.gradientToRgb);
+    if (input.templateFamilyId === 'clean-utility') {
+        doc.setDrawColor(...brand.borderRgb);
+        doc.setLineWidth(0.35);
+        doc.rect(7, 7, W - 14, H - 14, 'S');
+    } else {
+        drawPdfVerticalGradient(doc, 0, 0, W, 94, brand.gradientFromRgb, brand.gradientToRgb);
+    }
 
     // Premium content sheet
     doc.setFillColor(...brand.surfaceRgb);

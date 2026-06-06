@@ -77,5 +77,5 @@ export const revalidatePublicClientCacheForProject = async (
 ): Promise<void> => {
     const storeId = getStoreIdFromProjectId(projectId);
     await revalidatePublicClientCache(storeId, context);
-    await touchDigitalScreenContentVersion(storeId, context);
+    await touchDigitalScreenContentVersion(storeId, context, { projectId });
 };

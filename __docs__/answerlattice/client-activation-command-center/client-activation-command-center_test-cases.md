@@ -17,6 +17,9 @@
 - Empty/error state renders.
 - Refresh reloads summary.
 - Next required action routes to the correct management page.
+- First-client launch proof shows complete/total proof checks, progress, next proof action, and per-group status.
+- Launch proof action routes point to Settings, Knowledge Intake, Governance, Widget, Trust Metrics, and Signal Queue according to the incomplete group.
+- Signal-source proof is based on compact context signal counts; proposal quality is verified in Signal Queue, not by Activation collection scans.
 - Content Control workbench routes to product details, import, knowledge base, product surfaces, changelog, signal queue, widget, and tickets.
 - Test-as-Customer checklist routes to help center preview, widget setup, product surfaces, support ticket form, release notes, and Signal Queue based on summary readiness.
 - Surface Readiness matrix shows Ready, Needs mapping, Needs content, and Open signals states from `summary.content.surfaceReadiness`.
@@ -28,8 +31,9 @@
 
 ## Cost
 
-- Activation load reads compact docs only.
+- Activation load reads the store plus compact activation, context, coverage, trust, and compiled-context manifest docs only.
 - Daily Governance status reads one store doc, two platformSummary docs, and five capped scheduler logs.
+- First-client launch proof adds no Firestore calls beyond the activation summary response.
 - Content Control workbench adds no extra Firestore calls beyond the activation summary response.
 - Test-as-Customer checklist and Surface Readiness matrix add no extra Firestore calls beyond the activation summary response.
 - Ticket detail Knowledge Loop card adds no Firestore calls; it reads only local ticket state.

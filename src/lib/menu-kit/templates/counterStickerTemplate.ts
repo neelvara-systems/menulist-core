@@ -8,11 +8,11 @@
  */
 
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
+import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 
 type StickerInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -22,7 +22,7 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
 
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
@@ -41,7 +41,13 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     ctx.strokeRect(20, 20, SIZE - 40, SIZE - 40);
 
     ctx.fillStyle = brand.softAccent;
-    ctx.fillRect(46, 46, SIZE - 92, 170);
+    if (input.templateFamilyId === 'clean-utility') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(46, 46, SIZE - 92, 170);
+    } else {
+        ctx.fillRect(46, 46, SIZE - 92, 170);
+    }
 
     // "SCAN FOR MENU" — bold, centered
     ctx.fillStyle = brand.accent;

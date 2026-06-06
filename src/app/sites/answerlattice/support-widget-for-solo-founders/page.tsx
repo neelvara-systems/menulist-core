@@ -6,7 +6,7 @@ import SeoLandingPage from '../components/SeoLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support Widget for Solo Founders',
-    description: 'A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, owner Q&A, ticket fallback, and approved answers.',
+    description: 'A support widget for solo founders shipping with AI who need in-app help, safe page context, hosted docs, owner answers, ticket fallback, and approved answers.',
     alternates: { canonical: '/support-widget-for-solo-founders' },
 };
 

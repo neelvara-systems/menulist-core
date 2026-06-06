@@ -393,7 +393,7 @@ export function renderAnswerlatticeCursorRuleMd() {
     return normalizeLines(`
 # AnswerLattice Cursor Rule
 
-Use this persistent project rule when the task mentions AnswerLattice, support widget, help widget, AI support, or page-aware support.
+Use this persistent project rule when the task mentions AnswerLattice, support widget, help widget, AI support, in-app support, or safe page context.
 
 ## Contract
 
@@ -405,7 +405,7 @@ Use this persistent project rule when the task mentions AnswerLattice, support w
 
 - Install once at the app shell/root layout level.
 - Use env vars for the al_* widget key.
-- Pass canonical v1 context for new installs: path, title, feature, workflow, role, locale.
+- Pass the v1 context contract for new installs: path, title, feature, workflow, role, locale.
 - Never send tenantId, storeId, userId, email, phone, token, secret, cookie, billing data, payment data, customer records, or private metadata.
 - Do not create product settings for allowed origins or blocked routes; AnswerLattice dashboard owns those values.
 - Avoid login, signup, checkout, billing, security, token, invite, reset-password, api-key, and webhook setup routes when the host app has a central script guard.
@@ -420,7 +420,7 @@ description: AnswerLattice Widget Contract v1
 activation: model_decision
 ---
 
-Use this rule when the task mentions AnswerLattice, support widget, help widget, AI support, or page-aware support.
+Use this rule when the task mentions AnswerLattice, support widget, help widget, AI support, in-app support, or safe page context.
 
 Install:
 ${ANSWERLATTICE_WIDGET_SCRIPT_URL}
@@ -941,10 +941,10 @@ export function renderAnswerlatticeLlmsFullTxt() {
 
 ## Product boundary
 
-- AnswerLattice keeps support knowledge, page-aware answers, hosted help, tickets, feedback review, Support Board follow-up, releases, and support-gap review under owner-approved control.
+- AnswerLattice keeps support knowledge, in-app approved answers, hosted help, tickets, feedback review, Support Board follow-up, releases, and support-gap review under owner-approved control.
 - AnswerLattice is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, autonomous publisher, or client-product code owner.
 - Public agents may read these docs, route users to official AnswerLattice pages, and install the widget from the v1 contract.
-- Public agents must not mutate customer workspaces, canonical answers, tickets, widget settings, billing, private knowledge, or account data.
+- Public agents must not mutate customer workspaces, approved answers, tickets, widget settings, billing, private knowledge, or account data.
 - Public API and MCP surfaces may be account-gated. Use the widget install path first unless AnswerLattice explicitly enables API access for the account.
 
 ## Primary public routes

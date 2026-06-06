@@ -39,6 +39,7 @@ const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
     '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
     '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },
     '/use-menulist': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
+    '/assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' },
     '/use-menulist/print-assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' },
     '/use-menulist/menu-card-export': { tab: 'more', todayScreen: 'main', moreScreen: 'printMenu' },
     '/qr-code': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },

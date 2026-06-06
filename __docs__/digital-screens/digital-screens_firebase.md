@@ -2,22 +2,22 @@
 
 **Feature:** In-Store Digital Menu Screens (TV/Tablet Display)  
 **Status:** 🔒 **v2.2 LOCKED** (readability/reliability/owner-trust hardening only)
-**Last Updated:** June 2, 2026
+**Last Updated:** June 6, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 ---
 
 ## Summary
 
-- **Collections Used:** `platformSummary` (existing — `screen` field in `campaigns_{sId}` doc), `stores` (existing), `projects` (existing — menu item data)
-- **NO new collections created** — screen state lives inside existing `CampaignsSummaryDocument`
+- **Collections Used:** `platformSummary` (existing — `screen` field in `campaigns_{sId}` doc), `stores` (existing), `projects` (existing — fallback/source menu item data)
+- **NO new collections created** — screen state and generated available-item menu projection live inside existing `CampaignsSummaryDocument.screen`
 - **Storage Buckets:** `MenuListAi/platform_summary/screen_slides/` (owner uploads only)
 - **Cloud Functions:** None — all screen logic is SSR + client-side
 - **Real-time:** Firebase `onSnapshot` doc listener (not polling)
-- **Screen invalidation:** Public client cache invalidation touches `screen.contentVersion` only when an initialized screen token exists.
-- **Content normalization:** Text, price, category, tag, caption, and dedupe logic is CPU-only in the existing DAL/render path.
-- **Estimated Monthly Cost:** **~$0.41/month for 1000 screens**
-- **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same data pipeline, different client render)
+- **Screen invalidation:** Public client cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available.
+- **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
+- **Estimated Monthly Cost:** **~$0.27-$0.41/month for 1000 screens** depending on projection hit rate and menu-save frequency.
+- **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same menu data resolver, different client render)
 
 ---
 
@@ -27,15 +27,17 @@
 
 | Operation              | Collection        | Trigger               | Frequency      | Reads                         | Code Evidence                         |
 | ---------------------- | ----------------- | --------------------- | -------------- | ----------------------------- | ------------------------------------- |
-| Screen page load (SSR) | `platformSummary` | TV boot / 6hr refresh | ~4x/day/screen | 1 (query by token)            | `database/campaigns/index.ts:546`     |
-| Store data lookup      | `stores`          | Same as above         | ~4x/day/screen | 1 (doc get)                   | `database/campaigns/index.ts:566`     |
-| Menu items fetch       | `projects`        | Same as above         | ~4x/day/screen | 2 (metadata query + data get) | `database/campaigns/index.ts:617-641` |
+| Screen page load (SSR) | `platformSummary` | TV boot / 6hr refresh | ~4x/day/screen | 1 (query by token)            | `database/campaigns/serverScreen.ts`  |
+| Store data lookup      | `stores`          | Same as above         | ~4x/day/screen | 1 (doc get)                   | `database/campaigns/serverScreen.ts`  |
+| Project summary lookup | `platformSummary` | Missing/stale projection context, special menu active, or legacy projection without slug | As needed | 0-1 (skipped when valid projection includes base menu slug) | `database/campaigns/serverScreen.ts`  |
+| Menu projection hit    | `platformSummary` | Same as above         | ~4x/day/screen | 0 extra reads after screen doc | `screen/[token]/page.tsx`, `database/campaigns/serverScreen.ts` |
+| Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
 | onSnapshot initial     | `platformSummary` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx:180`               |
 | onSnapshot updates     | `platformSummary` | Content changes       | ~1-5x/day      | 1 per change                  | `ScreenDisplay.tsx:181-191`           |
 | Daily seen signal      | `platformSummary` | 1x/day/screen         | 1x/day         | 1 (direct doc get)            | `api/screen/seen/route.ts:44-53`      |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
-| Screen version touch   | `platformSummary` | Public menu cache invalidation | Per menu/store change where screen exists | 1 (direct doc get) | `lib/screen/screenInvalidation.ts` |
+| Screen version touch   | `platformSummary`, `projects` | Public menu cache invalidation | Per menu/store change where screen exists | 1 screen doc get; up to 2 projection rebuild reads | `lib/screen/screenInvalidation.ts` |
 
 ### Writes
 
@@ -47,7 +49,7 @@
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 1                             | `database/campaigns/index.ts:725` |
 | Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 1                             | `database/campaigns/index.ts:659` |
 | bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 1                             | `database/campaigns/index.ts:757` |
-| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 1 | `lib/screen/screenInvalidation.ts` |
+| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 1 update; may include refreshed `screen.menuProjection` | `lib/screen/screenInvalidation.ts` |
 
 ### Deletes
 
@@ -83,15 +85,15 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 
 ## Daily Cost Per Screen (Active)
 
-| Operation                       | Reads   | Writes | Mode     |
-| ------------------------------- | ------- | ------ | -------- |
-| TV boot (1x SSR + items)        | 4       | 0      | Both     |
-| onSnapshot initial + changes    | ~3      | 0      | Both     |
-| Daily seen signal               | 1       | 1      | Both     |
-| 6-hour proactive refreshes (3x) | 12      | 0      | Both     |
-| **Total per day**               | **~20** | **~1** | **Same** |
+| Operation                       | Reads     | Writes | Mode     |
+| ------------------------------- | --------- | ------ | -------- |
+| TV boot (1x SSR + items)        | 2-4       | 0      | Both     |
+| onSnapshot initial + changes    | ~3        | 0      | Both     |
+| Daily seen signal               | 1         | 1      | Both     |
+| 6-hour proactive refreshes (3x) | 6-12      | 0      | Both     |
+| **Total per day**               | **~12-20** | **~1** | **Same** |
 
-> **CRITICAL:** Menu Board mode and Highlights mode have **identical Firebase cost**. Both modes use the same server-side data pipeline (`getScreenDataByToken` + `getMenuItemsForScreen`). The only difference is which client component renders the data. No additional reads, writes, or storage.
+> **CRITICAL:** Menu Board mode and Highlights mode have **identical Firebase cost**. Both modes use the same server-side data pipeline (`getScreenDataByToken` + valid `screen.menuProjection` or `getMenuItemsForScreen` fallback). The only difference is which client component renders the data. No additional collections, indexes, functions, or storage.
 
 ---
 
@@ -99,18 +101,18 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 
 ### Per Screen
 
-- 20 reads × 30 days = 600 reads/month
+- 12-20 reads × 30 days = 360-600 reads/month
 - 1 write × 30 days = 30 writes/month
-- Cost: ~$0.0005/month per screen
+- Cost: ~$0.00027-$0.00041/month per screen
 
 ### At Scale
 
-| Scale          | Reads/month | Writes/month | Read Cost | Write Cost | **Total** |
-| -------------- | ----------- | ------------ | --------- | ---------- | --------- |
-| 100 screens    | 60,000      | 3,000        | $0.04     | $0.01      | **$0.05** |
-| 1,000 screens  | 600,000     | 30,000       | $0.36     | $0.05      | **$0.41** |
-| 5,000 screens  | 3,000,000   | 150,000      | $1.80     | $0.27      | **$2.07** |
-| 10,000 screens | 6,000,000   | 300,000      | $3.60     | $0.54      | **$4.14** |
+| Scale          | Reads/month      | Writes/month | Read Cost   | Write Cost | **Total**       |
+| -------------- | ---------------- | ------------ | ----------- | ---------- | --------------- |
+| 100 screens    | 36,000-60,000    | 3,000        | $0.02-$0.04 | $0.01      | **$0.03-$0.05** |
+| 1,000 screens  | 360,000-600,000  | 30,000       | $0.22-$0.36 | $0.05      | **$0.27-$0.41** |
+| 5,000 screens  | 1.8M-3M          | 150,000      | $1.08-$1.80 | $0.27      | **$1.35-$2.07** |
+| 10,000 screens | 3.6M-6M          | 300,000      | $2.16-$3.60 | $0.54      | **$2.70-$4.14** |
 
 **Storage:** ~1.5MB/store × stores with uploads (estimated <10%) = negligible
 
@@ -134,12 +136,13 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 | Client-side localStorage cache      | Survives offline, no extra reads | `ScreenDisplay.tsx:59-87`               |
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
 | **Vercel `unstable_cache` (OPT-6)** | **SSR reads cached 60s at edge** | `screen/[token]/page.tsx:31-41`         |
+| Generated screen menu projection | Avoids full project fallback reads on valid cold public renders; stores available display items plus base menu slug context | `CampaignsSummaryDocument.screen.menuProjection`, `screen/[token]/page.tsx` |
 | Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts` |
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
 
-> **OPT-6 (Added Feb 19, 2026):** Screen SSR data reads (`getScreenDataByToken` + `getMenuItemsForScreen`) are now wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share 1 cached Firestore result instead of 4 raw reads each. At 1000 screens doing 4 SSR/day, this reduces raw reads from ~16,000/day to near-zero on cache hits. Estimated savings: ~5.8M reads/year for 1000 screens.
+> **OPT-6 (Added Feb 19, 2026; updated Jun 6, 2026):** Screen SSR data reads (`getScreenDataByToken` + generated `screen.menuProjection` or `getMenuItemsForScreen` fallback) are wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share cached Firestore results instead of repeating raw reads. A valid projection with base menu slug context reduces the default cold raw public path from 4 reads to 2 reads before cache hits.
 
-> **June 2026 invalidation note:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion` and updates `screen.lastContentChangeAt`, adding one read and one write per public menu/cache invalidation event.
+> **June 2026 invalidation note:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion`, updates `screen.lastContentChangeAt`, and attempts to refresh `screen.menuProjection` from the automatic default project. Projection refresh can add up to 2 owner-side reads per invalidation, but removes repeated project reads from later cold public screen renders. If projection refresh fails, the public route falls back to the old project read path.
 
 ---
 
@@ -153,30 +156,30 @@ Menu Board mode adds **zero additional Firebase operations**. Here's why:
 v1.0 (Highlights only):                v2.0 (Menu Board + Highlights):
 
 page.tsx                               page.tsx
-  ↓ getScreenDataByToken() [2 reads]     ↓ getScreenDataByToken() [2 reads]     ← SAME
-  ↓ getMenuItemsForScreen() [2 reads]    ↓ getMenuItemsForScreen() [2 reads]    ← SAME
+  ↓ getScreenDataByToken() [2-3 reads]   ↓ getScreenDataByToken() [2-3 reads]   ← SAME
+  ↓ projection [0] or fallback [1+ read] ↓ projection [0] or fallback [1+ read] ← SAME
   ↓ generateScreenSlides()               ↓ IF highlights: generateScreenSlides()
   ↓ <ScreenDisplay />                    ↓ ELSE: group by category
                                         ↓ <MenuBoardDisplay /> or <ScreenDisplay />
 ```
 
-**The branching happens AFTER all Firebase reads.** Both modes read the same data. The difference is purely client-side rendering.
+**The branching happens AFTER menu data resolution.** Both modes read the same data. The difference is purely client-side rendering.
 
 ### Detailed Comparison
 
 | Operation                 | v1.0 (Highlights) | v2.0 (Menu Board) | v2.0 (Highlights) | Delta     |
 | ------------------------- | ----------------- | ----------------- | ----------------- | --------- |
-| `getScreenDataByToken()`  | 2 reads           | 2 reads           | 2 reads           | $0        |
-| `getMenuItemsForScreen()` | 2 reads           | 2 reads           | 2 reads           | $0        |
+| `getScreenDataByToken()`  | 2-3 reads         | 2-3 reads         | 2-3 reads         | $0        |
+| Projection/fallback menu data | 0-1+ reads   | 0-1+ reads        | 0-1+ reads        | $0        |
 | onSnapshot listener       | 1 read/connect    | 1 read/connect    | 1 read/connect    | $0        |
 | Daily seen signal         | 1 read + 1 write  | 1 read + 1 write  | 1 read + 1 write  | $0        |
-| 6-hour refresh            | 12 reads/day      | 12 reads/day      | 12 reads/day      | $0        |
+| 6-hour refresh            | 6-12 reads/day    | 6-12 reads/day    | 6-12 reads/day    | $0        |
 | Owner uploads (Storage)   | Max 3 images      | N/A (no uploads)  | Max 3 images      | $0        |
 | **Total delta**           | —                 | —                 | —                 | **$0.00** |
 
 ### Why Menu Board Doesn't Need More Data
 
-`getMenuItemsForScreen()` already fetches ALL menu items (not just top 3). In v1.0, the slide generator selects the top 3 bestsellers for evergreen slides. In v2.0 Menu Board mode, the same full item list is used — just rendered differently (all items instead of top 3).
+The menu data resolver already produces ALL menu items (not just top 3). In Highlights mode, the slide generator selects the top candidates for evergreen slides. In Menu Board mode, the same full item list is used — just rendered differently (all items instead of highlights).
 
 ### Two-Screen Scenario Cost
 
@@ -184,12 +187,12 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 
 | Metric                          | 1 Screen | 2 Screens | Delta     |
 | ------------------------------- | -------- | --------- | --------- |
-| Daily reads                     | ~20      | ~40       | +20 reads |
+| Daily reads                     | ~12-20   | ~24-40    | +12-20 reads |
 | Daily writes                    | ~1       | ~2        | +1 write  |
-| Monthly cost                    | $0.0005  | $0.0010   | +$0.0005  |
-| At 1000 stores (2 screens each) | —        | $0.82/mo  | +$0.41    |
+| Monthly cost                    | $0.00027-$0.00041 | $0.00054-$0.00082 | +$0.00027-$0.00041 |
+| At 1000 stores (2 screens each) | —        | $0.54-$0.82/mo | +$0.27-$0.41 |
 
-**Even with 1000 stores each running 2 screens, the total cost increase is $0.41/month.** This is negligible.
+**Even with 1000 stores each running 2 screens, the total cost increase is roughly $0.27-$0.41/month.** This is negligible.
 
 ### What Would Increase Cost (And We're NOT Doing It)
 
@@ -215,3 +218,4 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 | 4.1     | 2026-02-08 | Cascade | v2.2.2 REFACTOR — type consolidation + `guardedReload` extraction. `ScreenStoreInfo` now used in DAL return type. Zero Firebase cost impact (import-only changes)                       |
 | 4.2     | 2026-06-02 | Codex   | Added public-cache-linked screen content-version touch and screen SSR cache tag invalidation. No new collections, functions, rules, indexes, schedulers, or Storage paths.              |
 | 4.3     | 2026-06-02 | Codex   | Added content normalization for screen text, prices, categories, tags, captions, and dedupe. CPU-only; no Firebase cost impact.                                                           |
+| 4.4     | 2026-06-06 | Codex   | Added generated screen menu projection inside existing `screen` summary state. No new collection/index/function; public cold path uses projection when valid and falls back to project reads when stale. |

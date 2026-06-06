@@ -16,7 +16,7 @@ export default function SectionHeader({
     className = '',
 }: SectionHeaderProps) {
     return (
-        <div className={`mx-auto mb-10 max-w-3xl text-center ${className}`}>
+        <div className={`mx-auto mb-10 max-w-3xl text-center ${className}`} data-answerlattice-reveal>
             {eyebrow ? (
                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--al-primary-light)]">
                     {eyebrow}

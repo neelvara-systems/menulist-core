@@ -40,6 +40,9 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const feedbackQrSubtitle = storeName && storeName !== 'store'
+        ? `Scan to leave private feedback for ${storeName}`
+        : 'Scan to leave private feedback';
 
     const handleOpenModal = async () => {
         setIsModalOpen(true);
@@ -51,6 +54,8 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                     brandColor: storeBrandColor,
                     logoUrl: (storeDetails as any)?.logo || undefined,
                     storeName,
+                    subtitle: feedbackQrSubtitle,
+                    title: 'Feedback QR',
                     activePlanType: (storeDetails as any)?.activePlanType,
                 });
                 setQrDataUrl(dataUrl);

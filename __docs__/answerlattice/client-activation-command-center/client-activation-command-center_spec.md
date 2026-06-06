@@ -27,6 +27,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show license status from the store subscription summary.
 - Show whether the help center has published content.
 - Show whether product entities and active canonical answers exist, using trust summary counts.
+- Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
 - Avoid reading source KB, changelog, ticket, and signal collections.
 - Keep Firebase/cache implementation details out of the client-facing UI.
 
@@ -40,6 +41,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 ## Readiness Steps
 
 - Workspace created
+- Product details captured
 - License active
 - Knowledge imported
 - Help center ready
@@ -52,3 +54,16 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Page context received
 - Changelog published
 - Support signal loop tested
+
+## First-Client Launch Proof
+
+`summary.launchProof` is separate from the readiness score. It is stricter than basic setup because it is the gate for widening into connectors and distribution.
+
+Proof groups:
+
+- Self-serve setup: workspace, product profile, and license.
+- Knowledge and surfaces: imported content, help center, and product-surface mapping.
+- Ontology and canonical answers: product entities and active canonical answers.
+- Widget runtime proof: widget key, allowed origins, install telemetry, and page context.
+- Governance summaries: coverage, trust, and compiled context summaries.
+- Signal source test: fallback or ticket signal source visible before broader rollout; Signal Queue remains the confirmation surface for proposal quality.

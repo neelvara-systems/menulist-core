@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Proof Pack',
-    description: 'Example AnswerLattice workloads for SaaS and digital-product support: billing, onboarding, releases, errors, and support-gap review.',
+    description: 'Example AnswerLattice workloads for founder-led SaaS support: billing, onboarding, releases, errors, approved answers, and support-gap review.',
     alternates: { canonical: '/proof' },
 };
 
@@ -25,20 +25,20 @@ const EXAMPLES = [
         label: 'Solo SaaS launch',
         title: 'Billing and onboarding repeat questions',
         situation: 'A founder ships an AI-built app with no support team. Early users repeat invoice, import, and invite questions.',
-        answerlattice: 'Map billing, onboarding, and team settings surfaces. Import starter FAQs and support macros. Install the widget and verify context.',
+        answerlattice: 'Map billing, onboarding, and team settings surfaces. Import starter FAQs, support macros, and repeated replies. Install the widget and verify context.',
         outcome: 'Known questions receive approved answers. Missing answers become review work instead of disappearing into chat history.',
     },
     {
         label: 'Release-heavy product',
         title: 'Usage limit changes after a launch',
         situation: 'A product changes limits and users ask from billing, usage, and release pages why behavior changed.',
-        answerlattice: 'Connect changelog entries to affected surfaces, FAQs, and approved answers. Let drift and repeated misses surface review items.',
+        answerlattice: 'Connect changelog entries to affected surfaces, FAQs, and approved answers. Let stale answers and repeated misses surface review items.',
         outcome: 'The owner sees where support needs review after the release and can approve updated answers before they become official.',
     },
     {
         label: 'Studio workload',
         title: 'Multiple small apps need the same support pattern',
-        situation: 'A studio launches several SaaS apps and digital products and needs repeatable install, surface templates, and safety controls.',
+        situation: 'A studio launches several SaaS apps and needs repeatable install, surface templates, and safety controls.',
         answerlattice: 'Reuse quickstarts, starter templates, allowed origins, blocked routes, import packs, and the install verifier for each workspace.',
         outcome: 'Each product gets its own scoped support layer without hardcoded client assumptions or shared tenant leakage.',
     },
@@ -46,9 +46,9 @@ const EXAMPLES = [
 
 const METRICS = [
     ['First surfaces', 'Billing, onboarding, team, releases, integrations, errors'],
-    ['First content', 'Docs, FAQs, changelog, starter answers, support macros'],
+    ['First content', 'Docs, FAQs, changelog, starter answers, support macros, repeated replies'],
     ['First proof', 'Widget loaded, origin valid, route allowed, context arrived'],
-    ['First governance', 'Approved answers, missed questions, stale-answer review'],
+    ['First review loop', 'Approved answers, missed questions, stale-answer review'],
 ];
 
 export default function AnswerlatticeProofPage() {

@@ -2,7 +2,7 @@
 
 **Created:** January 4, 2026  
 **Status:** 🔒 **v2.2 LOCKED — Production complete. Only readability/reliability/scale fixes allowed.**  
-**Last Audit:** June 2, 2026 (owner setup, TV readability, and screen invalidation hardening)
+**Last Audit:** June 6, 2026 (screen menu projection and public read hardening)
 **Applies:** 3-Year Architecture Freeze Rule
 
 ---
@@ -13,7 +13,9 @@
 Server Component (page.tsx)
     ↓ fetches via DAL
 getScreenDataByToken(token) → platformSummary + stores (2 reads)
-getMenuItemsForScreen()    → project items (2 reads)
+project summary lookup       → automatic base menu + QR slug when projection context is missing (0-1 read)
+screen.menuProjection      → generated available menu items when version/project/slug context match (0 extra reads)
+getMenuItemsForScreen()    → project items fallback (usually 1 read after baseProjectId)
     ↓ generates slides (for highlights mode)
 generateScreenSlides()     → Owner Pinned + Campaign + Evergreen + Brand Fallback
     ↓ reads ?mode= query parameter
@@ -35,6 +37,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
 - **Menu source is automatic** — screens follow the store's active menu truth; no project picker
+- **Generated menu projection stays inside screen state** — no separate screen-menu document; cold public renders use `screen.menuProjection` only when it matches `baseProjectId`, base menu slug context, active special-menu state, and `contentVersion`; the stored projection contains display-eligible available items only.
 - **Owner-only override is real** — Highlights uses valid custom slides only when `ownerOverrideEnabled` is on, with brand fallback if all custom slides expire.
 - **Content is normalized before display** — screen extraction normalizes localized text, strips HTML-like/control text, parses currency-bearing prices, blocks technical category IDs, dedupes items, normalizes tags, and caps custom slide captions.
 - **Currency symbol follows store settings** — `ScreenStoreInfo.currencySymbol` is hydrated from the store document and passed to Menu Board / Highlights price renderers.
@@ -55,15 +58,15 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 ### Library (`src/lib/screen/` — 6 files)
 
 - `utils.ts` (~100 lines) — High-entropy screen token generation, URL builder, expiry helpers, `guardedReload(componentName)` shared reload throttle
-- `screenContent.ts` — Shared content normalization: text, truncation, price parsing, category fallback, image URL validation, tag normalization, diet tag detection, owner caption safety, item dedupe.
+- `screenContent.ts` — Shared content normalization and extraction: text, truncation, price parsing, category fallback, image URL validation, tag normalization, diet tag detection, owner caption safety, item dedupe, and capped screen menu projection payload.
 - `evergreenSlides.ts` (~95 lines) — `generateEvergreenSlides()`, `generateBrandFallback()` (imports `MenuItemForSlide` from `@type/campaigns`)
 - `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
-- `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first and never creates partial screen state.
+- `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first, never creates partial screen state, and materializes a compact default-menu projection when a screen already exists.
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
 
-- `page.tsx` (~90 lines) — Server component: DAL fetch, mode routing via `?mode=` query param
+- `page.tsx` (~90 lines) — Server component: DAL fetch, generated projection/fallback menu resolution, mode routing via `?mode=` query param
 - `ScreenDisplay.tsx` — **Highlights mode** client: rotation, cache-first, onSnapshot, seen signal, hero image slides, QR, capsule progress, screen-safe brand fallback
 - **`MenuBoardDisplay.tsx`** — **Menu Board mode** client: screen-grade full menu layout, ordered categories/items, price alignment, QR, progress bar, auto-pagination
 - `ScreenAttribution.tsx` — Shared quiet MenuList attribution used by both screen modes.
@@ -72,10 +75,12 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 
 - `src/app/api/screen/seen/route.ts` (79 lines) — Daily seen signal (1 write/day/screen)
 
-### DAL (`src/database/campaigns/index.ts:521-940` — 9 functions)
+### DAL (`src/database/campaigns/`)
 
-- `getScreenDataByToken(token)` — Public, query by token → screen + store + tenantId (2 reads)
-- `getMenuItemsForScreen(storeId, tenantId)` — Public, fetches items for evergreen slides (2 reads)
+- `serverScreen.ts` — Public server-side screen resolver for `/screen/[token]`, including token lookup, store lookup, automatic base menu context, projection context validation, and project-read fallback.
+- `getScreenDataByToken(token)` — Public, query by token → screen + store + automatic base menu context (2 reads on valid projection context, 3 reads on fallback)
+- `getMenuItemsForScreen(storeId, tenantId)` — Public fallback, fetches project items for evergreen slides/menu board when projection is missing or stale (usually 1 read after `baseProjectId`, more for special-menu overlay/fallback)
+- `index.ts` — Owner/session DAL for screen setup, settings, uploads, pinned slide management, and content-version bumps.
 - `getScreenState()` — Session required, returns DigitalScreenState
 - `initializeScreenState()` — First-time setup, generates 22-character high-entropy token
 - `updateScreenSettings()` — Toggle owner override
@@ -101,13 +106,16 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 Browser → /screen/[token] or /screen/[token]?mode=highlights
   → page.tsx (Server Component)
     → Read searchParams.mode (default: undefined = menu_board)
-    → getScreenDataByToken(token) [DAL — campaigns/index.ts:533]
+    → getScreenDataByToken(token) [DAL — campaigns/serverScreen.ts]
       → Query platformSummary where screen.screenToken == token [1 read]
       → getDoc(stores/{storeId}) [1 read]
+      → getDoc(platformSummary/projects_{storeId}) for automatic base menu + QR slug [1 read]
       → License check: active === false || blocked === true → null → 404
-    → getMenuItemsForScreen(storeId, tenantId) [DAL — campaigns/index.ts:602]
-      → Query projects/{tenantId}/{storeId}/metadata (active, !deleted) [1 read]
-      → getDoc projects/{tenantId}/{storeId}/{projectId} [1 read]
+    → getUsableScreenMenuProjection(screen.menuProjection)
+      → Use generated items when baseProjectId, activeSpecialMenuId, and contentVersion match [0 reads]
+      → Else getMenuItemsForScreen(storeId, tenantId) [DAL fallback]
+        → getDoc projects/{tenantId}/{storeId}/{projectId} [usually 1 read when baseProjectId is known]
+        → Active special-menu overlay/replace can read the special project and, for overlays, the base project
       → Extract and normalize items:
           name, imageUrl, price, available, isBestSeller,
           categoryName, categoryOrderIndex, orderIndex,
@@ -143,6 +151,7 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 Owner saves menu → bumpScreenContentVersion() [DAL]
   → OR public client cache invalidation → touchDigitalScreenContentVersion()
   → contentVersion++ in platformSummary/campaigns_{sId}
+  → screen.menuProjection refreshed from the automatic default menu when available
   → /api/revalidate/menu store invalidation also clears screen-data cache tag
   → onSnapshot fires on all connected screens for that store
   → newVersion > currentVersion → window.location.reload()
@@ -176,9 +185,10 @@ Owner edits item in Editor (price, name, availability)
   → save triggers public cache invalidation for the store
   → public cache invalidation calls touchDigitalScreenContentVersion() when screen exists
   → contentVersion++ in platformSummary/campaigns_{sId}
+  → screen.menuProjection refreshed inside the same existing screen summary doc when default menu data is available
   → onSnapshot fires on MenuBoardDisplay.tsx
   → newVersion > currentVersion → window.location.reload()
-  → page.tsx re-fetches getMenuItemsForScreen() → fresh menu data
+  → page.tsx uses matching screen.menuProjection, or falls back to getMenuItemsForScreen()
   → MenuBoardDisplay re-renders with updated categories/items/prices in menu order
 
 Owner marks item sold out
@@ -236,8 +246,9 @@ Any change to platformSummary/campaigns_{sId}
 | `ownerOverrideEnabled` | boolean       | "Only custom slides" toggle for Highlights                  |
 | `pinnedSlides`         | ScreenSlide[] | Max 3, 14-day expiry each                                   |
 | `screenLastSeenAt`     | Timestamp?    | Updated 1x/day by seen signal                               |
+| `menuProjection`       | object?       | Generated default-menu read model; capped available-item payload, `baseProjectId`, `baseProjectSlug`, active special-menu marker, `contentVersion`, `updatedAt` |
 
-`screen` does not store a project assignment. Menu resolution is store-level and automatic.
+`screen` does not store an owner-selected project assignment. Menu resolution remains store-level and automatic; `menuProjection.baseProjectId` and `baseProjectSlug` are generated only to prove the cached payload and QR/menu URL context match the current automatic source.
 
 ### Firestore Index
 
@@ -454,8 +465,8 @@ useEffect(() => {
 
 **$0 additional cost.** Menu Board uses the SAME data already fetched:
 
-- `getScreenDataByToken()` — same 2 reads
-- `getMenuItemsForScreen()` — same 2 reads
+- `getScreenDataByToken()` — same 2-3 reads, with valid projection context skipping the project summary read
+- `screen.menuProjection` — 0 reads when valid; `getMenuItemsForScreen()` fallback — usually 1 read after `baseProjectId`
 - No new collections, no new indexes, no new writes
 
 ### Testing Checklist (v2.0 additions)
@@ -525,7 +536,8 @@ useEffect(() => {
 1. `platformSummary/campaigns_{sId}` has `screen` field
 2. `screen.screenToken` is 22 characters (legacy stores may have 8-char tokens — both valid)
 3. `screen.pinnedSlides` array exists (may be empty)
-4. `screen.screenLastSeenAt` updates daily
+4. `screen.menuProjection` is optional; when present, `baseProjectId`, `activeSpecialMenuId`, and `contentVersion` must match the current screen data before public render uses it
+5. `screen.screenLastSeenAt` updates daily
 
 ---
 
@@ -558,3 +570,4 @@ The following historical docs are in `_archive/` — their content has been abso
 | 9.0     | 2026-03-15 | Cascade | **v2.3 HARDENING:** Token entropy (8→22 chars, ~130-bit). Reload jitter (`guardedReloadWithJitter`). MenuBoard: broken image fallback, listener offline+retry, sold-out messaging, MAX_TOTAL_ITEMS=200. Auto-fullscreen recovery (both modes). Settings: activity status indicator, Main TV/Second TV labels. All reliability/scale fixes per LOCKED rule |
 | 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                                                                              |
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual highlight labels, evergreen category variety, custom-slide artwork rendering, and sanitized owner captions.                                                                                                                              |
+| 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated `screen.menuProjection` inside existing screen summary state, shared extraction helper, validity guard, and project-read fallback for stale/missing projection data.                                                                                                                            |

@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Help Center and Tickets',
-    description: 'Operate AnswerLattice help center, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, conversations, Support Board, weekly support review, and workflow notifications from one support control layer.',
+    description: 'Operate AnswerLattice hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, conversations, Support Board, weekly support review, and workflow notifications from one connected support layer.',
     alternates: { canonical: '/product/support-control' },
 };
 
@@ -30,14 +30,14 @@ export default function SupportControlProductPage() {
                 canonicalPath="/product/support-control"
                 eyebrow="Help center and tickets"
                 title="Keep docs, FAQs, owner answers, releases, widget answers, tickets, and feedback connected."
-                description="AnswerLattice gives you a practical support layer for hosted help, page-aware answers, custom Q&A, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
+                description="AnswerLattice gives you a practical support layer for hosted help, in-app answers, custom owner answers, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
                 activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="Your support surfaces stay connected."
                 bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice keeps customer support connected by product surface."
                 bentoCards={[
                     { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content and hosted help.' },
-                    { title: 'FAQ management', description: 'Owner-written Q&A and article-backed FAQs give users short answers and keep related article context nearby.' },
+                    { title: 'FAQ management', description: 'Owner-written answers and article-backed FAQs give users short answers and keep related article context nearby.' },
                     { title: 'Changelog support', description: 'Release notes can stay connected to product surfaces and affected support answers.' },
                     { title: 'Feedback signals', description: 'Help Center feedback can be reviewed by owners, grouped by Product Surface, and synced into Support Board when it reveals a support gap.' },
                     { title: 'Safe ticket context', description: 'Tickets can include capped, sanitized debugging context to reduce back-and-forth.' },
@@ -49,11 +49,11 @@ export default function SupportControlProductPage() {
                 workflowSteps={[
                     { title: 'Publish help content', description: 'Create or import docs, FAQs, custom answers, and release notes for the hosted help center.' },
                     { title: 'Connect product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
-                    { title: 'Let widget answer first', description: 'Serve canonical answers, owner FAQ answers, and related support before fallback.' },
+                    { title: 'Let widget answer first', description: 'Serve approved answers, owner FAQ answers, and related support before fallback.' },
                     { title: 'Capture fallback tickets', description: 'When coverage is missing, route the user to a ticket with safe context.' },
                     { title: 'Review feedback', description: 'Use feedback, ratings, requests, and suggestions by Product Surface to spot support content gaps.' },
                     { title: 'Track selected follow-up', description: 'Use Support Board for private notes, status history, and answer-proposal handoff when an item needs owner review.' },
-                    { title: 'Notify the owner', description: 'Use Slack or email for test delivery, critical alerts, and digest-first governance summaries.' },
+                    { title: 'Notify the owner', description: 'Use Slack or email for test delivery, critical alerts, and digest-first support review summaries.' },
                     { title: 'Review weekly output', description: 'Use digest, board, and signal views to decide which support content needs owner attention.' },
                 ]}
             />

@@ -10,15 +10,22 @@ import { LuClock, LuLogOut, LuShield } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const ACCESS_STATUS_INTERVAL_MS = 30 * 1000;
+const ACCOUNT_ACCESS_ENDED_MESSAGE = 'Account access has ended';
 
 const getAccessEndedCopy = (reason?: string) => {
+    if (reason === 'HTTP_401') {
+        return {
+            description: 'Your session has expired for security reasons.',
+            title: 'Session Expired',
+        };
+    }
     if (reason === 'SESSION_REVOKED') {
         return {
             description: 'An owner signed this account out.',
             title: 'Signed Out',
         };
     }
-    if (reason === 'USER_INACTIVE' || reason === 'USER_DELETED') {
+    if (reason === 'USER_INACTIVE' || reason === 'USER_DELETED' || reason === 'USER_NOT_FOUND' || reason === 'USER_UNVERIFIED') {
         return {
             description: 'An owner changed this account access.',
             title: 'Access Ended',
@@ -154,8 +161,18 @@ export default function SessionExpiryMonitor() {
             });
             const data = await response.json().catch(() => ({}));
 
-            if (!response.ok || data?.valid === false) {
+            if (data?.valid === false) {
                 await endAccess(data?.reason || `HTTP_${response.status}`);
+                return;
+            }
+
+            if (response.status === 401) {
+                await endAccess('HTTP_401');
+                return;
+            }
+
+            if (response.status === 403 && data?.message === ACCOUNT_ACCESS_ENDED_MESSAGE) {
+                await endAccess(data?.reason || 'ACCOUNT_ACCESS_ENDED');
             }
         } catch {
             // Ignore transient network failures. The next focus/interval check will retry.

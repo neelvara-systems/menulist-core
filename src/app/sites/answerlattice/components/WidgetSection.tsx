@@ -38,7 +38,7 @@ const WIDGET_STATES = [
     {
         status: 'context',
         title: 'Pass page context',
-        detail: 'Safe route, feature, workflow, role, and plan hints make answers page-aware.',
+        detail: 'Safe route, feature, workflow, role, and plan hints make in-app support more relevant.',
         tone: 'neutral' as const,
         rows: [
             ['feature', 'billing'],
@@ -89,9 +89,9 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
         <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Page-Aware Widget"
+                    eyebrow="In-app help widget"
                     title="Put help inside the screen where users are stuck."
-                    description="Users ask from inside your app. AnswerLattice reads safe page hints, accepts explicit screenshot attachments when needed, finds canonical answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing."
+                    description="Users ask from inside your app. AnswerLattice reads safe page hints, accepts explicit screenshot attachments when needed, finds approved answers, owner FAQ answers, and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing."
                 >
                     <AnswerlatticeLink
                         basePath={basePath}

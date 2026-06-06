@@ -3,8 +3,8 @@ import { headers } from 'next/headers';
 import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
-    title: 'Support for AI-Built SaaS Founders',
-    description: 'AnswerLattice helps solo founders launch page-aware support, approved answers, and support-gap review for AI-built SaaS apps.',
+    title: 'Support for SaaS Founders',
+    description: 'AnswerLattice helps solo founders launch a support layer with in-app help, hosted help, approved answers, ticket fallback, and support-gap review.',
     alternates: { canonical: '/use-cases/founders' },
 };
 
@@ -22,7 +22,7 @@ export default function FoundersUseCasePage() {
             basePath={getBasePath()}
             canonicalPath="/use-cases/founders"
             eyebrow="For founders"
-            title="Support for founders launching AI-built SaaS apps."
+            title="Your product is live. Your support cannot be random."
             description="You built and shipped fast. AnswerLattice helps users get correct answers from billing, onboarding, settings, releases, and error pages while you keep building."
             problem="AI helps you create the product quickly, but users still need support, docs, answers, and fallback. Without a support layer, every repeated question comes back to you."
             question="Why did my invoice fail?"
@@ -37,7 +37,7 @@ export default function FoundersUseCasePage() {
                 'Approve the first answers from the review queue.',
             ]}
             primaryCta="Start support setup"
-            secondaryCta="Try page-aware demo"
+            secondaryCta="See demo"
         />
     );
 }

@@ -1,0 +1,147 @@
+# Printable Asset Templates - Spec
+
+## Executive Summary
+
+Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, full print menu, or complete Menu Kit - then chooses one of 9 finished template families and downloads the result.
+
+This is not a design editor. Owners do not choose fonts, move elements, tune spacing, or manage QR settings. MenuList handles those decisions and keeps every output printable, branded, and scan-safe.
+
+## Why This Matters
+
+Printed assets are often the first physical proof of a business. For a small restaurant, salon, spa, bakery, clinic, or service counter, a QR card on the table or counter can make the business feel current or careless. The owner should not need a designer for this.
+
+The current Print Assets screen proves the workflow. The next system must make the output selection feel like choosing from a professional catalog.
+
+## Goals
+
+| Goal | Meaning |
+| --- | --- |
+| Give owners real choice | Provide 9 polished template families instead of one look. |
+| Keep owner effort low | One asset type, one template, one download. |
+| Keep outputs consistent | The selected style family can apply across all asset types. |
+| Keep QR reliable | QR modules stay dark on white with required safe area. |
+| Keep Firebase cost low | Generation stays client-side using already-loaded data. |
+| Keep template additions easy | Add a template by registering a family and renderer support, not by adding one-off UI. |
+
+## Non-Goals
+
+| Not Included | Reason |
+| --- | --- |
+| Free-form editor | Too much owner responsibility and support risk. |
+| Font/color controls | Store color and logo already define brand identity. |
+| Generated Storage uploads | Adds cost and cleanup burden. |
+| Print ordering marketplace | Separate operational business, not needed for this feature. |
+| Designer marketplace | Scope creep and support burden. |
+| Public template browsing page | Owners need this inside dashboard, not a marketing gallery. |
+
+## Target Owner Flow
+
+1. Owner opens **Assets** from the dashboard navigation.
+2. Owner selects an active project when the store has multiple projects.
+3. Owner selects an asset type from the left rail.
+4. Owner sees 9 template families on the right.
+5. Owner previews one template.
+6. Owner clicks **Download**.
+7. MenuList creates the file locally and downloads it.
+
+## Route and Navigation
+
+| Surface | Decision |
+| --- | --- |
+| Desktop primary route | `/assets` |
+| Dashboard nav label | `Assets` |
+| Nav placement | Immediately after `Use MenuList` |
+| Compatibility route | `/use-menulist/print-assets` remains as a redirect or shell-compatible entry until old links are cleaned. |
+| Mobile entry | Existing mobile More/Share flow opens an in-shell Assets screen, not a desktop route. |
+
+## Asset Types
+
+| Asset Type | Output | Primary Use |
+| --- | --- | --- |
+| Print Menu | PDF | Full paper menu for print shop or in-house printing. |
+| Table Tent | PDF | Folded table display, readable from both sides. |
+| Single Table / Counter Card | PDF | Acrylic holder, counter stand, wall clip, or single-sided table card. |
+| Counter Sticker | PNG | Billing, pickup, service counter, reception desk. |
+| Entrance Poster | PDF | Door, window, host stand, entrance board. |
+| Feedback QR | PNG | Exit, counter, receipt stand, customer feedback prompt. |
+| Complete Menu Kit | ZIP | All print and social files in one download. |
+
+## Template Families
+
+Each family is a finished layout system that can adapt to different business types and asset sizes.
+
+| ID | Owner Label | Visual Direction | Best Fit |
+| --- | --- | --- | --- |
+| `classic-luxe` | Classic Luxe | Cream paper, gold rules, formal name lockup, bordered QR panel. | Restaurants, cafes, bakeries, salons. |
+| `executive-dark` | Executive Dark | Black/navy surface, gold accents, strong contrast, premium frame. | Fine dining, lounges, premium service businesses. |
+| `botanical-heritage` | Botanical Heritage | Deep green/cream, leaf accents, warm serif title. | Restaurants, wellness, spa, organic or local businesses. |
+| `modern-calm` | Modern Calm | White card, brand top band, soft accent pill, quiet footer. | Broad default for most SMBs. |
+| `brand-banner` | Brand Banner | Large top brand strip, centered logo badge, strong business name. | Businesses with strong logo/color identity. |
+| `soft-curve` | Soft Curve | Curved accent panels, light background, gentle section flow. | Beauty, wellness, boutique retail, family restaurants. |
+| `qr-first` | QR First | Large scan area, minimal copy, high contrast. | High-traffic counters and compact placements. |
+| `local-bold` | Local Bold | Big block title, brand-color banner, simple URL capsule. | Fast casual, takeout, quick-service, local shops. |
+| `clean-utility` | Clean Utility | Low ink, neutral border, simple text, printer-friendly. | Budget print, black-and-white backup, utility locations. |
+
+## Template Rules
+
+| Rule | Requirement |
+| --- | --- |
+| Dynamic data only | Store name, branch, logo, color, URL, copy, currency, and plan state come from live inputs. |
+| No fake placeholder content in output | Placeholder images/text may appear only in empty preview skeletons. |
+| QR modules stay dark | Brand colors may frame the QR but must not recolor QR modules unless scan-safety tests pass. |
+| Logo fallback | If no logo exists, render initials from the store name. |
+| Long names fit | Template must split or fit long names without overlap. |
+| Business type aware | Menu, service list, catalog, feedback, and scan copy use shared business-type labels. |
+| Premium branding policy | Premium hides visible MenuList branding when the existing flag permits it; all other plans show attribution. |
+| Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
+
+## Plan and Access
+
+The base system should avoid creating a new decision burden:
+
+| Plan | Access |
+| --- | --- |
+| Starter | Reliable templates: `modern-calm`, `qr-first`, `clean-utility`. |
+| Pro | All 9 template families and "Use this style for this download session". |
+| Premium | All Pro access plus visible MenuList attribution removal through the existing premium branding policy. |
+
+If plan gating is too much for first implementation, ship all 9 families first and enforce only premium attribution removal. Do not block QR reliability or core output quality by plan.
+
+## Market Research Notes
+
+Sources reviewed:
+
+- [MustHaveMenus QR Code Menu Table Card](https://www.musthavemenus.com/table-tent-template/qr-code-menu-table-card.html)
+- [VistaPrint Table Tents](https://www.vistaprint.com/marketing-materials/table-tents/)
+- [PosterMyWall QR menu template examples](https://id.postermywall.com/index.php/art/template/57f6557385da02d6c193efe9fbe09a61/qr-code-menu-template-design)
+- [Canva menu templates](https://www.canva.com/menus/templates/)
+
+Market pattern:
+
+| Observed Pattern | MenuList Decision |
+| --- | --- |
+| Template libraries give many styles. | Provide 9 governed style families. |
+| Print vendors focus on paper, stock, and uploaded designs. | Keep print instructions, but avoid becoming a print marketplace. |
+| General design tools expose too many edit controls. | Give finished templates, not a canvas editor. |
+| QR/table tent products emphasize easy scan placement. | Keep QR size, contrast, short link, and print-safe placement non-negotiable. |
+| Most tools are restaurant-heavy. | Make labels and copy business-type aware for wider SMB use. |
+
+## Success Metrics
+
+| Metric | Target |
+| --- | --- |
+| Owner can download one asset | Under 3 clicks after opening Assets. |
+| Template coverage | 9 families available in catalog. |
+| Runtime cost | No new Firestore reads/writes for normal generation. |
+| Mobile parity | Mobile and desktop produce the same file for the same asset/template/project. |
+| Scan reliability | QR contrast and safe-area verification pass for every template family. |
+| No hardcoded business output | Verification catches Habibis or restaurant-only text in template renderers. |
+
+## Open Questions
+
+| Question | Current Decision |
+| --- | --- |
+| Should selected style persist across devices? | No for now. Use query/session state to avoid Firestore writes. |
+| Should AI select the template? | Not required. Use deterministic local recommendation first; any paid advisor must be explicit and gated. |
+| Should website get a big section? | No. Keep website mention light until implementation is live. |
+| Should old Print Assets docs be merged? | No. This doc set stays separate until implementation is complete, then old docs can be cleaned. |

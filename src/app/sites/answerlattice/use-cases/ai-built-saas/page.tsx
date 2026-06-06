@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support for AI-Built SaaS Apps',
-    description: 'AnswerLattice helps AI-built SaaS products launch page-aware support, hosted help, custom owner Q&A, approved answers, ticket fallback, and reviewable support gaps.',
+    description: 'AnswerLattice helps AI-built SaaS founders launch a support layer with in-app help, hosted help, owner answers, approved answers, ticket fallback, and reviewable support gaps.',
     alternates: { canonical: '/use-cases/ai-built-saas' },
 };
 
@@ -22,8 +22,8 @@ export default function AiBuiltSaasUseCasePage() {
             basePath={getBasePath()}
             canonicalPath="/use-cases/ai-built-saas"
             eyebrow="For AI-built SaaS"
-            title="Support for AI-built SaaS apps."
-            description="You used AI to build faster. AnswerLattice helps you prepare support before first users arrive and before support materials fall behind."
+            title="Support users properly after building your SaaS with AI."
+            description="You used AI to build faster. AnswerLattice helps you launch a support layer before first users arrive and before support materials fall behind."
             problem="AI helps founders ship products quickly. But users still need help with setup, billing, settings, integrations, releases, and errors. That support layer often needs to be prepared before the app goes live."
             question="Users are stuck in onboarding. What should they do next?"
             genericAnswer="Read the setup guide or contact support."
@@ -37,7 +37,7 @@ export default function AiBuiltSaasUseCasePage() {
                 'Review missing-answer signals before publishing official answers.',
             ]}
             primaryCta="Start support setup"
-            secondaryCta="Try page-aware demo"
+            secondaryCta="See demo"
         />
     );
 }

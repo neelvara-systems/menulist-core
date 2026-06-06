@@ -1,7 +1,7 @@
 # Print Assets Mobile Support
 
 **Status:** Implemented
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 ## Admission Test
 
@@ -14,10 +14,10 @@
 
 ## Mobile Contract
 
-- Mobile route `/use-menulist/print-assets` stays inside `MobileShell`.
+- Mobile routes `/assets` and `/use-menulist/print-assets` stay inside `MobileShell`.
 - More tab opens `printAssets` sub-screen.
-- Share tab opens Print Assets through shell state, not `window.location`.
-- Print Assets opens Print Menu through `onOpenPrintMenu` shell callback, not route navigation.
+- Share tab opens Assets through shell state, not `window.location`.
+- Assets opens Print Menu through `onOpenPrintMenu` shell callback, not route navigation.
 - Menu tab opens Print Menu through `onOpenPrintMenu` shell callback after pending menu saves complete.
 - Mobile uses `MobileShareScreen` download handlers in focused mode.
 - Mobile and desktop use the same `generateMenuKit()` bundle output.

@@ -1,238 +1,221 @@
 # Answerlattice — Build Priority Roadmap
 
 > **Created:** 2026-03-07
-> **Sources:** Internal docs audit (5 documents) + Industry research (8 sources) + Codebase truth
-> **Purpose:** Single consolidated priority list for what to build next in Answerlattice
-> **Rule:** Prioritize by: (1) Can users USE the product? → (2) Can users TRUST the product? → (3) Can users LOVE the product?
+> **Last Updated:** 2026-06-06
+> **Sources:** Internal docs audit + codebase truth + Answerlattice doctrine + reviewed external expansion proposal
+> **Purpose:** Single consolidated priority list for Answerlattice activation, controlled rollout, and future expansion
+> **Rule:** Prove the governed answer loop before expanding integrations or distribution.
 
 ---
 
-## Current State (What's Built)
+## Current Runtime Truth
 
-Answerlattice has **complete backend infrastructure** across all 5 pillars:
+Answerlattice is no longer a backend-only system. The current codebase implements the base self-serve and governance stack:
 
-- ✅ Product Ontology (entity extraction, candidates, promotion, search index)
-- ✅ Canonical Answer Engine (3-layer deterministic retrieval, version-aware, scope-filtered)
-- ✅ Drift Governance (4 drift classes, nightly batch, auto-clearing)
-- ✅ Signal Mutation (signal emission, clustering, mutation proposals, human approval UI)
-- ✅ Nightly Scheduler (7-step batch: drift + resolution + mutation + coverage + fallback + impact + confidence)
-- ✅ Coverage KPI tracking
-- ✅ Activation Experiment Framework defined
+- Public website, static product demo, pricing/get-started/contact/resource pages.
+- Self-service onboarding, workspace profile, Activation Command Center, Install Center, and widget install verification.
+- Knowledge Intake / KB generation compatibility, product surfaces, FAQ, KB, changelog, ticket fallback, feedback, and hosted help.
+- Knowledge Intake now includes repeated reply import for one repeated user question plus one founder answer, producing FAQ and canonical proposal drafts without native inbox/helpdesk connectors.
+- Product ontology, entity candidates, canonical answers, drift governance, signal mutation, mutation proposal review, trust metrics, coverage KPI, weekly digest, and nightly scheduler.
+- Public API v1 routes for answers, entities, and signals, guarded by `ENABLE_ANSWERLATTICE_PUBLIC_API`.
+- Workflow integration infrastructure for governance events, with Slack/email self-service and Linear/GitHub controlled rollout.
+- Product friction intelligence, ticket-to-knowledge extraction, knowledge graph traversal, predictive support, compiled context bundles, and widget bundle bootstrap with caps/guards.
+- Advanced white-label branding, multi-language articles, guided workflows, MCP, and AI failure escalation code paths exist behind rollout flags.
 
-**What's NOT built:** Distribution layer. No way for SaaS founders (Answerlattice's ICP) to actually USE Answerlattice inside their own products.
+Important distinction:
 
----
-
-## Priority Tiers
-
-### Tier 0 — ACTIVATION (Do First, Before Any Features)
-
-These are **manual founder actions** that must happen before ANY feature work. No code needed.
-
-| #    | Action                                             | Doc Reference                                     | Status      |
-| ---- | -------------------------------------------------- | ------------------------------------------------- | ----------- |
-| 0.1  | Create Answerlattice Firebase project in GCP            | `doctrine/10-implementation-action-items.md` §1   | ⬜ NOT DONE |
-| 0.2  | Fill ANSWERLATTICE*FIREBASE*\* env vars (.env + Vercel) | `doctrine/10-implementation-action-items.md` §2-3 | ⬜ NOT DONE |
-| 0.3  | Move Cloud Functions to functions-answerlattice/        | `doctrine/10-implementation-action-items.md` §4-6 | ⬜ NOT DONE |
-| 0.4  | Deploy both function sets                          | `doctrine/10-implementation-action-items.md` §7   | ⬜ NOT DONE |
-| 0.5  | Enable `ENABLE_ANSWERLATTICE_NIGHTLY` (CF flag)         | `answerlattice-activation-clearance.md` §13            | ⬜ NOT DONE |
-| 0.6  | Enable `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`           | `answerlattice-activation-clearance.md` §13            | ⬜ NOT DONE |
-| 0.7  | Run entity extraction on KB articles               | `answerlattice-activation-clearance.md` §13            | ⬜ NOT DONE |
-| 0.8  | Approve 20-40 entity candidates                    | `answerlattice-activation-experiment.md` §5            | ⬜ NOT DONE |
-| 0.9  | Create 20-40 canonical answers                     | `answerlattice-activation-experiment.md` §5            | ⬜ NOT DONE |
-| 0.10 | Enable remaining Answerlattice flags one by one         | `answerlattice-activation-experiment.md` §5            | ⬜ NOT DONE |
-
-**Why first:** All backend infrastructure exists but has NEVER been activated. Zero real data. Must prove the system works with real traffic before building distribution layer.
+| Area | Runtime truth | Expansion stance |
+| --- | --- | --- |
+| First-client launch loop | Implemented but must be proven with real workspace data | Immediate priority |
+| Public API v1 | Implemented, default flag off | Roll out only after canonical coverage is proven |
+| Workflow integrations | Slack/email self-service; Linear/GitHub controlled | Keep bounded; no Jira shortcut |
+| Jira integration | No native Jira connector found in code/docs | New docs-first feature only after workflow-event loop is stable |
+| Helpdesk integrations | No native Zendesk/Intercom/Freshdesk/Help Scout connectors found | Start with export/import intake; native OAuth later |
+| Multi-channel distribution | Widget and hosted help are active | Expand only after source-of-truth quality is proven |
+| White-label / multi-language | Implemented but default off | Market expansion, not core activation |
 
 ---
 
-### Tier 1 — DISTRIBUTION (Required for Any External User)
+## Mandatory Execution Contract
 
-Without these, no SaaS founder can use Answerlattice. These are **adoption requirements**, not features.
+The next work must optimize for one proof:
 
-| #   | Feature                                           | Why Critical                                                                                                                                             | Effort | Source                                                                                                                                                        |
-| --- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
-| 1.1 | **Answerlattice Website (answerlattice.com)** ✅            | Product needs a public face. No one can discover/evaluate Answerlattice without a website.                                                                    | Medium | **DONE** (2026-03-07). 6 pages, shared components, Tailwind, dark theme, full SEO. Docs: `answerlattice-website/`                                                  |
-| 1.2 | **Embeddable Help Widget** ✅                     | 91% of users prefer in-app self-service (industry data). SaaS founders MUST embed help inside their product. Without widget, Answerlattice is dashboard-only. | High   | **DONE** (2026-03-07). Embed script + iframe page + public API + feature flag. Docs: `help-widget/`                                                           |     |
-| 1.3 | **Email Notifications (Tickets)** ✅              | Users have no way to know a ticket is answered. Universal standard — every support system has this. Without it, ticket system is broken.                 | Medium | **DONE** (2026-03-07). Generic notification service + 3 ticket templates + API route. Docs: `email-notifications/`                                            |
-| 1.4 | **Public API (Canonical Answers + Entities + Signals)** ✅ | SaaS founders need programmatic access. Without API, Answerlattice is locked inside dashboard. Prevents integration with Slack, custom systems, CI/CD.        | High   | **DONE** (2026-05-16). Flag-gated `al_*` API-key endpoints for canonical answers, entity registry, and signal ingestion. Docs: `public-api/`. |
-| 1.5 | **Multi-Tenant Onboarding Flow** ✅               | Currently Answerlattice has ONE tenant (MenuList). Need a way for external SaaS founders to sign up and configure their instance.                             | High   | **DONE** (2026-03-07). Self-service signup, Google OAuth, atomic provisioning, beta plan, API key gen. Docs: `client-onboarding/`                             |
+> A fresh Answerlattice workspace can move from setup to trusted answer improvement without manual repo intervention.
 
-**Industry validation:** Every KB platform compared in research (Zendesk, Intercom, Freshdesk, Document360, Help Scout, HelpCrunch, Pylon) ships with embeddable widget + API + email notifications as baseline. These are not differentiators — they are table stakes.
+That means this loop must work before Jira, native helpdesk connectors, broad API rollout, or extra distribution channels:
 
----
+1. Founder creates or opens an Answerlattice workspace.
+2. Workspace profile captures product URL, support email, billing model, and starting product context.
+3. Knowledge Intake adds source-backed product material.
+4. Product surfaces map routes, pages, workflows, entities, tags, articles, changelogs, and tickets.
+5. Entity candidates appear and are reviewed.
+6. Canonical answer drafts appear and are reviewed.
+7. Approved canonical answers serve through widget/help/API-compatible retrieval paths.
+8. Widget install is verified on a separate client surface with safe page context.
+9. Negative feedback, fallback, ticket, and escalation signals enter the signal queue.
+10. Mutation proposals and auto drafts remain human-reviewed before publish.
+11. Coverage, drift, trust, friction, and weekly digest surfaces show the system state from compact summaries.
 
-### Tier 2 — GOVERNANCE UX (Make the Backend Usable) ✅ COMPLETE
-
-Backend infrastructure works. Admin UX is minimal. These make governance practical for daily use.
-
-| #   | Feature                         | Why Important                                                                                                        | Effort | Status                                                                                                |
-| --- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------- |
-| 2.1 | **Canonical Answer Editor UI**  | Currently no UI to create/edit canonical answers. Must write directly to Firestore. Admin needs a structured editor. | Medium | ✅ **DONE** (2026-03-07). Full CRUD, entity binding, version mgmt, content editing, drift indicators. |
-| 2.2 | **Entity Management Dashboard** | No visual entity management. Need list view + create/edit/merge entities + see relationships.                        | Medium | ✅ **DONE** (2026-03-07). List/create/edit/deprecate, relations, search index, type filters, search.  |
-| 2.3 | **Drift Dashboard**             | Drifted answers visible via DAL only. Need visual dashboard showing drifted count per entity with drill-down.        | Medium | ✅ **DONE** (2026-03-07). 4-class breakdown, summary stats, resolve actions, re-evaluate on demand.   |
-| 2.4 | **Answer Usage Analytics**      | Track which canonical answers are served most/least/never. Identifies gaps and dead content.                         | Low    | ✅ **DONE** (2026-03-07). Usage ranking, content gaps, negative feedback, never-used detection.       |
-| 2.5 | **Entity Health Score**         | Composite score: signal rate + drift status + answer coverage. Quick view of ontology health.                        | Low    | ✅ **DONE** (2026-03-07). Weighted composite (coverage 40%, drift 30%, signal 20%, index 10%).        |
+No roadmap item may bypass human approval, tenant isolation, summary-backed reads, or canonical-first retrieval.
 
 ---
 
-### Tier 3 — SIGNAL QUALITY (Improve Governance) ✅ COMPLETE
+## Priority Sequence
 
-Improve the quality of signals and mutation proposals after real-world data proves the basic loop works.
-
-| #   | Feature                                | Why Important                                                                                       | Effort | Status                                                                                                  |
-| --- | -------------------------------------- | --------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
-| 3.1 | **Signal Severity Weighting**          | Currently all signal types equal. Escalations should weight 3x. Improves mutation proposal quality. | Low    | ✅ **DONE** (2026-03-07). Escalation=3x, Ticket=1.5x, Chat=1x weights in signalMutation.ts              |
-| 3.2 | **Signal Time Decay**                  | Recent signals weighted higher than old ones. Prevents stale signals from dominating clusters.      | Low    | ✅ **DONE** (2026-03-07). Exponential decay with 7-day half-life in signalMutation.ts                   |
-| 3.3 | **Batch Signal Count Queries**         | Currently N reads per entity in drift loop. Batch with `in` query for 10-30x read reduction.        | Medium | ✅ **DONE** (2026-03-07). getBatchSignalCounts() in signalEvents.ts, used by driftDetection.ts          |
-| 3.4 | **Canonical Answer Version History**   | Answer-level changelog. Proves governance rigor. Audit trail exists but no per-answer history view. | Low    | ✅ **DONE** (2026-03-07). getAnswerVersionHistory() DAL + AnswerVersionHistory.tsx UI in governance hub |
-| 3.5 | **Signal TTL (12-month auto-archive)** | Doctrine says archive > 12 months. No TTL implemented. Prevents unbounded signal growth.            | Low    | ✅ **DONE** (2026-03-07). `archiveExpiredSignals()` runs in the Answerlattice nightly scheduler with Admin SDK access       |
-
----
-
-### Tier 4 — COMPETITIVE DIFFERENTIATORS (Make Answerlattice Stand Out) — Partial ✅
-
-Only build AFTER Tiers 1-3 are solid.
-
-| #   | Feature                                            | Why Important                                                                                 | Effort | Status                                                                                                                           |
-| --- | -------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 | **White-Label / Custom Branding**                  | SaaS founders want brand-matched help center. Standard expectation for B2B.                   | Medium | ✅ **DONE** (2026-03-07). AnswerlatticeBrandingConfig type + WhiteLabelBranding.tsx settings UI. Flag: `ENABLE_ANSWERLATTICE_WHITE_LABEL`  |
-| 4.2 | **Multi-Language KB Articles**                     | 75% of internet users non-English. next-intl exists but articles English-only.                | Medium | ✅ **DONE** (2026-03-07). AnswerlatticeArticleTranslation type + MultiLanguageArticles.tsx UI. Flag: `ENABLE_ANSWERLATTICE_MULTI_LANGUAGE` |
-| 4.3 | **Live Chat / Agent Handoff**                      | AI can't solve everything. Users need real-time human escalation path.                        | High   | ⬜ DEFERRED — Requires proven demand from paying Answerlattice clients first                                                          |
-| 4.4 | **Canonical Answer Embeddings (Hybrid Retrieval)** | Generate embeddings for canonical answers. Enables hybrid deterministic + semantic retrieval. | Medium | ⬜ DEFERRED — Deterministic retrieval sufficient at current scale                                                                |
-
----
-
-### Tier 5 — FUTURE (Don't Build Until Demand Proven)
-
-| #   | Feature                               | Source                                                |
-| --- | ------------------------------------- | ----------------------------------------------------- |
-| 5.1 | In-App Onboarding Tours               | `doctrine/06-strategic-gap-analysis.md` Tier 2 Gap #5 |
-| 5.2 | Omnichannel (Email, Social, WhatsApp) | `doctrine/06-strategic-gap-analysis.md` Tier 2 Gap #8 |
-| 5.3 | Community Forum                       | `doctrine/06-strategic-gap-analysis.md` Tier 3        |
-| 5.4 | Status Page                           | `doctrine/06-strategic-gap-analysis.md` Tier 3        |
-| 5.5 | Canned Responses / Macros             | `doctrine/06-strategic-gap-analysis.md` Tier 3        |
-| 5.6 | CSAT Auto-Send after resolution       | `doctrine/06-strategic-gap-analysis.md` Tier 3        |
-| 5.7 | Ticket Auto-Close (stale)             | `doctrine/06-strategic-gap-analysis.md` Tier 3        |
+| Priority | Workstream | Status | Gate before widening scope |
+| --- | --- | --- | --- |
+| 1 | Self-serve foundation: website, demo, onboarding, workspace profile, Activation Command Center, Install Center, widget verification, dashboard readiness | Implemented; needs first-client proof | Fresh workspace completes setup without direct developer help |
+| 2 | Knowledge Intake and product setup: source intake, product profile, surface mapping, route/page/workflow context | Implemented; intake is the preferred setup path | Owner can add sources and publish reviewed outputs without hidden crawls or auto-publish |
+| 3 | Product ontology: entity extraction, candidate review, approval, relations, search index, feature/plan/role/workflow/integration/error modeling | Implemented | Entity candidates are approved and linked to real surfaces/content |
+| 4 | Canonical answers: editor, scopes, canonical-first retrieval, confidence, versioning, guided procedure model | Implemented; guided workflows default off | 5-10 high-traffic approved canonical answers resolve real questions |
+| 5 | Governance workflow: entity review, canonical answer review, mutation proposal review, drift, coverage, trust/readiness, weekly digest | Implemented | Governance queues are actionable and not noisy |
+| 6 | Signal mutation loop: feedback, negative feedback, fallback, repeated tickets, escalation signals, auto drafts, approval queue | Implemented with caps; AI escalation flag off | Repeated signals create useful proposals without auto-publishing |
+| 7 | Ticket-to-knowledge loop: resolved ticket clustering, reusable extraction, customer answer draft, KB/canonical proposal | Implemented with caps | Three-plus resolved tickets per entity produce useful reviewed proposals |
+| 8 | Product friction intelligence | Implemented and enabled with caps | Founder sees product-confusion areas without BI-style dashboards |
+| 9 | AI failure escalation | Implemented but default off | Enable only after search/ticket UX is verified for one workspace |
+| 10 | Public API v1 | Implemented but default off | Enable after canonical coverage, API keys, rate limits, and docs are verified for the target tenant |
+| 11 | Workflow integrations | Implemented with guards | Keep Slack/email self-service; Linear/GitHub controlled until secret lifecycle is production-safe |
+| 12 | Jira integration | Not implemented | Build only as a docs-first connector into the integration event and signal mutation system |
+| 13 | Helpdesk integrations | Not implemented as native connectors | Start with exported helpdesk history via Knowledge Intake before native OAuth/API sync |
+| 14 | Changelog-to-knowledge automation | Partially implemented through releases/surfaces/drift | Widen only after releases are consistently linked to entities and stale-answer review |
+| 15 | Knowledge graph traversal | Implemented and active with 1-hop summary-backed guards | Keep bounded; no visualization unless owner value is proven |
+| 16 | Predictive support | Implemented and active with cooldown/fail-closed guards | Keep rule-based and quiet; no prompt spam |
+| 17 | Content package generation | Not a standalone product surface yet | Generate drafts only from governed sources and review queues |
+| 18 | Team approval routing | Partially covered by staff access/governance roles | Add only when review volume requires routing by support/product/engineering/legal/billing |
+| 19 | Customer-facing distribution expansion | Widget/hosted help active; other channels not implemented | Expand only after answer source of truth is stable |
+| 20 | White-label and multi-language expansion | Implemented but default off | Enable after core workflow is selling and public surfaces consume the shared read model |
 
 ---
 
-## Permanently Rejected (Do Not Build)
+## Jira Rule
 
-From `answerlattice-strategic-improvements.md` §10 + `doctrine/02-non-goals-charter.md`:
+Do not build Jira as ticket sync.
 
-1. Ontology export format (no external consumers)
-2. LLM-based drift detection (violates doctrine — must be deterministic)
-3. Auto-approval of mutation proposals (violates human-in-the-loop invariant)
-4. Real-time drift detection (nightly batch is sufficient for SMB scale)
-5. Embedding-based entity matching as primary (deterministic index is primary per doctrine)
-6. Escalation signal weighting (no escalation flow exists yet)
-7. Cross-entity drift propagation (premature — basic drift not proven)
-8. Multi-language canonical answers (English KB only today — articles first)
-9. Entity relationship graph visualization (developer tool, not SMB ICP tool)
-10. Advanced ticket routing
-11. Agent gamification
-12. Marketing site feature explosion
-13. Compliance suite
-14. Marketplace integrations
-15. Fancy analytics dashboards
-16. AI rewriting everywhere
-17. PLG onboarding sprawl
+The only acceptable Jira flow is:
 
----
+1. Jira issue resolved.
+2. Map issue to a product entity or product surface.
+3. Check existing canonical answer and linked KB/help content.
+4. Detect missing, stale, or scope-conflicted knowledge.
+5. Generate a draft answer, article, support macro, or stale-answer review item.
+6. Send the draft to Governance.
+7. Publish only after approval.
 
-## Recommended Execution Order
+Implementation requirements before Jira starts:
 
-```
-PHASE 1: PROVE (Weeks 1-4)
-├── Tier 0: Activate on MenuList (manual founder steps)
-├── Run 4-week experiment per answerlattice-activation-experiment.md
-└── Collect data: hit rate, feedback delta, latency, drift rate
-
-PHASE 2: DISTRIBUTE (Weeks 5-12)
-├── 1.1: Answerlattice website (real content, not placeholder)
-├── 1.2: Embeddable help widget
-├── 1.3: Email notifications for tickets
-├── 1.4: Public API (KB + canonical answers + signals)
-└── 1.5: Multi-tenant onboarding
-
-PHASE 3: GOVERN (Weeks 13-18) ✅ COMPLETE (2026-03-07)
-├── 2.1: Canonical answer editor UI ✅
-├── 2.2: Entity management dashboard ✅
-├── 2.3: Drift dashboard ✅
-├── 2.4: Answer usage analytics ✅
-└── 2.5: Entity health score ✅
-
-PHASE 4: SHARPEN (Weeks 19-24) ✅ COMPLETE (2026-03-07)
-├── 3.1: Signal severity weighting ✅ (escalation=3x, ticket=1.5x, chat=1x)
-├── 3.2: Signal time decay ✅ (7-day half-life exponential)
-├── 3.3: Batch signal count queries ✅ (10-30x read reduction)
-├── 3.4: Answer version history ✅ (DAL + governance UI tab)
-├── 3.5: Signal TTL 12-month auto-archive ✅
-├── 4.1: White-label branding ✅ (AnswerlatticeBrandingConfig + settings UI)
-└── 4.2: Multi-language articles ✅ (AnswerlatticeArticleTranslation + management UI)
-```
+- Full feature doc set under `__docs__/answerlattice/jira-integration/`.
+- Feature flag in `src/config/features.ts`.
+- Server-side secret storage and redaction rules.
+- No raw Jira payloads in browser responses.
+- No direct canonical answer mutation.
+- No issue creation/comment bot unless a separate doctrine review approves that scope.
+- Firebase cost notes for imports, status sync, labels/signals, delivery logs, and retry behavior.
 
 ---
 
-## How This Consolidates All Existing Docs
+## Helpdesk Integration Rule
 
-| Existing Doc                                                  | Covered In                           |
-| ------------------------------------------------------------- | ------------------------------------ |
-| `answerlattice-strategic-improvements.md` §10 Remaining (5 items)  | Tiers 2-3 (#2.3, 2.4, 2.5, 3.3, 3.4) |
-| `answerlattice-activation-clearance.md` §13 Limitations (6 items)  | Tiers 0-2                            |
-| `answerlattice-activation-experiment.md` §9 Post-Experiment        | Tiers 2-3                            |
-| `doctrine/06-strategic-gap-analysis.md` Tier 1-3 (13 gaps)    | Tiers 1-5                            |
-| `doctrine/07-execution-roadmap.md` Q1-Q4                      | Mapped to Phases 1-4                 |
-| `doctrine/10-implementation-action-items.md` (8 manual steps) | Tier 0                               |
+Native helpdesk connectors are not the next step.
 
-**This document is now the SINGLE SOURCE OF TRUTH for Answerlattice build priorities.** Other docs remain as reference for design details and rationale.
+Day-one helpdesk history should enter through Knowledge Intake as owner-provided exports, CSV/JSON, macros, canned replies, repeated replies, or transcripts. Native Zendesk, Intercom, Freshdesk, or Help Scout OAuth/API connectors require a separate docs-first feature because they introduce credential scope, privacy, rate-limit, and retention risk.
+
+The acceptable helpdesk flow is:
+
+1. Import reviewed support history.
+2. Cluster resolved conversations by entity/surface.
+3. Extract reusable answer material.
+4. Generate customer-facing draft, support macro draft, KB update proposal, or canonical answer proposal.
+5. Send to Governance.
+6. Publish only after approval.
 
 ---
 
-## Industry Research Summary
+## Public API Rollout Gate
 
-### What Every KB Platform Ships With (Table Stakes)
+Public API v1 routes exist, but `ENABLE_ANSWERLATTICE_PUBLIC_API` remains off by default.
 
-- Embeddable widget (Document360, Intercom, Zendesk, Help Scout, Freshdesk)
-- API access (REST, GraphQL, or webhooks)
-- Email notifications on ticket updates
-- Multi-language support
-- Custom branding / white-label
-- Source-backed search
-- Analytics dashboard
+Before enabling it for a tenant:
 
-### What Answerlattice Has That NO Competitor Has
+1. Confirm at least one approved canonical-answer set for high-traffic entities.
+2. Confirm `al_*` key creation, hashing, scope validation, and rate limits.
+3. Confirm answer endpoint does not run expensive RAG fallback.
+4. Confirm entities endpoint reads capped approved ontology data only.
+5. Confirm signal ingestion writes low-payload `answerlattice_signalEvents` with tenant scope resolved from the key.
+6. Confirm public docs and quickstart do not market raw KB editing, ticket automation, or direct canonical mutation.
+7. Confirm usage logs and failure modes are visible without exposing secrets.
 
-- **Canonical Answer Engine** — Deterministic, versioned, entity-bound answers
-- **4-Class Drift Governance** — Detects stale answers automatically
-- **Signal Mutation Engine** — Converts support friction into knowledge proposals
-- **Product Ontology** — First-class product entities with relationships
-- **KB Generation Pipeline** — Upload files → AI generates articles
-- **Coverage KPI** — Measures canonical vs RAG ratio
+---
 
-### What Answerlattice Lacks That EVERY Competitor Has
+## What Not To Build Now
 
-1. Embeddable widget ← **Must build (Tier 1)**
-2. Email notifications ← **Must build (Tier 1)**
-3. Public API ← **Must build (Tier 1)**
-4. Multi-language ← ✅ **BUILT** (Phase 4)
-5. Live chat / agent handoff ← **Deferred** (Tier 4, needs demand)
-6. White-label ← ✅ **BUILT** (Phase 4)
+| Item | Decision | Reason |
+| --- | --- | --- |
+| Jira before governance proof | Reject | Jira is valuable only when it becomes trusted knowledge proposals |
+| Native helpdesk OAuth before export/import proof | Reject | Credential/privacy risk before intake loop is proven |
+| Helpdesk replacement features | Reject | Violates Answerlattice non-goals |
+| Live chat infrastructure | Reject for core roadmap | Operational support system, not governed answer infrastructure |
+| Broad multi-channel distribution | Defer | Spreads unreliable answers if source truth is not proven |
+| White-label/multi-language as core activation | Defer | Market expansion, not the first-client proof |
+| Autonomous publishing | Reject permanently | Violates governance invariant |
+| BI dashboards unrelated to support truth | Reject | Metrics must serve governance health |
 
-### Key Industry Stats (2025-2026)
+---
 
-- 91% of users prefer in-app self-service if accessible (Knowledge Base stats)
-- 85% of customer interactions handled without human agent by 2026 (Gartner)
-- 80% of common issues resolved by AI autonomously by 2029 (Research prediction)
-- Companies with robust KB see 15-30% ticket reduction (industry average)
+## Support Expansion Follow-Up Sequence
+
+This sequence was validated after the SupportLayer category comparison and is tracked in `support-expansion-sequence.md`.
+
+| Order | Item | Current status | Firebase posture |
+| --- | --- | --- | --- |
+| 1 | Repeated reply import to approved-answer draft | Implemented through Knowledge Intake | No new collection, Storage path, Cloud Function, scheduler, index, connector, or AI call |
+| 2 | Soft role-based answer approval | Next candidate after queue volume proof | Must reuse staff roles and governance docs before adding routing data |
+| 3 | Support gap to product task | Later | One-way sanitized handoff only; no workflow sync by default |
+| 4 | Email-to-support-gap | Later | Start with export/import; native inbox sync remains rejected until docs-first credential review |
+
+---
+
+## Documentation and Implementation Rules
+
+For any new roadmap item:
+
+1. Read doctrine first: `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`.
+2. Create or update the full feature doc set before code when the feature is new.
+3. Keep docs under `__docs__/answerlattice/[feature-name]/`.
+4. Use `ENABLE_ANSWERLATTICE_*` flags for rollout control.
+5. Keep Answerlattice data scoped by `pId`, `tId`, and `sId`.
+6. Use Answerlattice Firebase helpers and `functions-answerlattice/` for Answerlattice server work.
+7. Record every Firestore read/write/delete, Storage operation, Cloud Function trigger, rate limit, and retry path.
+8. Update this roadmap, `system-inventory/README.md`, the relevant feature docs, and `__docs__/CHANGELOG.md`.
+
+---
+
+## First Execution Target
+
+The next end-to-end work should be the sellable-launch proof, not a new connector.
+
+Checklist:
+
+- Fresh account completes onboarding.
+- Knowledge Intake accepts sources and creates review items.
+- Product surfaces are mapped.
+- Entity candidates and canonical drafts appear.
+- Owner approves at least one canonical answer.
+- Widget install is verified on a separate test client page.
+- Widget receives safe page context.
+- Feedback/fallback/ticket signals create reviewable proposals.
+- Weekly digest/trust/coverage views read compact summaries.
+- Activation shows `summary.launchProof` so first-client setup, knowledge, ontology, widget, governance-summary, and signal-source blockers are visible before connector rollout. Signal Queue still confirms generated proposal quality.
+- Public API remains off unless specifically selected for that tenant.
+- Jira/helpdesk native connectors remain out of scope.
 
 ---
 
 ## Version History
 
-| Date       | Change                                                                                                                                                                                                                                                                                                                                                     |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-03-07 | Initial consolidated roadmap from 5 internal docs + industry research                                                                                                                                                                                                                                                                                      |
-| 2026-03-07 | Phase 3 (GOVERN) — All 5 Tier 2 features implemented: Answer Editor, Entity Dashboard, Drift Dashboard, Answer Analytics, Entity Health Score. Feature flag: `ENABLE_ANSWERLATTICE_GOVERNANCE_UI`                                                                                                                                                               |
-| 2026-03-07 | Phase 4 (SHARPEN) — All 7 features implemented: Signal Severity Weighting (3.1), Time Decay (3.2), Batch Signal Queries (3.3), Answer Version History (3.4), Signal TTL (3.5), White-Label Branding (4.1), Multi-Language Articles (4.2). Feature flags: `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY`, `ENABLE_ANSWERLATTICE_WHITE_LABEL`, `ENABLE_ANSWERLATTICE_MULTI_LANGUAGE` |
+| Date | Change |
+| --- | --- |
+| 2026-06-06 | Added repeated reply import as the first SupportLayer-derived expansion item and documented the remaining follow-up sequence. |
+| 2026-06-06 | Added Activation-backed first-client launch proof so setup, knowledge, ontology, widget, governance summaries, and signal-source blockers are visible before connector rollout. |
+| 2026-06-06 | Rebuilt roadmap around current runtime truth and the first-client governed answer loop; added explicit Jira, helpdesk, Public API, distribution, white-label, and multi-language gates. |
+| 2026-03-07 | Initial consolidated roadmap from internal docs, industry research, and codebase truth. |
+| 2026-03-07 | Governance UI, signal quality, white-label, and multi-language implementation statuses recorded. |

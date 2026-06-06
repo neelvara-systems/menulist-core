@@ -1,10 +1,10 @@
 # Print Assets
 
-**Status:** Implemented
+**Status:** Freeze-ready
 **Owner:** MenuList
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
-Print Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, full menu PDF, and the complete Menu Kit bundle. It also shows print readiness, generated output preview, print-shop handoff text, and reprint guidance.
+Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, generated output preview, print-shop handoff text, and reprint guidance.
 
 ## Document Index
 
@@ -18,6 +18,7 @@ Print Assets is the focused owner workspace for every printable customer-facing 
 | [Firebase](./print-assets_firebase.md) | Cost model |
 | [Mobile Support](./print-assets_mobile-support.md) | Mobile admission and shell contract |
 | [Test Cases](./print-assets_test-cases.md) | QA checklist |
+| [Verification](./print-assets_verification.md) | Freeze-readiness evidence |
 
 ## Boundary
 

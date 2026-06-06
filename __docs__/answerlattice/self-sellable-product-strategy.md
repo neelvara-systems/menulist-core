@@ -1,7 +1,7 @@
 # Answerlattice — Self-Sellable Product Strategy and Task List
 
 > **Status:** Strategy Logged
-> **Last Updated:** 2026-05-24
+> **Last Updated:** 2026-06-06
 > **Owner:** Answerlattice Product
 > **Audience:** Product, Engineering, Website, Sales
 > **Doctrine:** Must follow `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`
@@ -93,6 +93,32 @@ Answerlattice should sell a simple promise:
    - show how much support is answered from approved knowledge
    - show where fallback reliance is still high
    - show which product surfaces are under-documented
+
+---
+
+## Expansion Execution Guardrail
+
+The self-sellable path must prove the first-client governed answer loop before adding new connector or distribution work.
+
+Required loop:
+
+1. Founder signs in and creates an Answerlattice workspace.
+2. Product profile captures product URL, support email, billing model, and starting product context.
+3. Knowledge Intake adds reviewed product sources.
+4. Product surfaces map routes, pages, workflows, entities, tags, articles, changelogs, and tickets.
+5. Entity candidates and canonical answer drafts appear in Governance.
+6. Owner approves canonical answers before they become active.
+7. Widget install is verified on a separate client page with safe page context.
+8. Feedback, fallback, tickets, and escalation signals create reviewable mutation proposals.
+9. Weekly digest, coverage, trust, drift, and friction surfaces read compact summaries.
+
+This means:
+
+- Do not build Jira before the canonical-answer, governance, and signal mutation loop is proven.
+- Do not add native helpdesk OAuth/API connectors before export/import through Knowledge Intake is proven.
+- Do not expand distribution channels until the source of truth is stable.
+- Keep Public API v1 off by default until a tenant has enough approved canonical coverage and verified API keys.
+- Keep white-label and multi-language as market-expansion controls, not the core launch proof.
 
 ---
 

@@ -416,6 +416,20 @@ export interface ScreenStoreInfo {
 }
 
 /**
+ * Compact generated menu payload for Digital Screens.
+ * Stored inside CampaignsSummaryDocument.screen to avoid reconstructing
+ * screen menu items from full project documents on every cold public render.
+ */
+export interface ScreenMenuProjection {
+    items: MenuItemForSlide[];
+    baseProjectId: string;
+    baseProjectSlug?: string;
+    activeSpecialMenuId?: string | null;
+    contentVersion: number;
+    updatedAt: Timestamp;
+}
+
+/**
  * Screen Slide - Individual slide in rotation
  * Per spec: 4-Layer Stack (Owner → Campaign → Evergreen → Brand)
  */
@@ -462,6 +476,7 @@ export interface DigitalScreenState {
     // Client checks version; if changed, force refresh immediately
     contentVersion: number; // Incremented on availability/menu change
     lastContentChangeAt: Timestamp; // For debugging
+    menuProjection?: ScreenMenuProjection; // Generated read model for cold SSR screen renders
 
     // Slides (computed, not stored permanently)
     // NOTE: These are regenerated on each summary sync

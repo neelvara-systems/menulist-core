@@ -54,11 +54,14 @@ Implemented day one:
 - summary-only nightly intake analytics through the existing Answerlattice master scheduler
 - platform-admin intake monitor that reads `answerlatticeTenantsSummary`, loads job/ledger details only for a selected workspace, and can trigger a selected-workspace Answerlattice nightly retry
 - source-backed draft review items for KB, FAQ, product surfaces, and canonical mutation proposals
+- guided repeated reply import that stores a `repeated_reply` source and creates focused FAQ/canonical proposal drafts without creating the default KB article draft
+- bounded repeated-reply entity autocomplete backed by the existing ontology search index, with no page-load entity fetch
 - publish into existing runtime collections with cache/source-version freshness updates
 
 Not implemented day one:
 
 - native helpdesk/OAuth connectors
+- email inbox sync or reply-template queues
 - background crawler, hidden failed-job retry, or scheduler import
 - raw file retention in Storage
 - automatic canonical answer publishing
@@ -122,7 +125,7 @@ export interface AnswerlatticeKnowledgeSource {
   sId: number;
   uId: string;
   intakeJobId: string;
-  sourceType: 'product_context' | 'url' | 'file' | 'image' | 'media' | 'transcript' | 'changelog' | 'helpdesk_export' | 'surface' | 'policy_pack' | 'manual_answer';
+  sourceType: 'product_context' | 'url' | 'file' | 'image' | 'media' | 'transcript' | 'changelog' | 'helpdesk_export' | 'surface' | 'policy_pack' | 'repeated_reply';
   sourceSubType?: string;
   sourceRole?: 'product_home' | 'pricing' | 'feature_page' | 'docs' | 'faq' | 'changelog' | 'legal' | 'security' | 'api_docs' | 'app_login' | 'other';
   title: string;

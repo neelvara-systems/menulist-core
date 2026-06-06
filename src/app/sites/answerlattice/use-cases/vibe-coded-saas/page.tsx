@@ -4,7 +4,7 @@ import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
     title: 'Support for Vibe-Coded SaaS Apps',
-    description: 'AnswerLattice helps vibe-coded and AI-built SaaS products launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps.',
+    description: 'AnswerLattice helps vibe-coded and AI-built SaaS products launch a support layer with in-app help, hosted help, approved answers, ticket fallback, and reviewable support gaps.',
     alternates: { canonical: '/use-cases/ai-built-saas' },
 };
 
@@ -23,7 +23,7 @@ export default function VibeCodedSaasUseCasePage() {
             canonicalPath="/use-cases/ai-built-saas"
             eyebrow="Campaign guide"
             title="Support for apps built fast with AI."
-            description="If your SaaS came together quickly with AI coding tools, AnswerLattice helps you prepare support before first users arrive and before tickets or approved answers fall behind."
+            description="If your SaaS came together quickly with AI coding tools, AnswerLattice helps you prepare a support layer before first users arrive and before tickets or answers fall behind."
             problem="Fast AI-assisted launches create a support gap. Users still need help with setup, billing, settings, integrations, releases, and errors, even when the product was built before a full help center existed."
             question="Users are asking questions before my support docs are ready. What should I launch first?"
             genericAnswer="Create a documentation site and add a chatbot later."
@@ -37,7 +37,7 @@ export default function VibeCodedSaasUseCasePage() {
                 'Review repeated misses before publishing official answers.',
             ]}
             primaryCta="Start support setup"
-            secondaryCta="Try page-aware demo"
+            secondaryCta="See demo"
         />
     );
 }

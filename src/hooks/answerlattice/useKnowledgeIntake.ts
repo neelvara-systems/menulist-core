@@ -5,12 +5,20 @@ import type {
     AnswerlatticeKnowledgeSource,
 } from '@type/answerlattice';
 import { message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type IntakeBundle = {
     job: AnswerlatticeKnowledgeIntakeJob | null;
     sources: AnswerlatticeKnowledgeSource[];
     reviewItems: AnswerlatticeIntakeReviewItem[];
+};
+
+export type KnowledgeIntakeEntityOption = {
+    id: string;
+    name: string;
+    type?: string;
+    description?: string;
+    status?: string;
 };
 
 const apiJson = async <T>(url: string, init?: RequestInit): Promise<T> => {
@@ -37,6 +45,7 @@ export function useKnowledgeIntake() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const entityOptionCacheRef = useRef<Map<string, KnowledgeIntakeEntityOption[]>>(new Map());
 
     const activeJob = bundle.job;
 
@@ -164,6 +173,21 @@ export function useKnowledgeIntake() {
         return data.links || [];
     }, []);
 
+    const searchEntityOptions = useCallback(async (queryText: string) => {
+        const normalizedQuery = String(queryText || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        if (normalizedQuery.length < 3) return [];
+
+        const cached = entityOptionCacheRef.current.get(normalizedQuery);
+        if (cached) return cached;
+
+        const data = await apiJson<{ entities: KnowledgeIntakeEntityOption[] }>(
+            `/api/answerlattice/knowledge-intake/entities?q=${encodeURIComponent(normalizedQuery)}`,
+        );
+        const entities = data.entities || [];
+        entityOptionCacheRef.current.set(normalizedQuery, entities);
+        return entities;
+    }, []);
+
     const analyzeJob = useCallback(async (jobId: string) => {
         setSaving(true);
         try {
@@ -248,6 +272,7 @@ export function useKnowledgeIntake() {
         refreshBundle,
         refreshJobs,
         saving,
+        searchEntityOptions,
         setActiveJobId,
         updateReviewItem,
     };

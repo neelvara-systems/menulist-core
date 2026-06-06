@@ -84,7 +84,7 @@ export default function AnswerlatticeQuickstartsPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Developer quickstarts</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Add page-aware support without building a support stack.
+                        Add in-app support without building a support stack.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
                         Use the v1 script once, then send safe page context from the app screens where users need help.

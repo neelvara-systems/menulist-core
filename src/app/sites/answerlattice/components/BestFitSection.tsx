@@ -22,7 +22,7 @@ const FIT_DECISIONS = [
     },
     {
         title: 'Review before authority',
-        detail: 'You want page-aware AI help, but official answers still need owner approval.',
+        detail: 'You want in-app AI help, but official answers still need owner approval.',
         label: 'fit',
         tone: 'good' as const,
     },
@@ -59,7 +59,7 @@ export default function BestFitSection() {
                 <SectionHeader
                     eyebrow="Best fit"
                     title="Best for founders preparing support early."
-                    description="AnswerLattice fits live, beta, and near-launch SaaS apps or digital products where users need clear help for billing, onboarding, settings, integrations, releases, or errors."
+                    description="AnswerLattice fits live, beta, and near-launch SaaS apps where users need clear help for billing, onboarding, settings, integrations, releases, or errors."
                 />
                 <AnswerlatticeDecisionGrid items={FIT_DECISIONS} />
             </div>

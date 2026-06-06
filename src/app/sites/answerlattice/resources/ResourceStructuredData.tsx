@@ -62,7 +62,7 @@ function buildResourceHubSchema() {
                 '@id': `${url}#webpage`,
                 url,
                 name: 'AnswerLattice Resources',
-                description: 'AnswerLattice resources for launch setup, widget install, safe context, support control, pricing, and governance.',
+                description: 'AnswerLattice resources for launch setup, widget install, safe context, support control, pricing, and support review.',
                 isPartOf: { '@id': `${ANSWERLATTICE_SITE_URL}/#website` },
                 publisher: { '@id': `${ANSWERLATTICE_SITE_URL}/#organization` },
                 breadcrumb: { '@id': `${url}#breadcrumb` },
@@ -151,4 +151,3 @@ export default function AnswerlatticeResourceStructuredData(props: Answerlattice
         />
     );
 }
-

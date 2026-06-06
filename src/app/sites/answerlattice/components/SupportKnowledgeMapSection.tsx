@@ -8,7 +8,7 @@ type SupportKnowledgeMapSectionProps = {
 const SOURCE_INPUTS = [
     {
         label: 'What you add',
-        detail: 'Selected product links, docs, files, FAQs, custom Q&A, changelogs, screenshots, short recordings, and common answers.',
+        detail: 'Selected product links, docs, files, FAQs, custom owner answers, changelogs, screenshots, short recordings, and common answers.',
     },
     {
         label: 'Where users ask',
@@ -16,7 +16,7 @@ const SOURCE_INPUTS = [
     },
     {
         label: 'What users get',
-        detail: 'Approved page-aware answers, owner Q&A, related help, or a ticket path.',
+        detail: 'Approved answers, owner answers, related help, or a ticket path.',
     },
 ];
 
@@ -27,7 +27,7 @@ const OUTPUT_SURFACES = [
     },
     {
         label: 'Hosted help and owner answers',
-        detail: 'Public docs, FAQs, release notes, custom Q&A, and approved answers stay connected.',
+        detail: 'Public docs, FAQs, release notes, custom owner answers, and approved answers stay connected.',
     },
     {
         label: 'Review and approval queue',
@@ -50,9 +50,9 @@ export default function SupportKnowledgeMapSection({
                     className="mb-12"
                     eyebrow="Support knowledge map"
                     title={isProduct
-                        ? 'One governed source behind every support surface.'
+                        ? 'One reviewed source behind every support surface.'
                         : 'Connect sources, app screens, and support answers in one map.'}
-                    description="Add selected public pages, docs, files, FAQs, custom Q&A, release notes, screenshots, short support recordings, and common answers. AnswerLattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
+                    description="Add selected public pages, docs, files, FAQs, custom owner answers, release notes, screenshots, short support recordings, and common answers. AnswerLattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
                 />
 
                 <div className="al-support-map" data-answerlattice-reveal>
@@ -99,7 +99,7 @@ export default function SupportKnowledgeMapSection({
                         </div>
                     </div>
 
-                    <div className="al-support-map__column" aria-label="Support surfaces and governance outputs">
+                    <div className="al-support-map__column" aria-label="Support surfaces and review outputs">
                         <div className="al-support-map__label">Outputs</div>
                         {OUTPUT_SURFACES.map((item, index) => (
                             <article key={item.label} className={`al-support-map__card al-support-map__card--output al-map-destination-pulse al-map-card-output-arrival-${index}`}>

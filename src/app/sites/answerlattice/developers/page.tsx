@@ -40,7 +40,7 @@ export default function AnswerlatticeDevelopersPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Developers</p>
                     <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Install page-aware support with one stable widget contract.
+                        Install the AnswerLattice widget with one stable contract.
                     </h1>
                     <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0]">
                         Developer docs stay focused on the public v1 widget, safe page context, dashboard-owned route controls, and verification. They do not expose private workspace data or dashboard APIs.

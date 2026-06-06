@@ -38,12 +38,12 @@ export default function KnowledgeGovernanceProductPage() {
                 bentoCards={[
                     { title: 'Product structure', description: 'Features, plans, roles, workflows, states, integrations, and errors can be treated as first-class support concepts.' },
                     { title: 'Approved before authority', description: 'Drafts and proposals do not become official answers until a human approves them.' },
-                    { title: 'Drift detection', description: 'AnswerLattice makes stale answers visible after releases, scope conflicts, or deprecated product behavior.' },
+                    { title: 'Stale-answer review', description: 'AnswerLattice makes stale answers visible after releases, scope conflicts, or deprecated product behavior.' },
                     { title: 'Coverage metrics', description: 'Owners can see whether important surfaces have enough approved answers.' },
                     { title: 'Trust readiness', description: 'Summary-backed metrics help the owner understand readiness without scanning raw logs.' },
                 ]}
                 workflowTitle="Turn support misses into approved product knowledge."
-                workflowDescription="Governance is the loop: approved answer first, fallback when needed, signal when weak, owner review, then a better answer for the next user."
+                workflowDescription="The review loop is simple: approved answer first, fallback when needed, signal when weak, owner review, then a better answer for the next user."
                 workflowSteps={[
                     { title: 'Serve approved answer first', description: 'If approved knowledge matches the page and scope, AnswerLattice uses it before fallback.' },
                     { title: 'Mark fallback clearly', description: 'Fallback is useful, but it is not treated as official support guidance.' },

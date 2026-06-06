@@ -17,9 +17,9 @@ const CHAPTER_COPY: Record<PreviewTab, {
 }> = {
     'Product setup': {
         kicker: 'Setup',
-        title: 'Start with launch readiness.',
-        description: 'Show buyers that AnswerLattice begins with product profile, starter knowledge, mapped surfaces, widget verification, and compiled context readiness.',
-        proof: ['Workspace ready', 'Sources in review', 'Context verified'],
+        title: 'Start with launch proof.',
+        description: 'Show buyers that AnswerLattice begins with product profile, starter knowledge, mapped surfaces, widget verification, governance summaries, and signal-source checks.',
+        proof: ['Workspace ready', 'Sources in review', 'Proof visible'],
     },
     'Key product pages': {
         kicker: 'Surfaces',
@@ -43,7 +43,7 @@ const CHAPTER_COPY: Record<PreviewTab, {
         kicker: 'Governance',
         title: 'Approve answers before they become authority.',
         description: 'The final chapter reinforces the core doctrine: fallback can create draft improvements, but approved answers stay human-reviewed.',
-        proof: ['Canonical-first', 'Drift visible', 'Owner approval'],
+        proof: ['Approved first', 'Stale answers visible', 'Owner approval'],
     },
 };
 
@@ -73,7 +73,7 @@ export default function ProductPreviewSection() {
                 <SectionHeader
                     eyebrow="Product proof"
                     title="Review the support loop before pricing."
-                    description="A controlled product preview shows setup readiness, mapped product pages, widget install, feedback review, and approved-answer review without turning the buyer journey into a flashy product tour."
+                    description="A controlled product preview shows launch proof, mapped product pages, widget install, feedback review, and approved-answer review without turning the buyer journey into a flashy product tour."
                 />
 
                 <div className="mx-auto max-w-6xl">

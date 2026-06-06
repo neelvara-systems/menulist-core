@@ -38,8 +38,8 @@ export default function AnswerlatticeResourceArticlePage({ articlePath }: { arti
             />
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
-                <section className="px-6 py-24">
-                    <div className="mx-auto max-w-5xl">
+                <section className="al-page-hero">
+                    <div className="al-page-hero__inner">
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/resources"
@@ -47,31 +47,31 @@ export default function AnswerlatticeResourceArticlePage({ articlePath }: { arti
                         >
                             Resources
                         </AnswerlatticeLink>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">
+                        <p className="al-page-hero__eyebrow">
                             Resource
                         </p>
-                        <h1 className="max-w-4xl text-4xl font-bold leading-tight sm:text-5xl">
+                        <h1 className="al-page-hero__title">
                             {article.title}
                         </h1>
-                        <p className="mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0]">
+                        <p className="al-page-hero__description">
                             {article.description}
                         </p>
                         <PageProofStrip
-                            className="mt-8 max-w-6xl"
+                            className="al-page-hero__proof max-w-6xl"
                             items={[
                                 { label: 'Reading time', value: article.readingTime },
                                 { label: 'Updated', value: article.updatedAt },
                                 { label: 'Action', value: article.primaryCta.label },
                             ]}
                         />
-                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                        <div className="al-page-hero__actions">
                             <AnswerlatticeLink
                                 basePath={basePath}
                                 href={article.primaryCta.href}
                                 data-answerlattice-event="resource_article_primary_cta_clicked"
                                 data-answerlattice-category={article.cluster}
                                 data-answerlattice-label={article.title}
-                                className="inline-flex justify-center rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
+                                className="al-page-hero__button al-page-hero__button--primary"
                             >
                                 {article.primaryCta.label}
                             </AnswerlatticeLink>
@@ -81,7 +81,7 @@ export default function AnswerlatticeResourceArticlePage({ articlePath }: { arti
                                 data-answerlattice-event="resource_article_get_started_clicked"
                                 data-answerlattice-category={article.cluster}
                                 data-answerlattice-label={article.title}
-                                className="inline-flex justify-center rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                                className="al-page-hero__button al-page-hero__button--secondary"
                             >
                                 Start setup
                             </AnswerlatticeLink>
@@ -200,4 +200,3 @@ export default function AnswerlatticeResourceArticlePage({ articlePath }: { arti
         </>
     );
 }
-

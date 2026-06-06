@@ -5,10 +5,10 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
         <section className="border-t border-white/[0.06] px-6 py-24">
             <div className="mx-auto max-w-3xl text-center">
                 <h2 className="text-3xl font-bold sm:text-4xl">
-                    Give your SaaS or digital product a support layer users can trust.
+                    Give your product users support they can trust.
                 </h2>
                 <p className="mt-4 text-lg text-[#a0a0c0]">
-                    Start with existing docs, notes, FAQs, releases, screenshots, recordings, and recurring questions. AnswerLattice turns them into page-aware support, hosted help, answer drafts, fallback signals, and review work.
+                    Launch with an in-app support widget, hosted help, approved answers, ticket fallback, and a review loop that keeps support knowledge current. Keep building your product while AnswerLattice handles the first layer of support.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
                     <AnswerlatticeLink
@@ -24,14 +24,14 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                         basePath={basePath}
                         href="/demo"
                         data-answerlattice-event="final_cta_clicked"
-                        data-answerlattice-label="try_page_aware_demo"
+                        data-answerlattice-label="see_demo"
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-medium text-[#a0a0c0] transition-all hover:border-white/[0.2] hover:text-white"
                     >
-                        Try page-aware demo
+                        View demo
                     </AnswerlatticeLink>
                 </div>
                 <p className="mt-6 text-xs text-[#505070]">
-                    Built for solo founders, small product teams, and studios managing multiple launches.
+                    Built for solo founders, small SaaS teams, and studios managing multiple launches.
                 </p>
             </div>
         </section>

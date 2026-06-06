@@ -93,7 +93,7 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
     {
         planId: 'answerlattice_growth',
         name: 'Growth',
-        description: 'For growing SaaS products that need surfaces, signals, and weekly governance.',
+        description: 'For growing SaaS products that need surfaces, signals, and weekly support review.',
         isRecommended: true,
         billingInterval: 'MONTH',
         priceINR: { price: 299900, monthlyCredits: 500 },
@@ -112,7 +112,7 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
     {
         planId: 'answerlattice_growth',
         name: 'Growth (Yearly)',
-        description: 'For growing SaaS products that need surfaces, signals, and weekly governance.',
+        description: 'For growing SaaS products that need surfaces, signals, and weekly support review.',
         isRecommended: true,
         billingInterval: 'YEAR',
         priceINR: { price: 2999000, monthlyCredits: 500 },

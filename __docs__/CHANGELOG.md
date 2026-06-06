@@ -6,6 +6,110 @@
 
 ---
 
+## June 6, 2026 — Answerlattice Repeated Reply Import
+
+### Changed
+
+- **Knowledge Intake accepts repeated replies** - Owners can paste one repeated user question and the answer they already send, then create review drafts from that source.
+- **Repeated replies can link entities through bounded search** - The repeated-reply form now searches existing product entities only when the owner types, instead of asking for raw IDs or loading the full ontology list.
+- **Repeated replies generate focused drafts** - The `repeated_reply` source type creates FAQ and canonical answer proposal drafts only, avoiding the default full KB article draft for this path.
+- **Governance stays mandatory** - Canonical proposal acceptance and publishing still require related entities and still land in mutation proposals for review instead of auto-publishing official answers.
+- **Support expansion sequence documented** - The post-SupportLayer sequence now records repeated reply import as item 1, with role-based approval, support gap to product task, and email-to-support-gap deferred behind governance proof.
+- **Website copy updated narrowly** - Knowledge Intake public copy now mentions repeated replies as owner-provided source material without claiming inbox sync, helpdesk connectors, or automatic replies.
+
+### Cost
+
+- **Bounded Firebase cost** - This adds no Firestore collection, Storage path, new Cloud Function, scheduler, Firebase rule, connector, or AI call. It reuses the existing Knowledge Intake source/review/publish paths, creates at most two review item docs per repeated reply source during analysis, and adds one entity search-index composite index so autocomplete reads stay proportional to matches instead of workspace size.
+- **Deploy note** - Local validation passed, but Answerlattice QA index/function deploy is blocked for the active account by Firebase/Cloud Resource Manager `403` permissions. Required commands are recorded in the repeated-reply Firebase doc and Answerlattice QA runbook.
+
+---
+
+## June 6, 2026 — Printable Asset Templates Implemented
+
+### Changed
+
+- **Assets route added** - Owners now have `/assets` as the dedicated print/download workspace, with `Assets` placed immediately after `Use MenuList` in dashboard navigation.
+- **Template catalog added** - The workspace exposes 7 asset types and 9 governed template families through centralized registries instead of hardcoded UI cards.
+- **Desktop and mobile share one renderer** - Desktop Assets, the compatibility `/use-menulist/print-assets` route, and the mobile More/Share Assets screen now call the same printable asset render adapter.
+- **Mobile stays inside the PWA shell** - `/assets` and `/use-menulist/print-assets` map into `MobileShell` More -> Assets, avoiding desktop route reloads.
+- **Verification guard added** - `scripts/verification/verify-printable-asset-templates.js` checks the route, catalogs, mobile shell mapping, and hardcoded sample-output guard.
+
+### Cost
+
+- **No Firebase cost change** - Asset selection, preview, and download remain client-side Canvas/jsPDF/QR/JSZip work with no new Firestore reads/writes, Storage uploads, Cloud Functions, rules, or indexes.
+
+---
+
+## June 6, 2026 — Printable Asset Templates Planning
+
+### Changed
+
+- **Printable Asset Templates are now documented as a separate feature** - The plan defines a dedicated Assets workspace, 9 governed template families, desktop/mobile behavior, Firebase cost rules, and the implementation path without merging it into the existing Print Assets docs.
+
+### Cost
+
+- **No Firebase cost change** - This is documentation and planning only. No route, UI, Firestore collection, Storage path, Cloud Function, rule, index, or generated asset storage changed.
+
+---
+
+## June 6, 2026 — Answerlattice Launch Proof Summary
+
+### Changed
+
+- **Activation now shows first-client launch proof** - The Activation Command Center renders `summary.launchProof` for setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source testing before connector rollout.
+- **Launch proof is summary-backed** - The proof is computed from the existing store and compact `platformSummary` reads already used by Activation.
+- **AnswerLattice public website copy matches the proof** - Launch Setup, product preview, system coverage, and Updates now describe first-client launch proof instead of only launch checklist/readiness.
+- **Feature docs match the runtime contract** - The Client Activation Command Center docs, roadmap, system inventory, and clearance notes now describe the proof field, cost behavior, mobile behavior, and test cases.
+
+### Cost
+
+- **No new Firestore reads or collections** - The launch proof adds no API route, listener, source collection scan, Firebase rule, index, Cloud Function, or feature flag. The activation snapshot may write only when the existing summary signature changes.
+
+---
+
+## June 6, 2026 — Answerlattice Expansion Order Guardrails
+
+### Changed
+
+- **Answerlattice roadmap now starts with first-client proof** - The build priority roadmap now requires onboarding, Knowledge Intake, product surfaces, entity review, canonical answer approval, widget install, signal mutation, and summary dashboards to work before widening integrations or distribution.
+- **Jira and helpdesk expansion are gated** - Jira must feed entity-bound knowledge proposals through Governance, and native helpdesk connectors must come after export/import through Knowledge Intake is proven.
+- **Rollout status is clearer** - Public API is documented as implemented but default-off, workflow integrations remain bounded, and AI escalation is marked implemented but rollout-gated.
+
+### Cost
+
+- **No Firebase cost change** - This is documentation and roadmap alignment only. No Firestore collection, Storage path, Cloud Function, API route, rule, index, or feature flag changed.
+
+---
+
+## June 6, 2026 — Print Output Visual Refinement
+
+### Changed
+
+- **Print cards use a stronger premium hierarchy** - Table tent and single table/counter card faces now use a brand top panel, logo/initials badge, separator-aware business name hierarchy, purpose pill, neutral QR panel, short-link capsule, and quiet MenuList attribution.
+- **QR panel treatment is cleaner** - Print and standalone QR cards now keep more space between the business name and CTA tag, and the QR panel uses a neutral border without colored corner brackets.
+- **Print card copy is business-type driven** - Table tent, single table/counter card, and related QR downloads now pass title and scan instruction from store/business-type context instead of composing menu-only copy inside the renderer.
+- **Standalone QR outputs use the same visual system** - Menu QR, OBP QR, mobile QR sheets, and feedback QR downloads now share the taller premium portrait treatment while keeping QR modules near-black on white for scan reliability.
+- **Verifier guards the new output contract** - The print/export verifier now checks the logo badge, name splitting, neutral QR panel, taller QR card, and standard canvas font-weight usage.
+
+### Cost
+
+- **No Firebase cost change** - This is client-side Canvas rendering and documentation only. No Firestore collection, Storage path, Cloud Function, API artifact route, rule, or index was added.
+
+---
+
+## June 6, 2026 — Print Assets Freeze Readiness
+
+### Changed
+
+- **Print Assets is marked freeze-ready** - The feature docs now record the final freeze gate for desktop Print Assets, mobile PWA Print Assets, Print Menu, Menu Kit print outputs, premium MenuList attribution policy, and lightweight website placement.
+- **Verification evidence is documented** - The Print Assets doc set now includes the exact automated checks used for the freeze decision.
+
+### Cost
+
+- **No Firebase cost change** - This is documentation status alignment. Generated print assets remain client-side and no Firestore collection, Storage path, Cloud Function, API artifact route, rule, or index was added.
+
+---
+
 ## June 5, 2026 — Website Setup Copy Consistency
 
 ### Changed

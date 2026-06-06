@@ -24,6 +24,7 @@ import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
 import { buildTelHref } from '@lib/phone/phoneNumber';
+import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
 
 /**
@@ -34,12 +35,12 @@ import { headers } from 'next/headers';
  * customer menu because that alias follows the current default menu without
  * tying app identity to a rename-prone project slug.
  */
-async function getStoreLevelStartUrl(store: any): Promise<string> {
-    if (!store?.storeId) return '/';
+async function getStoreLevelStartUrl(storeId: string | number): Promise<string> {
+    if (!storeId) return '/';
     try {
         const snap = await firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`projects_${store.storeId}`)
+            .doc(`projects_${storeId}`)
             .get();
         if (!snap.exists) return '/';
         const projects = parseSummaryProjects(snap.data());
@@ -92,7 +93,15 @@ export async function GET() {
         const pwaEnabled = store.pwaSettings?.enableInstallableApp !== false;
         if (!pwaEnabled) return emptyManifest();
 
-        const startUrl = await getStoreLevelStartUrl(store);
+        const getCachedStoreLevelStartUrl = unstable_cache(
+            getStoreLevelStartUrl,
+            ['customer-app-manifest-start-url'],
+            {
+                revalidate: 3600,
+                tags: [`menu-store-${store.storeId}`, `store-${store.storeId}`, 'client-stores'],
+            },
+        );
+        const startUrl = await getCachedStoreLevelStartUrl(store.storeId);
 
         const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
         const displayName: string = getStoreContextName(store, 'Menu');

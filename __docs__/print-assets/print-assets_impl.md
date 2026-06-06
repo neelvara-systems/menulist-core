@@ -1,11 +1,11 @@
 # Print Assets Implementation
 
 **Status:** Implemented
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 ## Architecture
 
-Print Assets is a route/screen layer over existing generators.
+Assets is a route/screen layer over existing generators. The older "Print Assets" name remains in compatibility docs and route names only.
 
 | Layer | File |
 | --- | --- |
@@ -13,8 +13,9 @@ Print Assets is a route/screen layer over existing generators.
 | Asset catalog | `src/lib/print-assets/printAssetCatalog.ts` |
 | Navigation helper | `src/lib/print-assets/navigation.ts` |
 | Owner print guidance | `src/lib/print-assets/ownerPrintGuidance.ts` |
-| Desktop route | `src/app/(main)/use-menulist/print-assets/page.tsx` |
-| Desktop UI | `src/components/templates/main-app/useMenuList/index.tsx` |
+| Dedicated desktop route | `src/app/(main)/assets/page.tsx` |
+| Compatibility desktop route | `src/app/(main)/use-menulist/print-assets/page.tsx` |
+| Desktop UI | `src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx` |
 | Mobile route mapping | `src/components/mobile/MobileShell.tsx` |
 | Mobile More entry | `src/components/mobile/screens/MobileMoreScreen.tsx` |
 | Mobile screen wrapper | `src/components/mobile/screens/MobilePrintAssetsScreen.tsx` |
@@ -43,21 +44,21 @@ Do not fork this wording between desktop and mobile. Do not add table-count or q
 
 ## Desktop Flow
 
-`/use-menulist/print-assets` renders `UseMenuList` in `print-assets` view and is guarded by `ENABLE_PRINT_ASSETS_ROUTE`. Desktop links use `buildPrintAssetsUrl(projectId)` so selected-project query handling is centralized. Use MenuList, Print Assets, and Print Menu transitions use `router.push(...)` with route builders, not `window.location`, so the dashboard does not perform a full document reload. The page reuses the same data loading, project selector, full Menu Kit ZIP generator, single Menu Kit asset generator, PDF export entry, feedback QR generator, brand color, logo, and plan data as the overview page.
+`/assets` renders the dedicated `PrintableAssetTemplatesRoute` workspace and is guarded by `ENABLE_PRINTABLE_ASSET_TEMPLATES`. `/use-menulist/print-assets` remains as a compatibility route and renders the same workspace while the new flag is enabled. Desktop links use route builders so selected-project query handling is centralized. Use MenuList, Assets, and Print Menu transitions use `router.push(...)`, not `window.location`, so the dashboard does not perform a full document reload. The page reuses the same data loading, project selector, full Menu Kit ZIP generator, single Menu Kit asset generator, PDF export entry, feedback QR generator, brand color, logo, and plan data as the overview page.
 
-Desktop Print Assets adds readiness, print-shop handoff, generated file preview, and reprint guidance. Preview actions call `generateMenuKitAsset()` with the same semantic key as Download, create a temporary browser blob URL, and open that generated output without uploading it.
+Desktop Assets adds template-family selection on top of readiness, print-shop handoff, generated file preview, and reprint guidance. Preview actions call the same shared renderer as Download, create a temporary browser blob URL, and open that generated output without uploading it.
 
-Use MenuList keeps an overview shortcut named Print Assets.
+Use MenuList keeps an overview shortcut named Assets.
 
 ## Mobile Flow
 
-Mobile route `/use-menulist/print-assets` maps to:
+Mobile routes `/assets` and `/use-menulist/print-assets` map to:
 
 ```ts
 { tab: 'more', moreScreen: 'printAssets' }
 ```
 
-`MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Individual file downloads and previews use `generateMenuKitAsset()` by key, matching desktop output without generating the full ZIP first.
+`MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Individual file downloads and previews use the shared printable renderer, matching desktop output without generating the full ZIP first unless the owner chooses Complete Menu Kit.
 
 Mobile preview opens in an in-shell popup for the generated blob and includes Open Full Preview / Download actions. It must not route to the desktop print-assets page from inside the PWA shell.
 

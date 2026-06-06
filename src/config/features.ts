@@ -1731,6 +1731,9 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_PRINT_MENU_SURFACES: true,
     ENABLE_PRINT_ASSETS_ROUTE: true,
+    ENABLE_PRINTABLE_ASSET_TEMPLATES: true,
+    PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'] as string[],
+    PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'] as string[],
 
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)
@@ -2260,6 +2263,25 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/knowledge-intake-command-center/
      */
     ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE: true,
+
+    /**
+     * Answerlattice Repeated Reply Import
+     *
+     * true: Owners can paste one repeated user question and the reply they
+     *       already send. Knowledge Intake stores it as a repeated-reply source
+     *       and prepares focused FAQ/canonical proposal drafts for review.
+     * false: Repeated-reply source creation is rejected; generic pasted notes
+     *        and ticket macros remain available through Knowledge Intake.
+     *
+     * Cost model: no native inbox/helpdesk connector, no AI call, no Storage,
+     * no scheduler, and no new collection. Uses existing Knowledge Intake source
+     * and review-item writes.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE = true
+     *
+     * @see __docs__/answerlattice/repeated-reply-import/
+     */
+    ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT: true,
 
     /**
      * Answerlattice Intake URL Discovery

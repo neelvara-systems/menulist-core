@@ -2,6 +2,7 @@ import type { MenuItemForSlide } from "@type/campaigns";
 
 const SCREEN_TEXT_MAX_DEFAULT = 120;
 const OWNER_CAPTION_MAX = 48;
+const SCREEN_MENU_PROJECTION_ITEM_LIMIT = 200;
 
 const LOCALIZED_TEXT_KEYS = [
     "en",
@@ -179,4 +180,63 @@ export function dedupeScreenMenuItems(items: MenuItemForSlide[]): MenuItemForSli
     }
 
     return ordered;
+}
+
+const withoutUndefined = <T extends Record<string, unknown>>(value: T): T => (
+    Object.fromEntries(
+        Object.entries(value).filter(([, entry]) => entry !== undefined),
+    ) as T
+);
+
+export function extractScreenMenuItemsFromProject(
+    projectData: any,
+    options: { limit?: number } = {},
+): MenuItemForSlide[] {
+    const extractedItems: MenuItemForSlide[] = [];
+    const itemLimit = Math.max(1, Math.min(options.limit || SCREEN_MENU_PROJECTION_ITEM_LIMIT, SCREEN_MENU_PROJECTION_ITEM_LIMIT));
+
+    for (const file of (projectData?.files || [])) {
+        const categories = Array.isArray(file?.extractedData?.data?.categories)
+            ? file.extractedData.data.categories
+            : [];
+        const categoryMap = categories.reduce((acc: Record<string, { name: string; orderIndex: number }>, category: any, index: number) => {
+            const categoryName = normalizeScreenCategoryName(category?.name, "");
+            if (category?.id && categoryName) {
+                acc[category.id] = {
+                    name: categoryName,
+                    orderIndex: Number.isFinite(Number(category?.orderIndex)) ? Number(category.orderIndex) : index,
+                };
+            }
+            return acc;
+        }, {});
+
+        const items = Array.isArray(file?.extractedData?.data?.items)
+            ? file.extractedData.data.items
+            : [];
+
+        for (const [index, item] of items.entries()) {
+            const itemName = resolveScreenText(item?.name);
+            if (!itemName) continue;
+
+            const itemDesc = resolveScreenText(item?.description) || undefined;
+            const parsedPrice = parseScreenPrice(item?.price);
+            const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
+
+            extractedItems.push(withoutUndefined({
+                id: item?.id || `item-${extractedItems.length}`,
+                name: itemName,
+                imageUrl: normalizeScreenImageUrl(item?.images?.[0]?.url),
+                price: parsedPrice,
+                available: item?.available !== false,
+                isBestSeller: item?.isBestSeller || false,
+                categoryName: categoryInfo?.name || normalizeScreenCategoryName(item?.category),
+                categoryOrderIndex: categoryInfo?.orderIndex,
+                orderIndex: Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : index,
+                description: itemDesc,
+                tags: normalizeScreenTags(item?.tags),
+            }));
+        }
+    }
+
+    return dedupeScreenMenuItems(extractedItems).slice(0, itemLimit);
 }

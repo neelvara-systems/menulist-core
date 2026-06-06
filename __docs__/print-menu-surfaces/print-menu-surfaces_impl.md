@@ -1,7 +1,7 @@
 # Print Menu Surfaces Implementation
 
 **Status:** Implemented
-**Last Updated:** June 4, 2026
+**Last Updated:** June 6, 2026
 
 ## Architecture
 
@@ -46,12 +46,22 @@ The single table/counter card renderer:
 
 | Element | Rule |
 | --- | --- |
-| QR | Near-black modules on white. No brand-colored QR by default. |
-| CTA | `OUR {MENU/SERVICES/CATALOG}` from business-type labels. |
-| Brand | Brand-color top band with a floating white rounded card, soft badge, and accent underline; brand color is used for framing, not QR modules. |
-| Store name | Fitted and truncated within safe width. |
-| Fallback | Short URL under the QR instruction. |
+| QR | Near-black modules on white, inside a neutral bordered panel. No brand-colored QR modules, QR border, or accent corner brackets by default. |
+| CTA | `printCardTitle` from business-type labels, for example `OUR MENU`, `OUR SERVICES`, `OUR CATALOG`, or `OUR OFFERINGS`. The renderer receives this as `actionLabel`; it does not compose copy internally. |
+| Instruction | `scanToView` from business-type labels, for example `Scan to view our full menu` or `Scan to view our services`. The renderer receives this as `instructionLabel`. |
+| Brand | Brand-color top band with a floating white card, logo/initials badge, CTA pill, and outer card accents; brand color is used for framing outside the QR panel. |
+| Store name | Fitted and truncated within safe width. Names with separators such as `Business - Branch` render as primary name plus accent subtitle. |
+| Fallback | Short URL under the QR instruction in a bordered capsule. |
 | Attribution | Hidden only for Premium stores through shared policy. |
+
+## Reference Adaptation Rules
+
+The June 6 visual pass adapted common premium print-card elements from owner-provided references:
+
+- keep: top accent panel, centered logo/initials badge, clear business hierarchy, purpose pill, protected neutral QR panel, short-link capsule, and quiet MenuList attribution
+- reject: blurred QR, QR embedded inside product mockup imagery, low-contrast tinted QR as default, oversized floating scan icons, and owner-facing design choices
+
+Standalone branded QR/feedback PNGs use the same hierarchy in `src/lib/utils/qrCode.ts` with a taller portrait card ratio. Table tent and single-card PDFs use `src/lib/print-menu-surfaces/templates/printMenuCardFace.ts`.
 
 ## Menu Kit Relationship
 

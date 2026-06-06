@@ -491,13 +491,15 @@ async function autoPromoteEntities(
                 // Create search index entry
                 const nameTokens = tokenize(candidate.name);
                 const descTokens = tokenize(candidate.description || '').slice(0, 10);
+                const normalizedTokens = Array.from(new Set([...nameTokens, ...descTokens]));
                 await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).add({
                     tId,
                     sId,
                     entityId: entityRef.id,
                     canonicalName: candidate.name,
                     synonyms: [],
-                    normalizedTokens: Array.from(new Set([...nameTokens, ...descTokens])),
+                    normalizedTokens,
+                    prefixTokens: buildPrefixTokens([candidate.name, ...normalizedTokens]),
                     weight: 1.0,
                     createdOn: Timestamp.now(),
                     modifiedOn: Timestamp.now(),
@@ -577,6 +579,21 @@ function tokenize(text: string): string[] {
         .split(/\s+/)
         .filter(t => t.length >= 2)
         .filter(t => !['the', 'a', 'an', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'and', 'or', 'not'].includes(t));
+}
+
+function buildPrefixTokens(values: string[]): string[] {
+    const prefixes = new Set<string>();
+    const tokens = Array.from(new Set(values.flatMap(value => tokenize(value)).filter(token => token.length >= 3)));
+    for (const token of tokens) {
+        const upperBound = Math.min(token.length, 18);
+        for (let length = 3; length <= upperBound; length += 1) {
+            prefixes.add(token.slice(0, length));
+            if (prefixes.size >= 80) return Array.from(prefixes);
+        }
+        prefixes.add(token);
+        if (prefixes.size >= 80) return Array.from(prefixes);
+    }
+    return Array.from(prefixes);
 }
 
 // ═══════════════════════════════════════════════════════════════

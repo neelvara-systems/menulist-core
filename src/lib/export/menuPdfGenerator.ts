@@ -63,6 +63,7 @@ export interface MenuPdfOptions {
     categories: Category[];
     showUpdatedOn?: boolean;
     updatedAt?: unknown;
+    styleId?: string;
 }
 
 export interface GeneratedPdf {
@@ -152,7 +153,7 @@ function buildCompatibilityStore(options: MenuPdfOptions): Record<string, any> {
 
 function normalizeSettings(options: MenuPdfOptions) {
     const preset = options.preset || 'home_print';
-    const initialSettings = buildDefaultSettings(preset, 'classic');
+    const initialSettings = buildDefaultSettings(preset, options.styleId || 'classic');
     const project = buildCompatibilityProject(options);
     const store = buildCompatibilityStore(options);
     const initialSource = buildPrintSource({
@@ -168,7 +169,7 @@ function normalizeSettings(options: MenuPdfOptions) {
         project,
         store,
         settings: {
-            ...autoDesign.settings,
+            ...(options.styleId ? initialSettings : autoDesign.settings),
             includeDescriptions: options.showDescriptions ?? autoDesign.settings.includeDescriptions,
             includeLogo: true,
             includeQr: options.showQrCode ?? autoDesign.settings.includeQr,

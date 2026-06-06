@@ -7,10 +7,10 @@ import {
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
 
 export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
-export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice — Page-Aware Support Answers for SaaS and Digital Products';
+export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - 24/7 Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice helps SaaS and digital-product teams turn docs, FAQs, release notes, screenshots, recordings, support notes, and recurring questions into approved page-aware answers for the app widget, hosted help, and support review queue.';
+    'AnswerLattice helps founder-led SaaS products manage support 24/7 with an in-app widget, hosted help center, FAQs, changelog, ticket fallback, feedback review, approved answers, and a weekly support review loop.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -29,7 +29,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | AnswerLattice',
-        description: 'Support layer for SaaS and digital products: knowledge intake, team access, widget, hosted help, feedback review, Support Board, custom owner Q&A, approved answers, and support-gap review.',
+        description: 'One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -43,14 +43,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/page-aware-widget',
         title: 'In-App Help Widget | AnswerLattice',
-        description: 'Install AnswerLattice as a page-aware widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, canonical answers, and owner FAQ answers before fallback.',
+        description: 'Install AnswerLattice as an in-app widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, approved answers, and owner FAQ answers before fallback.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | AnswerLattice',
-        description: 'Operate AnswerLattice help center, docs, FAQ, custom owner Q&A, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one support control layer.',
+        description: 'Operate hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one connected support layer.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -71,7 +71,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/demo',
         title: 'Demo | AnswerLattice',
-        description: 'See page-aware support in 60 seconds with static examples for billing, onboarding, settings, fallback, and support gaps.',
+        description: 'See the AnswerLattice support loop in 60 seconds: safe page context, approved answers, hosted help, ticket fallback, and reviewable support gaps.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -92,22 +92,36 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/use-cases',
         title: 'Use Cases | AnswerLattice',
-        description: 'Support use cases for AI-built SaaS apps across billing, onboarding, settings, releases, support fallback, and product errors.',
+        description: 'Support use cases for founder-led SaaS across billing, onboarding, settings, releases, approved answers, ticket fallback, and product errors.',
         priority: 0.86,
         changeFrequency: 'weekly',
     },
     {
         path: '/use-cases/ai-built-saas',
         title: 'Support for AI-Built SaaS Apps | AnswerLattice',
-        description: 'Launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps for apps built quickly with AI.',
+        description: 'Launch a support layer with in-app help, hosted help, approved answers, ticket fallback, and reviewable support gaps for SaaS apps built quickly with AI.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
     {
         path: '/use-cases/founders',
-        title: 'Support for AI-Built SaaS Founders | AnswerLattice',
-        description: 'Page-aware support, approved answers, and support-gap review for solo founders launching AI-built SaaS apps.',
+        title: 'Support for SaaS Founders | AnswerLattice',
+        description: 'Support layer for solo founders launching SaaS with in-app help, hosted help, approved answers, ticket fallback, and support-gap review.',
         priority: 0.78,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/use-cases/small-saas-teams',
+        title: 'Small SaaS Teams | AnswerLattice',
+        description: 'Support layer for small SaaS teams with in-app help, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review.',
+        priority: 0.78,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/use-cases/studios-agencies',
+        title: 'Studios and Agencies | AnswerLattice',
+        description: 'A repeatable first support layer for studios and agencies launching SaaS products with hosted help, widget support, ticket fallback, feedback review, and owner-approved answers.',
+        priority: 0.76,
         changeFrequency: 'monthly',
     },
     {
@@ -127,14 +141,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/use-cases/engineering',
         title: 'Engineering Teams | AnswerLattice',
-        description: 'A support layer with safe page context, widget controls, and governed retrieval.',
+        description: 'A support layer with safe page context, widget controls, and reviewed support answers.',
         priority: 0.74,
         changeFrequency: 'monthly',
     },
     {
         path: '/page-aware-support-widget',
-        title: 'Page-Aware Support Widget | AnswerLattice',
-        description: 'A page-aware support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, canonical answers, and owner FAQ answers before fallback.',
+        title: 'In-App Support Widget | AnswerLattice',
+        description: 'An in-app support widget for AI-built SaaS that uses safe product context, optional screenshot attachments, approved answers, owner FAQ answers, and ticket fallback.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -148,7 +162,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/support-widget-for-solo-founders',
         title: 'Support Widget for Solo Founders | AnswerLattice',
-        description: 'A support widget for solo founders shipping with AI who need page-aware help, optional screenshot context, hosted docs, ticket fallback, and approved answers.',
+        description: 'A support widget for solo founders shipping with AI who need in-app help, optional screenshot context, hosted docs, ticket fallback, and approved answers.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
@@ -192,14 +206,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/integrations',
         title: 'Integrations | AnswerLattice',
-        description: 'Slack and email workflow notifications for AnswerLattice support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
+        description: 'Slack and email workflow notifications for AnswerLattice support review: digest-first alerts, test delivery, compact health, and bounded delivery.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
     {
         path: '/resources',
         title: 'Resources | AnswerLattice',
-        description: 'AnswerLattice resources for founders launching support for SaaS apps and digital products: demo, fit, knowledge intake, feedback review, install, Support Board, runtime safety, pricing, and setup.',
+        description: 'AnswerLattice resources for founders launching support for SaaS apps: demo, fit, knowledge intake, feedback review, install, Support Board, runtime safety, pricing, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
@@ -227,21 +241,21 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/updates',
         title: 'Updates | AnswerLattice',
-        description: 'Recent AnswerLattice product updates across knowledge intake, launch setup, team access, widget runtime, feedback review, Support Board, compiled context, governance, and public website work.',
+        description: 'Recent AnswerLattice product updates across knowledge intake, launch setup, team access, widget runtime, feedback review, Support Board, compiled context, support review, and public website work.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
     {
         path: '/pricing',
         title: 'Pricing | AnswerLattice',
-        description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for SaaS and digital-product teams.',
+        description: 'Founder-friendly INR pricing, beta setup, support credits, intake media processing, and paid AnswerLattice plans for founder-led SaaS teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/roi-calculator',
         title: 'Support ROI Calculator | AnswerLattice',
-        description: 'Estimate repeated support questions, founder time saved, support value, and AnswerLattice plan fit for SaaS and digital-product support.',
+        description: 'Estimate repeated support questions, founder time saved, support value, and AnswerLattice plan fit for founder-led SaaS support.',
         priority: 0.76,
         changeFrequency: 'monthly',
     },
@@ -255,14 +269,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/get-started',
         title: 'Get Started | AnswerLattice',
-        description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for page-aware support.',
+        description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for in-app support.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/security',
         title: 'Security | AnswerLattice',
-        description: 'Security for AnswerLattice page-aware support: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
+        description: 'Security for the AnswerLattice support layer: safe page hints, explicit screenshots, bounded source intake, allowed origins, blocked routes, compiled context, scoped workspaces, role permissions, and owner-approved answers.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
@@ -276,14 +290,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | AnswerLattice',
-        description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, digital products, page-aware support, feedback review, Support Board, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/about',
         title: 'About | AnswerLattice',
-        description: 'AnswerLattice helps SaaS and digital-product teams keep support answers correct as products change.',
+        description: 'AnswerLattice helps founder-led SaaS teams support users with approved answers, hosted help, ticket fallback, feedback review, and reviewable support gaps.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },

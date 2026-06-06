@@ -428,6 +428,7 @@ export interface AnswerlatticeEntitySearchIndex extends AnswerlatticeDocumentIde
     canonicalName: string;
     synonyms: string[];
     normalizedTokens: string[];
+    prefixTokens?: string[];
     weight: number;
 
     createdOn?: Timestamp;
@@ -826,6 +827,24 @@ export interface AnswerlatticeActivationStep {
     costNote?: string;
 }
 
+export interface AnswerlatticeLaunchProofItem {
+    key: string;
+    title: string;
+    description: string;
+    status: AnswerlatticeActivationStepStatus;
+    actionLabel?: string;
+    route?: string;
+}
+
+export interface AnswerlatticeLaunchProofSummary {
+    ready: boolean;
+    score: number;
+    completeCount: number;
+    totalCount: number;
+    blockers: string[];
+    items: AnswerlatticeLaunchProofItem[];
+}
+
 export type AnswerlatticeSurfaceReadinessStatus = 'ready' | 'needs_mapping' | 'needs_articles' | 'open_signals';
 
 export interface AnswerlatticeSurfaceReadinessItem {
@@ -886,6 +905,7 @@ export interface AnswerlatticeActivationSummary {
         trustScore?: number | null;
     };
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
+    launchProof: AnswerlatticeLaunchProofSummary;
     steps: AnswerlatticeActivationStep[];
     readModel: {
         firestoreReads: number;
@@ -1600,6 +1620,7 @@ export const ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE = {
     FAQ: 'faq',
     CHANGELOG: 'changelog',
     TICKET_MACRO: 'ticket_macro',
+    REPEATED_REPLY: 'repeated_reply',
     PRODUCT_NOTE: 'product_note',
     FILE_TEXT: 'file_text',
     MARKDOWN: 'markdown',

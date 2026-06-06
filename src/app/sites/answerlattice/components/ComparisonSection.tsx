@@ -27,7 +27,7 @@ const COMPARISON_ROWS = [
         chatbot: 'No',
         helpdesk: 'Manual',
         kb: 'Manual',
-        answerlattice: 'Yes: drift and release-impact review',
+        answerlattice: 'Yes: stale-answer and release-impact review',
     },
     {
         feature: 'Turns misses into knowledge tasks',
@@ -41,21 +41,21 @@ const COMPARISON_ROWS = [
         chatbot: 'Conversation metrics',
         helpdesk: 'Ticket metrics',
         kb: 'Article counts',
-        answerlattice: 'Coverage, readiness, drift pressure, and failing surfaces',
+        answerlattice: 'Coverage, readiness, stale-answer pressure, and failing surfaces',
     },
     {
         feature: 'Human approval before truth',
         chatbot: 'Weak',
         helpdesk: 'Manual by agents',
         kb: 'Manual publishing',
-        answerlattice: 'Governed drafts and proposals before authority',
+        answerlattice: 'Reviewed drafts and proposals before authority',
     },
     {
         feature: 'Helps after releases',
         chatbot: 'Old answers can remain live',
         helpdesk: 'Tickets increase',
         kb: 'Docs become stale',
-        answerlattice: 'Flags answer drift and affected support content',
+        answerlattice: 'Flags stale answers and affected support content',
     },
 ];
 
@@ -66,8 +66,8 @@ export default function ComparisonSection() {
                 <SectionHeader
                     className="mb-12"
                     eyebrow="Why AnswerLattice"
-                    title="Chatbots answer. Helpdesks route. AnswerLattice keeps approved support correct."
-                    description="It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer."
+                    title="Widget, help center, tickets, and docs should not disagree."
+                    description="AnswerLattice sits behind your help center, widget, tickets, and release notes as a reviewed support layer."
                 />
 
                 {/* Comparison table */}

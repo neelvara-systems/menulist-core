@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.72
-> **Last Updated:** 2026-06-05
+> **Version:** 1.2.77
+> **Last Updated:** 2026-06-06
 > **Audience:** Developers
 
 ---
@@ -66,7 +66,7 @@ src/app/sites/answerlattice/
 ├── styles.css                     # Root-loaded Tailwind directives, scoped CSS variables, light/dark compatibility rules, and section rhythm
 ├── scroll-reveal.css              # Root-loaded AnswerLattice viewport reveal motion with reduced-motion support
 ├── page.tsx                       # Homepage (server component)
-├── home/page.tsx                  # Internal root-rewrite wrapper for the homepage; public canonical URL remains /
+├── home/page.tsx                  # Legacy homepage alias wrapper; middleware routes public / and /home to page.tsx
 ├── not-found.tsx                  # 404 page
 ├── productAreas.ts                # Shared product-area navigation and descriptions
 ├── product/page.tsx               # Product deep-dive
@@ -90,6 +90,8 @@ src/app/sites/answerlattice/
 ├── use-cases/ai-built-saas/page.tsx # AI-built SaaS use-case page
 ├── use-cases/vibe-coded-saas/page.tsx # Canonicalized campaign alias to AI-built SaaS use case
 ├── use-cases/founders/page.tsx    # Founder use-case page
+├── use-cases/small-saas-teams/page.tsx # Small SaaS team use-case page
+├── use-cases/studios-agencies/page.tsx # Studio and agency use-case page
 ├── use-cases/support-teams/page.tsx # Support team use-case page
 ├── use-cases/product-teams/page.tsx # Product team use-case page
 ├── use-cases/engineering/page.tsx # Engineering use-case page
@@ -141,7 +143,7 @@ src/app/sites/answerlattice/
 ├── systemCoverage.ts              # Code-backed system coverage groups for homepage
 └── components/
     ├── Header.tsx                 # Shared header with desktop nav and right-side mobile drawer
-    ├── Footer.tsx                 # Shared footer with link columns, placeholder social icons, and bottom theme switcher
+    ├── Footer.tsx                 # Shared footer with public-route link columns and bottom theme switcher
     ├── AnswerlatticeThemeProvider.tsx # Light/System/Dark provider with AnswerLattice-scoped persistence and browser theme-color updates
     ├── AnswerlatticeThemeSwitcher.tsx # Shared icon segmented control for Light/System/Dark
     ├── AnswerlatticeAssetImage.tsx    # Shared raster screen-asset renderer that preserves intrinsic dimensions
@@ -212,6 +214,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
 - `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
 - header links include `/demo`, the desktop Product dropdown uses compact title-only rows for product areas and features, and the desktop Resources navigation now uses the same compact title-only overview-plus-guides pattern for high-priority resource articles plus the resources hub
+- header mobile navigation is client-gated to confirmed sub-1280px viewports so the hamburger trigger does not appear beside desktop navigation on wide screens
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
 - `/security` uses a trust-page shape of facts, controls, and disclosure while keeping AnswerLattice-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
@@ -219,12 +222,13 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - `/product`, `/get-started`, `/about`, and `/contact` no longer use enterprise/design-partner-first copy
 - `/contact` now uses an AnswerLattice-owned inquiry form plus direct email, partnership, and security paths. It does not reuse another product's public enquiry storage.
 - footer links only target public website routes; public legal links now resolve to real pages
-- footer brand column exposes placeholder social icon links for LinkedIn, X, Instagram, YouTube, and GitHub; the shared theme switcher lives in the bottom footer strip
+- footer public-route discovery is intentionally broad: Product, Features, Evaluate, Resources, and Trust columns expose the implemented product-area, product-feature, use-case, resource, setup, security, proof, and legal pages without placeholder social links
 - AnswerLattice product domains serve AnswerLattice-owned `/sitemap.xml` and `/robots.txt`
 - homepage emits Organization, WebSite, and SoftwareApplication structured data
 - AnswerLattice website layout sets AnswerLattice metadata, manifest, icons, OS-aware theme-color metadata, and a pre-hydration theme bootstrap so public pages do not inherit root app title metadata or flash the wrong browser chrome color.
 - `theme.ts` is the public website theme contract. It keeps the verdigris primary, dark/light backgrounds, surface/border tokens, text colors, success/warning/danger colors, theme storage key, and browser theme colors in one source for metadata-adjacent, inline-style, and provider usage.
 - Mobile drawer and footer expose the shared `AnswerlatticeThemeSwitcher`, so public pages keep a visible Light/System/Dark control without crowding the desktop header or adding page-local implementations.
+- `styles.css` owns the shared non-home route hero treatment through `.al-page-flow` and `.al-page-hero`: centered heroes align the eyebrow, title, subheading, CTAs, and proof strip; split heroes keep the same type scale, color tokens, and spacing while preserving their copy/media layout. `.al-home-flow` is intentionally excluded from these generic non-home overrides.
 - copy differentiates AnswerLattice from helpdesks, chatbots, and documentation CMS products without claiming to replace them
 - May 22 refresh changed the hero from page-aware support copy to the implemented governed answer infrastructure category.
 - Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped AnswerLattice billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
@@ -308,6 +312,8 @@ answerlattice.com/*  →  middleware  →  /sites/answerlattice/*        (produc
 ecomsai.com/*   →  middleware  →  /sites/answerlattice/*        (Vercel Preview / QA)
 localhost/__answerlattice/*  →  middleware  →  /sites/answerlattice/*  (dev only)
 ```
+
+Product-host `/` and `/home` requests both rewrite to `/sites/answerlattice`, the working AnswerLattice index route. Do not point homepage rewrites at `/sites/answerlattice/home`; that wrapper is retained as a legacy alias surface, but the canonical homepage route is `page.tsx`.
 
 ### Middleware Flow
 
@@ -458,6 +464,11 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-06 | 1.2.77 | Synced public launch-setup, product-preview, and updates copy with Activation first-client launch proof without claiming Jira, native helpdesk, or mutation-proposal scans from the website |
+| 2026-06-06 | 1.2.76 | Gated the mobile hamburger trigger to confirmed mobile viewports and normalized shared non-home hero typography/alignment in the product-scoped stylesheet without changing the homepage hero |
+| 2026-06-06 | 1.2.75 | Added dedicated Small SaaS Teams and Studios/Agencies use-case routes, linked them from the use-case hub and footer Evaluate column, and registered them in the public page registry |
+| 2026-06-06 | 1.2.74 | Restored the full old Product and Resources footer link set across public-route columns, kept duplicate hub links render-safe with label-qualified keys, and preserved the footer theme switcher without placeholder social links |
+| 2026-06-06 | 1.2.73 | Compacted the Product dropdown to the same width, outer panel, overview row, icon scale, and title-only row pattern as Resources, and routed product-host `/` plus `/home` to the working AnswerLattice index route instead of the internal `/home` wrapper |
 | 2026-06-06 | 1.2.72 | Reworked the desktop Resources dropdown to match the compact Product dropdown pattern with an overview row, small icon tiles, and title-only resource guide rows |
 | 2026-06-05 | 1.2.71 | Simplified the desktop Product dropdown into compact title-only rows with icons, removing the dense per-item descriptions from header navigation while preserving all product routes |
 | 2026-06-05 | 1.2.70 | Replaced the footer brand-column theme switcher with placeholder social icon links and moved the Light/System/Dark control into the bottom footer strip |

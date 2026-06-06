@@ -1232,6 +1232,24 @@
       ]
     },
     {
+      "collectionGroup": "answerlattice_entitySearchIndex",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "prefixTokens",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
       "collectionGroup": "answerlattice_entityRelations",
       "queryScope": "COLLECTION",
       "fields": [

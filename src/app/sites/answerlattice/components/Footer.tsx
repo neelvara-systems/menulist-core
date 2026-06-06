@@ -1,14 +1,7 @@
+import { LuArrowRight } from 'react-icons/lu';
 import AnswerlatticeLink from './AnswerlatticeLink';
-import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
 import AnswerlatticeThemeSwitcher from './AnswerlatticeThemeSwitcher';
-import {
-    LuGithub,
-    LuInstagram,
-    LuLinkedin,
-    LuTwitter,
-    LuYoutube,
-} from 'react-icons/lu';
 
 const FOOTER_LINKS = {
     Product: [
@@ -17,11 +10,33 @@ const FOOTER_LINKS = {
         { label: 'In-app help widget', href: '/product/page-aware-widget' },
         { label: 'Help center and tickets', href: '/product/support-control' },
         { label: 'Review approved answers', href: '/product/knowledge-governance' },
-        ...ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => ({ label: feature.label, href: feature.href })),
+    ],
+    Features: [
+        { label: 'Team Access', href: '/product/team-access' },
+        { label: 'Knowledge Intake', href: '/product/knowledge-intake' },
+        { label: 'Knowledge Base', href: '/product/knowledge-base' },
+        { label: 'FAQ Management', href: '/product/faq-management' },
+        { label: 'Changelog', href: '/product/changelog' },
+        { label: 'Tickets', href: '/product/tickets' },
+        { label: 'Support Board', href: '/product/support-board' },
+        { label: 'Feedback Review', href: '/product/feedback-review' },
+        { label: 'Workflow Notifications', href: '/product/workflow-notifications' },
+        { label: 'Proactive Help', href: '/product/proactive-help' },
+    ],
+    Evaluate: [
         { label: 'Use Cases', href: '/use-cases' },
+        { label: 'AI-built SaaS', href: '/use-cases/ai-built-saas' },
+        { label: 'Solo Founders', href: '/use-cases/founders' },
+        { label: 'Small SaaS Teams', href: '/use-cases/small-saas-teams' },
+        { label: 'Studios & Agencies', href: '/use-cases/studios-agencies' },
+        { label: 'Support Teams', href: '/use-cases/support-teams' },
+        { label: 'Product Teams', href: '/use-cases/product-teams' },
+        { label: 'Engineering Teams', href: '/use-cases/engineering' },
         { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
         { label: 'Start support setup', href: '/get-started' },
+        { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
+        { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
     ],
     Resources: [
         { label: 'Resources', href: '/resources' },
@@ -34,15 +49,12 @@ const FOOTER_LINKS = {
         { label: 'Integrations', href: '/integrations' },
         { label: 'ROI Calculator', href: '/roi-calculator' },
         { label: 'Proof Pack', href: '/proof' },
-        { label: 'AI-built SaaS', href: '/use-cases/ai-built-saas' },
-        { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
-        { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
+    ],
+    Trust: [
         { label: 'Updates', href: '/updates' },
         { label: 'FAQ', href: '/faq' },
         { label: 'Security', href: '/security' },
         { label: 'Security One-Pager', href: '/security-one-pager' },
-    ],
-    Company: [
         { label: 'About', href: '/about' },
         { label: 'Contact', href: '/contact' },
         { label: 'Privacy Policy', href: '/privacy-policy' },
@@ -50,84 +62,75 @@ const FOOTER_LINKS = {
     ],
 };
 
-const SOCIAL_LINKS = [
-    { label: 'LinkedIn', href: 'https://example.com/answerlattice-linkedin', icon: LuLinkedin },
-    { label: 'X', href: 'https://example.com/answerlattice-x', icon: LuTwitter },
-    { label: 'Instagram', href: 'https://example.com/answerlattice-instagram', icon: LuInstagram },
-    { label: 'YouTube', href: 'https://example.com/answerlattice-youtube', icon: LuYoutube },
-    { label: 'GitHub', href: 'https://example.com/answerlattice-github', icon: LuGithub },
-];
-
 export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: string }) {
     return (
-        <footer className="border-t border-white/[0.06] bg-[var(--al-footer-bg)]">
-            <div className="mx-auto max-w-6xl px-6 py-16">
-                <div className="grid gap-12 md:grid-cols-4">
-                    {/* Brand */}
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <AnswerlatticeLogoMark idPrefix="answerlattice-footer" height={32} />
-                            <span className="text-lg font-semibold text-white">AnswerLattice</span>
+        <footer className="al-site-footer">
+            <div className="al-site-footer__inner">
+                <div className="al-site-footer__top">
+                    <div className="al-site-footer__brand" data-answerlattice-reveal>
+                        <div className="al-site-footer__brand-row">
+                            <AnswerlatticeLogoMark idPrefix="answerlattice-footer" height={34} />
+                            <span>AnswerLattice</span>
                         </div>
-                        <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
-                            Support layer for SaaS and digital products.
-                            Knowledge intake, page-aware help, hosted docs, owner Q&A, and approved answers before fallback.
+                        <p>
+                            The first 24/7 support layer for founder-led SaaS.
+                            In-app help, hosted docs, fallback tickets, feedback, and reviewable answers before support becomes a full-time job.
                         </p>
-                        <div className="mt-5 flex items-center gap-2" aria-label="AnswerLattice social links">
-                            {SOCIAL_LINKS.map((social) => {
-                                const Icon = social.icon;
-
-                                return (
-                                    <a
-                                        key={social.label}
-                                        aria-label={social.label}
-                                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.035] text-[#a0a0c0] transition hover:border-teal-300/25 hover:bg-teal-500/[0.08] hover:text-white"
-                                        href={social.href}
-                                        rel="noopener noreferrer"
-                                        target="_blank"
-                                    >
-                                        <Icon size={17} aria-hidden />
-                                    </a>
-                                );
-                            })}
+                        <div className="al-site-footer__actions">
+                            <AnswerlatticeLink basePath={basePath} href="/get-started" className="al-site-footer__cta">
+                                Start support setup
+                                <LuArrowRight aria-hidden size={16} />
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink basePath={basePath} href="/demo" className="al-site-footer__plain-link">
+                                See demo
+                            </AnswerlatticeLink>
                         </div>
                     </div>
 
-                {/* Link Columns */}
-                    {Object.entries(FOOTER_LINKS).map(([title, links]) => (
-                        <div key={title} data-answerlattice-reveal-item>
-                            <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
-                                {title}
-                            </h4>
-                            <ul className="space-y-2.5">
-                                {links.map((link) => (
-                                    <li key={link.href}>
-                                        <AnswerlatticeLink
-                                            basePath={basePath}
-                                            href={link.href}
-                                            className="text-sm text-[#a0a0c0] transition-colors hover:text-white"
-                                        >
-                                            {link.label}
-                                        </AnswerlatticeLink>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+                    <nav className="al-site-footer__nav" aria-label="AnswerLattice footer navigation">
+                        {Object.entries(FOOTER_LINKS).map(([title, links]) => (
+                            <div key={title} className="al-site-footer__column" data-answerlattice-reveal-item>
+                                <h4>/{title}</h4>
+                                <ul>
+                                    {links.map((link) => (
+                                        <li key={`${link.href}:${link.label}`}>
+                                            <AnswerlatticeLink
+                                                basePath={basePath}
+                                                href={link.href}
+                                                className="al-site-footer__link"
+                                            >
+                                                {link.label}
+                                            </AnswerlatticeLink>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </nav>
                 </div>
 
-                {/* Bottom bar */}
-                <div className="mt-12 border-t border-white/[0.06] pt-8">
-                    <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                        <p className="text-xs text-[#505070]">
-                            &copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.
-                        </p>
-                        <p className="text-xs text-[#505070]">
-                            Governed answer infrastructure for SaaS and digital-product support.
-                        </p>
-                    </div>
-                    <div className="mt-6 flex justify-center">
-                        <AnswerlatticeThemeSwitcher />
+                <div className="al-site-footer__wordmark" data-answerlattice-reveal aria-hidden>
+                    <AnswerlatticeLogoMark
+                        idPrefix="answerlattice-footer-wordmark"
+                        className="al-site-footer__wordmark-logo"
+                        height={132}
+                    />
+                    <span className="al-site-footer__wordmark-text">
+                        <span className="al-site-footer__wordmark-word">Answer</span>
+                        <span className="al-site-footer__wordmark-word al-site-footer__wordmark-word--second">Lattice</span>
+                    </span>
+                </div>
+
+                <div className="al-site-footer__bottom">
+                    <p>&copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.</p>
+                    <AnswerlatticeThemeSwitcher />
+                    <div className="al-site-footer__legal">
+                        <AnswerlatticeLink basePath={basePath} href="/privacy-policy">
+                            Privacy Policy
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink basePath={basePath} href="/terms-of-service">
+                            Terms of Service
+                        </AnswerlatticeLink>
                     </div>
                 </div>
             </div>

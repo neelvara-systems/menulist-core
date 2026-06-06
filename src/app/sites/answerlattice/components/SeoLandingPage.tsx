@@ -2,7 +2,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticePageStructuredData from './PageStructuredData';
-import PageProofStrip from './PageProofStrip';
+import PageHero from './PageHero';
 import SectionHeader from './SectionHeader';
 
 export type SeoLandingPageProps = {
@@ -41,39 +41,33 @@ export default function SeoLandingPage({
     return (
         <main className="al-page-flow">
             {canonicalPath ? <AnswerlatticePageStructuredData path={canonicalPath} /> : null}
-            <section className="px-6 py-24 text-center">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">{eyebrow}</p>
-                <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">{title}</h1>
-                <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">{description}</p>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-                    <AnswerlatticeLink
-                        basePath={basePath}
-                        href="/demo"
-                        data-answerlattice-event="seo_page_cta_clicked"
-                        data-answerlattice-label={secondaryCta || 'try_demo'}
-                        className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
-                    >
-                        {secondaryCta || 'Try page-aware demo'}
-                    </AnswerlatticeLink>
-                    <AnswerlatticeLink
-                        basePath={basePath}
-                        href="/get-started"
-                        data-answerlattice-event="seo_page_cta_clicked"
-                        data-answerlattice-label={primaryCta}
-                        className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
-                    >
-                        {primaryCta}
-                    </AnswerlatticeLink>
-                </div>
-                <PageProofStrip
-                    className="mx-auto mt-8 max-w-5xl text-left"
-                    items={[
-                        { label: 'Page context', value: 'Route, feature, workflow, role, and plan hints guide the answer.' },
-                        { label: 'Answer order', value: 'Approved answers and owner Q&A before fallback.' },
-                        { label: 'Safety boundary', value: 'Screenshots are user-attached; context never decides workspace identity.' },
-                    ]}
-                />
-            </section>
+            <PageHero
+                eyebrow={eyebrow}
+                title={title}
+                description={description}
+                basePath={basePath}
+                actions={[
+                    {
+                        label: primaryCta,
+                        href: '/get-started',
+                        variant: 'primary',
+                        event: 'seo_page_cta_clicked',
+                    },
+                    {
+                        label: secondaryCta || 'See demo',
+                        href: '/demo',
+                        variant: 'secondary',
+                        event: 'seo_page_cta_clicked',
+                        eventLabel: secondaryCta || 'try_demo',
+                    },
+                ]}
+                proofClassName="max-w-5xl"
+                proofItems={[
+                    { label: 'Page context', value: 'Route, feature, workflow, role, and plan hints guide the answer.' },
+                    { label: 'Answer order', value: 'Approved answers and owner answers before fallback.' },
+                    { label: 'Safety boundary', value: 'Screenshots are user-attached; context never decides workspace identity.' },
+                ]}
+            />
 
             <section className="border-t border-white/[0.06] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
@@ -114,7 +108,7 @@ export default function SeoLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Setup path"
-                        title="Approved knowledge stays the authority."
+                        title="Reviewed support stays the authority."
                         description="The setup path keeps source material, page context, and owner approval connected before answers become official."
                     />
                     <AnswerlatticeSequenceDiagram
@@ -133,7 +127,7 @@ export default function SeoLandingPage({
                     <SectionHeader
                         className="mb-8"
                         eyebrow="Explore AnswerLattice"
-                        title="The same loop across setup, widget, support, and governance."
+                        title="The same loop across setup, widget, hosted help, tickets, and review."
                         description="Each product area has a dedicated page so founders, support teams, product teams, and engineers can evaluate the part they care about first."
                     />
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">

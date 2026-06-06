@@ -7,6 +7,7 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
 import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
+import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { slugify } from '@lib/utils/slugify';
@@ -29,6 +30,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const [qrType, setQrType] = useState<'share' | 'menu'>('share');
     const [defaultSlug, setDefaultSlug] = useState<string | undefined>(undefined);
     const storeBrandColor = resolveStoreBrandColor(storeDetails as any);
+    const labels = getOfferingLabels((storeDetails as any)?.businessType, (storeDetails as any)?.businessCategory);
 
     // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): resolve the default
     // project's real canonical slug so the "Menu QR" points at the canonical
@@ -113,8 +115,8 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 footer: activeQrUrl.replace(/^https?:\/\//, ''),
                 logoUrl: (storeDetails as any)?.logo || undefined,
                 storeName: qrName,
-                subtitle: qrType === 'share' ? 'Scan to open our business page' : 'Scan to open our menu',
-                title: qrType === 'share' ? 'Business Page QR' : 'Menu QR',
+                subtitle: qrType === 'share' ? 'Scan to open our business page' : labels.scanToView,
+                title: qrType === 'share' ? 'BUSINESS PROFILE' : labels.printCardTitle,
                 activePlanType: (storeDetails as any)?.activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${qrName}-${qrType}`, 'qr'));

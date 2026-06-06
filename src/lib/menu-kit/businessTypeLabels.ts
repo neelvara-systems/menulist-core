@@ -42,6 +42,8 @@ export interface OfferingLabels {
     gbpLabel: string;
     /** "menu" / "service list" / "product catalog" — for conversational copy */
     offeringPhrase: string;
+    /** Print card title: "OUR MENU" / "OUR SERVICES" / "OUR CATALOG" */
+    printCardTitle: string;
 
     // ── Dashboard / Analytics labels ──
     /** "Menu Scans" / "Page Views" — dashboard metric title */
@@ -128,6 +130,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Menu & prices updated regularly',
         staffScript: 'Menu? Please scan the QR on the table or at the counter.',
         shareMessagePrefix: 'Here is our menu:', gbpLabel: 'menu', offeringPhrase: 'menu',
+        printCardTitle: 'OUR MENU',
         // Dashboard
         scansLabel: 'Menu Scans', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers scanned your menu',
@@ -171,6 +174,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Services & prices updated regularly',
         staffScript: 'Services? Please scan the QR at the reception.',
         shareMessagePrefix: 'Here is our service list:', gbpLabel: 'services', offeringPhrase: 'service list',
+        printCardTitle: 'OUR SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -209,6 +213,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Products & prices updated regularly',
         staffScript: 'Products? Please scan the QR to browse our catalog.',
         shareMessagePrefix: 'Here is our product catalog:', gbpLabel: 'catalog', offeringPhrase: 'product catalog',
+        printCardTitle: 'OUR CATALOG',
         scansLabel: 'Page Views', itemTapsLabel: 'Product Taps',
         scansTooltip: 'Number of times customers viewed your catalog',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -247,6 +252,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Services & pricing updated regularly',
         staffScript: 'Services? Please scan the QR at the front desk.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
+        printCardTitle: 'OUR SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -285,6 +291,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Services updated regularly',
         staffScript: 'Services? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
+        printCardTitle: 'OUR SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -323,6 +330,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Offerings & pricing updated regularly',
         staffScript: 'Offerings? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our offerings:', gbpLabel: 'offerings', offeringPhrase: 'offerings',
+        printCardTitle: 'OUR OFFERINGS',
         scansLabel: 'Page Views', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -369,6 +377,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Services & pricing updated regularly',
         staffScript: 'Services? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
+        printCardTitle: 'OUR SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',

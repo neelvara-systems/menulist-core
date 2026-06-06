@@ -9,7 +9,7 @@ import AnswerlatticePublicDemo from './AnswerlatticePublicDemo';
 
 export const metadata: Metadata = {
     title: 'AnswerLattice Demo',
-    description: 'See page-aware support in 60 seconds with static AnswerLattice examples for billing, onboarding, settings, fallback, and support gaps.',
+    description: 'See the AnswerLattice support loop in 60 seconds: safe page context, approved answers, hosted help, ticket fallback, and reviewable support gaps.',
     alternates: { canonical: '/demo' },
 };
 
@@ -34,15 +34,15 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-10 max-w-3xl text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Interactive demo</p>
                             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                                See page-aware support in 60 seconds.
+                                See the support loop in 60 seconds.
                             </h1>
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                Switch product pages and ask the same kind of question. AnswerLattice changes the answer using safe page context and approved support knowledge.
+                                Switch product pages and ask the same kind of question. AnswerLattice uses safe page context, approved support knowledge, and fallback gaps to show how users get help before you hire support.
                             </p>
                             <PageProofStrip
                                 className="mt-8 text-left"
                                 items={[
-                                    { label: 'Shows', value: 'Same question, different page-aware answer' },
+                                    { label: 'Shows', value: 'Same question, different approved support path' },
                                     { label: 'Proves', value: 'Approved source before fallback' },
                                     { label: 'Costs', value: 'Static demo with no Firebase or AI call' },
                                 ]}
@@ -52,7 +52,7 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                The generic answer stays broad. AnswerLattice knows the page, links related help, and marks uncovered questions as gaps. This static demo does not call Firebase or an AI provider.
+                                The generic answer stays broad. AnswerLattice uses the product page, links related help, and marks uncovered questions as gaps. This static demo does not call Firebase or an AI provider.
                             </p>
                         </div>
 

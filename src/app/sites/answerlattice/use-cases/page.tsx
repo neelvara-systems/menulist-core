@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'AnswerLattice use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback.',
+    description: 'AnswerLattice use cases for founder-led SaaS across billing, onboarding, settings, releases, errors, approved answers, ticket fallback, and support-gap review.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -23,7 +23,7 @@ function getBasePath(): string {
 
 const USE_CASES = [
     {
-        title: 'AI-built app launch',
+        title: 'AI-built SaaS launch',
         context: 'Cursor, Replit, Lovable, Bolt, or another AI-assisted build path',
         question: 'Users are asking questions before my docs are ready. What do I launch first?',
         generic: 'Create documentation and add a chatbot when you are ready.',
@@ -95,6 +95,16 @@ const ROLE_PAGES = [
         detail: 'Launch a support layer before hiring support.',
     },
     {
+        title: 'For small SaaS teams',
+        href: '/use-cases/small-saas-teams',
+        detail: 'Manage support across widget, help center, tickets, changelog, and feedback before support becomes a team problem.',
+    },
+    {
+        title: 'For studios & agencies',
+        href: '/use-cases/studios-agencies',
+        detail: 'Add a repeatable support layer to SaaS products before launch or handoff.',
+    },
+    {
         title: 'For support teams',
         href: '/use-cases/support-teams',
         detail: 'Reduce repeated tickets without losing answer control.',
@@ -122,10 +132,10 @@ export default function AnswerlatticeUseCasesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Use Cases</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Support use cases for AI-built SaaS apps.
+                        Support use cases for founder-led SaaS.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        When users ask from billing, onboarding, settings, releases, or error screens, AnswerLattice serves support that matches the page instead of giving generic AI replies.
+                        When users ask from billing, onboarding, settings, releases, or error screens, AnswerLattice serves approved support tied to the product moment instead of giving generic AI replies.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -133,7 +143,7 @@ export default function AnswerlatticeUseCasesPage() {
                             href="/demo"
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
-                            Try page-aware demo
+                            See demo
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
@@ -148,13 +158,13 @@ export default function AnswerlatticeUseCasesPage() {
                         items={[
                             { label: 'Best pages', value: 'Billing, onboarding, settings, releases, integrations, errors' },
                             { label: 'Best teams', value: 'Founders, support teams, product teams, engineering' },
-                            { label: 'Best proof', value: 'Generic reply vs reviewed page-aware answer' },
+                            { label: 'Best proof', value: 'Generic reply vs reviewed support answer' },
                         ]}
                     />
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-12 grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <div className="mx-auto mb-12 grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/use-cases/ai-built-saas"
@@ -162,6 +172,14 @@ export default function AnswerlatticeUseCasesPage() {
                         >
                             <h2 className="text-base font-semibold text-white">For AI-built SaaS</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">Launch support after building quickly with AI.</p>
+                        </AnswerlatticeLink>
+                        <AnswerlatticeLink
+                            basePath={basePath}
+                            href="/use-cases/vibe-coded-saas"
+                            className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition hover:border-teal-300/30 hover:bg-teal-500/[0.04]"
+                        >
+                            <h2 className="text-base font-semibold text-white">For AI-assisted builders</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-[#808099]">A launch-support guide for products built fast with AI coding tools.</p>
                         </AnswerlatticeLink>
                         {ROLE_PAGES.map((item) => (
                             <AnswerlatticeLink
@@ -191,7 +209,7 @@ export default function AnswerlatticeUseCasesPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
-                    <h2 className="text-3xl font-bold">Try the page-aware demo</h2>
+                    <h2 className="text-3xl font-bold">Try the support-loop demo</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
                         Switch between billing, onboarding, and settings surfaces to see why the same question should not always produce the same support path.
                     </p>
