@@ -28,8 +28,8 @@ export interface DecisionBlockEntry {
 }
 
 /**
- * Precomputed Decision Blocks document from Cloud Function
- * Stored in Firestore: decisionBlocks/{tId}_{sId}_{projectId}
+ * Precomputed Decision Blocks projection from Cloud Function
+ * Stored in Firestore: projects/{tId}/{sId}/{projectId}.publicDecisionBlocks
  * 
  * ARCHITECTURE: Each project gets its own Decision Blocks
  * - 1 Tenant → Multiple Stores

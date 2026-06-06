@@ -558,15 +558,6 @@ service cloud.firestore {
         && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
-    // Decision Blocks — Precomputed intelligence (read-only from client)
-    match /decisionBlocks/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin()
-            || isTenantStoreDoc(resource.data)
-            || docIdMatchesCurrentTenantStore(docId));
-      allow write: if false;
-    }
-    
     // Menu Intelligence — Continuous intelligence state (read-only from client)
     match /menuIntelligence/{docId} {
       allow read: if isAuthenticated()

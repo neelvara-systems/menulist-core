@@ -28,7 +28,6 @@ export const DB_COLLECTIONS = {
     ANALYTICS: 'analytics',                     // Customer-facing analytics (menu views, clicks)
     CHAT_ANALYTICS: 'chatAnalytics',            // Chat aggregated daily stats
     CHAT_SESSIONS: 'chatSessions',              // Individual chat sessions
-    DECISION_BLOCKS: 'decisionBlocks',          // Precomputed decision block candidates
 
     // AI & Intelligence
     MENULIST_AI_EXTRACTION_OPERATIONS: 'MENULIST_AI_OPERATIONS', // Gemini extraction audit collection
@@ -179,10 +178,6 @@ export const DOC_PATTERNS = {
         // Document ID: {tId}_{sId}_{date}
     },
 
-    // Decision Blocks document patterns
-    DECISION_BLOCKS: {
-        // Document ID: {tId}_{sId}_{projectId}
-    },
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -314,12 +309,6 @@ export const getAnalyticsDocId = {
  */
 export const getChatAnalyticsDocId = (tId: string | number, sId: string | number, date: string) =>
     `${tId}_${sId}_${date}`;
-
-/**
- * Generate decision blocks document ID
- */
-export const getDecisionBlocksDocId = (tId: string | number, sId: string | number, projectId: string) =>
-    `${tId}_${sId}_${projectId}`;
 
 /**
  * Generate menu intelligence document ID

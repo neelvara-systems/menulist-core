@@ -14,7 +14,7 @@
 The implementation was re-checked against the current codebase and corrected for production readiness:
 
 - Scheduler project reads now use the canonical nested project path: `projects/{tId}/{sId}/{projectId}`.
-- Public menu reads `decisionBlocks/{tId}_{sId}_{projectId}` server-side with the Admin SDK, so customer rendering does not depend on authenticated client Firestore rules.
+- Public menu uses `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` from the already-loaded project document, so customer rendering does not need a separate Decision Blocks Firestore read.
 - Missing precomputed documents now fall through to the owner-pinned fallback path instead of being treated as hard-stale.
 - Valid precomputed documents that fail automatic activation gates now fall through to owner-pinned fallback, preserving owner-authored picks without client-side ranking.
 - Owner pins in valid precomputed mode now bypass automatic block eligibility and empty candidate-list gates. They still respect runtime availability, owner toggles, business-type block support, duplicate suppression, category time slots, and hidden-price Best Value suppression.

@@ -27,7 +27,7 @@
 │  │           ├── Calculate scores per block type            │
 │  │           ├── Store top 3 candidates per block           │
 │  │           └── Set TTL (48 hours)                         │
-│  └── Write: decisionBlocks/{tId}_{sId}_{projectId}         │
+│  └── Write: project.publicDecisionBlocks                   │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -84,7 +84,7 @@ functions/
 | ------- | ---- | -------------- |
 | Scheduled generation | `functions/src/decisionBlocksScoring.ts` | Hourly scheduler that processes stores whose local settlement window is due. |
 | Manual recovery | `triggerDecisionBlocksScoring` in `functions/src/decisionBlocksScoring.ts` | Platform-only callable used by Scheduler Monitor to recompute Decision Blocks. |
-| Public precomputed read | `src/app/client/[[...slug]]/page.tsx` | Server-side Admin SDK read for `decisionBlocks/{tId}_{sId}_{projectId}`, cached for 60 seconds. |
+| Public precomputed read | `src/app/client/[[...slug]]/page.tsx` | Uses `project.publicDecisionBlocks` from the already-loaded project document. |
 | Customer rendering | `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` | Applies TTL, lifecycle, owner controls, availability, and time-slot filters. |
 | Desktop owner editing | `DecisionBlocksSettingsModal.tsx` | Saves pins/toggles into `project.menuSettings.decisionBlocks`. |
 | Mobile owner editing | `SmartRecommendationsSheet.tsx` | Same settings model as desktop, saved through the project DAL. |
@@ -93,9 +93,9 @@ functions/
 
 ## Database Schema
 
-### Collection: `decisionBlocks`
+### Project Field: `publicDecisionBlocks`
 
-**Document ID:** `{tId}_{sId}_{projectId}`
+**Path:** `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks`
 
 ```typescript
 interface DecisionBlocksDocument {
@@ -145,7 +145,7 @@ project.menuSettings.decisionBlocks = {
 };
 ```
 
-Generated ranking data remains canonical in `decisionBlocks`. The scheduler also mirrors the same compact customer-safe payload to `project.publicDecisionBlocks` so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. That mirror is a read optimization only; owner-authored controls remain in `project.menuSettings.decisionBlocks`.
+Generated ranking data is stored as the customer-safe `project.publicDecisionBlocks` projection so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. Owner-authored controls remain separate in `project.menuSettings.decisionBlocks`.
 
 Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
 

@@ -7,7 +7,7 @@ import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetentio
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
 import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
-import { DB_COLLECTIONS, getDecisionBlocksDocId, getMenuIntelligenceDocId } from './constants/database';
+import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
@@ -33,7 +33,7 @@ import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessD
  * ARCHITECTURE:
  * - 1 Tenant → Multiple Stores
  * - 1 Store → Multiple Projects
- * - Each Project gets its own Decision Blocks document
+ * - Each Project gets its own project-embedded Decision Blocks projection
  * 
  * SCORING LOGIC:
  * - Popular Right Now: views (40%) + clicks (30%) + orders (20%) + ownerBoost (10%)
@@ -41,7 +41,8 @@ import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessD
  * - Best Value: popularity/price ratio (70%) + ownerBoost (10%) + reviews (20%)
  * 
  * OUTPUT:
- * Creates/updates document: decisionBlocks/{tId}_{sId}_{projectId}
+ * Creates/updates project field:
+ * projects/{tId}/{sId}/{projectId}.publicDecisionBlocks
  * Contains precomputed top items for each block type with reasons.
  * 
  * Deployment:
@@ -90,7 +91,7 @@ const MAX_CATCH_UP_DAYS_PER_RUN = 7;
 interface DecisionBlocksDocument {
     tId: string;
     sId: string;
-    projectId: string;          // Each project gets its own Decision Blocks
+    projectId: string;          // Each project gets its own Decision Blocks projection
     // Store array of candidates for runtime fallback selection
     popular: ScoredItem[];      // Top 3 candidates, sorted by score
     quickPick: ScoredItem[];    // Top 3 candidates, sorted by score
@@ -510,7 +511,7 @@ function generateReason(
 /**
  * Compute Decision Blocks for a single PROJECT
  * 
- * ARCHITECTURE: Each project gets its own Decision Blocks document
+ * ARCHITECTURE: Each project gets its own Decision Blocks projection
  * - 1 Tenant → Multiple Stores
  * - 1 Store → Multiple Projects
  * - Analytics are queried per project (or store-level as fallback)
@@ -734,7 +735,7 @@ async function computeForProject(
     const quickPick = businessCategory !== 'retail' ? getTopCandidates(quickPickScores, 'quickPick') : [];
     const bestValue = getTopCandidates(bestValueScores, 'bestValue');
 
-    // Create decision blocks document with TTL
+    // Create decision blocks projection with TTL
     const validUntil = new Date();
     validUntil.setHours(validUntil.getHours() + DECISION_BLOCKS_TTL_HOURS);
 
@@ -770,23 +771,12 @@ async function saveDecisionBlocksForProject(
     projectId: string,
     blocks: DecisionBlocksDocument,
 ): Promise<string> {
-    const docId = getDecisionBlocksDocId(tId, sId, projectId);
-    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+    const projectRef = getProjectDocRef(db, String(tId), String(sId), String(projectId));
+    await projectRef.set({
+        publicDecisionBlocks: blocks,
+    }, { merge: true });
 
-    try {
-        await getProjectDocRef(db, String(tId), String(sId), String(projectId)).set({
-            publicDecisionBlocks: blocks,
-        }, { merge: true });
-    } catch (error: any) {
-        functions.logger.warn('[DecisionBlocks] Failed to mirror public projection into project document', {
-            tId,
-            sId,
-            projectId,
-            error: error?.message || String(error),
-        });
-    }
-
-    return docId;
+    return projectRef.path;
 }
 
 function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
@@ -1356,7 +1346,7 @@ export const computeDecisionBlocksScores = onSchedule({
                         );
 
                         if (blocks) {
-                            // Save to decisionBlocks collection with projectId in key
+                            // Save the customer-safe projection on the project document.
                             await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
 
                             logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
@@ -2397,6 +2387,7 @@ export const triggerDecisionBlocksScoring = onCall({
 
         const storeData = storeDoc.data();
         const projectData = projectDoc.data()!;
+        const businessCategory = resolveBusinessCategoryOrFallback(storeData?.businessType, storeData?.businessCategory);
 
         const blocks = await computeForProject(
             db,
@@ -2404,15 +2395,15 @@ export const triggerDecisionBlocksScoring = onCall({
             sId,
             projectId,
             projectData,
-            storeData?.businessType,
-            storeData?.businessCategory,
+            businessCategory,
+            undefined,
             storeData?.timeZone,
             storeData?.businessDayEndTime,
         );
 
         if (blocks) {
-            const docId = await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
-            return { success: true, docId, blocks };
+            const projectPath = await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
+            return { success: true, projectPath, docId: projectPath, blocks };
         }
 
         return { success: false, message: 'No items to score' };
@@ -2428,6 +2419,7 @@ export const triggerDecisionBlocksScoring = onCall({
         }
 
         const storeData = storeDoc.data();
+        const businessCategory = resolveBusinessCategoryOrFallback(storeData?.businessType, storeData?.businessCategory);
 
         const projectsQuery = await getProjectCollectionRef(db, String(tId), String(sId)).get();
 
@@ -2437,7 +2429,7 @@ export const triggerDecisionBlocksScoring = onCall({
 
         let successCount = 0;
         let failedCount = 0;
-        const results: Array<{ projectId: string; docId: string }> = [];
+        const results: Array<{ projectId: string; projectPath: string; docId: string }> = [];
 
         for (const projectDoc of projectsQuery.docs) {
             const projectData = projectDoc.data();
@@ -2453,15 +2445,15 @@ export const triggerDecisionBlocksScoring = onCall({
                     sId,
                     pId,
                     projectData,
-                    storeData?.businessType,
-                    storeData?.businessCategory,
+                    businessCategory,
+                    undefined,
                     storeData?.timeZone,
                     storeData?.businessDayEndTime,
                 );
 
                 if (blocks) {
-                    const docId = await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
-                    results.push({ projectId: pId, docId });
+                    const projectPath = await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
+                    results.push({ projectId: pId, projectPath, docId: projectPath });
                     successCount++;
                 }
             } catch (error) {
@@ -2484,6 +2476,7 @@ export const triggerDecisionBlocksScoring = onCall({
         const storeData = storeDoc.data();
         const storeSId = storeDoc.id;
         const storeTId = String(storeData.tenantId || storeData.tId);
+        const businessCategory = resolveBusinessCategoryOrFallback(storeData.businessType, storeData.businessCategory);
 
         if (!storeTId) continue;
 
@@ -2505,8 +2498,8 @@ export const triggerDecisionBlocksScoring = onCall({
                     storeSId,
                     pId,
                     projectData,
-                    storeData.businessType,
-                    storeData.businessCategory,
+                    businessCategory,
+                    undefined,
                     storeData.timeZone,
                     storeData.businessDayEndTime,
                 );

@@ -159,24 +159,6 @@ async function getProjectData(projectId: string): Promise<any> {
     return docSnap.data();
 }
 
-// Get precomputed Decision Blocks for a project
-async function getPrecomputedDecisionBlocks(
-    tId: string | number,
-    sId: string | number,
-    projectId: string,
-): Promise<any | null> {
-    try {
-        const docId = `${tId}_${sId}_${projectId}`;
-        const docSnap = await firestoreAdmin.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).get();
-        if (!docSnap.exists) return null;
-        return docSnap.data();
-    } catch (error) {
-        // Fail silently - Decision Blocks are optional enhancement
-        console.warn("Failed to fetch precomputed Decision Blocks:", error);
-        return null;
-    }
-}
-
 function getTimestampMillis(value: unknown): number | null {
     if (!value) return null;
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
@@ -1767,12 +1749,6 @@ async function MenuContent({
     // Eliminated redundant getStoreById() — saves 1 Firestore read per menu page visit
     const storeDetails = storeData;
 
-    const getCachedBlocks = unstable_cache(
-        getPrecomputedDecisionBlocks,
-        ['client-decision-blocks'],
-        { revalidate: 60, tags: [`menu-store-${storeData.storeId}`] }
-    );
-
     // Get project — cached + retry + timeout
     // Uses resolvedSlug (may differ from slug if outlet routing detected)
     const baseResult = await withRetry(() => withTimeout(getCachedProject(
@@ -1840,15 +1816,10 @@ async function MenuContent({
         ...(effectiveBusinessType && { businessType: effectiveBusinessType }),
     });
 
-    // Fetch precomputed Decision Blocks (optional enhancement — cached)
     const projectId = projectMetadata.projectId || projectMetadata.id;
-    const precomputedBlocks = serializeClientValue(
-        embeddedDecisionBlocks || await withTimeout(getCachedBlocks(
-            storeData.tenantId,
-            storeData.storeId,
-            projectId,
-        ))
-    );
+
+    // Precomputed Decision Blocks are embedded in the already-loaded project read.
+    const precomputedBlocks = serializeClientValue(embeddedDecisionBlocks);
 
     // Build canonical URL based on tenant type and slug
     const baseUrl =

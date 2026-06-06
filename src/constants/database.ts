@@ -58,7 +58,6 @@ export const DB_COLLECTIONS = {
 
     PROJECTS: "projects",
     FILES: "files",
-    DECISION_BLOCKS: "decisionBlocks", // Precomputed Decision Block candidates (nightly scoring)
     MENU_INTELLIGENCE: "menuIntelligence", // Continuous Menu Intelligence state (per-project, nightly)
     ASSETS: "assets",
     IMAGE_BATCH_PROCESSING_JOBS: "imageBatchProcessingJobs",

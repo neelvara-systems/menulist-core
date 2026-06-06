@@ -38,14 +38,14 @@ Decision Blocks are 3 recommendation cards shown at the top of every QR menu:
 | -------------- | ----------------------- | ------------------------------ |
 | **Purpose**    | Customer-facing UI      | Backend intelligence           |
 | **Output**     | 3 recommendation blocks | Confidence scores, suppression |
-| **Collection** | `decisionBlocks`        | `menuIntelligence`             |
+| **Storage**    | `projects.publicDecisionBlocks` | `menuIntelligence`             |
 | **Visibility** | Customers see it        | Internal only                  |
 
 **Shared Infrastructure:** Both run inside the unified timezone-aware scheduler. The Cloud Scheduler trigger fires hourly at `:30`, and the function processes only stores whose local settlement window is due.
 
 ```
 decisionBlocksScoring.ts (hourly trigger, store-local settlement window)
-├── STEP 1: Decision Blocks → decisionBlocks/{tId}_{sId}_{projectId}
+├── STEP 1: Decision Blocks → projects/{tId}/{sId}/{projectId}.publicDecisionBlocks
 └── STEP 2: CMI → menuIntelligence/{tId}_{sId}_{projectId}
 ```
 
