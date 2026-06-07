@@ -28,7 +28,7 @@ The dashboard and mobile PWA carry the full Print Assets workspace. The public w
 | --- | --- |
 | Ready to place | Files include your business name, logo when available, color, QR, and short link. |
 | Always current | Printed QR codes open the live menu, so menu edits do not require a redesign. |
-| Made for owners | No design setup, no template selection, no print-size guessing. |
+| Made for owners | Choose a finished look, then download. No design setup or print-size guessing. |
 | Works on phone | Owners can download the same files from desktop or mobile. |
 
 ## FAQ

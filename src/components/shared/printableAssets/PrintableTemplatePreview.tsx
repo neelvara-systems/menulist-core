@@ -49,8 +49,10 @@ function getShellStyle(kind: SheetKind, compact?: boolean): CSSProperties {
     if (kind === 'square') {
         return {
             aspectRatio: '1 / 1',
-            maxHeight: compact ? 118 : 164,
-            width: compact ? '62%' : '56%',
+            height: compact ? '78%' : '72%',
+            maxHeight: compact ? 112 : 164,
+            maxWidth: compact ? '78%' : '56%',
+            width: 'auto',
         };
     }
     if (kind === 'landscape') {
@@ -69,8 +71,10 @@ function getShellStyle(kind: SheetKind, compact?: boolean): CSSProperties {
     }
     return {
         aspectRatio: '0.71 / 1',
-        maxHeight: compact ? 130 : 188,
-        width: compact ? '48%' : '42%',
+        height: compact ? 'calc(100% - 4px)' : '88%',
+        maxHeight: compact ? 212 : 204,
+        maxWidth: compact ? '74%' : '58%',
+        width: 'auto',
     };
 }
 
@@ -79,9 +83,11 @@ function shouldUseSerif(familyId: string): boolean {
 }
 
 function OrnamentDots({
+    compact,
     color,
     side,
 }: {
+    compact?: boolean;
     color: string;
     side: 'left' | 'right';
 }) {
@@ -89,13 +95,13 @@ function OrnamentDots({
         <span
             aria-hidden="true"
             style={{
-                bottom: '31%',
+                bottom: compact ? '25%' : '31%',
                 display: 'grid',
-                gap: 3,
-                gridTemplateColumns: 'repeat(3, 3px)',
+                gap: compact ? 2 : 3,
+                gridTemplateColumns: `repeat(3, ${compact ? 2 : 3}px)`,
                 opacity: 0.72,
                 position: 'absolute',
-                [side]: '9%',
+                [side]: compact ? '8%' : '9%',
             }}
         >
             {Array.from({ length: 9 }).map((_, index) => (
@@ -104,8 +110,8 @@ function OrnamentDots({
                     style={{
                         background: color,
                         borderRadius: 999,
-                        height: 3,
-                        width: 3,
+                        height: compact ? 2 : 3,
+                        width: compact ? 2 : 3,
                     }}
                 />
             ))}
@@ -113,37 +119,39 @@ function OrnamentDots({
     );
 }
 
-function CornerLines({ color }: { color: string }) {
+function CornerLines({ color, compact }: { color: string; compact?: boolean }) {
     const base: CSSProperties = {
         borderColor: color,
-        height: 18,
+        height: compact ? 12 : 18,
         opacity: 0.86,
         position: 'absolute',
-        width: 18,
+        width: compact ? 12 : 18,
     };
+    const offset = compact ? 7 : 10;
+    const borderWidth = compact ? 1 : 2;
 
     return (
         <>
-            <span aria-hidden="true" style={{ ...base, borderLeft: '2px solid', borderTop: '2px solid', left: 10, top: 10 }} />
-            <span aria-hidden="true" style={{ ...base, borderRight: '2px solid', borderTop: '2px solid', right: 10, top: 10 }} />
-            <span aria-hidden="true" style={{ ...base, borderBottom: '2px solid', borderLeft: '2px solid', bottom: 10, left: 10 }} />
-            <span aria-hidden="true" style={{ ...base, borderBottom: '2px solid', borderRight: '2px solid', bottom: 10, right: 10 }} />
+            <span aria-hidden="true" style={{ ...base, borderLeft: `${borderWidth}px solid`, borderTop: `${borderWidth}px solid`, left: offset, top: offset }} />
+            <span aria-hidden="true" style={{ ...base, borderRight: `${borderWidth}px solid`, borderTop: `${borderWidth}px solid`, right: offset, top: offset }} />
+            <span aria-hidden="true" style={{ ...base, borderBottom: `${borderWidth}px solid`, borderLeft: `${borderWidth}px solid`, bottom: offset, left: offset }} />
+            <span aria-hidden="true" style={{ ...base, borderBottom: `${borderWidth}px solid`, borderRight: `${borderWidth}px solid`, bottom: offset, right: offset }} />
         </>
     );
 }
 
-function LeafSpray({ color, side }: { color: string; side: 'left' | 'right' }) {
+function LeafSpray({ color, compact, side }: { color: string; compact?: boolean; side: 'left' | 'right' }) {
     return (
         <span
             aria-hidden="true"
             style={{
-                height: 44,
+                height: compact ? 25 : 44,
                 opacity: 0.78,
                 position: 'absolute',
-                top: 12,
+                top: compact ? 8 : 12,
                 transform: side === 'right' ? 'scaleX(-1)' : undefined,
-                [side]: 10,
-                width: 42,
+                [side]: compact ? 8 : 10,
+                width: compact ? 25 : 42,
             }}
         >
             {Array.from({ length: 5 }).map((_, index) => (
@@ -152,23 +160,23 @@ function LeafSpray({ color, side }: { color: string; side: 'left' | 'right' }) {
                     style={{
                         background: color,
                         borderRadius: '100% 0 100% 0',
-                        height: 15,
-                        left: 4 + index * 6,
+                        height: compact ? 8 : 15,
+                        left: compact ? 2 + index * 4 : 4 + index * 6,
                         position: 'absolute',
-                        top: 6 + index * 6,
+                        top: compact ? 4 + index * 3 : 6 + index * 6,
                         transform: `rotate(${28 + index * 7}deg)`,
-                        width: 7,
+                        width: compact ? 4 : 7,
                     }}
                 />
             ))}
             <span
                 style={{
                     background: color,
-                    height: 42,
-                    left: 13,
+                    height: compact ? 24 : 42,
+                    left: compact ? 8 : 13,
                     opacity: 0.7,
                     position: 'absolute',
-                    top: 2,
+                    top: compact ? 1 : 2,
                     transform: 'rotate(-25deg)',
                     width: 1,
                 }}
@@ -177,28 +185,30 @@ function LeafSpray({ color, side }: { color: string; side: 'left' | 'right' }) {
     );
 }
 
-function DiagonalStrips({ color }: { color: string }) {
+function DiagonalStrips({ color, compact }: { color: string; compact?: boolean }) {
     return (
         <span
             aria-hidden="true"
             style={{
                 background: `repeating-linear-gradient(135deg, transparent 0 8px, ${color} 8px 11px, transparent 11px 18px)`,
-                height: 32,
+                height: compact ? 22 : 32,
                 opacity: 0.52,
                 position: 'absolute',
                 right: 0,
                 top: '17%',
-                width: 86,
+                width: compact ? 58 : 86,
             }}
         />
     );
 }
 
 function DecorativeLayer({
+    compact,
     family,
     isDark,
     muted,
 }: {
+    compact?: boolean;
     family: PrintableTemplateFamily;
     isDark: boolean;
     muted: string;
@@ -206,9 +216,9 @@ function DecorativeLayer({
     if (family.id === 'botanical-heritage') {
         return (
             <>
-                <LeafSpray color={muted} side="left" />
-                <LeafSpray color={muted} side="right" />
-                <CornerLines color={muted} />
+                <LeafSpray color={muted} compact={compact} side="left" />
+                <LeafSpray color={muted} compact={compact} side="right" />
+                <CornerLines color={muted} compact={compact} />
             </>
         );
     }
@@ -216,9 +226,9 @@ function DecorativeLayer({
     if (family.id === 'classic-luxe') {
         return (
             <>
-                <CornerLines color={muted} />
-                <OrnamentDots color={muted} side="left" />
-                <OrnamentDots color={muted} side="right" />
+                <CornerLines color={muted} compact={compact} />
+                <OrnamentDots color={muted} compact={compact} side="left" />
+                <OrnamentDots color={muted} compact={compact} side="right" />
             </>
         );
     }
@@ -235,8 +245,8 @@ function DecorativeLayer({
                         position: 'absolute',
                     }}
                 />
-                <CornerLines color={muted} />
-                <DiagonalStrips color={muted} />
+                <CornerLines color={muted} compact={compact} />
+                <DiagonalStrips color={muted} compact={compact} />
             </>
         );
     }
@@ -257,29 +267,29 @@ function DecorativeLayer({
                         width: '45%',
                     }}
                 />
-                <OrnamentDots color={muted} side="right" />
+                <OrnamentDots color={muted} compact={compact} side="right" />
             </>
         );
     }
 
     if (family.id === 'brand-banner' || family.id === 'local-bold') {
-        return <DiagonalStrips color={muted} />;
+        return <DiagonalStrips color={muted} compact={compact} />;
     }
 
     if (family.id === 'qr-first') {
         return (
             <>
-                <CornerLines color={muted} />
+                <CornerLines color={muted} compact={compact} />
                 <span
                     aria-hidden="true"
                     style={{
                         background: muted,
                         borderRadius: 999,
-                        height: 4,
+                        height: compact ? 3 : 4,
                         left: '32%',
                         opacity: 0.5,
                         position: 'absolute',
-                        top: 16,
+                        top: compact ? 11 : 16,
                         width: '36%',
                     }}
                 />
@@ -287,16 +297,18 @@ function DecorativeLayer({
         );
     }
 
-    return family.id === 'clean-utility' ? <CornerLines color={muted} /> : null;
+    return family.id === 'clean-utility' ? <CornerLines color={muted} compact={compact} /> : null;
 }
 
 function LogoBadge({
     accent,
+    compact,
     isDark,
     logo,
     storeName,
 }: {
     accent: string;
+    compact?: boolean;
     isDark: boolean;
     logo?: string | null;
     storeName: string;
@@ -309,16 +321,16 @@ function LogoBadge({
                 background: isDark ? '#111827' : '#ffffff',
                 border: `2px solid ${accent}`,
                 borderRadius: 999,
-                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.16)',
+                boxShadow: compact ? '0 2px 7px rgba(15, 23, 42, 0.14)' : '0 4px 12px rgba(15, 23, 42, 0.16)',
                 color: accent,
                 display: 'inline-flex',
-                fontSize: 11,
+                fontSize: compact ? 6 : 11,
                 fontWeight: 800,
-                height: 34,
+                height: compact ? 18 : 34,
                 justifyContent: 'center',
-                margin: '0 auto 7px',
+                margin: compact ? '0 auto 3px' : '0 auto 7px',
                 overflow: 'hidden',
-                width: 34,
+                width: compact ? 18 : 34,
             }}
         >
             {logo ? (
@@ -343,35 +355,36 @@ function QrMock({
 }) {
     const finderStyle: CSSProperties = {
         background: '#ffffff',
-        border: `${compact ? 3 : 4}px solid #111827`,
-        height: compact ? 17 : 22,
+        border: `${compact ? 2 : 4}px solid #111827`,
+        height: compact ? 10 : 22,
         position: 'absolute',
-        width: compact ? 17 : 22,
+        width: compact ? 10 : 22,
     };
     const innerStyle: CSSProperties = {
         background: '#111827',
-        inset: compact ? 4 : 5,
+        inset: compact ? 2 : 5,
         position: 'absolute',
     };
+    const finderOffset = compact ? 5 : 8;
 
     return (
         <span
             aria-hidden="true"
             style={{
                 aspectRatio: '1 / 1',
-                background: 'repeating-conic-gradient(#111827 0 25%, #ffffff 0 50%) 50% / 12px 12px',
-                border: `4px solid ${borderColor}`,
-                borderRadius: 8,
+                background: `repeating-conic-gradient(#111827 0 25%, #ffffff 0 50%) 50% / ${compact ? 7 : 12}px ${compact ? 7 : 12}px`,
+                border: `${compact ? 2 : 4}px solid ${borderColor}`,
+                borderRadius: compact ? 7 : 8,
                 display: 'block',
                 margin: '0 auto',
-                maxHeight: compact ? 76 : 116,
+                maxHeight: compact ? 54 : 116,
                 position: 'relative',
                 width: size,
             }}
         >
-            <span style={{ ...finderStyle, left: 8, top: 8 }}><span style={innerStyle} /></span>
-            <span style={{ ...finderStyle, right: 8, top: 8 }}><span style={innerStyle} /></span>
-            <span style={{ ...finderStyle, bottom: 8, left: 8 }}><span style={innerStyle} /></span>
+            <span style={{ ...finderStyle, left: finderOffset, top: finderOffset }}><span style={innerStyle} /></span>
+            <span style={{ ...finderStyle, right: finderOffset, top: finderOffset }}><span style={innerStyle} /></span>
+            <span style={{ ...finderStyle, bottom: finderOffset, left: finderOffset }}><span style={innerStyle} /></span>
         </span>
     );
 }
@@ -407,7 +420,7 @@ function KitStack({
                         width: '42%',
                     }}
                 >
-                    <DecorativeLayer family={family} isDark={isDark} muted={muted} />
+                    <DecorativeLayer compact family={family} isDark={isDark} muted={muted} />
                     <span style={{ background: accent, borderRadius: 999, display: 'block', height: 7, margin: '18% auto 12%', width: '56%' }} />
                     <QrMock borderColor={muted} compact size="50%" />
                 </span>
@@ -440,6 +453,10 @@ export default function PrintableTemplatePreview({
             ? 'linear-gradient(135deg, #ffffff, #eef2f7)'
             : `linear-gradient(135deg, ${brand.gradientFrom}, ${brand.gradientTo})`;
     const surface = isDark ? brand.surface : brand.surface;
+    const compactTitleFontSize = kind === 'portrait' ? 6.5 : 7;
+    const compactPillFontSize = kind === 'portrait' ? 5.5 : 6;
+    const compactInstructionFontSize = kind === 'portrait' ? 5.5 : 6;
+    const showMenuRows = assetTypeId === 'print_menu';
 
     return (
         <div
@@ -452,7 +469,7 @@ export default function PrintableTemplatePreview({
                 justifyContent: 'center',
                 minHeight: compact ? 94 : 210,
                 overflow: 'hidden',
-                padding: compact ? 10 : 18,
+                padding: compact ? 6 : 18,
                 position: 'relative',
                 width: '100%',
             }}
@@ -479,7 +496,7 @@ export default function PrintableTemplatePreview({
                     fontFamily,
                     minWidth: compact ? 86 : 140,
                     overflow: 'hidden',
-                    padding: kind === 'kit' ? 0 : compact ? 8 : 12,
+                    padding: kind === 'kit' ? 0 : compact ? 7 : 12,
                     position: 'relative',
                 }}
             >
@@ -487,13 +504,13 @@ export default function PrintableTemplatePreview({
                     <KitStack accent={brand.accent} family={family} isDark={isDark} muted={brand.border} surface={surface} />
                 ) : (
                     <>
-                        <DecorativeLayer family={family} isDark={isDark} muted={brand.border} />
+                        <DecorativeLayer compact={compact} family={family} isDark={isDark} muted={brand.border} />
                         {family.id === 'brand-banner' || family.id === 'local-bold' ? (
                             <span
                                 style={{
                                     background: `linear-gradient(90deg, ${brand.gradientFrom}, ${brand.gradientTo})`,
                                     display: 'block',
-                                    height: kind === 'landscape' ? '22%' : '18%',
+                                    height: compact ? (kind === 'landscape' ? '24%' : '16%') : kind === 'landscape' ? '22%' : '18%',
                                     left: 0,
                                     position: 'absolute',
                                     right: 0,
@@ -507,23 +524,31 @@ export default function PrintableTemplatePreview({
                                 display: 'flex',
                                 flexDirection: 'column',
                                 height: '100%',
-                                justifyContent: kind === 'square' ? 'center' : 'flex-start',
+                                justifyContent: kind === 'square' ? 'center' : compact ? 'space-between' : 'flex-start',
+                                minHeight: 0,
+                                overflow: 'hidden',
                                 position: 'relative',
                                 textAlign: 'center',
                                 zIndex: 1,
                             }}
                         >
                             {kind !== 'square' ? (
-                                <LogoBadge accent={brand.accent} isDark={isDark} logo={storeLogo} storeName={storeName} />
+                                <LogoBadge accent={brand.accent} compact={compact} isDark={isDark} logo={storeLogo} storeName={storeName} />
                             ) : null}
                             <div
                                 style={{
                                     color: brand.text,
-                                    fontSize: compact ? 10 : 15,
+                                    fontSize: compact ? compactTitleFontSize : 15,
                                     fontWeight: isSerif ? 700 : 800,
-                                    letterSpacing: family.id === 'classic-luxe' || family.id === 'botanical-heritage' ? 2.4 : 0,
+                                    letterSpacing: compact
+                                        ? family.id === 'classic-luxe' || family.id === 'botanical-heritage'
+                                            ? 0.7
+                                            : 0
+                                        : family.id === 'classic-luxe' || family.id === 'botanical-heritage'
+                                            ? 2.4
+                                            : 0,
                                     lineHeight: 1.08,
-                                    maxWidth: '92%',
+                                    maxWidth: compact ? '86%' : '92%',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     textTransform: family.id === 'local-bold' ? 'uppercase' : undefined,
@@ -538,13 +563,13 @@ export default function PrintableTemplatePreview({
                                     border: `1px solid ${brand.border}`,
                                     borderRadius: 999,
                                     color: family.id === 'executive-dark' ? brand.accentText : brand.accent,
-                                    fontSize: compact ? 8 : 12,
+                                    fontSize: compact ? compactPillFontSize : 12,
                                     fontWeight: 800,
-                                    letterSpacing: family.id === 'classic-luxe' ? 1.8 : 0.6,
-                                    margin: compact ? '6px 0' : '10px 0',
-                                    maxWidth: '88%',
+                                    letterSpacing: compact ? 0.5 : family.id === 'classic-luxe' ? 1.8 : 0.6,
+                                    margin: compact ? '2px 0' : '10px 0',
+                                    maxWidth: compact ? '82%' : '88%',
                                     overflow: 'hidden',
-                                    padding: compact ? '2px 9px' : '4px 16px',
+                                    padding: compact ? '1px 6px' : '4px 16px',
                                     textOverflow: 'ellipsis',
                                     textTransform: 'uppercase',
                                     whiteSpace: 'nowrap',
@@ -552,15 +577,15 @@ export default function PrintableTemplatePreview({
                             >
                                 {title}
                             </div>
-                            {assetTypeId === 'print_menu' ? (
-                                <div style={{ display: 'grid', gap: compact ? 3 : 5, marginTop: compact ? 4 : 8, width: '78%' }}>
+                            {showMenuRows ? (
+                                <div style={{ display: 'grid', gap: compact ? 2 : 5, marginTop: compact ? 1 : 8, width: compact ? '70%' : '78%' }}>
                                     {Array.from({ length: kind === 'landscape' ? 3 : 5 }).map((_, index) => (
                                         <span
                                             key={index}
                                             style={{
                                                 alignItems: 'center',
                                                 display: 'grid',
-                                                gap: 6,
+                                                gap: compact ? 3 : 6,
                                                 gridTemplateColumns: '1fr 26%',
                                             }}
                                         >
@@ -573,16 +598,29 @@ export default function PrintableTemplatePreview({
                                 <QrMock
                                     borderColor={brand.border}
                                     compact={compact}
-                                    size={kind === 'square' ? '62%' : kind === 'landscape' ? '34%' : '58%'}
+                                    size={
+                                        kind === 'square'
+                                            ? compact
+                                                ? '54%'
+                                                : '62%'
+                                            : kind === 'landscape'
+                                                ? compact
+                                                    ? '30%'
+                                                    : '34%'
+                                                : compact
+                                                    ? '52%'
+                                                    : '52%'
+                                    }
                                 />
                             )}
                             <div
                                 style={{
                                     color: brand.text,
-                                    fontSize: compact ? 8 : 11,
+                                    fontSize: compact ? compactInstructionFontSize : 11,
                                     fontWeight: 700,
-                                    marginTop: compact ? 5 : 8,
-                                    maxWidth: '92%',
+                                    lineHeight: 1.1,
+                                    marginTop: compact ? 2 : 8,
+                                    maxWidth: compact ? '84%' : '92%',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',

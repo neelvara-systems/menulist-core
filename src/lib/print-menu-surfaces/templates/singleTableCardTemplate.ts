@@ -21,7 +21,16 @@ type PrintMenuSingleTableCardInput = MenuKitInput & { _logo?: PreloadedLogo | nu
 const CARD_W_MM = 105;
 const CARD_H_MM = 148;
 
-export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTableCardInput): Promise<Blob> {
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to generate single table card image'))),
+            'image/png',
+        );
+    });
+}
+
+async function renderPrintMenuSingleTableCardCanvas(input: PrintMenuSingleTableCardInput): Promise<HTMLCanvasElement> {
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
@@ -56,6 +65,15 @@ export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTab
         templateFamilyId: input.templateFamilyId,
     });
 
+    return canvas;
+}
+
+export async function generatePrintMenuSingleTableCardImage(input: PrintMenuSingleTableCardInput): Promise<Blob> {
+    return canvasToPngBlob(await renderPrintMenuSingleTableCardCanvas(input));
+}
+
+export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTableCardInput): Promise<Blob> {
+    const canvas = await renderPrintMenuSingleTableCardCanvas(input);
     const imgDataUrl = canvas.toDataURL('image/png');
     const doc = new jsPDF({
         orientation: 'portrait',

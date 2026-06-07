@@ -23,7 +23,16 @@ const SHEET_H_MM = 148;
 const FACE_W_MM = SHEET_W_MM / 2;
 const FACE_H_MM = SHEET_H_MM;
 
-export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput): Promise<Blob> {
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to generate table tent image'))),
+            'image/png',
+        );
+    });
+}
+
+async function renderPrintMenuTableTentCanvas(input: PrintMenuTableTentInput): Promise<HTMLCanvasElement> {
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
@@ -85,6 +94,15 @@ export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput)
     ctx.stroke();
     ctx.setLineDash([]);
 
+    return canvas;
+}
+
+export async function generatePrintMenuTableTentImage(input: PrintMenuTableTentInput): Promise<Blob> {
+    return canvasToPngBlob(await renderPrintMenuTableTentCanvas(input));
+}
+
+export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput): Promise<Blob> {
+    const canvas = await renderPrintMenuTableTentCanvas(input);
     const imgDataUrl = canvas.toDataURL('image/png');
     const doc = new jsPDF({
         orientation: 'landscape',

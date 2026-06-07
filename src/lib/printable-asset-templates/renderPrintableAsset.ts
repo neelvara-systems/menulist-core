@@ -1,7 +1,7 @@
 import { buildQrCodeFilename, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { getPrintableAssetType } from './assetTypes';
 import { mapPrintableTemplateToMenuCardStyle } from './templateFamilies';
-import type { PrintableAssetRenderInput, PrintableAssetRenderResult } from './types';
+import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetRenderResult, PrintableAssetTypeId } from './types';
 
 function dataUrlToBlob(dataUrl: string): Blob {
     const [header, payload] = dataUrl.split(',');
@@ -18,8 +18,129 @@ function safeName(value: string): string {
     return value.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
 }
 
+function replaceFilenameExtension(filename: string, extension: string): string {
+    return filename.replace(/\.[a-z0-9]+$/i, '') + extension;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read generated file'));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to generate image preview'))),
+            'image/png',
+        );
+    });
+}
+
+function getImagePdfPage(assetTypeId: PrintableAssetTypeId, width: number, height: number): {
+    heightMm: number;
+    widthMm: number;
+} {
+    if (assetTypeId === 'counter_sticker') return { widthMm: 80, heightMm: 80 };
+    if (assetTypeId === 'feedback_qr') return { widthMm: 100, heightMm: 150 };
+
+    const aspect = height > 0 ? width / height : 1;
+    if (aspect >= 1) {
+        const widthMm = 210;
+        return { widthMm, heightMm: Math.max(1, widthMm / aspect) };
+    }
+
+    const heightMm = 297;
+    return { widthMm: Math.max(1, heightMm * aspect), heightMm };
+}
+
+async function wrapImageBlobInPdf(
+    imageBlob: Blob,
+    assetTypeId: PrintableAssetTypeId,
+    filename: string,
+): Promise<PrintableAssetRenderResult> {
+    const dataUrl = await blobToDataUrl(imageBlob);
+    const dimensions = await new Promise<{ height: number; width: number }>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth || image.width, height: image.naturalHeight || image.height });
+        image.onerror = () => reject(new Error('Failed to measure generated image'));
+        image.src = dataUrl;
+    });
+    const page = getImagePdfPage(assetTypeId, dimensions.width, dimensions.height);
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({
+        orientation: page.widthMm >= page.heightMm ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: [page.widthMm, page.heightMm],
+    });
+    doc.addImage(dataUrl, 'PNG', 0, 0, page.widthMm, page.heightMm);
+
+    return {
+        blob: doc.output('blob'),
+        filename: replaceFilenameExtension(filename, '.pdf'),
+        label: 'PDF',
+        mimeType: 'application/pdf',
+        outputFormat: 'pdf',
+    };
+}
+
+async function renderPdfFirstPageToPng(
+    pdfBlob: Blob,
+    filename: string,
+): Promise<PrintableAssetRenderResult> {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
+    const loadingTask = pdfjs.getDocument({ data: bytes, disableWorker: true, useSystemFonts: true } as any);
+    const pdf = await loadingTask.promise;
+
+    try {
+        const page = await pdf.getPage(1);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const maxCanvasWidth = 1800;
+        const scale = Math.max(1, Math.min(2.5, maxCanvasWidth / Math.max(1, baseViewport.width)));
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Failed to render PDF preview');
+        await page.render({ canvasContext: context, viewport } as any).promise;
+        return {
+            blob: await canvasToPngBlob(canvas),
+            filename: replaceFilenameExtension(filename, '.png'),
+            label: 'Image',
+            mimeType: 'image/png',
+            outputFormat: 'png',
+        };
+    } finally {
+        await pdf.destroy();
+    }
+}
+
+async function convertResultFormat(
+    result: PrintableAssetRenderResult,
+    input: PrintableAssetRenderInput,
+    requestedFormat: PrintableAssetOutputFormat,
+): Promise<PrintableAssetRenderResult> {
+    if (result.outputFormat === requestedFormat) return result;
+
+    if (requestedFormat === 'png' && result.mimeType === 'application/pdf') {
+        return renderPdfFirstPageToPng(result.blob, result.filename);
+    }
+
+    if (requestedFormat === 'pdf' && result.mimeType === 'image/png') {
+        return wrapImageBlobInPdf(result.blob, input.assetTypeId, result.filename);
+    }
+
+    return result;
+}
+
 export async function renderPrintableAsset(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult> {
     const assetType = getPrintableAssetType(input.assetTypeId);
+    const requestedFormat = input.outputFormat || assetType.outputFormat;
 
     if (input.assetTypeId === 'print_menu') {
         if (!input.printMenuOptions) {
@@ -30,12 +151,13 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
             ...input.printMenuOptions,
             styleId: mapPrintableTemplateToMenuCardStyle(input.templateFamilyId),
         });
-        return {
+        return convertResultFormat({
             blob: result.blob,
             filename: result.filename,
             label: assetType.title,
             mimeType: 'application/pdf',
-        };
+            outputFormat: 'pdf',
+        }, input, requestedFormat);
     }
 
     if (input.assetTypeId === 'feedback_qr') {
@@ -52,12 +174,13 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
             templateFamilyId: input.templateFamilyId,
             title: 'Feedback QR',
         });
-        return {
+        return convertResultFormat({
             blob: dataUrlToBlob(dataUrl),
             filename: `${safeName(input.storeName)}_${buildQrCodeFilename('feedback', 'qr')}.png`,
             label: assetType.title,
             mimeType: 'image/png',
-        };
+            outputFormat: 'png',
+        }, input, requestedFormat);
     }
 
     const { generateMenuKit, generateMenuKitAsset } = await import('@lib/menu-kit/menuKitGenerator');
@@ -82,6 +205,7 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
             filename: `${safeName(input.storeName)}_MenuKit_${input.templateFamilyId}.zip`,
             label: assetType.title,
             mimeType: 'application/zip',
+            outputFormat: 'zip',
         };
     }
 
@@ -89,5 +213,10 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
         throw new Error(`Unsupported printable asset: ${input.assetTypeId}`);
     }
 
-    return generateMenuKitAsset(menuKitInput, assetType.menuKitAssetKey);
+    const result = await generateMenuKitAsset(menuKitInput, assetType.menuKitAssetKey, { outputFormat: requestedFormat === 'png' ? 'png' : 'pdf' });
+    const nativeFormat: PrintableAssetOutputFormat = result.mimeType === 'application/pdf' ? 'pdf' : 'png';
+    return convertResultFormat({
+        ...result,
+        outputFormat: nativeFormat,
+    }, input, requestedFormat);
 }

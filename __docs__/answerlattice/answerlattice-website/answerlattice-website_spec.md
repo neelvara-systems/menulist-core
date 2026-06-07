@@ -1,6 +1,6 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.57
+> **Version:** 1.2.59
 > **Last Updated:** 2026-06-06
 > **Audience:** CEO / PM / Marketing
 
@@ -41,23 +41,25 @@ Public fit and setup copy must not imply founders need existing support volume b
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what AnswerLattice is in < 5 seconds: the first 24/7 support layer for founder-led SaaS. Drive to self-service setup first, with the static demo as the secondary proof path.
+**Goal:** Communicate what AnswerLattice is in < 5 seconds: the first 24/7 support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the static demo as the secondary proof path.
 
 **Sections:**
-1. **Hero** — Centered founder-readable promise: "Support your SaaS users 24/7 without hiring a support team." The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement.
+1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow may carry the 24/7 category claim; the headline should not repeat 24/7. The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement.
 2. **Capability Proof Strip** — Compact proof of widget, hosted help, approved answers, ticket fallback, feedback review, changelog, and safe context. Use capability proof until real customer proof exists.
 3. **Founder Support Pressure** — Before/after section for the emotional post-launch moment: building got faster, but user support still becomes the founder's responsibility.
-4. **Support Surface Bento** — Rich bento grid showing the product is broader than questions and answers: in-app widget, hosted help, FAQs, tickets, changelog, feedback, page context, approved answers, and weekly review.
-5. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
-6. **User-Side Product Proof** — Product screenshot/asset section showing the user getting help on a concrete Billing/Onboarding/Settings page.
-7. **Founder-Side Review Proof** — Product screenshot/asset section showing support gaps, stale answers, low-rated replies, and draft improvements awaiting review.
-8. **Differentiation** — Three-card section: not a chatbot, not static docs, not a full helpdesk.
-9. **Use-Case Strip** — Compact navigation cards for AI-built SaaS, solo founders, launch-stage products, active SaaS, small teams, and studios/agencies.
-10. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
-11. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
-12. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
+4. **Input-to-Support Diagram** — Vertical three-row diagram inside the founder-pressure panel: owner inputs on top, AnswerLattice mark in the middle, generated support outputs below. Outputs should render as a compact 2x2 grid on desktop and emphasize in-app widget, help center, FAQ answers, and documentation rather than implying AnswerLattice generates tickets or changelogs.
+5. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
+6. **Product Overview** — Clean product overview cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
+7. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
+8. **User-Side Product Proof** — Product screenshot/asset section showing the user getting help on a concrete Billing/Onboarding/Settings page.
+9. **Founder-Side Review Proof** — Product screenshot/asset section showing support gaps, stale answers, low-rated replies, and draft improvements awaiting review.
+10. **Differentiation** — Three-card section: not a chatbot, not static docs, not a full helpdesk.
+11. **Use-Case Strip** — Compact navigation cards for AI-built SaaS, solo founders, launch-stage products, active SaaS, small teams, and studios/agencies.
+12. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
+13. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
+14. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
 
-The homepage must stay diagram-controlled: one hero product scene, one capability proof strip, one large support-improvement loop diagram, two product proof screenshots, one comparison card group, pricing, FAQ preview, and final CTA. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
+The homepage must stay diagram-controlled: one hero product scene, one capability proof strip, one input-to-support diagram, one support-surface story, one large support-improvement loop diagram, product proof screenshots, one comparison card group, pricing, FAQ preview, and final CTA. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
 
 ### 2. Product (`/product`)
 **Goal:** Explain the product in founder/operator language while preserving the real AnswerLattice architecture.
@@ -137,7 +139,7 @@ Rules:
 
 ### Positioning Guardrail
 
-The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "24/7", "support pressure", and "users need trusted support", but it must not say AnswerLattice "handles all support" or imply human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a 24/7 support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
+The homepage may use founder-relief language such as "SaaS", "digital products", "ship fast", "24/7", "support pressure", and "product users need trusted support", but it must not say AnswerLattice "handles all support" or imply human outsourcing, helpdesk replacement, full AI autopilot, or automatic publishing. The accurate buyer promise is: AnswerLattice gives founders a 24/7 support layer through an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and a human review loop. "AI-built SaaS" and "vibe-coded SaaS" can be used for use-case and campaign content, but the top-level positioning should not imply AnswerLattice only works for SaaS.
 
 ### Non-Home Page Conversion Pattern
 
@@ -596,6 +598,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-07 | 1.2.59 | Updated the homepage contract around product-user support, a vertical input-to-support output diagram, and a scroll-led support-surface story inspired by modern product pages while preserving helpdesk/autopilot guardrails |
 | 2026-06-06 | 1.2.58 | Synced launch-setup, product preview, and updates copy with Activation first-client launch proof while keeping Signal Queue as the proposal-quality confirmation surface |
 | 2026-06-06 | 1.2.57 | Removed desktop hamburger exposure by gating the mobile drawer trigger to confirmed mobile viewports and normalized shared non-home hero alignment, spacing, and typography while leaving the homepage hero unchanged |
 | 2026-06-06 | 1.2.56 | Added route-backed Small SaaS Teams and Studios/Agencies use-case pages, exposed all primary use-case routes from the footer Evaluate column, and synchronized public route metadata |

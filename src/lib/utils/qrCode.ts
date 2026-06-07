@@ -87,18 +87,26 @@ function drawLogoBadge(
     logo: Awaited<ReturnType<typeof loadLogo>>,
     storeName: string | undefined,
     fontBase: string,
+    templateFamilyId: string,
 ): void {
-    const radius = Math.round(size * 0.22);
+    const isRound = templateFamilyId === 'classic-luxe'
+        || templateFamilyId === 'executive-dark'
+        || templateFamilyId === 'botanical-heritage';
+    const radius = isRound ? size / 2 : Math.round(size * 0.22);
+    const inset = isRound ? size * 0.075 : size * 0.09;
+    const innerRadius = isRound ? (size - inset * 2) / 2 : Math.round(radius * 0.72);
+    const fill = templateFamilyId === 'executive-dark' ? '#0e1116' : brand.surface;
+    const innerStroke = templateFamilyId === 'executive-dark' ? 'rgba(255,255,255,0.18)' : brand.paper;
 
     ctx.save();
     ctx.shadowColor = 'rgba(17, 24, 39, 0.18)';
     ctx.shadowBlur = Math.round(size * 0.16);
     ctx.shadowOffsetY = Math.round(size * 0.06);
-    fillRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, brand.surface);
+    fillRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, fill);
     ctx.restore();
 
     strokeRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, brand.border, Math.max(2, Math.round(size * 0.025)));
-    strokeRoundedRect(ctx, cx - size / 2 + size * 0.09, cy - size / 2 + size * 0.09, size * 0.82, size * 0.82, Math.round(radius * 0.72), brand.paper, Math.max(2, Math.round(size * 0.018)));
+    strokeRoundedRect(ctx, cx - size / 2 + inset, cy - size / 2 + inset, size - inset * 2, size - inset * 2, innerRadius, innerStroke, Math.max(2, Math.round(size * 0.018)));
 
     if (logo) {
         const maxLogoW = Math.round(size * 0.68);
@@ -115,6 +123,120 @@ function drawLogoBadge(
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(getStoreInitials(storeName), cx, cy + size * 0.02);
+}
+
+function drawQrHeaderTreatment(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    width: number,
+    brand: ReturnType<typeof resolveMenuKitBrandTokens>,
+    templateFamilyId: string,
+): void {
+    const centerX = x + w / 2;
+    const unit = width / 100;
+
+    if (templateFamilyId === 'brand-banner') {
+        fillRoundedVerticalGradient(
+            ctx,
+            x,
+            y,
+            w,
+            Math.round(width * 0.15),
+            Math.round(width * 0.028),
+            brand.gradientFrom,
+            brand.gradientTo,
+        );
+        return;
+    }
+
+    if (templateFamilyId === 'local-bold') {
+        fillRoundedRect(ctx, centerX - width * 0.18, y + width * 0.036, width * 0.36, width * 0.03, width * 0.015, brand.accent);
+        ctx.save();
+        ctx.globalAlpha = 0.44;
+        drawQrDiagonalStrips(ctx, x + width * 0.08, y + width * 0.1, w - width * 0.16, brand.border, unit);
+        ctx.restore();
+        return;
+    }
+
+    if (templateFamilyId === 'clean-utility') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = Math.max(2, unit * 0.25);
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.08, y + width * 0.08);
+        ctx.lineTo(centerX - width * 0.11, y + width * 0.08);
+        ctx.moveTo(centerX + width * 0.11, y + width * 0.08);
+        ctx.lineTo(x + w - width * 0.08, y + width * 0.08);
+        ctx.stroke();
+        return;
+    }
+
+    if (templateFamilyId === 'classic-luxe') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = Math.max(2, unit * 0.32);
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.12, y + width * 0.09);
+        ctx.lineTo(centerX - width * 0.12, y + width * 0.09);
+        ctx.moveTo(centerX + width * 0.12, y + width * 0.09);
+        ctx.lineTo(x + w - width * 0.12, y + width * 0.09);
+        ctx.stroke();
+        drawQrDotCluster(ctx, centerX - unit * 2.2, y + width * 0.075, brand.accent, unit);
+        return;
+    }
+
+    if (templateFamilyId === 'executive-dark') {
+        ctx.strokeStyle = brand.accent;
+        ctx.lineWidth = Math.max(2, unit * 0.42);
+        ctx.globalAlpha = 0.84;
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.14, y + width * 0.09);
+        ctx.lineTo(centerX - width * 0.12, y + width * 0.09);
+        ctx.moveTo(centerX + width * 0.12, y + width * 0.09);
+        ctx.lineTo(x + w - width * 0.14, y + width * 0.09);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+    }
+
+    if (templateFamilyId === 'botanical-heritage') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = Math.max(1.5, unit * 0.24);
+        ctx.globalAlpha = 0.78;
+        ctx.beginPath();
+        ctx.moveTo(centerX - width * 0.22, y + width * 0.09);
+        ctx.lineTo(centerX - width * 0.12, y + width * 0.09);
+        ctx.moveTo(centerX + width * 0.12, y + width * 0.09);
+        ctx.lineTo(centerX + width * 0.22, y + width * 0.09);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+    }
+
+    if (templateFamilyId === 'soft-curve') {
+        ctx.save();
+        ctx.fillStyle = brand.softAccent;
+        ctx.globalAlpha = 0.72;
+        ctx.beginPath();
+        ctx.ellipse(x + w - width * 0.16, y + width * 0.085, width * 0.23, width * 0.07, -0.24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+    }
+
+    if (templateFamilyId === 'qr-first') {
+        ctx.strokeStyle = brand.accent;
+        ctx.lineWidth = Math.max(2, unit * 0.36);
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.14, y + width * 0.075);
+        ctx.lineTo(centerX - width * 0.12, y + width * 0.075);
+        ctx.moveTo(centerX + width * 0.12, y + width * 0.075);
+        ctx.lineTo(x + w - width * 0.14, y + width * 0.075);
+        ctx.stroke();
+        return;
+    }
+
+    fillRoundedRect(ctx, centerX - width * 0.17, y + width * 0.035, width * 0.34, width * 0.032, width * 0.016, brand.accent);
 }
 
 function drawQrCornerAccents(
@@ -277,8 +399,19 @@ function drawQrTemplateDecorations(
         return;
     }
 
-    if (templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold') {
+    if (templateFamilyId === 'brand-banner') {
         drawQrDiagonalStrips(ctx, x + unit * 6, y + unit * 17, w - unit * 12, brand.border, unit);
+        return;
+    }
+
+    if (templateFamilyId === 'local-bold') {
+        ctx.save();
+        ctx.fillStyle = brand.accent;
+        ctx.globalAlpha = 0.12;
+        fillRoundedRect(ctx, x + unit * 4, y + unit * 14, unit * 3, h - unit * 28, unit * 1.5, brand.accent);
+        fillRoundedRect(ctx, x + w - unit * 7, y + unit * 14, unit * 3, h - unit * 28, unit * 1.5, brand.accent);
+        ctx.restore();
+        drawQrDiagonalStrips(ctx, x + unit * 10, y + h - unit * 34, w - unit * 20, brand.border, unit);
         return;
     }
 
@@ -308,6 +441,7 @@ export async function generateBrandedQrCodeDataUrl(
     const subtitle = options?.subtitle || 'Open camera and point at the QR';
     const footer = options?.footer || value.replace(/^https?:\/\//, '');
     const nameParts = splitStoreName(options?.storeName);
+    const hasOuterBand = templateFamilyId === 'brand-banner';
     let logo: Awaited<ReturnType<typeof loadLogo>> = null;
     if (options?.logoUrl) {
         logo = await loadLogo(options.logoUrl, 220);
@@ -324,8 +458,16 @@ export async function generateBrandedQrCodeDataUrl(
     if (templateFamilyId === 'clean-utility') {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
-    } else {
+    } else if (hasOuterBand) {
         fillVerticalGradient(ctx, 0, 0, width, Math.round(height * 0.46), brand.gradientFrom, brand.gradientTo);
+    } else if (templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage') {
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = brand.softAccent;
+        ctx.beginPath();
+        ctx.ellipse(centerX, Math.round(width * 0.08), width * 0.38, width * 0.075, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
 
     const cardX = margin;
@@ -344,32 +486,21 @@ export async function generateBrandedQrCodeDataUrl(
     strokeRoundedRect(ctx, cardX, cardY, cardW, cardH, cardRadius, brand.border, Math.max(2, Math.round(width * 0.003)));
     drawQrTemplateDecorations(ctx, cardX, cardY, cardW, cardH, brand, templateFamilyId, width / 100);
 
-    if (templateFamilyId === 'qr-first' || templateFamilyId === 'clean-utility') {
-        ctx.fillStyle = templateFamilyId === 'qr-first' ? brand.softAccent : '#ffffff';
-        ctx.fillRect(cardX + Math.round(width * 0.03), cardY + Math.round(width * 0.03), cardW - Math.round(width * 0.06), Math.round(width * 0.08));
-    } else {
-        fillRoundedVerticalGradient(
-            ctx,
-            cardX + Math.round(width * 0.03),
-            cardY + Math.round(width * 0.03),
-            cardW - Math.round(width * 0.06),
-            Math.round(width * 0.15),
-            Math.round(width * 0.028),
-            brand.gradientFrom,
-            brand.gradientTo,
-        );
-    }
+    drawQrHeaderTreatment(ctx, cardX + Math.round(width * 0.03), cardY + Math.round(width * 0.03), cardW - Math.round(width * 0.06), width, brand, templateFamilyId);
 
     const badgeSize = Math.round(width * 0.13);
-    const badgeY = cardY + Math.round(width * 0.17);
+    const hasBannerHeader = templateFamilyId === 'brand-banner';
+    const badgeY = cardY + Math.round(width * (hasBannerHeader ? 0.17 : 0.135));
     if (logo || nameParts) {
-        drawLogoBadge(ctx, centerX, badgeY, badgeSize, brand, logo, options?.storeName, fontBase);
+        drawLogoBadge(ctx, centerX, badgeY, badgeSize, brand, logo, options?.storeName, fontBase, templateFamilyId);
     }
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let headerY = nameParts ? cardY + Math.round(width * 0.28) : cardY + Math.round(width * 0.19);
+    let headerY = nameParts
+        ? cardY + Math.round(width * (hasBannerHeader ? 0.28 : 0.245))
+        : cardY + Math.round(width * (hasBannerHeader ? 0.19 : 0.16));
     if (nameParts) {
         fitCanvasText(ctx, nameParts.primary, cardW - margin, `800 ${Math.round(width * 0.047)}px ${fontBase}`, Math.round(width * 0.03));
         ctx.fillStyle = brand.text;

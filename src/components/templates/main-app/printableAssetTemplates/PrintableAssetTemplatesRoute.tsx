@@ -9,8 +9,8 @@ import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob } from '@lib/menu-kit/menuKitGenerator';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
-import { PRINTABLE_TEMPLATE_FAMILIES, getPrintableTemplateFamily, isPrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
-import type { PrintableAssetRenderInput, PrintableAssetTypeId, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
+import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily } from '@lib/printable-asset-templates/templateFamilies';
+import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -19,7 +19,7 @@ import PrintableTemplatePreview from '@/components/shared/printableAssets/Printa
 import { Button, Card, Col, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCheck, LuDownload, LuEye, LuFileText, LuPackage, LuPrinter, LuQrCode } from 'react-icons/lu';
+import { LuDownload, LuFileText, LuPackage, LuPrinter, LuQrCode } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 
 const { Paragraph, Text, Title } = Typography;
@@ -61,7 +61,7 @@ type PreviewAssetState = {
     blob: Blob;
     filename: string;
     label: string;
-    mimeType: string;
+    outputFormat: PrintableAssetOutputFormat;
     url: string;
 };
 
@@ -87,6 +87,22 @@ function parseTimestamp(value: unknown): Date | undefined {
         if (typeof record.seconds === 'number') return new Date(record.seconds * 1000);
     }
     return undefined;
+}
+
+function getPrintableDownloadActionLabel(outputFormat: PrintableAssetOutputFormat, assetId?: PrintableAssetTypeId): string {
+    if (outputFormat === 'pdf') return 'Download PDF';
+    if (outputFormat === 'zip') return 'Download ZIP';
+    if (assetId === 'print_menu') return 'Download first page image';
+    return 'Download image';
+}
+
+function getPrintableActionFormats(asset: PrintableAssetType): PrintableAssetOutputFormat[] {
+    return (asset.supportedOutputFormats || [asset.outputFormat]).filter((format) => format !== 'zip');
+}
+
+function getPrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOutputFormat | null {
+    if (asset.outputFormat === 'zip') return null;
+    return 'png';
 }
 
 function buildExportData(projectData: any) {
@@ -117,13 +133,11 @@ export default function PrintableAssetTemplatesRoute() {
         const fromQuery = searchParams.get('asset');
         return isPrintableAssetTypeId(fromQuery) ? fromQuery : 'single_table_card';
     });
-    const [selectedTemplateId, setSelectedTemplateId] = useState<PrintableTemplateFamilyId>(() => {
-        const fromQuery = searchParams.get('template');
-        return isPrintableTemplateFamilyId(fromQuery) ? fromQuery : getPrintableAssetType(selectedAssetId).defaultTemplateId;
-    });
+    const [activeTemplateId, setActiveTemplateId] = useState<PrintableTemplateFamilyId | null>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [busyKey, setBusyKey] = useState<string | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
+    const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
     const previewUrlRef = useRef<string | null>(null);
 
     const labels = useMemo(
@@ -139,6 +153,15 @@ export default function PrintableAssetTemplatesRoute() {
         [storeDetails],
     );
     const selectedAsset = getPrintableAssetType(selectedAssetId);
+    const selectedAssetActionFormats = getPrintableActionFormats(selectedAsset);
+    const availableTemplateFamilies = useMemo(
+        () => getPrintableTemplateFamiliesForAsset(selectedAssetId),
+        [selectedAssetId],
+    );
+    const activeTemplateFamily = useMemo(
+        () => activeTemplateId ? getPrintableTemplateFamily(activeTemplateId) : null,
+        [activeTemplateId],
+    );
     const previewActionLabel = selectedAssetId === 'feedback_qr'
         ? 'Feedback QR'
         : selectedAssetId === 'counter_sticker'
@@ -241,7 +264,8 @@ export default function PrintableAssetTemplatesRoute() {
 
     const handleSelectAsset = (assetId: PrintableAssetTypeId) => {
         setSelectedAssetId(assetId);
-        setSelectedTemplateId(getPrintableAssetType(assetId).defaultTemplateId);
+        setActiveTemplateId(null);
+        closePreviewAsset();
     };
 
     const closePreviewAsset = () => {
@@ -250,6 +274,12 @@ export default function PrintableAssetTemplatesRoute() {
             previewUrlRef.current = null;
         }
         setPreviewAsset(null);
+        setPreviewState('idle');
+    };
+
+    const closeTemplateActions = () => {
+        setActiveTemplateId(null);
+        closePreviewAsset();
     };
 
     const handleSelectProject = (projectId: string) => {
@@ -318,34 +348,55 @@ export default function PrintableAssetTemplatesRoute() {
         };
     };
 
-    const handleRender = async (templateFamilyId: PrintableTemplateFamilyId, mode: 'download' | 'preview') => {
-        const busy = `${mode}:${selectedAssetId}:${templateFamilyId}`;
+    const renderTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId) => {
+        const previewFormat = getPrintablePreviewFormat(selectedAsset);
+        closePreviewAsset();
+        if (!previewFormat) {
+            setPreviewState('ready');
+            return;
+        }
+
+        const busy = `preview:${selectedAssetId}:${templateFamilyId}:${previewFormat}`;
         setBusyKey(busy);
+        setPreviewState('loading');
         try {
             const input = await buildRenderInput(templateFamilyId);
-            if (!input) return;
-            const result = await renderPrintableAsset(input);
-            if (mode === 'download') {
-                downloadBlob(result.blob, result.filename);
-                message.success(`${selectedAsset.title} downloaded`);
+            if (!input) {
+                setPreviewState('idle');
                 return;
             }
-            if (result.mimeType === 'application/zip') {
-                message.info('Complete Menu Kit is a ZIP download. Choose Download to save it.');
-                return;
-            }
-            if (previewUrlRef.current) {
-                URL.revokeObjectURL(previewUrlRef.current);
-            }
+            const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
             const previewUrl = URL.createObjectURL(new Blob([result.blob], { type: result.mimeType }));
             previewUrlRef.current = previewUrl;
             setPreviewAsset({
                 blob: result.blob,
                 filename: result.filename,
                 label: `${selectedAsset.title} - ${getPrintableTemplateFamily(templateFamilyId).label}`,
-                mimeType: result.mimeType,
+                outputFormat: result.outputFormat,
                 url: previewUrl,
             });
+            setPreviewState('ready');
+        } catch {
+            setPreviewState('error');
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const openTemplateActions = (templateFamilyId: PrintableTemplateFamilyId) => {
+        setActiveTemplateId(templateFamilyId);
+        void renderTemplatePreview(templateFamilyId);
+    };
+
+    const handleRender = async (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => {
+        const busy = `download:${selectedAssetId}:${templateFamilyId}:${outputFormat}`;
+        setBusyKey(busy);
+        try {
+            const input = await buildRenderInput(templateFamilyId);
+            if (!input) return;
+            const result = await renderPrintableAsset({ ...input, outputFormat });
+            downloadBlob(result.blob, result.filename);
+            message.success(`${selectedAsset.title} downloaded`);
         } catch {
             message.error(`Failed to generate ${selectedAsset.title}`);
         } finally {
@@ -451,26 +502,23 @@ export default function PrintableAssetTemplatesRoute() {
 
                 <Col xs={24} lg={18}>
                     <Row gutter={[16, 16]}>
-                        {PRINTABLE_TEMPLATE_FAMILIES.map((family) => {
-                            const selected = selectedTemplateId === family.id;
-                            const isBusyDownload = busyKey === `download:${selectedAssetId}:${family.id}`;
-                            const isBusyPreview = busyKey === `preview:${selectedAssetId}:${family.id}`;
+                        {availableTemplateFamilies.map((family) => {
                             return (
                                 <Col xs={24} sm={12} xl={8} key={family.id}>
                                     <Card
-                                        aria-label={`${family.label} template`}
-                                        aria-pressed={selected}
+                                        aria-haspopup="dialog"
+                                        aria-label={`Open ${family.label} ${selectedAsset.title} download options`}
                                         hoverable
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter' || event.key === ' ') {
                                                 event.preventDefault();
-                                                setSelectedTemplateId(family.id);
+                                                openTemplateActions(family.id);
                                             }
                                         }}
-                                        onClick={() => setSelectedTemplateId(family.id)}
+                                        onClick={() => openTemplateActions(family.id)}
                                         role="button"
                                         style={{
-                                            borderColor: selected ? token.colorPrimary : token.colorBorder,
+                                            borderColor: token.colorBorder,
                                             borderRadius: 8,
                                             overflow: 'hidden',
                                         }}
@@ -482,6 +530,7 @@ export default function PrintableAssetTemplatesRoute() {
                                                 actionLabel={previewActionLabel}
                                                 assetTypeId={selectedAssetId}
                                                 brandColor={storeBrandColor}
+                                                compact
                                                 family={family}
                                                 instructionLabel={previewInstructionLabel}
                                                 shortLink={data.menuLink.replace(/^https?:\/\//, '')}
@@ -492,39 +541,15 @@ export default function PrintableAssetTemplatesRoute() {
                                         <Flex gap={10} style={{ padding: 16 }} vertical>
                                             <Flex align="center" justify="space-between" gap={8}>
                                                 <Text strong>{family.label}</Text>
-                                                {selected ? <Tag color="success"><LuCheck size={12} /> Selected</Tag> : <Tag>{family.tier}</Tag>}
+                                                <Tag>{family.tier}</Tag>
                                             </Flex>
                                             <Text type="secondary" style={{ minHeight: 44 }}>{family.description}</Text>
                                             <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
                                                 {selectedAsset.title} - {selectedAsset.size}
                                             </Text>
-                                            <Flex gap={8}>
-                                                <Button
-                                                    block
-                                                    icon={<LuDownload size={16} />}
-                                                    loading={isBusyDownload}
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        setSelectedTemplateId(family.id);
-                                                        void handleRender(family.id, 'download');
-                                                    }}
-                                                    type="primary"
-                                                >
-                                                    Download
-                                                </Button>
-                                                {selectedAsset.outputFormat !== 'zip' ? (
-                                                    <Button
-                                                        aria-label={`Preview ${family.label} ${selectedAsset.title}`}
-                                                        icon={<LuEye size={16} />}
-                                                        loading={isBusyPreview}
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            setSelectedTemplateId(family.id);
-                                                            void handleRender(family.id, 'preview');
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </Flex>
+                                            <Text strong style={{ color: token.colorPrimary, fontSize: 13 }}>
+                                                Open download options
+                                            </Text>
                                         </Flex>
                                     </Card>
                                 </Col>
@@ -549,49 +574,95 @@ export default function PrintableAssetTemplatesRoute() {
             </Modal>
             <Modal
                 destroyOnHidden
-                footer={[
-                    <Button key="close" onClick={closePreviewAsset}>
-                        Close
-                    </Button>,
-                    <Button
-                        icon={<LuDownload size={16} />}
-                        key="download"
-                        onClick={() => previewAsset && downloadBlob(previewAsset.blob, previewAsset.filename)}
-                        type="primary"
-                    >
-                        Download
-                    </Button>,
-                ]}
-                onCancel={closePreviewAsset}
-                open={Boolean(previewAsset)}
-                title={previewAsset ? `Preview - ${previewAsset.label}` : 'Preview'}
-                width={previewAsset?.mimeType === 'application/pdf' ? 920 : 680}
+                footer={null}
+                onCancel={closeTemplateActions}
+                open={Boolean(activeTemplateFamily)}
+                title={activeTemplateFamily ? `${selectedAsset.title} - ${activeTemplateFamily.label}` : 'Download asset'}
+                width={760}
             >
-                {previewAsset?.mimeType === 'application/pdf' ? (
-                    <iframe
-                        src={previewAsset.url}
-                        style={{
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 8,
-                            height: '72vh',
-                            width: '100%',
-                        }}
-                        title={`${previewAsset.label} preview`}
-                    />
-                ) : previewAsset ? (
-                    <img
-                        alt={`${previewAsset.label} preview`}
-                        src={previewAsset.url}
-                        style={{
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 8,
-                            display: 'block',
-                            maxHeight: '72vh',
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                            width: '100%',
-                        }}
-                    />
+                {activeTemplateFamily ? (
+                    <Flex gap={16} vertical>
+                        <div
+                            style={{
+                                alignItems: 'center',
+                                background: token.colorBgLayout,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 12,
+                                display: 'flex',
+                                height: selectedAssetId === 'counter_sticker' ? 360 : 430,
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                padding: 12,
+                            }}
+                        >
+                            {previewState === 'loading' ? (
+                                <Flex align="center" gap={10} justify="center" vertical>
+                                    <Spin />
+                                    <Text type="secondary">Creating preview...</Text>
+                                </Flex>
+                            ) : previewAsset ? (
+                                <img
+                                    alt={`${previewAsset.label} preview`}
+                                    src={previewAsset.url}
+                                    style={{
+                                        borderRadius: 8,
+                                        display: 'block',
+                                        maxHeight: '100%',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                    }}
+                                />
+                            ) : previewState === 'error' ? (
+                                <Text type="secondary">Preview could not be created. Download still may work.</Text>
+                            ) : selectedAsset.outputFormat === 'zip' ? (
+                                <PrintableTemplatePreview
+                                    actionLabel={previewActionLabel}
+                                    assetTypeId={selectedAssetId}
+                                    brandColor={storeBrandColor}
+                                    family={activeTemplateFamily}
+                                    instructionLabel={previewInstructionLabel}
+                                    shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                                    storeLogo={data.storeLogo}
+                                    storeName={data.storeName}
+                                />
+                            ) : null}
+                        </div>
+                        <Flex gap={12} vertical>
+                            <Flex gap={4} vertical>
+                                <Text strong>{activeTemplateFamily.label}</Text>
+                                <Text type="secondary">{activeTemplateFamily.description}</Text>
+                                <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
+                                    {selectedAsset.size}
+                                </Text>
+                            </Flex>
+                            {selectedAsset.outputFormat === 'zip' ? (
+                                <Button
+                                    block
+                                    icon={<LuDownload size={16} />}
+                                    loading={busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:zip`}
+                                    onClick={() => void handleRender(activeTemplateFamily.id, 'zip')}
+                                    size="large"
+                                    type="primary"
+                                >
+                                    Download ZIP
+                                </Button>
+                            ) : (
+                                selectedAssetActionFormats.map((format, index) => (
+                                    <Button
+                                        block
+                                        icon={<LuDownload size={16} />}
+                                        key={format}
+                                        loading={busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:${format}`}
+                                        onClick={() => void handleRender(activeTemplateFamily.id, format)}
+                                        size="large"
+                                        type={index === 0 ? 'primary' : 'default'}
+                                    >
+                                        {getPrintableDownloadActionLabel(format, selectedAssetId)}
+                                    </Button>
+                                ))
+                            )}
+                        </Flex>
+                    </Flex>
                 ) : null}
             </Modal>
         </div>

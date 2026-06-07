@@ -87,6 +87,7 @@ npm run dev
 | **Web fonts** | `fontSources` | `https://fonts.gstatic.com` |
 | **API calls** | `connectSources` | `https://api.stripe.com` |
 | **Embedded videos/maps** | `frameSources` | `https://www.youtube.com` |
+| **Generated image previews** | `imageSources` | `blob:` |
 | **Images** | `imageSources` | Usually `https:` (allows all) |
 
 ---
@@ -123,6 +124,16 @@ connectSources: [
 frameSources: [
     'https://www.youtube.com',
     'https://player.vimeo.com',
+],
+```
+
+### **Adding Generated Image Previews**
+
+Client-generated printable previews use browser `Blob` URLs and render as images:
+
+```typescript
+imageSources: [
+    'blob:', // Generated image previews
 ],
 ```
 

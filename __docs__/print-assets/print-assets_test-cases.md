@@ -31,7 +31,8 @@
 | Print Menu | Opens Menu Card Export route when enabled. |
 | Print readiness | Shows live link, logo, brand color, business name, and feedback readiness from existing context. |
 | Print-shop handoff | Copy action places the printer specs and menu link on the clipboard. |
-| Output preview | Table/card/sticker/poster Preview opens the generated output without downloading the full ZIP. |
+| Output preview | Table/card/sticker/poster template click shows a generated image preview inside the modal or sheet without opening a PDF viewer or downloading the full ZIP. |
+| Format actions | Single printable assets expose separate PDF and image download actions from the modal or sheet. |
 | Reprint guidance | Explains that content/price updates do not require reprint and lists the cases that do. |
 | Mobile More | Assets opens inside More sub-screen. |
 | Mobile Share | Assets shortcut opens mobile sub-screen without reload. |

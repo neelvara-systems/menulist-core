@@ -27,7 +27,7 @@ Assets gives you the files customers scan inside your business.
 
 Check **Print readiness** first. It shows whether the live link, logo, brand color, business name, and feedback QR are ready for printing.
 
-Use **Preview** on the file before sending it to a print shop. Preview shows the same generated output that Download will save.
+Open a template first. The preview appears before download, and the same template can be saved as PDF or image where supported.
 
 Use **Printer Message** when sending files to a local printer. It copies the file specs and menu link so the printer knows what to print.
 

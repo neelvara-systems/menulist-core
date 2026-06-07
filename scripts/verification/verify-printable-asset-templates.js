@@ -86,6 +86,15 @@ const assetTypes = read('src/lib/printable-asset-templates/assetTypes.ts');
   'complete_menu_kit',
 ].forEach((id) => requireToken(assetTypes, id, 'asset type catalog'));
 
+const menuKitGenerator = read('src/lib/menu-kit/menuKitGenerator.ts');
+[
+  'generatePrintMenuTableTentImage',
+  'generatePrintMenuSingleTableCardImage',
+  'generateImage',
+  'imageSuffix',
+  "options?: { outputFormat?: 'pdf' | 'png' }",
+].forEach((token) => requireToken(menuKitGenerator, token, 'menu kit single asset image preview path'));
+
 const families = read('src/lib/printable-asset-templates/templateFamilies.ts');
 [
   'classic-luxe',
@@ -97,6 +106,8 @@ const families = read('src/lib/printable-asset-templates/templateFamilies.ts');
   'qr-first',
   'local-bold',
   'clean-utility',
+  'getPrintableTemplateFamiliesForAsset',
+  'FULL_MENU_TEMPLATE_FAMILY_IDS',
 ].forEach((id) => requireToken(families, id, 'template family catalog'));
 
 const familyIdMatches = families.match(/id: '[a-z-]+'/g) || [];
@@ -109,7 +120,11 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   "input.assetTypeId === 'print_menu'",
   "input.assetTypeId === 'feedback_qr'",
   "input.assetTypeId === 'complete_menu_kit'",
+  'requestedFormat',
+  'renderPdfFirstPageToPng',
+  'wrapImageBlobInPdf',
   'generateMenuKitAsset',
+  "outputFormat: requestedFormat === 'png' ? 'png' : 'pdf'",
   'mapPrintableTemplateToMenuCardStyle',
 ].forEach((token) => requireToken(renderer, token, 'printable asset renderer'));
 
@@ -125,10 +140,17 @@ requireToken(mobileMore, "openSubScreen('printAssets')", 'mobile more screen');
 const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 [
   'PRINTABLE_ASSET_TYPES',
-  'PRINTABLE_TEMPLATE_FAMILIES',
+  'getPrintableTemplateFamiliesForAsset',
   'renderPrintableAsset',
   'selectedPrintableAssetId',
-  'selectedPrintableTemplateId',
+  'availablePrintableTemplateFamilies',
+  'printableActionTemplateId',
+  'printablePreviewState',
+  'PrintableTemplateActionSheet',
+  'getMobilePrintableDownloadActionLabel',
+  'getMobilePrintableActionFormats',
+  'renderPrintableTemplatePreview',
+  'supportedOutputFormats',
   'TemplateFamilySwatch',
   'templateRowPreviewWidth',
   'templateRowPreviewHeight',
@@ -147,11 +169,46 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'menuModifiedOn: project.modifiedOn',
   'menuModifiedOn: project.menuModifiedOn',
   'aria-pressed={active}',
-  'aria-pressed={selected}',
+  'activeTemplateId',
+  'selectedAssetActionFormats',
+  'availableTemplateFamilies',
+  'getPrintableTemplateFamiliesForAsset',
+  'getPrintableDownloadActionLabel',
+  'getPrintableActionFormats',
+  'renderTemplatePreview',
+  "return 'png';",
+  'Open download options',
   'PrintableTemplatePreview',
   'setPreviewAsset',
   'secondaryLabel: project.url.replace',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
+
+const printMenuCardFace = read('src/lib/print-menu-surfaces/templates/printMenuCardFace.ts');
+[
+  'drawHeaderTreatment',
+  "const hasOuterBand = templateFamilyId === 'brand-banner'",
+  "templateFamilyId === 'brand-banner'",
+  "templateFamilyId === 'local-bold'",
+  "templateFamilyId === 'botanical-heritage'",
+  "templateFamilyId === 'qr-first'",
+].forEach((token) => requireToken(printMenuCardFace, token, 'print menu card face variants'));
+
+const qrCode = read('src/lib/utils/qrCode.ts');
+[
+  'drawQrHeaderTreatment',
+  "const hasOuterBand = templateFamilyId === 'brand-banner'",
+  "templateFamilyId === 'brand-banner'",
+  "templateFamilyId === 'local-bold'",
+  "templateFamilyId === 'botanical-heritage'",
+  "templateFamilyId === 'qr-first'",
+].forEach((token) => requireToken(qrCode, token, 'branded QR variants'));
+
+if (printMenuCardFace.includes("templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold'")) {
+  failures.push('print menu card face must not share the full banner branch between brand-banner and local-bold');
+}
+if (qrCode.includes("templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold'")) {
+  failures.push('branded QR must not share the full banner branch between brand-banner and local-bold');
+}
 
 if (desktopAssetsRoute.includes('window.open(')) {
   failures.push('desktop assets route should preview in a modal, not window.open');
@@ -159,10 +216,20 @@ if (desktopAssetsRoute.includes('window.open(')) {
 if (desktopAssetsRoute.includes('Preview was blocked')) {
   failures.push('desktop assets route should not download as a preview fallback');
 }
+if (desktopAssetsRoute.includes('<iframe')) {
+  failures.push('desktop assets route should show image previews, not embedded PDF iframes');
+}
 if (desktopAssetsRoute.includes('destroyOnClose')) {
   failures.push('desktop assets route should use destroyOnHidden for Ant Design Modal previews');
 }
 requireToken(desktopAssetsRoute, 'destroyOnHidden', 'desktop assets preview modal');
+
+if (mobileShare.includes('<iframe')) {
+  failures.push('mobile assets sheet should show image previews, not embedded PDF iframes');
+}
+if (mobileShare.includes('previewAsset?.isPdf') || mobileShare.includes('isPdf:')) {
+  failures.push('mobile assets sheet should not keep PDF iframe preview state');
+}
 
 const sharedPreview = read('src/components/shared/printableAssets/PrintableTemplatePreview.tsx');
 [

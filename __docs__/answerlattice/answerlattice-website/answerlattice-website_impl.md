@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.77
-> **Last Updated:** 2026-06-06
+> **Version:** 1.2.78
+> **Last Updated:** 2026-06-07
 > **Audience:** Developers
 
 ---
@@ -208,7 +208,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - "vibe-coded SaaS" is treated as an SEO/campaign alias, not the main public buyer label
 - homepage and product page expose the implemented AnswerLattice engine pillars: Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
-- homepage now leads with the page-aware support-answer value proposition, an inline sample workspace preview, and setup/demo/source-prep CTAs
+- homepage now leads with product-user support rather than SaaS-user-only wording, keeps the 24/7 claim in the eyebrow, and uses setup/demo CTAs plus capability chips
+- homepage includes a support-surface story section in `page.tsx` that walks from owner inputs to in-app help, hosted help, fallback gaps, and the review loop using image-backed product assets and sticky desktop cards
 - homepage adds `HomeProofBandSection.tsx` immediately after the hero so page-aware answers, approved knowledge, hosted help, feedback gaps, widget install, and source preparation are not missed before the deeper story
 - homepage includes a restrained tabbed product-proof preview across desktop, tablet, and mobile, showing activation, product surfaces, widget install, feedback review, and governance queue states
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
@@ -464,6 +465,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-07 | 1.2.78 | Added the homepage support-surface story, frame rail motion, product-user hero wording, and input-to-support output diagram updates while keeping the public site static and scoped to existing product routes |
 | 2026-06-06 | 1.2.77 | Synced public launch-setup, product-preview, and updates copy with Activation first-client launch proof without claiming Jira, native helpdesk, or mutation-proposal scans from the website |
 | 2026-06-06 | 1.2.76 | Gated the mobile hamburger trigger to confirmed mobile viewports and normalized shared non-home hero typography/alignment in the product-scoped stylesheet without changing the homepage hero |
 | 2026-06-06 | 1.2.75 | Added dedicated Small SaaS Teams and Studios/Agencies use-case routes, linked them from the use-case hub and footer Evaluate column, and registered them in the public page registry |

@@ -33,7 +33,7 @@ MenuList creates finished print files from the current approved menu. The owner 
 | Ready for tables and counters | Table cards, counter stickers, entrance posters, feedback QR, and paper menu files are in one place. | Screenshot of Assets screen with asset type rail. |
 | Uses the business identity | Store name, logo, and brand color are applied automatically. | Close-up of template preview. |
 | Current menu link | QR files point back to the current menu source. | QR card preview with short link. |
-| No design work | The owner chooses a finished style and downloads. | 9-template grid. |
+| No design work | The owner chooses a finished style and downloads. | Template grid. |
 
 ## How It Works
 

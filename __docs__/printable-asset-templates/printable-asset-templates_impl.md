@@ -112,7 +112,7 @@ export type PrintableTemplateFamily = {
 };
 ```
 
-Add a new template by registering it in `templateFamilies.ts` and adding its token treatment in `templateStyles.ts` / the shared renderer surfaces. Dashboard and mobile components read from the catalog and should not hardcode the catalog list.
+Add a new template by registering it in `templateFamilies.ts` and adding its token treatment in `templateStyles.ts` / the shared renderer surfaces. Dashboard and mobile components read from the catalog through `getPrintableTemplateFamiliesForAsset()` and should not hardcode the catalog list. If an asset renderer does not support materially distinct output for a family, that asset must not show the family as a selectable option.
 
 ## Asset Type Contract
 
@@ -131,7 +131,7 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 
 ## Renderer Adapter
 
-`renderPrintableAsset(input)` routes to existing engines:
+`renderPrintableAsset(input)` routes to existing engines and accepts an optional `outputFormat` override:
 
 | Asset Type | Adapter |
 | --- | --- |
@@ -142,6 +142,10 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `feedback_qr` | Existing branded QR download renderer with `templateFamilyId`. |
 | `print_menu` | Menu Card Export preset/style mapping, using existing `renderPdf`. |
 | `complete_menu_kit` | `generateMenuKit(menuKitInput)` with `templateFamilyId` in `MenuKitInput`. |
+
+Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first: table tent and single table/counter card previews use the native canvas PNG path, so they avoid a PDF wrapper for preview/image export. Other PDF-native outputs can render the first page into PNG through `pdfjs-dist` with workers disabled, so owners do not see browser PDF controls inside the modal/sheet. PNG-native outputs use their generated image for preview/download, and PDF export wraps that image into a print-size PDF with `jsPDF`. Complete Menu Kit remains ZIP-only.
+
+Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. QR/display assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.
 
 `MenuKitInput` now includes optional `templateFamilyId` in `src/lib/menu-kit/types.ts`.
 
@@ -161,10 +165,11 @@ Desktop layout:
 ```text
 Assets
   left: asset type rail
-  right: template grid / preview / download bar
+  right: template grid
+  click template: action modal with generated image preview
 ```
 
-The primary CTA is **Download**. Secondary action is **Preview**. Do not use public UI labels like "Customize Template".
+Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately generates an image preview, and shows **Download PDF** plus **Download image** for single assets. Complete Menu Kit shows **Download ZIP** only. Do not use public UI labels like "Customize Template".
 
 ## Mobile Route
 
@@ -177,7 +182,8 @@ Implementation:
 - Add a More-tab item named `Assets`.
 - Reuse `MobileProjectsProvider` and current Share/Print Assets data handlers.
 - Use mobile asset-type cards and a one-column template family list with a fixed preview thumbnail and readable copy.
-- Keep preview/download actions in the shell.
+- Tapping a template family opens an in-shell bottom sheet, immediately generates an image preview, and shows PDF/image download actions for that exact template.
+- Keep preview and download actions in the shell.
 
 This follows the existing route-map pattern in `src/components/mobile/MobileShell.tsx:36` and the existing More tab module list at `src/components/mobile/screens/MobileMoreScreen.tsx:450`.
 
@@ -243,7 +249,7 @@ No Cloud Function flag is needed because generation is client-side.
 ## Implementation Checklist
 
 1. Add docs and feature flag.
-2. Add template family catalog with all 9 families.
+2. Add template family catalog with 9 governed families and asset-level filtering.
 3. Add asset type registry.
 4. Add renderer adapter and template-aware output options.
 5. Add desktop `/assets` route and nav item.

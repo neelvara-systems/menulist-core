@@ -4,7 +4,7 @@
 
 Normal Printable Asset Templates generation has **zero new Firestore reads, zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**.
 
-The feature reuses already-loaded owner/store/project/menu data and generates files in the browser with Canvas, jsPDF, QR rendering, and JSZip.
+The feature reuses already-loaded owner/store/project/menu data and generates files in the browser with Canvas, jsPDF, QR rendering, pdfjs-dist PDF page rendering, and JSZip.
 
 There are **No new Cloud Functions** and **No new Firestore indexes** for this feature.
 
@@ -14,9 +14,9 @@ There are **No new Cloud Functions** and **No new Firestore indexes** for this f
 | --- | ---: | ---: | ---: | ---: | --- |
 | Open `/assets` after dashboard data is loaded | 0 new | 0 | 0 | 0 | Reuses existing owner/project/store context. |
 | Select asset type | 0 | 0 | 0 | 0 | Local UI state only. |
-| Select template family | 0 | 0 | 0 | 0 | Local UI/query/session state only. |
-| Preview asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only. |
-| Download single PDF/PNG | 0 | 0 | 0 | 0 | Local generation and browser download. |
+| Open template actions | 0 | 0 | 0 | 0 | Local UI state only. |
+| Preview asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side. |
+| Download single PDF/image | 0 | 0 | 0 | 0 | Local generation and browser download; alternate format conversion stays in-browser. |
 | Download Menu Kit ZIP | 0 | 0 | 0 | 0 | Local JSZip generation. |
 | Mobile preview/download | 0 | 0 | 0 | 0 | Same generator as desktop. |
 | Premium branding check | 0 new | 0 | 0 | 0 | Uses existing active plan context. |
@@ -51,14 +51,14 @@ If an explicit paid style suggestion is enabled, it must follow the existing AI 
 - One operation is accounted only after a valid provider response.
 - Starter is blocked before provider call.
 
-This optional path is not required for the 9-template catalog.
+This optional path is not required for the governed template catalog.
 
 ## Monthly Cost Estimate
 
 | Scenario | Firebase Cost |
 | --- | --- |
 | 1,000 owners open Assets and download 5 files each | $0 incremental Firebase cost. |
-| 1,000 owners preview 9 templates each | $0 incremental Firebase cost. |
+| 1,000 owners preview supported templates for each asset | $0 incremental Firebase cost. |
 | 1,000 owners download Menu Kit ZIP | $0 incremental Firebase cost. |
 
 Runtime CPU/memory cost is on the owner browser. Large Menu Kit ZIP downloads should show progress and avoid parallel generation loops beyond the existing safe generator behavior.

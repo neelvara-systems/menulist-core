@@ -22,6 +22,7 @@ export type PrintableTemplateFamilyId =
     | 'clean-utility';
 
 export type PrintableTemplateTier = 'starter' | 'pro' | 'premium';
+export type PrintableAssetOutputFormat = 'pdf' | 'png' | 'zip';
 
 export type PrintableTemplateFamily = {
     accentLabel: string;
@@ -38,11 +39,12 @@ export type PrintableAssetType = {
     description: string;
     id: PrintableAssetTypeId;
     menuKitAssetKey?: MenuKitAssetKey;
-    outputFormat: 'pdf' | 'png' | 'zip';
+    outputFormat: PrintableAssetOutputFormat;
     placement: 'tables' | 'counter' | 'entrance' | 'feedback' | 'full-menu' | 'bundle';
     requiresFeedback?: boolean;
     requiresMenuItems?: boolean;
     size: string;
+    supportedOutputFormats?: PrintableAssetOutputFormat[];
     title: string;
 };
 
@@ -58,6 +60,7 @@ export type PrintableAssetRenderInput = {
     logoUrl?: string | null;
     menuUrl: string;
     obpBaseUrl?: string;
+    outputFormat?: PrintableAssetOutputFormat;
     printMenuOptions?: MenuPdfOptions;
     projectId?: string | null;
     shortLink: string;
@@ -70,4 +73,5 @@ export type PrintableAssetRenderResult = {
     filename: string;
     label: string;
     mimeType: string;
+    outputFormat: PrintableAssetOutputFormat;
 };

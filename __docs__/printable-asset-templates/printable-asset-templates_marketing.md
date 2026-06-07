@@ -24,7 +24,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 1. **Printed Files Carry Trust** - Customers see table and counter files before they interact with staff.
 2. **Owners Should Not Need Design Work** - Most SMB owners do not have time or skill for file prep.
 3. **Assets Screen** - One workspace for table, counter, entrance, feedback, and paper menu files.
-4. **9 Finished Styles** - Real choice without a design editor.
+4. **Finished Styles** - Real choice without a design editor or duplicate output options.
 5. **Current Menu Source** - QR points back to the current approved menu.
 6. **Brand Reuse** - Store color, logo, and name are applied automatically.
 7. **Premium Detail** - Premium stores can remove visible MenuList attribution through the existing policy.

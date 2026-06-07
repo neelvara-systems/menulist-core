@@ -4,7 +4,7 @@
 **Owner:** MenuList
 **Last Updated:** June 6, 2026
 
-Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, generated output preview, print-shop handoff text, and reprint guidance.
+Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, image-first generated preview, print-shop handoff text, and reprint guidance.
 
 ## Document Index
 

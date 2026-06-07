@@ -271,11 +271,18 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'buildPrintShopHandoffMessage',
   'PRINT_ASSET_REPRINT_GUIDANCE',
   'PRINTABLE_ASSET_TYPES',
-  'PRINTABLE_TEMPLATE_FAMILIES',
+  'getPrintableTemplateFamiliesForAsset',
   'renderPrintableAsset',
   'selectedPrintableAssetId',
-  'selectedPrintableTemplateId',
-  'PreviewAssetSheet',
+  'availablePrintableTemplateFamilies',
+  'printableActionTemplateId',
+  'printablePreviewState',
+  'PrintableTemplateActionSheet',
+  'getMobilePrintableDownloadActionLabel',
+  'getMobilePrintableActionFormats',
+  'renderPrintableTemplatePreview',
+  "return 'png';",
+  'supportedOutputFormats',
   'MobilePrintReadinessPanel',
   "handleMenuKitAsset('table_tent', 'table_tent'",
   "handleMenuKitAsset('single_table_card', 'single_table_card'",
@@ -295,6 +302,10 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
 ].forEach((token) => {
   if (!mobileShare.includes(token)) failures.push(`Mobile Share entry missing token: ${token}`);
 });
+
+if (mobileShare.includes('<iframe') || mobileShare.includes('previewAsset?.isPdf') || mobileShare.includes('isPdf:')) {
+  failures.push('Mobile Print Assets preview should render image previews, not embedded PDF iframes');
+}
 if (mobileShare.includes('result.assets[')) {
   failures.push('Mobile Share must generate individual Menu Kit files by asset key, not result.assets[index]');
 }

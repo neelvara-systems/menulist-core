@@ -16,10 +16,10 @@ import { PRINTABLE_ASSET_TYPES, getPrintableAssetType } from '@lib/printable-ass
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
 import {
     DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
-    PRINTABLE_TEMPLATE_FAMILIES,
+    getPrintableTemplateFamiliesForAsset,
     getPrintableTemplateFamily,
 } from '@lib/printable-asset-templates/templateFamilies';
-import type { PrintableAssetRenderInput, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
+import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
 import {
     PRINT_ASSET_REPRINT_GUIDANCE,
     buildPrintReadinessItems,
@@ -137,7 +137,7 @@ type QrSheetState = {
 type PreviewAssetState = {
     blob: Blob;
     filename: string;
-    isPdf: boolean;
+    outputFormat: PrintableAssetOutputFormat;
     title: string;
     url: string;
 };
@@ -196,8 +196,9 @@ export default function MobileShareScreen({
     const [generatingDownload, setGeneratingDownload] = useState<DownloadAssetKey | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
     const [selectedPrintableAssetId, setSelectedPrintableAssetId] = useState<PrintableAssetTypeId>('single_table_card');
-    const [selectedPrintableTemplateId, setSelectedPrintableTemplateId] = useState<PrintableTemplateFamilyId>(DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID);
+    const [printableActionTemplateId, setPrintableActionTemplateId] = useState<PrintableTemplateFamilyId | null>(null);
     const [printableBusyKey, setPrintableBusyKey] = useState<string | null>(null);
+    const [printablePreviewState, setPrintablePreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
     const isPrintAssetsMode = mode === 'printAssets';
     const [screenLinks, setScreenLinks] = useState<ScreenLinksState>({
         highlightsLink: null,
@@ -341,9 +342,17 @@ export default function MobileShareScreen({
         () => getPrintableAssetType(selectedPrintableAssetId),
         [selectedPrintableAssetId],
     );
-    const selectedPrintableTemplate = useMemo(
-        () => getPrintableTemplateFamily(selectedPrintableTemplateId),
-        [selectedPrintableTemplateId],
+    const selectedPrintableActionFormats = useMemo(
+        () => getMobilePrintableActionFormats(selectedPrintableAsset),
+        [selectedPrintableAsset],
+    );
+    const availablePrintableTemplateFamilies = useMemo(
+        () => getPrintableTemplateFamiliesForAsset(selectedPrintableAssetId),
+        [selectedPrintableAssetId],
+    );
+    const printableActionTemplate = useMemo(
+        () => printableActionTemplateId ? getPrintableTemplateFamily(printableActionTemplateId) : null,
+        [printableActionTemplateId],
     );
 
     const outletQrLinks = useMemo<OutletQrLink[]>(() => {
@@ -566,7 +575,61 @@ export default function MobileShareScreen({
         };
     };
 
-    const handlePrintableAssetRender = async (mode: 'download' | 'preview') => {
+    const closePrintableTemplateActions = () => {
+        setPrintableActionTemplateId(null);
+        setPreviewAsset(null);
+        setPrintablePreviewState('idle');
+    };
+
+    const renderPrintableTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId) => {
+        if (!data) return;
+
+        const assetType = selectedPrintableAsset;
+        if (assetType.requiresFeedback && !data.hasFeedbackEnabled) {
+            setPrintablePreviewState('idle');
+            return;
+        }
+
+        const previewFormat = getMobilePrintablePreviewFormat(assetType);
+        setPreviewAsset(null);
+        if (!previewFormat) {
+            setPrintablePreviewState('ready');
+            return;
+        }
+
+        const busyKey = `preview:${selectedPrintableAssetId}:${templateFamilyId}:${previewFormat}`;
+        setPrintableBusyKey(busyKey);
+        setPrintablePreviewState('loading');
+        try {
+            const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
+            if (!input) {
+                setPrintablePreviewState('idle');
+                return;
+            }
+            const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
+            const previewBlob = new Blob([result.blob], { type: result.mimeType });
+            const previewUrl = URL.createObjectURL(previewBlob);
+            setPreviewAsset({
+                blob: result.blob,
+                filename: result.filename,
+                outputFormat: result.outputFormat,
+                title: `${assetType.title} - ${getPrintableTemplateFamily(templateFamilyId).label}`,
+                url: previewUrl,
+            });
+            setPrintablePreviewState('ready');
+        } catch {
+            setPrintablePreviewState('error');
+        } finally {
+            setPrintableBusyKey(null);
+        }
+    };
+
+    const openPrintableTemplateActions = (templateFamilyId: PrintableTemplateFamilyId) => {
+        setPrintableActionTemplateId(templateFamilyId);
+        void renderPrintableTemplatePreview(templateFamilyId);
+    };
+
+    const handlePrintableAssetRender = async (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => {
         if (!data) return;
 
         const assetType = selectedPrintableAsset;
@@ -574,37 +637,20 @@ export default function MobileShareScreen({
             Toast.show({ content: 'Turn on feedback first, then download this QR.', duration: 1600 });
             return;
         }
-        if (mode === 'preview' && assetType.outputFormat === 'zip') {
-            Toast.show({ content: 'Download the ZIP to view all files.', duration: 1400 });
-            return;
-        }
 
-        const busyKey = `${mode}:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`;
+        const busyKey = `download:${selectedPrintableAssetId}:${templateFamilyId}:${outputFormat}`;
         setPrintableBusyKey(busyKey);
         try {
-            const input = await buildPrintableRenderInput(selectedPrintableAssetId, selectedPrintableTemplateId);
+            const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
             if (!input) return;
-            const result = await renderPrintableAsset(input);
+            const result = await renderPrintableAsset({ ...input, outputFormat });
 
-            if (mode === 'download') {
-                downloadBlob(result.blob, result.filename);
-                if (selectedPrintableAssetId === 'complete_menu_kit') {
-                    void trackMenuKitDownload('zip_download');
-                    recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
-                }
-                Toast.show({ content: `${assetType.title} downloaded`, duration: 1400, icon: 'success' });
-                return;
+            downloadBlob(result.blob, result.filename);
+            if (selectedPrintableAssetId === 'complete_menu_kit') {
+                void trackMenuKitDownload('zip_download');
+                recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
             }
-
-            const previewBlob = new Blob([result.blob], { type: result.mimeType });
-            const previewUrl = URL.createObjectURL(previewBlob);
-            setPreviewAsset({
-                blob: result.blob,
-                filename: result.filename,
-                isPdf: result.mimeType === 'application/pdf',
-                title: `${assetType.title} - ${selectedPrintableTemplate.label}`,
-                url: previewUrl,
-            });
+            Toast.show({ content: `${assetType.title} downloaded`, duration: 1400, icon: 'success' });
         } catch {
             Toast.show({ content: `Could not create ${assetType.title}`, duration: 1600 });
         } finally {
@@ -921,7 +967,7 @@ export default function MobileShareScreen({
                                         onClick={() => {
                                             if (disabled) return;
                                             setSelectedPrintableAssetId(asset.id);
-                                            setSelectedPrintableTemplateId(asset.defaultTemplateId);
+                                            closePrintableTemplateActions();
                                         }}
                                         style={{
                                             alignItems: 'center',
@@ -970,18 +1016,17 @@ export default function MobileShareScreen({
                             title="Choose Style"
                         />
                         <Flex gap={10} vertical>
-                            {PRINTABLE_TEMPLATE_FAMILIES.map((family) => {
-                                const active = selectedPrintableTemplateId === family.id;
+                            {availablePrintableTemplateFamilies.map((family) => {
                                 return (
                                     <button
-                                        aria-label={`${family.label} style. ${family.bestFor}`}
-                                        aria-pressed={active}
+                                        aria-haspopup="dialog"
+                                        aria-label={`Open ${family.label} ${selectedPrintableAsset.title} download options`}
                                         key={family.id}
-                                        onClick={() => setSelectedPrintableTemplateId(family.id)}
+                                        onClick={() => openPrintableTemplateActions(family.id)}
                                         style={{
                                             alignItems: 'stretch',
-                                            background: active ? token.colorPrimaryBg : token.colorBgContainer,
-                                            border: `1px solid ${active ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+                                            background: token.colorBgContainer,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 18,
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1040,11 +1085,7 @@ export default function MobileShareScreen({
                                                 >
                                                     {family.label}
                                                 </Text>
-                                                {active ? (
-                                                    <LuCheck color={token.colorPrimary} size={17} style={{ flexShrink: 0, marginTop: 1 }} />
-                                                ) : (
-                                                    <Tag style={{ flexShrink: 0, marginInlineEnd: 0 }}>{family.tier}</Tag>
-                                                )}
+                                                <Tag style={{ flexShrink: 0, marginInlineEnd: 0 }}>{family.tier}</Tag>
                                             </span>
                                             <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 12, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
                                                 {family.description}
@@ -1061,60 +1102,20 @@ export default function MobileShareScreen({
                 </Card>
 
                 <Card style={{ borderRadius: 24 }}>
-                    <Flex gap={12} vertical>
-                        <Flex align="flex-start" gap={10} justify="space-between">
-                            <Flex gap={4} style={{ minWidth: 0 }} vertical>
-                                <Text strong>{selectedPrintableAsset.title}</Text>
-                                <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>
-                                    {selectedPrintableTemplate.label} · {selectedPrintableTemplate.description}
-                                </Text>
-                            </Flex>
-                            <Tag color="primary">{selectedPrintableAsset.outputFormat.toUpperCase()}</Tag>
-                        </Flex>
-                        <Flex gap={8} wrap="wrap">
-                            <Button
-                                color="primary"
-                                loading={printableBusyKey === `download:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`}
-                                onClick={() => void handlePrintableAssetRender('download')}
-                                style={{ flex: '1 1 160px' }}
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuDownload size={16} />
-                                    <Text>Download</Text>
-                                </Flex>
-                            </Button>
-                            {selectedPrintableAsset.outputFormat !== 'zip' ? (
-                                <Button
-                                    fill="outline"
-                                    loading={printableBusyKey === `preview:${selectedPrintableAssetId}:${selectedPrintableTemplateId}`}
-                                    onClick={() => void handlePrintableAssetRender('preview')}
-                                    style={{ flex: '1 1 130px' }}
-                                >
-                                    <Flex align="center" gap={6} justify="center">
-                                        <LuEye size={16} />
-                                        <Text>Preview</Text>
-                                    </Flex>
-                                </Button>
-                            ) : null}
-                            <Button
-                                fill="none"
-                                onClick={() => void handleCopy(printShopMessage, 'print-shop message')}
-                                style={{ flex: '1 1 160px' }}
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuClipboard size={16} />
-                                    <Text>Printer Message</Text>
-                                </Flex>
-                            </Button>
-                        </Flex>
-                    </Flex>
-                </Card>
-
-                <Card style={{ borderRadius: 24 }}>
                     <Flex gap={8} vertical>
                         <Text strong>Print guidance</Text>
                         <Text type="secondary">Use matte finish where possible and test one scan before printing in bulk.</Text>
-                        <Text type="secondary">Open Preview before sending a file to print. The preview is the same generated output as the download.</Text>
+                        <Text type="secondary">Tap a template to preview or download the exact file for that style.</Text>
+                        <Button
+                            fill="outline"
+                            onClick={() => void handleCopy(printShopMessage, 'print-shop message')}
+                            style={{ marginTop: 4 }}
+                        >
+                            <Flex align="center" gap={6} justify="center">
+                                <LuClipboard size={16} />
+                                <Text>Copy Printer Message</Text>
+                            </Flex>
+                        </Button>
                     </Flex>
                 </Card>
 
@@ -1141,9 +1142,33 @@ export default function MobileShareScreen({
                     }}
                     visible={isProjectSelectorOpen}
                 />
-                <PreviewAssetSheet
-                    asset={previewAsset}
-                    onClose={() => setPreviewAsset(null)}
+                <PrintableTemplateActionSheet
+                    actionLabel={
+                        selectedPrintableAssetId === 'feedback_qr'
+                            ? 'Feedback QR'
+                            : selectedPrintableAssetId === 'counter_sticker'
+                                ? labels.scanForUpper
+                                : labels.printCardTitle
+                    }
+                    asset={selectedPrintableAsset}
+                    assetTypeId={selectedPrintableAssetId}
+                    brandColor={storeBrandColor}
+                    busyKey={printableBusyKey}
+                    family={printableActionTemplate}
+                    instructionLabel={
+                        selectedPrintableAssetId === 'feedback_qr'
+                            ? 'Scan to leave feedback'
+                            : labels.scanToView
+                    }
+                    onClose={closePrintableTemplateActions}
+                    onDownload={(templateFamilyId, outputFormat) => void handlePrintableAssetRender(templateFamilyId, outputFormat)}
+                    previewAsset={previewAsset}
+                    previewState={printablePreviewState}
+                    shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                    storeLogo={data.storeLogo}
+                    storeName={data.storeName}
+                    supportedOutputFormats={selectedPrintableActionFormats}
+                    visible={Boolean(printableActionTemplate)}
                 />
             </Flex>
         );
@@ -1709,6 +1734,22 @@ function getMobilePrintableAssetIcon(assetId: PrintableAssetTypeId) {
     return <LuQrCode size={18} />;
 }
 
+function getMobilePrintableDownloadActionLabel(outputFormat: PrintableAssetOutputFormat, assetId?: PrintableAssetTypeId): string {
+    if (outputFormat === 'pdf') return 'Download PDF';
+    if (outputFormat === 'zip') return 'Download ZIP';
+    if (assetId === 'print_menu') return 'Download first page image';
+    return 'Download image';
+}
+
+function getMobilePrintableActionFormats(asset: PrintableAssetType): PrintableAssetOutputFormat[] {
+    return (asset.supportedOutputFormats || [asset.outputFormat]).filter((format) => format !== 'zip');
+}
+
+function getMobilePrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOutputFormat | null {
+    if (asset.outputFormat === 'zip') return null;
+    return 'png';
+}
+
 function TemplateFamilySwatch({
     actionLabel,
     assetTypeId,
@@ -1805,77 +1846,148 @@ function MobilePrintReadinessPanel({
     );
 }
 
-function PreviewAssetSheet({
+function PrintableTemplateActionSheet({
+    actionLabel,
     asset,
+    assetTypeId,
+    brandColor,
+    busyKey,
+    family,
+    instructionLabel,
     onClose,
+    onDownload,
+    previewAsset,
+    previewState,
+    shortLink,
+    storeLogo,
+    storeName,
+    supportedOutputFormats,
+    visible,
 }: {
-    asset: PreviewAssetState | null;
+    actionLabel: string;
+    asset: PrintableAssetType;
+    assetTypeId: PrintableAssetTypeId;
+    brandColor?: string | null;
+    busyKey: string | null;
+    family: PrintableTemplateFamily | null;
+    instructionLabel: string;
     onClose: () => void;
+    onDownload: (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => void;
+    previewAsset: PreviewAssetState | null;
+    previewState: 'idle' | 'loading' | 'ready' | 'error';
+    shortLink?: string;
+    storeLogo?: string | null;
+    storeName: string;
+    supportedOutputFormats: PrintableAssetOutputFormat[];
+    visible: boolean;
 }) {
     const { token } = theme.useToken();
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
-            visible={!!asset}
+            visible={visible}
         >
-            <Flex style={{ height: '100%', maxHeight: '94vh' }} vertical>
+            <Flex style={{ height: '100%', maxHeight: '92vh' }} vertical>
                 <NavBar backIcon={<LuX size={20} />} onBack={onClose}>
-                    {asset?.title || 'Preview'}
+                    {family ? `${asset.title} - ${family.label}` : asset.title}
                 </NavBar>
-                <Flex gap={10} style={{ overflowY: 'auto', padding: 12 }} vertical>
-                    {asset?.isPdf ? (
-                        <iframe
-                            src={asset.url}
+                {family ? (
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <div
                             style={{
+                                alignItems: 'center',
                                 background: token.colorBgLayout,
                                 border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 16,
-                                height: '68vh',
-                                width: '100%',
+                                borderRadius: 18,
+                                display: 'flex',
+                                height: asset.outputFormat === 'pdf' ? 360 : 320,
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                                padding: 10,
                             }}
-                            title={`${asset.title} preview`}
-                        />
-                    ) : asset ? (
-                        <img
-                            alt={`${asset.title} preview`}
-                            src={asset.url}
-                            style={{
-                                background: token.colorBgLayout,
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 16,
-                                height: 'auto',
-                                width: '100%',
-                            }}
-                        />
-                    ) : null}
-                    {asset ? (
-                        <Flex gap={8} wrap="wrap">
-                            <Button
-                                fill="outline"
-                                onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')}
-                                style={{ flex: '1 1 150px' }}
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuExternalLink size={15} />
-                                    <Text>Open Full Preview</Text>
+                        >
+                            {previewState === 'loading' ? (
+                                <Flex align="center" gap={8} justify="center" vertical>
+                                    <DotLoading color="primary" />
+                                    <Text style={{ color: token.colorTextSecondary }}>Creating preview...</Text>
                                 </Flex>
-                            </Button>
-                            <Button
-                                color="primary"
-                                onClick={() => downloadBlob(asset.blob, asset.filename)}
-                                style={{ flex: '1 1 130px' }}
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuDownload size={15} />
-                                    <Text>Download</Text>
+                            ) : previewAsset ? (
+                                <img
+                                    alt={`${previewAsset.title} preview`}
+                                    src={previewAsset.url}
+                                    style={{
+                                        borderRadius: 12,
+                                        display: 'block',
+                                        maxHeight: '100%',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                    }}
+                                />
+                            ) : previewState === 'error' ? (
+                                <Text style={{ color: token.colorTextSecondary, textAlign: 'center' }}>
+                                    Preview could not be created. Download still may work.
+                                </Text>
+                            ) : asset.outputFormat === 'zip' ? (
+                                <PrintableTemplatePreview
+                                    actionLabel={actionLabel}
+                                    assetTypeId={assetTypeId}
+                                    brandColor={brandColor}
+                                    family={family}
+                                    instructionLabel={instructionLabel}
+                                    shortLink={shortLink}
+                                    storeLogo={storeLogo}
+                                    storeName={storeName}
+                                />
+                            ) : null}
+                        </div>
+                        <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
+                            <Flex gap={6} vertical>
+                                <Flex align="center" gap={8} justify="space-between">
+                                    <Text strong>{family.label}</Text>
+                                    <Tag>{asset.outputFormat === 'zip' ? 'ZIP' : 'PDF + IMAGE'}</Tag>
                                 </Flex>
-                            </Button>
+                                <Text style={{ color: token.colorTextSecondary, lineHeight: 1.35 }}>
+                                    {family.description}
+                                </Text>
+                                <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
+                                    {asset.size}
+                                </Text>
+                            </Flex>
+                        </Card>
+                        <Flex gap={8} vertical>
+                            {asset.outputFormat === 'zip' ? (
+                                <Button
+                                    color="primary"
+                                    loading={busyKey === `download:${asset.id}:${family.id}:zip`}
+                                    onClick={() => onDownload(family.id, 'zip')}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuDownload size={16} />
+                                        <Text>Download ZIP</Text>
+                                    </Flex>
+                                </Button>
+                            ) : (
+                                supportedOutputFormats.map((format, index) => (
+                                    <Button
+                                        color={index === 0 ? 'primary' : 'default'}
+                                        fill={index === 0 ? 'solid' : 'outline'}
+                                        key={format}
+                                        loading={busyKey === `download:${asset.id}:${family.id}:${format}`}
+                                        onClick={() => onDownload(family.id, format)}
+                                    >
+                                        <Flex align="center" gap={6} justify="center">
+                                            <LuDownload size={16} />
+                                            <Text>{getMobilePrintableDownloadActionLabel(format, asset.id)}</Text>
+                                        </Flex>
+                                    </Button>
+                                ))
+                            )}
                         </Flex>
-                    ) : null}
-                </Flex>
+                    </Flex>
+                ) : null}
             </Flex>
         </Popup>
     );

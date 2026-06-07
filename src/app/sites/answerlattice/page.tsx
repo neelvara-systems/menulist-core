@@ -23,7 +23,7 @@ import ObjectionsSection from './components/ObjectionsSection';
 import PageProofStrip from './components/PageProofStrip';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import SectionHeader from './components/SectionHeader';
-import { AnswerlatticeHubDiagram, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
+import { AnswerlatticeDiagramCore, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
 import {
     ANSWERLATTICE_FEATURE_ASSETS,
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
@@ -115,23 +115,71 @@ const OWNER_INPUT_DIAGRAM_INPUTS = [
 const OWNER_INPUT_DIAGRAM_OUTPUTS = [
     {
         title: 'In-app widget',
-        detail: 'Users get help inside billing, onboarding, settings, releases, and error screens.',
+        detail: 'Generated page-aware help can appear inside billing, onboarding, settings, releases, and error screens.',
         meta: 'Widget',
     },
     {
         title: 'Help center',
-        detail: 'Reviewed docs and support articles give users a place to self-serve.',
+        detail: 'Reviewed support material becomes a hosted place where users can self-serve.',
         meta: 'Hosted help',
     },
     {
         title: 'FAQ answers',
-        detail: 'Repeated short questions become reusable owner-reviewed answers.',
+        detail: 'Repeated short questions become reusable answers you can review before users see them.',
         meta: 'FAQ',
     },
     {
-        title: 'Changelog',
-        detail: 'Release notes stay connected to the support surfaces they affect.',
-        meta: 'Updates',
+        title: 'Documentation',
+        detail: 'Product notes, screenshots, recordings, and release details become clearer support docs.',
+        meta: 'Docs',
+    },
+];
+
+const SUPPORT_SURFACE_STORY = [
+    {
+        eyebrow: '01 / Owner inputs',
+        title: 'Start from the support knowledge you already have.',
+        description: 'Product docs, repeated replies, screenshots, recordings, release notes, and support notes become the source layer for customer-facing help.',
+        bullets: ['Docs', 'Repeated replies', 'Screenshots', 'Release notes'],
+        href: '/product/knowledge-intake',
+        icon: LuBookOpen,
+        asset: ANSWERLATTICE_FEATURE_ASSETS['knowledge-intake'],
+    },
+    {
+        eyebrow: '02 / In-app help',
+        title: 'Give users help on the screen where they get stuck.',
+        description: 'The widget brings support into billing, onboarding, settings, integrations, releases, and error screens without forcing users to leave the product.',
+        bullets: ['Safe page context', 'Widget help', 'Fallback path'],
+        href: '/product/page-aware-widget',
+        icon: LuMessageSquare,
+        asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['In-app help widget'],
+    },
+    {
+        eyebrow: '03 / Hosted help',
+        title: 'Publish a support home outside the product too.',
+        description: 'Hosted help, documentation, FAQ answers, and changelog content stay connected to the same reviewed support layer.',
+        bullets: ['Help center', 'Documentation', 'FAQ', 'Changelog'],
+        href: '/product/support-control',
+        icon: LuFileText,
+        asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['Help center and tickets'],
+    },
+    {
+        eyebrow: '04 / Gaps and fallback',
+        title: 'When help is missing, users still get a path.',
+        description: 'Tickets, low-rated answers, repeated questions, and feedback become visible support gaps instead of hidden founder work.',
+        bullets: ['Ticket fallback', 'Feedback review', 'Support gaps'],
+        href: '/product/tickets',
+        icon: LuTicket,
+        asset: ANSWERLATTICE_FEATURE_ASSETS.tickets,
+    },
+    {
+        eyebrow: '05 / Review loop',
+        title: 'You decide what becomes official support.',
+        description: 'Drafts and missing answers stay reviewable until you approve them, so the next user gets better support without you repeating the same reply.',
+        bullets: ['Approved answers', 'Review queue', 'Support Board'],
+        href: '/product/knowledge-governance',
+        icon: LuShieldCheck,
+        asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['Review approved answers'],
     },
 ];
 
@@ -345,19 +393,12 @@ function HomepageHero({ basePath }: { basePath: string }) {
                                 key={line.join('-')}
                                 className={`al-home-hero-title__line ${lineIndex === 1 ? 'al-home-hero-title__line--gradient' : ''}`}
                             >
-                                {lineIndex === 1 ? (
-                                    <span
-                                        className="al-home-hero-title__gradient-copy"
-                                        style={getHeroWordStyle(HERO_TITLE_LINES[0].length)}
-                                    >
-                                        {line.join(' ')}
-                                    </span>
-                                ) : line.map((word, wordIndex) => {
+                                {line.map((word, wordIndex) => {
                                     const globalIndex = lineIndex === 0 ? wordIndex : HERO_TITLE_LINES[0].length + wordIndex;
                                     return (
                                         <span
                                             key={`${lineIndex}-${word}`}
-                                            className="al-home-hero-title__word"
+                                            className={`al-home-hero-title__word ${lineIndex === 1 ? 'al-home-hero-title__word--gradient' : ''}`}
                                             style={getHeroWordStyle(globalIndex)}
                                         >
                                             {word}
@@ -445,15 +486,70 @@ function FounderPressureSection() {
 }
 
 function OwnerInputDiagram() {
+    const input = OWNER_INPUT_DIAGRAM_INPUTS[0];
+
     return (
-        <AnswerlatticeHubDiagram
-            idPrefix="answerlattice-support-surface-diagram"
-            inputLabel="Founder inputs"
-            outputLabel="Support surfaces"
-            inputs={OWNER_INPUT_DIAGRAM_INPUTS}
-            outputs={OWNER_INPUT_DIAGRAM_OUTPUTS}
-            className="al-business-solution__diagram"
-        />
+        <div className="al-business-solution__diagram al-owner-flow">
+            <svg
+                className="al-owner-flow__paths al-owner-flow__paths--desktop"
+                viewBox="0 0 600 620"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path className="al-owner-flow__path" d="M300 154 L300 232" pathLength={1} />
+                <path className="al-owner-flow__pulse" d="M300 154 L300 232" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 348 L300 414 M300 414 H142 M300 414 H458 M142 414 L142 450 M458 414 L458 450" pathLength={1} />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M300 348 L300 414 M300 414 H142 M300 414 H458 M142 414 L142 450 M458 414 L458 450"
+                    pathLength={1}
+                />
+            </svg>
+            <svg
+                className="al-owner-flow__paths al-owner-flow__paths--mobile"
+                viewBox="0 0 360 760"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+                focusable="false"
+            >
+                <path className="al-owner-flow__path" d="M180 158 L180 270 M180 388 L180 502" pathLength={1} />
+                <path className="al-owner-flow__pulse" d="M180 158 L180 270" pathLength={1} />
+                <path className="al-owner-flow__pulse al-owner-flow__pulse--output" d="M180 388 L180 502" pathLength={1} />
+            </svg>
+
+            <div className="al-owner-flow__input-row">
+                <div className="al-owner-flow__label">Founder inputs</div>
+                <article className="al-owner-flow__card al-owner-flow__card--input">
+                    <div className="al-owner-flow__card-head">
+                        <span>01</span>
+                        <em>{input.meta}</em>
+                    </div>
+                    <h3>{input.title}</h3>
+                    <p>{input.detail}</p>
+                </article>
+            </div>
+
+            <div className="al-owner-flow__core">
+                <AnswerlatticeDiagramCore idPrefix="answerlattice-owner-input-flow-core" />
+            </div>
+
+            <div className="al-owner-flow__output-row">
+                <div className="al-owner-flow__label al-owner-flow__label--outputs">Generated outputs</div>
+                <div className="al-owner-flow__outputs">
+                    {OWNER_INPUT_DIAGRAM_OUTPUTS.map((output, index) => (
+                        <article key={output.title} className="al-owner-flow__card al-owner-flow__card--output">
+                            <div className="al-owner-flow__card-head">
+                                <span>{String(index + 1).padStart(2, '0')}</span>
+                                <em>{output.meta}</em>
+                            </div>
+                            <h3>{output.title}</h3>
+                            <p>{output.detail}</p>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -464,7 +560,7 @@ function BusinessSolutionSection({ basePath }: { basePath: string }) {
                 <SectionHeader
                     eyebrow="Business & support solution"
                     title="Your first support system after launch."
-                    description="AnswerLattice gives founder-led SaaS products the support pieces they need before hiring a support team: in-app help, hosted help, FAQs, tickets, changelog, feedback, and approved answers."
+                    description="Give AnswerLattice your product docs, repeated replies, screenshots, recordings, and release notes. It turns those owner inputs into support outputs users can actually use: in-app help, hosted help, FAQs, documentation, and reviewed answers."
                 />
 
                 <div className="al-business-solution__panel" data-answerlattice-reveal>
@@ -501,6 +597,82 @@ function BusinessSolutionSection({ basePath }: { basePath: string }) {
                             </article>
                         );
                     })}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function SupportSurfaceStorySection({ basePath }: { basePath: string }) {
+    return (
+        <section id="support-surfaces" className="al-reference-section al-surface-story px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    eyebrow="Support surfaces in motion"
+                    title="One support layer across every place users ask for help."
+                    description="AnswerLattice does not stop at answers. It turns founder knowledge into the surfaces users expect: widget help, hosted help, documentation, FAQ, fallback tickets, feedback, and a review loop."
+                />
+
+                <div className="al-surface-story__layout">
+                    <div className="al-surface-story__copy" data-answerlattice-reveal>
+                        <p className="al-surface-story__kicker">From inputs to support outputs</p>
+                        <h3>Show the whole support system, not just another chat box.</h3>
+                        <p>
+                            The founder adds what they know once. AnswerLattice keeps that knowledge connected across the places where product users actually need help.
+                        </p>
+                        <div className="al-surface-story__steps">
+                            {SUPPORT_SURFACE_STORY.map((surface) => {
+                                const Icon = surface.icon;
+                                return (
+                                    <AnswerlatticeLink
+                                        key={surface.title}
+                                        basePath={basePath}
+                                        href={surface.href}
+                                        className="al-surface-story__step"
+                                    >
+                                        <Icon aria-hidden size={16} />
+                                        <span>{surface.eyebrow.replace(/^\d+\s\/\s/, '')}</span>
+                                    </AnswerlatticeLink>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="al-surface-story__screens">
+                        {SUPPORT_SURFACE_STORY.map((surface, index) => {
+                            const Icon = surface.icon;
+                            return (
+                                <article
+                                    key={surface.title}
+                                    className="al-surface-story__screen"
+                                    data-answerlattice-reveal-item
+                                    style={{ '--al-surface-story-top': `${6.75 + index * 0.72}rem` } as CSSProperties}
+                                >
+                                    <div className="al-surface-story__screen-copy">
+                                        <p>{surface.eyebrow}</p>
+                                        <span>
+                                            <Icon aria-hidden size={18} />
+                                        </span>
+                                        <h3>{surface.title}</h3>
+                                        <p>{surface.description}</p>
+                                        <div>
+                                            {surface.bullets.map((bullet) => (
+                                                <em key={bullet}>{bullet}</em>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="al-surface-story__media">
+                                        <AnswerlatticeAssetImage
+                                            asset={surface.asset}
+                                            reveal={false}
+                                            className="al-surface-story__asset"
+                                            imageClassName="al-surface-story__asset-img"
+                                        />
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </section>
@@ -770,6 +942,7 @@ export default function AnswerlatticeHomePage() {
                 <HomepageHero basePath={basePath} />
                 <FounderPressureSection />
                 <BusinessSolutionSection basePath={basePath} />
+                <SupportSurfaceStorySection basePath={basePath} />
                 <ProductOverviewSection basePath={basePath} />
                 <ConnectedLoopSection />
                 <SetupPathSection />

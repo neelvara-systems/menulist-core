@@ -1,4 +1,4 @@
-import type { PrintableTemplateFamily, PrintableTemplateFamilyId } from './types';
+import type { PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from './types';
 
 export const DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID: PrintableTemplateFamilyId = 'modern-calm';
 
@@ -97,6 +97,21 @@ export function normalizePrintableTemplateFamilyId(value?: string | null): Print
 export function getPrintableTemplateFamily(id?: string | null): PrintableTemplateFamily {
     const normalized = normalizePrintableTemplateFamilyId(id);
     return PRINTABLE_TEMPLATE_FAMILIES.find((family) => family.id === normalized) || PRINTABLE_TEMPLATE_FAMILIES[0];
+}
+
+const FULL_MENU_TEMPLATE_FAMILY_IDS: PrintableTemplateFamilyId[] = [
+    'classic-luxe',
+    'modern-calm',
+    'qr-first',
+];
+
+export function getPrintableTemplateFamiliesForAsset(assetTypeId: PrintableAssetTypeId): PrintableTemplateFamily[] {
+    if (assetTypeId === 'print_menu') {
+        return FULL_MENU_TEMPLATE_FAMILY_IDS
+            .map((id) => getPrintableTemplateFamily(id));
+    }
+
+    return PRINTABLE_TEMPLATE_FAMILIES;
 }
 
 export function mapPrintableTemplateToMenuCardStyle(id?: string | null): 'classic' | 'compact' | 'premium' {

@@ -9,6 +9,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         placement: 'full-menu',
         requiresMenuItems: true,
         size: 'PDF',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Print Menu',
     },
     {
@@ -19,6 +20,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         outputFormat: 'pdf',
         placement: 'tables',
         size: 'A5 fold',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Table Tent',
     },
     {
@@ -29,6 +31,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         outputFormat: 'pdf',
         placement: 'tables',
         size: 'A6 portrait',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Single Table Card',
     },
     {
@@ -39,6 +42,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         outputFormat: 'png',
         placement: 'counter',
         size: '8 x 8 cm',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Counter Sticker',
     },
     {
@@ -49,6 +53,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         outputFormat: 'pdf',
         placement: 'entrance',
         size: 'A4 portrait',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Entrance Poster',
     },
     {
@@ -59,6 +64,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         placement: 'feedback',
         requiresFeedback: true,
         size: 'PNG card',
+        supportedOutputFormats: ['pdf', 'png'],
         title: 'Feedback QR',
     },
     {
@@ -68,6 +74,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         outputFormat: 'zip',
         placement: 'bundle',
         size: 'ZIP',
+        supportedOutputFormats: ['zip'],
         title: 'Complete Menu Kit',
     },
 ];

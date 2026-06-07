@@ -34,7 +34,7 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 | Support | Purpose |
 | --- | --- |
 | Print readiness | Shows whether live link, logo, brand color, business name length, and feedback QR state are ready before printing. |
-| Actual output preview | Opens the same generated file that Download will save, so owners can inspect before sending to print. |
+| Image-first output preview | Opens a clean image preview of the selected template without browser PDF controls; PDF/image downloads remain separate actions. |
 | Print-shop handoff | Copies plain file specs that can be sent with the ZIP to a local printer. |
 | Reprint guidance | Explains when reprinting is needed and when live QR updates avoid reprinting. |
 

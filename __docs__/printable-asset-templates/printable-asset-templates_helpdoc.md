@@ -30,8 +30,8 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, a
 
 1. Select the file type, such as **Table Tent** or **Counter Sticker**.
 2. Choose a style.
-3. Tap **Preview** if you want to see it first.
-4. Tap **Download**.
+3. Review the image preview shown in the modal or sheet.
+4. Tap **Download PDF** or **Download image**.
 
 ## Use One Style Across Files
 

@@ -67,18 +67,26 @@ function drawLogoBadge(
     logo: PreloadedLogo | null,
     storeName: string,
     fontBase: string,
+    templateFamilyId: string,
 ): void {
-    const radius = size * 0.22;
+    const isRound = templateFamilyId === 'classic-luxe'
+        || templateFamilyId === 'executive-dark'
+        || templateFamilyId === 'botanical-heritage';
+    const radius = isRound ? size / 2 : size * 0.22;
+    const inset = isRound ? printMenuMm(0.85) : printMenuMm(1.1);
+    const innerRadius = isRound ? (size - inset * 2) / 2 : radius * 0.72;
+    const fill = templateFamilyId === 'executive-dark' ? '#0e1116' : brand.surface;
+    const innerStroke = templateFamilyId === 'executive-dark' ? 'rgba(255,255,255,0.18)' : brand.paper;
 
     ctx.save();
     ctx.shadowColor = 'rgba(17, 24, 39, 0.18)';
     ctx.shadowBlur = printMenuMm(1.5);
     ctx.shadowOffsetY = printMenuMm(0.7);
-    fillRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, brand.surface);
+    fillRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, fill);
     ctx.restore();
 
     strokeRoundedRect(ctx, cx - size / 2, cy - size / 2, size, size, radius, brand.border, printMenuMm(0.35));
-    strokeRoundedRect(ctx, cx - size / 2 + printMenuMm(1.1), cy - size / 2 + printMenuMm(1.1), size - printMenuMm(2.2), size - printMenuMm(2.2), radius * 0.72, brand.paper, printMenuMm(0.5));
+    strokeRoundedRect(ctx, cx - size / 2 + inset, cy - size / 2 + inset, size - inset * 2, size - inset * 2, innerRadius, innerStroke, printMenuMm(0.5));
 
     if (logo) {
         const maxLogoW = size * 0.68;
@@ -95,6 +103,118 @@ function drawLogoBadge(
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(getStoreInitials(storeName), cx, cy + size * 0.02);
+}
+
+function drawHeaderTreatment(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    brand: MenuKitBrandTokens,
+    templateFamilyId: string,
+): void {
+    const cx = x + w / 2;
+
+    if (templateFamilyId === 'brand-banner') {
+        fillRoundedVerticalGradient(
+            ctx,
+            x,
+            y,
+            w,
+            printMenuMm(28),
+            printMenuMm(5),
+            brand.gradientFrom,
+            brand.gradientTo,
+        );
+        return;
+    }
+
+    if (templateFamilyId === 'local-bold') {
+        fillRoundedRect(ctx, cx - w * 0.24, y + printMenuMm(6), w * 0.48, printMenuMm(4.8), printMenuMm(2.4), brand.accent);
+        ctx.save();
+        ctx.globalAlpha = 0.46;
+        drawDiagonalStrips(ctx, x + printMenuMm(12), y + printMenuMm(15), w - printMenuMm(24), brand.border);
+        ctx.restore();
+        return;
+    }
+
+    if (templateFamilyId === 'clean-utility') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = printMenuMm(0.3);
+        ctx.beginPath();
+        ctx.moveTo(x + printMenuMm(8), y + printMenuMm(13));
+        ctx.lineTo(cx - printMenuMm(12), y + printMenuMm(13));
+        ctx.moveTo(cx + printMenuMm(12), y + printMenuMm(13));
+        ctx.lineTo(x + w - printMenuMm(8), y + printMenuMm(13));
+        ctx.stroke();
+        return;
+    }
+
+    if (templateFamilyId === 'executive-dark') {
+        ctx.strokeStyle = brand.accent;
+        ctx.lineWidth = printMenuMm(0.55);
+        ctx.globalAlpha = 0.82;
+        ctx.beginPath();
+        ctx.moveTo(x + printMenuMm(20), y + printMenuMm(17));
+        ctx.lineTo(cx - printMenuMm(14), y + printMenuMm(17));
+        ctx.moveTo(cx + printMenuMm(14), y + printMenuMm(17));
+        ctx.lineTo(x + w - printMenuMm(20), y + printMenuMm(17));
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+    }
+
+    if (templateFamilyId === 'classic-luxe') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = printMenuMm(0.38);
+        ctx.beginPath();
+        ctx.moveTo(x + printMenuMm(18), y + printMenuMm(17));
+        ctx.lineTo(cx - printMenuMm(16), y + printMenuMm(17));
+        ctx.moveTo(cx + printMenuMm(16), y + printMenuMm(17));
+        ctx.lineTo(x + w - printMenuMm(18), y + printMenuMm(17));
+        ctx.stroke();
+        drawDotCluster(ctx, cx - printMenuMm(2.1), y + printMenuMm(15.1), brand.accent);
+        return;
+    }
+
+    if (templateFamilyId === 'botanical-heritage') {
+        ctx.strokeStyle = brand.border;
+        ctx.lineWidth = printMenuMm(0.28);
+        ctx.globalAlpha = 0.78;
+        ctx.beginPath();
+        ctx.moveTo(cx - printMenuMm(28), y + printMenuMm(17));
+        ctx.lineTo(cx - printMenuMm(14), y + printMenuMm(17));
+        ctx.moveTo(cx + printMenuMm(14), y + printMenuMm(17));
+        ctx.lineTo(cx + printMenuMm(28), y + printMenuMm(17));
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+    }
+
+    if (templateFamilyId === 'soft-curve') {
+        ctx.save();
+        ctx.fillStyle = brand.softAccent;
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath();
+        ctx.ellipse(x + w - printMenuMm(20), y + printMenuMm(14), printMenuMm(28), printMenuMm(8.5), -0.24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+    }
+
+    if (templateFamilyId === 'qr-first') {
+        ctx.strokeStyle = brand.accent;
+        ctx.lineWidth = printMenuMm(0.45);
+        ctx.beginPath();
+        ctx.moveTo(x + printMenuMm(17), y + printMenuMm(12));
+        ctx.lineTo(cx - printMenuMm(13), y + printMenuMm(12));
+        ctx.moveTo(cx + printMenuMm(13), y + printMenuMm(12));
+        ctx.lineTo(x + w - printMenuMm(17), y + printMenuMm(12));
+        ctx.stroke();
+        return;
+    }
+
+    fillRoundedRect(ctx, cx - printMenuMm(19), y + printMenuMm(5.2), printMenuMm(38), printMenuMm(3.2), printMenuMm(1.6), brand.accent);
 }
 
 function drawCornerAccents(
@@ -250,8 +370,19 @@ function drawTemplateDecorations(
         return;
     }
 
-    if (templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold') {
+    if (templateFamilyId === 'brand-banner') {
         drawDiagonalStrips(ctx, x + printMenuMm(6), y + printMenuMm(17), w - printMenuMm(12), brand.border);
+        return;
+    }
+
+    if (templateFamilyId === 'local-bold') {
+        ctx.save();
+        ctx.fillStyle = brand.accent;
+        ctx.globalAlpha = 0.12;
+        fillRoundedRect(ctx, x + printMenuMm(4), y + printMenuMm(14), printMenuMm(3), h - printMenuMm(28), printMenuMm(1.5), brand.accent);
+        fillRoundedRect(ctx, x + w - printMenuMm(7), y + printMenuMm(14), printMenuMm(3), h - printMenuMm(28), printMenuMm(1.5), brand.accent);
+        ctx.restore();
+        drawDiagonalStrips(ctx, x + printMenuMm(10), y + h - printMenuMm(32), w - printMenuMm(20), brand.border);
         return;
     }
 
@@ -273,6 +404,7 @@ export function drawPrintMenuCardFace(
     const isQrFirst = templateFamilyId === 'qr-first';
     const isClassic = templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage';
     const isSoft = templateFamilyId === 'soft-curve';
+    const hasOuterBand = templateFamilyId === 'brand-banner';
     const cx = w / 2;
     const fontBase = isClassic
         ? 'Georgia, "Times New Roman", serif'
@@ -286,17 +418,28 @@ export function drawPrintMenuCardFace(
 
     ctx.fillStyle = brand.paper;
     ctx.fillRect(0, 0, w, h);
-    if (!isClean) {
+    if (hasOuterBand) {
         fillRoundedVerticalGradient(
             ctx,
             0,
             0,
             w,
-            printMenuMm(isDark ? 62 : 48),
+            printMenuMm(48),
             0,
             brand.gradientFrom,
             brand.gradientTo,
         );
+    } else if (isClassic) {
+        ctx.save();
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = brand.softAccent;
+        ctx.beginPath();
+        ctx.ellipse(cx, printMenuMm(9), w * 0.38, printMenuMm(7), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    } else if (isDark) {
+        ctx.fillStyle = brand.paper;
+        ctx.fillRect(0, 0, w, h);
     }
     if (isSoft) {
         ctx.save();
@@ -317,34 +460,30 @@ export function drawPrintMenuCardFace(
     strokeRoundedRect(ctx, cardX, cardY, cardW, cardH, printMenuMm(5), brand.border, printMenuMm(0.35));
     drawTemplateDecorations(ctx, cardX, cardY, cardW, cardH, brand, templateFamilyId);
 
-    const headerInset = templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold' ? 0 : printMenuMm(2);
-    const headerH = isClean ? printMenuMm(10) : printMenuMm(templateFamilyId === 'brand-banner' ? 28 : isQrFirst ? 15 : 22);
-    if (isClean) {
-        ctx.strokeStyle = brand.border;
-        ctx.lineWidth = printMenuMm(0.3);
-        ctx.beginPath();
-        ctx.moveTo(cardX + printMenuMm(8), cardY + headerH);
-        ctx.lineTo(cardX + cardW - printMenuMm(8), cardY + headerH);
-        ctx.stroke();
-    } else {
-        fillRoundedVerticalGradient(
-            ctx,
-            cardX + headerInset,
-            cardY + headerInset,
-            cardW - headerInset * 2,
-            headerH,
-            templateFamilyId === 'brand-banner' || templateFamilyId === 'local-bold' ? printMenuMm(5) : printMenuMm(4),
-            brand.gradientFrom,
-            brand.gradientTo,
-        );
-    }
+    drawHeaderTreatment(ctx, cardX + (templateFamilyId === 'brand-banner' ? 0 : printMenuMm(2)), cardY + printMenuMm(2), cardW - (templateFamilyId === 'brand-banner' ? 0 : printMenuMm(4)), brand, templateFamilyId);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    drawLogoBadge(ctx, cardCx, cardY + printMenuMm(templateFamilyId === 'brand-banner' ? 28 : 22), printMenuMm(isQrFirst ? 14 : 18), brand, logo, storeName, fontBase);
+    const logoY = cardY + printMenuMm(templateFamilyId === 'brand-banner'
+        ? 28
+        : templateFamilyId === 'local-bold'
+            ? 25
+            : isQrFirst
+                ? 20
+                : isClean
+                    ? 19
+                    : 22);
+    const logoSize = printMenuMm(templateFamilyId === 'brand-banner' ? 17 : isQrFirst ? 12.5 : 16.5);
+    drawLogoBadge(ctx, cardCx, logoY, logoSize, brand, logo, storeName, fontBase, templateFamilyId);
 
-    const primaryY = cardY + printMenuMm(templateFamilyId === 'brand-banner' ? 47 : isQrFirst ? 39 : 41);
+    const primaryY = cardY + printMenuMm(templateFamilyId === 'brand-banner'
+        ? 47
+        : templateFamilyId === 'local-bold'
+            ? 43
+            : isQrFirst
+                ? 36
+                : 39.5);
     const primaryText = templateFamilyId === 'local-bold' ? nameParts.primary.toUpperCase() : nameParts.primary;
     fitCanvasText(ctx, primaryText, cardW - printMenuMm(12), `800 ${printMenuMm(isClassic ? 6.4 : 5.7)}px ${fontBase}`, printMenuMm(3.7));
     ctx.fillStyle = brand.text;
@@ -358,7 +497,7 @@ export function drawPrintMenuCardFace(
 
     const badgeW = printMenuMm(isQrFirst ? 38 : 44);
     const badgeH = printMenuMm(isQrFirst ? 8 : 10);
-    const badgeY = cardY + printMenuMm(isQrFirst ? 55 : templateFamilyId === 'brand-banner' ? 64 : 60);
+    const badgeY = cardY + printMenuMm(isQrFirst ? 53 : templateFamilyId === 'brand-banner' ? 64 : templateFamilyId === 'local-bold' ? 59 : 58);
     fillRoundedRect(ctx, cardCx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, printMenuMm(2), brand.softAccent);
     strokeRoundedRect(ctx, cardCx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, printMenuMm(2), brand.border, printMenuMm(0.26));
 
@@ -366,10 +505,10 @@ export function drawPrintMenuCardFace(
     ctx.fillStyle = brand.accent;
     ctx.fillText(truncateCanvasText(ctx, actionLabel, badgeW - printMenuMm(6)), cardCx, badgeY);
 
-    const qrPanel = printMenuMm(isQrFirst ? 60 : templateFamilyId === 'clean-utility' ? 55 : 53);
-    const qrSize = printMenuMm(isQrFirst ? 54 : templateFamilyId === 'clean-utility' ? 49 : 47);
+    const qrPanel = printMenuMm(isQrFirst ? 56 : templateFamilyId === 'clean-utility' ? 50 : 49);
+    const qrSize = printMenuMm(isQrFirst ? 51 : templateFamilyId === 'clean-utility' ? 45 : 44);
     const qrX = cardCx - qrPanel / 2;
-    const qrY = cardY + printMenuMm(isQrFirst ? 64 : templateFamilyId === 'brand-banner' ? 70 : 67);
+    const qrY = cardY + printMenuMm(isQrFirst ? 61 : templateFamilyId === 'brand-banner' ? 71 : templateFamilyId === 'local-bold' ? 68 : 64);
     ctx.save();
     ctx.shadowColor = 'rgba(17, 24, 39, 0.1)';
     ctx.shadowBlur = printMenuMm(1.4);
@@ -379,13 +518,13 @@ export function drawPrintMenuCardFace(
     strokeRoundedRect(ctx, qrX, qrY, qrPanel, qrPanel, printMenuMm(4), '#d7dde3', printMenuMm(0.35));
     ctx.drawImage(qrCanvas, cardCx - qrSize / 2, qrY + (qrPanel - qrSize) / 2, qrSize, qrSize);
 
-    const instructionY = cardY + printMenuMm(isQrFirst ? 128 : templateFamilyId === 'brand-banner' ? 128 : 124);
+    const instructionY = cardY + printMenuMm(isQrFirst ? 124 : templateFamilyId === 'brand-banner' ? 124 : templateFamilyId === 'local-bold' ? 122 : 120);
     ctx.font = `600 ${printMenuMm(3.7)}px ${fontBase}`;
     ctx.fillStyle = brand.text;
     ctx.fillText(truncateCanvasText(ctx, instructionLabel, cardW - printMenuMm(16)), cardCx, instructionY);
 
     if (shortLink) {
-        const linkY = cardY + printMenuMm(isQrFirst ? 134 : templateFamilyId === 'brand-banner' ? 136 : 131.5);
+        const linkY = cardY + printMenuMm(isQrFirst ? 130 : templateFamilyId === 'brand-banner' ? 131 : templateFamilyId === 'local-bold' ? 129 : 127);
         const linkW = cardW - printMenuMm(16);
         const linkH = printMenuMm(7.2);
         fillRoundedRect(ctx, cardCx - linkW / 2, linkY - linkH / 2, linkW, linkH, printMenuMm(1.8), brand.paper);
@@ -403,6 +542,6 @@ export function drawPrintMenuCardFace(
         logoHeight: printMenuMm(2.45),
         text: MENU_LIST_MENU_ATTRIBUTION_TEXT,
         x: cx,
-        y: h - printMenuMm(2.8),
+        y: h - printMenuMm(4.1),
     });
 }

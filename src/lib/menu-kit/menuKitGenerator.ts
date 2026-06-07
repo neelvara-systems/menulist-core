@@ -16,8 +16,8 @@ import { generateEntrancePoster } from './templates/entrancePosterTemplate';
 import { generateGoogleMapsImage } from './templates/googleMapsTemplate';
 import { generateInstagramStory } from './templates/instagramStoryTemplate';
 import { generatePlacementGuide } from './templates/placementGuideTemplate';
-import { generatePrintMenuSingleTableCard } from '../print-menu-surfaces/templates/singleTableCardTemplate';
-import { generatePrintMenuTableTent } from '../print-menu-surfaces/templates/tableTentTemplate';
+import { generatePrintMenuSingleTableCard, generatePrintMenuSingleTableCardImage } from '../print-menu-surfaces/templates/singleTableCardTemplate';
+import { generatePrintMenuTableTent, generatePrintMenuTableTentImage } from '../print-menu-surfaces/templates/tableTentTemplate';
 import { generateTakeawayCard } from './templates/takeawayCardTemplate';
 import { generateWhatsappStatus } from './templates/whatsappStatusTemplate';
 import { getOfferingLabels } from './businessTypeLabels';
@@ -42,6 +42,8 @@ type PreparedMenuKitInput = MenuKitInput & { _logo: PreloadedLogo | null };
 
 type MenuKitAssetDefinition = {
     generate: (input: PreparedMenuKitInput) => Promise<Blob>;
+    generateImage?: (input: PreparedMenuKitInput) => Promise<Blob>;
+    imageSuffix?: string;
     key: MenuKitAssetKey;
     label: string;
     mimeType: string;
@@ -52,6 +54,8 @@ type MenuKitAssetDefinition = {
 const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
     {
         generate: generatePrintMenuTableTent,
+        generateImage: generatePrintMenuTableTentImage,
+        imageSuffix: 'TableTent_A5_Fold.png',
         key: 'table_tent',
         label: 'Table Tent (A5 fold)',
         mimeType: 'application/pdf',
@@ -123,6 +127,8 @@ const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
     },
     {
         generate: generatePrintMenuSingleTableCard,
+        generateImage: generatePrintMenuSingleTableCardImage,
+        imageSuffix: 'SingleTableCard_A6.png',
         key: 'single_table_card',
         label: 'Single Table / Counter Card (A6)',
         mimeType: 'application/pdf',
@@ -188,28 +194,36 @@ async function renderMenuKitAsset(
         logo: PreloadedLogo | null;
         safeName: string;
     },
+    preferredOutputFormat?: 'pdf' | 'png',
 ): Promise<MenuKitAsset> {
     const assetInput = buildPreparedSurfaceInput(prepared.enrichedInput, prepared.logo, definition.utmMedium);
-    const blob = await definition.generate(assetInput);
+    const useNativeImage = preferredOutputFormat === 'png' && Boolean(definition.generateImage);
+    const blob = await (useNativeImage && definition.generateImage
+        ? definition.generateImage(assetInput)
+        : definition.generate(assetInput));
     return {
         blob,
-        filename: `${prepared.safeName}_${definition.suffix}`,
+        filename: `${prepared.safeName}_${useNativeImage && definition.imageSuffix ? definition.imageSuffix : definition.suffix}`,
         label: definition.label,
-        mimeType: definition.mimeType,
+        mimeType: useNativeImage ? 'image/png' : definition.mimeType,
     };
 }
 
 /**
  * Generate one Menu Kit asset without rendering the whole ZIP.
  */
-export async function generateMenuKitAsset(input: MenuKitInput, assetKey: MenuKitAssetKey): Promise<MenuKitAsset> {
+export async function generateMenuKitAsset(
+    input: MenuKitInput,
+    assetKey: MenuKitAssetKey,
+    options?: { outputFormat?: 'pdf' | 'png' },
+): Promise<MenuKitAsset> {
     const definition = MENU_KIT_ASSET_DEFINITIONS.find((asset) => asset.key === assetKey);
     if (!definition) {
         throw new Error(`Unknown Menu Kit asset: ${assetKey}`);
     }
 
     const prepared = await prepareMenuKitInput(input);
-    return renderMenuKitAsset(definition, prepared);
+    return renderMenuKitAsset(definition, prepared, options?.outputFormat);
 }
 
 /**

@@ -21,9 +21,9 @@
 - Menu tab opens Print Menu through `onOpenPrintMenu` shell callback after pending menu saves complete.
 - Mobile uses `MobileShareScreen` download handlers in focused mode.
 - Mobile and desktop use the same `generateMenuKit()` bundle output.
-- Mobile and desktop use the same `generateMenuKitAsset()` semantic-key output for individual downloads and previews.
+- Mobile and desktop use the same printable renderer for individual downloads and previews.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers.
-- Preview opens inside the mobile screen popup first, with Open Full Preview and Download actions.
+- Preview appears inside the template bottom sheet first, with separate PDF/image download actions for single assets.
 
 ## Non-Goals
 

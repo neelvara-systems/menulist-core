@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, full print menu, or complete Menu Kit - then chooses one of 9 finished template families and downloads the result.
+Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, full print menu, or complete Menu Kit - then chooses a finished template family and downloads the result. QR/display assets expose the 9-family catalog; full Print Menu exposes only its real unique PDF layouts until the full-menu PDF renderer owns all 9 families.
 
 This is not a design editor. Owners do not choose fonts, move elements, tune spacing, or manage QR settings. MenuList handles those decisions and keeps every output printable, branded, and scan-safe.
 
@@ -16,7 +16,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 
 | Goal | Meaning |
 | --- | --- |
-| Give owners real choice | Provide 9 polished template families instead of one look. |
+| Give owners real choice | Provide polished template families instead of one look, without showing duplicate output options. |
 | Keep owner effort low | One asset type, one template, one download. |
 | Keep outputs consistent | The selected style family can apply across all asset types. |
 | Keep QR reliable | QR modules stay dark on white with required safe area. |
@@ -39,10 +39,11 @@ The current Print Assets screen proves the workflow. The next system must make t
 1. Owner opens **Assets** from the dashboard navigation.
 2. Owner selects an active project when the store has multiple projects.
 3. Owner selects an asset type from the left rail.
-4. Owner sees 9 template families on the right.
-5. Owner previews one template.
-6. Owner clicks **Download**.
-7. MenuList creates the file locally and downloads it.
+4. Owner sees the supported template families on the right. QR/display assets show 9 families; full Print Menu shows the real unique PDF layouts.
+5. Owner clicks one template family.
+6. Desktop opens a modal and mobile opens a bottom sheet with a generated image preview already visible.
+7. Owner downloads the selected template as PDF or image. Complete Menu Kit remains a ZIP bundle.
+8. MenuList creates the file locally and downloads it.
 
 ## Route and Navigation
 
@@ -58,17 +59,17 @@ The current Print Assets screen proves the workflow. The next system must make t
 
 | Asset Type | Output | Primary Use |
 | --- | --- | --- |
-| Print Menu | PDF | Full paper menu for print shop or in-house printing. |
-| Table Tent | PDF | Folded table display, readable from both sides. |
-| Single Table / Counter Card | PDF | Acrylic holder, counter stand, wall clip, or single-sided table card. |
-| Counter Sticker | PNG | Billing, pickup, service counter, reception desk. |
-| Entrance Poster | PDF | Door, window, host stand, entrance board. |
-| Feedback QR | PNG | Exit, counter, receipt stand, customer feedback prompt. |
+| Print Menu | PDF + image | Full paper menu for print shop or in-house printing. Image export saves the preview page. |
+| Table Tent | PDF + image | Folded table display, readable from both sides. |
+| Single Table / Counter Card | PDF + image | Acrylic holder, counter stand, wall clip, or single-sided table card. |
+| Counter Sticker | PDF + image | Billing, pickup, service counter, reception desk. |
+| Entrance Poster | PDF + image | Door, window, host stand, entrance board. |
+| Feedback QR | PDF + image | Exit, counter, receipt stand, customer feedback prompt. |
 | Complete Menu Kit | ZIP | All print and social files in one download. |
 
 ## Template Families
 
-Each family is a finished layout system that can adapt to different business types and asset sizes.
+Each family is a finished layout system that can adapt to different business types and asset sizes. Asset screens must only show families that produce materially distinct output for that asset.
 
 | ID | Owner Label | Visual Direction | Best Fit |
 | --- | --- | --- | --- |
@@ -94,6 +95,7 @@ Each family is a finished layout system that can adapt to different business typ
 | Business type aware | Menu, service list, catalog, feedback, and scan copy use shared business-type labels. |
 | Premium branding policy | Premium hides visible MenuList branding when the existing flag permits it; all other plans show attribution. |
 | Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
+| No duplicate choices | If an asset renderer maps multiple families to the same output, the UI exposes only the unique supported family choices for that asset. |
 
 ## Plan and Access
 
@@ -102,10 +104,10 @@ The base system should avoid creating a new decision burden:
 | Plan | Access |
 | --- | --- |
 | Starter | Reliable templates: `modern-calm`, `qr-first`, `clean-utility`. |
-| Pro | All 9 template families and "Use this style for this download session". |
+| Pro | All supported template families for the selected asset and "Use this style for this download session". |
 | Premium | All Pro access plus visible MenuList attribution removal through the existing premium branding policy. |
 
-If plan gating is too much for first implementation, ship all 9 families first and enforce only premium attribution removal. Do not block QR reliability or core output quality by plan.
+If plan gating is too much for first implementation, ship all supported families first and enforce only premium attribution removal. Do not block QR reliability or core output quality by plan.
 
 ## Market Research Notes
 
@@ -131,7 +133,7 @@ Market pattern:
 | Metric | Target |
 | --- | --- |
 | Owner can download one asset | Under 3 clicks after opening Assets. |
-| Template coverage | 9 families available in catalog. |
+| Template coverage | 9 families available in catalog; each asset displays only families with real output support. |
 | Runtime cost | No new Firestore reads/writes for normal generation. |
 | Mobile parity | Mobile and desktop produce the same file for the same asset/template/project. |
 | Scan reliability | QR contrast and safe-area verification pass for every template family. |

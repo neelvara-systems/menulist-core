@@ -30,7 +30,7 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Page-aware SaaS and digital-product support hero with inline sample workspace preview + conversion proof band + tabbed product-proof preview + page-aware demo + support knowledge map + how-it-works flow + product areas + bento widget/hosted-help install + missed-question review loop + trust controls + best-fit/not-fit + setup funnel + Pre-Onboarding Kit source-prep placement + day-one launch pack + behind-the-scenes engine + system coverage + comparison + compact pricing checkpoint + objections + CTA |
+| `/` | Homepage | Product-user support hero with inline sample workspace preview + conversion proof band + founder-pressure input-to-support diagram + scroll-led support-surface story + product overview + support improvement loop + product proof assets + trust controls + use-case paths + pricing checkpoint + objections + CTA |
 | `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, and support gaps |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, first-client launch proof, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
@@ -280,6 +280,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | Date | Change |
 |------|--------|
 | 2026-06-06 | Synced public launch-setup and product-proof copy with Activation `summary.launchProof`, keeping proposal-quality confirmation in Signal Queue instead of claiming connector readiness |
+| 2026-06-07 | Updated the homepage around product-user support, the owner-input-to-support-output diagram, modern vertical frame rails, and a scroll-led support-surface story covering in-app help, hosted help, fallback gaps, and review loops |
 | 2026-06-06 | Hid the mobile hamburger on confirmed desktop viewports and normalized non-home route hero alignment, spacing, type scale, and eyebrow styling through the shared AnswerLattice stylesheet |
 | 2026-06-06 | Added dedicated Small SaaS Teams and Studios/Agencies use-case routes, exposed route-backed use-case links from the footer, and updated the public page registry |
 | 2026-06-06 | Restored full public-route footer discoverability across Product, Features, Evaluate, Resources, and Trust without placeholder social links |

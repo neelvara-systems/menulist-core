@@ -9,20 +9,186 @@
 
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
+import { fillRoundedRect, fillRoundedVerticalGradient, strokeRoundedRect, truncateCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
+import { normalizePrintableTemplateFamilyId } from '../../printable-asset-templates/templateFamilies';
 
 type StickerInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
 const SIZE = 945; // 80mm at 300dpi
+const PADDING = 38;
+
+function drawStickerCornerAccents(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    color: string,
+): void {
+    const len = 54;
+    const inset = 20;
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.globalAlpha = 0.78;
+    [
+        [x + inset, y + inset, 1, 1],
+        [x + w - inset, y + inset, -1, 1],
+        [x + inset, y + h - inset, 1, -1],
+        [x + w - inset, y + h - inset, -1, -1],
+    ].forEach(([cx, cy, sx, sy]) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + sy * len);
+        ctx.lineTo(cx, cy);
+        ctx.lineTo(cx + sx * len, cy);
+        ctx.stroke();
+    });
+    ctx.restore();
+}
+
+function drawStickerDotCluster(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.58;
+    for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) {
+            ctx.beginPath();
+            ctx.arc(x + col * 20, y + row * 20, 7, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    ctx.restore();
+}
+
+function drawStickerLeafSpray(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    color: string,
+    flip = false,
+): void {
+    const direction = flip ? -1 : 1;
+
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.42;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + direction * 80, y + 120);
+    ctx.stroke();
+
+    for (let index = 0; index < 5; index += 1) {
+        ctx.save();
+        ctx.translate(x + direction * (14 + index * 14), y + 20 + index * 20);
+        ctx.rotate(direction * (0.55 + index * 0.08));
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 10, 24, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+    ctx.restore();
+}
+
+function drawStickerDiagonalStrips(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    color: string,
+): void {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 7;
+    for (let index = 0; index < 5; index += 1) {
+        const offset = index * 26;
+        ctx.beginPath();
+        ctx.moveTo(x + offset, y + 80);
+        ctx.lineTo(x + 58 + offset, y);
+        ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + w - 110, y);
+    ctx.lineTo(x + w - 40, y + 80);
+    ctx.moveTo(x + w - 70, y);
+    ctx.lineTo(x + w, y + 80);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawStickerDecorations(
+    ctx: CanvasRenderingContext2D,
+    templateFamilyId: string,
+    brand: ReturnType<typeof resolvePrintableTemplateBrandTokens>,
+): void {
+    if (templateFamilyId === 'botanical-heritage') {
+        drawStickerCornerAccents(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, brand.border);
+        drawStickerLeafSpray(ctx, 90, 84, brand.accent);
+        drawStickerLeafSpray(ctx, SIZE - 90, 84, brand.accent, true);
+        return;
+    }
+
+    if (templateFamilyId === 'classic-luxe') {
+        drawStickerCornerAccents(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, brand.border);
+        drawStickerDotCluster(ctx, 96, SIZE - 206, brand.accent);
+        drawStickerDotCluster(ctx, SIZE - 148, SIZE - 206, brand.accent);
+        return;
+    }
+
+    if (templateFamilyId === 'executive-dark') {
+        drawStickerCornerAccents(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, brand.border);
+        drawStickerDiagonalStrips(ctx, 96, 245, SIZE - 192, brand.accent);
+        return;
+    }
+
+    if (templateFamilyId === 'soft-curve') {
+        ctx.save();
+        ctx.fillStyle = brand.softAccent;
+        ctx.globalAlpha = 0.28;
+        ctx.beginPath();
+        ctx.ellipse(SIZE - 150, 170, 250, 130, -0.38, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        drawStickerDotCluster(ctx, SIZE - 158, SIZE - 220, brand.accent);
+        return;
+    }
+
+    if (templateFamilyId === 'brand-banner') {
+        drawStickerDiagonalStrips(ctx, 96, 104, SIZE - 192, brand.border);
+        return;
+    }
+
+    if (templateFamilyId === 'local-bold') {
+        fillRoundedRect(ctx, 86, 76, SIZE - 172, 18, 9, brand.accent);
+        fillRoundedRect(ctx, PADDING + 12, PADDING + 96, 14, SIZE - PADDING * 2 - 192, 7, brand.accent);
+        fillRoundedRect(ctx, SIZE - PADDING - 26, PADDING + 96, 14, SIZE - PADDING * 2 - 192, 7, brand.accent);
+        drawStickerDiagonalStrips(ctx, 104, SIZE - 216, SIZE - 208, brand.border);
+        return;
+    }
+
+    if (templateFamilyId === 'qr-first' || templateFamilyId === 'clean-utility') {
+        drawStickerCornerAccents(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, templateFamilyId === 'qr-first' ? brand.accent : brand.border);
+    }
+}
 
 export async function generateCounterSticker(input: StickerInput): Promise<Blob> {
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
+    const templateFamilyId = normalizePrintableTemplateFamilyId(input.templateFamilyId);
+    const brand = resolvePrintableTemplateBrandTokens(input.brandColor, templateFamilyId);
+    const isBanner = templateFamilyId === 'brand-banner';
+    const isDark = templateFamilyId === 'executive-dark';
+    const qrSize = templateFamilyId === 'qr-first' ? 470 : 420;
+    const qrPanel = qrSize + 60;
+    const qrY = templateFamilyId === 'qr-first' ? 238 : 258;
 
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
@@ -31,52 +197,55 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
     ctx.fillStyle = brand.paper;
     ctx.fillRect(0, 0, SIZE, SIZE);
-
-    // Brand border
-    ctx.strokeStyle = brand.border;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(20, 20, SIZE - 40, SIZE - 40);
-
-    ctx.fillStyle = brand.softAccent;
-    if (input.templateFamilyId === 'clean-utility') {
-        ctx.strokeStyle = brand.border;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(46, 46, SIZE - 92, 170);
-    } else {
-        ctx.fillRect(46, 46, SIZE - 92, 170);
+    if (isBanner) {
+        fillRoundedVerticalGradient(ctx, 0, 0, SIZE, 250, 0, brand.gradientFrom, brand.gradientTo);
+    } else if (templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage') {
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = brand.softAccent;
+        ctx.beginPath();
+        ctx.ellipse(SIZE / 2, 80, 300, 58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
 
-    // "SCAN FOR MENU" — bold, centered
-    ctx.fillStyle = brand.accent;
-    ctx.font = 'bold 56px system-ui, -apple-system, sans-serif';
+    fillRoundedRect(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, templateFamilyId === 'clean-utility' ? 0 : 24, brand.surface);
+    strokeRoundedRect(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, templateFamilyId === 'clean-utility' ? 0 : 24, brand.border, isDark ? 5 : 3);
+    drawStickerDecorations(ctx, templateFamilyId, brand);
+
+    const headerX = 84;
+    const headerY = isBanner ? 82 : 76;
+    const headerW = SIZE - 168;
+    const headerH = templateFamilyId === 'clean-utility' ? 130 : 142;
+    if (templateFamilyId === 'clean-utility') {
+        strokeRoundedRect(ctx, headerX, headerY, headerW, headerH, 0, brand.border, 3);
+    } else {
+        fillRoundedRect(ctx, headerX, headerY, headerW, headerH, 18, templateFamilyId === 'executive-dark' ? brand.softAccent : brand.softAccent);
+    }
+
+    ctx.fillStyle = templateFamilyId === 'executive-dark' ? brand.accent : brand.accent;
+    ctx.font = `bold ${templateFamilyId === 'qr-first' ? 48 : 52}px system-ui, -apple-system, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('SCAN FOR', SIZE / 2, 110);
-    ctx.fillText(labels.offeringUpper, SIZE / 2, 175);
+    ctx.fillText('SCAN FOR', SIZE / 2, headerY + 48);
+    ctx.fillText(labels.offeringUpper, SIZE / 2, headerY + 100);
 
-    // QR Code — centered
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
-        width: 400,
+        width: qrSize,
         margin: 2,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
 
-    const qrX = (SIZE - 400) / 2;
-    const qrY = 230;
-    ctx.fillStyle = brand.surface;
-    ctx.fillRect(qrX - 28, qrY - 28, 456, 456);
-    ctx.strokeStyle = brand.border;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(qrX - 28, qrY - 28, 456, 456);
-    ctx.drawImage(qrCanvas, qrX, qrY, 400, 400);
+    const qrX = (SIZE - qrSize) / 2;
+    fillRoundedRect(ctx, qrX - 30, qrY - 30, qrPanel, qrPanel, templateFamilyId === 'clean-utility' ? 0 : 16, '#ffffff');
+    strokeRoundedRect(ctx, qrX - 30, qrY - 30, qrPanel, qrPanel, templateFamilyId === 'clean-utility' ? 0 : 16, brand.border, 4);
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
-    // Logo — small, centered, between QR and store name (if available)
-    let storeNameY = SIZE - 100;
+    let storeNameY = SIZE - 124;
     if (logo) {
         const maxLH = 50;
         const maxLW = 120;
@@ -87,25 +256,16 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
         storeNameY = SIZE - 165 + lh + 18;
     }
 
-    // Store name — small, centered, grey
     ctx.font = '36px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.text;
     ctx.textBaseline = 'middle';
 
-    // Truncate long names
-    let displayName = storeName;
-    while (ctx.measureText(displayName).width > SIZE - 80 && displayName.length > 3) {
-        displayName = displayName.slice(0, -1);
-    }
-    if (displayName !== storeName) displayName += '\u2026';
+    ctx.fillText(truncateCanvasText(ctx, storeName, SIZE - 130), SIZE / 2, storeNameY);
 
-    ctx.fillText(displayName, SIZE / 2, storeNameY);
-
-    // Short link fallback — for customers who cannot scan
     if (shortLink) {
         ctx.font = '22px system-ui, -apple-system, sans-serif';
         ctx.fillStyle = brand.muted;
-        ctx.fillText(`Or open: ${shortLink}`, SIZE / 2, SIZE - 55);
+        ctx.fillText(truncateCanvasText(ctx, `Or open: ${shortLink}`, SIZE - 150), SIZE / 2, SIZE - 76);
     }
 
     drawMenuListAttribution(ctx, {
@@ -115,7 +275,7 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
         gap: 5,
         logoHeight: 14,
         x: SIZE / 2,
-        y: SIZE - 28,
+        y: SIZE - 44,
     });
 
     return new Promise((resolve, reject) => {

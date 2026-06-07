@@ -28,7 +28,7 @@
 
 **Problem Solved:** SMB owners care deeply about printed table cards and menu files because customers see those before they talk to staff. The current files are functional, but the owner still needs stronger choice and polish without hiring a designer or learning a design tool.
 
-**Solution:** MenuList provides a governed template catalog with 9 complete style families. The owner selects an asset type on the left, chooses a template on the right, previews the result, and downloads the file. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
+**Solution:** MenuList provides a governed template catalog with complete style families. The owner selects an asset type on the left, chooses a supported template on the right, sees the generated result immediately in the modal or sheet, and downloads the file as PDF or image. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
 
 ---
 
@@ -37,15 +37,15 @@
 ```text
 Dashboard /assets
   -> asset type sidebar
-  -> 9 template families
+  -> supported template families for that asset
   -> shared render input
   -> existing output engines
-      - Print Menu PDF
-      - Table Tent PDF
-      - Single Table / Counter Card PDF
-      - Counter Sticker PNG
-      - Entrance Poster PDF
-      - Feedback QR PNG
+      - Print Menu PDF + image
+      - Table Tent PDF + image
+      - Single Table / Counter Card PDF + image
+      - Counter Sticker PDF + image
+      - Entrance Poster PDF + image
+      - Feedback QR PDF + image
       - Menu Kit ZIP
 ```
 
