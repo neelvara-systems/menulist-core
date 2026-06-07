@@ -1,6 +1,6 @@
 # Decision Intelligence (Decision Blocks) — Mobile Support
 
-**Last Updated:** May 7, 2026
+**Last Updated:** June 7, 2026
 **Decision:** ✅ CUSTOMER-FACING + OWNER CONTROL SHEET
 
 ---
@@ -37,4 +37,4 @@ Desktop UI: `DecisionBlocksSettingsModal.tsx`.
 
 Mobile UI: `SmartRecommendationsSheet.tsx`.
 
-Both surfaces write the same `project.menuSettings.decisionBlocks` shape through shared helpers in `decisionBlocks.shared.ts`. When owners edit menu items on mobile (availability, price), runtime filtering and the next scoring run adjust automatically.
+Both surfaces write the same `project.menuSettings.decisionBlocks` shape through shared helpers in `decisionBlocks.shared.ts`. Pinned item values are normalized before display/save so legacy picker payloads and extraction id aliases resolve back to the current item id. When owners edit menu items on mobile (availability, price), runtime filtering and the next scoring run adjust automatically.

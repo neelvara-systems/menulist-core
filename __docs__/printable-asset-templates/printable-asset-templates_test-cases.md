@@ -64,6 +64,7 @@ Every template family must be checked for:
 - Short link fitting.
 - Print-safe margin.
 - Low-ink readability for `clean-utility`.
+- Mobile template list uses one row per family with no two-column compression or text overlap at 360-390px widths.
 
 ## Regression Guards
 

@@ -65,6 +65,10 @@ function OnboardingFormInner() {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OnboardResult | null>(null);
     const existingAnswerlatticeScope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
+    const mainDashboardHref = useMemo(() => {
+        const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+        return toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.DASHBOARD, hostname);
+    }, []);
     const dashboardHref = useMemo(() => {
         const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
         return toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.ACTIVATION, hostname);
@@ -191,7 +195,7 @@ function OnboardingFormInner() {
                     <div style={styles.successIcon}>✓</div>
                     <h2 style={styles.cardTitle}>Your AnswerLattice workspace is ready</h2>
                     <p style={styles.cardSubtext}>
-                        This Google account already has AnswerLattice access. Continue to your activation dashboard, or switch accounts if you meant to set up a different workspace.
+                        This Google account already has AnswerLattice access. Open your dashboard, continue setup, or switch accounts if you meant to create a different workspace.
                     </p>
 
                     {session?.user?.email && (
@@ -212,12 +216,20 @@ function OnboardingFormInner() {
 
                     <div style={styles.existingActions}>
                         <a
-                            href={dashboardHref}
+                            href={mainDashboardHref}
                             style={styles.primaryBtn}
                             data-answerlattice-event="onboarding_existing_dashboard_clicked"
+                            data-answerlattice-label="open_dashboard"
+                        >
+                            Open dashboard
+                        </a>
+                        <a
+                            href={dashboardHref}
+                            style={styles.secondaryBtn}
+                            data-answerlattice-event="onboarding_existing_activation_clicked"
                             data-answerlattice-label="open_activation"
                         >
-                            Open Activation
+                            Continue setup
                         </a>
                         <a
                             href={billingHref}
@@ -389,12 +401,12 @@ function OnboardingFormInner() {
                     </div>
 
                     <a
-                        href="/answerlattice/activation"
+                        href={mainDashboardHref}
                         style={styles.primaryBtn}
-                        data-answerlattice-event="onboarding_activation_clicked"
-                        data-answerlattice-label="open_activation"
+                        data-answerlattice-event="onboarding_dashboard_clicked"
+                        data-answerlattice-label="open_dashboard"
                     >
-                        Open Activation
+                        Open dashboard
                     </a>
                 </div>
             )}

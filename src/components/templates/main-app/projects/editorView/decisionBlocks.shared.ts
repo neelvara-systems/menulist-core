@@ -18,15 +18,55 @@ export interface ItemOption {
     category: string;
 }
 
+function normalizePinnedItemId(value: unknown): string | undefined {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || undefined;
+    }
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const normalized = normalizePinnedItemId(entry);
+            if (normalized) return normalized;
+        }
+        return undefined;
+    }
+
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        return normalizePinnedItemId(record.itemId ?? record.value ?? record.id);
+    }
+
+    return undefined;
+}
+
+function itemMatchesPinnedId(item: { id?: string; extractionIdAliases?: string[] }, pinnedId: string): boolean {
+    return item.id === pinnedId || Boolean(item.extractionIdAliases?.includes(pinnedId));
+}
+
+function resolvePinnedItemId(files: ProjectFileType[], value: unknown): string | undefined {
+    const pinnedId = normalizePinnedItemId(value);
+    if (!pinnedId) return undefined;
+
+    for (const file of files || []) {
+        const items = file.extractedData?.data?.items || [];
+        const matchedItem = items.find((item) => itemMatchesPinnedId(item, pinnedId));
+        if (matchedItem?.id) return matchedItem.id;
+    }
+
+    return pinnedId;
+}
+
 export function getDecisionBlockSettings(projectData: Project): DecisionBlockSettingsState {
     const currentSettings = projectData.menuSettings?.decisionBlocks || {};
+    const files = projectData.files || [];
     return {
         enablePopular: currentSettings.enablePopular !== false,
         enableQuickPick: currentSettings.enableQuickPick !== false,
         enableBestValue: currentSettings.enableBestValue !== false,
-        pinnedPopular: currentSettings.pinnedPopular,
-        pinnedQuickPick: currentSettings.pinnedQuickPick,
-        pinnedBestValue: currentSettings.pinnedBestValue,
+        pinnedPopular: resolvePinnedItemId(files, currentSettings.pinnedPopular),
+        pinnedQuickPick: resolvePinnedItemId(files, currentSettings.pinnedQuickPick),
+        pinnedBestValue: resolvePinnedItemId(files, currentSettings.pinnedBestValue),
     };
 }
 
@@ -49,13 +89,17 @@ export function buildAllItemOptions(files: ProjectFileType[], activeLang: string
 
 export function isPinnedItemUnavailable(
     files: ProjectFileType[],
-    pinnedId: string | undefined
+    pinnedId: unknown
 ): { unavailable: boolean; itemName?: string; reason?: string } {
-    if (!pinnedId) return { unavailable: false };
+    const normalizedPinnedId = normalizePinnedItemId(pinnedId);
+    if (!normalizedPinnedId) return { unavailable: false };
+
+    let sawMenuItem = false;
 
     for (const file of files || []) {
         const items = file.extractedData?.data?.items || [];
-        const item = items.find((entry) => entry.id === pinnedId);
+        if (items.length > 0) sawMenuItem = true;
+        const item = items.find((entry) => itemMatchesPinnedId(entry, normalizedPinnedId));
         if (!item) continue;
 
         if (item.available === false) {
@@ -74,6 +118,10 @@ export function isPinnedItemUnavailable(
             };
         }
 
+        return { unavailable: false };
+    }
+
+    if (!sawMenuItem) {
         return { unavailable: false };
     }
 

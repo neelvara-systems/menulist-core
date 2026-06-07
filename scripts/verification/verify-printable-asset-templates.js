@@ -130,6 +130,8 @@ const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
   'selectedPrintableAssetId',
   'selectedPrintableTemplateId',
   'TemplateFamilySwatch',
+  'templateRowPreviewWidth',
+  'templateRowPreviewHeight',
   'aria-pressed={active}',
   'brandColor: storeBrandColor',
 ].forEach((token) => requireToken(mobileShare, token, 'mobile assets screen'));

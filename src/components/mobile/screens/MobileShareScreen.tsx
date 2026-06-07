@@ -867,6 +867,9 @@ export default function MobileShareScreen({
     }
 
     if (isPrintAssetsMode) {
+        const templateRowPreviewWidth = isCompactHandheld ? 116 : 132;
+        const templateRowPreviewHeight = isCompactHandheld ? 108 : 116;
+
         return (
             <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
                 <NavBar onBack={onBack || (() => window.history.back())}>Assets</NavBar>
@@ -966,7 +969,7 @@ export default function MobileShareScreen({
                             subtitle="Pick one finished look. Logo, color, URL, and MenuList branding are filled automatically."
                             title="Choose Style"
                         />
-                        <Flex gap={10} wrap="wrap">
+                        <Flex gap={10} vertical>
                             {PRINTABLE_TEMPLATE_FAMILIES.map((family) => {
                                 const active = selectedPrintableTemplateId === family.id;
                                 return (
@@ -976,15 +979,18 @@ export default function MobileShareScreen({
                                         key={family.id}
                                         onClick={() => setSelectedPrintableTemplateId(family.id)}
                                         style={{
+                                            alignItems: 'stretch',
                                             background: active ? token.colorPrimaryBg : token.colorBgContainer,
                                             border: `1px solid ${active ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
                                             borderRadius: 18,
                                             cursor: 'pointer',
-                                            flex: '1 1 calc(50% - 5px)',
+                                            display: 'flex',
                                             font: 'inherit',
-                                            minWidth: isCompactHandheld ? 128 : 146,
-                                            padding: 10,
+                                            gap: isCompactHandheld ? 10 : 12,
+                                            minHeight: templateRowPreviewHeight + 22,
+                                            padding: isCompactHandheld ? 10 : 12,
                                             textAlign: 'left',
+                                            width: '100%',
                                             WebkitTapHighlightColor: 'transparent',
                                         }}
                                         type="button"
@@ -1008,14 +1014,45 @@ export default function MobileShareScreen({
                                             shortLink={data.menuLink.replace(/^https?:\/\//, '')}
                                             storeLogo={data.storeLogo}
                                             storeName={data.storeName}
+                                            height={templateRowPreviewHeight}
+                                            width={templateRowPreviewWidth}
                                         />
-                                        <Flex align="center" gap={6} justify="space-between" style={{ marginTop: 9 }}>
-                                            <Text strong style={{ fontSize: isCompactHandheld ? 12 : 13 }}>{family.label}</Text>
-                                            {active ? <LuCheck color={token.colorPrimary} size={15} /> : null}
-                                        </Flex>
-                                        <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 11, lineHeight: 1.3, marginTop: 3 }}>
-                                            {family.bestFor}
-                                        </Text>
+                                        <span
+                                            style={{
+                                                alignSelf: 'center',
+                                                display: 'flex',
+                                                flex: 1,
+                                                flexDirection: 'column',
+                                                gap: 5,
+                                                minWidth: 0,
+                                            }}
+                                        >
+                                            <span style={{ alignItems: 'flex-start', display: 'flex', gap: 8, justifyContent: 'space-between', minWidth: 0 }}>
+                                                <Text
+                                                    strong
+                                                    style={{
+                                                        display: 'block',
+                                                        fontSize: isCompactHandheld ? 14 : 15,
+                                                        lineHeight: 1.2,
+                                                        minWidth: 0,
+                                                        overflowWrap: 'anywhere',
+                                                    }}
+                                                >
+                                                    {family.label}
+                                                </Text>
+                                                {active ? (
+                                                    <LuCheck color={token.colorPrimary} size={17} style={{ flexShrink: 0, marginTop: 1 }} />
+                                                ) : (
+                                                    <Tag style={{ flexShrink: 0, marginInlineEnd: 0 }}>{family.tier}</Tag>
+                                                )}
+                                            </span>
+                                            <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 12, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                                                {family.description}
+                                            </Text>
+                                            <Text style={{ color: token.colorTextTertiary, display: 'block', fontSize: 11.5, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                                                Best for: {family.bestFor}
+                                            </Text>
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -1681,6 +1718,8 @@ function TemplateFamilySwatch({
     shortLink,
     storeLogo,
     storeName,
+    height = 98,
+    width = '100%',
 }: {
     actionLabel: string;
     assetTypeId: PrintableAssetTypeId;
@@ -1690,6 +1729,8 @@ function TemplateFamilySwatch({
     shortLink?: string;
     storeLogo?: string | null;
     storeName: string;
+    height?: number;
+    width?: number | string;
 }) {
     const { token } = theme.useToken();
 
@@ -1697,8 +1738,10 @@ function TemplateFamilySwatch({
         <div style={{
             border: `1px solid ${token.colorBorderSecondary}`,
             borderRadius: 14,
-            height: 98,
+            flexShrink: 0,
+            height,
             overflow: 'hidden',
+            width,
         }}>
             <PrintableTemplatePreview
                 actionLabel={actionLabel}

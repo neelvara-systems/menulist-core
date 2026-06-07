@@ -60,14 +60,16 @@ NavBar: Assets
 Project selector
 Asset type cards
 Suggested style
-Template family grid
+Template family rows
 Preview / Download action bar
 ```
 
 Touch rules:
 
 - Minimum 44px tap targets.
-- One primary action per template card.
+- One template family per row on mobile.
+- Each template row keeps a fixed preview thumbnail on the left and readable copy on the right.
+- The full row is the selection tap target.
 - No tiny icon-only controls without labels.
 - No text overlap on compact phones.
 - Download progress and failure state must be visible.

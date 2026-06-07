@@ -176,7 +176,7 @@ Implementation:
 - Map `/assets` and `/use-menulist/print-assets` into `MobileShell` state.
 - Add a More-tab item named `Assets`.
 - Reuse `MobileProjectsProvider` and current Share/Print Assets data handlers.
-- Use mobile asset-type cards and a compact template family grid.
+- Use mobile asset-type cards and a one-column template family list with a fixed preview thumbnail and readable copy.
 - Keep preview/download actions in the shell.
 
 This follows the existing route-map pattern in `src/components/mobile/MobileShell.tsx:36` and the existing More tab module list at `src/components/mobile/screens/MobileMoreScreen.tsx:450`.

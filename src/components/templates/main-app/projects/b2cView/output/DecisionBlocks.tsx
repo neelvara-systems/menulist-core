@@ -107,6 +107,44 @@ interface OwnerControls {
     pinnedBestValue?: string;
 }
 
+function normalizePinnedControlValue(value: unknown): string | undefined {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || undefined;
+    }
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const normalized = normalizePinnedControlValue(entry);
+            if (normalized) return normalized;
+        }
+        return undefined;
+    }
+
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        return normalizePinnedControlValue(record.itemId ?? record.value ?? record.id);
+    }
+
+    return undefined;
+}
+
+function buildDecisionItemLookup(items: ExtractedDataItem[]): Map<string, ExtractedDataItem> {
+    const itemMap = new Map<string, ExtractedDataItem>();
+
+    items.forEach((item) => {
+        if (item.id) itemMap.set(item.id, item);
+        item.extractionIdAliases?.forEach((alias) => {
+            const normalizedAlias = normalizePinnedControlValue(alias);
+            if (normalizedAlias && !itemMap.has(normalizedAlias)) {
+                itemMap.set(normalizedAlias, item);
+            }
+        });
+    });
+
+    return itemMap;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // HARDENING: Lifecycle States + Activation Gates
 // "Decision Blocks exist only when data earns the right to guide."
@@ -250,41 +288,43 @@ function selectAvailableCandidate(
     pinnedId?: string
 ): { item: ExtractedDataItem; reason: string; reasonParams?: Record<string, any> } | undefined {
     // Build lookup map for O(1) access
-    const itemMap = new Map(items.map(item => [item.id, item]));
+    const itemMap = buildDecisionItemLookup(items);
 
     // Check if item is available at runtime (3 mandatory checks)
-    const isAvailable = (itemId: string): boolean => {
+    const getAvailableItem = (itemId: string): ExtractedDataItem | undefined => {
         const item = itemMap.get(itemId);
-        if (!item) return false;
+        if (!item) return undefined;
 
         // Check 1: Item not disabled
-        if (item.active === false) return false;
+        if (item.active === false) return undefined;
 
         // Check 2: Item not sold out
-        if (item.available === false) return false;
+        if (item.available === false) return undefined;
 
         // Check 3: Category time-slot validation
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category)) return false;
+        if (!isCategoryWithinTimeSlot(category)) return undefined;
 
         // Check 4: Not already used in another block
-        if (usedItemIds.has(itemId)) return false;
+        if (usedItemIds.has(item.id)) return undefined;
 
-        return true;
+        return item;
     };
 
     // If owner pinned an item, try it first (but only if available)
-    if (pinnedId && isAvailable(pinnedId)) {
-        const item = itemMap.get(pinnedId)!;
-        usedItemIds.add(pinnedId);
-        return { item, reason: DECISION_REASON_KEYS.pinned.ownerPick };
+    if (pinnedId) {
+        const pinnedItem = getAvailableItem(pinnedId);
+        if (pinnedItem) {
+            usedItemIds.add(pinnedItem.id);
+            return { item: pinnedItem, reason: DECISION_REASON_KEYS.pinned.ownerPick };
+        }
     }
 
     // Find first available candidate from precomputed list
     for (const candidate of candidates) {
-        if (isAvailable(candidate.itemId)) {
-            const item = itemMap.get(candidate.itemId)!;
-            usedItemIds.add(candidate.itemId);
+        const item = getAvailableItem(candidate.itemId);
+        if (item) {
+            usedItemIds.add(item.id);
             return {
                 item,
                 reason: candidate.reason,
@@ -439,18 +479,18 @@ function computeBlocksFallback(
     const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
 
     // Build item lookup map
-    const itemMap = new Map(items.map(item => [item.id, item]));
+    const itemMap = buildDecisionItemLookup(items);
 
     // Check if item is available (same 3 checks as runtime gate)
-    const isAvailable = (itemId: string): boolean => {
+    const getAvailableItem = (itemId: string): ExtractedDataItem | undefined => {
         const item = itemMap.get(itemId);
-        if (!item) return false;
-        if (item.active === false) return false;
-        if (item.available === false) return false;
+        if (!item) return undefined;
+        if (item.active === false) return undefined;
+        if (item.available === false) return undefined;
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category)) return false;
-        if (usedItemIds.has(itemId)) return false;
-        return true;
+        if (!isCategoryWithinTimeSlot(category)) return undefined;
+        if (usedItemIds.has(item.id)) return undefined;
+        return item;
     };
 
     // ONLY show owner-pinned items in fallback mode (no client-side ranking)
@@ -458,8 +498,9 @@ function computeBlocksFallback(
 
     // ⭐ Popular - only if owner pinned
     const isPopularEnabled = ownerControls?.enablePopular !== false && enabledBlocks.includes('popular');
-    if (isPopularEnabled && ownerControls?.pinnedPopular && isAvailable(ownerControls.pinnedPopular)) {
-        const item = itemMap.get(ownerControls.pinnedPopular)!;
+    const popularItem = ownerControls?.pinnedPopular ? getAvailableItem(ownerControls.pinnedPopular) : undefined;
+    if (isPopularEnabled && popularItem) {
+        const item = popularItem;
         usedItemIds.add(item.id);
         blocks.push({
             blockType: 'popular',
@@ -470,8 +511,9 @@ function computeBlocksFallback(
 
     // ⚡ Quick Pick - only if owner pinned
     const isQuickPickEnabled = ownerControls?.enableQuickPick !== false && enabledBlocks.includes('quickPick');
-    if (isQuickPickEnabled && ownerControls?.pinnedQuickPick && isAvailable(ownerControls.pinnedQuickPick)) {
-        const item = itemMap.get(ownerControls.pinnedQuickPick)!;
+    const quickPickItem = ownerControls?.pinnedQuickPick ? getAvailableItem(ownerControls.pinnedQuickPick) : undefined;
+    if (isQuickPickEnabled && quickPickItem) {
+        const item = quickPickItem;
         usedItemIds.add(item.id);
         blocks.push({
             blockType: 'quickPick',
@@ -482,8 +524,9 @@ function computeBlocksFallback(
 
     // 💰 Best Value - only if owner pinned
     const isBestValueEnabled = showItemPrices && ownerControls?.enableBestValue !== false && enabledBlocks.includes('bestValue');
-    if (isBestValueEnabled && ownerControls?.pinnedBestValue && isAvailable(ownerControls.pinnedBestValue)) {
-        const item = itemMap.get(ownerControls.pinnedBestValue)!;
+    const bestValueItem = ownerControls?.pinnedBestValue ? getAvailableItem(ownerControls.pinnedBestValue) : undefined;
+    if (isBestValueEnabled && bestValueItem) {
+        const item = bestValueItem;
         usedItemIds.add(item.id);
         blocks.push({
             blockType: 'bestValue',
@@ -569,9 +612,9 @@ export default function DecisionBlocks({
             enablePopular: menuSettings.decisionBlocks.enablePopular,
             enableQuickPick: menuSettings.decisionBlocks.enableQuickPick,
             enableBestValue: menuSettings.decisionBlocks.enableBestValue,
-            pinnedPopular: menuSettings.decisionBlocks.pinnedPopular,
-            pinnedQuickPick: menuSettings.decisionBlocks.pinnedQuickPick,
-            pinnedBestValue: menuSettings.decisionBlocks.pinnedBestValue,
+            pinnedPopular: normalizePinnedControlValue(menuSettings.decisionBlocks.pinnedPopular),
+            pinnedQuickPick: normalizePinnedControlValue(menuSettings.decisionBlocks.pinnedQuickPick),
+            pinnedBestValue: normalizePinnedControlValue(menuSettings.decisionBlocks.pinnedBestValue),
         };
     }, [menuSettings?.decisionBlocks]);
 
