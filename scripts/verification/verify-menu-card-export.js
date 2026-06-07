@@ -428,6 +428,12 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
   'businessTone === \'service-list\'',
   'getHeaderSubtitle',
   'drawPageBase',
+  'firstPageContentTop',
+  'getColumnTop',
+  'pageIndex === 1',
+  'labelLines',
+  'boxHeight',
+  'postNameGap',
   'paperColor',
   'categoryMode',
   'itemTone',
@@ -815,7 +821,7 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   {
     label: 'Menu Kit entrance poster',
     file: 'src/lib/menu-kit/templates/entrancePosterTemplate.ts',
-    tokens: ['createMenuListLogoMarkDataUrl', 'MENU_LIST_MENU_ATTRIBUTION_TEXT', 'resolveMenuListAttributionPolicy', 'activePlanType'],
+    tokens: ['drawMenuListAttribution', 'MENU_LIST_MENU_ATTRIBUTION_TEXT', 'activePlanType'],
   },
   {
     label: 'Menu Kit delivery bag sticker',

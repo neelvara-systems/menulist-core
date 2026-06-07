@@ -2,9 +2,9 @@
 
 ## Summary
 
-Normal Printable Asset Templates generation has **zero new Firestore reads, zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**.
+Normal Printable Asset Templates generation has **zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**. Non-menu printable assets use the already-loaded project summary/store context. Print Menu needs the full project/menu document once per selected project when it is not already cached.
 
-The feature reuses already-loaded owner/store/project/menu data and generates files in the browser with Canvas, jsPDF, QR rendering, pdfjs-dist PDF page rendering, and JSZip.
+The feature reuses already-loaded owner/store/project/menu data where available and generates files in the browser with Canvas, jsPDF, QR rendering, the existing browser-compatible PDF.js preview loader, and JSZip.
 
 There are **No new Cloud Functions** and **No new Firestore indexes** for this feature.
 
@@ -12,11 +12,12 @@ There are **No new Cloud Functions** and **No new Firestore indexes** for this f
 
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Open `/assets` after dashboard data is loaded | 0 new | 0 | 0 | 0 | Reuses existing owner/project/store context. |
+| Open `/assets` after dashboard data is loaded | Existing project summary read | 0 | 0 | 0 | Reads the summary document without creating a default project. |
 | Select asset type | 0 | 0 | 0 | 0 | Local UI state only. |
 | Open template actions | 0 | 0 | 0 | 0 | Local UI state only. |
-| Preview asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side. |
-| Download single PDF/image | 0 | 0 | 0 | 0 | Local generation and browser download; alternate format conversion stays in-browser. |
+| Preview non-menu asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side. |
+| Preview Print Menu | 0-1 | 0 | 0 | 0 | Reuses cached full project data when available; otherwise reads the selected project once and caches it for subsequent preview/download actions. |
+| Download single PDF/image | 0-1 | 0 | 0 | 0 | Same cached selected-project behavior for Print Menu; other assets stay at 0 reads. |
 | Download Menu Kit ZIP | 0 | 0 | 0 | 0 | Local JSZip generation. |
 | Mobile preview/download | 0 | 0 | 0 | 0 | Same generator as desktop. |
 | Premium branding check | 0 new | 0 | 0 | 0 | Uses existing active plan context. |
@@ -57,8 +58,8 @@ This optional path is not required for the governed template catalog.
 
 | Scenario | Firebase Cost |
 | --- | --- |
-| 1,000 owners open Assets and download 5 files each | $0 incremental Firebase cost. |
-| 1,000 owners preview supported templates for each asset | $0 incremental Firebase cost. |
-| 1,000 owners download Menu Kit ZIP | $0 incremental Firebase cost. |
+| 1,000 owners open Assets and download 5 non-menu files each | Project summary reads only; $0 incremental generated-file storage/function cost. |
+| 1,000 owners preview Print Menu for one project | Up to 1,000 selected-project reads, then cached for repeated template previews/downloads in that session. |
+| 1,000 owners download Menu Kit ZIP | $0 incremental generated-file storage/function cost. |
 
 Runtime CPU/memory cost is on the owner browser. Large Menu Kit ZIP downloads should show progress and avoid parallel generation loops beyond the existing safe generator behavior.

@@ -19,7 +19,7 @@
 | Project selector | Multiple projects can be selected before download, and URL/feedback/last modified metadata follow the selected project. |
 | Asset rail | Print Menu, Table Tent, Single Table Card, Counter Sticker, Entrance Poster, Feedback QR, Complete Menu Kit appear. |
 | Template count | QR/display assets show 9 template families; full Print Menu shows only the unique supported PDF layouts. |
-| Preview | Template modal/sheet automatically shows a generated image preview using real store/logo/color/URL and no embedded PDF viewer. |
+| Preview | Template modal/sheet automatically shows a generated output preview using real store/logo/color/URL and no embedded PDF viewer. |
 | Format actions | Single printable assets offer separate PDF and image downloads. Complete Menu Kit stays ZIP-only. |
 | Download | File downloads with selected asset and template. |
 | Compatibility | Old `/use-menulist/print-assets` does not break. |
@@ -68,7 +68,7 @@ Every template family must be checked for:
 - Full Print Menu does not show duplicate family choices that render to the same PDF style.
 - Low-ink readability for `clean-utility`.
 - Mobile template list uses one row per family with no two-column compression or text overlap at 360-390px widths.
-- Template row/card click opens a bottom sheet on mobile and a modal on desktop; generated image preview and download actions happen there, not through a separate selected-template action bar.
+- Template row/card click opens a bottom sheet on mobile and a modal on desktop; preview and download actions happen there, not through a separate selected-template action bar.
 
 ## Regression Guards
 

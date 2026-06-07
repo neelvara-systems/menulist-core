@@ -108,7 +108,6 @@ const OWNER_INPUT_DIAGRAM_INPUTS = [
     {
         title: 'Owner inputs',
         detail: 'Product docs, repeated replies, screenshots, recordings, and release notes.',
-        meta: 'Sources',
     },
 ];
 
@@ -116,22 +115,18 @@ const OWNER_INPUT_DIAGRAM_OUTPUTS = [
     {
         title: 'In-app widget',
         detail: 'Generated page-aware help can appear inside billing, onboarding, settings, releases, and error screens.',
-        meta: 'Widget',
     },
     {
         title: 'Help center',
         detail: 'Reviewed support material becomes a hosted place where users can self-serve.',
-        meta: 'Hosted help',
     },
     {
         title: 'FAQ answers',
         detail: 'Repeated short questions become reusable answers you can review before users see them.',
-        meta: 'FAQ',
     },
     {
         title: 'Documentation',
         detail: 'Product notes, screenshots, recordings, and release details become clearer support docs.',
-        meta: 'Docs',
     },
 ];
 
@@ -335,6 +330,11 @@ const SUPPORT_LOOP = [
         detail: 'The next user gets better official support without you repeating the same reply.',
         meta: 'Review',
     },
+    {
+        title: 'Every surface stays current',
+        detail: 'The widget, hosted help, FAQ, changelog, and fallback path use the same reviewed support truth.',
+        meta: 'Surfaces',
+    },
 ];
 
 const TRUST_CARDS = [
@@ -393,18 +393,24 @@ function HomepageHero({ basePath }: { basePath: string }) {
                                 key={line.join('-')}
                                 className={`al-home-hero-title__line ${lineIndex === 1 ? 'al-home-hero-title__line--gradient' : ''}`}
                             >
-                                {line.map((word, wordIndex) => {
-                                    const globalIndex = lineIndex === 0 ? wordIndex : HERO_TITLE_LINES[0].length + wordIndex;
-                                    return (
+                                {lineIndex === 1 ? (
+                                    <span
+                                        className="al-home-hero-title__gradient-copy"
+                                        style={getHeroWordStyle(HERO_TITLE_LINES[0].length)}
+                                    >
+                                        {line.join(' ')}
+                                    </span>
+                                ) : (
+                                    line.map((word, wordIndex) => (
                                         <span
                                             key={`${lineIndex}-${word}`}
-                                            className={`al-home-hero-title__word ${lineIndex === 1 ? 'al-home-hero-title__word--gradient' : ''}`}
-                                            style={getHeroWordStyle(globalIndex)}
+                                            className="al-home-hero-title__word"
+                                            style={getHeroWordStyle(wordIndex)}
                                         >
                                             {word}
                                         </span>
-                                    );
-                                })}
+                                    ))
+                                )}
                             </span>
                         ))}
                     </h1>
@@ -497,13 +503,35 @@ function OwnerInputDiagram() {
                 aria-hidden="true"
                 focusable="false"
             >
-                <path className="al-owner-flow__path" d="M300 154 L300 232" pathLength={1} />
-                <path className="al-owner-flow__pulse" d="M300 154 L300 232" pathLength={1} />
-                <path className="al-owner-flow__path" d="M300 348 L300 414 M300 414 H142 M300 414 H458 M142 414 L142 450 M458 414 L458 450" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 126 C300 148 300 178 300 239" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 239 C260 285 210 330 173 360" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 239 C340 285 390 330 428 360" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 239 C245 345 190 420 173 484" pathLength={1} />
+                <path className="al-owner-flow__path" d="M300 239 C355 345 410 420 428 484" pathLength={1} />
+                <path className="al-owner-flow__pulse" d="M300 126 C300 148 300 178 300 239" pathLength={1} />
                 <path
                     className="al-owner-flow__pulse al-owner-flow__pulse--output"
-                    d="M300 348 L300 414 M300 414 H142 M300 414 H458 M142 414 L142 450 M458 414 L458 450"
+                    d="M300 239 C260 285 210 330 173 360"
                     pathLength={1}
+                    style={{ '--al-owner-flow-delay': '2.55s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M300 239 C340 285 390 330 428 360"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '2.85s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M300 239 C245 345 190 420 173 484"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '3.15s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M300 239 C355 345 410 420 428 484"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '3.45s' } as CSSProperties}
                 />
             </svg>
             <svg
@@ -513,18 +541,40 @@ function OwnerInputDiagram() {
                 aria-hidden="true"
                 focusable="false"
             >
-                <path className="al-owner-flow__path" d="M180 158 L180 270 M180 388 L180 502" pathLength={1} />
-                <path className="al-owner-flow__pulse" d="M180 158 L180 270" pathLength={1} />
-                <path className="al-owner-flow__pulse al-owner-flow__pulse--output" d="M180 388 L180 502" pathLength={1} />
+                <path className="al-owner-flow__path" d="M180 112 C180 126 180 150 180 209" pathLength={1} />
+                <path className="al-owner-flow__path" d="M180 209 C174 266 178 296 180 314" pathLength={1} />
+                <path className="al-owner-flow__path" d="M180 209 C200 326 160 396 180 434" pathLength={1} />
+                <path className="al-owner-flow__path" d="M180 209 C160 396 202 498 180 537" pathLength={1} />
+                <path className="al-owner-flow__path" d="M180 209 C204 486 160 616 180 657" pathLength={1} />
+                <path className="al-owner-flow__pulse" d="M180 112 C180 126 180 150 180 209" pathLength={1} />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M180 209 C174 266 178 296 180 314"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '2.55s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M180 209 C200 326 160 396 180 434"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '2.85s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M180 209 C160 396 202 498 180 537"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '3.15s' } as CSSProperties}
+                />
+                <path
+                    className="al-owner-flow__pulse al-owner-flow__pulse--output"
+                    d="M180 209 C204 486 160 616 180 657"
+                    pathLength={1}
+                    style={{ '--al-owner-flow-delay': '3.45s' } as CSSProperties}
+                />
             </svg>
 
             <div className="al-owner-flow__input-row">
-                <div className="al-owner-flow__label">Founder inputs</div>
                 <article className="al-owner-flow__card al-owner-flow__card--input">
-                    <div className="al-owner-flow__card-head">
-                        <span>01</span>
-                        <em>{input.meta}</em>
-                    </div>
                     <h3>{input.title}</h3>
                     <p>{input.detail}</p>
                 </article>
@@ -535,14 +585,9 @@ function OwnerInputDiagram() {
             </div>
 
             <div className="al-owner-flow__output-row">
-                <div className="al-owner-flow__label al-owner-flow__label--outputs">Generated outputs</div>
                 <div className="al-owner-flow__outputs">
-                    {OWNER_INPUT_DIAGRAM_OUTPUTS.map((output, index) => (
+                    {OWNER_INPUT_DIAGRAM_OUTPUTS.map((output) => (
                         <article key={output.title} className="al-owner-flow__card al-owner-flow__card--output">
-                            <div className="al-owner-flow__card-head">
-                                <span>{String(index + 1).padStart(2, '0')}</span>
-                                <em>{output.meta}</em>
-                            </div>
                             <h3>{output.title}</h3>
                             <p>{output.detail}</p>
                         </article>
@@ -765,8 +810,28 @@ function SetupPathSection() {
                     title="Start with what you already have."
                     description="You do not need a perfect docs site. Start with the support material, product pages, tickets, and repeated replies already around your product."
                 />
-                <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
-                    <AnswerlatticeLoopDiagram idPrefix="al-home-setup-path" items={SETUP_STEPS} />
+
+                <div className="al-setup-track" data-answerlattice-reveal>
+                    <div className="al-setup-track__intro">
+                        <p>One setup session</p>
+                        <h3>Connect the support pieces before users arrive.</h3>
+                        <span>
+                            Start from existing material, map it to product pages, review what becomes official, then install the widget.
+                        </span>
+                    </div>
+
+                    <ol className="al-setup-track__steps" aria-label="AnswerLattice setup path">
+                        {SETUP_STEPS.map((step, index) => (
+                            <li key={step.title} className="al-setup-track__step" data-answerlattice-reveal-item>
+                                <div className="al-setup-track__step-head">
+                                    <span>{String(index + 1).padStart(2, '0')}</span>
+                                    {step.meta ? <em>{step.meta}</em> : null}
+                                </div>
+                                <h3>{step.title}</h3>
+                                <p>{step.detail}</p>
+                            </li>
+                        ))}
+                    </ol>
                 </div>
             </div>
         </section>

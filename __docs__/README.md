@@ -1,6 +1,6 @@
 # MenuListAI Platform Documentation
 
-**Last Updated**: May 31, 2026
+**Last Updated**: June 7, 2026
 **Status**: Production Ready  
 **Naming Convention**: `__docs__/[feature-name]/` (kebab-case) → `[feature-name]_spec.md`, `[feature-name]_impl.md`
 
@@ -18,6 +18,7 @@
 | **[multi-outlet-consistency/](./multi-outlet-consistency/)**         | Multi-chain/outlet syncing, master updates, store onboarding, AI extraction sync | `_spec.md`, `_impl.md`, `store-onboarding/`, `master-updates-awareness_impl.md` |
 | **[continuous-menu-intelligence/](./continuous-menu-intelligence/)** | Menu intelligence, auto-corrections, silent monitoring                           | Feature docs                                                                    |
 | **[decision-intelligence/](./decision-intelligence/)**               | Decision blocks, smart picks, confidence scoring                                 | Feature docs                                                                    |
+| **[owner-business-assistant/](./owner-business-assistant/)**         | Business Health owner check and grounded assistant planning                      | Full doc set + architecture and ChatGPT review                                  |
 
 ### AI & Content Features
 
@@ -127,5 +128,5 @@
 
 ---
 
-**Last Updated**: May 31, 2026
+**Last Updated**: June 7, 2026
 **Documentation Version**: 4.0

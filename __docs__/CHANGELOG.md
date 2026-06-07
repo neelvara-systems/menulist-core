@@ -6,6 +6,33 @@
 
 ---
 
+## June 7, 2026 — MenuList Business Health Planning
+
+### Changed
+
+- **Business Health is now documented** - The plan defines a private MenuList owner surface for seeing the latest business check, asking supported questions, and opening the right workflow when something needs attention.
+- **ChatGPT proposal validated against repo truth** - Snapshot-first answers, calm owner copy, mobile parity, action confirmation, and cost checks were kept; generic chatbot behavior, floating UI, new hot-path collections, direct public publishing, and chat-time raw Firestore scans were rejected.
+- **Implementation strategy is cost-first** - The docs require compact `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` and daily snapshot docs, scheduler generation through the existing store-local intelligence path, bounded threads only behind flags, and existing public cache/publish services for confirmed public-truth writes.
+- **Architecture cross-check added** - The docs now include a permanent data ownership map, source-adapter contract, function insertion rules, existing-system reuse matrix, provider-accounting requirements, and no-phase runtime-flag stance.
+- **Website copy stays unchanged** - Public MenuList website copy is withheld until the dashboard card, route, API, scheduler read model, mobile surface, cache behavior, and QA proof exist.
+
+### Cost
+
+- **No Firebase cost change** - This is documentation and planning only. No route, API, Firestore collection, Storage path, Cloud Function, scheduler, Firebase rule, index, feature flag, or public website runtime changed.
+
+## June 7, 2026 — Answerlattice Owner Support Assistant Planning
+
+### Changed
+
+- **Owner Support Assistant is now documented** - The plan defines a private Answerlattice owner/staff support review surface for asking what needs attention, seeing evidence, and opening the correct governed review workflow.
+- **ChatGPT proposal validated against repo truth** - Useful ideas such as evidence-first answers, unsupported-action refusals, contextual entry points, and backend contracts were kept, while old product naming, default-on flags, transcript collections, and direct publishing actions were rejected.
+- **Implementation strategy is cost-first** - The docs require summary-first context packets, existing Support Board and Governance write paths, assistive AI formatting only after deterministic proof, no assistant-owned transcript/event/session collection, and a compact `platformSummary/ownerSupportAssistantSummary_{tId}_{sId}` read model.
+- **Website copy stays unchanged** - Public Answerlattice website copy is withheld until the route, API, cost proof, mobile behavior, and governance gates are implemented and verified.
+
+### Cost
+
+- **No Firebase cost change** - This is documentation and planning only. No route, API, Firestore collection, Storage path, Cloud Function, scheduler, Firebase rule, index, feature flag, or public website runtime changed.
+
 ## June 6, 2026 — Answerlattice Repeated Reply Import
 
 ### Changed

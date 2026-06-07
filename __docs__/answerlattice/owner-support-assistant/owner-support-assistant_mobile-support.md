@@ -1,0 +1,101 @@
+# Owner Support Assistant - Mobile Support
+
+> **Status:** PLANNED
+> **Created:** 2026-06-07
+> **Surface:** Answerlattice responsive dashboard route, not MenuList mobile PWA shell
+
+---
+
+## Mobile Decision
+
+Owner Support Assistant should be available on mobile through the Answerlattice dashboard responsive shell at `/answerlattice/support-assistant`.
+
+It should not be added to MenuList `MobileShell`, the MenuList More tab, or any `/help-center/*` mobile route. This is an Answerlattice owner/staff management feature, not a MenuList owner app feature and not a public widget.
+
+---
+
+## Admission Gate
+
+| Gate | Verdict | Reason |
+| --- | --- | --- |
+| Frequency | Pass | Owners may need quick support health checks from a phone. |
+| Speed | Pass with constraint | Initial load must be summary-only and avoid realtime listeners. |
+| Touch | Pass with constraint | Actions must be 44px minimum and avoid dense table-only layouts. |
+| Owner value | Pass | The feature reduces dashboard hopping when deciding what support gap needs review. |
+
+---
+
+## Required Mobile Behavior
+
+- The question input remains visible without covering answer evidence.
+- Suggested prompts wrap cleanly and do not require horizontal scrolling.
+- Answer cards use stacked sections: answer, evidence, priority, action, limits.
+- Evidence cards show short labels and route links without long raw IDs.
+- Primary actions use full-width or clearly tappable controls on phone widths.
+- Drawer/contextual entry points collapse to full-screen panels on narrow screens.
+- Long evidence lists collapse behind "Show details" when needed.
+- Unsupported-action responses remain visible and do not look like errors.
+
+---
+
+## Layout Contract
+
+| Viewport | Contract |
+| --- | --- |
+| Phone | Single-column assistant surface, sticky input/action area only if it does not cover content. |
+| Tablet | Two-column layout allowed: prompt/history rail and answer panel. |
+| Desktop | Two-column or three-zone layout allowed: prompt rail, answer panel, context/evidence panel. |
+
+Do not render wide governance tables inside the assistant. Link to existing review screens for table-heavy work.
+
+---
+
+## Touch Targets
+
+All owner actions must be at least 44px high:
+
+- Ask/submit
+- Suggested prompt
+- Open review screen
+- Save plan
+- Copy summary
+- Show/hide evidence
+- Clear question
+
+Icon-only controls need accessible labels and tooltip/ARIA labels.
+
+---
+
+## Mobile Cost Contract
+
+Mobile must not introduce a separate data path.
+
+- Same query endpoint.
+- Same summary packet.
+- Same rate limits.
+- Same feature flag.
+- Same safe actions.
+- Same no-transcript rule.
+
+No mobile-specific Firestore listener or route bypass is allowed.
+
+---
+
+## Test Matrix
+
+| Case | Expected result |
+| --- | --- |
+| 375px phone route load | Summary cards fit without horizontal overflow. |
+| 375px long question | Text area grows or scrolls without covering answer. |
+| 375px evidence-heavy answer | Evidence collapses or stacks cleanly. |
+| 375px unsupported request | Refusal and review route are readable and tappable. |
+| Tablet route load | Prompt and answer layout does not waste space or hide actions. |
+| Slow network | Skeleton/loading state does not trigger repeated queries. |
+
+---
+
+## Version History
+
+| Date | Change |
+| --- | --- |
+| 2026-06-07 | Added mobile support plan for responsive Answerlattice dashboard implementation. |

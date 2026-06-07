@@ -3,6 +3,11 @@ import { getPrintableAssetType } from './assetTypes';
 import { mapPrintableTemplateToMenuCardStyle } from './templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetRenderResult, PrintableAssetTypeId } from './types';
 
+const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfjsLoadPromise: Promise<any> | null = null;
+
 function dataUrlToBlob(dataUrl: string): Blob {
     const [header, payload] = dataUrl.split(',');
     const mime = header.match(/data:(.*?);base64/)?.[1] || 'image/png';
@@ -87,11 +92,75 @@ async function wrapImageBlobInPdf(
     };
 }
 
+async function loadPdfJsFromCdn(): Promise<any> {
+    const existingLib = (window as any).pdfjsLib;
+    if (existingLib) {
+        existingLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+        return existingLib;
+    }
+
+    if (!pdfjsLoadPromise) {
+        pdfjsLoadPromise = new Promise((resolve, reject) => {
+            const existingScript = document.querySelector(`script[src="${PDFJS_CDN_SRC}"]`) as HTMLScriptElement | null;
+
+            const handleLoaded = () => {
+                const loadedLib = (window as any).pdfjsLib;
+                if (!loadedLib) {
+                    reject(new Error('PDF preview library loaded but was unavailable'));
+                    return;
+                }
+                loadedLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+                resolve(loadedLib);
+            };
+
+            if (existingScript) {
+                if (existingScript.dataset.menulistPdfjsLoaded === 'true') {
+                    queueMicrotask(handleLoaded);
+                    return;
+                }
+                existingScript.addEventListener('load', handleLoaded, { once: true });
+                existingScript.addEventListener('error', () => {
+                    pdfjsLoadPromise = null;
+                    reject(new Error('Failed to load PDF preview library'));
+                }, { once: true });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = PDFJS_CDN_SRC;
+            script.async = true;
+            script.onload = () => {
+                script.dataset.menulistPdfjsLoaded = 'true';
+                handleLoaded();
+            };
+            script.onerror = () => {
+                pdfjsLoadPromise = null;
+                reject(new Error('Failed to load PDF preview library'));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    return pdfjsLoadPromise;
+}
+
+async function loadPdfJsForPreview(): Promise<any> {
+    if (typeof window === 'undefined') {
+        throw new Error('PDF preview is only available in the browser');
+    }
+
+    try {
+        return await loadPdfJsFromCdn();
+    } catch {
+        return import('pdfjs-dist/legacy/build/pdf.mjs');
+    }
+}
+
 async function renderPdfFirstPageToPng(
     pdfBlob: Blob,
     filename: string,
 ): Promise<PrintableAssetRenderResult> {
-    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const pdfjs = await loadPdfJsForPreview();
     const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
     const loadingTask = pdfjs.getDocument({ data: bytes, disableWorker: true, useSystemFonts: true } as any);
     const pdf = await loadingTask.promise;

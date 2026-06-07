@@ -90,6 +90,7 @@ const menuKitGenerator = read('src/lib/menu-kit/menuKitGenerator.ts');
 [
   'generatePrintMenuTableTentImage',
   'generatePrintMenuSingleTableCardImage',
+  'generateEntrancePosterImage',
   'generateImage',
   'imageSuffix',
   "options?: { outputFormat?: 'pdf' | 'png' }",
@@ -122,6 +123,8 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   "input.assetTypeId === 'complete_menu_kit'",
   'requestedFormat',
   'renderPdfFirstPageToPng',
+  'PDFJS_CDN_SRC',
+  'loadPdfJsFromCdn',
   'wrapImageBlobInPdf',
   'generateMenuKitAsset',
   "outputFormat: requestedFormat === 'png' ? 'png' : 'pdf'",
@@ -176,12 +179,20 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'getPrintableDownloadActionLabel',
   'getPrintableActionFormats',
   'renderTemplatePreview',
+  'getExistingProjectsListWithoutLoader',
+  'getProjectDataWithoutLoader',
+  'projectDataCacheRef',
+  'getCachedProjectData',
   "return 'png';",
   'Open download options',
   'PrintableTemplatePreview',
   'setPreviewAsset',
   'secondaryLabel: project.url.replace',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
+
+if (desktopAssetsRoute.includes('getProjectData(data.projectId)')) {
+  failures.push('desktop assets route must not refetch Print Menu data with the loader-backed getProjectData on every preview');
+}
 
 const printMenuCardFace = read('src/lib/print-menu-surfaces/templates/printMenuCardFace.ts');
 [
@@ -219,6 +230,12 @@ if (desktopAssetsRoute.includes('Preview was blocked')) {
 if (desktopAssetsRoute.includes('<iframe')) {
   failures.push('desktop assets route should show image previews, not embedded PDF iframes');
 }
+if (desktopAssetsRoute.includes('Preview could not be created')) {
+  failures.push('desktop assets route should show a template fallback, not a dead preview error');
+}
+if (desktopAssetsRoute.includes("asset.id === 'print_menu' || asset.id === 'entrance_poster'")) {
+  failures.push('desktop assets route must not exclude Print Menu or Entrance Poster from real PNG preview generation');
+}
 if (desktopAssetsRoute.includes('destroyOnClose')) {
   failures.push('desktop assets route should use destroyOnHidden for Ant Design Modal previews');
 }
@@ -230,6 +247,12 @@ if (mobileShare.includes('<iframe')) {
 if (mobileShare.includes('previewAsset?.isPdf') || mobileShare.includes('isPdf:')) {
   failures.push('mobile assets sheet should not keep PDF iframe preview state');
 }
+if (mobileShare.includes('Preview could not be created')) {
+  failures.push('mobile assets sheet should show a template fallback, not a dead preview error');
+}
+if (mobileShare.includes("asset.id === 'print_menu' || asset.id === 'entrance_poster'")) {
+  failures.push('mobile assets sheet must not exclude Print Menu or Entrance Poster from real PNG preview generation');
+}
 
 const sharedPreview = read('src/components/shared/printableAssets/PrintableTemplatePreview.tsx');
 [
@@ -238,10 +261,16 @@ const sharedPreview = read('src/components/shared/printableAssets/PrintableTempl
   'OrnamentDots',
   'CornerLines',
   'DiagonalStrips',
+  "aspectRatio: '1.42 / 1'",
+  "height: compact ? '78%' : '76%'",
   'storeLogo',
   'storeName',
   'assetTypeId',
 ].forEach((token) => requireToken(sharedPreview, token, 'shared printable template preview'));
+
+if (sharedPreview.includes("aspectRatio: '1.95 / 1'")) {
+  failures.push('table tent preview must use print-ratio sizing, not a flattened 1.95:1 thumbnail');
+}
 
 const sourceFilesToCheck = [
   'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
@@ -263,7 +292,9 @@ sourceFilesToCheck.forEach((file) => {
 
 const firebaseDoc = read('__docs__/printable-asset-templates/printable-asset-templates_firebase.md');
 [
-  '$0 incremental Firebase cost',
+  '0-1',
+  'selected-project reads',
+  'caches it for subsequent preview/download actions',
   'No new Cloud Functions',
   'No new Firestore indexes',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase cost doc'));

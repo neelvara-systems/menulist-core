@@ -1926,10 +1926,6 @@ function PrintableTemplateActionSheet({
                                         objectFit: 'contain',
                                     }}
                                 />
-                            ) : previewState === 'error' ? (
-                                <Text style={{ color: token.colorTextSecondary, textAlign: 'center' }}>
-                                    Preview could not be created. Download still may work.
-                                </Text>
                             ) : asset.outputFormat === 'zip' ? (
                                 <PrintableTemplatePreview
                                     actionLabel={actionLabel}
@@ -1941,6 +1937,10 @@ function PrintableTemplateActionSheet({
                                     storeLogo={storeLogo}
                                     storeName={storeName}
                                 />
+                            ) : previewState === 'error' ? (
+                                <Text style={{ color: token.colorTextSecondary, textAlign: 'center' }}>
+                                    Preview is unavailable. Download can still generate the file.
+                                </Text>
                             ) : null}
                         </div>
                         <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>

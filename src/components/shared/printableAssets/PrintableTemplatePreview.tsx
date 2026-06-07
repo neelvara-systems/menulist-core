@@ -57,9 +57,11 @@ function getShellStyle(kind: SheetKind, compact?: boolean): CSSProperties {
     }
     if (kind === 'landscape') {
         return {
-            aspectRatio: '1.95 / 1',
-            maxHeight: compact ? 112 : 150,
-            width: compact ? '86%' : '82%',
+            aspectRatio: '1.42 / 1',
+            height: compact ? '78%' : '76%',
+            maxHeight: compact ? 176 : 236,
+            maxWidth: compact ? '86%' : '82%',
+            width: 'auto',
         };
     }
     if (kind === 'kit') {
@@ -505,7 +507,7 @@ export default function PrintableTemplatePreview({
                 ) : (
                     <>
                         <DecorativeLayer compact={compact} family={family} isDark={isDark} muted={brand.border} />
-                        {family.id === 'brand-banner' || family.id === 'local-bold' ? (
+                        {family.id === 'brand-banner' ? (
                             <span
                                 style={{
                                     background: `linear-gradient(90deg, ${brand.gradientFrom}, ${brand.gradientTo})`,
@@ -515,6 +517,21 @@ export default function PrintableTemplatePreview({
                                     position: 'absolute',
                                     right: 0,
                                     top: 0,
+                                }}
+                            />
+                        ) : null}
+                        {family.id === 'local-bold' ? (
+                            <span
+                                style={{
+                                    background: brand.accent,
+                                    borderRadius: 999,
+                                    display: 'block',
+                                    height: compact ? 5 : 8,
+                                    left: '31%',
+                                    opacity: 0.95,
+                                    position: 'absolute',
+                                    right: '31%',
+                                    top: compact ? 10 : 16,
                                 }}
                             />
                         ) : null}

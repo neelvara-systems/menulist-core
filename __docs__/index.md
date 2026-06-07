@@ -2,7 +2,7 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** May 31, 2026 | **Total Features:** 30+ | **Doc Types:** 7 per feature
+> **Last Updated:** June 7, 2026 | **Total Features:** 31+ | **Doc Types:** 7 per feature
 
 ---
 
@@ -43,6 +43,7 @@
 | 16  | **Stores Management**             | `stores-management/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17  | **Roles & Permissions**           | `roles-permissions/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17a | **POS Webhook Sync**              | `pos-webhook-sync/`                          |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| 17b | **Owner Business Assistant**      | `owner-business-assistant/`                  |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 
 ## Projects (Menu Builder)
 

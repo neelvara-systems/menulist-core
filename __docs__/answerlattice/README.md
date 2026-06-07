@@ -66,6 +66,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 18  | `support-board/`                                 | Product/Ops/Dev | Private owner/staff Support Board, Needs Answer queue, internal notes, and future support-work roadmap |
 | 19  | `knowledge-intake-command-center/`               | Product/Ops/Dev | Planned founder-first, paid-gated source intake architecture that sits above the current KB generation pipeline |
 | 20  | `cost-read-model-guardrails/`                    | Developers/Ops | Answerlattice-wide summary-doc, bounded-list, listener, and Firebase cost guardrails |
+| 21  | `owner-support-assistant/`                       | Product/Ops/Dev | Planned owner/staff support review assistant using existing summaries, Governance, Support Board, and cost-bounded AI operation logging |
 
 ---
 
@@ -135,6 +136,8 @@ The `/help-center` surface belongs to the MenuList owner app. Answerlattice dash
 - `/answerlattice/transactions` → `src/app/(answerlattice)/answerlattice/transactions/page.tsx`
 - `/answerlattice/weekly-digest` → `src/app/(answerlattice)/answerlattice/weekly-digest/page.tsx`
 
+Planned docs only: Owner Support Assistant reserves `/answerlattice/support-assistant` as an Answerlattice owner/staff route behind `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`. Do not expose the nav item, route, or API until implementation, cost proof, access checks, and mobile verification pass.
+
 The Answerlattice shell is responsive: desktop uses the shared MenuList dashboard chrome for the header/sidebar and Answerlattice-owned navigation, while mobile uses a sticky header and drawer navigation with the same safe-area handling. The sidebar exposes workflow groups and clean tab subroutes for Governance, Widget, and Team. Client support users see only the client support routes; Answerlattice owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
 ### MenuList Help Center Boundary
@@ -181,6 +184,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `POST /api/answerlattice/widget-key` — Protected widget key create/rename/copy/delete management
 - `POST /api/answerlattice/tenant-summary` — Authenticated server-side sync for `platformSummary/answerlatticeTenantsSummary` after client-side entity creation
 - `POST /api/answerlattice/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
+
+Planned docs only: Owner Support Assistant reserves `POST /api/answerlattice/support-assistant/query` for a protected, rate-limited, summary-first query endpoint. The endpoint is not live until the feature flag and implementation are added.
 
 ### Database Layer (DAL)
 
@@ -271,6 +276,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `ENABLE_ANSWERLATTICE_TRUST_METRICS`     | `src/config/features.ts` / `functions-answerlattice/src/constants/features.ts` | `true` | Compact trust metrics summary                    |
 | `ENABLE_ANSWERLATTICE_NIGHTLY`           | `functions-answerlattice/src/constants/features.ts` | `true`  | Server-side nightly batch (3:00 AM UTC)          |
 
+Planned docs only: Owner Support Assistant defines `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` as an app-side flag with default `false`. Do not treat it as a live runtime flag until it is added to `src/config/features.ts`.
+
 ---
 
 ## Firestore Collections (27 Total)
@@ -311,6 +318,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `platformSummary/trustMetrics_{tId}_{sId}` | Founder trust metrics dashboard read model | Tenant+Store scoped summary |
 | `answerlattice_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
 | `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
+
+Owner Support Assistant docs add no assistant-owned Firestore collection. The planned route must reuse compact summaries, existing Support Board/Governance records, and `answerlattice_aiOperations` only for LLM-backed operations. The only new read model is planned as a compact `platformSummary/ownerSupportAssistantSummary_{tId}_{sId}` document.
 
 **Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
@@ -381,8 +390,9 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 8   | **[FAQ Management](./faq-management/README.md)**                 | `faq-management/`         | 7 docs | Bounded FAQ DAL, import generation, public FAQ tab |
 | 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
 | 10  | **[Repeated Reply Import](./repeated-reply-import/README.md)** | `repeated-reply-import/` | 8 docs | Repeated founder replies become FAQ and canonical proposal drafts through Knowledge Intake |
+| 11  | **[Owner Support Assistant](./owner-support-assistant/README.md)** | `owner-support-assistant/` | 11 docs | Planned summary-first owner/staff support review assistant with no assistant-owned transcript/event collection |
 
-**Total:** 10 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, and Repeated Reply Import.
+**Total:** 11 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, and planned Owner Support Assistant.
 
 Each sub-feature folder contains:
 
@@ -401,6 +411,7 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-07 | 3.4.7   | Added Owner Support Assistant docs after validating the ChatGPT proposal against Answerlattice doctrine, existing systems, and Firebase cost-first summary read-model guardrails. |
 | 2026-06-06 | 3.4.6   | Added Repeated Reply Import as a Knowledge Intake subpath and documented the SupportLayer-derived support expansion sequence. |
 | 2026-06-06 | 3.4.5   | Added Activation `summary.launchProof` as the first-client launch proof read model before connector/distribution rollout.            |
 | 2026-06-06 | 3.4.4   | Reconciled the build priority roadmap with current runtime truth: first-client governed answer loop first, Public API rollout-gated, Jira/helpdesk connectors docs-first and deferred.            |

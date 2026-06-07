@@ -16,17 +16,17 @@ export default function SectionHeader({
     className = '',
 }: SectionHeaderProps) {
     return (
-        <div className={`mx-auto mb-10 max-w-3xl text-center ${className}`} data-answerlattice-reveal>
+        <div className={`al-section-header mx-auto mb-10 max-w-3xl text-center ${className}`} data-answerlattice-reveal>
             {eyebrow ? (
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--al-primary-light)]">
+                <p className="al-section-header__eyebrow">
                     {eyebrow}
                 </p>
             ) : null}
-            <h2 className="text-3xl font-bold leading-tight text-[var(--al-text)] sm:text-4xl lg:text-5xl">
+            <h2 className="al-section-header__title">
                 {title}
             </h2>
             {description ? (
-                <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--al-text-secondary)] sm:text-lg">
+                <p className="al-section-header__description">
                     {description}
                 </p>
             ) : null}

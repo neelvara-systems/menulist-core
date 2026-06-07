@@ -433,7 +433,7 @@ function drawHeader(
     const headerHeight = style.headerMode === 'editorial'
         ? (hasContact ? 48 : 42)
         : style.headerMode === 'compact-card'
-            ? (hasContact ? 38 : 32)
+            ? (hasContact ? 44 : 32)
             : (hasContact ? 48 : 42);
 
     if (style.headerMode === 'editorial') {
@@ -455,7 +455,7 @@ function drawHeader(
     } else if (style.headerMode === 'compact-card') {
         const cardX = 16;
         const cardY = 15;
-        const cardH = hasContact ? 23 : 18;
+        const cardH = hasContact ? 28 : 18;
         setFillRgb(doc, blendRgb(style.accentColor, style.paperColor, 0.12));
         setDrawRgb(doc, style.borderColor);
         doc.roundedRect(cardX, cardY, pageWidth - cardX * 2, cardH, 2.5, 2.5, 'FD');
@@ -463,11 +463,11 @@ function drawHeader(
         setTextRgb(doc, style.accentColor);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
-        doc.text(source.business.name.toUpperCase(), pageWidth / 2, cardY + 8.2, { align: 'center', maxWidth: pageWidth - 56 });
+        doc.text(source.business.name.toUpperCase(), pageWidth / 2, cardY + 8.6, { align: 'center', maxWidth: pageWidth - 56 });
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         setTextRgb(doc, style.mutedColor);
-        doc.text(getHeaderSubtitle(source), pageWidth / 2, cardY + 14, { align: 'center' });
+        doc.text(getHeaderSubtitle(source), pageWidth / 2, cardY + 15, { align: 'center' });
     } else {
         if (hasLogo) drawLogoMark(doc, source, logoDataUrl, 18, 17, 17, style);
         doc.setFont('times', 'bold');
@@ -573,15 +573,23 @@ function drawCategoryTitle(
     }
 
     if (style.categoryMode === 'boxed') {
+        const labelLines = (doc.splitTextToSize(label, width - 6) as string[]).slice(0, 2);
+        const categoryFontSize = labelLines.length > 1 ? Math.max(8.5, sizes.category - 1.2) : sizes.category;
+        const lineHeight = labelLines.length > 1 ? 4.3 : 4.8;
+        const boxHeight = Math.max(8, labelLines.length * lineHeight + 3.4);
+        const firstBaseline = y + (boxHeight - labelLines.length * lineHeight) / 2 + 3.7;
+
         setFillRgb(doc, blendRgb(style.accentColor, style.paperColor, 0.18));
         setDrawRgb(doc, style.borderColor);
         doc.setLineWidth(0.2);
-        doc.roundedRect(x, y, width, 8, 1.4, 1.4, 'FD');
+        doc.roundedRect(x, y, width, boxHeight, 1.4, 1.4, 'FD');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(sizes.category);
+        doc.setFontSize(categoryFontSize);
         setTextRgb(doc, style.accentColor);
-        doc.text(label, x + width / 2, y + 5.4, { align: 'center', maxWidth: width - 6 });
-        return y + 11;
+        labelLines.forEach((line, index) => {
+            doc.text(line, x + width / 2, firstBaseline + index * lineHeight, { align: 'center' });
+        });
+        return y + boxHeight + 6;
     }
 
     doc.setFont('helvetica', 'bold');
@@ -645,7 +653,8 @@ function drawItem(doc: jsPDF, item: PrintItem, x: number, y: number, width: numb
         }
     }
 
-    let nextY = y + Math.max(1, nameLines.length) * nameLineHeight + Math.max(0.8, sizes.gap - 3);
+    const postNameGap = settings.density === 'compact' ? 1.8 : settings.density === 'comfortable' ? 3 : 2.4;
+    let nextY = y + Math.max(1, nameLines.length) * nameLineHeight + postNameGap;
 
     if (settings.includeDescriptions && item.description) {
         doc.setFont(style.categoryMode === 'editorial' && style.itemTone !== 'product' ? 'times' : 'helvetica', style.itemTone === 'service' ? 'normal' : 'italic');
@@ -703,18 +712,27 @@ export async function renderPdf(
     const qrDataUrl = settings.includeQr ? await renderQr(source.qr.destinationUrl, source.qr.errorCorrection) : null;
 
     drawPageBase(doc, style, pageWidth, pageHeight);
-    let y = drawHeader(doc, source, settings, pageWidth, logoDataUrl, style);
+    const firstPageContentTop = drawHeader(doc, source, settings, pageWidth, logoDataUrl, style);
+    let y = firstPageContentTop;
     let columnIndex = 0;
+    let pageIndex = 1;
+
+    const getColumnTop = () => (
+        pageIndex === 1
+            ? Math.max(firstPageContentTop, margin + 4)
+            : margin + 4
+    );
 
     const nextColumnOrPage = () => {
         if (columnIndex < columns - 1) {
             columnIndex += 1;
-            y = margin + 4;
+            y = getColumnTop();
         } else {
             doc.addPage();
             drawPageBase(doc, style, pageWidth, pageHeight);
+            pageIndex += 1;
             columnIndex = 0;
-            y = margin + 4;
+            y = getColumnTop();
         }
     };
 

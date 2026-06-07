@@ -41,7 +41,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 3. Owner selects an asset type from the left rail.
 4. Owner sees the supported template families on the right. QR/display assets show 9 families; full Print Menu shows the real unique PDF layouts.
 5. Owner clicks one template family.
-6. Desktop opens a modal and mobile opens a bottom sheet with a generated image preview already visible.
+6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Entrance Poster, Table Tent, and Single Table Card use native image previews; Print Menu uses the generated menu PDF first-page image preview.
 7. Owner downloads the selected template as PDF or image. Complete Menu Kit remains a ZIP bundle.
 8. MenuList creates the file locally and downloads it.
 

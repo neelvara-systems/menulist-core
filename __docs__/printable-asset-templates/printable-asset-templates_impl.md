@@ -143,7 +143,7 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `print_menu` | Menu Card Export preset/style mapping, using existing `renderPdf`. |
 | `complete_menu_kit` | `generateMenuKit(menuKitInput)` with `templateFamilyId` in `MenuKitInput`. |
 
-Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first: table tent and single table/counter card previews use the native canvas PNG path, so they avoid a PDF wrapper for preview/image export. Other PDF-native outputs can render the first page into PNG through `pdfjs-dist` with workers disabled, so owners do not see browser PDF controls inside the modal/sheet. PNG-native outputs use their generated image for preview/download, and PDF export wraps that image into a print-size PDF with `jsPDF`. Complete Menu Kit remains ZIP-only.
+Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, and feedback QR use generated PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. PNG-native outputs use their generated image for preview/download, and PDF export wraps that image into a print-size PDF with `jsPDF`. Complete Menu Kit remains ZIP-only.
 
 Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. QR/display assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.
 
@@ -166,10 +166,10 @@ Desktop layout:
 Assets
   left: asset type rail
   right: template grid
-  click template: action modal with generated image preview
+  click template: action modal with generated output preview
 ```
 
-Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately generates an image preview, and shows **Download PDF** plus **Download image** for single assets. Complete Menu Kit shows **Download ZIP** only. Do not use public UI labels like "Customize Template".
+Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately shows a preview, and shows **Download PDF** plus **Download image** for single assets. Complete Menu Kit shows **Download ZIP** only. Do not use public UI labels like "Customize Template".
 
 ## Mobile Route
 
@@ -182,7 +182,7 @@ Implementation:
 - Add a More-tab item named `Assets`.
 - Reuse `MobileProjectsProvider` and current Share/Print Assets data handlers.
 - Use mobile asset-type cards and a one-column template family list with a fixed preview thumbnail and readable copy.
-- Tapping a template family opens an in-shell bottom sheet, immediately generates an image preview, and shows PDF/image download actions for that exact template.
+- Tapping a template family opens an in-shell bottom sheet, immediately shows a preview, and shows PDF/image download actions for that exact template.
 - Keep preview and download actions in the shell.
 
 This follows the existing route-map pattern in `src/components/mobile/MobileShell.tsx:36` and the existing More tab module list at `src/components/mobile/screens/MobileMoreScreen.tsx:450`.

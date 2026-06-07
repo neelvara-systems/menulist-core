@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { getProjectsList, getProjectData } from '@database/projects';
+import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
@@ -105,6 +105,19 @@ function getPrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOut
     return 'png';
 }
 
+function getPrintableActionModalWidth(assetId: PrintableAssetTypeId): number {
+    if (assetId === 'table_tent') return 640;
+    if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 500;
+    return 540;
+}
+
+function getPrintableActionPreviewHeight(assetId: PrintableAssetTypeId): number {
+    if (assetId === 'table_tent') return 360;
+    if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 360;
+    if (assetId === 'print_menu' || assetId === 'entrance_poster') return 520;
+    return 520;
+}
+
 function buildExportData(projectData: any) {
     const extractedData = projectData?.extractedData || {};
     const fileItems = Array.isArray(projectData?.files)
@@ -139,6 +152,7 @@ export default function PrintableAssetTemplatesRoute() {
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
     const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
     const previewUrlRef = useRef<string | null>(null);
+    const projectDataCacheRef = useRef<Record<string, any>>({});
 
     const labels = useMemo(
         () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
@@ -209,7 +223,8 @@ export default function PrintableAssetTemplatesRoute() {
             }
 
             try {
-                const result = await getProjectsList(true);
+                projectDataCacheRef.current = {};
+                const result = await getExistingProjectsListWithoutLoader(true);
                 const projects = result?.projects || [];
                 const defaultProject = projects.find((project: any) => project.projectId === projectIdQuery)
                     || projects.find((project: any) => project.isDefault)
@@ -285,6 +300,7 @@ export default function PrintableAssetTemplatesRoute() {
     const handleSelectProject = (projectId: string) => {
         const project = data?.allProjects.find((item) => item.projectId === projectId);
         if (!project) return;
+        closePreviewAsset();
         setData((current) => current ? {
             ...current,
             feedbackQrLink: project.feedbackQrUrl,
@@ -294,6 +310,15 @@ export default function PrintableAssetTemplatesRoute() {
             projectName: resolveProjectName(project.name),
         } : current);
         setIsProjectSelectorOpen(false);
+    };
+
+    const getCachedProjectData = async (projectId: string | null): Promise<any | null> => {
+        if (!projectId) return null;
+        const cachedProject = projectDataCacheRef.current[projectId];
+        if (cachedProject) return cachedProject;
+        const projectData = await getProjectDataWithoutLoader(projectId);
+        projectDataCacheRef.current[projectId] = projectData;
+        return projectData;
     };
 
     const buildRenderInput = async (templateFamilyId: PrintableTemplateFamilyId): Promise<PrintableAssetRenderInput | null> => {
@@ -317,7 +342,7 @@ export default function PrintableAssetTemplatesRoute() {
 
         if (selectedAssetId !== 'print_menu') return baseInput;
 
-        const projectData = data.projectId ? await getProjectData(data.projectId) : null;
+        const projectData = await getCachedProjectData(data.projectId);
         const exportData = buildExportData(projectData as any);
         if (!exportData.items.length) {
             message.warning(`No ${labels.offeringLower} items to export`);
@@ -578,7 +603,7 @@ export default function PrintableAssetTemplatesRoute() {
                 onCancel={closeTemplateActions}
                 open={Boolean(activeTemplateFamily)}
                 title={activeTemplateFamily ? `${selectedAsset.title} - ${activeTemplateFamily.label}` : 'Download asset'}
-                width={760}
+                width={getPrintableActionModalWidth(selectedAssetId)}
             >
                 {activeTemplateFamily ? (
                     <Flex gap={16} vertical>
@@ -589,7 +614,7 @@ export default function PrintableAssetTemplatesRoute() {
                                 border: `1px solid ${token.colorBorderSecondary}`,
                                 borderRadius: 12,
                                 display: 'flex',
-                                height: selectedAssetId === 'counter_sticker' ? 360 : 430,
+                                height: getPrintableActionPreviewHeight(selectedAssetId),
                                 justifyContent: 'center',
                                 overflow: 'hidden',
                                 padding: 12,
@@ -612,8 +637,6 @@ export default function PrintableAssetTemplatesRoute() {
                                         objectFit: 'contain',
                                     }}
                                 />
-                            ) : previewState === 'error' ? (
-                                <Text type="secondary">Preview could not be created. Download still may work.</Text>
                             ) : selectedAsset.outputFormat === 'zip' ? (
                                 <PrintableTemplatePreview
                                     actionLabel={previewActionLabel}
@@ -625,6 +648,10 @@ export default function PrintableAssetTemplatesRoute() {
                                     storeLogo={data.storeLogo}
                                     storeName={data.storeName}
                                 />
+                            ) : previewState === 'error' ? (
+                                <Text type="secondary" style={{ textAlign: 'center' }}>
+                                    Preview is unavailable. Download can still generate the file.
+                                </Text>
                             ) : null}
                         </div>
                         <Flex gap={12} vertical>

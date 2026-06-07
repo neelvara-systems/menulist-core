@@ -12,7 +12,7 @@ import JSZip from 'jszip';
 import { loadLogo, PreloadedLogo } from './imageLoader';
 import { generateCounterSticker } from './templates/counterStickerTemplate';
 import { generateDeliveryBagSticker } from './templates/deliveryBagTemplate';
-import { generateEntrancePoster } from './templates/entrancePosterTemplate';
+import { generateEntrancePoster, generateEntrancePosterImage } from './templates/entrancePosterTemplate';
 import { generateGoogleMapsImage } from './templates/googleMapsTemplate';
 import { generateInstagramStory } from './templates/instagramStoryTemplate';
 import { generatePlacementGuide } from './templates/placementGuideTemplate';
@@ -72,6 +72,8 @@ const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
     },
     {
         generate: generateEntrancePoster,
+        generateImage: generateEntrancePosterImage,
+        imageSuffix: 'EntrancePoster_A4.png',
         key: 'entrance_poster',
         label: 'Entrance Poster (A4)',
         mimeType: 'application/pdf',

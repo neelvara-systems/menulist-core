@@ -28,7 +28,7 @@
 
 **Problem Solved:** SMB owners care deeply about printed table cards and menu files because customers see those before they talk to staff. The current files are functional, but the owner still needs stronger choice and polish without hiring a designer or learning a design tool.
 
-**Solution:** MenuList provides a governed template catalog with complete style families. The owner selects an asset type on the left, chooses a supported template on the right, sees the generated result immediately in the modal or sheet, and downloads the file as PDF or image. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
+**Solution:** MenuList provides a governed template catalog with complete style families. The owner selects an asset type on the left, chooses a supported template on the right, sees the output preview immediately in the modal or sheet, and downloads the file as PDF or image. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
 
 ---
 

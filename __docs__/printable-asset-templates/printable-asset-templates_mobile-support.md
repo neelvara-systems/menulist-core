@@ -24,7 +24,7 @@ Included:
 - Select project using existing mobile project selector.
 - Select asset type.
 - Tap a template family from a one-column list.
-- Open a bottom sheet with the generated image preview already visible and PDF/image download actions for the tapped template.
+- Open a bottom sheet with the preview already visible and PDF/image download actions for the tapped template.
 - Download Print Menu from the same renderer; the separate Print Menu screen remains in shell for the deeper export workflow.
 
 Excluded:
@@ -61,7 +61,7 @@ Project selector
 Asset type cards
 Suggested style
 Template family rows
-Template action bottom sheet with generated image preview
+Template action bottom sheet with immediate preview
 ```
 
 Touch rules:
@@ -70,7 +70,7 @@ Touch rules:
 - One template family per row on mobile.
 - Each template row keeps a fixed preview thumbnail on the left and readable copy on the right.
 - The full row opens the bottom sheet; there is no separate selected-template path.
-- Preview is automatic inside the bottom sheet. Owners should not need to tap a second Preview action.
+- Preview is automatic inside the bottom sheet and uses the same generated output path as desktop. Entrance Poster, Table Tent, and Single Table Card use native image previews; Print Menu uses the generated menu PDF first-page image preview.
 - No tiny icon-only controls without labels.
 - No text overlap on compact phones.
 - Download progress and failure state must be visible.
@@ -96,5 +96,5 @@ If desktop and mobile pass the same `assetTypeId`, `templateFamilyId`, and proje
 | More tab -> Assets | No full page reload. |
 | Share tab -> Assets | No desktop route jump. |
 | Assets -> Print Menu | Generates the Print Menu output from the same renderer. |
-| Template row tap | Opens bottom sheet, generates the image preview in-shell, and passes that template family to the renderer. |
+| Template row tap | Opens bottom sheet, shows the preview in-shell, and passes that template family to the renderer. |
 | Multiple projects | Project selector controls generated output. |

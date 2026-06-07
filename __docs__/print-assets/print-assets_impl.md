@@ -46,7 +46,7 @@ Do not fork this wording between desktop and mobile. Do not add table-count or q
 
 `/assets` renders the dedicated `PrintableAssetTemplatesRoute` workspace and is guarded by `ENABLE_PRINTABLE_ASSET_TEMPLATES`. `/use-menulist/print-assets` remains as a compatibility route and renders the same workspace while the new flag is enabled. Desktop links use route builders so selected-project query handling is centralized. Use MenuList, Assets, and Print Menu transitions use `router.push(...)`, not `window.location`, so the dashboard does not perform a full document reload. The page reuses the same data loading, project selector, full Menu Kit ZIP generator, single Menu Kit asset generator, PDF export entry, feedback QR generator, brand color, logo, and plan data as the overview page.
 
-Desktop Assets adds template-family actions on top of readiness, print-shop handoff, image-first generated preview, and reprint guidance. Clicking a template opens a modal for that exact template, generates a clean image preview inside the modal, and offers separate PDF/image download actions. Preview and downloads call the same shared renderer and create temporary browser blob URLs without uploading output.
+Desktop Assets adds template-family actions on top of readiness, print-shop handoff, preview, and reprint guidance. Clicking a template opens a modal for that exact template, shows the generated output preview inside the modal, and offers separate PDF/image download actions. Entrance Poster, Table Tent, and Single Table Card use native image renderers for preview. Print Menu renders the generated menu PDF first page as the image preview. Preview and downloads create temporary browser blob URLs without uploading output.
 
 Use MenuList keeps an overview shortcut named Assets.
 
@@ -58,7 +58,7 @@ Mobile routes `/assets` and `/use-menulist/print-assets` map to:
 { tab: 'more', moreScreen: 'printAssets' }
 ```
 
-`MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Template rows open an in-shell bottom sheet with the generated image preview already visible and separate PDF/image download actions. Individual file downloads and previews use the shared printable renderer, matching desktop output without generating the full ZIP first unless the owner chooses Complete Menu Kit.
+`MobileMoreScreen` renders `MobilePrintAssetsScreen`, which reuses `MobileShareScreen` in focused `printAssets` mode. This preserves existing mobile project selection and download handlers. Template rows open an in-shell bottom sheet with the preview already visible and separate PDF/image download actions. Individual file downloads use the shared printable renderer, matching desktop output without generating the full ZIP first unless the owner chooses Complete Menu Kit.
 
 Mobile preview stays inside the same in-shell bottom sheet. It must not route to the desktop print-assets page from inside the PWA shell.
 
