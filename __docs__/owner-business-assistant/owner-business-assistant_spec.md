@@ -14,7 +14,7 @@ Business Health is approved for MenuList as a cost-controlled owner operating su
 
 It is not approved as a generic chatbot. The feature exists to answer owner questions from MenuList facts that were already computed or compacted by existing infrastructure. The owner should first see the state of the business, then ask for clarification when needed.
 
-This is a complete long-term architecture decision, not a phase plan. Runtime flags control availability, cost exposure, and emergency shutdown; they do not represent open-ended product stages.
+This is a complete long-term architecture decision, not a roadmap split. Runtime flags control availability, cost exposure, and emergency shutdown; they do not represent open-ended delivery buckets.
 
 Approved owner-facing promise:
 
@@ -78,10 +78,11 @@ Do not show these labels to owners:
 2. As an owner, I can ask which item received more customer attention.
 3. As an owner, I can ask what changed this week.
 4. As an owner, I can ask if the public menu has an issue.
-5. As an owner, I can open the correct screen from a check without hunting through the app.
-6. As an owner/admin, I can prepare a draft change and confirm it before anything changes.
-7. As a manager, I can see only assigned stores/actions.
-8. As a mobile owner, I can use the same feature inside the PWA shell.
+5. As an owner, I can see today's, this week's, last week's, this month's, and last month's analytics without opening a raw analytics table.
+6. As an owner, I can open the correct screen from a check without hunting through the app.
+7. As an owner/admin, I can prepare a draft change and confirm it before anything changes.
+8. As a manager, I can see only assigned stores/actions.
+9. As a mobile owner, I can use the same feature inside the PWA shell.
 
 ## 6. Supported Question Types
 
@@ -91,6 +92,8 @@ The permanent contract supports approved question intents. Free text can map to 
 | --- | --- | --- |
 | `business_status` | Current health, public status, scheduler freshness | Stable/watch/needs review plus reason |
 | `item_attention` | Settled analytics summary and menu item labels | Top or rising item by attention |
+| `analytics_period_summary` | Analytics period index | Stats for today, yesterday, this week, last week, this month, last month, last 7 days, last 30 days, or overall |
+| `analytics_period_compare` | Analytics period index with comparable periods | Plain comparison when both periods are available |
 | `item_needs_checking` | Low attention, issue flags, feedback, recent changes | One item/check with safe reason |
 | `weekly_changes` | Menu change log summary, public update summary | Brief list of changed items/settings |
 | `public_menu_status` | Public menu health, publish state, cache status where available | No action needed or open relevant screen |
@@ -105,6 +108,7 @@ Unsupported:
 - Sales/profit/revenue unless POS or verified payment data is available and explicitly sourced.
 - Competitor claims.
 - Predictions.
+- Arbitrary custom date ranges unless those periods already exist in the analytics index.
 - Medical/legal/financial advice.
 - Raw internal logs, collection names, secrets, tokens, prompts, or system internals.
 
@@ -132,6 +136,7 @@ Primary read model:
 
 ```text
 platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
+platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
 platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
 ```
 
@@ -145,6 +150,22 @@ Why `platformSummary`:
 
 Protected APIs read these docs with Admin SDK and return tenant/role-filtered owner-safe payloads. Direct client reads are not part of the contract because `firestore.rules:137-170` restricts `platformSummary`.
 
+`ownerBusinessHealthCurrent` powers the dashboard card, health status, priority checks, and small analytics teasers.
+
+`ownerBusinessAnalyticsIndex` powers owner analytics questions and compact dashboard analytics modules. It stores standard period packets only:
+
+- Today, marked partial.
+- Yesterday.
+- This week / week-to-date.
+- Last week.
+- This month / month-to-date.
+- Last month.
+- Last 7 days.
+- Last 30 days.
+- Overall.
+
+The answer API may read one current-day analytics doc for a fresher "today so far" overlay, but it must not aggregate N daily docs during a message.
+
 ## 9. Snapshot Sources
 
 Allowed sources are settled or compacted summaries:
@@ -152,6 +173,8 @@ Allowed sources are settled or compacted summaries:
 - `platformSummary/storesSummary`
 - `platformSummary/projects_{sId}`
 - Existing dashboard summaries in `analytics`
+- One current-day analytics doc for today's partial stats
+- Existing weekly/monthly/overall analytics docs
 - `menuIntelligence`
 - Existing `store.health`
 - `systemAlerts` summaries or capped current issue state
@@ -164,6 +187,7 @@ Allowed sources are settled or compacted summaries:
 Disallowed in chat-time answer generation:
 
 - Querying raw analytics ranges per message.
+- Aggregating daily docs per message.
 - Scanning all menu items per message.
 - Loading raw review/feedback collections per message.
 - Loading scheduler logs per message except platform/admin diagnostics.
@@ -173,7 +197,7 @@ Detailed ownership and reuse decisions are in [owner-business-assistant_architec
 
 ## 10. Action Model
 
-Business Health can perform five classes of action.
+Business Health can perform five classes of action through a registry. Natural language may map to these actions, but only registered actions can prepare or mutate anything.
 
 | Level | Action | Mutation | Confirmation |
 | --- | --- | --- | --- |
@@ -188,7 +212,19 @@ Default implementation posture:
 - Navigate, prepare, confirm, cancel, review, dismiss, assign, and publish-guard behavior are all defined in the contract.
 - Confirmed writes are controlled by feature flags and permission gates.
 - Public-truth publish actions are controlled by a stricter feature flag and may route to the existing publish screen instead of executing inside Business Health.
-- Flags are runtime controls, not future-phase promises.
+- Flags are runtime controls, not out-of-contract promises.
+
+Day-one supported action examples:
+
+| Owner request | Required behavior |
+| --- | --- |
+| "Change this price to 220" | Resolve item, prepare price patch, require confirmation, save through approved project mutation path |
+| "Rewrite this item description" | Use existing description generation/accounting when provider text is needed, prepare draft text, require confirmation before saving |
+| "Update this image" | Use existing upload/image-generation path, store only media reference in draft, require confirmation before public image changes |
+| "Make this live" | Prefer navigation to existing publish screen unless in-assistant publish flag and public-truth guard allow confirmation |
+| "Change my logo/cover" | Use existing business settings/media path or server-safe equivalent |
+
+The action system must store drafts/audits separately from analytics. Analytics stays in `platformSummary`; action workflow docs are only for prepare/confirm/cancel/review behavior.
 
 ## 11. Public Truth Rules
 
@@ -232,8 +268,10 @@ If a provider call is used:
 Non-negotiables:
 
 - Dashboard card: 1 current summary read through protected API.
-- Business Health page: 1 current summary read, conditional cached thread read only when thread mode is enabled.
+- Dashboard analytics strip: 1 analytics-index read, optional 1 current-day doc read for partial today.
+- Business Health page: 1 current summary read, 1 analytics-index read when analytics is visible, flag-gated cached thread read only under the thread flag.
 - Suggested question answer: reuse loaded current summary where possible; otherwise 1 current summary read.
+- Analytics question answer: 1 analytics-index read plus optional 1 today overlay read; no period range aggregation.
 - Free-text answer: no raw source collection aggregation.
 - Scheduler: reuse existing store-local nightly path and compact sources.
 - Cleanup: use `menulistMaintenanceScheduler`, not a new standalone scheduled function.
@@ -277,6 +315,8 @@ The feature is implementation-ready when:
 1. Docs, flags, API contract, scheduler contract, mobile contract, cost model, and test cases agree.
 2. Every ChatGPT suggestion has an accept/reject/modify decision in `_archive/chatgpt-review.md`.
 3. Cost hot path is summary-first.
-4. Public truth writes cannot bypass domain services or cache invalidation.
-5. Mobile is part of the implementation contract.
-6. Owner-facing language follows constitution and language governance.
+4. Standard analytics periods are served from `ownerBusinessAnalyticsIndex`, not message-time range scans.
+5. Public truth writes cannot bypass domain services or cache invalidation.
+6. Action Support is registry-driven with drafts, confirmation, permissions, and audit.
+7. Mobile is part of the implementation contract.
+8. Owner-facing language follows constitution and language governance.

@@ -73,11 +73,12 @@ Mobile order:
 
 1. Header: Business Health, branch selector if needed, status, last checked.
 2. Summary card.
-3. Priority checks, max 3 visible.
-4. Suggested questions, 4-6 chips max.
-5. Answer panel.
-6. Actions as bottom sheet.
-7. Source/freshness disclosure.
+3. Compact analytics periods: Today, This week, This month.
+4. Priority checks, max 3 visible.
+5. Suggested questions, 4-6 chips max.
+6. Answer panel.
+7. Actions as bottom sheet.
+8. Source/freshness disclosure.
 
 Do not use:
 
@@ -109,6 +110,8 @@ Avoid:
 
 ## Mobile Action Rules
 
+Action Support is part of the day-one mobile contract. If `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is off, the mobile screen remains read-only and hides draft/confirm controls while keeping Business Health available.
+
 Navigate:
 
 - Can switch tabs/sub-screens inside `MobileShell`.
@@ -118,6 +121,8 @@ Prepare draft:
 
 - Use bottom sheet to show what will be prepared.
 - Confirm preparation if it creates a stored draft.
+- For price, description, and image changes, show the target item/business surface and the proposed value before any save.
+- Store image drafts as media references only, not base64 or chat attachments.
 
 Confirm write:
 
@@ -126,6 +131,7 @@ Confirm write:
 - Require explicit tap.
 - Disable while saving.
 - Show result and next screen.
+- If the server detects that the target changed since the draft was prepared, require the owner to review again.
 
 Public-truth publish:
 
@@ -164,6 +170,7 @@ Mobile should render:
 - Priority checks are tappable with 44px targets.
 - Suggested questions wrap cleanly at 320px width.
 - Action bottom sheet traps focus and closes with cancel/back.
+- Action bottom sheet is not reachable when Action Support is disabled.
 - Public-truth action cannot be confirmed with one accidental tap.
 - Freshness/source text is visible on narrow screens.
 - Public `/client/*` routes are unaffected.

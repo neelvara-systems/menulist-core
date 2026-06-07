@@ -18,7 +18,7 @@
 | **[multi-outlet-consistency/](./multi-outlet-consistency/)**         | Multi-chain/outlet syncing, master updates, store onboarding, AI extraction sync | `_spec.md`, `_impl.md`, `store-onboarding/`, `master-updates-awareness_impl.md` |
 | **[continuous-menu-intelligence/](./continuous-menu-intelligence/)** | Menu intelligence, auto-corrections, silent monitoring                           | Feature docs                                                                    |
 | **[decision-intelligence/](./decision-intelligence/)**               | Decision blocks, smart picks, confidence scoring                                 | Feature docs                                                                    |
-| **[owner-business-assistant/](./owner-business-assistant/)**         | Business Health owner check and grounded assistant planning                      | Full doc set + architecture and ChatGPT review                                  |
+| **[owner-business-assistant/](./owner-business-assistant/)**         | Business Health owner check with day-one Action Support planning                 | Full doc set + architecture, Firebase cost, and ChatGPT review                  |
 
 ### AI & Content Features
 

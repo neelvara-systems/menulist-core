@@ -14,7 +14,7 @@ Do not update the public website during planning.
 
 Reason: no route, API, scheduler read model, mobile screen, action guard, or QA proof exists yet. Public copy should change only after implementation verifies runtime behavior and Firebase cost.
 
-## Future Website Placement
+## Website Placement After Proof
 
 After implementation and verification, Business Health may appear as a small owner dashboard capability in existing MenuList website sections. It should not get a separate hype landing page.
 
@@ -28,11 +28,12 @@ Potential placement:
 
 Use only after implementation proof:
 
-> Business Health shows the latest MenuList check for your menu, public page, customer attention, and important owner tasks. When everything is stable, it says no action is needed. When something needs review, it points you to the right place.
+> Business Health shows the latest MenuList check for your menu, public page, customer attention, and important owner tasks. Owners can check recent customer attention without reading raw analytics. When everything is stable, it says no action is needed. When something needs review, it points you to the right place.
 
 ## Short Website Bullets
 
 - Latest MenuList check in the owner dashboard.
+- Recent customer attention in plain language.
 - Clear "No action needed" state when things are stable.
 - Priority checks when something needs review.
 - Public changes stay behind owner confirmation.
@@ -65,8 +66,9 @@ Before website copy goes live:
 2. Full page exists.
 3. Mobile route works inside `MobileShell`.
 4. Scheduler writes current summary.
-5. Suggested questions work.
-6. Public-truth writes are confirmed or routed to existing publish screen.
-7. Firebase cost model matches implementation.
-8. Help doc is ready.
-9. Changelog entry exists.
+5. Analytics index answers standard period questions without runtime range scans.
+6. Suggested questions work.
+7. Public-truth writes are confirmed or routed to existing publish screen.
+8. Firebase cost model matches implementation.
+9. Help doc is ready.
+10. Changelog entry exists.

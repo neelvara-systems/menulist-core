@@ -11,12 +11,13 @@
 ## Summary
 
 - **Primary collection:** `platformSummary` (existing)
-- **Primary docs:** `ownerBusinessHealthCurrent_{tId}_{sId}`, `ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`
-- **New Storage paths:** None
+- **Primary docs:** `ownerBusinessHealthCurrent_{tId}_{sId}`, `ownerBusinessAnalyticsIndex_{tId}_{sId}`, `ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`
+- **New Firestore collections:** None for analytics; separately flag-gated workflow collections for Action Support drafts/actions, threads, and feedback
+- **New Firebase Storage paths:** None for Business Health itself; Action Support image flows must use existing media upload paths and store only references in drafts
 - **New standalone scheduled functions:** None
 - **Scheduler owner:** `functions/src/decisionBlocksScoring.ts` for snapshot generation
-- **Maintenance owner:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` for workflow cleanup when thread/action/draft storage is enabled
-- **Cost posture:** Summary-first. No chat-time raw analytics or menu scans.
+- **Maintenance owner:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` for workflow cleanup under thread/action/draft flags
+- **Cost posture:** Summary-first. No chat-time raw analytics ranges, menu scans, or assistant-owned public-truth writes.
 
 ## Why This Uses `platformSummary`
 
@@ -38,18 +39,22 @@ Business Health should use deterministic `platformSummary` documents because:
 | --- | --- | --- |
 | `platformSummary/storesSummary` | READ | Store metadata, scheduler hour, time zone, business-day settings |
 | `platformSummary/projects_{sId}` | READ | Active project summary, public state, project labels |
+| `analytics/{tId}_{sId}_{projectId}_daily_{today}` | READ optional | Today's partial analytics overlay; one deterministic doc only |
 | `analytics/{tId}_{sId}_{projectId}_dashboard_summary` | READ | Settled owner dashboard facts |
+| `analytics/{tId}_{sId}_{projectId}_weekly_*` | READ optional | Last week period packet when not already cached |
+| `analytics/{tId}_{sId}_{projectId}_monthly_*` | READ optional | Last month period packet when not already cached |
 | `menuIntelligence/{docId}` | READ | Existing continuous intelligence state |
-| `ownerControlUsage/{tId}_{sId}` | READ conditional | Aggregate owner action signal if the usage contract is extended |
+| `ownerControlUsage/{tId}_{sId}` | READ optional | Aggregate owner action signal if the usage contract is extended |
 
 ### New Docs
 
 | Document | Operation | Trigger | Notes |
 | --- | --- | --- | --- |
 | `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | WRITE | Store-local scheduler run | Replaced when compact signature changes |
+| `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | WRITE | Store-local scheduler run or freshness rebuild | Standard period packets for dashboard analytics and Q&A |
 | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | WRITE | First successful local-date run | Daily point-in-time proof; retention capped |
 
-### Conditional Workflow Docs
+### Flag-Gated Workflow Docs
 
 These docs are part of the complete architecture, but they are written only by protected APIs when the matching runtime flag is enabled. No client should write them directly.
 
@@ -83,18 +88,21 @@ Target read cap:
 | --- | ---: | --- |
 | `platformSummary/projects_{sId}` | 1 | Active project/public state summary |
 | Dashboard summary docs | 1-3 | Only active/default projects, capped |
+| Today daily doc | 0-1 | Optional partial overlay |
+| Weekly/monthly period docs | 0-2 | Only if analytics index cannot use dashboard summary fields |
 | `menuIntelligence` | 0-1 | Existing per-project intelligence state |
 | Store health/account summary | 0-1 | Prefer data already in storesSummary/current store scope |
 | Feedback/reviews compact summary | 0-2 | No raw scans |
 | Recent changes compact/capped read | 0-1 | Prefer summary/capped recent changes |
 | Existing scheduler context | 0 | Reuse loaded store/project data where possible |
-| **Target total** | **3-8 reads** | Per due store per local day |
+| **Target total** | **4-10 reads** | Per due store per local day; must not grow with event volume |
 
 Target writes:
 
 | Write | Count | Notes |
 | --- | ---: | --- |
 | Current doc | 0-1 | Write only when signature changes or status/freshness changes |
+| Analytics index doc | 0-1 | Write only when period signature changes |
 | Daily snapshot doc | 0-1 | One per store-local date |
 | Scheduler run log | Existing | Do not add noisy per-store logs beyond current scheduler pattern |
 
@@ -111,17 +119,36 @@ Target writes:
 | Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
 | Current Business Health | 1 | 0 | Same as card; SWR can reuse |
-| Conditional active thread | 0-2 | 0 | Only when thread mode is enabled |
+| Analytics index | 0-1 | 0 | Only when analytics strip/detail is visible or asked for |
+| Flag-gated active thread | 0-2 | 0 | Only under the thread flag |
+
+### Dashboard Analytics Strip
+
+| Operation | Reads | Writes | Notes |
+| --- | ---: | ---: | --- |
+| Current Business Health | 0-1 | 0 | Reuse dashboard card response where possible |
+| Analytics index | 1 | 0 | Returns compact periods: Today, This week, This month |
+| Today overlay | 0-1 | 0 | Optional one daily doc for fresher partial stats |
 
 ### Suggested Question
 
 | Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
-| Resolve approved intent | 0-1 | 0-1 | Reuse loaded current doc where possible; conditional aggregate usage update |
+| Resolve approved intent | 0-1 | 0-1 | Reuse loaded current doc where possible; flag-gated aggregate usage update |
+
+### Analytics Question
+
+| Operation | Reads | Writes | Notes |
+| --- | ---: | ---: | --- |
+| Resolve period intent | 0-1 | 0 | Reuse current doc when already loaded |
+| Load analytics index | 1 | 0 | Standard periods only |
+| Today overlay | 0-1 | 0 | Only for `today` or current-period answers if freshness flag is enabled |
+
+Custom arbitrary periods are not allowed to read N daily docs at question time. They must be refused or pre-added to the analytics index by scheduler work.
 
 ### Free-Text Provider Answer
 
-Only when `ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT` is enabled and provider-backed formatting is required.
+Only under `ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT` when provider-backed formatting is required.
 
 | Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
@@ -147,19 +174,19 @@ Provider calls must use:
 
 | Reads | Writes | Notes |
 | ---: | ---: | --- |
-| 0-1 | 0-1 conditional | Target resolution may read current snapshot; conditional aggregate usage write |
+| 0-1 | 0-1 flag-gated | Target resolution may read current snapshot; flag-gated aggregate usage write |
 
 ### Prepare Draft
 
 | Reads | Writes | Notes |
 | ---: | ---: | --- |
-| 1-3 | 1-2 | Resolve target, write draft/action docs when prepare/action storage is enabled |
+| 1-3 | 1-2 | Resolve target, write draft/action docs under prepare/action storage flags |
 
 ### Confirm Write
 
 | Reads | Writes | Notes |
 | ---: | ---: | --- |
-| 2-5 | Existing domain writes + 1 conditional audit | Reads draft/action/target, writes through existing DAL/API |
+| 2-5 | Existing domain writes + 1 flag-gated audit | Reads draft/action/target, writes through existing DAL/API |
 
 ### Public-Truth Publish/Update
 
@@ -173,11 +200,18 @@ Cache paths:
 - Server cache tags: `src/lib/actions/revalidateMenuCache.ts:20-24`
 - Revalidation API: `src/app/api/revalidate/menu/route.ts:31-78`
 
+Assistant confirmed writes must use one of two patterns:
+
+- Prepare and navigate to the existing editor/settings screen, where the current UI performs the save.
+- Use a server mutation adapter that preserves the same validation, MCE/change detection, multi-outlet behavior, menu change logging, sanitization, and cache invalidation as the existing project/store update path.
+
+Raw assistant `setDoc()` writes to public menu/store truth are a cost and correctness blocker.
+
 ## Storage Cost
 
-No Storage operations.
+Core Business Health has no Storage operations.
 
-Business Health must not upload prompt logs, generated files, screenshots, or transcripts to Storage.
+Action Support image actions may upload or generate media only through existing media/image systems. Assistant docs may store only compact references such as target IDs, media URLs, checksums, or prepared upload IDs. Business Health must not upload prompt logs, screenshots, base64 images, or transcripts to Storage.
 
 ## Cloud Functions Cost
 
@@ -189,7 +223,7 @@ Function changes, if implemented:
 | --- | --- |
 | `computeDecisionBlocksScores` | Add Business Health snapshot build inside existing store-local scheduler path |
 | `triggerStoreNightlyScheduler` | Include Business Health rebuild in manual store recovery |
-| `menulistMaintenanceScheduler` | Add cleanup tasks when workflow docs are enabled |
+| `menulistMaintenanceScheduler` | Add cleanup tasks under workflow doc flags |
 
 If any of these function files change, deploy the matching Firebase Functions target after validation per repo rule.
 
@@ -211,6 +245,7 @@ Optional persistent collections:
 Hard blockers:
 
 - Any chat answer path that queries raw analytics ranges.
+- Any analytics question that reads N daily docs at runtime.
 - Any chat answer path that scans menu items.
 - Any chat answer path that scans raw reviews/feedback.
 - Any persistent write per token/typing event.
@@ -223,7 +258,9 @@ Monitoring thresholds:
 | Metric | Alert |
 | --- | --- |
 | Average answer reads > 5 | Investigate raw-source fallback |
-| Current doc > 850 KB | Compact facts or split conditional blocks |
+| Analytics question reads > 3 | Check for range scans or missing index |
+| Current doc > 850 KB | Compact facts or split optional blocks |
+| Analytics index > 850 KB | Reduce period payload/top-list caps |
 | Provider calls for suggested questions | Disable free-text/provider path |
 | Thread writes per session > 20 messages | Cap or disable persistence |
 | Snapshot build reads grow with raw events | Rework to use summaries |
@@ -235,17 +272,21 @@ Assumptions:
 - 100 active stores.
 - 1 scheduler snapshot per store per local day.
 - 20 Business Health opens per store per month.
+- 20 analytics strip/detail opens per store per month.
 - 40 suggested question answers per store per month.
+- 20 analytics questions per store per month.
 - Free-text provider path off by default.
 
 | Resource | Operations/month | Rough cost posture |
 | --- | ---: | --- |
 | Scheduler reads | 9,000-24,000 | Low, summary/capped reads only |
-| Scheduler writes | 3,000-6,000 | Low |
+| Scheduler writes | 6,000-9,000 | Low; current + analytics index + capped daily snapshot |
 | Card/page reads | 2,000 | Low |
+| Analytics index reads | 2,000-4,000 | Low |
 | Suggested answer reads | 0-4,000 | Low, mostly cached |
+| Analytics answer reads | 2,000-6,000 | Low; index plus optional today overlay |
 | Suggested answer writes | 0-4,000 | Conditional usage aggregate only |
 | Provider calls | 0 default | Disabled unless flag enabled |
-| Storage | 0 | None |
+| Storage | 0 | Core Business Health; Action Support image actions use existing media paths only when invoked |
 
 Verdict: acceptable only if the summary-first contract is preserved.

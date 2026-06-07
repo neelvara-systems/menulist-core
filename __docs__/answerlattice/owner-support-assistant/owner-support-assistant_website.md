@@ -1,6 +1,6 @@
 # Owner Support Assistant - Website and Content Impact
 
-> **Status:** PLANNED
+> **Status:** DOCS FROZEN
 > **Created:** 2026-06-07
 > **Public website status:** No runtime website copy change in docs-first planning.
 
@@ -16,6 +16,8 @@ Reason:
 - The route and API are not live.
 - Public claims must follow runtime truth.
 - This is an owner/staff dashboard feature, not a public widget feature.
+- Dashboard support analytics are owner/staff runtime evidence, not public buyer copy until implemented and verified.
+- Action support is an owner-confirmed internal workflow contract, not public proof until the preview/execute path is implemented and verified.
 
 This document records inactive website copy boundaries only.
 
@@ -77,6 +79,7 @@ Runtime implementation pass:
 
 - Add owner helpdoc entry.
 - Add release changelog entry.
+- Add action-support copy only after ticket/reply/status actions pass confirmation, audit, cost, and mobile verification.
 - Re-check public website only after runtime behavior is verified.
 
 ---
@@ -85,4 +88,5 @@ Runtime implementation pass:
 
 | Date | Change |
 | --- | --- |
+| 2026-06-07 | Added website boundary for action-support claims: no public action copy until preview/execute verification exists. |
 | 2026-06-07 | Added website/content impact plan with no public copy change until implementation. |

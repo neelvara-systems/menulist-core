@@ -21,6 +21,7 @@ MenuList already watches menu state, public presence, analytics, feedback, and o
 ## Buyer-Safe Value Props
 
 - Shows whether the menu and public presence need attention.
+- Shows recent customer attention without asking owners to read raw analytics.
 - Uses the latest MenuList check instead of asking owners to read dashboards.
 - Points owners to the right screen when something needs review.
 - Keeps public changes behind clear confirmation.
@@ -34,6 +35,9 @@ MenuList already watches menu state, public presence, analytics, feedback, and o
 - May need checking
 - No action needed
 - Customer attention
+- Today
+- This week
+- Last month
 - Public menu status
 - Latest check delayed
 - Not enough data yet
@@ -83,7 +87,7 @@ MenuList Business Health:
 Use after implementation proof:
 
 - "MenuList checks the latest public/menu state and shows whether anything needs attention."
-- "Owners can ask simple questions like what changed this week or which item received more customer attention."
+- "Owners can ask simple questions like what changed this week, what happened today, or which item received more customer attention."
 - "Public changes still require owner confirmation."
 - "The system is designed to read compact summaries instead of running expensive live scans."
 
@@ -102,4 +106,3 @@ Avoid:
 - "New AI assistant launched."
 - "Automated growth bot."
 - "Ask anything about your business."
-

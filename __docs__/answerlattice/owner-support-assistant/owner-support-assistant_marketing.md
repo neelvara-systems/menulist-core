@@ -1,6 +1,6 @@
 # Owner Support Assistant - Marketing Notes
 
-> **Status:** PLANNED
+> **Status:** DOCS FROZEN
 > **Created:** 2026-06-07
 > **Audience:** Product and go-to-market planning
 > **Public copy status:** Do not publish until implementation is live.
@@ -52,6 +52,7 @@ It is not positioned as a chatbot. It is a private support operations layer that
 | Governance preserved | Publishing and approval remain in Answerlattice review flows. |
 | Cost discipline | The assistant uses summary-first reads and no transcript store by default. |
 | Mobile usable | Owners can review a support brief from the responsive Answerlattice dashboard. |
+| Confirmed actions | Supported actions require preview, owner confirmation, and existing product write paths. |
 
 ---
 
@@ -69,12 +70,15 @@ Allowed after runtime verification:
 
 - "Helps teams decide what support knowledge needs review."
 - "Shows evidence and routes changes through review."
+- "Prepares supported actions for owner confirmation."
 - "Uses Answerlattice's governed answer system."
 
 Not allowed:
 
 - "Automatically fixes support."
 - "Publishes approved answers for you."
+- "Replies to customers automatically."
+- "Changes tickets automatically."
 - "Reads every ticket and chat."
 - "Replaces a helpdesk."
 - "No human review needed."
@@ -85,4 +89,5 @@ Not allowed:
 
 | Date | Change |
 | --- | --- |
+| 2026-06-07 | Added marketing boundary for action support: preview and owner confirmation only, no automatic replies or ticket changes. |
 | 2026-06-07 | Added marketing boundaries for planned Owner Support Assistant. |

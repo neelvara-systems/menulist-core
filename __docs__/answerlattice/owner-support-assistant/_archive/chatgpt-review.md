@@ -19,6 +19,7 @@ Accepted direction:
 - Contextual entry points from Dashboard, Support Board, Governance, and Weekly Digest are useful.
 - Backend context contracts should come before any LLM work.
 - Analytics should measure useful outcomes, not message volume.
+- Action support can be included when it uses typed preview/execute adapters over existing manual workflows.
 
 Changed direction:
 
@@ -27,14 +28,16 @@ Changed direction:
 - Default the feature flag off until route, cost, security, and mobile proof pass.
 - Reuse existing summaries and governed records instead of adding assistant transcript/session/event collections.
 - Treat LLM as assistive formatter over typed context packets, not the core data layer.
+- Allow ticket status, ticket reply, and unanswered-question actions only after owner confirmation, idempotency, and existing write-path validation.
 
 Rejected direction:
 
 - Generic bot identity.
 - `/canonica/*` route namespace.
 - `ENABLE_CANONICA_SUPPORT_COPILOT`.
-- Auto-approval, auto-publishing, ticket closure, or direct widget/billing/team mutations.
+- Auto-approval, auto-publishing, silent ticket closure/reply, or direct widget/billing/team mutations.
 - High-volume assistant event warehouse.
+- Generic assistant action queue or action collection.
 - Standalone scheduler for assistant summaries.
 
 ---
@@ -49,12 +52,15 @@ Rejected direction:
 | Show evidence/source links/data window | Accept | Required for every answer; return limits when evidence is missing. |
 | Statuses: healthy, needs review, at risk, insufficient data, partial, unsupported | Accept | Adopt as normalized status values. |
 | Refuse "Approve all answers" and "Publish this article" | Accept | Required unsupported-action guard. |
+| Support ticket status/reply actions | Modify | Allowed only as typed preview/execute adapters over existing ticket paths, with explicit confirmation and audit. |
+| Review unanswered questions | Accept | Route through Support Board, signals/friction summaries, Knowledge Intake, and mutation proposals; do not create an assistant unanswered queue. |
 | Analytics events for every interaction | Modify | Do not create an assistant event collection. Use aggregate counters, AI operations for LLM calls, and governed artifacts for outcome proof. |
+| Owner/dashboard analytics | Modify | Use existing daily aggregates plus `platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}` for standard period stats. Do not add a dedicated owner analytics collection. |
 | Create sessions/plans/feedback/briefs/attributions collections | Reject | Persist only explicit governed records through existing collections and compact summary counters. |
 | Build backend deterministic fetchers before UI and LLM | Accept | Implementation sequence starts with typed context packets and deterministic answers. |
 | Feature flag `ENABLE_CANONICA_SUPPORT_COPILOT = true` | Reject | Planned flag is `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`, default `false`. |
 | Route `/canonica/copilot` | Reject | Planned route is `/answerlattice/support-assistant`. |
-| APIs under `/api/canonica/support-copilot/*` | Reject | Planned endpoint is `/api/answerlattice/support-assistant/query`. |
+| APIs under `/api/canonica/support-copilot/*` | Reject | Planned endpoints are under `/api/answerlattice/support-assistant/*`. |
 | LLM after structured answers | Accept | LLM is assistive and downstream of context packets. |
 | Owner-friendly mobile layout | Accept | Implement through Answerlattice responsive dashboard shell, not MenuList MobileShell. |
 
@@ -71,6 +77,8 @@ Rejected direction:
 | Feature flags | `src/config/features.ts` |
 | Collection constants | `src/constants/answerlattice/database.ts` |
 | Support Board reads/writes | `src/database/answerlattice/supportBoard.ts` |
+| Ticket status and reply writes | `src/database/tickets/index.ts` |
+| Action audit reuse | `src/database/answerlattice/auditLogs.ts` |
 | Canonical answers | `src/database/answerlattice/canonicalAnswers.ts` |
 | Mutation proposals and approval workflow | `src/database/answerlattice/mutationProposals.ts` |
 | Signals/friction | `src/database/answerlattice/signalEvents.ts` |
@@ -92,7 +100,8 @@ Rejected direction:
 | Evidence-first UI | README, spec, implementation, test cases. |
 | Priority and next action | README, spec, helpdoc, test cases. |
 | Unsupported actions | Spec, implementation, helpdoc, test cases. |
-| Analytics should avoid vanity metrics | Architecture, implementation, and Firebase docs. |
+| Ticket status/reply and unanswered-question actions | Action-support, spec, implementation, Firebase, mobile, and test cases. |
+| Analytics should avoid vanity metrics | Architecture, owner analytics, implementation, and Firebase docs. |
 | Backend contracts first | Implementation sequence. |
 | LLM last | Implementation and Firebase docs. |
 | Mobile owner use | Mobile support doc and test cases. |
@@ -111,10 +120,12 @@ Rejected direction:
 | Always-on global drawer | Higher UX and performance risk; dedicated route remains canonical. |
 | Proactive cards everywhere | Can create noise and extra reads. Contextual entry points must reuse the same brief packet. |
 | Dedicated assistant analytics collection | Cost and retention risk. |
+| Dedicated owner analytics collection | Existing daily aggregates and compact `platformSummary` period summaries are enough for dashboard and assistant stats. |
+| Generic assistant action collection | Target records, target histories, existing audit logs, and compact counters are enough for supported actions. |
 | Assistant transcript history | Creates privacy, retention, and cost load without becoming the authority. |
 | Standalone scheduler | Existing Answerlattice nightly scheduler is the right home for compact summaries. |
 | Public website update | Runtime capability is not implemented yet. |
-| Native helpdesk actions | Outside Answerlattice doctrine and support assistant scope. |
+| Native helpdesk connector actions | Outside Answerlattice doctrine and support assistant scope until a connector/product-owned adapter is designed. |
 
 ---
 
@@ -126,8 +137,9 @@ Build Owner Support Assistant as a cost-bounded Answerlattice owner review surfa
 2. Deterministic intent and unsupported-action guard.
 3. Evidence-backed answer cards.
 4. Safe next actions through existing governed workflows.
-5. Assistive LLM wording after deterministic proof.
-6. No assistant-owned transcript, session, message, plan, feedback, attribution, or event collections.
+5. Owner-confirmed typed actions through existing target write paths.
+6. Assistive LLM wording after deterministic proof.
+7. No assistant-owned transcript, session, message, plan, feedback, attribution, event, or action collections.
 
 ---
 
@@ -135,4 +147,5 @@ Build Owner Support Assistant as a cost-bounded Answerlattice owner review surfa
 
 | Date | Change |
 | --- | --- |
+| 2026-06-07 | Reconciled action-support direction: owner-confirmed typed adapters are allowed, but silent/direct mutations and generic action storage remain rejected. |
 | 2026-06-07 | Reviewed pasted ChatGPT conversation and mapped accepted, modified, rejected, and limited items into the doc set. |

@@ -10,18 +10,25 @@
 
 ## 1. Architecture Summary
 
-Business Health has four layers:
+Owner Business Assistant has two day-one tracks:
 
 ```text
-Existing settled sources
-  -> scheduler-built Business Health read model
-  -> protected owner APIs
-  -> desktop/mobile Business Health UI
+Business Health
+  Existing settled sources
+    -> scheduler-built health + analytics read models
+    -> protected owner APIs
+    -> dashboard card + analytics strip + desktop/mobile Business Health UI
+
+Action Support
+  Approved action registry
+    -> protected action API
+    -> draft/confirm/audit workflow
+    -> existing domain services and public cache invalidation
 ```
 
-The scheduler builds facts. APIs filter and resolve facts. UI presents state before chat. Actions route through existing domain services.
+The scheduler builds health facts and a standard analytics period index. APIs filter and resolve facts. UI presents state and analytics before chat. Actions route through an approved registry and existing domain services.
 
-This plan is not split into product phases. All core capabilities are defined in one architecture. Feature flags only control runtime availability, environment rollout, cost exposure, and emergency disable.
+This plan is not split into separate delivery promises. All core capabilities are defined in one architecture. Feature flags only control runtime availability, environment rollout, cost exposure, and emergency disable.
 
 See [owner-business-assistant_architecture.md](./owner-business-assistant_architecture.md) for the end-to-end data ownership and source-reuse cross-check.
 
@@ -31,14 +38,18 @@ See [owner-business-assistant_architecture.md](./owner-business-assistant_archit
 platformSummary/storesSummary
   + platformSummary/projects_{sId}
   + analytics/*_dashboard_summary
+  + analytics/*_daily_{today}
+  + analytics/*_weekly_*
+  + analytics/*_monthly_*
   + menuIntelligence
   + stores.health / stores.healthSignals
   + capped feedback/review/change/ops summaries
       -> functions/src/ownerBusinessAssistant source adapters
       -> platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
+      -> platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
       -> platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
       -> protected owner APIs
-      -> BusinessHealthDashboardCard + BusinessHealthPage + MobileBusinessHealthScreen
+      -> BusinessHealthDashboardCard + analytics strip + BusinessHealthPage + MobileBusinessHealthScreen
       -> existing DAL/domain services for confirmed writes
       -> existing public cache invalidation when public truth changes
 ```
@@ -47,22 +58,29 @@ The answer API reads Business Health facts. It does not rebuild facts.
 
 ## 2. Feature Flags
 
-Add flags in `src/config/features.ts`. These flags are runtime controls, not implementation phases.
+Add flags in `src/config/features.ts`. These flags are runtime controls, not implementation sequencing.
 
 ```ts
 ENABLE_OWNER_BUSINESS_HEALTH: false,
+ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: false,
+ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: false,
 ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: false,
 ENABLE_OWNER_BUSINESS_HEALTH_PAGE: false,
 ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
-ENABLE_OWNER_BUSINESS_HEALTH_ACTIONS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_PREPARE_ACTIONS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_CONFIRMED_WRITES: false,
-ENABLE_OWNER_BUSINESS_HEALTH_PUBLIC_TRUTH_PUBLISH: false,
 ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: false,
 ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: false,
 ENABLE_OWNER_BUSINESS_HEALTH_POS_AWARE_ANSWERS: false,
+ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: false,
+ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: false,
+ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: false,
+ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
+ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
+ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
+ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: false,
 ```
 
 Cloud Functions/provider-cost flags must be separate when provider-backed answers are enabled. Frontend flags do not protect server-side provider spend.
@@ -84,7 +102,7 @@ functions/src/ownerBusinessAssistant/types.ts
 functions/src/ownerBusinessAssistant/constants.ts
 ```
 
-The core read model uses existing `DB_COLLECTIONS.PLATFORM_SUMMARY`. Workflow collections for threads/actions/drafts/feedback get constants only when their protected API routes are implemented and rules/retention are documented in the same pass.
+The core read model uses existing `DB_COLLECTIONS.PLATFORM_SUMMARY`. Workflow collections for threads/actions/drafts/feedback get constants as part of the same day-one contract, but only protected API routes write them and each write path remains behind its dedicated runtime flag.
 
 Primary document IDs:
 
@@ -97,6 +115,9 @@ export const getOwnerBusinessHealthSnapshotDocId = (
   sId: string | number,
   localDate: string,
 ) => `ownerBusinessHealthSnapshot_${tId}_${sId}_${localDate}`;
+
+export const getOwnerBusinessAnalyticsIndexDocId = (tId: string | number, sId: string | number) =>
+  `ownerBusinessAnalyticsIndex_${tId}_${sId}`;
 ```
 
 ## 4. Read Model Shape
@@ -131,6 +152,12 @@ export type OwnerBusinessHealthCurrentDoc = {
     noActionNeeded: boolean;
     actionCount: number;
   };
+  analyticsTeaser?: {
+    today?: OwnerBusinessAnalyticsTeaser;
+    thisWeek?: OwnerBusinessAnalyticsTeaser;
+    topItem?: OwnerBusinessAnalyticsTeaser;
+    analyticsIndexDocId: string;
+  };
   blocks: {
     publicTruth?: OwnerBusinessHealthBlock;
     menuAttention?: OwnerBusinessHealthBlock;
@@ -153,6 +180,38 @@ export type OwnerBusinessHealthCurrentDoc = {
   };
 };
 ```
+
+Analytics index shape:
+
+```ts
+export type OwnerBusinessAnalyticsIndexDoc = {
+  version: 1;
+  tId: string;
+  sId: string;
+  localDate: string;
+  generatedAt: FirebaseFirestore.Timestamp;
+  lastSettledLocalDate?: string;
+  periods: {
+    today?: OwnerBusinessAnalyticsPeriod;
+    yesterday?: OwnerBusinessAnalyticsPeriod;
+    thisWeek?: OwnerBusinessAnalyticsPeriod;
+    lastWeek?: OwnerBusinessAnalyticsPeriod;
+    thisMonth?: OwnerBusinessAnalyticsPeriod;
+    lastMonth?: OwnerBusinessAnalyticsPeriod;
+    last7Days?: OwnerBusinessAnalyticsPeriod;
+    last30Days?: OwnerBusinessAnalyticsPeriod;
+    overall?: OwnerBusinessAnalyticsPeriod;
+  };
+  unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
+  sourceRefs: OwnerBusinessHealthSourceRef[];
+  cost: {
+    builderReadCount: number;
+    hotPathReadCount: number;
+  };
+};
+```
+
+The analytics index is the answer source for owner questions about today, this week, last week, this month, last month, last 7 days, last 30 days, and overall. Runtime answer code must not aggregate daily docs for arbitrary periods.
 
 Each answer must carry:
 
@@ -182,6 +241,7 @@ Add modules:
 
 ```text
 functions/src/ownerBusinessAssistant/buildOwnerBusinessHealthSnapshot.ts
+functions/src/ownerBusinessAssistant/buildOwnerBusinessAnalyticsIndex.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthBlocks.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthSources.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters.ts
@@ -194,11 +254,12 @@ Call the builder from the existing store scheduler path after settled analytics 
 Required insertion behavior:
 
 1. Reuse the active project list loaded by the scheduler.
-2. Reuse dashboard summary doc IDs recorded in the existing analytics index.
+2. Reuse dashboard summary doc IDs and active/default project context already handled by the scheduler.
 3. Build Business Health after pending settlement dates complete.
-4. If no settlement date is pending but the current doc is missing/stale, rebuild from the latest settled summaries.
-5. Add the builder result to existing scheduler task results.
-6. Invoke the same builder path from `triggerStoreNightlyScheduler`.
+4. Build the analytics index from dashboard summary, `daily30d`, existing weekly/monthly docs, and optional today single-doc overlay.
+5. If no settlement date is pending but the current doc or analytics index is missing/stale, rebuild from the latest summaries.
+6. Add the builder result to existing scheduler task results.
+7. Invoke the same builder path from `triggerStoreNightlyScheduler`.
 
 Builder rules:
 
@@ -206,6 +267,7 @@ Builder rules:
 - Cap every source that can grow.
 - Write only when signature changed unless daily snapshot needs a new local date doc.
 - Write current doc and daily snapshot doc.
+- Write analytics index doc when the period signature changes.
 - Record source availability and unsupported data explicitly.
 - Never call provider models inside the snapshot builder by default.
 
@@ -234,6 +296,7 @@ Use one protected route group with fewer endpoints than the ChatGPT proposal.
 
 ```text
 src/app/api/owner-business-assistant/current/route.ts
+src/app/api/owner-business-assistant/analytics/route.ts
 src/app/api/owner-business-assistant/answer/route.ts
 src/app/api/owner-business-assistant/thread/[threadId]/route.ts
 src/app/api/owner-business-assistant/action/route.ts
@@ -245,10 +308,11 @@ Route behavior:
 | Route | Method | Purpose | Firebase hot path |
 | --- | --- | --- | --- |
 | `/current` | GET | Return current Business Health state | 1 `platformSummary` read |
-| `/answer` | POST | Resolve suggested/free-text question | 1 current read, conditional bounded thread read/write |
-| `/thread/[threadId]` | GET | Load bounded history when thread mode is enabled | 1 thread doc + capped messages query |
+| `/analytics` | GET | Return standard analytics periods | 1 analytics-index read, optional 1 today doc |
+| `/answer` | POST | Resolve suggested/free-text question | 1 current read; analytics intents add 1 analytics-index read and optional 1 today doc |
+| `/thread/[threadId]` | GET | Load bounded history under the thread flag | 1 thread doc + capped messages query |
 | `/action` | POST | Navigate, prepare, confirm, cancel, review, dismiss, assign | Depends on operation |
-| `/feedback` | POST | Store small answer feedback | 1 write if enabled |
+| `/feedback` | POST | Store small answer feedback | 1 compact write under usage/feedback flag |
 
 All routes must derive tenant/store from session or verified selector context. Client-provided scope is advisory only.
 
@@ -282,6 +346,7 @@ Add:
 src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts
 src/lib/ownerBusinessAssistant/server/intentClassifier.ts
 src/lib/ownerBusinessAssistant/server/factGrounding.ts
+src/lib/ownerBusinessAssistant/server/analyticsPeriodResolver.ts
 src/lib/ownerBusinessAssistant/server/answerTemplates.ts
 src/lib/ownerBusinessAssistant/server/refusals.ts
 ```
@@ -291,11 +356,12 @@ Resolver order:
 1. Load current health doc.
 2. Check freshness.
 3. Classify question into approved intent.
-4. Verify required fact blocks exist.
-5. Render deterministic answer if possible.
-6. Use provider formatting only when free-text flag, SAFE_MODE, rate limit, and accounting are all satisfied.
-7. Attach freshness and source fact IDs.
-8. Return supported action options.
+4. For analytics intents, load the analytics index and optional today overlay.
+5. Verify required fact blocks or periods exist.
+6. Render deterministic answer if possible.
+7. Use provider formatting only when free-text flag, SAFE_MODE, rate limit, and accounting are all satisfied.
+8. Attach freshness and source fact IDs.
+9. Return supported action options.
 
 Refusal examples:
 
@@ -309,6 +375,7 @@ Add:
 
 ```text
 src/lib/ownerBusinessAssistant/actions/actionSchemas.ts
+src/lib/ownerBusinessAssistant/actions/actionRegistry.ts
 src/lib/ownerBusinessAssistant/actions/actionAccess.ts
 src/lib/ownerBusinessAssistant/actions/actionTargetResolver.ts
 src/lib/ownerBusinessAssistant/actions/actionDraftBuilder.ts
@@ -316,6 +383,24 @@ src/lib/ownerBusinessAssistant/actions/actionExecutor.ts
 src/lib/ownerBusinessAssistant/actions/publicTruthActionGuard.ts
 src/lib/ownerBusinessAssistant/actions/actionAuditLogger.ts
 src/lib/ownerBusinessAssistant/actions/checkWorkflowService.ts
+```
+
+Action definitions must be registry-driven:
+
+```ts
+type OwnerBusinessActionDefinition = {
+  actionType: string;
+  ownerLabel: string;
+  riskLevel: 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
+  requiredPermissions: string[];
+  requiredFlags: string[];
+  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing'>;
+  resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
+  draftSchema?: string;
+  executor: string;
+  cacheImpact: 'none' | 'project_public' | 'store_public' | 'screen_public';
+  aiCostAction?: string;
+};
 ```
 
 Single `/action` route operation enum:
@@ -333,22 +418,40 @@ type OwnerBusinessAssistantActionOperation =
 
 Public-truth guard:
 
-- Blocks if `ENABLE_OWNER_BUSINESS_HEALTH_PUBLIC_TRUTH_PUBLISH` is false.
+- Blocks if `ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH` is false.
 - Requires owner/admin publish permission.
 - Shows affected surface.
 - Revalidates target.
 - Uses existing domain services.
 - Ensures cache invalidation is invoked.
 
-## 11. Conditional Action/Thread Storage
+Example registry entries:
+
+| Action | Owner request | Execution contract |
+| --- | --- | --- |
+| `menu_item_price_set` | "Change Paneer Tikka to 220" | Resolve project/item, prepare patch, require confirm, save through existing project mutation path |
+| `menu_item_price_bulk_adjust` | "Increase selected prices by 10%" | Reuse Command Center pricing transformation, show preview, require confirm |
+| `menu_item_availability_set` | "Mark this sold out" | Reuse Command Center availability transformation, show preview, require confirm |
+| `menu_item_visibility_set` | "Hide this item" | Reuse Command Center active/inactive transformation, show preview, require confirm |
+| `menu_item_move_category` | "Move these to Specials" | Reuse Command Center move-category transformation, show preview, require confirm |
+| `menu_item_description_prepare` | "Rewrite this description" | Use existing description generation/accounting, prepare text draft, require confirm before project save |
+| `menu_item_image_generate_prepare` | "Generate image for this item" | Use existing image generation/accounting, store media reference only, require confirm before attach |
+| `menu_item_image_attach_confirm` | "Use this image" | Use existing media upload/association path, require confirm |
+| `open_publish_screen` | "Make it live" | Navigate to existing publish path unless public-truth flag allows in-assistant confirmation |
+| `check_mark_reviewed` / `check_dismiss` | "Done" / "Ignore this" | Update compact assistant check workflow state under the check-workflow flag |
+
+Confirmed writes from assistant code must not perform raw Firestore `setDoc()` to project/store public truth. If in-assistant confirmed writes are enabled, create a server-safe mutation adapter that preserves the current `updateProject()` invariants: validation, sanitization, MCE/change detection, multi-outlet behavior, menu change logging, and public cache invalidation.
+
+## 11. Flag-Gated Action/Thread Storage
 
 Core Business Health does not require chat transcripts for suggested questions. To minimize Firebase cost:
 
 - Suggested-question answers can be stateless.
 - Usage can be aggregate-only.
-- Thread persistence is a runtime mode controlled by flags.
+- Thread persistence is a flag-gated path controlled by `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
+- Action draft/audit writes are controlled by `ENABLE_OWNER_BUSINESS_ACTION_*` flags.
 
-When enabled, use compact collections:
+Use compact collections:
 
 ```text
 ownerBusinessAssistantThreads/{threadId}
@@ -366,7 +469,7 @@ Retention:
 - Actions: 90 days compact audit, unless tied to public-truth audit.
 - Feedback: 90 days aggregate after review.
 
-The implementation may reduce this further if all launch behavior can be stateless plus aggregate logs.
+The read-only Business Health track must not depend on action, draft, or message writes.
 
 ## 12. Usage Logging
 
@@ -400,6 +503,7 @@ Components:
 
 ```text
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx
+src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthAnalyticsStrip.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthHeader.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthSummaryCard.tsx
@@ -416,7 +520,8 @@ src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantSourceDis
 Dashboard placement:
 
 - Add `BusinessHealthDashboardCard` near the top of the owner dashboard.
-- The card is useful without chat.
+- The card is useful without chat and includes 2-3 compact analytics facts.
+- Add `BusinessHealthAnalyticsStrip` near the existing owner dashboard analytics area when the analytics index flag is enabled.
 - It opens `/business-health`.
 
 Existing fit:
@@ -448,6 +553,7 @@ Add:
 
 ```text
 src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts
+src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantThread.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAction.ts
@@ -485,19 +591,19 @@ The feature is authenticated owner/admin app only.
 
 ## 18. Implementation Order
 
-This is an engineering order, not a product phase plan.
+This is an engineering order. Every item belongs to the day-one implementation contract.
 
 1. Add docs-approved flags and constants.
 2. Add shared schema/types.
-3. Add scheduler builder with unit tests.
-4. Add current API with server-side read/filter.
-5. Add deterministic answer resolver for suggested questions.
-6. Add desktop dashboard card and full page.
+3. Add scheduler health builder and analytics-index builder with unit tests.
+4. Add current and analytics APIs with server-side read/filter.
+5. Add deterministic answer resolver for suggested and analytics questions.
+6. Add desktop dashboard card, analytics strip, and full page.
 7. Add MobileShell mapping and mobile screen.
-8. Add action route for navigate/prepare.
-9. Add confirmed writes only after public-truth guard tests.
+8. Add action registry and route for navigate/prepare/confirm/cancel/review/dismiss.
+9. Add confirmed writes with public-truth guard and server mutation adapter tests.
 10. Add provider-backed free text with SAFE_MODE, rate limit, accounting, unit-cost metadata, and balance sync.
-11. Add cleanup tasks if persistent thread/action docs are enabled.
+11. Add cleanup tasks for persistent thread/action docs under their flags.
 12. Update docs from implementation truth.
 
 ## 19. Verification Commands

@@ -21,6 +21,7 @@ Business Health shows the latest MenuList check for your business.
 It can show:
 
 - Whether your public menu is available.
+- Today's, this week's, and recent customer attention.
 - Which items received more customer attention.
 - Whether anything may need review.
 - What changed recently.
@@ -41,6 +42,9 @@ On mobile, open MenuList from your phone and use the Business Health screen insi
 You can ask supported questions such as:
 
 - How is my business today?
+- What are today's stats?
+- How did this week compare with last week?
+- What happened last month?
 - Which item received more customer attention?
 - What changed this week?
 - Is there any public menu issue?
@@ -54,9 +58,16 @@ Business Health may open the right screen or prepare a draft for you.
 
 Changes that affect public business information still need confirmation. MenuList will not silently publish public changes from a message.
 
+Examples:
+
+- Prepare a price change.
+- Prepare a rewritten item description.
+- Open the image update screen.
+- Open the publish screen.
+
 ## If the Latest Check Is Delayed
 
-If Business Health says the latest check is delayed, it means MenuList is showing the last available check. Try again later, or open the related screen if an action is shown.
+If Business Health says the latest check is delayed, it means MenuList is showing the last available check. Try again after the next MenuList check, or open the related screen if an action is shown.
 
 ## Data Limitations
 
@@ -84,4 +95,3 @@ If Business Health does not load:
 ## Owner Safety Note
 
 Public menu and business changes remain under your control. Business Health can guide you, but important public changes still require confirmation.
-

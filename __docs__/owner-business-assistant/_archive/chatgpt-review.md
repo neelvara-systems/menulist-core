@@ -25,7 +25,7 @@ Modified core idea:
 
 - Use `platformSummary` deterministic docs instead of new top-level snapshot collections for the hot path.
 - Use fewer protected API routes instead of a large route matrix.
-- Convert "phased rollout" into flag-gated modes because MenuList avoids open-ended Phase 2 promises.
+- Convert the conversation rollout sequence into runtime flags because MenuList avoids open-ended roadmap promises.
 - Keep public website copy unchanged until implementation proof exists.
 - Keep chat transcripts bounded and flag-gated instead of always-on.
 
@@ -49,10 +49,10 @@ Rejected core idea:
 | 89-144 | Add `ownerBusinessHealthSnapshots/{tenantId_storeId_yyyyMMdd}` | Modified | Use `platformSummary/ownerBusinessHealthCurrent_*` and `platformSummary/ownerBusinessHealthSnapshot_*` for existing summary pattern and lower index/rule surface. |
 | 147-166 | Chat reads latest snapshot, not raw Firestore | Accepted | Non-negotiable Firebase cost guardrail. |
 | 167-184 | Refuse when data is missing; avoid growth claims | Accepted | Required by product language and safety. |
-| 187-212 | Cost strategy: 1 latest snapshot read, limited drilldowns, capped history | Accepted | Included in Firebase doc with stricter stateless suggested-answer default. |
+| 187-212 | Cost strategy: 1 latest snapshot read, limited drilldowns, capped history | Modified | Current health stays one read. Analytics questions use one period index read and optional one today overlay read, never range scans. |
 | 214-227 | Start with approved question types | Accepted | Implemented as intent allowlist. |
 | 228-249 | Dashboard card and page; no floating chatbot | Accepted | Main route becomes `/business-health`, not `/app/business-health` in Next filesystem terms. |
-| 251-278 | Phase 1-4 rollout | Modified | Reframed as feature flags/modes, not open-ended roadmap phases. |
+| 251-278 | Conversation rollout sequence | Modified | Reframed as feature flags and one day-one contract, not an open-ended roadmap. |
 | 335-454 | Action risk levels and no silent public mutation | Accepted | Core action model retained. |
 | 472-485 | Many action endpoints under `/api/owner-assistant/*` | Modified | Use grouped `/api/owner-business-assistant/*` routes with operation schema to reduce route sprawl. |
 | 487-593 | Authenticated owner/admin APIs and server-side target validation | Accepted | Required by security rules. |
@@ -68,13 +68,13 @@ Rejected core idea:
 | 2812-2819 | Use operational loading copy, not novelty copy | Accepted | Mobile/UI docs include this. |
 | 3623-3626 | Avoid global assistant message state unless needed | Accepted | SWR/local state preferred. |
 | 3627-3648 | API map and no direct frontend writes | Modified | No direct client writes accepted; route list collapsed. |
-| 3650-3670 | Thread behavior | Modified | Thread persistence is a bounded runtime mode. Suggested questions can be stateless. |
+| 3650-3670 | Thread behavior | Modified | Thread persistence is a bounded flag-gated path. Suggested questions can be stateless. |
 | 3672-3698 | Answer feedback | Accepted with small UI | Optional compact write only. |
 | 3700-3723 | Track value, not message volume | Accepted | Usage logging doc follows this. |
 | 3724-3742 | Accessibility contract | Accepted | Test/mobile docs include requirements. |
 | 3873-3910 | Feature flags and disabled modes | Accepted with repo naming | Converted to `ENABLE_OWNER_BUSINESS_HEALTH_*` constants. |
 | 4040-4085 | QA risk areas and six test layers | Accepted | Test doc uses same structure. |
-| 5190-5216 | Debug checklist for wrong answer/action/cache | Accepted with path changes | Uses `platformSummary` current/snapshot docs, action docs only if enabled. |
+| 5190-5216 | Debug checklist for wrong answer/action/cache | Accepted with path changes | Uses `platformSummary` current/snapshot docs; action workflow docs are written only under action/thread flags. |
 | 5217-5228 | Documentation QA and language restrictions | Accepted | Completed through doc set and website/help constraints. |
 | 5231-5247 | Required type/lint/manual route checks | Accepted | Test doc includes commands and manual QA. |
 | 5250-5288 | Acceptance criteria and non-negotiables | Accepted | Preserved in test/spec docs. |
@@ -94,6 +94,7 @@ Repo-fit decision:
 
 ```text
 platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
+platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
 platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
 ```
 
@@ -104,14 +105,17 @@ Reason:
 - No new hot-path index.
 - Lower Firestore rule surface.
 
+The analytics period index is a second deterministic `platformSummary` doc, not a new analytics collection. It answers standard period questions such as today, this week, last week, this month, and last month from existing dashboard summary, daily, weekly, and monthly analytics docs.
+
 ### 2. API Shape
 
 Conversation proposal: 10+ route handlers.
 
-Repo-fit decision: 5 route handlers.
+Repo-fit decision: 6 route handlers.
 
 ```text
 GET  /api/owner-business-assistant/current
+GET  /api/owner-business-assistant/analytics
 POST /api/owner-business-assistant/answer
 GET  /api/owner-business-assistant/thread/[threadId]
 POST /api/owner-business-assistant/action
@@ -122,6 +126,7 @@ Reason:
 
 - Smaller route surface.
 - Same security/auth/tenant validation patterns.
+- Analytics questions do not need a separate family of endpoints.
 - Action operation enum can represent prepare/confirm/cancel/review/dismiss/assign.
 
 ### 3. Scheduler Ownership
@@ -167,15 +172,36 @@ Reason:
 
 - Public copy must match shipped runtime truth.
 
+### 6. Day-One Action Support
+
+Conversation proposal: broad action support with risk levels.
+
+Repo-fit decision:
+
+- Use an action registry.
+- Support natural-language mapping only into registered actions.
+- Store compact drafts/actions only through protected routes under Action Support flags.
+- For price, description, image, publish, and store-media changes, prepare first and require confirmation.
+- Confirmed public-truth writes must route through existing mutation paths or a server-safe adapter that preserves validation, MCE/change detection, multi-outlet behavior, menu change logging, and public cache invalidation.
+
+Reason:
+
+- "Anything about the business" is acceptable as an input style, not as a permission to mutate anything.
+- Long-term scale requires capability definitions, permission gates, target resolvers, and audit records.
+- Raw assistant writes to project/store docs would break existing correctness and cache contracts.
+
 ## Existing System Reuse Checklist
 
 | Existing system | Reuse decision |
 | --- | --- |
 | Owner dashboard settled analytics | Reuse as source facts, not raw chat-time reads. |
-| `platformSummary` summary pattern | Reuse for current/daily Business Health docs. |
+| Existing daily/weekly/monthly analytics docs | Reuse through scheduler/index builder for standard period answers. |
+| `platformSummary` summary pattern | Reuse for current, analytics-index, and daily Business Health docs. |
 | `decisionBlocksScoring` scheduler | Reuse for snapshot generation. |
 | `menulistMaintenanceScheduler` | Reuse for workflow cleanup when thread/action/draft docs are enabled. |
 | `MobileShell` | Reuse for mobile route/state. |
+| Existing project update path | Reuse or factor server-safe equivalent for confirmed menu changes. |
+| Existing media upload/image generation path | Reuse for image actions; assistant drafts store references only. |
 | Public cache invalidation helpers | Reuse for any confirmed public write. |
 | AI accounting and balance sync | Reuse only for actual provider calls. |
 | SAFE_MODE and rate limits | Reuse for provider/free-text expensive paths. |

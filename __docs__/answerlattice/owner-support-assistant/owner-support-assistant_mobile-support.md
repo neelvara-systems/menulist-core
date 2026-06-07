@@ -1,6 +1,6 @@
 # Owner Support Assistant - Mobile Support
 
-> **Status:** PLANNED
+> **Status:** DOCS FROZEN
 > **Created:** 2026-06-07
 > **Surface:** Answerlattice responsive dashboard route, not MenuList mobile PWA shell
 
@@ -30,11 +30,15 @@ It should not be added to MenuList `MobileShell`, the MenuList More tab, or any 
 - The question input remains visible without covering answer evidence.
 - Suggested prompts wrap cleanly and do not require horizontal scrolling.
 - Answer cards use stacked sections: answer, evidence, priority, action, limits.
+- Dashboard support analytics cards use the same standard periods as the assistant: today, this week, last week, this month, and last month.
 - Evidence cards show short labels and route links without long raw IDs.
 - Primary actions use full-width or clearly tappable controls on phone widths.
 - Drawer/contextual entry points collapse to full-screen panels on narrow screens.
 - Long evidence lists collapse behind "Show details" when needed.
 - Unsupported-action responses remain visible and do not look like errors.
+- Action previews show target, change, risk, and confirmation in a single readable stack.
+- Destructive or customer-facing actions require a second clear confirmation tap.
+- Ticket reply drafts remain editable before send.
 
 ---
 
@@ -48,6 +52,8 @@ It should not be added to MenuList `MobileShell`, the MenuList More tab, or any 
 
 Do not render wide governance tables inside the assistant. Link to existing review screens for table-heavy work.
 
+Support analytics period cards must stack into single-column sections on phone widths. Do not use dense chart-only layouts for the first screen; use compact stat cards and route links to capped detail views.
+
 ---
 
 ## Touch Targets
@@ -59,6 +65,8 @@ All owner actions must be at least 44px high:
 - Open review screen
 - Save plan
 - Copy summary
+- Confirm action preview
+- Send reviewed ticket reply
 - Show/hide evidence
 - Clear question
 
@@ -75,7 +83,9 @@ Mobile must not introduce a separate data path.
 - Same rate limits.
 - Same feature flag.
 - Same safe actions.
+- Same typed action preview/execute endpoints.
 - Same no-transcript rule.
+- Same owner analytics summary packet for period stats.
 
 No mobile-specific Firestore listener or route bypass is allowed.
 
@@ -89,6 +99,8 @@ No mobile-specific Firestore listener or route bypass is allowed.
 | 375px long question | Text area grows or scrolls without covering answer. |
 | 375px evidence-heavy answer | Evidence collapses or stacks cleanly. |
 | 375px unsupported request | Refusal and review route are readable and tappable. |
+| 375px ticket reply preview | Draft text is editable and confirmation does not overlap evidence. |
+| 375px ticket status change | Risk and target status are visible before the confirm button. |
 | Tablet route load | Prompt and answer layout does not waste space or hide actions. |
 | Slow network | Skeleton/loading state does not trigger repeated queries. |
 
@@ -98,4 +110,5 @@ No mobile-specific Firestore listener or route bypass is allowed.
 
 | Date | Change |
 | --- | --- |
+| 2026-06-07 | Added mobile action-preview and confirmation requirements for ticket/status/reply actions. |
 | 2026-06-07 | Added mobile support plan for responsive Answerlattice dashboard implementation. |

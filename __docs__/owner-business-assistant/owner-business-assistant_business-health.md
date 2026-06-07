@@ -1,0 +1,136 @@
+# Owner Business Assistant Business Health Track
+
+**Owner-Facing Name:** Business Health
+**Internal Slug:** owner-business-assistant
+**Product:** MenuList
+**Status:** Final plan freeze, implementation not started
+**Last Updated:** June 7, 2026
+
+---
+
+## Decision
+
+Business Health is the read-only intelligence track.
+
+It must ship as part of the day-one implementation, independently from Action Support. If Action Support is disabled, Business Health must still work.
+
+Business Health includes:
+
+- Dashboard card.
+- Dashboard analytics strip.
+- Full `/business-health` page.
+- MobileShell screen.
+- Current business status.
+- Standard analytics period answers.
+- Supported questions from compact facts.
+- Freshness/source disclosure.
+- Calm refusals when data is missing.
+
+Business Health excludes:
+
+- Draft creation.
+- Confirmed writes.
+- Public-truth publishing.
+- Media upload or generation.
+- Any assistant-owned mutation.
+
+## Flags
+
+Business Health has its own kill switch:
+
+```ts
+ENABLE_OWNER_BUSINESS_HEALTH: false,
+ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: false,
+ENABLE_OWNER_BUSINESS_HEALTH_PAGE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: false,
+ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: false,
+ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
+ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
+ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
+```
+
+`ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` must not be required for any Business Health read path.
+
+## Read Models
+
+Business Health uses existing `platformSummary`.
+
+```text
+platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
+platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
+platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
+```
+
+No dedicated analytics collection is allowed.
+
+## Analytics Period Contract
+
+Supported standard periods:
+
+- Today.
+- Yesterday.
+- This week.
+- Last week.
+- This month.
+- Last month.
+- Last 7 days.
+- Last 30 days.
+- Overall.
+
+Runtime answer code may read:
+
+- One current doc.
+- One analytics index doc.
+- One current-day daily analytics doc for partial "today" overlay.
+
+Runtime answer code must not aggregate daily date ranges.
+
+## Dashboard Contract
+
+The owner dashboard should show:
+
+1. Business Health status card.
+2. Latest check time.
+3. No action needed / needs review state.
+4. Compact analytics strip for Today, This week, This month.
+5. Entry to the full Business Health page.
+
+Business Health may show action suggestions only as labels when Action Support is disabled. It must not call `/action`, create drafts, or expose confirmation UI unless Action Support is enabled.
+
+## APIs
+
+```text
+GET  /api/owner-business-assistant/current
+GET  /api/owner-business-assistant/analytics
+POST /api/owner-business-assistant/answer
+GET  /api/owner-business-assistant/thread/[threadId]
+POST /api/owner-business-assistant/feedback
+```
+
+The answer route can return `actions: []` when Action Support is disabled.
+
+## Cost Contract
+
+| Flow | Reads | Writes |
+| --- | ---: | ---: |
+| Dashboard card | 1 current read | 0 |
+| Dashboard analytics strip | 1 analytics-index read, optional 1 today doc | 0 |
+| Business Health page | 1 current read + 1 analytics-index read | 0 |
+| Suggested question | 0-1 current/index read when already cached | 0 |
+| Free text | Current/index reads + provider accounting only if provider is used | Provider accounting only |
+
+No listener is required for Business Health.
+
+## Failure Behavior
+
+If Business Health fails:
+
+- Show "Latest check is not ready yet" or "Latest check is delayed."
+- Do not fall back to raw collection scans.
+- Do not enable Action Support as a workaround.
+
+If Action Support fails:
+
+- Business Health stays available.
+- Hide action buttons or show "Open the related screen manually."
+
