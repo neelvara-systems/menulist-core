@@ -17,11 +17,15 @@ The accepted product shape is:
 
 1. A scheduler-built, compact store health read model.
 2. A deterministic analytics period index for owner dashboard stats and questions such as today, this week, last week, this month, and last month.
-3. A dashboard card, analytics strip, and full Business Health page that show the latest state before any chat.
-4. Suggested owner questions answered from compact read models.
-5. Free-text intent mapping only when the response can be grounded in approved facts.
-6. Day-one Action Support with registry-driven navigation, draft preparation, confirmed writes, public-truth guards, feedback, and cleanup.
-7. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
+3. A cache-first Business Health context packet served from browser cache or server cache before any Firebase read.
+4. Reuse of existing cached public project/store projections for non-analytics questions, instead of raw project/store reads.
+5. A domain capability matrix covering analytics, menu/project, store profile, public links, QR/share, screens, feedback/reviews, locations, billing, users, POS, compliance, and unsupported external web/local-event questions.
+6. A dashboard card, analytics strip, and full Business Health page that show the latest state before any chat.
+7. AI answering for typed owner questions, using only the cached context packet and returning structured, server-validated output.
+8. Structured answer artifacts: text, metric rows, compact tables, trend series, and action options.
+9. Suggested owner questions answered through the same packet contract, with deterministic fallback only when provider answering is disabled or unavailable.
+10. Day-one Action Support with registry-driven navigation, draft preparation, confirmed writes, public-truth guards, feedback, and cleanup.
+11. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
 
 The rejected product shape is:
 
@@ -29,8 +33,12 @@ The rejected product shape is:
 2. Chat-time scans of analytics, menu, feedback, review, or log collections.
 3. Assistant-owned direct writes to public menu/store truth.
 4. A new analytics collection for Business Health period questions.
-5. Any plan that leaves Action Support outside the day-one implementation contract.
-6. Public website hype about an assistant before implementation and proof.
+5. Firebase-first reads for every owner question when a valid cache packet exists.
+6. Live full project/store reads for ordinary read-only questions.
+7. Runtime external web/weather/events/competitor search from the answer route.
+8. Raw Firebase collection data passed directly to the AI model.
+9. Any plan that leaves Action Support outside the day-one implementation contract.
+10. Public website hype about an assistant before implementation and proof.
 
 ## Validation Basis
 
@@ -40,8 +48,9 @@ The ChatGPT conversation was useful as product input, but it is not source of tr
 - Existing owner dashboard and mobile shell architecture.
 - Existing scheduler and summary document patterns.
 - Existing AI accounting, SAFE_MODE, rate limiting, and public cache invalidation paths.
+- Existing SWR/localStorage dashboard cache and existing Upstash dependency.
 - Firebase cost priority.
-- Official market signals from [Stanford HAI AI Index 2026](https://hai.stanford.edu/ai-index/2026-ai-index-report/economy), [IBM 2025 CEO Study](https://newsroom.ibm.com/2025-05-06-ibm-study-ceos-double-down-on-ai-while-navigating-enterprise-hurdles), and [Meta Business Agent](https://about.fb.com/news/2026/06/meta-business-agent/). These links support the category trend only; they do not justify product claims or public copy by themselves.
+- Official market signals from [Shopify Sidekick](https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick), [Square AI](https://squareup.com/help/us/en/article/8516-use-ask-ai-to-get-insights-about-your-business), [Lightspeed AI](https://www.lightspeedhq.com/news/lightspeed-commerce-launches-lightspeed-ai-a-new-ai-powered-intelligence-layer-for-retail-and-hospitality/), [Wix AI Assistant](https://support.wix.com/en/article/growing-your-site-traffic-with-the-home-ai-assistant), [Meta Business Agent](https://about.fb.com/news/2026/06/meta-business-agent/), [Stanford HAI AI Index 2026](https://hai.stanford.edu/ai-index/2026-ai-index-report/economy), and [IBM 2025 CEO Study](https://newsroom.ibm.com/2025-05-06-ibm-study-ceos-double-down-on-ai-while-navigating-enterprise-hurdles). These links support pattern validation only; they do not justify product claims or public copy by themselves.
 
 ## Document Map
 
@@ -74,6 +83,10 @@ The ChatGPT conversation was useful as product input, but it is not source of tr
 | `functions/src/schedulers/menulistMaintenanceScheduler.ts:1-7` | Operational maintenance belongs in one consolidated scheduler with leases. |
 | `firestore.rules:137-170` | `platformSummary` direct client access is restricted; Business Health should be read through protected APIs. |
 | `src/lib/cache/publicClientCache.ts:19-80` | Client-side public cache invalidation path exists for project/store truth writes. |
+| `src/hooks/useOwnerDashboard.ts:55-83` | Owner dashboard already uses 24-hour scheduler-data caching and a 10-minute live-today cache. |
+| `src/hooks/useOwnerDashboard.ts:178-220` | Dashboard data reads use cached fetchers with fallback data before new reads. |
+| `src/lib/cache/swrLocalStorageProvider.ts:1-14` | SWR cache persists scheduler-generated data across refreshes/sessions. |
+| `src/lib/answerlattice/instantCache.ts:2-16` | Existing Upstash-backed instant-cache pattern can inform server-side cache shape without adding a dependency. |
 | `src/database/projects/index.ts:830-889` | Project saves already enforce the public-truth invariant and cache invalidation; assistant actions must not bypass it. |
 | `src/components/templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations.ts:273-414` | Existing pure functions support price, availability, move category, and show/hide transformations without new writes. |
 | `src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx:484-529` | Existing Command Center applies changes through preview-first action state and editor persistence. |
@@ -98,8 +111,10 @@ This is a docs-only planning package. The implementation contract is complete, b
 1. Add feature flags in `src/config/features.ts` and matching Cloud Functions flags where provider cost is possible.
 2. Add shared constants/types without creating unnecessary Firestore collections.
 3. Extend the scheduler-owned health read model and analytics period index.
-4. Build protected current/analytics/answer APIs before frontend calls.
-5. Build Action Support registry, draft, confirm, audit, permission, and cache paths in the same implementation.
-6. Integrate desktop and mobile together.
-7. Verify both kill-switch modes: read-only Business Health and Business Health with Action Support.
-8. Run `npx tsc --noEmit --incremental false` and targeted QA before enablement.
+4. Build protected current/analytics APIs with browser-cache support and server context-packet cache support.
+5. Build the answer API so owner-typed questions use AI over the cached context packet and return validated structured output/artifacts.
+6. Build domain capability matrix, target resolver, and unsupported-domain refusal path.
+7. Build Action Support registry, draft, confirm, audit, permission, and cache paths in the same implementation.
+8. Integrate desktop and mobile together.
+9. Verify cache-hit, cache-miss, read-only, unsupported-domain, target-disambiguation, and Action Support kill-switch modes.
+10. Run `npx tsc --noEmit --incremental false` and targeted QA before enablement.

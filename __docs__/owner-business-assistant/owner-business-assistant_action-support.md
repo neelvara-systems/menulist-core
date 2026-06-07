@@ -16,6 +16,8 @@ If Action Support is disabled, Business Health remains read-only and fully usabl
 
 Action Support is not a free-form autonomous bot. It is a registry of approved actions. Natural language can map only to registered actions.
 
+The AI answering layer may suggest actions only from the cached `OwnerBusinessAssistantContextPacket` action catalog. It cannot invent action types, choose hidden executors, or mutate targets directly.
+
 ## Flags
 
 ```ts
@@ -43,7 +45,7 @@ type OwnerBusinessActionDefinition = {
   riskLevel: 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
   requiredPermissions: string[];
   requiredFlags: string[];
-  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing'>;
+  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing' | 'domain' | 'screen' | 'customer_app' | 'qr' | 'pos' | 'team' | 'compliance'>;
   resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
   draftSchema?: string;
   executor: string;
@@ -53,6 +55,18 @@ type OwnerBusinessActionDefinition = {
 ```
 
 Unregistered actions are refused.
+
+## AI Action Mapping
+
+When an owner asks for a change, the AI may return an action option only if:
+
+- The action type exists in the registry.
+- The action appears in the context packet's `allowedActions`.
+- The response includes source/target facts from the packet.
+- The server revalidates permission and target scope.
+- Public-truth actions still require confirmation.
+
+The AI result is advisory. The `/action` route performs the real target resolution, draft creation, confirmation, and execution.
 
 ## Day-One Supported Action Catalog
 
@@ -64,6 +78,17 @@ Unregistered actions are refused.
 | `open_publish_screen` | "Make this live" | Existing publish/share screen | Navigate | No unless in-assistant publish is enabled |
 | `open_feedback_reviews` | "Show feedback" | Existing feedback/review surfaces | Navigate | No |
 | `open_business_settings` | "Update business details" | Existing business settings | Navigate | No |
+| `open_hours_settings` | "Change today's hours" | Existing hours/settings screen | Navigate | No |
+| `open_public_info_settings` | "Update address or phone" | Existing business settings tabs | Navigate | No |
+| `open_qr_share` | "Show my QR code" | Existing share/QR surface | Navigate | No |
+| `open_customer_app_settings` | "Show app install link" | Existing Customer App settings/share surface | Navigate | No |
+| `open_digital_screen_settings` | "Show screen link" | Existing digital screen settings | Navigate | No |
+| `open_domain_settings` | "Check my domain" | Existing domain settings | Navigate | No |
+| `open_locations` | "Switch outlet" | Existing locations/store switch surface | Navigate | No |
+| `open_billing` | "Show credits or plan" | Existing billing screen | Navigate | No |
+| `open_users_permissions` | "Who can publish?" | Existing users/roles screen | Navigate | No |
+| `open_pos_sync_settings` | "Check POS connection" | Existing integrations/POS screen | Navigate | No |
+| `open_compliance_pages` | "Show privacy/refund pages" | Existing compliance settings | Navigate | No |
 | `menu_item_price_set` | "Change Paneer Tikka to 220" | Project mutation adapter over existing `updateProject()` invariants | Public truth | Yes |
 | `menu_item_price_bulk_adjust` | "Increase selected prices by 10%" | Command Center pricing pure functions | Public truth | Yes |
 | `menu_item_availability_set` | "Mark this sold out" | Command Center availability pure functions | Public truth | Yes |
@@ -75,6 +100,9 @@ Unregistered actions are refused.
 | `menu_item_image_generate_prepare` | "Generate image for this item" | Existing image generation route/accounting | Draft/provider image | Yes before save |
 | `menu_item_image_attach_confirm` | "Use this image" | Existing media upload/associate item image path | Public truth | Yes |
 | `menu_repair_prepare` | "Fix menu gaps" | Existing Command Center repair flow | Draft/provider text | Yes before save |
+| `store_temp_status_set` | "Mark us closed today" | Existing temp-status API/server adapter | Store public truth | Yes |
+| `store_temp_status_clear` | "Remove temporary status" | Existing temp-status API/server adapter | Store public truth | Yes |
+| `review_reply_prepare` | "Reply to this review" | Existing review suggestion API when owner supplies review text or compact review fact exists | Draft/provider text | Owner copies/posts outside assistant |
 | `check_mark_reviewed` | "Done" | Assistant check workflow doc | Draft/check state | Yes |
 | `check_dismiss` | "Ignore this" | Assistant check workflow doc | Draft/check state | Yes |
 
@@ -87,7 +115,10 @@ These actions are refused in the day-one contract:
 - Change every price without preview.
 - Publish public truth without explicit confirmation.
 - Buy credits, change subscription, or make payments.
+- Add/remove custom domains or change DNS records.
+- Add/remove staff, reset passwords, or change roles.
 - Force POS delivery or change POS integration settings.
+- Scrape external reviews, competitors, weather, or nearby events at question time.
 - Infer revenue/profit and apply pricing from that inference.
 - Cross-tenant or cross-store actions outside verified permission scope.
 - Direct Firestore writes to public menu/store truth.
@@ -104,6 +135,9 @@ Action Support must reuse existing systems:
 | `descriptionGeneration.shared.ts` and `descriptionUtils.ts` | Add/rewrite descriptions with manual edit protection |
 | `prepareMediaImage()`, `uploadFile()`, `associateItemImagesWithProject()` | Item image upload/attach |
 | Image generation routes | Provider-generated item images with existing AI accounting |
+| `/api/store/temp-status` | Temporary public status set/clear with public cache invalidation |
+| `/api/reviews/suggest` | Review reply draft generation with existing AI accounting |
+| Business settings tabs | Hours, public info, domain, customer app, digital screen, POS, compliance navigation |
 | `requireAnyStorePermission()` and permission constants | Role enforcement |
 | Public cache helpers | Public output invalidation |
 
@@ -152,11 +186,14 @@ Action Support has no cost on Business Health page open when disabled.
 
 | Flow | Reads | Writes |
 | --- | ---: | ---: |
-| Navigate action | 0-1 | 0-1 audit |
+| Navigate action from cached packet | 0 Firestore reads | 0-1 audit |
 | Prepare price/availability/show-hide/move draft | 1 project read | 1 draft + 1 action audit |
 | Prepare description draft | 1 project read + provider accounting if generated | 1 draft + AI operation writes |
 | Prepare image generation draft | 1 project read + provider accounting if generated | 1 draft + AI operation writes + existing image output |
+| Prepare temporary status set/clear | 1 compact store/target read | 1 draft + 1 action audit |
+| Prepare review reply | 0 Firestore reads when owner provides review text; provider accounting if generated | 1 draft/action audit + AI operation writes |
 | Confirm public menu write | 1 draft + 1 target read | Existing project write + action audit |
+| Confirm temporary status write | 1 draft + 1 target read | Existing temp-status/store write + action audit |
 | Mark/dismiss check | 0-1 | 1 compact check/action write |
 
 No action route may scan analytics, feedback, review, menu change logs, or all projects.
@@ -170,4 +207,3 @@ If Action Support has errors:
 - Do not delete action audit docs.
 - Do not retry confirmed public writes automatically.
 - Surface a generic owner-safe error.
-

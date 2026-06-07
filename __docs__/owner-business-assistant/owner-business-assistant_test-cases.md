@@ -15,7 +15,7 @@ The goal is not to prove that chat replies render.
 The goal is to prove:
 
 - Business Health answers are grounded.
-- Firebase reads stay predictable.
+- Firebase reads stay predictable and are avoided on cache hits.
 - Tenant and role isolation hold.
 - Public truth cannot be mutated unsafely.
 - Mobile works inside the PWA shell.
@@ -28,7 +28,13 @@ Add tests:
 ```text
 functions/src/ownerBusinessAssistant/__tests__/buildOwnerBusinessHealthSnapshot.test.ts
 src/lib/ownerBusinessAssistant/server/__tests__/resolveOwnerBusinessAssistantAnswer.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/buildOwnerBusinessAssistantContextPacket.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/contextPacketCache.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/validateAiAnswer.test.ts
 src/lib/ownerBusinessAssistant/server/__tests__/analyticsPeriodResolver.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/domainCapabilityMatrix.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/targetResolver.test.ts
+src/lib/ownerBusinessAssistant/server/__tests__/answerArtifacts.test.ts
 src/lib/ownerBusinessAssistant/actions/__tests__/actionRegistry.test.ts
 src/lib/ownerBusinessAssistant/actions/__tests__/actionTargetResolver.test.ts
 src/lib/ownerBusinessAssistant/actions/__tests__/publicTruthActionGuard.test.ts
@@ -44,7 +50,13 @@ Coverage:
 - Rejects competitor/prediction questions.
 - Maps free text to approved intents only.
 - Refuses unsupported intents calmly.
+- Uses cached context packet before Firestore reads.
+- Validates AI response source fact IDs before rendering.
+- Rejects AI output that references facts not in the packet.
 - Resolves standard analytics periods from the analytics index.
+- Resolves supported/non-supported owner domains without live collection scans.
+- Resolves "this item/menu/screen" only from packet-backed target context.
+- Builds text, metric row, compact table, and trend artifacts from packet facts.
 - Blocks public-truth action when flag is off.
 - Keeps Business Health readable when `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is off.
 - Blocks unregistered actions.
@@ -70,6 +82,18 @@ Scenarios:
 | User asks for raw logs | Refusal |
 | User asks to publish | Action routes to existing publish screen unless public-truth flag is on |
 | Action Support disabled | Health answer returns read-only cards/actions omitted; `/action` returns disabled response |
+| Context packet cache hit | Answer path performs 0 Firestore reads |
+| Context packet cache miss | Answer path reads only compact docs/projections: current, index, cached project/store projection, optional today |
+| Owner asks current menu price/name/hour | Answer uses cached project/store projection from packet; no full document read |
+| Owner asks unsupported non-analytics domain | Safe unsupported answer; no fallback live collection scan |
+| Owner asks "this item" with selected item context | Server resolves target from packet/session, not client value alone |
+| Owner asks ambiguous item name | Assistant asks owner to choose from packet-backed candidates |
+| Owner asks about weather/events/competitors | Unsupported unless cached connector summary exists; no runtime web search |
+| Owner asks for QR/screen/app/domain/POS/billing/users | Answer opens or describes existing surface from compact status; no risky mutation |
+| Owner asks "mark closed today" | Temporary status draft requires expiry and confirmation |
+| Owner asks "reply to this review" | Reply draft uses owner-provided text or cached review fact; no public posting |
+| AI cites unknown fact | Server rejects output and returns safe refusal/retry |
+| AI invents action ID | Server rejects action option |
 
 ## Layer 3: API Integration Tests
 
@@ -93,7 +117,11 @@ Required checks:
 - Provider route finalizes AI accounting and returns `remainingBalance`.
 - Deterministic suggested question does not write an AI operation.
 - Analytics route returns only tenant/store-scoped standard periods.
-- Analytics question does not read more than current doc, analytics index, and optional today doc.
+- Analytics question does not read more than current doc, analytics index, cached projection when needed, and optional today doc.
+- Answer route checks context-packet cache before Firestore.
+- Answer route passes only the context packet, question, schema, and rules to the AI model.
+- Answer route validates structured AI output before returning it.
+- Answer route refuses unsupported external/web/local event requests without calling web search.
 - Action route is disabled by `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` without disabling `/current`, `/analytics`, or `/answer`.
 - Action route blocks confirmed writes unless `ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES` is on.
 - Public-truth action route blocks public writes unless `ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH` is on.
@@ -195,12 +223,17 @@ Instrument and verify:
 
 | Flow | Expected Firebase behavior |
 | --- | --- |
-| Dashboard card | 1 current summary read |
-| Dashboard analytics strip | 1 analytics-index read, optional 1 today doc |
-| Page open | 1 current summary read, 1 analytics-index read when analytics visible, flag-gated thread read |
-| Suggested question | 0-1 current summary read, no provider call by default |
-| Analytics question | 1 analytics-index read, optional 1 today doc, no daily range reads |
-| Free text | SAFE_MODE read, rate limit, current summary read, provider accounting |
+| Dashboard card cache hit | 0 Firestore reads |
+| Dashboard card cache miss | 1 current summary read |
+| Dashboard analytics strip cache hit | 0 Firestore reads |
+| Dashboard analytics strip cache miss | 1 analytics-index read, optional 1 today doc |
+| Page open cache hit | 0 Firestore reads except flag-gated thread read |
+| Page open cache miss | 1 current summary read, 1 analytics-index read when analytics visible, flag-gated thread read |
+| Suggested/typed question cache hit | 0 Firestore reads; AI gets cached packet |
+| Suggested/typed question cache miss | Current/index reads only as needed; cache packet written |
+| Analytics question cache hit | 0 Firestore reads; no daily range reads |
+| Analytics question cache miss | 1 analytics-index read, optional 1 today doc, no daily range reads |
+| Free text / AI answer | Context-packet cache first, SAFE_MODE read, rate limit, provider accounting |
 | Action Support disabled | 0 action reads/writes on page open and answers |
 | Prepare action | Bounded target reads, draft/action writes only |
 | Confirm write | Existing domain writes and cache invalidation |
@@ -208,8 +241,11 @@ Instrument and verify:
 
 Fail the implementation if:
 
-- Suggested questions call the provider by default.
+- Answer route reads Firestore before checking a valid context-packet cache.
+- Suggested/typed questions call the provider before context-packet cache lookup and AI accounting.
 - Chat-time answer scans raw analytics.
+- AI receives raw Firebase collection data instead of the context packet.
+- AI output is returned without server-side structured validation.
 - Analytics question aggregates daily docs at runtime.
 - Snapshot doc grows near 850 KB.
 - Analytics index grows near 850 KB.
@@ -235,12 +271,14 @@ Testing is complete when:
 2. API tests prove tenant/store/role isolation.
 3. Scheduler tests write current and daily snapshot docs.
 4. Scheduler tests write analytics index docs with standard periods.
-5. Stable state says "No action needed".
-6. Every answer includes freshness/source context.
-7. Sales/revenue/profit questions are safe unless sourced.
-8. Public-truth writes require explicit confirmation and cache handling.
-9. Price/description/image action tests prove registry, draft, confirm, and rollback/error behavior.
-10. Separate Business Health and Action Support flags are verified in both enabled and disabled states.
-11. Mobile is usable without desktop assumptions.
-12. Public customer routes are unaffected.
-13. Docs match implementation truth.
+5. Context-packet cache tests prove 0 Firestore reads on hit and bounded reads on miss.
+6. AI answer tests prove packet-only input and server-validated structured output.
+7. Stable state says "No action needed".
+8. Every answer includes freshness/source context.
+9. Sales/revenue/profit questions are safe unless sourced.
+10. Public-truth writes require explicit confirmation and cache handling.
+11. Price/description/image action tests prove registry, draft, confirm, and rollback/error behavior.
+12. Separate Business Health and Action Support flags are verified in both enabled and disabled states.
+13. Mobile is usable without desktop assumptions.
+14. Public customer routes are unaffected.
+15. Docs match implementation truth.

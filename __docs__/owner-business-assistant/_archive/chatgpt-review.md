@@ -24,6 +24,8 @@ Accepted core idea:
 Modified core idea:
 
 - Use `platformSummary` deterministic docs instead of new top-level snapshot collections for the hot path.
+- Add a cache-first context-packet layer before the answer API reads Firestore.
+- Use AI as the typed-question answering layer over that packet, with structured server validation.
 - Use fewer protected API routes instead of a large route matrix.
 - Convert the conversation rollout sequence into runtime flags because MenuList avoids open-ended roadmap promises.
 - Keep public website copy unchanged until implementation proof exists.
@@ -50,6 +52,7 @@ Rejected core idea:
 | 147-166 | Chat reads latest snapshot, not raw Firestore | Accepted | Non-negotiable Firebase cost guardrail. |
 | 167-184 | Refuse when data is missing; avoid growth claims | Accepted | Required by product language and safety. |
 | 187-212 | Cost strategy: 1 latest snapshot read, limited drilldowns, capped history | Modified | Current health stays one read. Analytics questions use one period index read and optional one today overlay read, never range scans. |
+| Owner follow-up after review | Cache before Firebase and use AI over packet | Accepted | Final plan now uses context-packet cache first, then AI structured answering over approved packet facts. |
 | 214-227 | Start with approved question types | Accepted | Implemented as intent allowlist. |
 | 228-249 | Dashboard card and page; no floating chatbot | Accepted | Main route becomes `/business-health`, not `/app/business-health` in Next filesystem terms. |
 | 251-278 | Conversation rollout sequence | Modified | Reframed as feature flags and one day-one contract, not an open-ended roadmap. |
@@ -210,10 +213,12 @@ Reason:
 
 ## Final Cross-Check
 
-Important conversation items covered by this doc set:
+Important conversation and owner-follow-up items covered by this doc set:
 
 - Product decision and naming: spec, marketing, website.
 - Cost-first snapshot strategy: spec, impl, firebase.
+- Cache-first answer packet: architecture, impl, firebase, tests.
+- AI typed-question answering over packet facts: architecture, impl, spec, tests.
 - Scheduler ownership: impl, firebase.
 - Chat answer grounding: spec, impl, tests.
 - Actions and public-truth guard: spec, impl, tests.

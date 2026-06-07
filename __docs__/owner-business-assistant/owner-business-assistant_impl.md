@@ -37,6 +37,7 @@ See [owner-business-assistant_architecture.md](./owner-business-assistant_archit
 ```text
 platformSummary/storesSummary
   + platformSummary/projects_{sId}
+  + cached public project/store projections
   + analytics/*_dashboard_summary
   + analytics/*_daily_{today}
   + analytics/*_weekly_*
@@ -56,6 +57,10 @@ platformSummary/storesSummary
 
 The answer API reads Business Health facts. It does not rebuild facts.
 
+Read-only owner questions must use `OwnerBusinessAssistantContextPacket` or existing cached projections. The answer resolver may not read raw project, store, feedback, review, analytics, or log collections just because a question mentions that domain. If a fact is missing, the resolver returns an unsupported/needs-more-data answer. Confirmed actions are different: they use existing mutation services, and those services may read the current target inside the write path before committing.
+
+The frontend may pass advisory page context such as current route, selected project, selected item, selected outlet, and visible entity labels. This improves "this item" and "open this screen" prompts, but the server must never trust it as authority. The server resolves the final target from session scope and packet facts before answering or preparing an action.
+
 ## 2. Feature Flags
 
 Add flags in `src/config/features.ts`. These flags are runtime controls, not implementation sequencing.
@@ -68,6 +73,9 @@ ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: false,
 ENABLE_OWNER_BUSINESS_HEALTH_PAGE: false,
 ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
+ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
+ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
 ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: false,
 ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: false,
@@ -83,7 +91,7 @@ ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
 ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: false,
 ```
 
-Cloud Functions/provider-cost flags must be separate when provider-backed answers are enabled. Frontend flags do not protect server-side provider spend.
+Cloud Functions/provider-cost flags must be separate when provider-backed answers are enabled. Frontend flags do not protect server-side provider spend. Context-packet cache flags control read cost only; they do not authorize provider calls.
 
 Existing precedent:
 
@@ -168,17 +176,30 @@ export type OwnerBusinessHealthCurrentDoc = {
     account?: OwnerBusinessHealthBlock;
     multiLocation?: OwnerBusinessHealthBlock;
   };
-  suggestedChecks: OwnerBusinessHealthCheck[];
-  suggestedQuestions: OwnerBusinessHealthQuestion[];
-  supportedIntents: OwnerBusinessAssistantIntent[];
-  unsupportedData: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
-  sourceRefs: OwnerBusinessHealthSourceRef[];
-  cost: {
+	  suggestedChecks: OwnerBusinessHealthCheck[];
+	  suggestedQuestions: OwnerBusinessHealthQuestion[];
+	  supportedIntents: OwnerBusinessAssistantIntent[];
+	  supportedDomains?: OwnerBusinessAssistantDomainCapability[];
+	  answerArtifacts?: OwnerAssistantAnswerArtifact[];
+	  unsupportedData: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
+	  sourceRefs: OwnerBusinessHealthSourceRef[];
+	  cost: {
     builderReadCount: number;
     builderWriteCount: number;
     chatHotPathReadCount: number;
   };
 };
+```
+
+Answer artifact shape:
+
+```ts
+type OwnerAssistantAnswerArtifact =
+  | { type: 'text'; body: string }
+  | { type: 'metric_row'; metrics: Array<{ label: string; value: string; deltaLabel?: string }> }
+  | { type: 'compact_table'; columns: string[]; rows: string[][]; maxRows: number }
+  | { type: 'trend_series'; label: string; points: Array<{ label: string; value: number }> }
+  | { type: 'action_options'; actions: OwnerBusinessAssistantActionOption[] };
 ```
 
 Analytics index shape:
@@ -305,11 +326,11 @@ src/app/api/owner-business-assistant/feedback/route.ts
 
 Route behavior:
 
-| Route | Method | Purpose | Firebase hot path |
+| Route | Method | Purpose | Cache/Firebase hot path |
 | --- | --- | --- | --- |
-| `/current` | GET | Return current Business Health state | 1 `platformSummary` read |
-| `/analytics` | GET | Return standard analytics periods | 1 analytics-index read, optional 1 today doc |
-| `/answer` | POST | Resolve suggested/free-text question | 1 current read; analytics intents add 1 analytics-index read and optional 1 today doc |
+| `/current` | GET | Return current Business Health state | Browser/server cache hit = 0 reads; miss = 1 `platformSummary` read |
+| `/analytics` | GET | Return standard analytics periods | Cache hit = 0 reads; miss = 1 analytics-index read, optional 1 today doc |
+| `/answer` | POST | Resolve typed/suggested owner question through AI over context packet | Server context-packet cache hit = 0 reads; miss = current + analytics-index + cached project/store projection as needed + optional today doc |
 | `/thread/[threadId]` | GET | Load bounded history under the thread flag | 1 thread doc + capped messages query |
 | `/action` | POST | Navigate, prepare, confirm, cancel, review, dismiss, assign | Depends on operation |
 | `/feedback` | POST | Store small answer feedback | 1 compact write under usage/feedback flag |
@@ -343,25 +364,52 @@ Do not write AI operation records for deterministic template answers with no pro
 Add:
 
 ```text
+src/lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket.ts
+src/lib/ownerBusinessAssistant/server/contextPacketCache.ts
 src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts
 src/lib/ownerBusinessAssistant/server/intentClassifier.ts
 src/lib/ownerBusinessAssistant/server/factGrounding.ts
 src/lib/ownerBusinessAssistant/server/analyticsPeriodResolver.ts
+src/lib/ownerBusinessAssistant/server/targetResolver.ts
+src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts
+src/lib/ownerBusinessAssistant/server/aiAnswerClient.ts
+src/lib/ownerBusinessAssistant/server/validateAiAnswer.ts
 src/lib/ownerBusinessAssistant/server/answerTemplates.ts
+src/lib/ownerBusinessAssistant/server/answerArtifacts.ts
 src/lib/ownerBusinessAssistant/server/refusals.ts
 ```
 
 Resolver order:
 
-1. Load current health doc.
-2. Check freshness.
-3. Classify question into approved intent.
-4. For analytics intents, load the analytics index and optional today overlay.
-5. Verify required fact blocks or periods exist.
-6. Render deterministic answer if possible.
-7. Use provider formatting only when free-text flag, SAFE_MODE, rate limit, and accounting are all satisfied.
-8. Attach freshness and source fact IDs.
-9. Return supported action options.
+1. Derive tenant/store/project scope from session and verified selector context.
+2. Build a context-packet cache key from `tId`, `sId`, `projectId`, local business date, packet profile, and known source signature.
+3. Read `OwnerBusinessAssistantContextPacket` from browser-provided fallback or server cache when valid.
+4. On cache miss, read only compact docs/projections: current health doc, analytics index, cached public project/store projection, and optional today overlay; then write the packet cache.
+5. Merge advisory client/page context into target candidates from packet facts.
+6. Classify question into approved intent/action/domain candidates.
+7. If the domain has no compact source in the packet, return unsupported/needs-more-data without live collection reads.
+8. Send the owner question, context packet, allowed schema, and answer rules to the AI model when `ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS` is enabled.
+9. Validate structured AI output: source fact IDs, unsupported claims, registered actions, permission scope, target scope, and public-truth guard.
+10. Use deterministic/template fallback only when AI answering is disabled, unavailable, or static dashboard rendering does not need provider output.
+11. Attach freshness, source fact IDs, cache metadata, supported action options, and packet-backed answer artifacts.
+12. Return owner-safe response.
+
+The shared server cache value must be the reusable business-facts packet. Do not store selected item, visible row, or current screen state in the shared cache value or cache key; merge that request-time context after cache lookup and revalidate all targets before action preparation.
+
+AI response schema:
+
+```ts
+type OwnerBusinessAssistantAiResponse = {
+  status: 'answered' | 'needs_more_data' | 'unsupported' | 'needs_confirmation';
+	  answer: string;
+	  freshnessLabel: string;
+	  sourceFactIds: string[];
+	  artifacts?: OwnerAssistantAnswerArtifact[];
+	  cards?: OwnerAssistantCard[];
+	  actions?: OwnerAssistantActionOption[];
+	  confidence: 'high' | 'medium' | 'low';
+};
+```
 
 Refusal examples:
 
@@ -394,7 +442,7 @@ type OwnerBusinessActionDefinition = {
   riskLevel: 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
   requiredPermissions: string[];
   requiredFlags: string[];
-  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing'>;
+  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing' | 'domain' | 'screen' | 'customer_app' | 'qr' | 'pos' | 'team' | 'compliance'>;
   resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
   draftSchema?: string;
   executor: string;
@@ -438,6 +486,10 @@ Example registry entries:
 | `menu_item_image_generate_prepare` | "Generate image for this item" | Use existing image generation/accounting, store media reference only, require confirm before attach |
 | `menu_item_image_attach_confirm` | "Use this image" | Use existing media upload/association path, require confirm |
 | `open_publish_screen` | "Make it live" | Navigate to existing publish path unless public-truth flag allows in-assistant confirmation |
+| `open_qr_share` / `open_customer_app_settings` / `open_digital_screen_settings` | "Show QR/app/screen link" | Navigate to existing Share, Customer App, or Digital Screen surface |
+| `open_domain_settings` / `open_pos_sync_settings` / `open_billing` / `open_users_permissions` / `open_locations` | "Check domain/POS/credits/users/outlet" | Navigate only; no payment, DNS, role, or POS settings mutation |
+| `store_temp_status_set` / `store_temp_status_clear` | "Mark us closed today" / "Clear the notice" | Prepare a time-bound store-public-truth draft, require confirm, use existing temp-status path/cache invalidation |
+| `review_reply_prepare` | "Reply to this review" | Use owner-provided or packet-backed review text, generate draft through existing review suggestion/accounting, no public posting |
 | `check_mark_reviewed` / `check_dismiss` | "Done" / "Ignore this" | Update compact assistant check workflow state under the check-workflow flag |
 
 Confirmed writes from assistant code must not perform raw Firestore `setDoc()` to project/store public truth. If in-assistant confirmed writes are enabled, create a server-safe mutation adapter that preserves the current `updateProject()` invariants: validation, sanitization, MCE/change detection, multi-outlet behavior, menu change logging, and public cache invalidation.
@@ -554,13 +606,16 @@ Add:
 ```text
 src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts
+src/hooks/ownerBusinessAssistant/useOwnerBusinessContextPacket.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantThread.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAction.ts
 src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantFeedback.ts
 ```
 
-Use SWR/local component state. Do not put messages in Redux unless an existing global route contract forces it.
+Use SWR/local component state and the existing scheduler-day localStorage cache pattern. Do not put messages in Redux unless an existing global route contract forces it.
+
+Dashboard card, analytics strip, and full page hooks should read cached values first, matching `src/hooks/useOwnerDashboard.ts` and `src/lib/cache/swrLocalStorageProvider.ts`. The answer hook may pass a valid cached context packet or packet signature to `/answer`, but the server must still verify scope and freshness.
 
 Frontend must not write directly to assistant/action/thread collections. All writes go through protected API routes.
 
@@ -596,15 +651,17 @@ This is an engineering order. Every item belongs to the day-one implementation c
 1. Add docs-approved flags and constants.
 2. Add shared schema/types.
 3. Add scheduler health builder and analytics-index builder with unit tests.
-4. Add current and analytics APIs with server-side read/filter.
-5. Add deterministic answer resolver for suggested and analytics questions.
-6. Add desktop dashboard card, analytics strip, and full page.
-7. Add MobileShell mapping and mobile screen.
-8. Add action registry and route for navigate/prepare/confirm/cancel/review/dismiss.
-9. Add confirmed writes with public-truth guard and server mutation adapter tests.
-10. Add provider-backed free text with SAFE_MODE, rate limit, accounting, unit-cost metadata, and balance sync.
-11. Add cleanup tasks for persistent thread/action docs under their flags.
-12. Update docs from implementation truth.
+4. Add current and analytics APIs with server-side read/filter plus browser-cache metadata.
+5. Add context-packet builder and cache adapter with SWR/localStorage and optional Upstash-backed server cache.
+6. Add AI structured-answer resolver for typed and suggested questions over the context packet.
+7. Add deterministic fallback/refusal renderer for AI-disabled or provider-unavailable cases.
+8. Add desktop dashboard card, analytics strip, and full page.
+9. Add MobileShell mapping and mobile screen.
+10. Add action registry and route for navigate/prepare/confirm/cancel/review/dismiss.
+11. Add confirmed writes with public-truth guard and server mutation adapter tests.
+12. Add provider-backed answering with SAFE_MODE, rate limit, accounting, unit-cost metadata, and balance sync.
+13. Add cleanup tasks for persistent thread/action docs under their flags.
+14. Update docs from implementation truth.
 
 ## 19. Verification Commands
 

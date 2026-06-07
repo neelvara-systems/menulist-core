@@ -66,9 +66,10 @@ Before website copy goes live:
 2. Full page exists.
 3. Mobile route works inside `MobileShell`.
 4. Scheduler writes current summary.
-5. Analytics index answers standard period questions without runtime range scans.
-6. Suggested questions work.
-7. Public-truth writes are confirmed or routed to existing publish screen.
-8. Firebase cost model matches implementation.
-9. Help doc is ready.
-10. Changelog entry exists.
+5. Context-packet cache serves repeated answer/page opens without Firebase reads.
+6. Analytics index answers standard period questions without runtime range scans.
+7. Suggested and typed questions use AI over the cached packet with structured validation.
+8. Public-truth writes are confirmed or routed to existing publish screen.
+9. Firebase cost model matches implementation.
+10. Help doc is ready.
+11. Changelog entry exists.

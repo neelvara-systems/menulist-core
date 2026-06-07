@@ -26,14 +26,109 @@ Existing owner/customer facts
   -> existing store-local scheduler settlement
   -> Business Health source adapters
   -> platformSummary current + analytics index + daily snapshot docs
-  -> protected owner APIs
+  -> cache-first OwnerBusinessAssistantContextPacket
+  -> protected owner APIs + AI answer resolver
   -> desktop dashboard/page + MobileShell screen
   -> registry-gated Action Support
   -> existing domain services for confirmed actions
   -> existing public cache invalidation for public-truth writes
 ```
 
-The hot path is one compact current document. Analytics questions use a second deterministic analytics index document only when needed. All expensive or broad reads happen in scheduled/build-time code, not per owner message.
+The hot path is a cached context packet. A cache hit must not read Firestore. A cache miss may read compact docs/projections: one current document, one deterministic analytics index document, one cached public project/store projection when needed, and one optional today overlay document. All expensive or broad reads happen in scheduled/build-time code, not per owner message.
+
+### Universal Read Policy
+
+Analytics is only one read domain. The permanent rule is broader: read-only owner questions must answer from a cached packet, cached projection, or scheduler-built summary. Direct Firebase reads are allowed only to build or refresh that packet on cache miss, and only from compact sources. Confirmed mutation flows may perform live Firebase reads inside the existing write/domain service path to verify the current target before writing.
+
+For non-analytics questions:
+
+| Owner asks about | Read strategy | Firebase at question time |
+| --- | --- | --- |
+| Public menu/project facts such as item names, prices, categories, publish state, menu URL | Reuse existing public project/store cache shape and invalidation tags; include a sanitized projection in the context packet | 0 on packet/cache hit; no full project scan |
+| Store/business profile such as name, hours, timezone, address, contact, business type | Reuse `platformSummary/storesSummary`, existing store summary/public lookup cache, and public store cache tags | 0 on packet/cache hit; compact summary read only on miss |
+| Business Health and platform checks | Reuse `ownerBusinessHealthCurrent` and compact source facts | 0 on packet/cache hit |
+| Analytics and customer attention | Reuse `ownerBusinessAnalyticsIndex` plus optional today overlay | 0 on packet/cache hit |
+| Feedback, reviews, recent changes, POS, screens, operations | Use only prebuilt/capped summary facts in the packet | Unsupported until a compact cached summary exists |
+| Owner-private billing, credits, team, permissions | Use existing session/entitlement/accounting responses or a compact protected summary | No broad live reads for ordinary answers |
+
+The assistant should never fetch the public route HTML to answer a question. It should reuse the same cached data contracts underneath those routes, especially the `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data` invalidation model.
+
+### Comparable Product Pattern Check
+
+The market pattern validates the dashboard-first, action-reviewed direction, but not an unrestricted chatbot.
+
+| Product pattern | What it means for MenuList |
+| --- | --- |
+| Square AI is embedded in Square Dashboard for natural-language business questions, charts/tables, conversation context, owner/admin access, feedback, and explicit accuracy cautions. | Business Health belongs in the owner dashboard and should support structured answer artifacts, feedback, and source/freshness labels. |
+| Shopify Sidekick works from admin context on desktop/mobile, can analyze data and edit products, but presents changes for owner review before applying. | MenuList should carry current page/target context into the packet and require confirmation for all public-truth actions. |
+| Lightspeed AI is positioned as a retail/restaurant intelligence layer for plain-language questions, menu performance, and faster decisions. | MenuList should prioritize quick operator answers over a novelty chat surface. |
+| Meta Business Agent focuses on customer-message automation, product recommendations, bookings, human handoff, and morning briefings. | MenuList Business Health should stay owner-facing. Customer-facing automation belongs to a separate product/surface decision, not this assistant. |
+| Wix's dashboard assistant recommends concrete traffic actions from site analytics. | MenuList should show next actions only when grounded in packet facts and existing action registry entries. |
+
+### Owner Domain Coverage Matrix
+
+Owners will ask about the whole business, not only analytics. Every domain gets an explicit answer stance:
+
+| Domain | Common owner question | Answer source | Action stance |
+| --- | --- | --- | --- |
+| Business Health | "Is everything okay?" | `ownerBusinessHealthCurrent` | Show checks, navigate, mark reviewed/dismiss under check flag |
+| Customer/menu analytics | "How was today / this week / last week?" | `ownerBusinessAnalyticsIndex` + optional today overlay | Show metric cards/tables; no raw range scans |
+| Menu/project/catalog | "What is the price of this item?" / "Which menu is live?" | Cached public project/store projection + `platformSummary/projects_{sId}` | Prepare menu item drafts; confirm through project mutation adapter |
+| Store profile and public info | "What phone number/hours/address are shown?" | Store summary/public projection | Navigate to settings by default; only registered low-risk store actions can write |
+| Temporary status | "Mark us closed today" | Store public projection + existing temp-status API target | Prepare/confirm `store_temp_status_set` or clear |
+| Official Business Page / public links | "What is my public page link?" | Public store projection and route helpers | Navigate/share/copy link; no content mutation unless registered |
+| Customer App / PWA | "Is the app install link working?" | Public store/PWA projection | Navigate to Customer App settings/share surface |
+| QR/share/print assets | "Where is my QR code?" | Existing share/QR surface state | Navigate/open; generation stays in existing screen |
+| Digital screens | "Is my screen running?" | Screen summary/status projection | Navigate/open screen settings; confirmed writes use screen service/cache tags |
+| Feedback/reviews | "Any bad feedback?" / "Help reply to this review" | Compact feedback/review state; pasted owner review text | Navigate to feedback/reviews; prepare reply suggestion if owner supplies text or compact source exists |
+| Domains/subdomain | "Is my domain verified?" | Compact domain status/public lookup | Navigate to domain settings; do not add/remove domains inside assistant by default |
+| Locations/outlets | "Which outlet needs attention?" | Compact store/outlet health comparison | Navigate/switch only within verified permission scope |
+| Billing/credits/account | "Do I have credits?" / "Why is billing blocked?" | Existing account/access summary only | Navigate to billing; no payment/subscription mutation |
+| Users/team/permissions | "Can my manager publish?" | Compact role/permission summary only | Navigate to users/roles; no staff mutation by assistant |
+| POS/integrations | "Is POS connected?" | POS status summary only | Navigate/test only through existing integration screen; no forced delivery/settings mutation |
+| Compliance/legal pages | "Are policy links shown?" | Public store/compliance projection | Navigate to compliance editor; no legal text generation without registered action |
+| External web/local events/competitors | "What is happening nearby?" | No MenuList-owned source by default | Unsupported unless a cached connector summary is explicitly added |
+
+### Page Context and Target Resolution
+
+The assistant should understand "this item", "this menu", or "this screen" only through explicit UI context, not guessing.
+
+`OwnerBusinessAssistantContextPacket` should include a small `clientContext` block:
+
+```ts
+type OwnerBusinessAssistantClientContext = {
+  currentRoute?: string;
+  mobileTab?: 'today' | 'menu' | 'share' | 'more';
+  selectedProjectId?: string;
+  selectedItemId?: string;
+  selectedCategoryId?: string;
+  selectedOutletId?: string;
+  visibleEntityRefs?: Array<{
+    kind: 'project' | 'menu_item' | 'category' | 'store' | 'screen' | 'feedback' | 'review';
+    id: string;
+    label: string;
+  }>;
+};
+```
+
+Client context is advisory. The server still resolves and verifies every target from tenant/store scope before answering or preparing an action. If the target is ambiguous, the assistant must ask the owner to pick from packet-backed candidates instead of running a broad search.
+
+Shared server cache entries must store business facts, not page-selection state. Request-time `clientContext` is merged into the packet after the cache lookup and omitted from durable/shared cache keys. Browser memory may carry page context for the active view, but it must not become the source of authority for target writes.
+
+### Answer Artifacts
+
+Answers should be structured for owner scanning, not only free text:
+
+```ts
+type OwnerAssistantAnswerArtifact =
+  | { type: 'text'; body: string }
+  | { type: 'metric_row'; metrics: Array<{ label: string; value: string; deltaLabel?: string }> }
+  | { type: 'compact_table'; columns: string[]; rows: string[][]; maxRows: number }
+  | { type: 'trend_series'; label: string; points: Array<{ label: string; value: number }> }
+  | { type: 'action_options'; actions: OwnerAssistantActionOption[] };
+```
+
+Artifacts must be generated from packet facts only. No CSV/export/raw-row download belongs in this feature unless the data already exists in a compact cached report and the export path is explicitly registered.
 
 ## 3. Permanent Data Ownership
 
@@ -181,13 +276,125 @@ type OwnerBusinessAnalyticsPeriod = {
 | Last 7 / 30 days | Dashboard summary `daily30d` compact rows | Scheduler/index builder only |
 | Custom arbitrary dates | Not supported by answer API by default | Refuse or offer supported periods |
 
-The answer API may read:
+On a context-packet cache miss, the answer API may read:
 
 - `ownerBusinessHealthCurrent` for health context.
 - `ownerBusinessAnalyticsIndex` for analytics intents.
+- Cached public project/store projection for public menu or business-profile facts.
 - One live daily doc for the current local date when `today` freshness is required and the flag allows the overlay.
 
-It must not read N daily docs for a message. If a new custom period becomes important, the scheduler/index builder must add that period to the index first.
+It must not read N daily docs for a message. If a new custom period becomes important, the scheduler/index builder must add that period to the index first. Cache hits should serve answers with zero Firestore reads.
+
+### Cache-First Context Packet
+
+The answer API should not read Firestore first. It should ask for an owner-safe packet first:
+
+```text
+question + scope
+  -> context packet cache lookup
+  -> cache hit: AI/resolver receives packet with 0 Firestore reads
+  -> cache miss: read compact docs, build packet, write cache, answer
+```
+
+The packet is the only data shape the AI answer layer receives.
+
+```ts
+type OwnerBusinessAssistantContextPacket = {
+  version: 1;
+  packetId: string;
+  cacheKey: string;
+  cacheSource: 'browser' | 'server' | 'fresh_firestore';
+  tId: string;
+  sId: string;
+  projectId?: string;
+  localBusinessDate: string;
+  validUntil: string;
+  generatedAt: string;
+  sourceSignatures: {
+    healthCurrent?: string;
+    analyticsIndex?: string;
+    todayOverlay?: string;
+    publicProjection?: string;
+    domainFacts?: string;
+    actionCatalog?: string;
+  };
+  health: OwnerBusinessHealthCurrentDoc;
+  analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs'>;
+  todayOverlay?: OwnerBusinessAnalyticsPeriod;
+  domainFacts?: {
+    menu?: Record<string, unknown>;
+    store?: Record<string, unknown>;
+    publicLinks?: Record<string, unknown>;
+    screens?: Record<string, unknown>;
+    feedback?: Record<string, unknown>;
+    reviews?: Record<string, unknown>;
+    domains?: Record<string, unknown>;
+    outlets?: Record<string, unknown>;
+    billing?: Record<string, unknown>;
+    users?: Record<string, unknown>;
+    integrations?: Record<string, unknown>;
+    compliance?: Record<string, unknown>;
+  };
+  clientContext?: OwnerBusinessAssistantClientContext;
+  allowedActions: OwnerBusinessActionDefinition[];
+  answerRules: {
+    refuseUnsupported: true;
+    sourceFactIdsRequired: true;
+    noRevenueProfitWithoutSource: true;
+    noPublicMutationWithoutConfirmation: true;
+  };
+};
+```
+
+Cache keys must include tenant, store, active project, local business date, packet profile, and source signature when available:
+
+```text
+owner-business-assistant:packet:v1:{tId}:{sId}:{projectId}:{localBusinessDate}:{packetProfile}:{signature}
+```
+
+Recommended cache layers:
+
+| Layer | Use | Expiry |
+| --- | --- | --- |
+| Browser SWR/localStorage | Dashboard card, analytics strip, full page first render | Store-local scheduler cache key, matching existing owner dashboard behavior |
+| Server cache/Upstash | Answer API context packet shared across typed questions/devices | Until next store-local EOD scheduler window |
+| Today overlay cache | "Today so far" facts | 10 minutes |
+| Action target cache | Draft display only | Short-lived; never used for final confirm |
+
+Upstash is acceptable for the server context-packet cache because the dependency already exists. It must remain an optimization, not a correctness dependency: when cache is unavailable, the API falls back to compact Firestore reads and returns a cache miss metric.
+
+### AI Answer Layer
+
+Owner-typed questions should use AI over the context packet. The model does not receive raw Firebase collections.
+
+```text
+owner question
+  + OwnerBusinessAssistantContextPacket
+  + allowed intent/action schema
+  + answer rules
+  -> AI structured response
+  -> server validation
+  -> owner response
+```
+
+The AI must return structured JSON:
+
+```ts
+type OwnerBusinessAssistantAiResponse = {
+  status: 'answered' | 'needs_more_data' | 'unsupported' | 'needs_confirmation';
+  answer: string;
+  freshnessLabel: string;
+  sourceFactIds: string[];
+  artifacts?: OwnerAssistantAnswerArtifact[];
+  cards?: OwnerAssistantCard[];
+  actions?: OwnerAssistantActionOption[];
+  confidence: 'high' | 'medium' | 'low';
+};
+```
+
+The server must validate that source fact IDs exist in the packet, unsupported claims are not present, actions are registered, and permissions/public-truth guards still pass. Invalid model output becomes a refusal or a safe retry response.
+
+Deterministic/template answers remain allowed only as a fallback for feature-off, provider-unavailable, or fixed dashboard rendering. The product answering layer for typed owner questions is AI over the cached packet.
 
 ### Dashboard Placement
 
@@ -242,16 +449,17 @@ Add static task definitions for separately flag-gated workflow storage:
 
 Each task needs its own cadence, lease, cap, and cost note. It must not scan unbounded collections.
 
-### Provider-Backed Free Text
+### Provider-Backed Answering
 
-Provider-backed answer formatting is part of the complete architecture, but it is not required for deterministic suggested questions.
+AI-backed answering is part of the complete architecture for typed owner questions. Deterministic responses are fallback paths, not the primary typed-question experience.
 
 Before any provider-backed route is enabled:
 
 1. Add an `AI_ACTIONS_TYPES` value for owner business assistant answers.
 2. Add real cost and unit cost entries.
 3. Use SAFE_MODE, AI rate limits, accounting, and `remainingBalance` propagation.
-4. Return deterministic/template answers without provider calls when the intent is already supported.
+4. Build the context packet cache first so provider calls do not also cause repeated Firestore reads.
+5. Return deterministic/template answers only when provider answering is disabled, unavailable, or not needed for static dashboard rendering.
 
 ## 7. API Alignment
 
@@ -298,7 +506,7 @@ type OwnerBusinessActionDefinition = {
   riskLevel: 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
   requiredPermissions: string[];
   requiredFlags: string[];
-  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing'>;
+  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing' | 'domain' | 'screen' | 'customer_app' | 'qr' | 'pos' | 'team' | 'compliance'>;
   resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
   draftSchema?: string;
   executor: string;
@@ -314,12 +522,16 @@ type OwnerBusinessActionDefinition = {
 | Open the detailed health view | `open_business_health_detail` | `/business-health` route | None | Navigation only |
 | Show analytics | `open_dashboard_analytics` | Existing dashboard analytics | None | Navigation only |
 | Open this item | `open_menu_editor_target` | Existing editor route/context | None | Navigation only |
+| Show QR/app/screen/public link | `open_qr_share`, `open_customer_app_settings`, `open_digital_screen_settings` | Existing Share, Customer App, and Digital Screen surfaces | None | Navigation/copy only |
+| Check domain/POS/billing/users/locations/compliance | `open_domain_settings`, `open_pos_sync_settings`, `open_billing`, `open_users_permissions`, `open_locations`, `open_compliance_pages` | Existing settings, billing, users, locations, integrations, compliance surfaces | None | Navigation only |
 | Change this item's price | `menu_item_price_set` | Project mutation adapter over `updateProject()` invariants, MCE, menu change log, cache invalidation | Draft + action audit | Confirmed write only |
 | Increase selected prices | `menu_item_price_bulk_adjust` | Command Center pricing pure functions | Draft + action audit | Confirmed write only |
 | Mark item sold out/show/hide/move category | `menu_item_availability_set`, `menu_item_visibility_set`, `menu_item_move_category` | Command Center pure functions and project mutation path | Draft + action audit | Confirmed write only |
 | Rewrite this description | `menu_item_description_prepare` | Existing description generation prompt/accounting and project update path | Draft + action audit; AI operation only if provider called | Prepare generated text, confirm before save |
 | Add missing descriptions | `menu_missing_descriptions_prepare` | Existing description generation and repair flow | Draft + action audit; AI operation only if provider called | Confirm before save |
 | Update this item image | `menu_item_image_upload_open`, `menu_item_image_generate_prepare`, `menu_item_image_attach_confirm` | Existing media prep/upload, image generation, and item-image association path | Draft stores media reference only | Confirm before public image changes |
+| Mark the store closed/opening late | `store_temp_status_set`, `store_temp_status_clear` | Existing temp-status API/server adapter and public cache invalidation | Draft + action audit | Confirmed time-bound store public-truth write |
+| Draft a review reply | `review_reply_prepare` | Existing review suggestion API and AI accounting | Draft + action audit; AI operation only if provider called | Owner reviews/copies; no public posting |
 | Make this menu live | `open_publish_screen` plus guarded public-truth action | Existing publish screen/API/cache path | Action audit if confirmed in assistant | Prefer navigation unless public-truth flag allows in-assistant confirmation |
 | Mark or dismiss a check | `check_mark_reviewed`, `check_dismiss` | Assistant check workflow storage | Compact action/check write | Confirm state change |
 
@@ -374,7 +586,9 @@ Modify:
 - Add Business Health source adapters to functions.
 - Add current, analytics-index, and daily `platformSummary` read model docs.
 - Add `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` for standard owner analytics periods.
+- Add cache-first context packet builder and cache adapter.
 - Add protected API service layer.
+- Add AI structured-answer resolver over the context packet.
 - Add MobileShell mapping and mobile screen.
 - Add action registry and target resolver contract.
 - Extend or replace owner usage logging for assistant value events.

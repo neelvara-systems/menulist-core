@@ -79,6 +79,7 @@ MenuList Business Health:
 - Starts with latest state.
 - Uses approved question types.
 - Grounds answers in compact facts.
+- Uses a cache-first business packet before answering typed questions.
 - Refuses unsupported claims.
 - Sends owner to existing workflows.
 

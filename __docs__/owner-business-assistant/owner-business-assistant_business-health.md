@@ -20,9 +20,10 @@ Business Health includes:
 - Dashboard analytics strip.
 - Full `/business-health` page.
 - MobileShell screen.
+- Cache-first context packet.
 - Current business status.
 - Standard analytics period answers.
-- Supported questions from compact facts.
+- AI answers to typed owner questions from compact facts.
 - Freshness/source disclosure.
 - Calm refusals when data is missing.
 
@@ -46,6 +47,9 @@ ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: false,
 ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: false,
 ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
+ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
+ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
 ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
 ```
 
@@ -77,13 +81,32 @@ Supported standard periods:
 - Last 30 days.
 - Overall.
 
-Runtime answer code may read:
+Runtime answer code must read from the context-packet cache first. On cache miss it may read:
 
 - One current doc.
 - One analytics index doc.
 - One current-day daily analytics doc for partial "today" overlay.
 
 Runtime answer code must not aggregate daily date ranges.
+
+## AI Answer Contract
+
+Typed owner questions use AI over `OwnerBusinessAssistantContextPacket`.
+
+The model receives:
+
+- Owner question.
+- Cached health facts.
+- Cached analytics period facts.
+- Optional today overlay.
+- Allowed actions.
+- Answer rules.
+
+The model must not receive raw Firebase collections.
+
+Non-analytics questions follow the same packet rule. Store profile, public menu/project facts, public availability, screen status, feedback/review signals, and operational checks are answerable only when the context packet contains cached owner-safe facts. The read-only Health path must not perform live full-document reads or collection scans to satisfy those questions.
+
+The answer route must validate structured model output before rendering it.
 
 ## Dashboard Contract
 
@@ -113,11 +136,11 @@ The answer route can return `actions: []` when Action Support is disabled.
 
 | Flow | Reads | Writes |
 | --- | ---: | ---: |
-| Dashboard card | 1 current read | 0 |
-| Dashboard analytics strip | 1 analytics-index read, optional 1 today doc | 0 |
-| Business Health page | 1 current read + 1 analytics-index read | 0 |
-| Suggested question | 0-1 current/index read when already cached | 0 |
-| Free text | Current/index reads + provider accounting only if provider is used | Provider accounting only |
+| Dashboard card | 0 on cache hit; 1 current read on miss | 0 |
+| Dashboard analytics strip | 0 on cache hit; 1 analytics-index read, optional 1 today doc on miss | 0 |
+| Business Health page | 0 on cache hit; 1 current read + 1 analytics-index read on miss | 0 |
+| Suggested/typed question | 0 Firestore reads on context-packet cache hit | 0 |
+| AI answer cache miss | Current/index reads + provider accounting only if provider is used | Provider accounting/cache write only |
 
 No listener is required for Business Health.
 
@@ -133,4 +156,3 @@ If Action Support fails:
 
 - Business Health stays available.
 - Hide action buttons or show "Open the related screen manually."
-

@@ -80,6 +80,8 @@ Mobile order:
 7. Actions as bottom sheet.
 8. Source/freshness disclosure.
 
+Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` should render cached current/analytics packets first and fetch only when missing, stale, or after an explicit refresh.
+
 Do not use:
 
 - Floating chat bubble.
@@ -164,6 +166,7 @@ Mobile should render:
 ## Mobile QA Checklist
 
 - `/business-health` opens inside `MobileShell`.
+- Cached Business Health packet renders before any new network read when still valid.
 - Back returns to previous mobile tab/sub-screen.
 - Branch selector respects permissions.
 - Stable state shows "No action needed".
