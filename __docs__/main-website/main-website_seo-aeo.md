@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 8, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -21,6 +21,10 @@
 
 > June 2, 2026 resource expansion and industry note: the public discovery layer now includes 15 resource articles, reviewed active-locale coverage for every resource article, and four industry pages under `/industries/`. Industry pages use WebPage/BreadcrumbList structured data and connect back to resources/product CTAs; they must describe fit and public-menu correctness only, without revenue, ranking, Google refresh, POS, delivery-marketplace, or AI-visibility guarantees.
 
+> June 8, 2026 Business Health campaign note: `/features/business-health` is the public campaign URL for Business Health. It is registered in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`. `/business-health` remains the protected owner app route and must stay out of public discovery.
+
+> June 8, 2026 feature-campaign note: the main website now exposes a compact Features dropdown and five additional dedicated feature campaign pages: `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`. These join `/features/business-health` in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`.
+
 ---
 
 ## 1. SEO Foundation
@@ -31,6 +35,12 @@
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
 | Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
+| Menu Import      | Menu Import - MenuList \| Upload the Menu You Already Have            | `(website)/features/menu-import/page.tsx` |
+| Official Business Page | Official Business Page - MenuList \| One Current Customer Link  | `(website)/features/official-business-page/page.tsx` |
+| QR Menu and Share Links | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | `(website)/features/qr-menu-links/page.tsx` |
+| Owner Phone Dashboard | Owner Phone Dashboard - MenuList \| Manage Your Menu Without a Desktop | `(website)/features/owner-phone-dashboard/page.tsx` |
+| Business Health  | Business Health - MenuList \| Know What Needs Attention               | `(website)/features/business-health/page.tsx` |
+| Public Discovery | Public Discovery - MenuList \| Clear Business Information for Search and AI | `(website)/features/public-discovery/page.tsx` |
 | How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
 | Multi-Location   | Multi-Location Menu Management — MenuList \| One Menu, Every Outlet   | `(website)/multi-location/page.tsx`   |
@@ -52,6 +62,7 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
+| Business Health | Business Health shows the latest MenuList check, customer attention, last checked date, and whether anything needs action in the owner dashboard. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
 | Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |

@@ -16,6 +16,18 @@ const PERIOD_SYNONYMS: Array<{ key: OwnerBusinessAnalyticsPeriodKey; patterns: R
   { key: 'overall', patterns: [/overall/i, /all time/i, /total/i] },
 ];
 
+const CUSTOM_DATE_PATTERNS = [
+  /\b\d{4}-\d{1,2}-\d{1,2}\b/,
+  /\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/,
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2}\b/i,
+  /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/i,
+  /\b(?:between|from)\b.+\b(?:and|to)\b/i,
+];
+
+const hasUnsupportedCustomDate = (question: string) => (
+  CUSTOM_DATE_PATTERNS.some((pattern) => pattern.test(question))
+);
+
 export function resolveOwnerBusinessAnalyticsPeriod(
   question: string,
   analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods'>,
@@ -24,6 +36,7 @@ export function resolveOwnerBusinessAnalyticsPeriod(
 
   const matched = PERIOD_SYNONYMS.find((entry) => entry.patterns.some((pattern) => pattern.test(question)));
   if (matched) return analytics.periods[matched.key] || null;
+  if (hasUnsupportedCustomDate(question)) return null;
 
   return analytics.periods.today
     || analytics.periods.thisWeek

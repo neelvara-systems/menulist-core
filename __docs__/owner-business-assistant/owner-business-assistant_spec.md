@@ -268,13 +268,13 @@ Implemented action examples:
 | Owner request | Required behavior |
 | --- | --- |
 | "Open this item" | Open the existing project editor path |
-| "Rewrite this item description" | Store a compact draft and keep the existing editor as the public save path |
+| "Rewrite this item description" | Refuse/route to the existing editor until provider-text draft generation and billing accounting are enabled |
 | "Make this live" | Navigate to the existing publish/editor screen |
 | "Change my logo/cover" | Use existing business settings/media path or server-safe equivalent |
 | "Mark us closed today" | Store a compact temporary-status draft and keep the existing temp-status path as the public save path |
 | "Show my QR code / screen link / app link" | Open existing share, digital screen, or Customer App surface |
 | "Check my domain / POS / credits / users" | Open the existing settings/billing/users/integrations surface; no direct risky mutation |
-| "Reply to this review" | Store a compact reply draft only when the review text is owner-provided or packet-backed; no public posting |
+| "Reply to this review" | Refuse/route to feedback until provider-text draft generation and billing accounting are enabled; no public posting |
 
 The action system must store drafts/audits separately from analytics. Analytics stays in `platformSummary`; action workflow docs are only for prepare/confirm/cancel/review behavior.
 

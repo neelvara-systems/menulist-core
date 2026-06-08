@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 5, 2026
+**Last Updated:** June 8, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -25,6 +25,8 @@
 
 > Privacy and analytics note (June 5, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Upload your menu` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
+> Business Health website note (June 8, 2026): Business Health is now visible on the main homepage after implementation proof. Public copy must describe it as an owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths. Do not call it an AI assistant, chatbot, autonomous business agent, revenue optimizer, or prediction system. Keep the owner promise narrow: MenuList shows what needs attention, and says No action needed when the latest check is stable.
+
 ---
 
 ## Page 1: Homepage
@@ -44,16 +46,23 @@ Supporting pages now share the same official-source discipline through shared he
 5. `SurfacesSection`
 6. `CustomerBrowseSection`
 7. `PreparedForYouSection`
-8. `ResourcesSection`
-9. `FaqSection`
-10. `FinalCtaSection`
-11. `StickyCta`
+8. `BusinessHealthSection`
+9. `ResourcesSection`
+10. `FaqSection`
+11. `FinalCtaSection`
+12. `StickyCta`
 
-**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `ResourcesSection` is mounted as a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
 **Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
 **Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
+
+**Business Health placement policy (June 8, 2026):** keep the homepage Business Health section compact and direct, with the deeper public campaign story on `/features/business-health`. Both surfaces must show the owner-dashboard value directly: latest check, No action needed state, freshness, cached analytics periods, multi-location awareness, phone support, and safe action routing. Do not imply realtime sales, POS revenue, external competitor tracking, unsupported date ranges, provider-backed AI reasoning by default, or direct assistant-owned public-truth mutation.
+
+**Business Health Features-page policy (June 8, 2026):** the Features page should also list Business Health as one compact Operations card because the homepage now treats it as a MenuList USP. It must remain a feature-inventory proof, not a second full section, not a standalone landing page, and not part of the analytics cross-map. Approved copy can mention latest MenuList check, last checked date, customer attention, whether anything needs action, and No action needed stable state.
+
+**Business Health campaign page policy (June 8, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, safe next actions, No action needed when stable, and existing owner-screen routing. It must not imply AI assistant, generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct assistant-owned public-truth mutation.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -667,6 +676,38 @@ Key FAQ topics:
 
 ---
 
+### Section: Business Health
+
+**Heading:**
+
+> Business Health shows what needs attention.
+
+**Body:**
+
+> After publishing, MenuList checks the latest menu state, public surfaces, customer attention, and locations. When everything is stable, the owner dashboard says No action needed.
+
+**Homepage proof cards:**
+
+1. **Latest check first** — The dashboard opens with status, freshness, and whether anything needs attention.
+2. **Analytics without raw tables** — Standard periods such as today, this week, last month, and overall come from cached summaries.
+3. **Safe action paths** — Menu changes open existing owner screens. Public changes stay inside the normal publish flow.
+4. **Works on phone** — The same Business Health view appears inside the mobile owner app.
+
+**Preview content:**
+
+- Latest check
+- Business looks stable
+- No action needed
+- Uses data through the last settled business day
+- Owner question: Which item was on top this week?
+- Business Health answer: Answers come from cached MenuList data with source freshness
+
+**Copy boundary:** Business Health is a MenuList check inside the owner dashboard. Do not call it a chatbot, AI assistant, realtime sales monitor, revenue optimizer, prediction tool, or autonomous action system.
+
+**Source:** `owner-business-assistant_website.md`, runtime Business Health implementation and dashboard/mobile QA records.
+
+---
+
 ### Section: Publish
 
 **Heading:**
@@ -766,6 +807,28 @@ Key FAQ topics:
 
 - This hero should sell reduced owner work, not an abstract feature catalogue.
 - Keep the phone-first and owner-approval helper lines directly below the hero subline.
+- v3.6.34 wires the highest-selling feature cards to dedicated campaign pages and exposes them in the header Features dropdown. The dropdown should stay restrained and should not become a full product map.
+
+### Header Feature Dropdown And Campaign Pages
+
+**Dropdown links:**
+
+1. Menu Import — `/features/menu-import`
+2. Official Business Page — `/features/official-business-page`
+3. QR Menu and Links — `/features/qr-menu-links`
+4. Owner Phone Dashboard — `/features/owner-phone-dashboard`
+5. Business Health — `/features/business-health`
+6. Public Discovery — `/features/public-discovery`
+
+**Selection rationale:**
+
+- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, create one public customer source, share it through QR/links, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
+- POS sync, staff roles, analytics depth, print-file detail, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
+
+**Campaign page pattern:**
+
+- Each new campaign page uses `FeatureDetailPage` for a focused hero, proof preview, three story cards, four trust/proof cards, and final CTA.
+- Copy must stay owner-readable. Avoid `AI-powered`, unsupported automation, ranking guarantees, POS replacement language, and generic dashboard-SaaS framing.
 
 ### Print Files And Launch Kit Cards
 
@@ -785,6 +848,22 @@ Keep print capability inside existing Features page groups. Do not create a dedi
 - Do not imply printed paper updates automatically. The printed QR points customers to the current menu; the paper file itself is a generated output.
 
 ### Operations Group
+
+**Business Health card:**
+
+Title:
+
+> Business Health
+
+Description:
+
+> See the latest MenuList check, last checked date, customer attention, and whether anything needs action. Stable checks show No action needed.
+
+**Notes:**
+
+- This is the first Operations card because Business Health is now the website's owner-dashboard USP proof.
+- Keep the card compact and grounded in the shipped owner dashboard, mobile screen, scheduler read models, cache-first context packets, and safety guards.
+- Do not call it an AI assistant, chatbot, realtime monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-menu editor.
 
 **Mobile owner operations card:**
 
@@ -836,6 +915,65 @@ Description:
 - This block should align visually with the other Features page groups, including the same small section label treatment.
 - Cards use left-side Lucide icons with title and supporting copy on the same row.
 - Keep the analytics claim privacy-conscious and decision-ready. Do not imply customer profiling, exact GPS tracking, heatmaps, or guaranteed attribution.
+
+---
+
+## Page 2B: Business Health Feature Page (/features/business-health)
+
+**Canonical note:** This is the public marketing campaign page for Business Health. The protected owner app remains `/business-health`.
+
+### Hero
+
+**Headline:**
+
+> Know what needs attention.
+
+**Subline:**
+
+> Business Health brings the latest MenuList check, customer attention, locations, freshness, and safe next actions into one owner dashboard view.
+
+**Primary CTA:** Upload your menu →
+
+**Secondary CTA:** See all features
+
+### Preview Panel
+
+The preview must show:
+
+- Latest check
+- Last checked date shown
+- Business looks stable
+- No action needed
+- Customer attention, standard period data, and location state
+- One owner question and one source-fresh answer
+
+### Sticky Story Section
+
+**Eyebrow:**
+
+> From check to next action
+
+**Heading:**
+
+> One Business Health view across the owner dashboard.
+
+**Layout rule:** Use the same stacked sticky section structure as Answerlattice's "From inputs to support surfaces" section, translated into MenuList website tokens. The left side is a sticky tab rail. The right side is a stacked set of sticky story cards.
+
+Left-side tabs:
+
+1. What it checks
+2. Owner outcome
+3. Why owners can trust it
+
+Right-side sticky cards:
+
+1. **What it checks** — Latest MenuList check, public surface status, customer attention, and location view.
+2. **Owner outcome** — Stable means quiet, freshness stays visible, and actions open the right place.
+3. **Why owners can trust it** — No uncontrolled public changes, cached checks control cost, and the same view works on desktop and phone.
+
+**Mobile rule:** The left rail becomes a sticky horizontal tab row. Story cards collapse to one column without losing the tab labels or source-fresh copy.
+
+**Copy boundary:** This page can be used for paid campaigns and founder-led sales, but it must stay a Business Health explanation, not an AI product page. Do not add generic assistant, chatbot, revenue, prediction, competitor, or realtime sales claims.
 
 ---
 

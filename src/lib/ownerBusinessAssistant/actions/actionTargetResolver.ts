@@ -80,10 +80,14 @@ export function resolveOwnerBusinessAssistantHref(params: {
   projectId?: string;
   targetId?: string;
 }) {
+  const withProjectQuery = (href: string) => (
+    params.projectId ? `${href}?projectId=${encodeURIComponent(params.projectId)}` : href
+  );
+
   switch (params.actionType) {
     case 'navigate_business_health':
     case 'open_business_health_detail':
-      return '/business-health';
+      return withProjectQuery('/business-health');
     case 'navigate_analytics':
     case 'open_dashboard_analytics':
       return '/dashboard';

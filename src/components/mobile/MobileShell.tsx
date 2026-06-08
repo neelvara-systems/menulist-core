@@ -434,6 +434,16 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
+    const handleOpenBusinessHealth = useCallback(() => {
+        if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
+            return;
+        }
+        setActiveTab('more');
+        setMoreScreen('businessHealth');
+        setIsMoreRootScreen(false);
+        setTodayScreen('main');
+    }, []);
+
     const handleOpenHistory = useCallback(() => {
         if (!FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
             return;
@@ -450,7 +460,7 @@ export default function MobileShell() {
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
-                ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} onOpenDesignEditor={handleOpenDesignEditor} />
+                ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} onOpenBusinessHealth={handleOpenBusinessHealth} onOpenDesignEditor={handleOpenDesignEditor} />
                 : todayScreen === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (

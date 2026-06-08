@@ -13,7 +13,7 @@ const { Paragraph, Text, Title } = Typography;
 export function BusinessHealthDashboardCard({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const { storeDetails } = useContext(PlatformGlobalDataContext);
-  const { current, isLoading } = useOwnerBusinessHealthCurrent(projectId, storeDetails?.storeId);
+  const { current, isLoading } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
   const healthHref = projectId ? `/business-health?projectId=${encodeURIComponent(projectId)}` : '/business-health';
 
   if (isLoading && !current) {

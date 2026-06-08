@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
+import { LuActivity, LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import LogoMark from '../shared/LogoMark';
 import SectionHeading from '../shared/SectionHeading';
@@ -16,9 +17,18 @@ const groupIcons = [
   [LuQrCode, LuLayoutGrid, LuMonitor, LuLink, LuFileText, LuList],
   [LuPalette, LuPackage, LuPrinter],
   [LuSparkles, LuUsers, LuBarChart3, LuTrendingUp],
-  [LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers],
+  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers],
   [LuShield, LuCheck, LuBadgeCheck],
 ];
+
+const featurePageHrefByCard = new Map<string, string>([
+  ['0-0', '/features/menu-import'],
+  ['1-0', '/features/qr-menu-links'],
+  ['1-1', '/features/official-business-page'],
+  ['1-5', '/features/public-discovery'],
+  ['4-0', '/features/business-health'],
+  ['4-8', '/features/owner-phone-dashboard'],
+]);
 
 export default function FeaturesPage() {
   const t = useTranslations('Website');
@@ -31,6 +41,7 @@ export default function FeaturesPage() {
       icon,
       title: t(`Features.group${gi}F${fi}Title`),
       desc: t(`Features.group${gi}F${fi}Desc`),
+      href: featurePageHrefByCard.get(`${gi}-${fi}`),
     })),
   }));
   const analyticsCardIcons = [LuBarChart3, LuEye, LuTrendingUp, LuList];
@@ -119,14 +130,21 @@ export default function FeaturesPage() {
             <div className="ws-feature-card-grid" style={{ marginTop: 'var(--ws-space-10)' }}>
               {group.features.map((feature, fi) => {
                 const Icon = feature.icon;
+                const card = (
+                  <WebsiteFeatureCard
+                    icon={Icon}
+                    title={feature.title}
+                    description={feature.desc}
+                    compact
+                  />
+                );
                 return (
                   <AnimateStaggerChild key={feature.title} index={fi}>
-                    <WebsiteFeatureCard
-                      icon={Icon}
-                      title={feature.title}
-                      description={feature.desc}
-                      compact
-                    />
+                    {feature.href ? (
+                      <Link href={feature.href} className="ws-feature-card-link" aria-label={`${feature.title}`}>
+                        {card}
+                      </Link>
+                    ) : card}
                   </AnimateStaggerChild>
                 );
               })}

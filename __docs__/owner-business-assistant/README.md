@@ -134,6 +134,6 @@ Current default posture:
 - Business Health can be enabled independently from Action Support.
 - Action Support can be enabled without public-truth direct mutation.
 - Public menu/store writes remain guarded; assistant-owned public-truth writes are blocked and existing MenuList screens remain the save path.
-- Public website copy remains unchanged until enablement and runtime QA proof.
+- Public website copy is now updated with a dedicated main homepage Business Health section after implementation proof; public copy still avoids assistant/chatbot/revenue-optimization positioning.
 
 Validation record: [owner-business-assistant_validation.md](./owner-business-assistant_validation.md).

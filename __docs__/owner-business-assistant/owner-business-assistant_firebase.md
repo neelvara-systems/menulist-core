@@ -201,6 +201,8 @@ Assistant packet invalidation is part of the public-truth invalidation contract.
 | Analytics index cache miss | 1 | 0 | Returns compact periods: Today, This week, This month |
 | Today overlay cache miss | 0-1 | 0 | Optional one daily doc for fresher partial stats |
 
+The mobile analytics dashboard uses the same current Health and analytics-index cache keys as the full mobile Business Health screen. It does not call the Business Health APIs until a selected project and store scope exist, and it does not read raw daily analytics ranges for the compact dashboard summary.
+
 ### Multi-Location Summary
 
 | Operation | Reads | Writes | Notes |
@@ -210,7 +212,7 @@ Assistant packet invalidation is part of the public-truth invalidation contract.
 | `/api/owner-business-assistant/locations` | 2 | 0 | Reads one tenant summary doc plus `storesSummary` to filter deactivated outlets and mapped store access |
 | Store selection/detail | 0 until selected | 0 | Detailed packets load only for the selected store through normal current/answer routes |
 
-Multi-location rows carry per-store freshness (`localDate` / `lastCheckedAt`). UI must show store-row freshness instead of relying only on one tenant-level `generatedAt`, because each outlet can rebuild at a different local time. The API filters inactive stores from `storesSummary` so old multi-location rows cannot keep deactivated outlets visible.
+Multi-location rows carry per-store freshness (`localDate` / `lastCheckedAt`). UI must show store-row freshness instead of relying only on one tenant-level `generatedAt`, because each outlet can rebuild at a different local time. The API normalizes legacy summary rows, filters inactive stores from `storesSummary`, and only then applies mapped store access so malformed or deactivated outlet rows cannot leak into the owner response.
 
 ### Suggested Question
 
@@ -326,7 +328,7 @@ Route metrics stored on answer events include packet profile, cache source, Fire
 | ---: | ---: | --- |
 | 1-3 | 1-2 | Resolve target, write draft/action docs under prepare/action storage flags |
 | 1-2 | 1-2 | Temporary status draft: resolve store target and write draft/action docs |
-| 0-1 | 1-2 + AI operation writes | Review reply draft: owner-provided text can avoid Firestore; compact review fact only when cached |
+| 0 | 0 | Provider-text drafts disabled by default; enable only after provider adapter and AI operation accounting are wired |
 
 ### Confirm Write
 

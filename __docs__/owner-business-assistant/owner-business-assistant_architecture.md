@@ -456,9 +456,9 @@ The owner dashboard should show Business Health near the existing dashboard anal
 Recommended desktop placement:
 
 1. Existing dashboard remains the detailed analytics surface.
-2. `BusinessHealthDashboardCard` appears near the top with status and 2-3 analytics facts.
-3. A compact `BusinessHealthAnalyticsStrip` can show `Today`, `This week`, and `This month`.
-4. The full `/business-health` page reads the current doc first, then the analytics index when the owner opens analytics questions or period cards.
+2. `BusinessHealthDashboardCard` appears near the top with store-level status, owner message, and freshness from the `health_card` packet.
+3. A compact `BusinessHealthAnalyticsStrip` can show selected-menu/store analytics from the analytics-index packet.
+4. The full `/business-health` page reads current Health independently; period cards read the analytics index through the separate scoped analytics hook.
 
 Recommended mobile placement:
 
@@ -577,9 +577,9 @@ type OwnerBusinessActionDefinition = {
 | Open this item | `open_menu_editor_target` | Existing editor route/context | None | Navigation only |
 | Show QR/app/screen/public link | `open_qr_share`, `open_customer_app_settings`, `open_digital_screen_settings` | Existing Share, Customer App, and Digital Screen surfaces | None | Navigation/copy only |
 | Check domain/POS/billing/users/locations/compliance | `open_domain_settings`, `open_pos_sync_settings`, `open_billing`, `open_users_permissions`, `open_locations`, `open_compliance_pages` | Existing settings, billing, users, locations, integrations, compliance surfaces | None | Navigation only |
-| Rewrite this description | `prepare_description_rewrite`, `menu_item_description_prepare` | Compact draft storage; existing editor remains the save path | Draft + action audit | No direct public write |
+| Rewrite this description | `prepare_description_rewrite`, `menu_item_description_prepare` | Registered but disabled while provider-text generation is off | No day-one write | No direct public write |
 | Mark the store closed/opening late | `store_temp_status_set`, `store_temp_status_clear` | Compact draft storage; existing temp-status screen/API remains the save path | Draft + action audit | No direct public write |
-| Draft a review reply | `prepare_review_reply`, `review_reply_prepare` | Compact review-reply draft storage | Draft + action audit | Owner reviews/copies; no public posting |
+| Draft a review reply | `prepare_review_reply`, `review_reply_prepare` | Registered but disabled while provider-text generation is off | No day-one write | No public posting |
 | Make this menu live | `open_publish_screen` | Existing publish/editor screen | None | Navigation only |
 | Mark or dismiss a check | `mark_health_check_reviewed`, `dismiss_health_check` | Assistant action audit storage plus local day-scoped UI suppression | Compact action write; no extra read | Confirm state change |
 

@@ -94,7 +94,7 @@ Scenarios:
 | Owner asks about weather/events/competitors | Unsupported unless cached connector summary exists; no runtime web search |
 | Owner asks for QR/screen/app/domain/POS/billing/users | Answer opens or describes existing surface from compact status; no risky mutation |
 | Owner asks "mark closed today" | Temporary status draft is stored and owner completes the existing temp-status save path |
-| Owner asks "reply to this review" | Reply draft uses owner-provided text or cached review fact; no public posting |
+| Owner asks "reply to this review" | Provider-text draft is refused/disabled until adapter and billing accounting are enabled; feedback navigation may be offered |
 | AI cites unknown fact | Server rejects output and returns safe refusal/retry |
 | AI invents action ID | Server rejects action option |
 
@@ -136,6 +136,7 @@ Required checks:
 - Platform monitor shows route metrics from answer events: cache source, packet profile, Firestore reads/writes, packet age, provider flag, thread write flag, unsupported reason, and source coverage.
 - `npm run verify:owner-business-assistant` passes and proves packet-profile cache key separation, public-truth action guard, useful refusal alternatives, source coverage basics, one-doc thread storage, navigation audit write reduction, Functions multi-location writer, and Functions packet invalidation wiring.
 - `npm run verify:owner-business-assistant` proves the Business Health browser read-model TTL, server packet key index, Functions packet key-index invalidator, and per-location freshness labels are wired.
+- `npm run verify:owner-business-assistant` proves current Health UI reads the store-level current packet, analytics UI reads selected-menu analytics packets, the page-level Health hook is not blocked by analytics-index loading, and the locations API normalizes legacy summary rows before returning them.
 - Analytics route returns only tenant/store-scoped standard periods.
 - Analytics question does not read more than current doc and analytics index; today overlay facts are already folded into the index.
 - Answer route checks context-packet cache before Firestore.
@@ -144,6 +145,7 @@ Required checks:
 - Answer route refuses unsupported external/web/local event requests without calling web search.
 - Action route is disabled by `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` without disabling `/current`, `/analytics`, or `/answer`.
 - Successful low-risk navigation action returns `firestoreWriteCount=0` and no action audit ID.
+- Business Health navigation actions preserve the selected `projectId` in the returned `/business-health` href.
 - Blocked navigation, draft preparation, and check workflow paths remain auditable and report route write counts.
 - Project-scoped navigation/draft actions report whether target validation used one compact summary read or the project-doc fallback.
 - Action route blocks unsupported confirmed-write operations.
@@ -190,7 +192,7 @@ Desktop:
 - The submitted question and latest answer render immediately while the bounded thread doc refreshes, without duplicating them after history catches up.
 - Unsupported answer displays calm refusal.
 - Action button opens confirmation/draft UI.
-- Price, description, and image actions show draft/confirmation state before any write.
+- Price, description, and image actions stay disabled or route to existing screens until their adapters, confirmation path, and billing accounting are implemented.
 - Action UI is hidden or read-only when Action Support is disabled.
 - Public-truth warning is visible for public writes.
 - Source/freshness label is visible.
@@ -348,7 +350,7 @@ Testing is complete when:
 8. Every answer includes freshness/source context.
 9. Sales/revenue/profit questions are safe unless sourced.
 10. Public-truth writes require explicit confirmation and cache handling.
-11. Price/description/image action tests prove registry, project-scope validation, draft, confirm, and rollback/error behavior.
+11. Price/description/image action tests prove disabled/blocked behavior until verified adapters, confirmation path, and billing accounting are implemented.
 12. Optional chat history and internal answer-event logging remain separately flag-gated.
 13. Platform monitoring shows quality and cost signals without exposing provider internals.
 14. Separate Business Health and Action Support flags are verified in both enabled and disabled states.

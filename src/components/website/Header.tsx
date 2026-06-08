@@ -10,6 +10,7 @@ import {
   LuBadgeCheck,
   LuBookOpen,
   LuBot,
+  LuChevronDown,
   LuFileText,
   LuLayoutGrid,
   LuLogOut,
@@ -24,6 +25,7 @@ import {
 import BrandWordmark from "./shared/BrandWordmark";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
+import { websiteFeatureNavLinks } from "./features/featureNavigation";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -120,7 +122,64 @@ export default function Header() {
             className="ws-desktop-nav"
           >
             {navItemKeys.map((item) => {
-              const isActive = pathname === item.href || (item.href === "/resources" && isResourcesPath);
+              const isFeaturesPath = Boolean(pathname?.startsWith("/features"));
+              const isActive = pathname === item.href
+                || (item.href === "/features" && isFeaturesPath)
+                || (item.href === "/resources" && isResourcesPath);
+              if (item.key === "features") {
+                return (
+                  <div key={item.href} className="ws-header-feature-menu">
+                    <Link
+                      href="/features"
+                      className="ws-header-feature-menu__trigger"
+                      aria-label={t("Header.featuresMenuAria")}
+                      aria-haspopup="true"
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 500,
+                        color: isFeaturesPath
+                          ? "var(--ws-text-primary)"
+                          : "var(--ws-text-secondary)",
+                        textDecoration: "none",
+                        transition: "color var(--ws-transition-fast)",
+                      }}
+                    >
+                      {t("Header.features")}
+                      <LuChevronDown size={14} aria-hidden="true" />
+                    </Link>
+                    <div className="ws-header-feature-menu__panel" role="menu" aria-label={t("Header.featuresMenuTitle")}>
+                      <Link href="/features" role="menuitem" className="ws-header-feature-menu__overview">
+                        <span>
+                          <LuLayoutGrid size={18} aria-hidden="true" />
+                        </span>
+                        <strong>{t("Header.featureOverviewTitle")}</strong>
+                        <small>{t("Header.featureOverviewDesc")}</small>
+                        <LuArrowRight size={18} aria-hidden="true" />
+                      </Link>
+                      <div className="ws-header-feature-menu__grid">
+                        {websiteFeatureNavLinks.map((featureLink) => {
+                          const FeatureIcon = featureLink.icon;
+                          return (
+                            <Link
+                              key={featureLink.href}
+                              href={featureLink.href}
+                              role="menuitem"
+                              className="ws-header-feature-menu__item"
+                            >
+                              <FeatureIcon size={17} aria-hidden="true" />
+                              <span>
+                                <strong>{t(`Header.${featureLink.key}`)}</strong>
+                                <small>{t(`Header.${featureLink.key}Desc`)}</small>
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               if (item.key === "resources") {
                 return (
                   <div key={item.href} className="ws-header-resource-menu">
@@ -140,6 +199,7 @@ export default function Header() {
                       }}
                     >
                       {t("Header.resources")}
+                      <LuChevronDown size={14} aria-hidden="true" />
                     </Link>
                     <div className="ws-header-resource-menu__panel" role="menu" aria-label={t("Header.resourcesMenuTitle")}>
                       {resourceDropdownLinks.map((resourceLink) => {
@@ -339,7 +399,10 @@ export default function Header() {
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || (item.href === "/resources" && isResourcesPath);
+                const isFeaturesPath = Boolean(pathname?.startsWith("/features"));
+                const isActive = pathname === item.href
+                  || (item.href === "/features" && isFeaturesPath)
+                  || (item.href === "/resources" && isResourcesPath);
                 return (
                   <div key={item.href}>
                     <Link
@@ -380,6 +443,24 @@ export default function Header() {
                       />
                       {t(`Header.${item.key}`)}
                     </Link>
+                    {item.key === "features" && (
+                      <div className="ws-mobile-feature-links" aria-label={t("Header.featuresMenuTitle")}>
+                        {websiteFeatureNavLinks.map((featureLink) => {
+                          const FeatureIcon = featureLink.icon;
+                          return (
+                            <Link
+                              key={featureLink.href}
+                              href={featureLink.href}
+                              onClick={closeDrawer}
+                              className="ws-mobile-feature-link"
+                            >
+                              <FeatureIcon size={15} aria-hidden="true" />
+                              {t(`Header.${featureLink.key}`)}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                     {item.key === "resources" && (
                       <div className="ws-mobile-resource-links" aria-label={t("Header.resourcesMenuTitle")}>
                         {resourceDropdownLinks.map((resourceLink) => {

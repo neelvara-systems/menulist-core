@@ -1,7 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerBusinessAssistantActionRequest } from '../schemas';
-import type { OwnerBusinessAssistantActionResult, OwnerBusinessAssistantRouteMetrics } from '../types';
+import type {
+  OwnerBusinessAssistantActionResult,
+  OwnerBusinessAssistantActionTargetKind,
+  OwnerBusinessAssistantRouteMetrics,
+} from '../types';
 import { getOwnerBusinessAssistantActionDefinition, isOwnerBusinessAssistantActionEnabled } from './actionRegistry';
 import { requireOwnerBusinessAssistantActionAccess } from './actionAccess';
 import { prepareOwnerBusinessAssistantDraft } from './actionDraftBuilder';
@@ -60,6 +64,13 @@ export async function executeOwnerBusinessAssistantAction(params: {
 
   if (!isOwnerBusinessAssistantActionEnabled(definition)) {
     return { success: false, status: 'blocked', message: 'That action is disabled.', metrics: buildActionMetrics() };
+  }
+
+  if (
+    params.body.targetKind
+    && !definition.targetKinds.includes(params.body.targetKind as OwnerBusinessAssistantActionTargetKind)
+  ) {
+    return { success: false, status: 'blocked', message: 'That target is not supported for this action.', metrics: buildActionMetrics() };
   }
 
   const permissionError = await requireOwnerBusinessAssistantActionAccess({

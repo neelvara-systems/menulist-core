@@ -15,7 +15,7 @@ import styles from './OwnerBusinessAssistant.module.scss';
 
 export function BusinessHealthPage({ projectId }: { projectId?: string }) {
   const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
-  const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(projectId, storeDetails?.storeId);
+  const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(undefined, storeDetails?.storeId);
   const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
     && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
 

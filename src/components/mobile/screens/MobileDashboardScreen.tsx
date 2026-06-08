@@ -1,17 +1,27 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
+import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
+import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
+import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
+import type {
+    OwnerBusinessAnalyticsIndexDoc,
+    OwnerBusinessAnalyticsPeriod,
+} from '@lib/ownerBusinessAssistant/types';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { VIEW_MODE_CONFIG, type OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
+import MobileBusinessHealthCard from '../components/MobileBusinessHealthCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -37,10 +47,12 @@ const MobileOwnerActionPlanCard = dynamic(
 
 interface MobileDashboardScreenProps {
     onBack: () => void;
+    onOpenBusinessHealth?: () => void;
     onOpenDesignEditor?: () => void;
 }
 
 const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
+const businessHealthNumberFormatter = new Intl.NumberFormat('en');
 const FULL_WIDTH_TAG_STYLE = {
     display: 'block',
     fontSize: 13,
@@ -58,11 +70,46 @@ function formatUpdatedTime(value: Date | string | undefined, formatter: IntlForm
     return formatDateTime(parsed, 'time', formatter);
 }
 
-export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
+const formatBusinessHealthCount = (value?: number) => businessHealthNumberFormatter.format(
+    typeof value === 'number' && Number.isFinite(value) ? value : 0,
+);
+
+const firstAvailableBusinessHealthPeriod = (
+    periods: OwnerBusinessAnalyticsIndexDoc['periods'] | undefined,
+) => periods?.today
+    || periods?.thisWeek
+    || periods?.last7Days
+    || periods?.yesterday
+    || null;
+
+const buildBusinessHealthDashboardMetrics = (
+    period: OwnerBusinessAnalyticsPeriod | undefined,
+) => {
+    if (!period) return [];
+
+    const topItem = period.topItems?.[0];
+    return [
+        {
+            key: 'primary',
+            label: period.label,
+            value: `${formatBusinessHealthCount(period.metrics.menuVisits)} visits`,
+            delta: period.freshnessLabel,
+        },
+        topItem ? {
+            key: 'top-item',
+            label: 'Top item',
+            value: topItem.name || topItem.itemId,
+            delta: `${formatBusinessHealthCount(topItem.value)} ${topItem.signal}`,
+        } : null,
+    ].filter(Boolean) as Array<{ key: string; label: string; value: string; delta?: string }>;
+};
+
+export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, onOpenDesignEditor }: MobileDashboardScreenProps) {
     const t = useTranslations('MobileDashboard');
     const formatter = useFormatter();
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const {
         isLoading: loadingProjects,
         projectsList,
@@ -90,6 +137,26 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     } : undefined);
     const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
     const refetchOBPDashboard = obpDashboard.refetch;
+    const canShowBusinessHealthSummary = Boolean(
+        FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD
+        && selectedProjectId
+        && storeDetails?.storeId,
+    );
+    const canShowBusinessHealthAnalytics = Boolean(
+        canShowBusinessHealthSummary
+        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX,
+    );
+    const { current: businessHealthCurrent } = useOwnerBusinessHealthCurrent(
+        undefined,
+        storeDetails?.storeId,
+        { enabled: canShowBusinessHealthSummary },
+    );
+    const { analytics: businessHealthAnalytics } = useOwnerBusinessAnalyticsIndex(
+        selectedProjectId || undefined,
+        storeDetails?.storeId,
+        { enabled: canShowBusinessHealthAnalytics },
+    );
 
     const viewModeLabel = VIEW_MODE_CONFIG[viewMode].label;
 
@@ -125,6 +192,11 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 return data?.overview || null;
         }
     }, [data?.daily, data?.monthly, data?.overall, data?.overview, data?.today, data?.weekly, viewMode]);
+    const businessHealthMetrics = useMemo(
+        () => buildBusinessHealthDashboardMetrics(firstAvailableBusinessHealthPeriod(businessHealthAnalytics?.periods)),
+        [businessHealthAnalytics?.periods],
+    );
+    const businessHealthFreshnessNote = getOwnerBusinessHealthFreshnessNote(businessHealthCurrent);
 
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
@@ -494,6 +566,15 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                         }}
                         onClick={() => setIsProjectSelectorOpen(true)}
+                    />
+                ) : null}
+
+                {canShowBusinessHealthSummary ? (
+                    <MobileBusinessHealthCard
+                        current={businessHealthCurrent}
+                        freshnessNote={businessHealthFreshnessNote}
+                        metrics={businessHealthMetrics}
+                        onClick={onOpenBusinessHealth}
                     />
                 ) : null}
 

@@ -133,6 +133,8 @@ The owner dashboard should show:
 5. Clear data freshness note: `Uses data through {date}. Today may not be complete yet.`
 6. Entry to the full Business Health page.
 
+Desktop and mobile dashboards both follow this contract. Desktop renders `BusinessHealthDashboardCard` and `BusinessHealthAnalyticsStrip` near the top of the owner dashboard. Mobile renders `MobileBusinessHealthCard` before the detailed analytics tabs and feeds it from the same cached current Health and selected-menu analytics-index hooks.
+
 Business Health may show action suggestions only as labels when Action Support is disabled. It must not call `/action`, create drafts, or expose confirmation UI unless Action Support is enabled.
 
 ## APIs
@@ -153,6 +155,7 @@ The answer route can return `actions: []` when Action Support is disabled.
 | --- | ---: | ---: |
 | Dashboard card | 0 on cache hit; 1 current read on miss | 0 |
 | Dashboard analytics strip | 0 on cache hit; 1 analytics-index read on miss | 0 |
+| Mobile dashboard Business Health summary | 0 on cache hit; 1 current read + 1 analytics-index read on miss only after selected project/store scope exists | 0 |
 | Business Health page | 0 on cache hit; 1 current read + 1 analytics-index read on miss | 0 |
 | Suggested/typed question | 0 Firestore reads on context-packet cache hit | 0 by default; optional answer-event write under usage logging flag |
 | AI answer cache miss | Current/index reads + provider accounting only if provider is used | Provider accounting/cache write only when provider is used; answer-event write only when usage logging flag is enabled |

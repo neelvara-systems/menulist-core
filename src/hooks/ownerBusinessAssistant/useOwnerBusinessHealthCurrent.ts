@@ -22,8 +22,8 @@ const fetcher = async ([url]: readonly [string, string]): Promise<CurrentRespons
 const isNotReadyFallbackResponse = (response: CurrentResponse | undefined) =>
   response?.data?.status === 'not_ready' && !response.data.sourceRefs?.length;
 
-export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?: string | number) {
-  const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH;
+export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?: string | number, options?: { enabled?: boolean }) {
+  const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && (options?.enabled ?? true);
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.current}${params.toString() ? `?${params.toString()}` : ''}`;

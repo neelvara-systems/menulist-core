@@ -21,8 +21,10 @@ const fetcher = async ([url]: readonly [string, string]): Promise<AnalyticsRespo
 
 const hasAnalyticsData = (response: AnalyticsResponse | undefined) => Boolean(response?.data);
 
-export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey?: string | number) {
-  const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX;
+export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey?: string | number, options?: { enabled?: boolean }) {
+  const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX
+    && (options?.enabled ?? true);
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.analytics}${params.toString() ? `?${params.toString()}` : ''}`;

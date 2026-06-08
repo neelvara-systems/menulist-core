@@ -8,9 +8,11 @@ import type {
 } from '../types';
 import { buildAnalyticsPeriodArtifacts } from './answerArtifacts';
 
+const numberFormatter = new Intl.NumberFormat('en');
+
 const formatNumber = (value?: number) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return '0';
-  return new Intl.NumberFormat('en').format(value);
+  return numberFormatter.format(value);
 };
 
 export function buildBusinessStatusAnswer(packet: OwnerBusinessAssistantContextPacket) {

@@ -124,6 +124,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         answer.threadId = threadId;
         answer.metrics = {
           ...answer.metrics,
+          firestoreWriteCount: (answer.metrics?.firestoreWriteCount ?? 0) + 1,
           threadWritten: true,
         };
       }
@@ -140,6 +141,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
   if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING) {
     try {
+      answer.metrics = {
+        ...answer.metrics,
+        firestoreWriteCount: (answer.metrics?.firestoreWriteCount ?? 0) + 1,
+        answerEventWritten: true,
+      };
       await logOwnerBusinessAssistantAnswerEvent({
         tId,
         sId,
@@ -147,11 +153,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         request: normalizedRequest,
         answer,
       });
+    } catch (error) {
       answer.metrics = {
         ...answer.metrics,
-        answerEventWritten: true,
+        firestoreWriteCount: Math.max(0, (answer.metrics?.firestoreWriteCount ?? 1) - 1),
+        answerEventWritten: false,
       };
-    } catch (error) {
       logger.warn('Owner Business Assistant answer event logging failed', {
         storeId: sId,
         tenantId: tId,

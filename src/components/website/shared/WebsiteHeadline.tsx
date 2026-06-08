@@ -16,7 +16,7 @@ interface WebsiteHeadlineProps {
   as?: HeadlineTag;
   size?: HeadlineSize;
   text?: string;
-  highlightedText?: string;
+  highlightedText?: string | string[];
   parts?: HeadlinePart[];
   children?: ReactNode;
   className?: string;
@@ -35,12 +35,21 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function renderHighlightedText(text: string, highlightedText?: string) {
-  if (!highlightedText) return text;
+function renderHighlightedText(text: string, highlightedText?: string | string[]) {
+  const highlights = Array.isArray(highlightedText)
+    ? highlightedText.filter(Boolean)
+    : highlightedText
+      ? [highlightedText]
+      : [];
 
-  const parts = text.split(new RegExp(`(${escapeRegExp(highlightedText)})`, 'gi'));
+  if (!highlights.length) return text;
+
+  const escapedHighlights = highlights.map((highlight) => escapeRegExp(highlight));
+  const normalizedHighlights = new Set(highlights.map((highlight) => highlight.toLowerCase()));
+
+  const parts = text.split(new RegExp(`(${escapedHighlights.join('|')})`, 'gi'));
   return parts.map((part, index) =>
-    part.toLowerCase() === highlightedText.toLowerCase()
+    normalizedHighlights.has(part.toLowerCase())
       ? <span key={`${part}-${index}`} className="ws-headline__highlight">{part}</span>
       : part
   );

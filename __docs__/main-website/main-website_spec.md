@@ -1,6 +1,6 @@
 # Main Website Strategy Spec
 
-**Version:** 3.6.20 — Full Resource Locale Coverage
+**Version:** 3.6.33 — Business Health Campaign Page
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
@@ -13,6 +13,12 @@
 > May 23, 2026 agent-readable hardening update: active platform pages now emit page-level WebPage/Breadcrumb JSON-LD, homepage structured data is server-rendered, `https://menulist.ai` is the canonical discovery host, and the legacy `/product` redirect is removed from sitemap/LLM inventories.
 
 > June 1, 2026 resource localization update: `/resources` is now an evergreen content layer with reviewed English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish resource coverage. Locale-prefixed resource URLs are discovery surfaces only after full source-versioned packs pass verifier coverage; they must stay separate from owner app, customer menu runtime, Firebase, Answerlattice, Canonica, GrowthOS, KitStamp, and other same-repo product surfaces.
+
+> June 8, 2026 Business Health update: the homepage now carries one focused Business Health section because the owner dashboard, mobile screen, APIs, scheduler read models, cache hardening, action guards, and monitoring surface are implemented. Public strategy must frame it as the owner-dashboard check that shows what needs attention, not as an AI assistant, chatbot, revenue optimizer, prediction product, or autonomous public-truth writer.
+
+> June 8, 2026 Business Health Features update: the `/features` Operations group now also carries one compact Business Health card so the feature inventory matches the homepage USP. It must stay a calm owner-dashboard check claim: latest MenuList check, last checked date, customer attention, whether anything needs action, and No action needed when stable.
+
+> June 8, 2026 Business Health campaign update: `/features/business-health` is now the public marketing page for Business Health campaigns. `/business-health` remains the protected owner app route. The campaign page can explain the feature in more depth, but the claim boundary is unchanged: Business Health is an owner-dashboard check, not an AI assistant, chatbot, realtime sales monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-truth editor.
 
 ---
 
@@ -82,6 +88,8 @@ ChatGPT had zero awareness of these built features:
 16. **Menu Quality Signals** — Missing descriptions/images/prices flagged with one-tap fix
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
 18. **Customer Communication Kit** — Pre-written messages with menu link, address, hours
+19. **Business Health** — Owner-dashboard check that combines latest menu/public-surface state, cached customer attention, freshness, multi-location status, safe action routing, and No action needed state. It appears on the homepage, as the first `/features` Operations card, and as the dedicated public campaign page at `/features/business-health`.
+20. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage it from a phone, know what needs attention, and provide a clearer public source.
 
 **Rule:** Do not forget these capabilities in the website ecosystem. They are competitive advantages, but they do not all need to sit on the homepage at once.
 
@@ -99,12 +107,13 @@ ChatGPT had zero awareness of these built features:
 5. SurfacesSection          — Public output proof
 6. CustomerBrowseSection    — Customer-facing menu preview
 7. PreparedForYouSection    — Real-world rollout proof
-8. ResourcesSection         — Evergreen owner-useful resources
-9. FaqSection               — Questions answered
-10. FinalCtaSection         — Close with owner-approved menu CTA
+8. BusinessHealthSection    — Owner-dashboard check and No action needed proof
+9. ResourcesSection         — Evergreen owner-useful resources
+10. FaqSection              — Questions answered
+11. FinalCtaSection         — Close with owner-approved menu CTA
 ```
 
-**Rationale:** After showing the transformation and public-menu pain, immediately prove the workflow and public customer result. The older `SolutionSection` was removed because its one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof without adding new buyer evidence. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
+**Rationale:** After showing the transformation and public-menu pain, immediately prove the workflow and public customer result. Business Health is now the single focused owner-dashboard USP because it shows what happens after publishing without forcing the owner into raw analytics. The older `SolutionSection` was removed because its one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof without adding new buyer evidence. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
 
 ---
 

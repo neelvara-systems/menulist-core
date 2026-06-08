@@ -1,0 +1,35 @@
+import Footer from '@/components/website/Footer';
+import Header from '@/components/website/Header';
+import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
+import FeatureDetailPage from '@/components/website/features/FeatureDetailPage';
+import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
+import '@/styles/website.css';
+import { Metadata } from 'next';
+
+const title = 'Public Discovery - MenuList | Clear Business Information for Search and AI';
+const description = 'MenuList prepares clear public business information, structured pages, sitemap signals, and owner-controlled copy without promising rankings or AI placement.';
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: {
+    canonical: '/features/public-discovery',
+  },
+  openGraph: {
+    title,
+    description,
+    url: '/features/public-discovery',
+  },
+};
+
+export default function Page() {
+  return (
+    <div className="ws-page">
+      <WebsitePageStructuredData path="/features/public-discovery" title={title} description={description} />
+      <Header />
+      <FeatureDetailPage slug="public-discovery" />
+      <Footer />
+      <ScrollToTopButton />
+    </div>
+  );
+}

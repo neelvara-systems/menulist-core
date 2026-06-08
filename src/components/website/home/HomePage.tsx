@@ -1,4 +1,5 @@
 import StickyCta from '../shared/StickyCta';
+import BusinessHealthSection from './BusinessHealthSection';
 import CustomerBrowseSection from './CustomerBrowseSection';
 import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
@@ -21,6 +22,7 @@ export default function HomePage() {
       <SurfacesSection />
       <CustomerBrowseSection />
       <PreparedForYouSection />
+      <BusinessHealthSection />
       {FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES ? <ResourcesSection /> : null}
       <FaqSection />
       <FinalCtaSection />

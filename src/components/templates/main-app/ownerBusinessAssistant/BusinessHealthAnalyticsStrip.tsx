@@ -3,7 +3,9 @@ import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/use
 import type { OwnerBusinessAnalyticsIndexDoc, OwnerBusinessAnalyticsPeriod } from '@lib/ownerBusinessAssistant/types';
 import styles from './OwnerBusinessAssistant.module.scss';
 
-const formatCount = (value?: number) => new Intl.NumberFormat('en').format(
+const numberFormatter = new Intl.NumberFormat('en');
+
+const formatCount = (value?: number) => numberFormatter.format(
   typeof value === 'number' && Number.isFinite(value) ? value : 0,
 );
 

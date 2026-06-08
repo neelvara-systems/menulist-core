@@ -167,6 +167,15 @@ MenuList is a platform that helps small and medium businesses (restaurants, cafe
 Website: https://menulist.ai
 Contact: support@menulist.ai
 
+Feature pages:
+
+- https://menulist.ai/features/menu-import
+- https://menulist.ai/features/official-business-page
+- https://menulist.ai/features/qr-menu-links
+- https://menulist.ai/features/owner-phone-dashboard
+- https://menulist.ai/features/business-health
+- https://menulist.ai/features/public-discovery
+
 Industry pages:
 
 - https://menulist.ai/industries/restaurants

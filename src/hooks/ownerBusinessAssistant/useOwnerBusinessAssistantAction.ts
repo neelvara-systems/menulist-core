@@ -3,6 +3,7 @@ import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/
 import type {
   OwnerBusinessAssistantActionOperation,
   OwnerBusinessAssistantActionResult,
+  OwnerBusinessAssistantActionTargetKind,
 } from '@lib/ownerBusinessAssistant/types';
 
 export function useOwnerBusinessAssistantAction(projectId?: string) {
@@ -13,7 +14,7 @@ export function useOwnerBusinessAssistantAction(projectId?: string) {
   const runAction = useCallback(async (params: {
     operation: OwnerBusinessAssistantActionOperation;
     actionType: string;
-    targetKind?: string;
+    targetKind?: OwnerBusinessAssistantActionTargetKind;
     targetId?: string;
     draftId?: string;
     actionId?: string;

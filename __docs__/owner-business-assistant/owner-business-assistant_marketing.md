@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Internal positioning only; runtime implemented behind flags
-**Last Updated:** June 7, 2026
+**Status:** Internal positioning; runtime implemented behind flags; homepage section live
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -93,6 +93,20 @@ Use after implementation proof:
 - "The system is designed to read compact summaries instead of running expensive live scans."
 
 Do not mention model names, internal collection names, or scheduler details in sales material.
+
+## Public Website Placement
+
+The main MenuList homepage now includes Business Health as a dedicated owner-dashboard proof after the prepared owner-capability section and before Resources.
+
+Allowed public website framing:
+
+- "Business Health shows what needs attention."
+- "Latest MenuList check."
+- "No action needed."
+- "Uses data through the last settled business day."
+- "Answers come from cached MenuList data with source freshness."
+
+Do not move broader sales talking points onto the public homepage unless the runtime and cost proof still support them.
 
 ## Changelog Style
 

@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.30 (Website Signup Copy Consistency)
+**Version:** 3.6.34 (Feature Navigation And Campaign Pages)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 5, 2026
+**Last Updated:** June 8, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.30** | **Website Signup Copy Consistency** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.34** | **Feature Navigation And Campaign Pages** | **"Start from the menu you already have."** | **ACTIVE** |
+
+Version 3.6.34 adds a restrained Features dropdown to the desktop header and matching nested feature links to the mobile drawer. The dropdown promotes the highest-selling, owner-readable feature surfaces: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. New dedicated public campaign pages were added at `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`, while `/features/business-health` remains the existing Business Health campaign page. These routes are registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.33 adds the dedicated public campaign page `/features/business-health`. The page explains Business Health as MenuList's owner-dashboard check for latest business state, public surfaces, customer attention, last checked date, location state, safe next actions, and the No action needed stable state. The homepage Business Health section and the `/features` Business Health card now link to this page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. It does not use `/business-health`, which remains the protected owner app route. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.32 adds Business Health to the `/features` Operations group as the first compact capability card. The Features page now matches the homepage USP story without creating a separate Business Health landing page or analytics block. Copy stays limited to the latest MenuList check, last checked date, customer attention, whether anything needs action, and the No action needed stable state. This is a public website component import, locale, and docs update only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.31 adds a calm homepage Business Health section after the owner outcome/capability proof and before Resources. The public website now describes Business Health as an owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths. It does not position the feature as an AI assistant, chatbot, revenue optimizer, prediction system, or autonomous mutation surface. This is public website component/CSS/locale/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
 Version 3.6.30 aligns the public website copy with the current `/create-menu` sign-in-first setup path. `/get-started`, `/create-menu`, FAQ import copy, pricing guidance, customer-browse wording, supported-business wording, and How It Works setup claims now avoid upload-before-sign-in promises, recommendation-style language, broad catalog positioning, pushy Pro steering, and overbroad handwritten/photoshoot/copywriter claims. This is public website locale copy and docs only; routing, auth runtime, extraction, pricing/payment, billing, owner dashboard behavior, Firebase, Cloud Functions, and Vercel deployment were not changed.
 

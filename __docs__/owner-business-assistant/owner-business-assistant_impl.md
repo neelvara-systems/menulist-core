@@ -86,7 +86,7 @@ ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
 ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
 ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
 ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
-ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: true,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
 ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
 ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
@@ -521,15 +521,15 @@ Implemented registry entries:
 
 | Action | Owner request | Execution contract |
 | --- | --- | --- |
-| `navigate_business_health` / `open_business_health_detail` | "Show me more" | Navigate to `/business-health` |
+| `navigate_business_health` / `open_business_health_detail` | "Show me more" | Navigate to `/business-health`, preserving `projectId` when the owner is scoped to a selected menu |
 | `navigate_analytics` / `open_dashboard_analytics` | "Show analytics" | Navigate to `/dashboard` |
 | `navigate_menu` / `open_menu_editor_target` / `open_publish_screen` | "Open this item" / "Make it live" | Navigate to existing project editor path |
 | `open_qr_share` / `open_customer_app_settings` / `open_digital_screen_settings` | "Show QR/app/screen link" | Navigate to existing Share, Customer App, or Digital Screen surface |
 | `open_domain_settings` / `open_pos_sync_settings` / `open_billing` / `open_users_permissions` / `open_locations` | "Check domain/POS/credits/users/outlet" | Navigate only; no payment, DNS, role, or POS settings mutation |
 | `open_feedback_reviews` | "Show feedback" | Navigate to existing feedback surface |
 | `open_business_settings` / `open_hours_settings` / `open_public_info_settings` / `open_compliance_pages` | "Update business details" | Navigate to existing business settings surface |
-| `prepare_description_rewrite` / `menu_item_description_prepare` | "Rewrite this description" | Write a compact draft; existing editor remains the save path |
-| `prepare_review_reply` / `review_reply_prepare` | "Reply to this review" | Write a compact review-reply draft; no public posting |
+| `prepare_description_rewrite` / `menu_item_description_prepare` | "Rewrite this description" | Registered but disabled while `ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT=false`; do not expose until provider text generation and billing accounting are wired |
+| `prepare_review_reply` / `review_reply_prepare` | "Reply to this review" | Registered but disabled while `ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT=false`; no public posting |
 | `store_temp_status_set` / `store_temp_status_clear` | "Mark us closed today" / "Clear the notice" | Write a compact draft; existing temp-status path remains the public write path |
 | `mark_health_check_reviewed` / `dismiss_health_check` | "Done" / "Ignore this" | Write one compact action audit doc under the check-workflow flag; desktop/mobile suppress the check locally for the current business date |
 
@@ -632,8 +632,8 @@ Owner chat history:
 Dashboard placement:
 
 - Add `BusinessHealthDashboardCard` near the top of the owner dashboard.
-- The card is useful without chat and includes 2-3 compact analytics facts.
-- Add `BusinessHealthAnalyticsStrip` near the existing owner dashboard analytics area when the analytics index flag is enabled.
+- The card is useful without chat and shows current Health status, owner message, and freshness.
+- Add `BusinessHealthAnalyticsStrip` near the existing owner dashboard analytics area when the analytics index flag is enabled; analytics facts load from the scoped analytics-index hook instead of the Health card packet.
 - It opens `/business-health`.
 
 Existing fit:
@@ -719,7 +719,7 @@ src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantFeedback.ts
 
 Use SWR/local component state and the existing scheduler-day localStorage cache pattern. Do not put messages in Redux unless an existing global route contract forces it.
 
-Dashboard card, analytics strip, and full page hooks should read cached values first, matching `src/hooks/useOwnerDashboard.ts` and `src/lib/cache/swrLocalStorageProvider.ts`. The answer hook may pass a valid cached context packet or packet signature to `/answer`, but the server must still verify scope and freshness.
+Dashboard card, analytics strip, and full page hooks should read cached values first, matching `src/hooks/useOwnerDashboard.ts` and `src/lib/cache/swrLocalStorageProvider.ts`. Current Health is store-scoped and should not fragment the browser/SWR cache by selected menu. Analytics, answer, and project-aware action hooks keep selected-menu scope. The page-level Health hook should only gate current Health state; analytics loads through the analytics-index hook/strip so a slow or missing analytics index does not block the Health summary. The answer hook may pass a valid cached context packet or packet signature to `/answer`, but the server must still verify scope and freshness.
 
 Frontend must not write directly to assistant/action/thread collections. All writes go through protected API routes.
 

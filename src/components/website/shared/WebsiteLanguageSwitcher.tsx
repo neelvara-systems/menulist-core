@@ -153,6 +153,7 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
+                                    gap: '1rem',
                                     width: '100%',
                                     padding: '8px 14px',
                                     background: isActive ? (isFooter ? 'var(--ws-brand-light)' : 'var(--ws-bg-accent)') : 'none',
@@ -163,6 +164,7 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                                     color: isActive ? (isFooter ? 'var(--ws-panel-contrast-accent)' : 'var(--ws-brand-secondary)') : (isFooter ? 'var(--ws-panel-contrast-secondary)' : 'var(--ws-text-primary)'),
                                     textAlign: 'left',
                                     transition: 'background 0.15s',
+                                    whiteSpace: 'nowrap',
                                 }}
                                 onMouseEnter={e => {
                                     if (!isActive) e.currentTarget.style.background = isFooter ? 'var(--ws-panel-contrast-soft)' : 'var(--ws-bg-subtle)';
@@ -171,8 +173,8 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                                     if (!isActive) e.currentTarget.style.background = 'none';
                                 }}
                             >
-                                <span>{lang.nativeName}</span>
-                                <span style={{ fontSize: '0.75rem', color: isFooter ? 'var(--ws-panel-contrast-muted)' : 'var(--ws-text-muted)', fontWeight: 400 }}>
+                                <span style={{ minWidth: 0 }}>{lang.nativeName}</span>
+                                <span style={{ flexShrink: 0, fontSize: '0.75rem', color: isFooter ? 'var(--ws-panel-contrast-muted)' : 'var(--ws-text-muted)', fontWeight: 400 }}>
                                     {lang.label}
                                 </span>
                             </button>

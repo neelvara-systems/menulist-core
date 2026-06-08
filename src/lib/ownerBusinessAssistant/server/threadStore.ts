@@ -61,6 +61,7 @@ export async function persistOwnerBusinessAssistantExchange(params: {
   const tId = String(params.tId);
   const sId = String(params.sId);
   const userId = params.userId ? String(params.userId) : null;
+  const projectId = params.request.projectId || params.request.clientContext?.selectedProjectId || null;
   const now = Timestamp.now();
   const expiresAt = Timestamp.fromMillis(Date.now() + THREAD_RETENTION_MS);
   const threadRef = firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS).doc(threadId);
@@ -85,7 +86,7 @@ export async function persistOwnerBusinessAssistantExchange(params: {
         role: 'user',
         content: trimForStorage(params.request.question, 800),
         suggestedQuestionId: params.request.suggestedQuestionId || null,
-        projectId: params.request.projectId || null,
+        projectId,
         createdAt: now,
       },
       {

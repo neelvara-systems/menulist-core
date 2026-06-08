@@ -683,7 +683,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'digitalScreens') subScreenContent = <MobileDigitalScreensScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
     else if (subScreen === 'locations') subScreenContent = <MobileLocationsScreen onBack={() => setSubScreen('main')} onOpenBilling={() => setSubScreen('billing')} />;
     else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
+    else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenBusinessHealth={() => setSubScreen('businessHealth')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
     else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'printAssets') subScreenContent = <MobilePrintAssetsScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} onOpenPrintMenu={() => setSubScreen('printMenu')} />;
     else if (subScreen === 'printMenu') subScreenContent = <MobileMenuCardExportScreen initialProjectId={selectedProjectId} onBack={() => setSubScreen('main')} />;

@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.24 Public Truth Indexing Guardrail
-**Last Updated:** June 2, 2026
+**Status:** IMPLEMENTED — v3.6.33 Business Health Campaign Page
+**Last Updated:** June 8, 2026
 **Audience:** Developers
 
 ---
@@ -26,6 +26,12 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 |-------|------|-----------|------|----------|
 | `/` | `(website)/page.tsx` | `HomePage` | Server shell with client homepage sections | Default from layout + server JSON-LD |
 | `/features` | `(website)/features/page.tsx` | `FeaturesPage` | Server | Per-page `export const metadata` |
+| `/features/menu-import` | `(website)/features/menu-import/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/official-business-page` | `(website)/features/official-business-page/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/qr-menu-links` | `(website)/features/qr-menu-links/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/owner-phone-dashboard` | `(website)/features/owner-phone-dashboard/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/business-health` | `(website)/features/business-health/page.tsx` | `BusinessHealthFeaturePage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/public-discovery` | `(website)/features/public-discovery/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/how-it-works` | `(website)/how-it-works/page.tsx` | `ProductPage` | Server | Per-page |
 | `/pricing` | `(website)/pricing/page.tsx` | `PricingWrapper` | Server | Per-page |
 | `/about` | `(website)/about/page.tsx` | `AboutPage` | Server | Per-page |
@@ -49,7 +55,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 148 routes (8 core + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 149 routes (8 core + 1 feature campaign page + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
@@ -86,7 +92,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (10 sections plus sticky CTA, in order)
+## 4. Homepage Sections (11 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -99,11 +105,20 @@ LocalisationProvider (locale from next-intl/server)
 | 5 | Surfaces | `SurfacesSection.tsx` |
 | 6 | Customer Browse | `CustomerBrowseSection.tsx` |
 | 7 | Prepared For You | `PreparedForYouSection.tsx` |
-| 8 | Resources | `ResourcesSection.tsx` |
-| 9 | FAQ | `FaqSection.tsx` |
-| 10 | Final CTA | `FinalCtaSection.tsx` |
+| 8 | Business Health | `BusinessHealthSection.tsx` |
+| 9 | Resources | `ResourcesSection.tsx` |
+| 10 | FAQ | `FaqSection.tsx` |
+| 11 | Final CTA | `FinalCtaSection.tsx` |
 
 `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
+
+**Business Health homepage proof:** v3.6.31 adds `BusinessHealthSection.tsx` after `PreparedForYouSection` and before `ResourcesSection`. The section uses a localized product-style owner dashboard preview plus four compact proof cards to show latest check, No action needed state, freshness, cached analytics periods, safe action routing, multi-location/customer-attention awareness, and mobile support. It intentionally avoids AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, and autonomous public-truth mutation claims. This is public website component/CSS/locale/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+**Business Health Features-page proof:** v3.6.32 adds Business Health as the first compact Operations card in `FeaturesPage.tsx`. The card uses the shared `WebsiteFeatureCard` pattern and localized `Features.group4F0*` copy to explain latest MenuList check, last checked date, customer attention, whether anything needs action, and the No action needed stable state. Existing Operations cards shift down one index in the locale files. This is public website component import/locale/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+**Business Health campaign page:** v3.6.33 adds `/features/business-health` for marketing campaigns. The route shell lives in `src/app/(website)/features/business-health/page.tsx`, renders `BusinessHealthFeaturePage`, emits `WebsitePageStructuredData` with `path="/features/business-health"`, and uses a product-style Business Health preview followed by a MenuList-styled sticky story section modeled on Answerlattice's "From inputs to support surfaces" layout. The left rail tabs are `What it checks`, `Owner outcome`, and `Why owners can trust it`; the right side uses stacked sticky cards for the matching check/outcome/trust content. The homepage Business Health section links to the page through `View Business Health`, and the first `/features` Operations card is a link to the same route. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. `/business-health` remains the protected owner route and is not used as a public marketing URL.
+
+**Feature navigation and campaign pages:** v3.6.34 adds a compact Features dropdown to `Header.tsx`, backed by `src/components/website/features/featureNavigation.ts`. Desktop navigation promotes six owner-readable feature surfaces: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. Mobile navigation exposes the same nested links under Features. New feature campaign routes use the shared `FeatureDetailPage` and `featureDetailConfig.ts` for consistent hero, preview, story, proof, and CTA structure. Selected `/features` cards now link into these campaign pages. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 
@@ -163,6 +178,8 @@ The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DO
 
 **Staff access operations proof:** Stage 7.12 added one staff-access proof point to `SmartFeaturesSection.tsx`, one Operations card to `FeaturesPage.tsx`, and one FAQ entry. Copy is grounded in shipped staff management: email or Staff ID/passcode access, role assignment, passcode reset, and owner force sign-out. Staff/auth runtime, role/permission APIs, pricing/payment/auth, and create-menu runtime logic were not changed.
 
+**Business Health operations proof:** v3.6.32 adds one Business Health card to the Features page Operations group. It is intentionally a compact inventory proof, not a second homepage section, not a feature landing page, and not an analytics cross-map block. Copy stays inside the owner-dashboard-check boundary and avoids AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, and autonomous public-truth mutation claims.
+
 **Staff access policy alignment:** Stage 7.13 updated public Privacy Policy, Terms of Service, and Trust & Security content to reflect owner-managed staff identities, role/store-scoped access, passcode reset metadata, authorized team access, and owner session revocation controls. This was a content/security-disclosure alignment only; no staff/auth runtime behavior changed.
 
 **Homepage compression and demo proof:** Stage 8.0 compressed the homepage after live-site audit feedback. It moved `ProblemSection` directly after the hero, removed repetitive/advanced sections from the mounted homepage flow, added a header Demo link to `#customer-demo`, moved the hero secondary CTA to the customer preview, aligned hero microcopy with the 7-day setup pricing promise, changed the public wordmark to `MenuList`, and tightened security FAQ language. Pricing, payment, subscription, Razorpay, auth, onboarding, `/create-menu` extraction, POS Sync runtime, analytics runtime, and owner dashboard logic were not changed.
@@ -185,6 +202,7 @@ src/components/website/
 ├── about/AboutPage.tsx         — About page
 ├── contact/ContactPage.tsx     — Contact page
 ├── features/FeaturesPage.tsx   — Features page
+├── features/BusinessHealthFeaturePage.tsx — Business Health campaign page
 ├── get-started/GetStartedPage.tsx  — Get Started page
 ├── multi-location/MultiLocationPage.tsx — Multi-Location page
 ├── product/ProductPage.tsx     — How It Works page (used by /how-it-works route)

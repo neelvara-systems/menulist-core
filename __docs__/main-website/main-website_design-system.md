@@ -338,6 +338,45 @@ Rules:
 - Use the compact variant for dense supporting pages such as Features, Pricing decision cards, About principles, and Trust/Security pillars.
 - Do not copy Answerlattice colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
 
+### 5.2.2 Business Health Homepage Panel
+
+Use `src/components/website/home/BusinessHealthSection.tsx` as the homepage owner-dashboard USP proof. The section should feel like a MenuList dashboard check, not a chatbot demo or decorative illustration.
+
+Rules:
+
+- The visual is a product-style panel built from website tokens, not a separate gradient hero, stock image, or unrelated SVG illustration.
+- The panel must include status, freshness, a No action needed state, compact metrics, one owner question, and a source-backed answer.
+- Proof cards use the shared compact `WebsiteFeatureCard` pattern so the section stays visually connected to the rest of the homepage.
+- Green is used only for stable status and No action needed. Brand blue remains the action/context color.
+- Mobile layout collapses to one column, keeps the status badge readable, and avoids showing chat UI as the main promise.
+- Copy must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
+
+### 5.2.3 Business Health Campaign Page
+
+Use `src/components/website/features/BusinessHealthFeaturePage.tsx` for the dedicated public Business Health campaign page at `/features/business-health`.
+
+Rules:
+
+- Keep the page visually connected to the homepage Business Health panel through the same status, metric, and No action needed product-preview language.
+- Hero copy must stay outside a card; the dashboard preview is the visual proof, not a generic illustration.
+- Use a sticky stacked story section after the hero. It should follow the Answerlattice "From inputs to support surfaces" interaction pattern but use MenuList tokens, fonts, borders, and color behavior.
+- The sticky story left rail has three tabs only: What it checks, Owner outcome, and Why owners can trust it.
+- The right side uses three stacked sticky cards with compact product-proof panels. Do not turn the section into a generic tabbed content component or a carousel.
+- On mobile, convert the left rail into a sticky horizontal tab row and collapse cards to one column.
+- The public page must not use `/business-health` as its URL. That route belongs to the owner app.
+- Copy must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
+
+### 5.2.4 Shared Feature Campaign Pages
+
+Use `src/components/website/features/FeatureDetailPage.tsx` for the dedicated public feature pages added in v3.6.34: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, and Public Discovery.
+
+Rules:
+
+- Keep each page focused on one owner outcome, not a complete feature checklist.
+- Use the same split hero, proof preview, three story cards, four proof cards, and final CTA rhythm across these pages.
+- The header Features dropdown should link to these pages, but it should remain smaller and calmer than the Answerlattice product mega-menu.
+- Do not use unsupported ranking, AI-placement, POS replacement, or full business-automation claims.
+
 ### 5.3 Owner Reassurance Placement
 
 Use short reassurance copy only when it reduces a specific non-technical SMB owner doubt in context.

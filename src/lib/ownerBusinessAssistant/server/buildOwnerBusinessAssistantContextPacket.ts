@@ -24,6 +24,7 @@ import {
 import { buildOwnerBusinessDomainCapabilities } from './domainCapabilityMatrix';
 
 const nowIso = () => new Date().toISOString();
+const numberFormatter = new Intl.NumberFormat('en');
 
 const buildFallbackHealthDoc = (tId: string, sId: string): OwnerBusinessHealthCurrentDoc => ({
   version: 1,
@@ -57,7 +58,7 @@ const getDocSignature = (doc: { generatedAt?: string; localDate?: string; versio
   return `${doc.version || 1}:${doc.localDate || '_'}:${doc.generatedAt || '_'}`;
 };
 
-const formatCount = (value?: number) => new Intl.NumberFormat('en').format(
+const formatCount = (value?: number) => numberFormatter.format(
   typeof value === 'number' && Number.isFinite(value) ? value : 0,
 );
 

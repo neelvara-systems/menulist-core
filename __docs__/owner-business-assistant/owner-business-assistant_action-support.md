@@ -27,7 +27,7 @@ ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
 ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
 ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
 ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
-ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: true,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
 ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
 ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
@@ -70,14 +70,14 @@ The AI result is advisory. The `/action` route performs the real target resoluti
 
 ## Implemented Registered Action Catalog
 
-The implemented registry exposes safe navigation, compact draft storage, temporary-status draft storage, review-reply draft storage, and check workflow actions. Public-truth mutations are not executed directly by Business Health unless a registered adapter preserves the existing MenuList save, validation, audit, and cache-invalidation path.
+The implemented registry exposes safe navigation, compact temporary-status draft storage, and check workflow actions. Provider-text draft actions remain registered but disabled while `ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT=false`; they must not be exposed until the provider adapter and unit accounting are wired. Public-truth mutations are not executed directly by Business Health unless a registered adapter preserves the existing MenuList save, validation, audit, and cache-invalidation path.
 
 Successful low-risk navigation actions do not write audit docs by default. Blocked navigation, draft preparation, check workflow, permission failures, public-truth guard blocks, and risky outcomes remain auditable.
 
 | Action type | Owner request examples | Reuse path | Risk | Confirmation |
 | --- | --- | --- | --- | --- |
-| `navigate_business_health` | "Show me more" | `/business-health` route | Navigate | No |
-| `open_business_health_detail` | "Show me more" | `/business-health` route | Navigate | No |
+| `navigate_business_health` | "Show me more" | `/business-health` route, preserving selected `projectId` when present | Navigate | No |
+| `open_business_health_detail` | "Show me more" | `/business-health` route, preserving selected `projectId` when present | Navigate | No |
 | `navigate_analytics` | "Show analytics" | Existing dashboard analytics | Navigate | No |
 | `open_dashboard_analytics` | "Show analytics" | Existing dashboard analytics | Navigate | No |
 | `navigate_menu` | "Open the menu" | Existing editor route/context | Navigate | No |
@@ -96,10 +96,10 @@ Successful low-risk navigation actions do not write audit docs by default. Block
 | `open_users_permissions` | "Who can publish?" | Existing users/roles screen | Navigate | No |
 | `open_pos_sync_settings` | "Check POS connection" | Existing integrations/POS screen | Navigate | No |
 | `open_compliance_pages` | "Show privacy/refund pages" | Existing compliance settings | Navigate | No |
-| `prepare_description_rewrite` | "Rewrite this description" | Compact draft storage; owner completes save in existing editor | Draft/provider text | Existing editor confirmation |
-| `menu_item_description_prepare` | "Rewrite this description" | Compact draft storage; owner completes save in existing editor | Draft/provider text | Existing editor confirmation |
-| `prepare_review_reply` | "Reply to this review" | Compact review-reply draft storage | Draft/provider text | Owner copies/posts outside assistant |
-| `review_reply_prepare` | "Reply to this review" | Existing review suggestion API when owner supplies review text or compact review fact exists | Draft/provider text | Owner copies/posts outside assistant |
+| `prepare_description_rewrite` | "Rewrite this description" | Disabled until provider text adapter and billing accounting are wired | Draft/provider text | Existing editor confirmation |
+| `menu_item_description_prepare` | "Rewrite this description" | Disabled until provider text adapter and billing accounting are wired | Draft/provider text | Existing editor confirmation |
+| `prepare_review_reply` | "Reply to this review" | Disabled until provider text adapter and billing accounting are wired | Draft/provider text | Owner copies/posts outside assistant |
+| `review_reply_prepare` | "Reply to this review" | Disabled until provider text adapter and billing accounting are wired | Draft/provider text | Owner copies/posts outside assistant |
 | `store_temp_status_set` | "Mark us closed today" | Compact draft storage; existing temp-status screen/API remains source of truth | Draft/store public truth | Existing screen confirmation |
 | `store_temp_status_clear` | "Remove temporary status" | Compact draft storage; existing temp-status screen/API remains source of truth | Draft/store public truth | Existing screen confirmation |
 | `mark_health_check_reviewed` | "Done" | Assistant action audit doc | Check state | Yes |

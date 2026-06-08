@@ -34,7 +34,15 @@ Desktop route:
 /business-health
 ```
 
-Mobile mapping option A, preferred:
+Current mobile mapping:
+
+```ts
+'/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }
+```
+
+Business Health is currently kept as a More workspace, and dashboard entry points open the same `businessHealth` sub-screen through `MobileShell` state. Do not navigate mobile owners into a desktop route reload from Today, More, Share, or Menu.
+
+Historical mapping option A:
 
 ```ts
 '/business-health': { tab: 'today', todayScreen: 'dashboard', moreScreen: 'main' }
@@ -42,15 +50,13 @@ Mobile mapping option A, preferred:
 
 Use this if Business Health is placed as a Today/Dashboard experience.
 
-Mobile mapping option B:
+Historical mapping option B:
 
 ```ts
 '/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }
 ```
 
-Use this if Business Health is kept as a More workspace.
-
-Do not navigate mobile owners into a desktop route reload from Today, More, Share, or Menu.
+This is the implemented mapping.
 
 ## Required Mobile Files
 
@@ -71,17 +77,18 @@ Add to existing mobile registry:
 
 Mobile order:
 
-1. Header: Business Health, branch selector if needed, status, last checked.
-2. Summary card.
-3. Compact analytics periods: Today, This week, This month.
-4. Compact location summary for multi-store tenants only.
-5. Priority checks, max 3 visible.
-6. Suggested questions, 4-6 chips max only when source-backed health is ready.
-7. Answer panel.
-8. Actions as bottom sheet.
-9. Source/freshness disclosure.
+1. Mobile dashboard summary card: cached Business Health status, freshness, and selected-menu compact analytics before the detailed analytics tabs.
+2. Header on full Business Health screen: Business Health, branch selector if needed, status, last checked.
+3. Summary card.
+4. Compact analytics periods: Today, This week, This month.
+5. Compact location summary for multi-store tenants only.
+6. Priority checks, max 3 visible.
+7. Suggested questions, 4-6 chips max only when source-backed health is ready.
+8. Answer panel.
+9. Actions as bottom sheet.
+10. Source/freshness disclosure.
 
-Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` should render cached current/analytics packets first and fetch only when missing, stale, or after an explicit refresh.
+Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
 
 Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
 
@@ -89,7 +96,7 @@ The first mobile ask must create or reuse the local thread ID before calling `/a
 
 When Business Health is not source-backed yet, the mobile screen hides the Ask input and suggested questions. It shows large navigation shortcuts to Dashboard, Menu, Share, and Settings instead of presenting a disabled chat surface.
 
-Multi-location mobile summary reads `/api/owner-business-assistant/locations`, which returns one compact tenant summary doc filtered by `storesSummary` active state and mapped store access. It must not load every outlet's detailed Business Health packet.
+Multi-location mobile summary reads `/api/owner-business-assistant/locations`, which returns one compact tenant summary doc normalized for legacy row shape, filtered by `storesSummary` active state, and filtered by mapped store access. It must not load every outlet's detailed Business Health packet.
 
 Do not use:
 

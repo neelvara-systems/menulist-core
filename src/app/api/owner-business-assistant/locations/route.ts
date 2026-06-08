@@ -6,13 +6,19 @@ import { PERMISSIONS } from '@constant/permissions';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { getMappedStoreIdsForUser, isPlatformStoreAccessUser } from '@lib/multiOutlet/storeSwitchAccess';
-import { OWNER_BUSINESS_ASSISTANT_DOCS } from '@lib/ownerBusinessAssistant/constants';
+import {
+  OWNER_BUSINESS_ASSISTANT_DOCS,
+  OWNER_BUSINESS_HEALTH_STATUS_LABELS,
+} from '@lib/ownerBusinessAssistant/constants';
 import {
   applyOwnerBusinessAssistantRateLimit,
   ensureOwnerAssistantTenantAccess,
   getOwnerAssistantSessionScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
-import type { OwnerBusinessMultiLocationStoreSummary } from '@lib/ownerBusinessAssistant/types';
+import type {
+  OwnerBusinessHealthStatus,
+  OwnerBusinessMultiLocationStoreSummary,
+} from '@lib/ownerBusinessAssistant/types';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -24,6 +30,62 @@ const buildSessionUserForStoreAccess = (session: any, sId: string | number) => (
   storeIds: session?.user?.storeIds || session?.storeIds,
   stores: session?.user?.stores || session?.stores,
 });
+
+const STATUS_RANK: Record<OwnerBusinessHealthStatus, number> = {
+  needs_review: 0,
+  watch: 1,
+  stale: 2,
+  insufficient_data: 3,
+  not_ready: 4,
+  stable: 5,
+};
+
+const isOwnerBusinessHealthStatus = (value: unknown): value is OwnerBusinessHealthStatus =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(OWNER_BUSINESS_HEALTH_STATUS_LABELS, value);
+
+const cleanString = (value: unknown, maxLength: number) => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : undefined;
+};
+
+const cleanIdentifierString = (value: unknown, maxLength: number) => {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed.slice(0, maxLength) : undefined;
+};
+
+const cleanActionCount = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 99) : 0;
+};
+
+const cleanSourceFactIds = (value: unknown) => (
+  Array.isArray(value)
+    ? value
+      .map((id) => cleanIdentifierString(id, 120))
+      .filter((id): id is string => Boolean(id))
+      .slice(0, 20)
+    : []
+);
+
+const normalizeLocationStore = (value: unknown): OwnerBusinessMultiLocationStoreSummary | null => {
+  if (!value || typeof value !== 'object') return null;
+  const store = value as Record<string, unknown>;
+  const sId = cleanIdentifierString(store.sId, 80);
+  if (!sId) return null;
+
+  return {
+    sId,
+    storeName: cleanString(store.storeName, 120),
+    status: isOwnerBusinessHealthStatus(store.status) ? store.status : 'not_ready',
+    actionCount: cleanActionCount(store.actionCount),
+    lastCheckedAt: cleanString(store.lastCheckedAt, 80) || '',
+    localDate: cleanString(store.localDate, 40) || '',
+    topReason: cleanString(store.topReason, 180),
+    sourceFactIds: cleanSourceFactIds(store.sourceFactIds),
+  };
+};
 
 export const GET = withAuth(async (request: NextRequest, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
@@ -71,13 +133,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     return summary?.active !== false;
   };
   const stores = Object.values(rawStores)
-    .filter((store: any): store is OwnerBusinessMultiLocationStoreSummary => Boolean(store?.sId))
+    .map(normalizeLocationStore)
+    .filter((store): store is OwnerBusinessMultiLocationStoreSummary => Boolean(store))
     .filter((store) => isActiveStore(store.sId))
     .filter((store) => platformUser || mappedStoreIds.has(Number(store.sId)))
     .sort((left, right) => {
       if (left.status === right.status) return String(left.storeName || left.sId).localeCompare(String(right.storeName || right.sId));
-      const rank: Record<string, number> = { needs_review: 0, watch: 1, stale: 2, insufficient_data: 3, not_ready: 4, stable: 5 };
-      return (rank[left.status] ?? 9) - (rank[right.status] ?? 9);
+      return STATUS_RANK[left.status] - STATUS_RANK[right.status];
     });
 
   return NextResponse.json({

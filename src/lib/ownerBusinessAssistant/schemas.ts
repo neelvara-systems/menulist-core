@@ -29,6 +29,24 @@ export const OwnerBusinessAssistantClientContextSchema = z.object({
 }).strict();
 
 const OwnerBusinessAssistantThreadIdSchema = z.string().min(1).max(160).regex(/^[A-Za-z0-9_-]+$/);
+const OwnerBusinessAssistantActionTargetKindSchema = z.enum([
+  'project',
+  'menu_item',
+  'category',
+  'store',
+  'media',
+  'feedback',
+  'review',
+  'outlet',
+  'billing',
+  'domain',
+  'screen',
+  'customer_app',
+  'qr',
+  'pos',
+  'team',
+  'compliance',
+]);
 
 export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
   question: z.string().min(1).max(800),
@@ -42,8 +60,8 @@ export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
 export const OwnerBusinessAssistantActionRequestSchema = z.object({
   operation: z.enum(['navigate', 'prepare', 'confirm', 'cancel', 'mark_reviewed', 'dismiss', 'assign']),
   actionType: z.string().min(1).max(120),
-  projectId: z.string().max(160).optional(),
-  targetKind: z.string().max(80).optional(),
+  projectId: z.string().min(1).max(160).optional(),
+  targetKind: OwnerBusinessAssistantActionTargetKindSchema.optional(),
   targetId: z.string().max(180).optional(),
   draftId: z.string().max(180).optional(),
   actionId: z.string().max(180).optional(),

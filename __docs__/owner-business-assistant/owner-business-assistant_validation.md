@@ -269,6 +269,27 @@ npm run lint
 git diff --check
 ```
 
+June 8 mobile dashboard Business Health integration validation:
+
+```bash
+npx tsc --noEmit --incremental false --pretty false
+npm run verify:owner-business-assistant
+npm run lint
+git diff --check
+```
+
+Result:
+
+- TypeScript passed.
+- Owner Business Assistant hardening verifier passed.
+- App lint passed with no warnings or errors.
+- Diff whitespace check passed.
+- `npm run build` was intentionally not used for this focused app-side pass.
+- Desktop dashboard already renders `BusinessHealthDashboardCard` and `BusinessHealthAnalyticsStrip` near the dashboard top.
+- Mobile dashboard now renders `MobileBusinessHealthCard` before the detailed analytics tabs when Business Health dashboard flags are enabled and selected project/store scope exists.
+- Mobile dashboard Business Health reads are bounded to cached current Health plus selected-menu analytics-index hooks. Detailed analytics tabs continue to use the existing `useOwnerDashboard` / `useOBPDashboard` cache behavior.
+- Mobile dashboard "Open Business Health" stays inside `MobileShell` by switching to the `businessHealth` More sub-screen; it does not force a desktop route reload.
+
 Result:
 
 - TypeScript passed.
@@ -472,7 +493,7 @@ Result:
 
 ## Known Enablement Notes
 
-- No website copy was changed.
+- At this validation checkpoint, no website copy was changed. The later public homepage placement is recorded in "June 8 Website Placement Validation" below.
 - Owner-testable Business Health, Action Support, and Upstash packet cache flags are enabled. Provider-backed AI answers, confirmed writes, public-truth mutation, media actions, image provider actions, and POS-aware answers remain disabled for cost and safety.
 - Before enabling owner-visible UI, run manual QA on desktop dashboard, `/business-health`, mobile More screen, current/analytics/answer/action APIs, and scheduler/manual recovery output.
 - Public-truth direct assistant mutation remains intentionally guarded. Owners should be routed to existing MenuList editor/publish flows for menu/store truth changes until a verified adapter reuses the same cache invalidation and validation path.
@@ -558,3 +579,119 @@ Result:
 - Diff whitespace check passed.
 - App TypeScript passed.
 - App lint passed with no warnings or errors.
+
+## June 8 Final Production Hardening Pass
+
+Final cross-check focus:
+
+- Scalability and Firebase cost: avoid cache fragmentation, duplicate reads, stale multi-location rows, and avoidable audit writes.
+- Performance and latency: keep current Health independent from analytics-index loading and reuse hot-path number formatters.
+- Accuracy: keep selected-menu analytics scoped on desktop and mobile; preserve selected `projectId` when Action Support opens Business Health.
+- Code quality: normalize long-lived multi-location summary rows before sorting/counting and keep docs/test contracts aligned.
+
+Fixes:
+
+- Dashboard card, full desktop page, and mobile Business Health now read the store-level current Health packet without selected-menu cache fragmentation.
+- Desktop page current Health no longer waits on analytics-index loading or analytics errors; the analytics strip owns scoped analytics loading.
+- Mobile Business Health now reads selected-menu analytics from `useOwnerBusinessAnalyticsIndex` instead of `current.analyticsTeaser`.
+- `/api/owner-business-assistant/locations` now normalizes legacy summary row shape before active-store and permission filtering, including safe status, action count, source fact IDs, and string/numeric store IDs.
+- Action Support now preserves `projectId` when returning `/business-health?projectId=...` navigation links.
+- Server answer/context packet paths and analytics strips reuse module-level number formatters.
+- Provider-text draft actions are registered but not exposed: `ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT=false` until generated draft content and unit accounting are implemented end to end.
+- Analytics answers now refuse unsupported custom date ranges instead of falling back to today's packet; approved periods such as today, this week, last week, this month, and last month still resolve normally.
+
+End-to-end data-flow audit:
+
+- Nightly scheduler flow: `functions/src/decisionBlocksScoring.ts` calls `buildAndWriteOwnerBusinessHealthSnapshot()` after store analytics settlement for active stores only. The builder reads deterministic analytics dashboard/today docs for up to 10 active projects, builds store aggregate periods plus `projectSummaries[projectId]`, writes compact `platformSummary` docs, and invalidates server context packets.
+- Saved scheduler docs: `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}`, `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`, optional `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}`, and tenant-wide `platformSummary/ownerBusinessHealthMultiLocation_{tId}.stores.{sId}`.
+- Owner read flow: dashboard/mobile/current Health reads use the `health_card` packet and remain store scoped; analytics strips and typed analytics answers use the `analytics_periods` or `owner_question_actionable` packet and remain selected-menu scoped when `projectId` is present.
+- Owner question flow: frontend sends `question`, optional `projectId`, optional `threadId`, suggested-question id, and compact client context. The server derives `tId/sId/userId` from session, validates request payloads with Zod, builds the context packet cache-first, classifies approved intents, refuses unsupported custom dates/domains, validates source fact IDs, optionally stores one bounded thread doc, and optionally logs one compact answer event.
+- Action flow: frontend sends registered `operation/actionType/targetKind/targetId/projectId/payload`. The action route validates payload shape, checks session/tenant/rate limit, validates target kind against the registry, validates project membership through compact project summary before project-doc fallback, writes only drafts/audits for enabled non-navigation paths, and keeps direct public-truth/provider-text/media writes disabled.
+- Monitoring flow: `/api/platform/owner-business-assistant/monitor` reads capped answer events, actions, and feedback collections only. It serializes compact question/answer text, route metrics, provider/cost fields, source coverage, action usage, and feedback without exposing raw provider payloads, prompts, secrets, or unbounded transcripts.
+
+Validation commands:
+
+```bash
+npm run verify:owner-business-assistant
+git diff --check
+npx tsc --noEmit --incremental false --pretty false
+npm run build:verify
+npm run lint
+npm run build
+npm --prefix functions run build
+npm --prefix functions run lint
+PORT=3029 npm run start
+curl -sS -o /tmp/business-health.html -w '%{http_code} %{content_type}\n' -H 'x-forwarded-proto: https' http://localhost:3029/business-health
+curl -sS -o /tmp/business-health-project.html -w '%{http_code} %{content_type}\n' -H 'x-forwarded-proto: https' 'http://localhost:3029/business-health?projectId=test-project'
+curl -sS -o /tmp/oba-monitor.html -w '%{http_code} %{content_type}\n' -H 'x-forwarded-proto: https' http://localhost:3029/platform/owner-business-assistant
+```
+
+Protected API smoke against the same production server:
+
+```bash
+/api/owner-business-assistant/current    -> 401 application/json
+/api/owner-business-assistant/analytics  -> 401 application/json
+/api/owner-business-assistant/locations  -> 401 application/json
+/api/owner-business-assistant/answer     -> 401 application/json
+/api/owner-business-assistant/action     -> 401 application/json
+/api/owner-business-assistant/feedback   -> 401 application/json
+/api/owner-business-assistant/thread/test-thread -> 401 application/json
+/api/platform/owner-business-assistant/monitor   -> 401 application/json
+```
+
+Result:
+
+- Targeted Business Health hardening verifier passed.
+- Diff whitespace check passed.
+- App TypeScript passed.
+- `build:verify` passed.
+- App lint passed with no warnings or errors.
+- Full Next production build passed.
+- Functions TypeScript build passed.
+- Functions lint passed with the existing Pages directory warning from the Functions ESLint setup.
+- `/business-health`, `/business-health?projectId=test-project`, and `/platform/owner-business-assistant` returned HTTP 200 HTML from the built server.
+- Protected owner Business Health APIs and the internal platform monitor API returned expected unauthenticated 401 JSON.
+- Headless Chrome visual smoke against local HTTP was not accepted as route proof because middleware redirects plain local HTTP to `https://localhost:3029/...` unless the request carries the expected forwarded-proto header; authenticated owner-device QA remains required for visual sign-off.
+- No Firebase Functions/rules/index changes were made in this pass, so no Firebase deploy was required.
+
+## June 8 Website Placement Validation
+
+Website scope:
+
+- Added `src/components/website/home/BusinessHealthSection.tsx`.
+- Mounted it in `src/components/website/home/HomePage.tsx` after `PreparedForYouSection` and before `ResourcesSection`.
+- Added website token-based CSS under `.ws-business-health*`.
+- Added `Website.BusinessHealth` copy to `en-US` and `hi-IN`; other partial website locales fall back through the existing `en-US` deep-merge contract.
+- Updated main website docs, Business Health website docs, marketing notes, design-system notes, and changelog.
+
+Copy validation:
+
+- Public homepage copy frames Business Health as an owner-dashboard check, not an AI assistant, chatbot, revenue optimizer, prediction engine, competitor monitor, realtime sales monitor, or autonomous menu editor.
+- Public copy uses freshness language: "Uses data through the last settled business day."
+- Public copy keeps direct public-truth writes out of the promise: "Public changes stay inside the normal publish flow."
+
+Validation commands:
+
+```bash
+node -e "const fs=require('fs'); for (const f of fs.readdirSync('public/locales/menulist.ai').filter(f=>f.endsWith('.json'))) JSON.parse(fs.readFileSync('public/locales/menulist.ai/'+f,'utf8')); console.log('locale json ok')"
+node -e "const fs=require('fs'); const en=JSON.parse(fs.readFileSync('public/locales/menulist.ai/en-US.json','utf8')).Website.BusinessHealth; const hi=JSON.parse(fs.readFileSync('public/locales/menulist.ai/hi-IN.json','utf8')).Website.BusinessHealth; const bad=/AI|assistant|chatbot|realtime|revenue|predict|competitor|autonomous|automatic/i; for (const [name,obj] of [['en',en],['hi',hi]]) for (const [k,v] of Object.entries(obj)) if (bad.test(String(v))) console.log(name+'.'+k+': '+v); console.log('business health locale scan done')"
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+git diff --check
+```
+
+Route smoke:
+
+- `npm run dev -- -p 3030`
+- `curl -sSI -H 'Host: menulist.ai' http://127.0.0.1:3030/` returned HTTP 200.
+- `curl -sS -H 'Host: menulist.ai' http://127.0.0.1:3030/` included `BusinessHealthSection` in the server response.
+
+Result:
+
+- Locale JSON parse passed.
+- Business Health visible-copy forbidden-claim scan passed.
+- TypeScript passed.
+- App lint passed with no warnings or errors.
+- Diff whitespace check passed.
+- Public homepage route smoke passed.
+- No owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment changed in this website pass.

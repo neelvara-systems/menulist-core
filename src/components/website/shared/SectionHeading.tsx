@@ -5,7 +5,7 @@ interface SectionHeadingProps {
   subtitle?: string;
   centered?: boolean;
   as?: 'h1' | 'h2' | 'h3';
-  highlightedText?: string;
+  highlightedText?: string | string[];
   fontSize?: string;
 }
 

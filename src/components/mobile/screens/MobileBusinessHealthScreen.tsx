@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessAssistantAction } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAction';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
 import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantThread';
+import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { useOwnerBusinessLocationsSummary } from '@hook/ownerBusinessAssistant/useOwnerBusinessLocationsSummary';
 import { buildOwnerBusinessHealthCheckStateKey } from '@lib/ownerBusinessAssistant/checkStateStorage';
@@ -11,6 +12,8 @@ import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant
 import { formatOwnerBusinessHealthDateKey, getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
 import type {
     OwnerBusinessAssistantActionOption,
+    OwnerBusinessAnalyticsIndexDoc,
+    OwnerBusinessAnalyticsPeriod,
     OwnerBusinessHealthCheck,
     OwnerBusinessHealthQuestion,
 } from '@lib/ownerBusinessAssistant/types';
@@ -28,12 +31,43 @@ interface MobileBusinessHealthScreenProps {
     onBack: () => void;
 }
 
+const numberFormatter = new Intl.NumberFormat('en');
+
+const formatCount = (value?: number) => numberFormatter.format(
+    typeof value === 'number' && Number.isFinite(value) ? value : 0,
+);
+
+const firstAvailablePeriod = (
+    periods: OwnerBusinessAnalyticsIndexDoc['periods'] | undefined,
+) => periods?.today
+    || periods?.thisWeek
+    || periods?.last7Days
+    || periods?.yesterday
+    || null;
+
+const buildMobileAnalyticsMetrics = (
+    period: OwnerBusinessAnalyticsPeriod | undefined,
+) => {
+    if (!period) return [];
+    const topItem = period.topItems?.[0];
+    return [
+        { key: 'primary', label: period.label, value: `${formatCount(period.metrics.menuVisits)} visits` },
+        topItem ? {
+            key: 'top-item',
+            label: 'Top item',
+            value: topItem.name || topItem.itemId,
+            delta: `${formatCount(topItem.value)} ${topItem.signal}`,
+        } : null,
+    ].filter(Boolean) as Array<{ key: string; label: string; value: string; delta?: string }>;
+};
+
 export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHealthScreenProps) {
     const { token } = theme.useToken();
     const router = useRouter();
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const { selectedProjectId } = useMobileProjects();
-    const { current, isLoading, refresh } = useOwnerBusinessHealthCurrent(selectedProjectId || undefined, storeDetails?.storeId);
+    const { current, isLoading, refresh } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
+    const { analytics } = useOwnerBusinessAnalyticsIndex(selectedProjectId || undefined, storeDetails?.storeId);
     const { answer, ask, threadId, lastQuestion, isLoading: isAnswering } = useOwnerBusinessAssistantAnswer(selectedProjectId || undefined, {
         currentRoute: '/business-health',
         mobileTab: 'more',
@@ -106,6 +140,10 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
     const visibleChecks = useMemo(
         () => (current?.suggestedChecks || []).filter((check) => !suppressedCheckIds.has(check.id)),
         [current?.suggestedChecks, suppressedCheckIds],
+    );
+    const analyticsMetrics = useMemo(
+        () => buildMobileAnalyticsMetrics(firstAvailablePeriod(analytics?.periods)),
+        [analytics?.periods],
     );
     const getLocationStatusColor = (status: string) => {
         if (status === 'stable') return 'success';
@@ -351,12 +389,16 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                     </Flex>
                 </Card>
 
-                {current?.analyticsTeaser ? (
-                    <Card title="Today">
+                {analyticsMetrics.length ? (
+                    <Card title="Analytics">
                         <Flex gap={8} vertical>
-                            {current.analyticsTeaser.today ? <Metric label={current.analyticsTeaser.today.label} value={current.analyticsTeaser.today.value} /> : null}
-                            {current.analyticsTeaser.thisWeek ? <Metric label={current.analyticsTeaser.thisWeek.label} value={current.analyticsTeaser.thisWeek.value} /> : null}
-                            {current.analyticsTeaser.topItem ? <Metric label={current.analyticsTeaser.topItem.label} value={current.analyticsTeaser.topItem.value} /> : null}
+                            {analyticsMetrics.map((metric) => (
+                                <Metric
+                                    key={metric.key}
+                                    label={metric.label}
+                                    value={metric.delta ? `${metric.value} - ${metric.delta}` : metric.value}
+                                />
+                            ))}
                         </Flex>
                     </Card>
                 ) : null}

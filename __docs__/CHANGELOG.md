@@ -6,6 +6,51 @@
 
 ---
 
+## June 8, 2026 — Feature Navigation And Campaign Pages
+
+### New
+
+- **Features dropdown added to the main website header** - Desktop navigation now opens a compact Features dropdown for Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. Mobile navigation exposes the same feature links under Features.
+- **Dedicated feature campaign pages added** - New public pages were added at `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`. The existing `/features/business-health` campaign page remains unchanged and is included in the dropdown.
+- **Feature cards wired to campaign pages** - The selected cards on `/features` now link to their dedicated feature pages instead of acting only as static cards.
+- **Discovery artifacts updated** - Platform discovery, static sitemap, `llms.txt`, and `llms-full.txt` now list the new feature URLs.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website navigation, route, component, CSS, locale, discovery, and documentation work only. It does not change owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
+## June 8, 2026 — Business Health Website Placement
+
+### New
+
+- **Business Health added to the main website** - The homepage now includes a dedicated Business Health section after the prepared owner-capability proof and before Resources. It presents Business Health as the owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths.
+- **Business Health added to Features** - The `/features` Operations group now starts with a compact Business Health card covering the latest MenuList check, last checked date, customer attention, whether anything needs action, and the No action needed stable state.
+- **Business Health campaign page added** - The public marketing URL `/features/business-health` now explains Business Health as the owner-dashboard check for latest business state, public surfaces, customer attention, last checked date, location state, safe next actions, and No action needed when stable. `/business-health` remains the logged-in owner app route.
+- **Business Health campaign page layout upgraded** - The campaign page now uses a MenuList-styled sticky story layout modeled on Answerlattice's "From inputs to support surfaces" section, with left-side tabs for What it checks, Owner outcome, and Why owners can trust it.
+
+### Fixed
+
+- **Business Health sticky story stack fixed** - The campaign page story section now uses a pinned viewport with layered cards, so the stack stays fixed while the left tabs and right-side cards progress through What it checks, Owner outcome, and Why owners can trust it.
+
+### Cost
+
+- **No Firebase cost change** - This is a static public website route/component/CSS/locale/discovery/docs update only. It does not change owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
+## June 8, 2026 — Business Health Data-Flow Hardening
+
+### Improved
+
+- **Mobile dashboard shows Business Health summary** - The mobile analytics dashboard now shows the cached Business Health status, freshness note, and selected-menu compact analytics before the detailed analytics tabs. It uses the same current and analytics-index hooks as the Business Health screen and stays disabled until a selected project and store scope exist.
+
+### Fixed
+
+- **Business Health request scope validation tightened** - Current and analytics APIs now validate query scope with the shared Business Health schema, and the desktop route normalizes `projectId` before it reaches client cache keys or answer requests.
+- **Unsupported custom analytics dates refused** - Owner questions with custom date ranges no longer fall back to today; Business Health answers only from approved cached periods such as today, this week, last week, this month, and last month.
+- **Business Health action targets validated** - Action requests now validate target kind against the registered target enum and the executor rejects target kinds not allowed for the selected action.
+- **Provider-text actions hidden until complete** - Description/review provider-text draft actions remain registered but disabled until generated draft content and AI unit accounting are wired end to end.
+- **Monitoring write counts corrected** - Answer events, thread writes, and action audits now report write counts that include the monitoring/audit write itself.
+- **Thread project scope preserved** - One-doc-per-chat thread history now records the selected menu from either request `projectId` or validated client context.
+
 ## June 8, 2026 — Business Health Cache And Location Hardening
 
 ### Fixed
@@ -13,6 +58,11 @@
 - **Project-scoped analytics strip corrected** - Business Health analytics strip now reads the analytics-index packet for the selected menu instead of using store-wide current Health teaser data.
 - **Location summary cache scoped** - Multi-location Business Health SWR cache keys now include tenant/store scope so store switching cannot reuse the previous locations response.
 - **Deactivated outlets hidden from Business Health locations** - The locations API now filters multi-location rows through `storesSummary` active state before returning them.
+- **Legacy location rows sanitized** - The locations API normalizes old multi-location summary rows before sorting/counting them, so malformed `status`, `sourceFactIds`, or numeric store IDs cannot break the response.
+- **Business Health page loads independently from analytics** - The page-level Health hook now reads only current Health state; the analytics strip loads its own scoped analytics index separately.
+- **Current Health cache no longer fragments by menu** - Dashboard, desktop page, and mobile Business Health now read the store-level current Health packet while analytics, answers, and actions keep selected-menu scope.
+- **Mobile analytics scoped to selected menu** - Mobile Business Health now reads compact analytics through the same selected-menu analytics-index hook instead of using store-wide Health teaser data.
+- **Business Health action navigation keeps selected menu** - Action Support now preserves `projectId` when routing owners back into `/business-health`.
 - **Business Health browser cache guard added** - Current, analytics, and location read-model caches now expire after a short local stale window, so missed browser invalidation cannot keep same-day Health facts pinned all day.
 - **Business Health packet invalidation indexed** - Upstash packet writes now maintain a store-scoped packet-key index for exact invalidation, with a bounded legacy cleanup sweep for old unindexed keys.
 - **Location freshness made explicit** - Desktop and mobile multi-location rows now show per-outlet check freshness so mixed outlet rebuild times are not shown as one global timestamp.

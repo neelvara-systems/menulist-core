@@ -154,6 +154,12 @@ Do not claim:
 | --- | --- | --- |
 | `/` | MenuList - One Official Menu Source for Customers | Primary product-led homepage |
 | `/features` | Features - MenuList \| No Extra Work for Your Menu | Product capability overview |
+| `/features/menu-import` | Menu Import - MenuList \| Upload the Menu You Already Have | Upload/import campaign page |
+| `/features/official-business-page` | Official Business Page - MenuList \| One Current Customer Link | Official public business page campaign |
+| `/features/qr-menu-links` | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | QR/share campaign page |
+| `/features/owner-phone-dashboard` | Owner Phone Dashboard - MenuList \| Manage Your Menu Without a Desktop | Mobile owner workflow campaign |
+| `/features/business-health` | Business Health - MenuList \| Know What Needs Attention | Business Health campaign page |
+| `/features/public-discovery` | Public Discovery - MenuList \| Clear Business Information for Search and AI | Search/answer-system source clarity campaign |
 | `/how-it-works` | How MenuList Works - From Current Menu to Official Public Source | Explains upload, review, publish, and public surfaces |
 | `/multi-location` | Multi-Location Menu Management - MenuList \| One Menu, Every Outlet | Multi-location product proof |
 | `/pricing` | Pricing - MenuList \| Simple, Transparent Plans for Every Business | Commercial decision page |

@@ -48,7 +48,7 @@ export async function logOwnerBusinessAssistantAction(params: {
     message: params.result.message,
     route: params.result.metrics?.route || '/api/owner-business-assistant/action',
     firestoreReadCount: params.result.metrics?.firestoreReadCount ?? null,
-    firestoreWriteCount: params.result.metrics?.firestoreWriteCount ?? null,
+    firestoreWriteCount: (params.result.metrics?.firestoreWriteCount ?? 0) + 1,
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromMillis(Date.now() + ACTION_AUDIT_RETENTION_MS),
     source: 'owner_business_assistant',
