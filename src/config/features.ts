@@ -919,6 +919,46 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_OWNER_ANALYTICS_AI_SUMMARIES: false,
 
+    /**
+     * Owner Business Assistant / Business Health
+     *
+     * Cost-first owner operating surface backed by scheduler-built summaries.
+     * Owner-testable paths are enabled; provider spend and direct public-truth
+     * mutation remain separately gated for cost and safety.
+     *
+     * Core read models:
+     * - platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
+     * - platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
+     *
+     * Action Support is separately gated so read-only Business Health can stay
+     * enabled if action preparation or confirmed writes need to be disabled.
+     *
+     * @see __docs__/owner-business-assistant/
+     */
+    ENABLE_OWNER_BUSINESS_HEALTH: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_PAGE: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
+    ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
+    ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_POS_AWARE_ANSWERS: false,
+    ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: true,
+    ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: true,
+    ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
+    ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
+    ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
+    ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
+    ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: true,
+    ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
+    ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
+
     // ═══════════════════════════════════════════════════════════════
     // POS WEBHOOK SYNC (Menu Snapshot Broadcast)
     // ═══════════════════════════════════════════════════════════════

@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health Action Support
 **Internal Slug:** owner-business-assistant-action-support
 **Product:** MenuList
-**Status:** Final plan freeze, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind dedicated Action Support flags
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -21,15 +21,15 @@ The AI answering layer may suggest actions only from the cached `OwnerBusinessAs
 ## Flags
 
 ```ts
-ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: false,
-ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: false,
-ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: false,
+ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: true,
+ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: true,
+ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
 ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
 ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
 ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
-ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: true,
 ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
-ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: false,
+ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
 
 `ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` must be independent.
@@ -68,14 +68,19 @@ When an owner asks for a change, the AI may return an action option only if:
 
 The AI result is advisory. The `/action` route performs the real target resolution, draft creation, confirmation, and execution.
 
-## Day-One Supported Action Catalog
+## Implemented Registered Action Catalog
+
+The implemented registry exposes safe navigation, compact draft storage, temporary-status draft storage, review-reply draft storage, and check workflow actions. Public-truth mutations are not executed directly by Business Health unless a registered adapter preserves the existing MenuList save, validation, audit, and cache-invalidation path.
 
 | Action type | Owner request examples | Reuse path | Risk | Confirmation |
 | --- | --- | --- | --- | --- |
+| `navigate_business_health` | "Show me more" | `/business-health` route | Navigate | No |
 | `open_business_health_detail` | "Show me more" | `/business-health` route | Navigate | No |
+| `navigate_analytics` | "Show analytics" | Existing dashboard analytics | Navigate | No |
 | `open_dashboard_analytics` | "Show analytics" | Existing dashboard analytics | Navigate | No |
+| `navigate_menu` | "Open the menu" | Existing editor route/context | Navigate | No |
 | `open_menu_editor_target` | "Open this item" | Existing editor route/context | Navigate | No |
-| `open_publish_screen` | "Make this live" | Existing publish/share screen | Navigate | No unless in-assistant publish is enabled |
+| `open_publish_screen` | "Make this live" | Existing publish/editor screen | Navigate | No |
 | `open_feedback_reviews` | "Show feedback" | Existing feedback/review surfaces | Navigate | No |
 | `open_business_settings` | "Update business details" | Existing business settings | Navigate | No |
 | `open_hours_settings` | "Change today's hours" | Existing hours/settings screen | Navigate | No |
@@ -89,22 +94,14 @@ The AI result is advisory. The `/action` route performs the real target resoluti
 | `open_users_permissions` | "Who can publish?" | Existing users/roles screen | Navigate | No |
 | `open_pos_sync_settings` | "Check POS connection" | Existing integrations/POS screen | Navigate | No |
 | `open_compliance_pages` | "Show privacy/refund pages" | Existing compliance settings | Navigate | No |
-| `menu_item_price_set` | "Change Paneer Tikka to 220" | Project mutation adapter over existing `updateProject()` invariants | Public truth | Yes |
-| `menu_item_price_bulk_adjust` | "Increase selected prices by 10%" | Command Center pricing pure functions | Public truth | Yes |
-| `menu_item_availability_set` | "Mark this sold out" | Command Center availability pure functions | Public truth | Yes |
-| `menu_item_visibility_set` | "Hide this item" | Command Center active/inactive pure functions | Public truth | Yes |
-| `menu_item_move_category` | "Move these to Specials" | Command Center move-category pure functions | Public truth | Yes |
-| `menu_item_description_prepare` | "Rewrite this description" | Existing description generation helpers/accounting | Draft/provider text | Yes before save |
-| `menu_missing_descriptions_prepare` | "Add missing descriptions" | Existing description generation and repair flow | Draft/provider text | Yes before save |
-| `menu_item_image_upload_open` | "Update this image" | Existing item image upload flow | Navigate/draft | Owner selects file |
-| `menu_item_image_generate_prepare` | "Generate image for this item" | Existing image generation route/accounting | Draft/provider image | Yes before save |
-| `menu_item_image_attach_confirm` | "Use this image" | Existing media upload/associate item image path | Public truth | Yes |
-| `menu_repair_prepare` | "Fix menu gaps" | Existing Command Center repair flow | Draft/provider text | Yes before save |
-| `store_temp_status_set` | "Mark us closed today" | Existing temp-status API/server adapter | Store public truth | Yes |
-| `store_temp_status_clear` | "Remove temporary status" | Existing temp-status API/server adapter | Store public truth | Yes |
+| `prepare_description_rewrite` | "Rewrite this description" | Compact draft storage; owner completes save in existing editor | Draft/provider text | Existing editor confirmation |
+| `menu_item_description_prepare` | "Rewrite this description" | Compact draft storage; owner completes save in existing editor | Draft/provider text | Existing editor confirmation |
+| `prepare_review_reply` | "Reply to this review" | Compact review-reply draft storage | Draft/provider text | Owner copies/posts outside assistant |
 | `review_reply_prepare` | "Reply to this review" | Existing review suggestion API when owner supplies review text or compact review fact exists | Draft/provider text | Owner copies/posts outside assistant |
-| `check_mark_reviewed` | "Done" | Assistant check workflow doc | Draft/check state | Yes |
-| `check_dismiss` | "Ignore this" | Assistant check workflow doc | Draft/check state | Yes |
+| `store_temp_status_set` | "Mark us closed today" | Compact draft storage; existing temp-status screen/API remains source of truth | Draft/store public truth | Existing screen confirmation |
+| `store_temp_status_clear` | "Remove temporary status" | Compact draft storage; existing temp-status screen/API remains source of truth | Draft/store public truth | Existing screen confirmation |
+| `mark_health_check_reviewed` | "Done" | Assistant action audit doc | Check state | Yes |
+| `dismiss_health_check` | "Ignore this" | Assistant action audit doc | Check state | Yes |
 
 ## Blocked Actions
 
@@ -112,6 +109,7 @@ These actions are refused in the day-one contract:
 
 - Delete items or categories.
 - Bulk delete.
+- Direct in-assistant price, availability, visibility, image attach, publish, or store-public writes that bypass existing MenuList save flows.
 - Change every price without preview.
 - Publish public truth without explicit confirmation.
 - Buy credits, change subscription, or make payments.
@@ -129,8 +127,8 @@ Action Support must reuse existing systems:
 
 | Existing system | Action use |
 | --- | --- |
-| `CommandCenterModal/utils/bulkOperations.ts` | Price, availability, move category, show/hide pure transformations |
-| `src/database/projects/index.ts` `updateProject()` path | Public menu truth save invariants, MCE, MOL, multi-outlet awareness, cache invalidation |
+| `CommandCenterModal/utils/bulkOperations.ts` | Required if a public-truth mutation adapter is registered |
+| `src/database/projects/index.ts` `updateProject()` path | Required for public menu truth save invariants, MCE, MOL, multi-outlet awareness, cache invalidation |
 | `publishProject()` | Publish behavior and menu snapshots |
 | `descriptionGeneration.shared.ts` and `descriptionUtils.ts` | Add/rewrite descriptions with manual edit protection |
 | `prepareMediaImage()`, `uploadFile()`, `associateItemImagesWithProject()` | Item image upload/attach |
@@ -167,8 +165,8 @@ Drafts store:
 
 - Target IDs.
 - Target fingerprint.
-- Proposed patch.
-- Preview summary.
+- Proposed patch or payload.
+- Preview summary when available.
 - Expiry.
 - Source question/intent ID.
 
@@ -187,14 +185,11 @@ Action Support has no cost on Business Health page open when disabled.
 | Flow | Reads | Writes |
 | --- | ---: | ---: |
 | Navigate action from cached packet | 0 Firestore reads | 0-1 audit |
-| Prepare price/availability/show-hide/move draft | 1 project read | 1 draft + 1 action audit |
-| Prepare description draft | 1 project read + provider accounting if generated | 1 draft + AI operation writes |
-| Prepare image generation draft | 1 project read + provider accounting if generated | 1 draft + AI operation writes + existing image output |
-| Prepare temporary status set/clear | 1 compact store/target read | 1 draft + 1 action audit |
-| Prepare review reply | 0 Firestore reads when owner provides review text; provider accounting if generated | 1 draft/action audit + AI operation writes |
-| Confirm public menu write | 1 draft + 1 target read | Existing project write + action audit |
-| Confirm temporary status write | 1 draft + 1 target read | Existing temp-status/store write + action audit |
-| Mark/dismiss check | 0-1 | 1 compact check/action write |
+| Prepare description draft | 0 Firestore reads in assistant draft path; provider work is separate and flag-gated | 1 draft + 1 action audit |
+| Prepare temporary status set/clear | 0 Firestore reads in assistant draft path | 1 draft + 1 action audit |
+| Prepare review reply | 0 Firestore reads when owner provides review text | 1 draft + 1 action audit |
+| Confirm public menu/store write | Not exposed directly by Business Health | Existing screen handles save and cache invalidation |
+| Mark/dismiss check | 0 | 1 compact action audit write |
 
 No action route may scan analytics, feedback, review, menu change logs, or all projects.
 

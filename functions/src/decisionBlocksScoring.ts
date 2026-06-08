@@ -21,6 +21,7 @@ import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
+import type { OwnerBusinessHealthBuildResult } from './ownerBusinessAssistant/types';
 
 /**
  * UNIFIED NIGHTLY SCHEDULER (Timezone-Aware)
@@ -139,6 +140,7 @@ interface StoreNightlySchedulerResult {
     intelligenceFailed: number;
     errors: SchedulerFailureDiagnostic[];
     analytics: NightlyAnalyticsCounters;
+    ownerBusinessHealth?: OwnerBusinessHealthBuildResult;
     enrichment?: { lastPublishedAt: any; projectCount: number };
 }
 
@@ -961,6 +963,38 @@ async function runNightlySchedulerForStore(
             throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
         }
 
+        if (FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
+            try {
+                const { buildAndWriteOwnerBusinessHealthSnapshot } = await import('./ownerBusinessAssistant/buildOwnerBusinessHealthSnapshot');
+                storeRun.ownerBusinessHealth = await buildAndWriteOwnerBusinessHealthSnapshot({
+                    db,
+                    tId,
+                    sId,
+                    storeInfo,
+                    activeProjects: projectEntries,
+                    runAt: analyticsRunAt,
+                    businessDayEndTime,
+                });
+            } catch (ownerBusinessHealthError: any) {
+                appLogger.error('[OwnerBusinessAssistant] Business Health build failed', ownerBusinessHealthError, {
+                    tId,
+                    sId,
+                    phase: 'owner_business_health',
+                });
+                storeRun.ownerBusinessHealth = {
+                    enabled: true,
+                    builderReadCount: 0,
+                    builderWriteCount: 0,
+                };
+                storeRun.errors.push(buildSchedulerFailureDiagnostic(ownerBusinessHealthError, {
+                    tId,
+                    sId,
+                    phase: 'owner_business_health',
+                    operation: 'build_snapshot',
+                }));
+            }
+        }
+
         for (const { projectId, data: projectData } of projectEntries) {
             try {
                 const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
@@ -1188,9 +1222,19 @@ export const computeDecisionBlocksScores = onSchedule({
             obpStoresWithData: 0,
             intelligenceSnapshotMissing: 0,
         };
+        const ownerBusinessHealthResults = {
+            storesAttempted: 0,
+            storesSucceeded: 0,
+            storesFailed: 0,
+            builderReadCount: 0,
+            builderWriteCount: 0,
+        };
         const { aggregateCustomerAnalyticsForStoreDate } = await import('./aggregateCustomerAnalytics');
         const { aggregateOBPAnalyticsForStoreDate } = await import('./analytics/obpAnalyticsAggregation');
         const { resolveAnalyticsAiEntitlement } = await import('./analytics/analyticsAiEntitlements');
+        const ownerBusinessHealthBuilder = FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+            ? (await import('./ownerBusinessAssistant/buildOwnerBusinessHealthSnapshot')).buildAndWriteOwnerBusinessHealthSnapshot
+            : null;
 
         // Infrastructure Compounding 10.3: Collect enrichment data during loop,
         // write once at end (replaces per-store writes — saves N-1 writes)
@@ -1312,6 +1356,32 @@ export const computeDecisionBlocksScores = onSchedule({
                 } catch (analyticsError: any) {
                     analyticsResults.storesFailed++;
                     throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
+                }
+
+                if (ownerBusinessHealthBuilder) {
+                    ownerBusinessHealthResults.storesAttempted++;
+                    try {
+                        const ownerBusinessHealthResult = await ownerBusinessHealthBuilder({
+                            db,
+                            tId,
+                            sId,
+                            storeInfo,
+                            activeProjects: projectEntries,
+                            runAt: analyticsRunAt,
+                            businessDayEndTime,
+                        });
+                        ownerBusinessHealthResults.storesSucceeded++;
+                        ownerBusinessHealthResults.builderReadCount += ownerBusinessHealthResult.builderReadCount;
+                        ownerBusinessHealthResults.builderWriteCount += ownerBusinessHealthResult.builderWriteCount;
+                    } catch (ownerBusinessHealthError: any) {
+                        ownerBusinessHealthResults.storesFailed++;
+                        appLogger.error('[OwnerBusinessAssistant] Business Health build failed', ownerBusinessHealthError, {
+                            tId,
+                            sId,
+                            phase: 'owner_business_health',
+                        });
+                        results.errors.push({ tId, sId, error: ownerBusinessHealthError.message || String(ownerBusinessHealthError) });
+                    }
                 }
 
                 // Process EACH project
@@ -1470,6 +1540,16 @@ export const computeDecisionBlocksScores = onSchedule({
                 obpStoresWithData: analyticsResults.obpStoresWithData,
                 intelligenceSnapshotMissing: analyticsResults.intelligenceSnapshotMissing,
             },
+        });
+        taskResults.push({
+            name: 'owner_business_health',
+            status: !FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+                ? 'skipped'
+                : ownerBusinessHealthResults.storesFailed > 0
+                    ? (ownerBusinessHealthResults.storesSucceeded > 0 ? 'success' : 'failed')
+                    : 'success',
+            durationMs: Date.now() - analyticsTaskStart,
+            details: ownerBusinessHealthResults,
         });
 
         // Authority Maturation Analysis (Item 3: Expand Nightly Job Coverage)
@@ -2225,6 +2305,15 @@ export const triggerStoreNightlyScheduler = onCall({
                 status: storeRun.analytics.storesFailed > 0 ? (storeRun.analytics.storesSucceeded > 0 ? 'success' : 'failed') : 'success',
                 details: storeRun.analytics,
             },
+            {
+                name: 'owner_business_health',
+                status: !FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+                    ? 'skipped'
+                    : storeRun.ownerBusinessHealth?.currentDocId
+                        ? 'success'
+                        : 'failed',
+                details: storeRun.ownerBusinessHealth || { enabled: FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH },
+            },
         ];
 
         await writeRunLog({
@@ -2255,6 +2344,7 @@ export const triggerStoreNightlyScheduler = onCall({
             intelligenceSuccess: storeRun.intelligenceSuccess,
             intelligenceFailed: storeRun.intelligenceFailed,
             analytics: storeRun.analytics,
+            ownerBusinessHealth: storeRun.ownerBusinessHealth,
             errorCount: storeRun.errors.length,
         });
 
@@ -2270,6 +2360,7 @@ export const triggerStoreNightlyScheduler = onCall({
             intelligenceSuccess: storeRun.intelligenceSuccess,
             intelligenceFailed: storeRun.intelligenceFailed,
             analytics: storeRun.analytics,
+            ownerBusinessHealth: storeRun.ownerBusinessHealth,
             errors: storeRun.errors,
         };
     } catch (error: any) {

@@ -22,6 +22,7 @@
 
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
+import { FEATURE_FLAGS } from '@config/features';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
@@ -42,6 +43,8 @@ import WeeklyView from './WeeklyView';
 
 import CustomerAppMetrics from '../AnalyticsDashboard/CustomerAppMetrics';
 import OBPMetricsCard from './OBPMetricsCard';
+import { BusinessHealthAnalyticsStrip } from '../../ownerBusinessAssistant/BusinessHealthAnalyticsStrip';
+import { BusinessHealthDashboardCard } from '../../ownerBusinessAssistant/BusinessHealthDashboardCard';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
@@ -254,6 +257,16 @@ const OwnerDashboard: React.FC = () => {
                         onReady={handleProjectSelectorReady}
                     />
                 </Flex>
+
+                {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+                    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD
+                    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_PAGE ? (
+                    <BusinessHealthDashboardCard projectId={activeProjectId || undefined} />
+                ) : null}
+
+                {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX ? (
+                    <BusinessHealthAnalyticsStrip projectId={activeProjectId || undefined} />
+                ) : null}
 
                 <Flex
                     justify="space-between"

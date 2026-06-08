@@ -28,6 +28,8 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0.0020, // Upload preflight identity/readability check
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0.0080, // Public draft extraction
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0.0016, // Analytics summary narrative
+    [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER]: 0.0016, // Grounded owner answer over cached packet
+    [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT]: 0.0016, // Owner-approved action draft text
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0.0016, // Support answer generation
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0.0002, // Article/query embedding
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0.0020, // KB article translation
@@ -71,6 +73,8 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0, // Upload guardrail — free setup operation
     [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0, // Public lead/intake operation — absorbed by platform
     [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0, // Internal analytics summary — absorbed by platform
+    [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER]: 0, // Deterministic/grounded owner assistant answers are absorbed unless later monetized
+    [AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT]: 1, // Owner-requested text rewrite/draft inside Action Support
     [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0, // Support/control-plane operation — not owner pack usage
     [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0, // Support/control-plane operation — not owner pack usage
     [AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION]: 0, // Answerlattice/control-plane operation — not MenuList owner pack usage

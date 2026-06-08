@@ -530,6 +530,82 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     };
 }
 
+async function deleteExpiredDocs(params: {
+    collection: string;
+    now: Timestamp;
+    limit?: number;
+    kind?: string;
+}): Promise<{ scanned: number; deleted: number }> {
+    const snapshot = await db
+        .collection(params.collection)
+        .where('expiresAt', '<=', params.now)
+        .limit(params.limit || 50)
+        .get();
+    const batch = db.batch();
+    let deleted = 0;
+
+    for (const doc of snapshot.docs) {
+        if (params.kind && doc.data().kind !== params.kind) continue;
+        batch.delete(doc.ref);
+        deleted++;
+    }
+
+    if (deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, deleted };
+}
+
+async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult> {
+    const healthEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH');
+    const actionEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_ACTION_SUPPORT');
+    const actionDraftsEnabled = actionEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_ACTION_DRAFTS');
+    const usageLoggingEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING');
+    const threadsEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_THREADS');
+    if (!healthEnabled && !actionEnabled && !usageLoggingEnabled && !threadsEnabled) {
+        return { activity: false, details: { enabled: false } };
+    }
+
+    const now = Timestamp.now();
+    const skippedCleanup = { scanned: 0, deleted: 0, skipped: true };
+    const [snapshots, actions, drafts, answerEvents, feedback, threads] = await Promise.all([
+        healthEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.PLATFORM_SUMMARY, now, limit: 50, kind: 'ownerBusinessHealthSnapshot' })
+            : Promise.resolve(skippedCleanup),
+        actionEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ACTIONS, now, limit: 50 })
+            : Promise.resolve(skippedCleanup),
+        actionDraftsEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_DRAFTS, now, limit: 50 })
+            : Promise.resolve(skippedCleanup),
+        usageLoggingEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS, now, limit: 50 })
+            : Promise.resolve(skippedCleanup),
+        usageLoggingEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK, now, limit: 50 })
+            : Promise.resolve(skippedCleanup),
+        threadsEnabled
+            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS, now, limit: 50 })
+            : Promise.resolve(skippedCleanup),
+    ]);
+    const deleted = snapshots.deleted + actions.deleted + drafts.deleted + answerEvents.deleted + feedback.deleted + threads.deleted;
+
+    return {
+        activity: deleted > 0,
+        details: {
+            enabled: true,
+            deleted,
+            snapshots,
+            actions,
+            drafts,
+            answerEvents,
+            feedback,
+            threads,
+        },
+    };
+}
+
 async function runAlertEscalation(): Promise<MaintenanceTaskResult> {
     const muted = await isAlertsMuted();
     if (muted) {
@@ -639,6 +715,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 4, minuteUtc: 0, retryAfterMinutes: 60 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runMessagingSessionCleanup,
+    },
+    {
+        name: 'owner_business_assistant_cleanup',
+        cadence: { type: 'daily', hourUtc: 4, minuteUtc: 30, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runOwnerBusinessAssistantCleanup,
     },
 ];
 

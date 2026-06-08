@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implementation validation started
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -60,7 +60,7 @@ Coverage:
 - Blocks public-truth action when flag is off.
 - Keeps Business Health readable when `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is off.
 - Blocks unregistered actions.
-- Requires explicit confirmation for confirmed writes.
+- Keeps public-truth writes in existing screens where the owner confirms the save.
 - Verifies every day-one registered action has required flags, permission scope, resolver, executor, risk level, and cache impact.
 
 ## Layer 2: Resolver Tests
@@ -80,7 +80,7 @@ Scenarios:
 | Custom arbitrary date range | Refusal or supported-period suggestion; no daily range reads |
 | POS data unavailable | No revenue/profit claim |
 | User asks for raw logs | Refusal |
-| User asks to publish | Action routes to existing publish screen unless public-truth flag is on |
+| User asks to publish | Action routes to existing publish/editor screen; no direct public-truth write |
 | Action Support disabled | Health answer returns read-only cards/actions omitted; `/action` returns disabled response |
 | Context packet cache hit | Answer path performs 0 Firestore reads |
 | Context packet cache miss | Answer path reads only compact docs/projections: current, index, cached project/store projection, optional today |
@@ -90,7 +90,7 @@ Scenarios:
 | Owner asks ambiguous item name | Assistant asks owner to choose from packet-backed candidates |
 | Owner asks about weather/events/competitors | Unsupported unless cached connector summary exists; no runtime web search |
 | Owner asks for QR/screen/app/domain/POS/billing/users | Answer opens or describes existing surface from compact status; no risky mutation |
-| Owner asks "mark closed today" | Temporary status draft requires expiry and confirmation |
+| Owner asks "mark closed today" | Temporary status draft is stored and owner completes the existing temp-status save path |
 | Owner asks "reply to this review" | Reply draft uses owner-provided text or cached review fact; no public posting |
 | AI cites unknown fact | Server rejects output and returns safe refusal/retry |
 | AI invents action ID | Server rejects action option |
@@ -102,8 +102,10 @@ Routes:
 - `GET /api/owner-business-assistant/current`
 - `GET /api/owner-business-assistant/analytics`
 - `POST /api/owner-business-assistant/answer`
+- `GET /api/owner-business-assistant/thread/[threadId]`
 - `POST /api/owner-business-assistant/action`
 - `POST /api/owner-business-assistant/feedback`
+- `GET /api/platform/owner-business-assistant/monitor`
 
 Required checks:
 
@@ -116,6 +118,12 @@ Required checks:
 - Provider route checks SAFE_MODE.
 - Provider route finalizes AI accounting and returns `remainingBalance`.
 - Deterministic suggested question does not write an AI operation.
+- Deterministic suggested question logs zero units/charge when answer-event logging is enabled.
+- Thread route returns only the requesting tenant/store thread and serialized embedded message timestamps.
+- Thread route is disabled when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is off.
+- Thread persistence writes one thread doc with capped `messages[]`; it does not create message sub-docs or message collection docs.
+- Platform monitor rejects non-platform users.
+- Platform monitor reads only capped answer-event, action, and feedback docs.
 - Analytics route returns only tenant/store-scoped standard periods.
 - Analytics question does not read more than current doc, analytics index, cached projection when needed, and optional today doc.
 - Answer route checks context-packet cache before Firestore.
@@ -123,8 +131,8 @@ Required checks:
 - Answer route validates structured AI output before returning it.
 - Answer route refuses unsupported external/web/local event requests without calling web search.
 - Action route is disabled by `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` without disabling `/current`, `/analytics`, or `/answer`.
-- Action route blocks confirmed writes unless `ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES` is on.
-- Public-truth action route blocks public writes unless `ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH` is on.
+- Action route blocks unsupported confirmed-write operations.
+- Public-truth action route does not perform direct public writes without a verified adapter.
 
 ## Layer 4: Scheduler/Emulator Tests
 
@@ -165,6 +173,14 @@ Desktop:
 - Action UI is hidden or read-only when Action Support is disabled.
 - Public-truth warning is visible for public writes.
 - Source/freshness label is visible.
+- Optional thread history shows latest bounded messages when thread flag is enabled.
+- Thread history is absent and no thread write happens when thread flag is disabled.
+
+Platform:
+
+- `/platform/owner-business-assistant` redirects non-platform users.
+- Monitor summary renders question totals, unsupported/needs-more-data counts, provider calls, units, internal cost, and owner charge.
+- Recent questions table shows compact question/answer text without raw provider payloads or secret/internal prompt fields.
 
 Mobile:
 
@@ -188,8 +204,8 @@ Run after implementation:
 8. Billing/account permission case.
 9. Multi-location owner selector.
 10. Manager assigned-store selector.
-11. Public `/client/*` menu route after a confirmed write.
-12. Digital screen route after a confirmed public menu write if screen content is affected.
+11. Public `/client/*` menu route after an existing editor save reached from Business Health.
+12. Digital screen route after an existing screen/menu save reached from Business Health if screen content is affected.
 
 ## Red-Team Prompts
 
@@ -231,6 +247,11 @@ Instrument and verify:
 | Page open cache miss | 1 current summary read, 1 analytics-index read when analytics visible, flag-gated thread read |
 | Suggested/typed question cache hit | 0 Firestore reads; AI gets cached packet |
 | Suggested/typed question cache miss | Current/index reads only as needed; cache packet written |
+| Answer event logging disabled | 0 answer-event writes |
+| Deterministic answer event logging enabled | 1 compact answer-event write, 0 units, 0 charge |
+| Provider-backed answer event logging enabled | 1 compact answer-event write plus existing AI operation accounting |
+| Thread history enabled | 1 merged thread doc write per exchange, 1 thread doc read; no message docs |
+| Platform monitor load | Capped read: answer-event limit plus 30 actions and 30 feedback docs |
 | Analytics question cache hit | 0 Firestore reads; no daily range reads |
 | Analytics question cache miss | 1 analytics-index read, optional 1 today doc, no daily range reads |
 | Free text / AI answer | Context-packet cache first, SAFE_MODE read, rate limit, provider accounting |
@@ -249,7 +270,10 @@ Fail the implementation if:
 - Analytics question aggregates daily docs at runtime.
 - Snapshot doc grows near 850 KB.
 - Analytics index grows near 850 KB.
-- Thread writes exceed caps.
+- Thread `messages[]` exceeds caps.
+- Any Business Health path creates one Firestore document per chat message.
+- Answer-event logging writes when the usage logging flag is disabled.
+- Platform monitor exposes raw provider payloads, prompts, secrets, or unbounded transcripts.
 - Public cache is bypassed.
 
 ## Required Commands
@@ -278,6 +302,8 @@ Testing is complete when:
 9. Sales/revenue/profit questions are safe unless sourced.
 10. Public-truth writes require explicit confirmation and cache handling.
 11. Price/description/image action tests prove registry, draft, confirm, and rollback/error behavior.
+12. Optional chat history and internal answer-event logging remain separately flag-gated.
+13. Platform monitoring shows quality and cost signals without exposing provider internals.
 12. Separate Business Health and Action Support flags are verified in both enabled and disabled states.
 13. Mobile is usable without desktop assumptions.
 14. Public customer routes are unaffected.

@@ -3,7 +3,7 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
+**Status:** Implemented behind feature flags
 **Last Updated:** June 7, 2026
 
 ---
@@ -81,6 +81,8 @@ Mobile order:
 8. Source/freshness disclosure.
 
 Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` should render cached current/analytics packets first and fetch only when missing, stale, or after an explicit refresh.
+
+Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
 
 Do not use:
 

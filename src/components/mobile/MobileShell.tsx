@@ -35,6 +35,7 @@ type MobileRouteState = { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'h
 const MOBILE_ROUTE_DEFAULT: MobileRouteState = { tab: 'today', todayScreen: 'main', moreScreen: 'main' };
 const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
     '/dashboard': MOBILE_ROUTE_DEFAULT,
+    '/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' },
     '/today': MOBILE_ROUTE_DEFAULT,
     '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
     '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },
@@ -96,6 +97,7 @@ const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
 ];
 const SELECTED_PROJECT_DATA_MORE_SCREENS: MoreSubScreen[] = [
     'dashboard',
+    'businessHealth',
     'designEditor',
     'printAssets',
     'printMenu',

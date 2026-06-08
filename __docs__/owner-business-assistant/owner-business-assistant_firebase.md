@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind feature flags; Firebase rules/functions deployed
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -12,7 +12,7 @@
 
 - **Primary collection:** `platformSummary` (existing)
 - **Primary docs:** `ownerBusinessHealthCurrent_{tId}_{sId}`, `ownerBusinessAnalyticsIndex_{tId}_{sId}`, `ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`
-- **New Firestore collections:** None for analytics; separately flag-gated workflow collections for Action Support drafts/actions, threads, and feedback
+- **New Firestore collections:** None for analytics; separately flag-gated workflow collections for Action Support drafts/actions, owner history, internal answer events, and feedback
 - **New Firebase Storage paths:** None for Business Health itself; Action Support image flows must use existing media upload paths and store only references in drafts
 - **New standalone scheduled functions:** None
 - **Scheduler owner:** `functions/src/decisionBlocksScoring.ts` for snapshot generation
@@ -89,13 +89,15 @@ These docs are part of the complete architecture, but they are written only by p
 
 | Collection | Operation | Retention | Notes |
 | --- | --- | --- | --- |
-| `ownerBusinessAssistantThreads` | READ/WRITE | 30 days | Bounded history mode |
-| `ownerBusinessAssistantMessages` | READ/WRITE | 30 days | Cap 20 messages per thread |
+| `ownerBusinessAssistantThreads` | READ/WRITE | 30 days | Bounded history mode; written only when the thread flag is enabled and the client supplies `threadId`; stores capped `messages[]` in the same doc |
 | `ownerBusinessAssistantActions` | READ/WRITE | 90 days | Action audit for prepare/confirm/cancel/review flows |
 | `ownerBusinessAssistantDrafts` | READ/WRITE/DELETE | 7 days | Drafts only; no public truth |
+| `ownerBusinessAssistantAnswerEvents` | WRITE/READ | 180 days | Internal monitoring only; compact question/answer/event metadata written only under `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` |
 | `ownerBusinessAssistantFeedback` | WRITE | 90 days | Small feedback events |
 
-Suggested-question answers can remain stateless even when the Business Health page is enabled.
+Suggested-question answers remain stateless unless the thread flag is enabled and the client supplies a bounded `threadId`.
+Business Health must not create one Firestore document per chat message.
+Answer-event logging is not owner chat history. It is a platform-only observation stream for answer quality, unsupported gaps, action exposure, and cost review.
 
 ## Scheduler Cost Model
 
@@ -190,6 +192,7 @@ The Upstash/server cache value must contain reusable business facts only. Reques
 | --- | ---: | ---: | --- |
 | Context packet cache hit | 0 Firestore + 1 cache op | 0-1 | AI/resolver answers from packet; optional aggregate usage write |
 | Context packet cache miss | 1-3 | 0-1 | Current doc + analytics index + cached public project/store projection only as needed; then cache packet |
+| Answer event logging | 0 | 0-1 | Only under usage logging flag; deterministic answers write zero units/charge |
 
 ### Analytics Question
 
@@ -199,6 +202,7 @@ The Upstash/server cache value must contain reusable business facts only. Reques
 | Resolve period intent cache miss | 0-1 | 0 | Reuse current doc when already loaded |
 | Load analytics index cache miss | 1 | 0 | Standard periods only |
 | Today overlay cache miss | 0-1 | 0 | Only for `today` or current-period answers if freshness flag is enabled |
+| Answer event logging | 0 | 0-1 | Compact internal observation event only when usage logging is enabled |
 
 Custom arbitrary periods are not allowed to read N daily docs at question time. They must be refused or pre-added to the analytics index by scheduler work.
 
@@ -211,11 +215,12 @@ Only under `ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS` / `ENABLE_OWNER_BUSINESS_HE
 | Context packet cache hit | 0 Firestore + 1 cache op | 0 | Required before provider call |
 | Context packet cache miss | 1-3 | 0-1 cache write | Compact docs only; never raw ranges |
 | SAFE_MODE check | 1 | 0 | Existing `ops_config/system` read, only when cost protection enabled |
-| Capped thread read | 0-2 | 0 | Optional |
-| Message persistence | 0 | 0-2 | Optional |
+| Capped thread read | 0-1 | 0 | Optional; one `ownerBusinessAssistantThreads/{threadId}` doc includes `messages[]` |
+| Message persistence | 0 | 0-1 | Optional; one merged thread write, no message sub-docs |
 | Usage aggregate | 0 | 0-1 | Value events only |
 | AI operation accounting | 0 | 1+ | Only actual provider calls |
 | Credit consumption | 0+ | 1+ | Existing AI capacity path |
+| Answer event logging | 0 | 0-1 | Logs provider-used/cost summary after the answer; does not replace AI operation accounting |
 
 Provider calls must use:
 
@@ -224,6 +229,54 @@ Provider calls must use:
 - `src/lib/ai/accounting.ts:20-67`
 - `src/lib/ai/operationLog.ts:71-132`
 - `src/services/ai/balanceSync.ts:1-32`
+
+### Answer Event Logging
+
+`src/lib/ownerBusinessAssistant/server/answerEventLogger.ts` writes one compact document per answer only when `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` is enabled.
+
+Stored fields are intentionally bounded:
+
+- Tenant/store/user/project identifiers.
+- Optional thread and suggested-question IDs.
+- Trimmed question and answer text.
+- Intent, status, confidence, freshness, cache source/key, source fact count/IDs, action count, and artifact count.
+- Provider-used flag, AI action ID, units, internal paise cost, owner paise charge, and billing mode.
+- `createdAt` and `expiresAt`.
+
+Cost rule:
+
+- Deterministic/template answers write `providerUsed=false`, `unitsConsumed=0`, `realCostPaise=0`, `ownerChargePaise=0`, and `billingMode='free'`.
+- Provider-backed answers may log configured units/costs, but billing still requires the existing AI operation accounting and capacity path. Answer events are monitoring records, not the billing ledger.
+
+Retention:
+
+- Answer events expire after 180 days.
+- Cleanup runs inside `menulistMaintenanceScheduler` using the shared expired-doc deletion pattern.
+- Cleanup is flag-specific: answer events and feedback are queried only when usage logging is enabled; thread docs only when thread history is enabled. Messages are embedded in the thread doc and expire with it.
+
+### Internal Platform Monitor
+
+Route:
+
+```text
+GET /api/platform/owner-business-assistant/monitor?limit=75
+```
+
+UI:
+
+```text
+/platform/owner-business-assistant
+```
+
+The monitor is platform-only and reads:
+
+| Source | Read cap per load | Purpose |
+| --- | ---: | --- |
+| `ownerBusinessAssistantAnswerEvents` | `limit`, capped 10-100 | Recent questions, answer statuses, unsupported gaps, provider/cost summary |
+| `ownerBusinessAssistantActions` | 30 | Recent Action Support usage |
+| `ownerBusinessAssistantFeedback` | 30 | Recent owner feedback |
+
+This dashboard is not owner-facing and should not run as an always-on listener. It is an on-demand operational review view.
 
 ## Action Cost Model
 
@@ -295,9 +348,9 @@ Core read model:
 
 Optional persistent collections:
 
-- Need tenant-scoped create/read/update rules if used.
-- Client should still write through APIs, so rules can be strict or server-only.
-- No broad indexes unless product requires querying history; deterministic document IDs are preferred.
+- Assistant workflow, answer-event, and feedback collections are server-only in `firestore.rules`.
+- Client should write/read through protected APIs, so direct client rules remain deny-all.
+- No broad indexes are required for Business Health chat history. The thread route reads one deterministic `ownerBusinessAssistantThreads/{threadId}` doc and returns its capped `messages[]` array.
 
 ## Cost Guardrails
 
@@ -327,7 +380,9 @@ Monitoring thresholds:
 | Current doc > 850 KB | Compact facts or split optional blocks |
 | Analytics index > 850 KB | Reduce period payload/top-list caps |
 | Provider calls without cache lookup/accounting | Disable AI answer path |
-| Thread writes per session > 20 messages | Cap or disable persistence |
+| Thread `messages[]` length > 20 | Trim to first exchange plus latest messages or disable persistence |
+| Answer-event writes without usage logging flag | Disable answer-event logger and inspect feature gate |
+| Monitor load reads exceed 160 docs | Lower monitor limit or add date filters |
 | Snapshot build reads grow with raw events | Rework to use summaries |
 
 ## Monthly Cost Estimate
@@ -353,6 +408,8 @@ Assumptions:
 | Analytics answer Firestore reads | 600-6,000 | Depends on cache hit rate; index plus optional today overlay only on miss |
 | Server cache operations | 4,000-8,000 | Upstash/server cache ops; feature-flagged optimization |
 | Suggested answer writes | 0-4,000 | Conditional usage aggregate only |
+| Answer event writes | 0-6,000 | Only when usage logging is enabled; one compact document per answered question |
+| Internal monitor reads | Platform use only | On-demand reads: answer-event limit plus 30 actions and 30 feedback docs |
 | Provider calls | Typed questions only when AI answer flag enabled | Always after context packet lookup and AI accounting guard |
 | Storage | 0 | Core Business Health; Action Support image actions use existing media paths only when invoked |
 

@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind feature flags
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -243,24 +243,23 @@ Business Health can perform five classes of action through a registry. Natural l
 
 Default implementation posture:
 
-- Navigate, prepare, confirm, cancel, review, dismiss, assign, and publish-guard behavior are all defined in the contract.
-- Confirmed writes are controlled by feature flags and permission gates.
-- Public-truth publish actions are controlled by a stricter feature flag and may route to the existing publish screen instead of executing inside Business Health.
+- Navigate, compact draft preparation, cancel/review/dismiss, and publish-guard behavior are defined in the contract.
+- Confirmed public-truth writes are not exposed directly unless a registered adapter uses the existing MenuList save, validation, audit, and cache-invalidation path.
+- Public-truth publish requests route to the existing publish/editor screen unless a verified adapter exists.
 - Flags are runtime controls, not out-of-contract promises.
 
-Day-one supported action examples:
+Implemented action examples:
 
 | Owner request | Required behavior |
 | --- | --- |
-| "Change this price to 220" | Resolve item, prepare price patch, require confirmation, save through approved project mutation path |
-| "Rewrite this item description" | Use existing description generation/accounting when provider text is needed, prepare draft text, require confirmation before saving |
-| "Update this image" | Use existing upload/image-generation path, store only media reference in draft, require confirmation before public image changes |
-| "Make this live" | Prefer navigation to existing publish screen unless in-assistant publish flag and public-truth guard allow confirmation |
+| "Open this item" | Open the existing project editor path |
+| "Rewrite this item description" | Store a compact draft and keep the existing editor as the public save path |
+| "Make this live" | Navigate to the existing publish/editor screen |
 | "Change my logo/cover" | Use existing business settings/media path or server-safe equivalent |
-| "Mark us closed today" | Prepare temporary public status change through existing temp-status path, require confirmation and expiry |
+| "Mark us closed today" | Store a compact temporary-status draft and keep the existing temp-status path as the public save path |
 | "Show my QR code / screen link / app link" | Open existing share, digital screen, or Customer App surface |
 | "Check my domain / POS / credits / users" | Open the existing settings/billing/users/integrations surface; no direct risky mutation |
-| "Reply to this review" | Prepare a reply draft only when the review text is owner-provided or packet-backed; no public posting |
+| "Reply to this review" | Store a compact reply draft only when the review text is owner-provided or packet-backed; no public posting |
 
 The action system must store drafts/audits separately from analytics. Analytics stays in `platformSummary`; action workflow docs are only for prepare/confirm/cancel/review behavior.
 
@@ -313,6 +312,8 @@ Non-negotiables:
 - Analytics question answer: context-packet cache hit is 0 Firestore reads; cache miss is 1 analytics-index read plus optional 1 today overlay read; no period range aggregation.
 - Free-text answer: no raw source collection aggregation.
 - AI answer input: context packet only, never raw Firebase collections.
+- Owner chat history: optional bounded thread/message writes only under `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
+- Internal answer-event logging: optional compact platform observation write only under `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING`; deterministic answers must record zero units and zero owner charge.
 - Scheduler: reuse existing store-local nightly path and compact sources.
 - Cleanup: use `menulistMaintenanceScheduler`, not a new standalone scheduled function.
 

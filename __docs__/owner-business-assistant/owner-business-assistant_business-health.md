@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Final plan freeze, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind feature flags
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -40,17 +40,17 @@ Business Health excludes:
 Business Health has its own kill switch:
 
 ```ts
-ENABLE_OWNER_BUSINESS_HEALTH: false,
-ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: false,
-ENABLE_OWNER_BUSINESS_HEALTH_PAGE: false,
-ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: false,
-ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: false,
-ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
+ENABLE_OWNER_BUSINESS_HEALTH: true,
+ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: true,
+ENABLE_OWNER_BUSINESS_HEALTH_PAGE: true,
+ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
+ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
+ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: true,
+ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: true,
 ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: true,
 ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
-ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
+ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
 ```
 
 `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` must not be required for any Business Health read path.
@@ -88,6 +88,8 @@ Runtime answer code must read from the context-packet cache first. On cache miss
 - One current-day daily analytics doc for partial "today" overlay.
 
 Runtime answer code must not aggregate daily date ranges.
+
+If a specific requested period is not present in the analytics index, the answer must refuse that period instead of falling back to a different period. For example, a "today" question may not answer with this-week data when the today overlay is disabled or missing. Scheduler-generated suggested questions should hide "today" when the today period is unavailable.
 
 ## AI Answer Contract
 
@@ -139,8 +141,9 @@ The answer route can return `actions: []` when Action Support is disabled.
 | Dashboard card | 0 on cache hit; 1 current read on miss | 0 |
 | Dashboard analytics strip | 0 on cache hit; 1 analytics-index read, optional 1 today doc on miss | 0 |
 | Business Health page | 0 on cache hit; 1 current read + 1 analytics-index read on miss | 0 |
-| Suggested/typed question | 0 Firestore reads on context-packet cache hit | 0 |
-| AI answer cache miss | Current/index reads + provider accounting only if provider is used | Provider accounting/cache write only |
+| Suggested/typed question | 0 Firestore reads on context-packet cache hit | 0 by default; optional answer-event write under usage logging flag |
+| AI answer cache miss | Current/index reads + provider accounting only if provider is used | Provider accounting/cache write only when provider is used; answer-event write only when usage logging flag is enabled |
+| Optional owner thread history | 1 thread doc read with embedded `messages[]` | 1 merged thread doc write per exchange only under thread flag |
 
 No listener is required for Business Health.
 

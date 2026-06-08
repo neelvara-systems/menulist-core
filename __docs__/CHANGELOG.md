@@ -6,6 +6,53 @@
 
 ---
 
+## June 8, 2026 — Business Health Monitoring And History
+
+### New
+
+- **Owner chat history added behind a flag** - Business Health can now keep a bounded owner conversation thread only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled and a client `threadId` is present.
+- **Internal Business Health monitor added** - Platform users can review recent Business Health questions, answers, unsupported gaps, action usage, feedback, provider-call counts, units, internal cost, and owner-charge totals from `/platform/owner-business-assistant`.
+- **Ops Control Room links the monitor** - The internal `/ops` page now links to Business Health Monitor alongside existing platform monitoring tools.
+
+### Cost
+
+- **Answer-event logging is separate from owner history** - Compact question/answer events write only when `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` is enabled. Deterministic answers log zero units and zero charge; provider cost appears only when a provider-backed answer is actually used.
+- **Owner chat history uses one thread document** - Business Health stores bounded `messages[]` inside `ownerBusinessAssistantThreads/{threadId}` instead of creating one Firestore document per chat message.
+- **Transaction wording is ready for Business Health** - AI transaction labels now render Business Health answer/draft operations in owner-facing terms if provider-backed accounting is enabled later.
+
+## June 8, 2026 — Business Health Cross-Check Hardening
+
+### Fixed
+
+- **Action flags tightened** - Priority-check action buttons now hide unless the matching Action Support flags are enabled, while read-only Business Health remains usable.
+- **Action navigation corrected** - Business Health action targets now resolve to existing owner routes, including dashboard analytics via `/dashboard`.
+- **Analytics answers corrected** - Specific period questions now refuse when that period is unavailable instead of falling back to another period; unavailable "today" suggestions are hidden.
+- **Draft and thread writes hardened** - Review-reply and temporary-status prepare actions now write compact drafts correctly, check mark/dismiss uses one audit write, and thread persistence is opt-in with bounded `threadId` writes.
+- **Mobile action sheet connected** - Mobile Business Health can open returned action options only when Action Support is enabled.
+
+### Firebase
+
+- **Functions redeployed** - `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`, and `menulistMaintenanceScheduler` were redeployed to `ecomsai` after the builder changes.
+
+## June 7, 2026 — MenuList Business Health Implementation
+
+### New
+
+- **Business Health runtime enabled for owner testing** - Owner dashboard card, analytics strip, `/business-health` page, mobile More sub-screen, protected APIs, and scheduler-built read models are enabled behind separate cost and safety gates.
+- **Owner assistant answering layer added** - The answer API uses cached Business Health context packets, deterministic grounded answers by default, optional AI-answer flagging, source/freshness metadata, and structured action options.
+- **Action Support foundation added** - Registry-driven navigation, draft capture, check reviewed/dismissed/cancelled workflow writes, audit logging, permission checks, and public-truth guards are implemented behind separate Action Support flags.
+
+### Firebase
+
+- **Read models and cleanup added** - The existing nightly scheduler can write Business Health current/snapshot docs and optional analytics index docs in `platformSummary`; the existing maintenance scheduler now cleans expired assistant workflow docs.
+- **Server-only access enforced** - Assistant workflow collections are denied to clients in Firestore rules and accessed through protected APIs/Admin SDK only.
+- **Assistant message index superseded** - The initial message-query index was added for bounded thread reads; the active thread-history path now stores bounded `messages[]` inside one thread document.
+
+### Cost
+
+- **Cache-first design implemented** - Browser cache and optional Upstash context cache are used before Firestore reads. Chat-time raw Firebase collection scans are not added.
+- **Cost-controlled owner testing** - Owner-testable paths are enabled, while provider-backed AI answers, direct public-truth mutation, media/image actions, and Upstash packet cache remain disabled to avoid surprise provider spend or unsafe writes.
+
 ## June 7, 2026 — MenuList Business Health Planning
 
 ### Changed
@@ -18,7 +65,7 @@
 - **Business Health and Action Support are separately gated** - Business Health remains read-only when `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is off, while Action Support has dedicated flags for navigation, drafts, confirmed writes, public truth, media, provider text/image work, and check workflow.
 - **Answering layer is cache-first and AI-backed** - The final plan now requires `OwnerBusinessAssistantContextPacket` cache lookup before Firestore reads, AI answers over that packet for typed owner questions, and server validation of source facts, action IDs, permissions, and public-truth guards before rendering.
 - **Read-only assistant domains are cache-bound** - Non-analytics Business Health questions now reuse cached public project/store projections or compact summaries. Ordinary read-only answers must not trigger raw project/store/feedback/review/log reads; live Firebase access is reserved for packet refresh on miss and verified mutation paths.
-- **Owner-domain coverage matrix added** - Business Health docs now explicitly cover menu/project, store profile, temporary status, public links, QR/share, Customer App, digital screens, domains, locations, billing, users/permissions, POS, compliance, feedback/reviews, and unsupported external web/local-event questions. Action Support also now includes page-context target resolution, structured answer artifacts, navigate-only risky surfaces, temporary-status drafts, and review-reply drafts.
+- **Owner-domain coverage matrix added** - Business Health docs now explicitly cover menu/project, store profile, temporary status, public links, QR/share, Customer App, digital screens, domains, locations, billing, users/permissions, POS, compliance, feedback/reviews, and unsupported external web/local-event questions. Action Support also includes page-context target resolution, structured answer artifacts, navigate-only risky surfaces, temporary-status drafts, and review-reply drafts.
 - **Website copy stays unchanged** - Public MenuList website copy is withheld until the dashboard card, route, API, scheduler read model, mobile surface, cache behavior, and QA proof exist.
 
 ### Cost

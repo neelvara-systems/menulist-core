@@ -3,7 +3,7 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
+**Status:** Internal positioning only; runtime implemented behind flags
 **Last Updated:** June 7, 2026
 
 ---

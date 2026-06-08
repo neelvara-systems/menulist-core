@@ -23,6 +23,7 @@ import ObjectionsSection from './components/ObjectionsSection';
 import PageProofStrip from './components/PageProofStrip';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import SectionHeader from './components/SectionHeader';
+import SupportSurfaceStoryNav from './components/SupportSurfaceStoryNav';
 import { AnswerlatticeDiagramCore, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
 import {
     ANSWERLATTICE_FEATURE_ASSETS,
@@ -132,6 +133,8 @@ const OWNER_INPUT_DIAGRAM_OUTPUTS = [
 
 const SUPPORT_SURFACE_STORY = [
     {
+        id: 'support-surface-owner-inputs',
+        navLabel: 'Owner inputs',
         eyebrow: '01 / Owner inputs',
         title: 'Start from the support knowledge you already have.',
         description: 'Product docs, repeated replies, screenshots, recordings, release notes, and support notes become the source layer for customer-facing help.',
@@ -141,6 +144,8 @@ const SUPPORT_SURFACE_STORY = [
         asset: ANSWERLATTICE_FEATURE_ASSETS['knowledge-intake'],
     },
     {
+        id: 'support-surface-in-app-help',
+        navLabel: 'In-app help',
         eyebrow: '02 / In-app help',
         title: 'Give users help on the screen where they get stuck.',
         description: 'The widget brings support into billing, onboarding, settings, integrations, releases, and error screens without forcing users to leave the product.',
@@ -150,6 +155,8 @@ const SUPPORT_SURFACE_STORY = [
         asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['In-app help widget'],
     },
     {
+        id: 'support-surface-hosted-help',
+        navLabel: 'Hosted help',
         eyebrow: '03 / Hosted help',
         title: 'Publish a support home outside the product too.',
         description: 'Hosted help, documentation, FAQ answers, and changelog content stay connected to the same reviewed support layer.',
@@ -159,6 +166,8 @@ const SUPPORT_SURFACE_STORY = [
         asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['Help center and tickets'],
     },
     {
+        id: 'support-surface-gaps-fallback',
+        navLabel: 'Gaps and fallback',
         eyebrow: '04 / Gaps and fallback',
         title: 'When help is missing, users still get a path.',
         description: 'Tickets, low-rated answers, repeated questions, and feedback become visible support gaps instead of hidden founder work.',
@@ -168,6 +177,8 @@ const SUPPORT_SURFACE_STORY = [
         asset: ANSWERLATTICE_FEATURE_ASSETS.tickets,
     },
     {
+        id: 'support-surface-review-loop',
+        navLabel: 'Review loop',
         eyebrow: '05 / Review loop',
         title: 'You decide what becomes official support.',
         description: 'Drafts and missing answers stay reviewable until you approve them, so the next user gets better support without you repeating the same reply.',
@@ -648,39 +659,24 @@ function BusinessSolutionSection({ basePath }: { basePath: string }) {
     );
 }
 
-function SupportSurfaceStorySection({ basePath }: { basePath: string }) {
+function SupportSurfaceStorySection() {
+    const surfaceNavItems = SUPPORT_SURFACE_STORY.map((surface) => ({
+        id: surface.id,
+        label: surface.navLabel,
+    }));
+
     return (
         <section id="support-surfaces" className="al-reference-section al-surface-story px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Support surfaces in motion"
+                    eyebrow="From inputs to support surfaces"
                     title="One support layer across every place users ask for help."
-                    description="AnswerLattice does not stop at answers. It turns founder knowledge into the surfaces users expect: widget help, hosted help, documentation, FAQ, fallback tickets, feedback, and a review loop."
+                    description="AnswerLattice turns what you already know into the support sequence users need: owner inputs, in-app help, hosted help, gaps and fallback, and a review loop that keeps support current."
                 />
 
                 <div className="al-surface-story__layout">
                     <div className="al-surface-story__copy" data-answerlattice-reveal>
-                        <p className="al-surface-story__kicker">From inputs to support outputs</p>
-                        <h3>Show the whole support system, not just another chat box.</h3>
-                        <p>
-                            The founder adds what they know once. AnswerLattice keeps that knowledge connected across the places where product users actually need help.
-                        </p>
-                        <div className="al-surface-story__steps">
-                            {SUPPORT_SURFACE_STORY.map((surface) => {
-                                const Icon = surface.icon;
-                                return (
-                                    <AnswerlatticeLink
-                                        key={surface.title}
-                                        basePath={basePath}
-                                        href={surface.href}
-                                        className="al-surface-story__step"
-                                    >
-                                        <Icon aria-hidden size={16} />
-                                        <span>{surface.eyebrow.replace(/^\d+\s\/\s/, '')}</span>
-                                    </AnswerlatticeLink>
-                                );
-                            })}
-                        </div>
+                        <SupportSurfaceStoryNav items={surfaceNavItems} />
                     </div>
 
                     <div className="al-surface-story__screens">
@@ -689,6 +685,7 @@ function SupportSurfaceStorySection({ basePath }: { basePath: string }) {
                             return (
                                 <article
                                     key={surface.title}
+                                    id={surface.id}
                                     className="al-surface-story__screen"
                                     data-answerlattice-reveal-item
                                     style={{ '--al-surface-story-top': `${6.75 + index * 0.72}rem` } as CSSProperties}
@@ -1007,7 +1004,7 @@ export default function AnswerlatticeHomePage() {
                 <HomepageHero basePath={basePath} />
                 <FounderPressureSection />
                 <BusinessSolutionSection basePath={basePath} />
-                <SupportSurfaceStorySection basePath={basePath} />
+                <SupportSurfaceStorySection />
                 <ProductOverviewSection basePath={basePath} />
                 <ConnectedLoopSection />
                 <SetupPathSection />

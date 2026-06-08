@@ -4,8 +4,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Final plan freeze, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind feature flags; Firebase rules/functions deployed
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -24,8 +24,10 @@ The accepted product shape is:
 7. AI answering for typed owner questions, using only the cached context packet and returning structured, server-validated output.
 8. Structured answer artifacts: text, metric rows, compact tables, trend series, and action options.
 9. Suggested owner questions answered through the same packet contract, with deterministic fallback only when provider answering is disabled or unavailable.
-10. Day-one Action Support with registry-driven navigation, draft preparation, confirmed writes, public-truth guards, feedback, and cleanup.
-11. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
+10. Day-one Action Support with registry-driven navigation, compact draft preparation, existing-screen handoff for public-truth saves, public-truth guards, feedback, and cleanup.
+11. Optional bounded owner chat history behind `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
+12. Internal platform monitoring behind `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` for answer quality, unsupported gaps, action usage, feedback, and provider-cost review.
+13. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
 
 The rejected product shape is:
 
@@ -38,7 +40,8 @@ The rejected product shape is:
 7. Runtime external web/weather/events/competitor search from the answer route.
 8. Raw Firebase collection data passed directly to the AI model.
 9. Any plan that leaves Action Support outside the day-one implementation contract.
-10. Public website hype about an assistant before implementation and proof.
+10. Always-on long transcript storage or token-by-token message writes.
+11. Public website hype about an assistant before implementation and proof.
 
 ## Validation Basis
 
@@ -67,6 +70,7 @@ The ChatGPT conversation was useful as product input, but it is not source of tr
 | [owner-business-assistant_marketing.md](./owner-business-assistant_marketing.md) | Internal positioning, sales narrative, allowed and rejected language |
 | [owner-business-assistant_website.md](./owner-business-assistant_website.md) | Public website decision and post-implementation copy constraints |
 | [owner-business-assistant_helpdoc.md](./owner-business-assistant_helpdoc.md) | Owner help article draft for after implementation |
+| [owner-business-assistant_validation.md](./owner-business-assistant_validation.md) | Implementation validation, deploy notes, cost/security checks |
 | [_archive/chatgpt-review.md](./_archive/chatgpt-review.md) | Conversation cross-check and adoption/rejection matrix |
 
 ## Source Evidence
@@ -104,17 +108,28 @@ The ChatGPT conversation was useful as product input, but it is not source of tr
 | `src/components/mobile/screens/MobileMoreScreen.tsx:146-182` | New mobile More sub-screen requires explicit union and render integration. |
 | `src/database/ownerControlUsage/index.ts:61-69` | Current owner usage event types do not include assistant events; docs must not pretend this helper already covers them. |
 
-## Implementation Readiness
+## Implementation Status
 
-This is a docs-only planning package. The implementation contract is complete, but no runtime code is changed by this package. The next implementation run must:
+Runtime code is now enabled for owner testing behind separate safety flags.
 
-1. Add feature flags in `src/config/features.ts` and matching Cloud Functions flags where provider cost is possible.
-2. Add shared constants/types without creating unnecessary Firestore collections.
-3. Extend the scheduler-owned health read model and analytics period index.
-4. Build protected current/analytics APIs with browser-cache support and server context-packet cache support.
-5. Build the answer API so owner-typed questions use AI over the cached context packet and return validated structured output/artifacts.
-6. Build domain capability matrix, target resolver, and unsupported-domain refusal path.
-7. Build Action Support registry, draft, confirm, audit, permission, and cache paths in the same implementation.
-8. Integrate desktop and mobile together.
-9. Verify cache-hit, cache-miss, read-only, unsupported-domain, target-disambiguation, and Action Support kill-switch modes.
-10. Run `npx tsc --noEmit --incremental false` and targeted QA before enablement.
+Implemented surfaces:
+
+1. Feature flags in `src/config/features.ts` and Cloud Functions flags in `functions/src/constants/features.ts`.
+2. Shared constants, schemas, types, server context-packet builder, deterministic answer resolver, domain matrix, and action registry/executor.
+3. Scheduler-built `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}`, daily snapshots, and optional `ownerBusinessAnalyticsIndex_{tId}_{sId}`.
+4. Protected APIs under `/api/owner-business-assistant/*` with auth, tenant checks, permissions, rate limits, Zod validation, SAFE_MODE for AI answers, and Admin SDK access.
+5. Desktop dashboard card, analytics strip, full `/business-health` route, assistant panel, suggested questions, source/freshness disclosure, and action chips.
+6. MobileShell More sub-screen, `/business-health` route mapping, and mobile Business Health screen.
+7. Action Support registry for navigation, drafts, check review/dismiss/cancel, audit logging, permission gates, and public-truth guardrails.
+8. Optional bounded thread-doc history, internal answer-event logging, and platform monitor at `/platform/owner-business-assistant`.
+9. Server-only Firestore rules for assistant workflow collections and consolidated maintenance cleanup.
+
+Current default posture:
+
+- Owner-testable Business Health and Action Support flags are enabled; provider-backed AI answers, confirmed writes, public-truth mutation, and image/media actions remain disabled for cost and safety.
+- Business Health can be enabled independently from Action Support.
+- Action Support can be enabled without public-truth direct mutation.
+- Public menu/store writes remain guarded; assistant-owned public-truth writes are blocked and existing MenuList screens remain the save path.
+- Public website copy remains unchanged until enablement and runtime QA proof.
+
+Validation record: [owner-business-assistant_validation.md](./owner-business-assistant_validation.md).

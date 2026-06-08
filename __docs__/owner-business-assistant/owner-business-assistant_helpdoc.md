@@ -3,7 +3,7 @@
 **Feature:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Draft for after implementation
+**Status:** Draft for post-enable owner help
 **Last Updated:** June 7, 2026
 
 ---

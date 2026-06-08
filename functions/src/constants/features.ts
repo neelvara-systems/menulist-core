@@ -210,6 +210,25 @@ export const FUNCTION_FLAGS = {
      */
     ENABLE_STALENESS_CHECK: true,
 
+    /**
+     * Owner Business Assistant / Business Health read-model builder.
+     *
+     * Enabled for owner testing. The existing store-local nightly scheduler
+     * writes compact health and analytics read models into platformSummary. No
+     * provider calls happen in the builder.
+     *
+     * @see __docs__/owner-business-assistant/
+     */
+    ENABLE_OWNER_BUSINESS_HEALTH: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
+    ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
+    ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: true,
+    ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
+    ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
+    ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
+
     // ═══════════════════════════════════════════════════════════════
     // RESELLER DASHBOARD (Assisted Onboarding Portal)
     // @see __docs__/reseller-dashboard/

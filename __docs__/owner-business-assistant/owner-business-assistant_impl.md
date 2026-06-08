@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
-**Last Updated:** June 7, 2026
+**Status:** Implemented behind feature flags
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -51,7 +51,7 @@ platformSummary/storesSummary
       -> platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
       -> protected owner APIs
       -> BusinessHealthDashboardCard + analytics strip + BusinessHealthPage + MobileBusinessHealthScreen
-      -> existing DAL/domain services for confirmed writes
+      -> existing screens/domain services for public-truth saves
       -> existing public cache invalidation when public truth changes
 ```
 
@@ -66,29 +66,29 @@ The frontend may pass advisory page context such as current route, selected proj
 Add flags in `src/config/features.ts`. These flags are runtime controls, not implementation sequencing.
 
 ```ts
-ENABLE_OWNER_BUSINESS_HEALTH: false,
-ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: false,
-ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: false,
-ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: false,
-ENABLE_OWNER_BUSINESS_HEALTH_PAGE: false,
-ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: false,
+ENABLE_OWNER_BUSINESS_HEALTH: true,
+ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
+ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
+ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: true,
+ENABLE_OWNER_BUSINESS_HEALTH_PAGE: true,
+ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: true,
+ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: true,
 ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: true,
 ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
-ENABLE_OWNER_BUSINESS_HEALTH_THREADS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: false,
-ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: false,
+ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
+ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
+ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: true,
 ENABLE_OWNER_BUSINESS_HEALTH_POS_AWARE_ANSWERS: false,
-ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: false,
-ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: false,
-ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: false,
+ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: true,
+ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: true,
+ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
 ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
 ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
 ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
-ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
+ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: true,
 ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
-ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: false,
+ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
 
 Cloud Functions/provider-cost flags must be separate when provider-backed answers are enabled. Frontend flags do not protect server-side provider spend. Context-packet cache flags control read cost only; they do not authorize provider calls.
@@ -322,6 +322,7 @@ src/app/api/owner-business-assistant/answer/route.ts
 src/app/api/owner-business-assistant/thread/[threadId]/route.ts
 src/app/api/owner-business-assistant/action/route.ts
 src/app/api/owner-business-assistant/feedback/route.ts
+src/app/api/platform/owner-business-assistant/monitor/route.ts
 ```
 
 Route behavior:
@@ -331,11 +332,14 @@ Route behavior:
 | `/current` | GET | Return current Business Health state | Browser/server cache hit = 0 reads; miss = 1 `platformSummary` read |
 | `/analytics` | GET | Return standard analytics periods | Cache hit = 0 reads; miss = 1 analytics-index read, optional 1 today doc |
 | `/answer` | POST | Resolve typed/suggested owner question through AI over context packet | Server context-packet cache hit = 0 reads; miss = current + analytics-index + cached project/store projection as needed + optional today doc |
-| `/thread/[threadId]` | GET | Load bounded history under the thread flag | 1 thread doc + capped messages query |
+| `/thread/[threadId]` | GET | Load bounded history under the thread flag | 1 thread doc; capped `messages[]` is embedded in that doc |
 | `/action` | POST | Navigate, prepare, confirm, cancel, review, dismiss, assign | Depends on operation |
 | `/feedback` | POST | Store small answer feedback | 1 compact write under usage/feedback flag |
+| `/api/platform/owner-business-assistant/monitor` | GET | Platform-only answer quality, action, feedback, and cost monitor | Reads latest answer events plus capped action/feedback docs |
 
 All routes must derive tenant/store from session or verified selector context. Client-provided scope is advisory only.
+
+The platform monitor route must use `withPlatformAuth`, not owner session scope. It is internal operational tooling and must never become an owner-facing route.
 
 ## 8. API Security Pattern
 
@@ -470,27 +474,24 @@ Public-truth guard:
 - Requires owner/admin publish permission.
 - Shows affected surface.
 - Revalidates target.
-- Uses existing domain services.
-- Ensures cache invalidation is invoked.
+- Requires existing domain services before any confirmed public write can be exposed.
+- Requires public cache invalidation before any confirmed public write can be exposed.
 
-Example registry entries:
+Implemented registry entries:
 
 | Action | Owner request | Execution contract |
 | --- | --- | --- |
-| `menu_item_price_set` | "Change Paneer Tikka to 220" | Resolve project/item, prepare patch, require confirm, save through existing project mutation path |
-| `menu_item_price_bulk_adjust` | "Increase selected prices by 10%" | Reuse Command Center pricing transformation, show preview, require confirm |
-| `menu_item_availability_set` | "Mark this sold out" | Reuse Command Center availability transformation, show preview, require confirm |
-| `menu_item_visibility_set` | "Hide this item" | Reuse Command Center active/inactive transformation, show preview, require confirm |
-| `menu_item_move_category` | "Move these to Specials" | Reuse Command Center move-category transformation, show preview, require confirm |
-| `menu_item_description_prepare` | "Rewrite this description" | Use existing description generation/accounting, prepare text draft, require confirm before project save |
-| `menu_item_image_generate_prepare` | "Generate image for this item" | Use existing image generation/accounting, store media reference only, require confirm before attach |
-| `menu_item_image_attach_confirm` | "Use this image" | Use existing media upload/association path, require confirm |
-| `open_publish_screen` | "Make it live" | Navigate to existing publish path unless public-truth flag allows in-assistant confirmation |
+| `navigate_business_health` / `open_business_health_detail` | "Show me more" | Navigate to `/business-health` |
+| `navigate_analytics` / `open_dashboard_analytics` | "Show analytics" | Navigate to `/dashboard` |
+| `navigate_menu` / `open_menu_editor_target` / `open_publish_screen` | "Open this item" / "Make it live" | Navigate to existing project editor path |
 | `open_qr_share` / `open_customer_app_settings` / `open_digital_screen_settings` | "Show QR/app/screen link" | Navigate to existing Share, Customer App, or Digital Screen surface |
 | `open_domain_settings` / `open_pos_sync_settings` / `open_billing` / `open_users_permissions` / `open_locations` | "Check domain/POS/credits/users/outlet" | Navigate only; no payment, DNS, role, or POS settings mutation |
-| `store_temp_status_set` / `store_temp_status_clear` | "Mark us closed today" / "Clear the notice" | Prepare a time-bound store-public-truth draft, require confirm, use existing temp-status path/cache invalidation |
-| `review_reply_prepare` | "Reply to this review" | Use owner-provided or packet-backed review text, generate draft through existing review suggestion/accounting, no public posting |
-| `check_mark_reviewed` / `check_dismiss` | "Done" / "Ignore this" | Update compact assistant check workflow state under the check-workflow flag |
+| `open_feedback_reviews` | "Show feedback" | Navigate to existing feedback surface |
+| `open_business_settings` / `open_hours_settings` / `open_public_info_settings` / `open_compliance_pages` | "Update business details" | Navigate to existing business settings surface |
+| `prepare_description_rewrite` / `menu_item_description_prepare` | "Rewrite this description" | Write a compact draft; existing editor remains the save path |
+| `prepare_review_reply` / `review_reply_prepare` | "Reply to this review" | Write a compact review-reply draft; no public posting |
+| `store_temp_status_set` / `store_temp_status_clear` | "Mark us closed today" / "Clear the notice" | Write a compact draft; existing temp-status path remains the public write path |
+| `mark_health_check_reviewed` / `dismiss_health_check` | "Done" / "Ignore this" | Write one compact action audit doc under the check-workflow flag |
 
 Confirmed writes from assistant code must not perform raw Firestore `setDoc()` to project/store public truth. If in-assistant confirmed writes are enabled, create a server-safe mutation adapter that preserves the current `updateProject()` invariants: validation, sanitization, MCE/change detection, multi-outlet behavior, menu change logging, and public cache invalidation.
 
@@ -500,14 +501,14 @@ Core Business Health does not require chat transcripts for suggested questions. 
 
 - Suggested-question answers can be stateless.
 - Usage can be aggregate-only.
-- Thread persistence is a flag-gated path controlled by `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
+- Thread persistence is a flag-gated path controlled by `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`; writes occur only when the client supplies a bounded `threadId`.
 - Action draft/audit writes are controlled by `ENABLE_OWNER_BUSINESS_ACTION_*` flags.
 
 Use compact collections:
 
 ```text
-ownerBusinessAssistantThreads/{threadId}
-ownerBusinessAssistantMessages/{threadId}_{messageId}
+ownerBusinessAssistantThreads/{threadId} // includes capped messages[]
+ownerBusinessAssistantAnswerEvents/{answerId}
 ownerBusinessAssistantActions/{actionId}
 ownerBusinessAssistantDrafts/{draftId}
 ownerBusinessAssistantFeedback/{feedbackId}
@@ -515,13 +516,14 @@ ownerBusinessAssistantFeedback/{feedbackId}
 
 Retention:
 
-- Threads: 30 days.
-- Messages: 30 days.
+- Threads: 30 days, including embedded messages.
+- Answer events: 180 days, internal monitoring only.
 - Drafts: 7 days or until confirmed/cancelled.
 - Actions: 90 days compact audit, unless tied to public-truth audit.
 - Feedback: 90 days aggregate after review.
 
 The read-only Business Health track must not depend on action, draft, or message writes.
+Owner chat history and internal answer-event logging are separate concerns. Thread storage powers optional owner continuity; answer-event storage powers platform observation and cost review.
 
 ## 12. Usage Logging
 
@@ -542,6 +544,13 @@ Cost-first usage implementation:
 - Server-side aggregate usage update only for value events.
 - Do not log every message as success.
 - Track: card opened, check opened, question answered, action prepared, action confirmed, feedback submitted.
+
+Implemented platform observation:
+
+- `src/lib/ownerBusinessAssistant/server/answerEventLogger.ts` writes compact answer events only when `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` is enabled.
+- Deterministic/template answers record zero units and zero owner charge.
+- Provider-backed answers may record configured units/costs in the answer event, but the billing ledger remains `menulistAiOperations` through existing AI operation accounting.
+- `src/app/api/platform/owner-business-assistant/monitor/route.ts` reads answer events, actions, and feedback for internal review.
 
 ## 13. Desktop UI
 
@@ -569,6 +578,12 @@ src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantFreshness
 src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantSourceDisclosure.tsx
 ```
 
+Owner chat history:
+
+- `useOwnerBusinessAssistantAnswer()` creates a local bounded `threadId` only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled.
+- `/answer` persists the exchange only when the thread flag is enabled and the request carries `threadId`; it updates one thread document with a capped `messages[]` array.
+- `OwnerAssistantPanel` reads `/thread/[threadId]` and shows the latest bounded messages when available.
+
 Dashboard placement:
 
 - Add `BusinessHealthDashboardCard` near the top of the owner dashboard.
@@ -580,6 +595,34 @@ Existing fit:
 
 - `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx:1-21` already defines owner dashboard as answers and confidence, not raw analytics.
 - `src/components/templates/main-app/dashboard/OwnerDashboard/HealthSignalCards.tsx:139-157` already uses Business Health as a calm signal.
+
+## 13.1 Internal Platform Monitor UI
+
+Route:
+
+```text
+src/app/(main)/platform/owner-business-assistant/page.tsx
+```
+
+Component:
+
+```text
+src/components/templates/main-app/platform/ownerBusinessAssistantMonitor/index.tsx
+```
+
+The monitor shows:
+
+- Recent questions and answers.
+- Answer status, intent, cache source, and confidence.
+- Unsupported and needs-more-data counts.
+- Provider call count, units, internal paise cost, and owner paise charge.
+- Recent Action Support records.
+- Recent answer feedback.
+
+Navigation:
+
+- Link from `src/components/templates/main-app/platform/opsControlRoom/index.tsx`.
+- Link to `/transactions` so platform review can compare Business Health provider operations with the existing transaction dashboard when provider-backed billing is enabled.
 
 ## 14. Mobile UI
 
@@ -657,8 +700,8 @@ This is an engineering order. Every item belongs to the day-one implementation c
 7. Add deterministic fallback/refusal renderer for AI-disabled or provider-unavailable cases.
 8. Add desktop dashboard card, analytics strip, and full page.
 9. Add MobileShell mapping and mobile screen.
-10. Add action registry and route for navigate/prepare/confirm/cancel/review/dismiss.
-11. Add confirmed writes with public-truth guard and server mutation adapter tests.
+10. Add action registry and route for navigate/prepare/cancel/review/dismiss.
+11. Keep public-truth saves as existing-screen handoffs unless a verified server mutation adapter is present.
 12. Add provider-backed answering with SAFE_MODE, rate limit, accounting, unit-cost metadata, and balance sync.
 13. Add cleanup tasks for persistent thread/action docs under their flags.
 14. Update docs from implementation truth.

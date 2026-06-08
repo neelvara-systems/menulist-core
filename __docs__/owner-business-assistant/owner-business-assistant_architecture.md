@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Docs-only architecture alignment
-**Last Updated:** June 7, 2026
+**Status:** Implemented alignment record
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -15,7 +15,7 @@ The end-to-end architecture is valid only as a summary-first Business Health sys
 The final contract is not a chatbot rollout sequence. It is one permanent architecture with two separately flag-gated tracks:
 
 - **Business Health:** card, page, current read model, analytics index, approved question intents, grounded free-text mapping, dashboard analytics, desktop, mobile, usage feedback, and cleanup.
-- **Action Support:** action registry, navigation, draft preparation, confirmed writes, media/provider actions, check workflow, audit, public-truth guard, desktop, mobile, and cleanup.
+- **Action Support:** action registry, navigation, compact draft preparation, existing-screen handoff for public-truth saves, provider/draft flags, check workflow, audit, public-truth guard, desktop, mobile, and cleanup.
 
 Feature flags control environment availability, cost exposure, and emergency shutdown. They are not delivery tracks and must not be documented as promises outside the day-one build.
 
@@ -73,13 +73,13 @@ Owners will ask about the whole business, not only analytics. Every domain gets 
 | --- | --- | --- | --- |
 | Business Health | "Is everything okay?" | `ownerBusinessHealthCurrent` | Show checks, navigate, mark reviewed/dismiss under check flag |
 | Customer/menu analytics | "How was today / this week / last week?" | `ownerBusinessAnalyticsIndex` + optional today overlay | Show metric cards/tables; no raw range scans |
-| Menu/project/catalog | "What is the price of this item?" / "Which menu is live?" | Cached public project/store projection + `platformSummary/projects_{sId}` | Prepare menu item drafts; confirm through project mutation adapter |
-| Store profile and public info | "What phone number/hours/address are shown?" | Store summary/public projection | Navigate to settings by default; only registered low-risk store actions can write |
-| Temporary status | "Mark us closed today" | Store public projection + existing temp-status API target | Prepare/confirm `store_temp_status_set` or clear |
+| Menu/project/catalog | "What is the price of this item?" / "Which menu is live?" | Cached public project/store projection + `platformSummary/projects_{sId}` | Navigate or prepare compact draft; public save stays in existing editor |
+| Store profile and public info | "What phone number/hours/address are shown?" | Store summary/public projection | Navigate to settings; no direct assistant public write |
+| Temporary status | "Mark us closed today" | Store public projection + existing temp-status API target | Prepare compact draft; existing temp-status path performs public save |
 | Official Business Page / public links | "What is my public page link?" | Public store projection and route helpers | Navigate/share/copy link; no content mutation unless registered |
 | Customer App / PWA | "Is the app install link working?" | Public store/PWA projection | Navigate to Customer App settings/share surface |
 | QR/share/print assets | "Where is my QR code?" | Existing share/QR surface state | Navigate/open; generation stays in existing screen |
-| Digital screens | "Is my screen running?" | Screen summary/status projection | Navigate/open screen settings; confirmed writes use screen service/cache tags |
+| Digital screens | "Is my screen running?" | Screen summary/status projection | Navigate/open screen settings; screen writes stay in existing screen service |
 | Feedback/reviews | "Any bad feedback?" / "Help reply to this review" | Compact feedback/review state; pasted owner review text | Navigate to feedback/reviews; prepare reply suggestion if owner supplies text or compact source exists |
 | Domains/subdomain | "Is my domain verified?" | Compact domain status/public lookup | Navigate to domain settings; do not add/remove domains inside assistant by default |
 | Locations/outlets | "Which outlet needs attention?" | Compact store/outlet health comparison | Navigate/switch only within verified permission scope |
@@ -154,7 +154,8 @@ Artifacts must be generated from packet facts only. No CSV/export/raw-row downlo
 | Business Health current | New read model | `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | Dashboard/page/answer hot path | Required |
 | Business analytics index | New read model in existing collection | `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | Standard period answers and dashboard analytics strip | Required; no new top-level analytics collection |
 | Business Health daily proof | New read model | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | Debugging, replay, support | Required with retention/cap |
-| Assistant threads/messages | Business Health APIs | `ownerBusinessAssistantThreads`, `ownerBusinessAssistantMessages` | Conversation continuity under the thread flag | Bounded retention; not required for read-only Health |
+| Assistant threads/messages | Business Health APIs | `ownerBusinessAssistantThreads.messages[]` | Conversation continuity under the thread flag | One doc per chat, bounded message array, not required for read-only Health |
+| Assistant answer events | Platform monitoring APIs | `ownerBusinessAssistantAnswerEvents` | Internal answer quality, unsupported-gap, action-usage, and cost review | Compact, server-only, usage-logging flag, not owner chat history |
 | Action drafts/actions | Action Support APIs | `ownerBusinessAssistantDrafts`, `ownerBusinessAssistantActions` | Prepare/confirm/cancel/review flows | Day-one Action Support storage; server-only writes under action flags |
 | Answer feedback | Business Health APIs | `ownerBusinessAssistantFeedback` or aggregate doc | Quality signal | Compact writes under feedback/usage flags |
 
@@ -515,7 +516,7 @@ type OwnerBusinessActionDefinition = {
 };
 ```
 
-### Day-One Action Catalog Summary
+### Implemented Action Catalog Summary
 
 | Owner asks | Action type | Existing system to reuse | Storage needed | Write behavior |
 | --- | --- | --- | --- | --- |
@@ -524,16 +525,11 @@ type OwnerBusinessActionDefinition = {
 | Open this item | `open_menu_editor_target` | Existing editor route/context | None | Navigation only |
 | Show QR/app/screen/public link | `open_qr_share`, `open_customer_app_settings`, `open_digital_screen_settings` | Existing Share, Customer App, and Digital Screen surfaces | None | Navigation/copy only |
 | Check domain/POS/billing/users/locations/compliance | `open_domain_settings`, `open_pos_sync_settings`, `open_billing`, `open_users_permissions`, `open_locations`, `open_compliance_pages` | Existing settings, billing, users, locations, integrations, compliance surfaces | None | Navigation only |
-| Change this item's price | `menu_item_price_set` | Project mutation adapter over `updateProject()` invariants, MCE, menu change log, cache invalidation | Draft + action audit | Confirmed write only |
-| Increase selected prices | `menu_item_price_bulk_adjust` | Command Center pricing pure functions | Draft + action audit | Confirmed write only |
-| Mark item sold out/show/hide/move category | `menu_item_availability_set`, `menu_item_visibility_set`, `menu_item_move_category` | Command Center pure functions and project mutation path | Draft + action audit | Confirmed write only |
-| Rewrite this description | `menu_item_description_prepare` | Existing description generation prompt/accounting and project update path | Draft + action audit; AI operation only if provider called | Prepare generated text, confirm before save |
-| Add missing descriptions | `menu_missing_descriptions_prepare` | Existing description generation and repair flow | Draft + action audit; AI operation only if provider called | Confirm before save |
-| Update this item image | `menu_item_image_upload_open`, `menu_item_image_generate_prepare`, `menu_item_image_attach_confirm` | Existing media prep/upload, image generation, and item-image association path | Draft stores media reference only | Confirm before public image changes |
-| Mark the store closed/opening late | `store_temp_status_set`, `store_temp_status_clear` | Existing temp-status API/server adapter and public cache invalidation | Draft + action audit | Confirmed time-bound store public-truth write |
-| Draft a review reply | `review_reply_prepare` | Existing review suggestion API and AI accounting | Draft + action audit; AI operation only if provider called | Owner reviews/copies; no public posting |
-| Make this menu live | `open_publish_screen` plus guarded public-truth action | Existing publish screen/API/cache path | Action audit if confirmed in assistant | Prefer navigation unless public-truth flag allows in-assistant confirmation |
-| Mark or dismiss a check | `check_mark_reviewed`, `check_dismiss` | Assistant check workflow storage | Compact action/check write | Confirm state change |
+| Rewrite this description | `prepare_description_rewrite`, `menu_item_description_prepare` | Compact draft storage; existing editor remains the save path | Draft + action audit | No direct public write |
+| Mark the store closed/opening late | `store_temp_status_set`, `store_temp_status_clear` | Compact draft storage; existing temp-status screen/API remains the save path | Draft + action audit | No direct public write |
+| Draft a review reply | `prepare_review_reply`, `review_reply_prepare` | Compact review-reply draft storage | Draft + action audit | Owner reviews/copies; no public posting |
+| Make this menu live | `open_publish_screen` | Existing publish/editor screen | None | Navigation only |
+| Mark or dismiss a check | `mark_health_check_reviewed`, `dismiss_health_check` | Assistant action audit storage | Compact action write | Confirm state change |
 
 ### Confirmed Write Rule
 
@@ -591,7 +587,7 @@ Modify:
 - Add AI structured-answer resolver over the context packet.
 - Add MobileShell mapping and mobile screen.
 - Add action registry and target resolver contract.
-- Extend or replace owner usage logging for assistant value events.
+- Extend or replace owner usage logging for assistant value events; use compact answer-event logging for internal platform observation when the usage logging flag is enabled.
 - Add AI action/unit-cost metadata before provider-backed answers.
 
 Do not reuse directly:
@@ -623,9 +619,16 @@ Daily snapshot retention:
 
 Threads/messages:
 
-- Max 20 messages per active thread.
+- Max 20 messages per active thread doc.
+- Messages are embedded in `ownerBusinessAssistantThreads/{threadId}.messages[]`; do not create one Firestore document per message.
 - 30-day retention.
 - No token-by-token persistence.
+
+Answer events:
+
+- 180-day retention.
+- Store trimmed question/answer text and cost/status metadata only.
+- Internal monitor only; do not use as owner-facing long-term transcript storage.
 
 Drafts:
 

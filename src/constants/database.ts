@@ -75,6 +75,14 @@ export const DB_COLLECTIONS = {
     // Owner Control Usage (Authority Maturation Tracking)
     OWNER_CONTROL_USAGE: "ownerControlUsage",
 
+    // Owner Business Assistant / Business Health workflow docs
+    // Core health and analytics read models live in PLATFORM_SUMMARY.
+    OWNER_BUSINESS_ASSISTANT_THREADS: "ownerBusinessAssistantThreads",
+    OWNER_BUSINESS_ASSISTANT_ACTIONS: "ownerBusinessAssistantActions",
+    OWNER_BUSINESS_ASSISTANT_DRAFTS: "ownerBusinessAssistantDrafts",
+    OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS: "ownerBusinessAssistantAnswerEvents",
+    OWNER_BUSINESS_ASSISTANT_FEEDBACK: "ownerBusinessAssistantFeedback",
+
     // Menu Observation Layer (MOL v0) - Silent infrastructure
     // @see __docs__/MOL-V0-IMPLEMENTATION-PLAN.md
     MENU_CHANGE_LOG: "menuChangeLog", // Immutable change history

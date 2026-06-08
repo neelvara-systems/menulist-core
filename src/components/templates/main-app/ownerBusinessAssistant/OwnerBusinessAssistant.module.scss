@@ -1,0 +1,172 @@
+.businessHealthStack {
+  width: 100%;
+}
+
+.dashboardCard {
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border);
+}
+
+.pageShell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  min-height: 100vh;
+  background: var(--ant-color-bg-layout);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.statusIcon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--ant-color-success);
+  background: color-mix(in srgb, var(--ant-color-success) 12%, transparent);
+  flex: 0 0 auto;
+}
+
+.statusIconWatch {
+  color: var(--ant-color-warning);
+  background: color-mix(in srgb, var(--ant-color-warning) 12%, transparent);
+}
+
+.statusIconReview {
+  color: var(--ant-color-error);
+  background: color-mix(in srgb, var(--ant-color-error) 12%, transparent);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 16px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricBox {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-fill-quaternary);
+  min-height: 82px;
+}
+
+.metricLabel {
+  display: block;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.metricValue {
+  display: block;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ant-color-text);
+}
+
+.metricDelta {
+  display: block;
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  margin-top: 4px;
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkItem {
+  padding: 12px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+}
+
+.questionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.questionButton {
+  width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.assistantPanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.messageBox {
+  border: 1px solid var(--ant-color-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--ant-color-fill-quaternary);
+  min-height: 116px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.userMessage,
+.assistantMessage {
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+}
+
+.userMessage {
+  background: var(--ant-color-fill-secondary);
+}
+
+.sourceList {
+  margin-top: 8px;
+}
+
+.actionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analyticsStrip {
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
+}
+
+@media (max-width: 900px) {
+  .pageShell {
+    padding: 16px;
+  }
+
+  .summaryGrid,
+  .metricGrid,
+  .questionGrid {
+    grid-template-columns: 1fr;
+  }
+}

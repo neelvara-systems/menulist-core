@@ -803,6 +803,32 @@ service cloud.firestore {
     match /messageLogs/{docId} {
       allow read, write: if false;
     }
+
+    // Owner Business Assistant — API/Admin SDK only.
+    // Owner dashboard and mobile shell must use /api/owner-business-assistant/*.
+    match /ownerBusinessAssistantThreads/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantMessages/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantActions/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantDrafts/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantAnswerEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantFeedback/{docId} {
+      allow read, write: if false;
+    }
     
     // Reseller Dashboard — Admin SDK only (API routes with withAuth)
     // @see __docs__/reseller-dashboard/reseller-dashboard_firebase.md §8

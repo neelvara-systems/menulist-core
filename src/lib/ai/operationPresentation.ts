@@ -26,6 +26,8 @@ const formatCount = (count: number, singular: string, plural = `${singular}s`) =
 
 export const formatAiOperationActionLabel = (action?: string | null): string => {
     if (!action) return "Menu enhancement";
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) return "Business Health answer";
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) return "Business Health draft";
     return action
         .split("_")
         .filter(Boolean)
@@ -65,6 +67,8 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
         || action === AI_ACTIONS_TYPES.CAMPAIGN_CAPTION
         || action === AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION
         || action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR
+        || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER
+        || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT
     ) {
         return "content";
     }
@@ -174,6 +178,14 @@ export const getAiOperationOwnerSummary = (operation: AiOperationPresentationInp
 
     if (action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR) {
         return "Prepared menu card export guidance.";
+    }
+
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
+        return "Answered a Business Health question.";
+    }
+
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) {
+        return "Prepared a Business Health draft.";
     }
 
     if (action === AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY) {

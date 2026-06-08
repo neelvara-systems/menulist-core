@@ -3,7 +3,7 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Planning complete, implementation not started
+**Status:** Runtime implemented behind flags; website copy still withheld
 **Last Updated:** June 7, 2026
 
 ---

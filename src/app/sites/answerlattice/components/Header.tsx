@@ -54,21 +54,21 @@ const MOBILE_OTHER_LINKS = [
 
 const PRODUCT_AREA_NAV_LABELS: Record<string, string> = {
     '/product/launch-setup': 'Set up support',
-    '/product/page-aware-widget': 'In-app support widget',
-    '/product/support-control': 'Help center, FAQ and tickets',
-    '/product/knowledge-governance': 'Review approved answers',
+    '/product/page-aware-widget': 'In-app widget',
+    '/product/support-control': 'Help center',
+    '/product/knowledge-governance': 'Approved answers',
 };
 
 const PRODUCT_FEATURE_NAV_LABELS: Record<string, string> = {
     '/product/team-access': 'Team access',
-    '/product/knowledge-intake': 'Import support knowledge',
-    '/product/knowledge-base': 'Docs / Knowledge Base',
+    '/product/knowledge-intake': 'Import knowledge',
+    '/product/knowledge-base': 'Knowledge Base',
     '/product/faq-management': 'FAQ',
     '/product/changelog': 'Changelog',
     '/product/tickets': 'Tickets',
     '/product/support-board': 'Support Board',
     '/product/feedback-review': 'Feedback review',
-    '/product/workflow-notifications': 'Slack/email notifications',
+    '/product/workflow-notifications': 'Notifications',
     '/product/proactive-help': 'Proactive help',
 };
 
@@ -83,6 +83,21 @@ const RESOURCE_MENU_LINKS = [
     { label: 'Updates', href: '/updates', icon: LuBell },
     { label: 'FAQ', href: '/faq', icon: LuHelpCircle },
     { label: 'All Resources', href: '/resources', icon: LuLayoutDashboard },
+];
+
+const RESOURCE_SETUP_GUIDE_HREFS = [
+    '/resources/launch-support-checklist',
+    '/resources/pre-onboarding-source-package',
+    '/resources/widget-install-verification',
+    '/resources/hosted-help-setup',
+];
+
+const RESOURCE_EVALUATION_HREFS = [
+    '/resources/safe-page-context',
+    '/resources/approved-answers-before-fallback',
+    '/resources/support-runtime-safety',
+    '/updates',
+    '/faq',
 ];
 
 const MOBILE_NAV_ICONS: Record<string, IconType> = {
@@ -138,6 +153,20 @@ function MegaMenuIcon({ icon: Icon }: { icon: IconType }) {
     return (
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200 transition-colors group-hover/menu-item:border-teal-200/20 group-hover/menu-item:bg-teal-300/[0.12] group-hover/menu-item:text-white">
             <Icon size={17} aria-hidden />
+        </span>
+    );
+}
+
+function CompactMegaMenuIcon({ icon: Icon, compact = false }: { icon: IconType; compact?: boolean }) {
+    return (
+        <span
+            className={
+                compact
+                    ? 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-teal-300/[0.07] text-teal-200 transition-colors group-hover/menu-item:bg-teal-300/[0.12] group-hover/menu-item:text-white'
+                    : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200 transition-colors group-hover/menu-item:border-teal-200/20 group-hover/menu-item:bg-teal-300/[0.12] group-hover/menu-item:text-white'
+            }
+        >
+            <Icon size={compact ? 15 : 18} aria-hidden />
         </span>
     );
 }
@@ -251,7 +280,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                             <div
                                 className="
-                                    absolute left-1/2 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
+                                    absolute left-1/2 top-full z-[80] w-[min(58rem,calc(100vw-3rem))]
                                     -translate-x-1/2 pt-3
                                     origin-top scale-95 opacity-0
                                     invisible translate-y-2
@@ -273,63 +302,90 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                     <L
                                         href="/product"
-                                        className="group/menu-item mb-3 flex min-h-12 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-teal-500/[0.04] px-3 py-2.5 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
+                                        className="group/menu-item mb-3 flex min-h-14 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-white/[0.02] px-4 py-3 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
                                     >
                                         <MegaMenuIcon icon={LuLayoutDashboard} />
                                         <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-semibold text-white">Product overview</span>
+                                            <span className="mt-0.5 block text-xs leading-relaxed text-[#8f8faa]">
+                                                See the complete founder support layer.
+                                            </span>
                                         </span>
                                         <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                     </L>
 
-                                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                        <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                            Support areas
+                                    <div className="grid overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.018] lg:grid-cols-[0.95fr_1.35fr_0.82fr]">
+                                        <div className="p-4">
+                                            <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                Support areas
+                                            </div>
+                                            <div className="grid gap-2">
+                                                {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
+                                                    const Icon = getMobileNavIcon(area.href);
+                                                    const label = getProductAreaNavLabel(area);
+                                                    return (
+                                                        <L
+                                                            key={area.href}
+                                                            href={area.href}
+                                                            title={label}
+                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
+                                                        >
+                                                            <CompactMegaMenuIcon icon={Icon} />
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block text-sm font-semibold text-[#eeeeff]">
+                                                                    {label}
+                                                                </span>
+                                                            </span>
+                                                        </L>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                        <div className="grid gap-2 sm:grid-cols-2">
-                                            {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
-                                                const Icon = getMobileNavIcon(area.href);
-                                                const label = getProductAreaNavLabel(area);
-                                                return (
-                                                    <L
-                                                        key={area.href}
-                                                        href={area.href}
-                                                        title={label}
-                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
-                                                    >
-                                                        <MegaMenuIcon icon={Icon} />
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block truncate text-xs font-semibold text-[#eeeeff]">
+
+                                        <div className="border-t border-white/[0.06] p-4 lg:border-l lg:border-t-0">
+                                            <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                Support tools
+                                            </div>
+                                            <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+                                                {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
+                                                    const Icon = getMobileNavIcon(feature.href);
+                                                    const label = getProductFeatureNavLabel(feature);
+                                                    return (
+                                                        <L
+                                                            key={feature.href}
+                                                            href={feature.href}
+                                                            title={label}
+                                                            className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
+                                                        >
+                                                            <CompactMegaMenuIcon icon={Icon} compact />
+                                                            <span className="min-w-0 flex-1 truncate">
                                                                 {label}
                                                             </span>
-                                                        </span>
-                                                    </L>
-                                                );
-                                            })}
+                                                        </L>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                        <div className="mb-2 mt-3 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                            Support tools
-                                        </div>
-                                        <div className="grid gap-2 sm:grid-cols-2">
-                                            {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
-                                                const Icon = getMobileNavIcon(feature.href);
-                                                const label = getProductFeatureNavLabel(feature);
-                                                return (
-                                                    <L
-                                                        key={feature.href}
-                                                        href={feature.href}
-                                                        title={label}
-                                                        className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
-                                                    >
-                                                        <MegaMenuIcon icon={Icon} />
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block truncate text-xs font-semibold text-[#eeeeff]">
-                                                                {label}
-                                                            </span>
-                                                        </span>
-                                                    </L>
-                                                );
-                                            })}
+
+                                        <div className="border-t border-white/[0.06] bg-teal-300/[0.035] p-4 lg:border-l lg:border-t-0">
+                                            <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                Featured
+                                            </div>
+                                            <p className="mt-3 text-sm font-semibold leading-snug text-white">
+                                                Launch support before users arrive.
+                                            </p>
+                                            <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">
+                                                Set up widget help, hosted docs, tickets, feedback, changelog, and reviewed answers from one place.
+                                            </p>
+                                            <div className="mt-4 flex h-24 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200">
+                                                <LuShieldCheck size={30} aria-hidden />
+                                            </div>
+                                            <L
+                                                href="/get-started"
+                                                className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-500"
+                                            >
+                                                Start setup
+                                            </L>
                                         </div>
                                     </div>
                                 </div>
@@ -356,7 +412,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                                     <div
                                         className="
-                                            absolute left-1/2 top-full z-[80] w-[min(42rem,calc(100vw-3rem))]
+                                            absolute left-1/2 top-full z-[80] w-[min(54rem,calc(100vw-3rem))]
                                             -translate-x-1/2 pt-3
                                             origin-top scale-95 opacity-0
                                             invisible translate-y-2
@@ -378,31 +434,80 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                         <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                             <L
                                                 href="/resources"
-                                                className="group/menu-item mb-3 flex min-h-12 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-teal-500/[0.04] px-3 py-2.5 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
+                                                className="group/menu-item mb-3 flex min-h-14 items-center gap-3 rounded-xl border border-teal-200/10 bg-gradient-to-r from-teal-300/[0.08] to-white/[0.02] px-4 py-3 transition hover:border-teal-200/20 hover:bg-white/[0.05]"
                                             >
                                                 <MegaMenuIcon icon={LuLayoutDashboard} />
                                                 <span className="min-w-0 flex-1">
                                                     <span className="block text-sm font-semibold text-white">Resources overview</span>
+                                                    <span className="mt-0.5 block text-xs leading-relaxed text-[#8f8faa]">
+                                                        Check launch, setup, and trust guides.
+                                                    </span>
                                                 </span>
                                                 <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                             </L>
-                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                                <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                                    Resource guides
+
+                                            <div className="grid overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.018] lg:grid-cols-[1fr_1.08fr_0.85fr]">
+                                                <div className="p-4">
+                                                    <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                        Setup guides
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        {RESOURCE_MENU_LINKS.filter((resourceLink) => RESOURCE_SETUP_GUIDE_HREFS.includes(resourceLink.href)).map((resourceLink) => (
+                                                            <L
+                                                                key={resourceLink.href}
+                                                                href={resourceLink.href}
+                                                                className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
+                                                            >
+                                                                <CompactMegaMenuIcon icon={resourceLink.icon} />
+                                                                <span className="min-w-0 flex-1">
+                                                                    <span className="block text-sm font-semibold text-[#eeeeff]">
+                                                                        {resourceLink.label}
+                                                                    </span>
+                                                                </span>
+                                                            </L>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                                <div className="grid gap-2 sm:grid-cols-2">
-                                                    {RESOURCE_MENU_LINKS.filter((resourceLink) => resourceLink.href !== '/resources').map((resourceLink) => (
-                                                        <L
-                                                            key={resourceLink.href}
-                                                            href={resourceLink.href}
-                                                            className="group/menu-item flex min-h-12 items-center gap-3 rounded-xl px-2.5 py-2 transition hover:bg-teal-400/[0.055]"
-                                                        >
-                                                            <MegaMenuIcon icon={resourceLink.icon} />
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block truncate text-xs font-semibold text-[#eeeeff]">{resourceLink.label}</span>
-                                                            </span>
-                                                        </L>
-                                                    ))}
+
+                                                <div className="border-t border-white/[0.06] p-4 lg:border-l lg:border-t-0">
+                                                    <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                        Evaluate & trust
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        {RESOURCE_MENU_LINKS.filter((resourceLink) => RESOURCE_EVALUATION_HREFS.includes(resourceLink.href)).map((resourceLink) => (
+                                                            <L
+                                                                key={resourceLink.href}
+                                                                href={resourceLink.href}
+                                                                className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
+                                                            >
+                                                                <CompactMegaMenuIcon icon={resourceLink.icon} compact />
+                                                                <span className="min-w-0 flex-1 truncate">
+                                                                    {resourceLink.label}
+                                                                </span>
+                                                            </L>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="border-t border-white/[0.06] bg-teal-300/[0.035] p-4 lg:border-l lg:border-t-0">
+                                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                                        Featured
+                                                    </div>
+                                                    <p className="mt-3 text-sm font-semibold leading-snug text-white">
+                                                        Prepare your support inputs before setup.
+                                                    </p>
+                                                    <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">
+                                                        Use the pre-onboarding package to collect docs, FAQs, screenshots, release notes, and repeated replies.
+                                                    </p>
+                                                    <div className="mt-4 flex h-24 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200">
+                                                        <LuFileInput size={30} aria-hidden />
+                                                    </div>
+                                                    <L
+                                                        href="/resources/pre-onboarding-source-package"
+                                                        className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-500"
+                                                    >
+                                                        Open package
+                                                    </L>
                                                 </div>
                                             </div>
                                         </div>
