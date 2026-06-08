@@ -19,6 +19,12 @@ type MonitorEvent = {
   status: string;
   confidence: string;
   cacheSource?: string | null;
+  packetProfile?: string | null;
+  packetAgeMinutes?: number | null;
+  firestoreReadCount?: number | null;
+  firestoreWriteCount?: number | null;
+  threadWritten?: boolean;
+  unsupportedReason?: string | null;
   actionOptionCount: number;
   providerUsed: boolean;
   unitsConsumed: number;
@@ -35,12 +41,26 @@ type MonitorData = {
     unsupported: number;
     needsConfirmation: number;
     providerCalls: number;
+    serverCacheHits: number;
+    freshFirestorePackets: number;
+    avgFirestoreReads: number;
+    maxFirestoreReads: number;
+    threadWrites: number;
     actionOptionsShown: number;
     unitsConsumed: number;
     realCostPaise: number;
     ownerChargePaise: number;
     byIntent: Record<string, number>;
     byStatus: Record<string, number>;
+    sourceCoverage: Array<{
+      domain: string;
+      status: string;
+      reason?: string | null;
+      eventCount: number;
+      supportedCount: number;
+      summaryOnlyCount: number;
+      unsupportedCount: number;
+    }>;
   };
   events: MonitorEvent[];
   recentActions: Array<Record<string, any>>;
@@ -81,7 +101,7 @@ export default function OwnerBusinessAssistantMonitor() {
     }
     setLoading(true);
     try {
-      const response = await fetch('/api/platform/owner-business-assistant/monitor?limit=75');
+      const response = await fetch('/api/platform/owner-business-assistant/monitor?limit=50');
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || 'Failed to load Business Health monitor');
       setData(payload.data);
@@ -164,6 +184,17 @@ export default function OwnerBusinessAssistantMonitor() {
         </Space>
       ),
     },
+    {
+      title: 'Route Cost',
+      key: 'routeCost',
+      width: 150,
+      render: (_: unknown, record: MonitorEvent) => (
+        <Space direction="vertical" size={4}>
+          <Text>{record.firestoreReadCount ?? '-'} reads</Text>
+          <Text type="secondary">{record.cacheSource || 'unknown'}{record.packetAgeMinutes != null ? ` · ${record.packetAgeMinutes}m` : ''}</Text>
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -187,6 +218,11 @@ export default function OwnerBusinessAssistantMonitor() {
           <Card size="small"><Statistic title="Needs More Data" value={data.summary.needsMoreData} /></Card>
           <Card size="small"><Statistic title="Unsupported" value={data.summary.unsupported} /></Card>
           <Card size="small"><Statistic title="Provider Calls" value={data.summary.providerCalls} /></Card>
+          <Card size="small"><Statistic title="Server Cache Hits" value={data.summary.serverCacheHits} /></Card>
+          <Card size="small"><Statistic title="Fresh Packets" value={data.summary.freshFirestorePackets} /></Card>
+          <Card size="small"><Statistic title="Avg Reads" value={data.summary.avgFirestoreReads} precision={2} /></Card>
+          <Card size="small"><Statistic title="Max Reads" value={data.summary.maxFirestoreReads} /></Card>
+          <Card size="small"><Statistic title="Thread Writes" value={data.summary.threadWrites} /></Card>
           <Card size="small"><Statistic title="Units" value={data.summary.unitsConsumed} /></Card>
           <Card size="small"><Statistic title="Internal Cost" value={formatInrPaise(data.summary.realCostPaise)} /></Card>
           <Card size="small"><Statistic title="Owner Charge" value={formatInrPaise(data.summary.ownerChargePaise)} /></Card>
@@ -198,6 +234,40 @@ export default function OwnerBusinessAssistantMonitor() {
               {topIntents.map(([intent, count]) => <Tag key={intent}>{intent}: {count}</Tag>)}
             </Space>
           ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No answer events yet" />}
+        </Card>
+
+        <Card title="Source Coverage" size="small">
+          {data.summary.sourceCoverage.length ? (
+            <Table
+              dataSource={data.summary.sourceCoverage}
+              pagination={false}
+              rowKey="domain"
+              size="small"
+              columns={[
+                {
+                  title: 'Domain',
+                  dataIndex: 'domain',
+                  key: 'domain',
+                },
+                {
+                  title: 'Coverage',
+                  key: 'status',
+                  render: (_: unknown, record: MonitorData['summary']['sourceCoverage'][number]) => (
+                    <Space wrap size={4}>
+                      <Tag color={record.status === 'supported' ? 'green' : record.status === 'summary_only' ? 'blue' : 'orange'}>{record.status}</Tag>
+                      {record.reason ? <Text type="secondary">{record.reason}</Text> : null}
+                    </Space>
+                  ),
+                },
+                {
+                  title: 'Events',
+                  dataIndex: 'eventCount',
+                  key: 'eventCount',
+                  width: 100,
+                },
+              ]}
+            />
+          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No coverage data yet" />}
         </Card>
 
         <Card title="Recent Questions" size="small">

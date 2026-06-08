@@ -1,25 +1,57 @@
 import { Button, Card, Empty, Space, Tag, Typography, message } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import { useRouter } from 'next/navigation';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCheckCheck, LuExternalLink, LuX } from 'react-icons/lu';
 import type { OwnerBusinessHealthCheck } from '@lib/ownerBusinessAssistant/types';
+import { buildOwnerBusinessHealthCheckStateKey } from '@lib/ownerBusinessAssistant/checkStateStorage';
 import { useOwnerBusinessAssistantAction } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAction';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Text } = Typography;
 
-export function BusinessHealthPriorityChecks({ checks, projectId }: {
+export function BusinessHealthPriorityChecks({ checks, localDate, projectId }: {
   checks?: OwnerBusinessHealthCheck[];
+  localDate?: string;
   projectId?: string;
 }) {
   const router = useRouter();
+  const { storeDetails } = useContext(PlatformGlobalDataContext);
   const { runAction, isLoading } = useOwnerBusinessAssistantAction(projectId);
+  const [suppressedCheckIds, setSuppressedCheckIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    return new Set((checks || [])
+      .filter((check) => window.localStorage.getItem(buildOwnerBusinessHealthCheckStateKey({
+        checkId: check.id,
+        localDate,
+        projectId,
+        storeId: storeDetails?.storeId,
+      })))
+      .map((check) => check.id));
+  });
   const canNavigate = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
     && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION;
   const canUpdateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
     && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW;
+  const visibleChecks = useMemo(
+    () => (checks || []).filter((check) => !suppressedCheckIds.has(check.id)),
+    [checks, suppressedCheckIds],
+  );
 
-  if (!checks?.length) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setSuppressedCheckIds(new Set((checks || [])
+      .filter((check) => window.localStorage.getItem(buildOwnerBusinessHealthCheckStateKey({
+        checkId: check.id,
+        localDate,
+        projectId,
+        storeId: storeDetails?.storeId,
+      })))
+      .map((check) => check.id)));
+  }, [checks, localDate, projectId, storeDetails?.storeId]);
+
+  if (!visibleChecks.length) {
     return (
       <Card title="Checks" className={styles.dashboardCard}>
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No checks need attention" />
@@ -36,6 +68,15 @@ export function BusinessHealthPriorityChecks({ checks, projectId }: {
         targetId: check.id,
         payload: { checkId: check.id },
       });
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(buildOwnerBusinessHealthCheckStateKey({
+          checkId: check.id,
+          localDate,
+          projectId,
+          storeId: storeDetails?.storeId,
+        }), operation);
+      }
+      setSuppressedCheckIds((previous) => new Set(previous).add(check.id));
       message.success(operation === 'dismiss' ? 'Dismissed' : 'Marked as reviewed');
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Action failed');
@@ -61,7 +102,7 @@ export function BusinessHealthPriorityChecks({ checks, projectId }: {
   return (
     <Card title="Checks" className={styles.dashboardCard}>
       <div className={styles.checkList}>
-        {checks.map((check) => (
+        {visibleChecks.map((check) => (
           <div className={styles.checkItem} key={check.id}>
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Space align="start" style={{ justifyContent: 'space-between', width: '100%' }}>

@@ -17,17 +17,20 @@ The accepted product shape is:
 
 1. A scheduler-built, compact store health read model.
 2. A deterministic analytics period index for owner dashboard stats and questions such as today, this week, last week, this month, and last month.
+   The index is store-scoped and includes bounded per-menu summaries, so selected-menu questions do not need a new collection or live project scan.
 3. A cache-first Business Health context packet served from browser cache or server cache before any Firebase read.
-4. Reuse of existing cached public project/store projections for non-analytics questions, instead of raw project/store reads.
+4. Non-analytics questions use compact facts already present in the context packet; when public project/store facts are added, they must come from existing cached projections instead of raw project/store reads.
 5. A domain capability matrix covering analytics, menu/project, store profile, public links, QR/share, screens, feedback/reviews, locations, billing, users, POS, compliance, and unsupported external web/local-event questions.
 6. A dashboard card, analytics strip, and full Business Health page that show the latest state before any chat.
 7. AI answering for typed owner questions, using only the cached context packet and returning structured, server-validated output.
 8. Structured answer artifacts: text, metric rows, compact tables, trend series, and action options.
-9. Suggested owner questions answered through the same packet contract, with deterministic fallback only when provider answering is disabled or unavailable.
+9. Suggested owner questions answered through the same packet contract: starter questions are deterministic and packet-ranked; answer follow-ups reuse the same answer call and deterministic fallback when provider answering is disabled or unavailable.
 10. Day-one Action Support with registry-driven navigation, compact draft preparation, existing-screen handoff for public-truth saves, public-truth guards, feedback, and cleanup.
 11. Optional bounded owner chat history behind `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
-12. Internal platform monitoring behind `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` for answer quality, unsupported gaps, action usage, feedback, and provider-cost review.
-13. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
+12. Compact multi-location Business Health summary for multi-store tenants without loading every store's detailed packet.
+13. Internal platform monitoring behind `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` for answer quality, unsupported gaps, source coverage, route reads/writes, action usage, feedback, and provider-cost review.
+14. Explicit Business Health packet invalidation tied to public-truth writes and scheduler rebuilds.
+15. Separate kill switches: Business Health can remain read-only when Action Support is disabled.
 
 The rejected product shape is:
 
@@ -118,11 +121,12 @@ Implemented surfaces:
 2. Shared constants, schemas, types, server context-packet builder, deterministic answer resolver, domain matrix, and action registry/executor.
 3. Scheduler-built `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}`, daily snapshots, and optional `ownerBusinessAnalyticsIndex_{tId}_{sId}`.
 4. Protected APIs under `/api/owner-business-assistant/*` with auth, tenant checks, permissions, rate limits, Zod validation, SAFE_MODE for AI answers, and Admin SDK access.
-5. Desktop dashboard card, analytics strip, full `/business-health` route, assistant panel, suggested questions, source/freshness disclosure, and action chips.
+5. Desktop dashboard card, analytics strip, full `/business-health` route, packet-ranked starter questions, answer follow-up questions, source/freshness disclosure, and action chips.
 6. MobileShell More sub-screen, `/business-health` route mapping, and mobile Business Health screen.
 7. Action Support registry for navigation, drafts, check review/dismiss/cancel, audit logging, permission gates, and public-truth guardrails.
-8. Optional bounded thread-doc history, internal answer-event logging, and platform monitor at `/platform/owner-business-assistant`.
-9. Server-only Firestore rules for assistant workflow collections and consolidated maintenance cleanup.
+8. Optional bounded thread-doc history, internal answer-event logging, source coverage metrics, and platform monitor at `/platform/owner-business-assistant`.
+9. Compact `/api/owner-business-assistant/locations` route backed by `platformSummary/ownerBusinessHealthMultiLocation_{tId}`.
+10. Server-only Firestore rules for assistant workflow collections and consolidated maintenance cleanup.
 
 Current default posture:
 

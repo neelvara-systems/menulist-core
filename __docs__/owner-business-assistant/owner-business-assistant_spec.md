@@ -160,7 +160,7 @@ Protected APIs read these docs with Admin SDK and return tenant/role-filtered ow
 
 `ownerBusinessHealthCurrent` powers the dashboard card, health status, priority checks, and small analytics teasers.
 
-`ownerBusinessAnalyticsIndex` powers owner analytics questions and compact dashboard analytics modules. It stores standard period packets only:
+`ownerBusinessAnalyticsIndex` powers owner analytics questions and compact dashboard analytics modules. It stores store-aggregate standard period packets plus bounded selected-project period packets:
 
 - Today, marked partial.
 - Yesterday.
@@ -172,7 +172,9 @@ Protected APIs read these docs with Admin SDK and return tenant/role-filtered ow
 - Last 30 days.
 - Overall.
 
-The answer API must use a cache-first context packet. On cache hit, a question should require zero Firestore reads. On cache miss, the API may read compact docs/projections only: one current health doc, one analytics index doc, one cached public project/store projection when needed, and one current-day analytics doc for a fresher "today so far" overlay. It must not aggregate N daily docs during a message.
+For stores with multiple active projects, store-level analytics answers aggregate indexed projects and selected-project answers use `projectSummaries[projectId]`. The scheduler caps indexed projects at 10 active projects, default project first, and records overflow. If an owner selects a project that is not in the index, the answer is not-enough-data for that selected menu rather than a misleading store aggregate.
+
+The answer API must use a cache-first context packet. On cache hit, a question should require zero Firestore reads. In the current implementation, a cache miss may read compact docs only: one current health doc and one analytics index doc. Already-indexed today overlay facts are read from the analytics index. It must not aggregate N daily docs during a message.
 
 Context packet:
 
@@ -180,10 +182,10 @@ Context packet:
 OwnerBusinessAssistantContextPacket
   = health current facts
   + analytics period facts
-  + public project/store projection facts
-  + compact non-analytics business facts
+  + public project/store projection facts when already present
+  + compact non-analytics business facts when already present
   + client/page target context
-  + optional today overlay
+  + already-indexed today overlay facts
   + allowed action catalog
   + source/freshness metadata
   + answer rules
@@ -193,11 +195,24 @@ The AI model receives the context packet, not raw Firestore data.
 
 Read-only questions outside analytics follow the same rule. Public project/menu/store facts should come from cached projections that reuse existing public cache invalidation contracts. Feedback, reviews, POS, screens, recent changes, operations, billing, and permissions are answerable only when the packet contains a compact owner-safe summary. If the packet does not contain a source fact, the assistant must say the data is not available instead of reading a live collection.
 
+First-run/not-ready owner experience:
+
+- Do not show "No action needed".
+- Do not show an active Ask input or suggested questions.
+- Show calm navigation shortcuts to existing Dashboard, Menu, Share, and Settings surfaces.
+- Show freshness copy that explains Business Health is not realtime and the first source-backed check will provide the data date.
+
+Multi-location owner experience:
+
+- Show compact location status only for multi-store tenants.
+- Use `platformSummary/ownerBusinessHealthMultiLocation_{tId}` and mapped store access filtering.
+- Do not load every store's detailed Business Health packet on first render.
+
 Answer rendering supports text, metric rows, compact tables, trend series, and action options. These artifacts must come from packet facts only. Business Health does not export raw rows or create custom reports unless the report data already exists in a compact cached source and the export is registered.
 
 Client/page context can help resolve words such as "this item" or "this menu", but it is advisory. The server must verify every target again from the owner session and packet facts. Ambiguous targets require a disambiguation response instead of a broad Firestore search.
 
-Shared server cache must store the reusable business-facts packet only. Page/selection context is attached per request after cache lookup and must not be part of the shared packet cache value or cache key.
+Shared server cache must store the reusable business-facts packet only. Store-level packets use `p:_`; selected-project packets use `p:{projectId}` because analytics periods and teasers differ. Page item/screen context is attached per request after cache lookup and must not be part of the shared packet cache value or cache key.
 
 ## 9. Snapshot Sources
 
@@ -206,7 +221,7 @@ Allowed sources are settled or compacted summaries:
 - `platformSummary/storesSummary`
 - `platformSummary/projects_{sId}`
 - Existing dashboard summaries in `analytics`
-- One current-day analytics doc for today's partial stats
+- Current-day analytics docs for indexed active projects only, folded into the scheduler-built index
 - Existing weekly/monthly/overall analytics docs
 - `menuIntelligence`
 - Existing `store.health`
@@ -306,10 +321,10 @@ If a provider call is used:
 Non-negotiables:
 
 - Dashboard card: browser/server cache hit is 0 Firestore reads; cache miss is 1 current summary read through protected API.
-- Dashboard analytics strip: cache hit is 0 Firestore reads; cache miss is 1 analytics-index read, optional 1 current-day doc read for partial today.
+- Dashboard analytics strip: cache hit is 0 Firestore reads; cache miss is 1 analytics-index read.
 - Business Health page: cache hit is 0 Firestore reads; cache miss is 1 current summary read, 1 analytics-index read when analytics is visible, flag-gated cached thread read only under the thread flag.
-- Suggested/typed question answer: context-packet cache hit is 0 Firestore reads; cache miss reads current summary, analytics index, cached project/store projection, and optional today overlay only as needed.
-- Analytics question answer: context-packet cache hit is 0 Firestore reads; cache miss is 1 analytics-index read plus optional 1 today overlay read; no period range aggregation.
+- Suggested/typed question answer: context-packet cache hit is 0 Firestore reads; cache miss reads current summary and analytics index only in the current implementation. Other domains require compact facts in the packet and must refuse when missing.
+- Analytics question answer: context-packet cache hit is 0 Firestore reads; cache miss is 1 analytics-index read; no period range aggregation.
 - Free-text answer: no raw source collection aggregation.
 - AI answer input: context packet only, never raw Firebase collections.
 - Owner chat history: optional bounded thread/message writes only under `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`.
@@ -333,6 +348,7 @@ Mobile contract:
 - Does not use desktop route reloads from mobile tabs.
 - Keeps touch targets at least 44px.
 - Shows source/freshness text visibly.
+- Shows the owner-facing data coverage note so owners do not mistake settled Business Health data for realtime analytics.
 - Uses short owner-safe copy.
 
 ## 15. Website and Help Decision

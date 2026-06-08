@@ -15,10 +15,19 @@
  */
 "use server";
 
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { revalidateTag } from "next/cache";
 
-export async function revalidateMenuCache(storeId: string | number) {
+export async function revalidateMenuCache(
+    storeId: string | number,
+    options: { tId?: string | number; projectId?: string | number } = {},
+) {
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    await invalidateOwnerBusinessAssistantPacketCache({
+        tId: options.tId,
+        sId: storeId,
+        projectId: options.projectId,
+    });
 }

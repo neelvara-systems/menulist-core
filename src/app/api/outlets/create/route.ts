@@ -19,6 +19,7 @@ import {
     isRazorpayQuantityUpdateUnsupported,
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -454,6 +455,20 @@ export const POST = withAuth(async (request, session) => {
             revalidateTag(`store-${storeId}`);
         }
         revalidateTag('client-stores');
+        await Promise.all([
+            invalidateOwnerBusinessAssistantPacketCache({
+                tId: tenantId,
+                sId: result.newStoreId,
+            }),
+            ...(masterPromoted
+                ? [
+                    invalidateOwnerBusinessAssistantPacketCache({
+                        tId: tenantId,
+                        sId: storeId,
+                    }),
+                ]
+                : []),
+        ]);
 
         return NextResponse.json({
             success: true,

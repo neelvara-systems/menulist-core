@@ -40,6 +40,11 @@
   background: color-mix(in srgb, var(--ant-color-warning) 12%, transparent);
 }
 
+.statusIconInfo {
+  color: var(--ant-color-info);
+  background: color-mix(in srgb, var(--ant-color-info) 12%, transparent);
+}
+
 .statusIconReview {
   color: var(--ant-color-error);
   background: color-mix(in srgb, var(--ant-color-error) 12%, transparent);
@@ -49,6 +54,25 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   gap: 16px;
+}
+
+.locationSummaryRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.locationSummaryRow:last-child {
+  border-bottom: 0;
+}
+
+.locationSummaryReason {
+  display: block;
+  margin-top: 2px;
+  max-width: 560px;
 }
 
 .metricGrid {
@@ -124,23 +148,149 @@
 .messageBox {
   border: 1px solid var(--ant-color-border);
   border-radius: 8px;
-  padding: 12px;
+  padding: 14px;
   background: var(--ant-color-fill-quaternary);
   min-height: 116px;
   max-height: 360px;
   overflow-y: auto;
 }
 
-.userMessage,
+.messageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.messageRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.messageRowAssistant {
+  justify-content: flex-start;
+}
+
+.messageRowUser {
+  justify-content: flex-end;
+}
+
+.messageAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.messageAvatarAssistant {
+  color: var(--ant-color-success);
+  background: color-mix(in srgb, var(--ant-color-success) 12%, var(--ant-color-bg-container));
+  border: 1px solid color-mix(in srgb, var(--ant-color-success) 20%, var(--ant-color-border));
+}
+
+.messageBubble {
+  max-width: min(86%, 560px);
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ant-color-border-secondary);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
 .assistantMessage {
-  border-radius: 8px;
-  padding: 10px;
-  border: 1px solid var(--ant-color-border);
+  border-radius: 16px 16px 16px 4px;
   background: var(--ant-color-bg-container);
 }
 
 .userMessage {
-  background: var(--ant-color-fill-secondary);
+  border-radius: 16px 16px 4px 16px;
+  background: color-mix(in srgb, var(--ant-color-primary) 9%, var(--ant-color-bg-container));
+  border-color: color-mix(in srgb, var(--ant-color-primary) 24%, var(--ant-color-border));
+}
+
+.messageMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.messageText {
+  margin: 0;
+  line-height: 1.58;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.answerMeta {
+  margin-top: 10px;
+}
+
+.assistantEmpty {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 12px;
+}
+
+.emptyIcon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  border: 1px solid var(--ant-color-primary-border);
+}
+
+.followUpBlock {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.followUpHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--ant-color-primary);
+}
+
+.followUpGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.followUpButton {
+  height: auto;
+  min-height: 36px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-bg-elevated);
+  color: var(--ant-color-text);
+  white-space: normal;
+  text-align: left;
+  line-height: 1.35;
+  box-shadow: none;
+}
+
+.followUpButton:hover {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary);
 }
 
 .sourceList {
@@ -168,5 +318,25 @@
   .metricGrid,
   .questionGrid {
     grid-template-columns: 1fr;
+  }
+
+  .messageBox {
+    padding: 12px;
+  }
+
+  .messageBubble {
+    max-width: 100%;
+  }
+
+  .messageAvatar {
+    display: none;
+  }
+
+  .followUpGrid {
+    flex-direction: column;
+  }
+
+  .followUpButton {
+    width: 100%;
   }
 }

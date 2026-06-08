@@ -199,6 +199,7 @@ function disabledButtonStyles(token: ReturnType<typeof theme.useToken>['token'],
 }
 
 type ButtonProps = {
+    ariaLabel?: string;
     block?: boolean;
     children?: ReactNode;
     className?: string;
@@ -211,9 +212,10 @@ type ButtonProps = {
     onClick?: (event: MouseEvent<HTMLElement>) => void;
     size?: 'mini' | 'small' | 'middle' | 'large';
     style?: AnyStyle;
+    title?: string;
 };
 
-export function Button({ block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style }: ButtonProps) {
+export function Button({ ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
@@ -225,6 +227,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
 
     return (
         <AntButton
+            aria-label={ariaLabel}
             block={block}
             className={className}
             danger={color === 'danger'}
@@ -235,6 +238,7 @@ export function Button({ block, children, className, color, disabled, fill = 'so
             onClick={onClick}
             size={antSize}
             style={{ ...visualStyle, ...touchSafeStyle, ...sanitizeStyle(style) }}
+            title={title}
             type={antType}
         >
             {children}

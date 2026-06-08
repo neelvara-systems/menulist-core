@@ -1,5 +1,10 @@
 export const OWNER_BUSINESS_ASSISTANT_VERSION = 1 as const;
 
+export const OWNER_BUSINESS_ASSISTANT_CACHE = {
+  serverPacketPrefix: 'owner-business-assistant:packet:v1',
+  serverPacketIndexPrefix: 'owner-business-assistant:packet-index:v1',
+} as const;
+
 export const OWNER_BUSINESS_ASSISTANT_DOCS = {
   getCurrent: (tId: string | number, sId: string | number) =>
     `ownerBusinessHealthCurrent_${tId}_${sId}`,
@@ -7,6 +12,8 @@ export const OWNER_BUSINESS_ASSISTANT_DOCS = {
     `ownerBusinessHealthSnapshot_${tId}_${sId}_${localDate}`,
   getAnalyticsIndex: (tId: string | number, sId: string | number) =>
     `ownerBusinessAnalyticsIndex_${tId}_${sId}`,
+  getMultiLocation: (tId: string | number) =>
+    `ownerBusinessHealthMultiLocation_${tId}`,
   getProjectsSummary: (sId: string | number) => `projects_${sId}`,
 } as const;
 

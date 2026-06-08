@@ -8,6 +8,16 @@ import type {
 } from '../types';
 import type { OwnerBusinessAssistantActionRequest } from '../schemas';
 
+const ACTION_AUDIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
+const shouldLogOwnerBusinessAssistantAction = (params: {
+  operation: OwnerBusinessAssistantActionOperation;
+  result: OwnerBusinessAssistantActionResult;
+}) => {
+  if (params.operation !== 'navigate') return true;
+  return params.result.success !== true || params.result.status === 'blocked';
+};
+
 export async function logOwnerBusinessAssistantAction(params: {
   tId: string | number;
   sId: string | number;
@@ -15,7 +25,9 @@ export async function logOwnerBusinessAssistantAction(params: {
   operation: OwnerBusinessAssistantActionOperation;
   request: OwnerBusinessAssistantActionRequest;
   result: OwnerBusinessAssistantActionResult;
-}) {
+}): Promise<string | undefined> {
+  if (!shouldLogOwnerBusinessAssistantAction(params)) return undefined;
+
   const actionId = params.result.actionId || randomUUID();
   await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ACTIONS).doc(actionId).set({
     id: actionId,
@@ -34,8 +46,11 @@ export async function logOwnerBusinessAssistantAction(params: {
       : null,
     success: params.result.success,
     message: params.result.message,
+    route: params.result.metrics?.route || '/api/owner-business-assistant/action',
+    firestoreReadCount: params.result.metrics?.firestoreReadCount ?? null,
+    firestoreWriteCount: params.result.metrics?.firestoreWriteCount ?? null,
     createdAt: Timestamp.now(),
-    expiresAt: Timestamp.fromMillis(Date.now() + 180 * 24 * 60 * 60 * 1000),
+    expiresAt: Timestamp.fromMillis(Date.now() + ACTION_AUDIT_RETENTION_MS),
     source: 'owner_business_assistant',
   }, { merge: true });
   return actionId;

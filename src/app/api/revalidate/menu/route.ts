@@ -24,6 +24,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { authOptions } from "@lib/auth";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { revalidateTag } from "next/cache";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -71,9 +72,17 @@ export async function POST(request: NextRequest) {
             revalidateTag(tag);
         }
 
+        const ownerBusinessAssistant = body.storeId
+            ? await invalidateOwnerBusinessAssistantPacketCache({
+                tId: (session as any)?.tId || (session as any)?.user?.tenantId,
+                sId: body.storeId,
+            })
+            : { attempted: false, keysDeleted: 0, patterns: [] };
+
         return NextResponse.json({
             revalidated: true,
             tags,
+            ownerBusinessAssistant,
             timestamp: Date.now(),
         });
     } catch (error) {

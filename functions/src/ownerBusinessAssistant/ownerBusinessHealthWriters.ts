@@ -4,7 +4,12 @@ import {
   OWNER_BUSINESS_ASSISTANT_DOCS,
   OWNER_BUSINESS_ASSISTANT_SNAPSHOT_RETENTION_DAYS,
 } from './constants';
-import type { OwnerBusinessAnalyticsIndexDoc, OwnerBusinessHealthCurrentDoc } from './types';
+import { invalidateOwnerBusinessAssistantContextPackets } from './contextPacketCacheInvalidation';
+import type {
+  OwnerBusinessAnalyticsIndexDoc,
+  OwnerBusinessHealthCurrentDoc,
+  OwnerBusinessMultiLocationStoreSummary,
+} from './types';
 
 function stripUndefined(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -34,6 +39,7 @@ export async function writeOwnerBusinessHealthDocs(params: {
   localDate: string;
   current: OwnerBusinessHealthCurrentDoc;
   analytics?: OwnerBusinessAnalyticsIndexDoc;
+  locationSummary?: OwnerBusinessMultiLocationStoreSummary;
 }) {
   const currentDocId = OWNER_BUSINESS_ASSISTANT_DOCS.getCurrent(params.tId, params.sId);
   const snapshotDocId = OWNER_BUSINESS_ASSISTANT_DOCS.getSnapshot(params.tId, params.sId, params.localDate);
@@ -66,7 +72,28 @@ export async function writeOwnerBusinessHealthDocs(params: {
     writeCount++;
   }
 
+  if (params.locationSummary) {
+    const multiLocationRef = params.db
+      .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+      .doc(OWNER_BUSINESS_ASSISTANT_DOCS.getMultiLocation(params.tId));
+    batch.set(multiLocationRef, stripUndefined({
+      version: 1,
+      kind: 'ownerBusinessHealthMultiLocation',
+      tId: params.tId,
+      generatedAt: params.current.generatedAt,
+      updatedAt: params.current.generatedAt,
+      stores: {
+        [params.sId]: params.locationSummary,
+      },
+    }) as FirebaseFirestore.DocumentData, { merge: true });
+    writeCount++;
+  }
+
   await batch.commit();
+  await invalidateOwnerBusinessAssistantContextPackets({
+    tId: params.tId,
+    sId: params.sId,
+  });
   return {
     currentDocId,
     snapshotDocId,

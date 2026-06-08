@@ -1,4 +1,5 @@
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
+import { invalidateOwnerBusinessAssistantBrowserCache } from "@lib/ownerBusinessAssistant/cacheInvalidation";
 
 const PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
 
@@ -24,6 +25,8 @@ export const revalidatePublicClientCache = async (
     if (!normalizedStoreId || typeof window === 'undefined') {
         return;
     }
+
+    invalidateOwnerBusinessAssistantBrowserCache({ storeId: normalizedStoreId });
 
     const pending = pendingRevalidations.get(normalizedStoreId);
     if (pending) {
@@ -76,6 +79,7 @@ export const revalidatePublicClientCacheForProject = async (
     context = 'publicClientCacheForProject',
 ): Promise<void> => {
     const storeId = getStoreIdFromProjectId(projectId);
+    invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });
     await revalidatePublicClientCache(storeId, context);
     await touchDigitalScreenContentVersion(storeId, context, { projectId });
 };

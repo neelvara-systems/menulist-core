@@ -11,6 +11,7 @@ import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/local
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import { getBusinessAttributesWithMenuDefaults } from "@lib/obp/inferBusinessAttributesFromMenu";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
 import { inferPhoneCountryFromInternationalNumber, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { secureError } from "@lib/security/secureLogger";
@@ -399,6 +400,11 @@ export async function executeMessagingOnboardingPublish(
     revalidateTag(`menu-store-${result.storeId}`);
     revalidateTag(`store-${result.storeId}`);
     revalidateTag("client-stores");
+    await invalidateOwnerBusinessAssistantPacketCache({
+      tId: result.tenantId,
+      sId: result.storeId,
+      projectId: result.projectId,
+    });
   } catch (cacheError) {
     secureError("[msg-preview/approve] Cache revalidation failed", cacheError as Error);
   }

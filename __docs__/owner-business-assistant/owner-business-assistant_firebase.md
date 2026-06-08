@@ -11,7 +11,7 @@
 ## Summary
 
 - **Primary collection:** `platformSummary` (existing)
-- **Primary docs:** `ownerBusinessHealthCurrent_{tId}_{sId}`, `ownerBusinessAnalyticsIndex_{tId}_{sId}`, `ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`
+- **Primary docs:** `ownerBusinessHealthCurrent_{tId}_{sId}`, `ownerBusinessAnalyticsIndex_{tId}_{sId}`, `ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}`, `ownerBusinessHealthMultiLocation_{tId}`
 - **New Firestore collections:** None for analytics; separately flag-gated workflow collections for Action Support drafts/actions, owner history, internal answer events, and feedback
 - **New Firebase Storage paths:** None for Business Health itself; Action Support image flows must use existing media upload paths and store only references in drafts
 - **New standalone scheduled functions:** None
@@ -80,8 +80,9 @@ Domain posture:
 | Document | Operation | Trigger | Notes |
 | --- | --- | --- | --- |
 | `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | WRITE | Store-local scheduler run | Replaced when compact signature changes |
-| `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | WRITE | Store-local scheduler run or freshness rebuild | Standard period packets for dashboard analytics and Q&A |
+| `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | WRITE | Store-local scheduler run or freshness rebuild | Store aggregate periods plus bounded per-project summaries for dashboard analytics and Q&A |
 | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | WRITE | First successful local-date run | Daily point-in-time proof; retention capped |
+| `platformSummary/ownerBusinessHealthMultiLocation_{tId}` | WRITE | Store-local Business Health rebuild | One compact tenant doc with `stores.{sId}` summary entries for multi-location comparison |
 
 ### Flag-Gated Workflow Docs
 
@@ -98,6 +99,7 @@ These docs are part of the complete architecture, but they are written only by p
 Suggested-question answers remain stateless unless the thread flag is enabled and the client supplies a bounded `threadId`.
 Business Health must not create one Firestore document per chat message.
 Answer-event logging is not owner chat history. It is a platform-only observation stream for answer quality, unsupported gaps, action exposure, and cost review.
+Successful low-risk navigation actions do not write action audit docs. Failed navigation, draft preparation, check workflow, public-truth guard blocks, permission denials, and risky/blocked paths remain auditable.
 
 ## Scheduler Cost Model
 
@@ -118,15 +120,15 @@ Target read cap:
 | Source | Reads | Notes |
 | --- | ---: | --- |
 | `platformSummary/projects_{sId}` | 1 | Active project/public state summary |
-| Dashboard summary docs | 1-3 | Only active/default projects, capped |
-| Today daily doc | 0-1 | Optional partial overlay |
+| Dashboard summary docs | 0-10 | Active projects, default first, capped by `MAX_INDEXED_PROJECTS` |
+| Today daily docs | 0-10 | Optional partial overlay for indexed projects only |
 | Weekly/monthly period docs | 0-2 | Only if analytics index cannot use dashboard summary fields |
 | `menuIntelligence` | 0-1 | Existing per-project intelligence state |
 | Store health/account summary | 0-1 | Prefer data already in storesSummary/current store scope |
 | Feedback/reviews compact summary | 0-2 | No raw scans |
 | Recent changes compact/capped read | 0-1 | Prefer summary/capped recent changes |
 | Existing scheduler context | 0 | Reuse loaded store/project data where possible |
-| **Target total** | **4-10 reads** | Per due store per local day; must not grow with event volume |
+| **Target total** | **2-24 reads** | Per due store per local day depending on indexed project count and enabled adapters; must not grow with event volume |
 
 Target writes:
 
@@ -135,6 +137,7 @@ Target writes:
 | Current doc | 0-1 | Write only when signature changes or status/freshness changes |
 | Analytics index doc | 0-1 | Write only when period signature changes |
 | Daily snapshot doc | 0-1 | One per store-local date |
+| Multi-location summary doc | 0-1 | One tenant summary doc merge for `stores.{sId}` |
 | Scheduler run log | Existing | Do not add noisy per-store logs beyond current scheduler pattern |
 
 ## Runtime API Cost Model
@@ -144,21 +147,33 @@ Target writes:
 The answer API should use a cache-first packet before Firestore:
 
 ```text
-owner-business-assistant:packet:v1:{tId}:{sId}:{projectId}:{localBusinessDate}:{packetProfile}:{signature}
+owner-business-assistant:packet:v1:{tId}:{sId}:p:_:profile:{packetProfile}
+owner-business-assistant:packet:v1:{tId}:{sId}:p:{projectId}:profile:{packetProfile}
 ```
+
+Implemented packet profiles:
+
+- `health_card`: current health card/page facts, no action catalog.
+- `analytics_periods`: period analytics packets, no action catalog.
+- `owner_question_actionable`: question-answer packet with current action catalog.
+- `multi_location_summary`: location comparison route metadata.
 
 Recommended storage:
 
 | Cache | Runtime | Purpose | Expiry |
 | --- | --- | --- | --- |
-| SWR/localStorage | Browser | Dashboard card/page/analytics reuse | Store-local scheduler cache key |
-| Server cache/Upstash | Server/API | Reuse context packet across typed questions and devices | Next store-local EOD scheduler window |
+| SWR/localStorage | Browser | Dashboard card/page/analytics/location-summary reuse | Store-local or tenant-local scheduler cache key, capped by short browser stale guard |
+| Server cache/Upstash | Server/API | Reuse context packet across typed questions and devices | Earliest of packet `validUntil` or 24 hours |
 | Today overlay cache | Browser/server | Partial "today so far" facts | 10 minutes |
 | Exact read-only answer cache | Server/API, optional | Repeat normalized question over same packet signature | Same packet TTL; disabled for actions |
 
-Upstash adds Redis operations, but it can prevent Firestore reads and repeated packet construction on every owner question. It must be feature-flagged and fail open to compact Firestore reads when unavailable.
+Upstash adds Redis operations, but it can prevent Firestore reads and repeated packet construction on every owner question. It must be feature-flagged and fail open to compact Firestore reads when unavailable. The cached value carries `localBusinessDate`, `validUntil`, and source signatures; the server rejects expired packets instead of extending them to the raw Redis TTL.
 
-The Upstash/server cache value must contain reusable business facts only. Request-time page context such as selected item, selected screen, or visible row IDs is merged after cache lookup and must not be stored in shared cache keys or values.
+Browser SWR keys and localStorage keys must include active store scope and selected-menu scope; multi-location summary keys must include tenant/store scope. `not_ready` fallback current packets and missing analytics-index responses are not reusable business facts and must be removed instead of cached for the scheduler day. Browser read-model localStorage is additionally capped by `OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs` (10 minutes) so API-only write paths cannot pin stale Health facts for the whole business day; shared client write helpers still clear the cache immediately after owner saves.
+
+The Upstash/server cache key and value must contain reusable business facts only. Store-level packets use `p:_`; selected-menu packets use `p:{projectId}` because analytics periods and dashboard teasers differ. Request-time context such as selected item, selected screen, or visible row IDs is merged after cache lookup and must not be stored in shared cache keys or values.
+
+Assistant packet invalidation is part of the public-truth invalidation contract. Any path that already invalidates `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, or compact Business Health source docs must also clear matching `owner-business-assistant:packet:v1` keys. Implemented app paths invalidate through shared public cache helpers or direct server calls; the Functions Business Health writer invalidates packet keys after scheduler rebuilds. Server/Upstash writes also add packet keys to `owner-business-assistant:packet-index:v1:{tId}:{sId}`, so invalidation deletes exact indexed keys first and then runs a bounded legacy sweep for old/unindexed keys. The sweep is capped and is not the primary invalidation mechanism.
 
 ### Dashboard Card
 
@@ -186,13 +201,28 @@ The Upstash/server cache value must contain reusable business facts only. Reques
 | Analytics index cache miss | 1 | 0 | Returns compact periods: Today, This week, This month |
 | Today overlay cache miss | 0-1 | 0 | Optional one daily doc for fresher partial stats |
 
+### Multi-Location Summary
+
+| Operation | Reads | Writes | Notes |
+| --- | ---: | ---: | --- |
+| Scheduler rebuild | 0 extra reads | 1 compact merge | Writes `platformSummary/ownerBusinessHealthMultiLocation_{tId}.stores.{sId}` using already-built current facts |
+| Browser cache hit | 0 | 0 | SWR/localStorage returns the scoped tenant summary without calling the API inside the browser stale guard |
+| `/api/owner-business-assistant/locations` | 2 | 0 | Reads one tenant summary doc plus `storesSummary` to filter deactivated outlets and mapped store access |
+| Store selection/detail | 0 until selected | 0 | Detailed packets load only for the selected store through normal current/answer routes |
+
+Multi-location rows carry per-store freshness (`localDate` / `lastCheckedAt`). UI must show store-row freshness instead of relying only on one tenant-level `generatedAt`, because each outlet can rebuild at a different local time. The API filters inactive stores from `storesSummary` so old multi-location rows cannot keep deactivated outlets visible.
+
 ### Suggested Question
 
 | Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
-| Context packet cache hit | 0 Firestore + 1 cache op | 0-1 | AI/resolver answers from packet; optional aggregate usage write |
-| Context packet cache miss | 1-3 | 0-1 | Current doc + analytics index + cached public project/store projection only as needed; then cache packet |
+| Starter suggestion display | 0 | 0 | Uses suggestions already stored in current health doc |
+| Answer follow-up suggestions | 0 | 0 | Returned with the same answer response; no separate provider/Firebase path |
+| Context packet cache hit | 0 Firestore + 1 cache op | 0-1 | AI/resolver answers from packet; optional answer-event write |
+| Context packet cache miss | 1-2 | 0-1 | Current doc + analytics index in the current implementation; then cache packet |
 | Answer event logging | 0 | 0-1 | Only under usage logging flag; deterministic answers write zero units/charge |
+
+`not_ready` fallback packets with no source facts and missing analytics-index responses are not cached in Upstash or browser localStorage. Until the first generated check/index exists, a page open may perform the bounded current/index read again; this is intentional so the owner does not stay stuck on a cached first-run state after the scheduler writes real facts.
 
 ### Analytics Question
 
@@ -213,7 +243,7 @@ Only under `ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS` / `ENABLE_OWNER_BUSINESS_HE
 | Operation | Reads | Writes | Notes |
 | --- | ---: | ---: | --- |
 | Context packet cache hit | 0 Firestore + 1 cache op | 0 | Required before provider call |
-| Context packet cache miss | 1-3 | 0-1 cache write | Compact docs only; never raw ranges |
+| Context packet cache miss | 1-2 | 0-1 cache write | Current health doc + analytics index only in the current implementation; never raw ranges |
 | SAFE_MODE check | 1 | 0 | Existing `ops_config/system` read, only when cost protection enabled |
 | Capped thread read | 0-1 | 0 | Optional; one `ownerBusinessAssistantThreads/{threadId}` doc includes `messages[]` |
 | Message persistence | 0 | 0-1 | Optional; one merged thread write, no message sub-docs |
@@ -240,6 +270,7 @@ Stored fields are intentionally bounded:
 - Optional thread and suggested-question IDs.
 - Trimmed question and answer text.
 - Intent, status, confidence, freshness, cache source/key, source fact count/IDs, action count, and artifact count.
+- Follow-up question count and compact follow-up question IDs.
 - Provider-used flag, AI action ID, units, internal paise cost, owner paise charge, and billing mode.
 - `createdAt` and `expiresAt`.
 
@@ -259,24 +290,27 @@ Retention:
 Route:
 
 ```text
-GET /api/platform/owner-business-assistant/monitor?limit=75
+GET /api/platform/owner-business-assistant/monitor?limit=50
 ```
 
 UI:
 
 ```text
 /platform/owner-business-assistant
+/platform -> Business Health Monitor tab
+Mobile More -> Platform Monitoring -> Business Health Monitor
 ```
 
 The monitor is platform-only and reads:
 
 | Source | Read cap per load | Purpose |
 | --- | ---: | --- |
-| `ownerBusinessAssistantAnswerEvents` | `limit`, capped 10-100 | Recent questions, answer statuses, unsupported gaps, provider/cost summary |
+| `ownerBusinessAssistantAnswerEvents` | `limit`, capped 10-100; UI default 50 | Recent questions, answer statuses, unsupported gaps, provider/cost summary, route metrics, source coverage |
 | `ownerBusinessAssistantActions` | 30 | Recent Action Support usage |
 | `ownerBusinessAssistantFeedback` | 30 | Recent owner feedback |
 
 This dashboard is not owner-facing and should not run as an always-on listener. It is an on-demand operational review view.
+Route metrics stored on answer events include packet profile, cache source, Firestore read/write counts, packet age, thread write flag, provider flag, unsupported reason, and compact domain coverage.
 
 ## Action Cost Model
 
@@ -284,7 +318,7 @@ This dashboard is not owner-facing and should not run as an always-on listener. 
 
 | Reads | Writes | Notes |
 | ---: | ---: | --- |
-| 0-1 | 0-1 flag-gated | Target resolution may read current snapshot; flag-gated aggregate usage write |
+| 0-2 | 0 for successful navigation; 1 for blocked/failed audit | Project-scoped target validation reads `platformSummary/projects_{sId}` first with canonical project-doc fallback; successful low-risk navigation is not audited by default |
 
 ### Prepare Draft
 
@@ -368,6 +402,7 @@ Hard blockers:
 - Any provider call for static dashboard card/strip rendering.
 - Any public-truth write outside existing domain services.
 - Any new standalone scheduled function.
+- Any `not_ready` fallback packet with no source facts being persisted as a 24-hour reusable cache hit.
 
 Monitoring thresholds:
 
@@ -376,6 +411,7 @@ Monitoring thresholds:
 | Context packet cache hit rate < 70% after warmup | Check cache key, TTL, or signature churn |
 | Average answer reads > 5 | Investigate raw-source fallback |
 | Analytics question reads > 3 | Check for range scans or missing index |
+| Selected-project packet count grows faster than active project opens | Check accidental project cache-key churn |
 | Cache hit with stale `generatedAt` past local EOD | Invalidate packet cache and inspect scheduler key |
 | Current doc > 850 KB | Compact facts or split optional blocks |
 | Analytics index > 850 KB | Reduce period payload/top-list caps |
@@ -400,17 +436,19 @@ Assumptions:
 
 | Resource | Operations/month | Rough cost posture |
 | --- | ---: | --- |
-| Scheduler reads | 9,000-24,000 | Low, summary/capped reads only |
+| Scheduler reads | 6,000-72,000 | Still bounded; depends on indexed project count and today overlay, never event-volume based |
 | Scheduler writes | 6,000-9,000 | Low; current + analytics index + capped daily snapshot |
 | Card/page Firestore reads | 0-2,000 | Low; cache hits are 0 reads |
 | Analytics index Firestore reads | 0-4,000 | Low; cache hits are 0 reads |
 | Suggested/typed answer Firestore reads | 400-4,000 | Depends on cache hit rate; packet hits are 0 reads |
-| Analytics answer Firestore reads | 600-6,000 | Depends on cache hit rate; index plus optional today overlay only on miss |
+| Analytics answer Firestore reads | 600-4,000 | Depends on cache hit rate; cache miss reads current health doc + analytics index, with today overlay facts already folded into the index |
 | Server cache operations | 4,000-8,000 | Upstash/server cache ops; feature-flagged optimization |
 | Suggested answer writes | 0-4,000 | Conditional usage aggregate only |
 | Answer event writes | 0-6,000 | Only when usage logging is enabled; one compact document per answered question |
-| Internal monitor reads | Platform use only | On-demand reads: answer-event limit plus 30 actions and 30 feedback docs |
-| Provider calls | Typed questions only when AI answer flag enabled | Always after context packet lookup and AI accounting guard |
+| Follow-up suggestion writes | 0 new docs | Embedded in existing thread/answer-event writes only |
+| Multi-location summary reads | 0-4,000 | Only multi-store page opens; tenant summary doc plus `storesSummary` active-state guard |
+| Internal monitor reads | Platform use only | On-demand reads: answer-event limit 50 plus 30 actions and 30 feedback docs |
+| Provider calls | Typed questions only when AI answer flag enabled | Suggestions do not create a separate provider call |
 | Storage | 0 | Core Business Health; Action Support image actions use existing media paths only when invoked |
 
 Verdict: acceptable only if the cache-first and summary-first contracts are preserved.

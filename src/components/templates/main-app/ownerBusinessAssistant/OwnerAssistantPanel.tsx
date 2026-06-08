@@ -1,6 +1,6 @@
-import { Card, Space, message } from 'antd';
+import { Alert, Button, Card, Space, message } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
-import type { OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
+import type { OwnerBusinessHealthCurrentDoc, OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
 import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantThread';
 import { BusinessHealthSuggestedQuestions } from './BusinessHealthSuggestedQuestions';
@@ -9,20 +9,38 @@ import { OwnerAssistantInput } from './OwnerAssistantInput';
 import { OwnerAssistantMessageList } from './OwnerAssistantMessageList';
 import styles from './OwnerBusinessAssistant.module.scss';
 
-export function OwnerAssistantPanel({ projectId, questions }: {
+export function OwnerAssistantPanel({ current, projectId, questions, storeScopeKey }: {
+  current?: OwnerBusinessHealthCurrentDoc | null;
   projectId?: string;
   questions?: OwnerBusinessHealthQuestion[];
+  storeScopeKey?: string | number;
 }) {
-  const { answer, ask, threadId, isLoading } = useOwnerBusinessAssistantAnswer(projectId, {
+  const { answer, ask, threadId, lastQuestion, isLoading } = useOwnerBusinessAssistantAnswer(projectId, {
     currentRoute: typeof window !== 'undefined' ? window.location.pathname : undefined,
     selectedProjectId: projectId,
-  });
+  }, storeScopeKey);
   const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId);
+  const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
+  const canAskSuggested = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
+  const canAskFreeText = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
+  const showStarterQuestions = !answer && !messages.length;
 
   const handleAsk = async (question: string, suggestedQuestionId?: string) => {
+    if (!isHealthReady) {
+      message.info('Business Health will answer after the latest check finishes.');
+      return;
+    }
+    if (suggestedQuestionId && !canAskSuggested) {
+      message.info('Suggested questions are not available right now.');
+      return;
+    }
+    if (!suggestedQuestionId && !canAskFreeText) {
+      message.info('Free-text questions are not available right now.');
+      return;
+    }
     try {
-      await ask(question, suggestedQuestionId);
-      if (threadId) void refreshThread();
+      const result = await ask(question, suggestedQuestionId);
+      if (threadId || result?.threadId) void refreshThread();
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Business Health could not answer that');
     }
@@ -32,20 +50,50 @@ export function OwnerAssistantPanel({ projectId, questions }: {
     handleAsk(question.question, question.id);
   };
 
+  if (!isHealthReady && showStarterQuestions) {
+    return (
+      <Card title="Business Health" className={styles.dashboardCard}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message="Questions will be available after the latest check finishes."
+          />
+          <Space wrap>
+            <Button href="/dashboard">Open dashboard</Button>
+            <Button href="/projects">Open menu</Button>
+            <Button href="/qr-code">Open share</Button>
+            <Button href="/business-settings">Open settings</Button>
+          </Space>
+        </Space>
+      </Card>
+    );
+  }
+
   return (
-    <Card title="Assistant" className={styles.dashboardCard}>
+    <Card title="Ask Business Health" className={styles.dashboardCard}>
       <div className={styles.assistantPanel}>
-        <OwnerAssistantMessageList answer={answer} messages={messages} />
-        <OwnerAssistantActionSheet actions={answer?.actions} projectId={projectId} />
-        <BusinessHealthSuggestedQuestions
-          questions={questions}
-          onAsk={askSuggested}
+        <OwnerAssistantMessageList
+          answer={answer}
+          disabledFollowUps={!canAskSuggested}
           loading={isLoading}
+          messages={messages}
+          onSuggestedQuestion={askSuggested}
+          pendingQuestion={lastQuestion?.question}
         />
+        <OwnerAssistantActionSheet actions={answer?.actions} projectId={projectId} />
+        {showStarterQuestions ? (
+          <BusinessHealthSuggestedQuestions
+            disabled={!canAskSuggested}
+            loading={isLoading}
+            onAsk={askSuggested}
+            questions={questions}
+          />
+        ) : null}
         <OwnerAssistantInput
           onAsk={(question) => handleAsk(question)}
           loading={isLoading}
-          disabled={!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT}
+          disabled={!canAskFreeText}
         />
       </div>
     </Card>

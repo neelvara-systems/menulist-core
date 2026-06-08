@@ -15,6 +15,7 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 
 export type MobilePlatformInternalScreenKey =
     | 'entityBlocks'
+    | 'ownerBusinessAssistantMonitor'
     | 'platformTenants'
     | 'platformStores'
     | 'platformUsers'
@@ -61,6 +62,7 @@ const TenantsDashboard = dynamic<TenantAdminDashboardProps>(() => import('@templ
 const StoresDashboard = dynamic<TenantAdminDashboardProps>(() => import('@template/platform/stores'), { loading: RouteLoading, ssr: false });
 const EntityBlockSettings = dynamic(() => import('@template/platform/settings/EntityBlockSettings'), { loading: RouteLoading, ssr: false });
 const PlatformUsers = dynamic(() => import('@template/platform/users'), { loading: RouteLoading, ssr: false });
+const OwnerBusinessAssistantMonitor = dynamic(() => import('@template/main-app/platform/ownerBusinessAssistantMonitor'), { loading: RouteLoading, ssr: false });
 const SupportTickets = dynamic(() => import('@template/platform/supportTickets'), { loading: RouteLoading, ssr: false });
 const FeedbackAdmin = dynamic(() => import('@template/platform/feedbackAdmin'), { loading: RouteLoading, ssr: false });
 const KnowledgeBase = dynamic(() => import('@template/platform/knowledgeBase'), { loading: RouteLoading, ssr: false });
@@ -94,6 +96,14 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         minWidth: 0,
         surface: 'Entity Blocks',
         title: 'Entity Blocks',
+    },
+    ownerBusinessAssistantMonitor: {
+        Component: OwnerBusinessAssistantMonitor,
+        desktopPath: '/platform/owner-business-assistant',
+        description: 'Review Business Health questions, answers, support gaps, action usage, and cost.',
+        minWidth: 680,
+        surface: 'Business Health Monitor',
+        title: 'Business Health Monitor',
     },
     platformTenants: {
         Component: PlatformTenantsRoute,

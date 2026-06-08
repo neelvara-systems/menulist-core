@@ -1734,20 +1734,6 @@
           "order": "DESCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "ownerBusinessAssistantMessages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "threadId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": [

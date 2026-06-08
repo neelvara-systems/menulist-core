@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 7, 2026
+**Last Updated:** June 8, 2026
 
 ---
 
@@ -74,15 +74,22 @@ Mobile order:
 1. Header: Business Health, branch selector if needed, status, last checked.
 2. Summary card.
 3. Compact analytics periods: Today, This week, This month.
-4. Priority checks, max 3 visible.
-5. Suggested questions, 4-6 chips max.
-6. Answer panel.
-7. Actions as bottom sheet.
-8. Source/freshness disclosure.
+4. Compact location summary for multi-store tenants only.
+5. Priority checks, max 3 visible.
+6. Suggested questions, 4-6 chips max only when source-backed health is ready.
+7. Answer panel.
+8. Actions as bottom sheet.
+9. Source/freshness disclosure.
 
 Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` should render cached current/analytics packets first and fetch only when missing, stale, or after an explicit refresh.
 
 Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
+
+The first mobile ask must create or reuse the local thread ID before calling `/answer`. Mobile then renders the pending owner question and latest answer immediately from hook state while the one-doc thread history refreshes. Once the thread doc returns, duplicate pending/answer bubbles are suppressed by question text and answer ID.
+
+When Business Health is not source-backed yet, the mobile screen hides the Ask input and suggested questions. It shows large navigation shortcuts to Dashboard, Menu, Share, and Settings instead of presenting a disabled chat surface.
+
+Multi-location mobile summary reads `/api/owner-business-assistant/locations`, which returns one compact tenant summary doc filtered by `storesSummary` active state and mapped store access. It must not load every outlet's detailed Business Health packet.
 
 Do not use:
 
@@ -103,6 +110,9 @@ Requirements:
 - Status labels include visible text, not color only.
 - Freshness text is visible, not tooltip-only.
 - Error/refusal text is short and retry-safe.
+- Owner and Business Health messages use distinct bubbles, labels, and alignment.
+- Follow-up question buttons stay inside the latest Business Health response area and keep 44px touch targets.
+- Pending owner question and latest answer appear immediately after send, even before the Firestore thread read catches up.
 
 Preferred loading copy:
 
@@ -165,6 +175,10 @@ Mobile should render:
 | Offline | Showing the last loaded check on this device. |
 | Unsupported question | MenuList does not have enough data for that yet. |
 
+When there is no current source-backed doc, mobile must not show the green "No action needed" tag, suggested questions must be disabled, and the free-text Ask control must stay disabled until a generated check with `sourceRefs` is available.
+
+When a source-backed doc exists, mobile must show a plain freshness line such as `Uses data through 7 Jun 2026. Today may not be complete yet.` so owners do not assume the answers are realtime.
+
 ## Mobile QA Checklist
 
 - `/business-health` opens inside `MobileShell`.
@@ -172,12 +186,20 @@ Mobile should render:
 - Back returns to previous mobile tab/sub-screen.
 - Branch selector respects permissions.
 - Stable state shows "No action needed".
-- Priority checks are tappable with 44px targets.
+- Not-ready state does not show "No action needed" and does not allow Ask submission.
+- Not-ready state uses neutral/info treatment and shows large navigation shortcuts instead of a disabled Ask panel.
+- Multi-store tenants see a compact location summary with outlet status/top reason; single-store tenants do not see the section.
+- Data coverage note is visible near the Business Health summary.
+- Priority checks are tappable with 44px targets, and review/dismiss hides the check locally for the current business date after the server audit write succeeds.
 - Suggested questions wrap cleanly at 320px width.
+- First ask from a fresh install supplies a thread ID in the same `/answer` request when thread history is enabled.
+- Latest answer renders immediately and does not duplicate after thread history catches up.
 - Action bottom sheet traps focus and closes with cancel/back.
 - Action bottom sheet is not reachable when Action Support is disabled.
 - Public-truth action cannot be confirmed with one accidental tap.
 - Freshness/source text is visible on narrow screens.
+- Platform admins can open `Business Health Monitor` from Mobile More -> Platform Monitoring, and it renders inside `MobilePlatformInternalScreen` instead of forcing a desktop route.
+- `/platform/owner-business-assistant` maps into the same mobile platform monitor wrapper on mobile devices.
 - Public `/client/*` routes are unaffected.
 
 ## Implementation Verdict

@@ -52,6 +52,22 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     confidence: String(data.confidence || 'low'),
     freshnessLabel: String(data.freshnessLabel || ''),
     cacheSource: data.cacheSource ? String(data.cacheSource) : null,
+    packetProfile: data.packetProfile ? String(data.packetProfile) : null,
+    packetAgeMinutes: data.packetAgeMinutes == null ? null : safeNumber(data.packetAgeMinutes),
+    packetValidUntil: toIso(data.packetValidUntil),
+    route: data.route ? String(data.route) : null,
+    firestoreReadCount: data.firestoreReadCount == null ? null : safeNumber(data.firestoreReadCount),
+    firestoreWriteCount: data.firestoreWriteCount == null ? null : safeNumber(data.firestoreWriteCount),
+    answerEventWritten: data.answerEventWritten === true,
+    threadWritten: data.threadWritten === true,
+    unsupportedReason: data.unsupportedReason ? String(data.unsupportedReason) : null,
+    domainCoverage: Array.isArray(data.domainCoverage)
+      ? data.domainCoverage.map((entry: any) => ({
+        domain: String(entry?.domain || 'unknown'),
+        status: String(entry?.status || 'unsupported'),
+        reason: entry?.reason ? String(entry.reason) : null,
+      })).slice(0, 20)
+      : [],
     sourceFactCount: safeNumber(data.sourceFactCount),
     actionOptionCount: safeNumber(data.actionOptionCount),
     artifactCount: safeNumber(data.artifactCount),
@@ -63,6 +79,43 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
     billingMode: String(data.billingMode || 'free'),
     createdAt: toIso(data.createdAt),
   };
+}
+
+function buildSourceCoverage(events: ReturnType<typeof serializeDoc>[]) {
+  const coverage = new Map<string, {
+    domain: string;
+    status: string;
+    reason: string | null;
+    eventCount: number;
+    supportedCount: number;
+    summaryOnlyCount: number;
+    unsupportedCount: number;
+  }>();
+
+  events.forEach((event) => {
+    event.domainCoverage.forEach((entry) => {
+      const current = coverage.get(entry.domain) || {
+        domain: entry.domain,
+        status: entry.status,
+        reason: entry.reason,
+        eventCount: 0,
+        supportedCount: 0,
+        summaryOnlyCount: 0,
+        unsupportedCount: 0,
+      };
+      current.eventCount += 1;
+      if (entry.status === 'supported') current.supportedCount += 1;
+      if (entry.status === 'summary_only') current.summaryOnlyCount += 1;
+      if (entry.status === 'unsupported') current.unsupportedCount += 1;
+      if (!coverage.has(entry.domain)) {
+        current.status = entry.status;
+        current.reason = entry.reason;
+      }
+      coverage.set(entry.domain, current);
+    });
+  });
+
+  return Array.from(coverage.values()).sort((left, right) => right.eventCount - left.eventCount);
 }
 
 function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
@@ -82,12 +135,20 @@ function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
     unsupported: byStatus.unsupported || 0,
     needsConfirmation: byStatus.needs_confirmation || 0,
     providerCalls: events.filter((event) => event.providerUsed).length,
+    serverCacheHits: events.filter((event) => event.cacheSource === 'server').length,
+    freshFirestorePackets: events.filter((event) => event.cacheSource === 'fresh_firestore').length,
+    avgFirestoreReads: events.length
+      ? Number((events.reduce((sum, event) => sum + (event.firestoreReadCount || 0), 0) / events.length).toFixed(2))
+      : 0,
+    maxFirestoreReads: events.reduce((max, event) => Math.max(max, event.firestoreReadCount || 0), 0),
+    threadWrites: events.filter((event) => event.threadWritten).length,
     actionOptionsShown: events.reduce((sum, event) => sum + event.actionOptionCount, 0),
     unitsConsumed: events.reduce((sum, event) => sum + event.unitsConsumed, 0),
     realCostPaise: events.reduce((sum, event) => sum + event.realCostPaise, 0),
     ownerChargePaise: events.reduce((sum, event) => sum + event.ownerChargePaise, 0),
     byStatus,
     byIntent,
+    sourceCoverage: buildSourceCoverage(events),
   };
 }
 

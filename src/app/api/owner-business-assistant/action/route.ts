@@ -11,6 +11,14 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
+const readJsonBody = async (request: NextRequest) => {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT) {
     return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
@@ -28,7 +36,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
   if (accessError) return accessError;
 
-  const json = await request.json();
+  const json = await readJsonBody(request);
+  if (!json) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
   const parsed = OwnerBusinessAssistantActionRequestSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });

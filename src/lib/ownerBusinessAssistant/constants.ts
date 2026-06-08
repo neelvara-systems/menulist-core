@@ -3,6 +3,7 @@ export const OWNER_BUSINESS_ASSISTANT_VERSION = 1 as const;
 export const OWNER_BUSINESS_ASSISTANT_ENDPOINTS = {
   current: '/api/owner-business-assistant/current',
   analytics: '/api/owner-business-assistant/analytics',
+  locations: '/api/owner-business-assistant/locations',
   answer: '/api/owner-business-assistant/answer',
   action: '/api/owner-business-assistant/action',
   feedback: '/api/owner-business-assistant/feedback',
@@ -31,8 +32,11 @@ export const OWNER_BUSINESS_ASSISTANT_CACHE = {
   packetVersion: 'v1',
   browserCurrentPrefix: 'ownerBusinessAssistant-current',
   browserAnalyticsPrefix: 'ownerBusinessAssistant-analytics',
+  browserLocationsPrefix: 'ownerBusinessAssistant-locations',
   browserPacketPrefix: 'ownerBusinessAssistant-packet',
+  browserReadModelTtlMs: 10 * 60 * 1000,
   serverPacketPrefix: 'owner-business-assistant:packet:v1',
+  serverPacketIndexPrefix: 'owner-business-assistant:packet-index:v1',
   todayOverlayTtlMs: 10 * 60 * 1000,
   serverPacketTtlSeconds: 24 * 60 * 60,
   maxServerPayloadBytes: 650_000,
@@ -45,6 +49,8 @@ export const OWNER_BUSINESS_ASSISTANT_DOCS = {
     `ownerBusinessHealthSnapshot_${tId}_${sId}_${localDate}`,
   getAnalyticsIndex: (tId: string | number, sId: string | number) =>
     `ownerBusinessAnalyticsIndex_${tId}_${sId}`,
+  getMultiLocation: (tId: string | number) =>
+    `ownerBusinessHealthMultiLocation_${tId}`,
   getProjectsSummary: (sId: string | number) => `projects_${sId}`,
 } as const;
 

@@ -1,5 +1,5 @@
-import OwnerBusinessAssistantMonitor from '@template/main-app/platform/ownerBusinessAssistantMonitor';
+import PlatformSettings from '@template/platform/settings';
 
 export default function Page() {
-  return <OwnerBusinessAssistantMonitor />;
+  return <PlatformSettings initialTab="owner-business-assistant" />;
 }

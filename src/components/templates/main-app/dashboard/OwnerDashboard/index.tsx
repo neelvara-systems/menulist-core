@@ -265,7 +265,7 @@ const OwnerDashboard: React.FC = () => {
                 ) : null}
 
                 {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX ? (
-                    <BusinessHealthAnalyticsStrip projectId={activeProjectId || undefined} />
+                    <BusinessHealthAnalyticsStrip projectId={activeProjectId || undefined} storeScopeKey={storeDetails?.storeId} />
                 ) : null}
 
                 <Flex

@@ -47,6 +47,10 @@ export interface OwnerBusinessAnalyticsPeriod {
   key: string;
   label: string;
   rangeLabel: string;
+  scope?: 'store' | 'project';
+  projectId?: string;
+  projectName?: string;
+  indexedProjectCount?: number;
   status: 'available' | 'partial' | 'not_available';
   metrics: {
     menuVisits?: number;
@@ -57,12 +61,22 @@ export interface OwnerBusinessAnalyticsPeriod {
     searches?: number;
     unavailableItemTaps?: number;
   };
-  topItems?: Array<{ itemId: string; name?: string; value: number; signal: 'views' | 'clicks' | 'attention' }>;
-  topCategories?: Array<{ categoryId: string; name?: string; value: number }>;
+  topItems?: Array<{ itemId: string; name?: string; projectId?: string; projectName?: string; value: number; signal: 'views' | 'clicks' | 'attention' }>;
+  topCategories?: Array<{ categoryId: string; name?: string; projectId?: string; projectName?: string; value: number }>;
   topSearches?: Array<{ term: string; count: number }>;
   sourceQuality?: Array<{ source: string; visits: number; actionRate?: number }>;
   freshnessLabel: string;
   sourceFactIds: string[];
+}
+
+export interface OwnerBusinessProjectAnalyticsSummary {
+  projectId: string;
+  projectName?: string;
+  isDefault?: boolean;
+  active?: boolean;
+  periods: Record<string, OwnerBusinessAnalyticsPeriod | undefined>;
+  unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
+  sourceRefs: OwnerBusinessHealthSourceRef[];
 }
 
 export interface OwnerBusinessAnalyticsIndexDoc {
@@ -72,7 +86,15 @@ export interface OwnerBusinessAnalyticsIndexDoc {
   localDate: string;
   generatedAt: string;
   lastSettledLocalDate?: string;
+  projectScope?: {
+    totalActiveProjects: number;
+    indexedProjectCount: number;
+    indexedProjectIds: string[];
+    overflowProjectCount?: number;
+    defaultProjectId?: string;
+  };
   periods: Record<string, OwnerBusinessAnalyticsPeriod | undefined>;
+  projectSummaries?: Record<string, OwnerBusinessProjectAnalyticsSummary>;
   unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
   sourceRefs: OwnerBusinessHealthSourceRef[];
   cost: {
@@ -120,6 +142,17 @@ export interface OwnerBusinessHealthCurrentDoc {
     builderWriteCount: number;
     chatHotPathReadCount: number;
   };
+}
+
+export interface OwnerBusinessMultiLocationStoreSummary {
+  sId: string;
+  storeName?: string;
+  status: OwnerBusinessHealthStatus;
+  actionCount: number;
+  lastCheckedAt: string;
+  localDate: string;
+  topReason?: string;
+  sourceFactIds: string[];
 }
 
 export interface OwnerBusinessHealthBuildResult {

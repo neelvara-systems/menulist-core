@@ -23,6 +23,7 @@ import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAtt
 import { createTenantStoreInTransaction, preCheckSubdomain, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -438,6 +439,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             revalidateTag(`menu-store-${result.storeId}`);
             revalidateTag(`store-${result.storeId}`);
             revalidateTag('client-stores');
+            await invalidateOwnerBusinessAssistantPacketCache({
+                tId: result.tenantId,
+                sId: result.storeId,
+                projectId: result.projectId,
+            });
         } catch (cacheError) {
             secureError('[PublicMenuEntry] Cache revalidation failed', cacheError instanceof Error ? cacheError : new Error(String(cacheError)), { draftId, storeId: result.storeId });
         }

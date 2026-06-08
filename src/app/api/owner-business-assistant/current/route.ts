@@ -37,7 +37,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     tId,
     sId,
     projectId: searchParams.get('projectId') || undefined,
-    packetProfile: 'dashboard',
+    packetProfile: 'health_card',
   });
 
   return NextResponse.json({
@@ -46,6 +46,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
       source: packet.cacheSource,
       cacheKey: packet.cacheKey,
       generatedAt: packet.generatedAt,
+      metrics: {
+        ...packet.metrics,
+        route: '/api/owner-business-assistant/current',
+      },
     },
   });
 });

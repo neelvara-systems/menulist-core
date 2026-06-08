@@ -280,7 +280,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                             <div
                                 className="
-                                    absolute left-1/2 top-full z-[80] w-[min(58rem,calc(100vw-3rem))]
+                                    absolute left-1/2 top-full z-[80] w-[min(62rem,calc(100vw-3rem))]
                                     -translate-x-1/2 pt-3
                                     origin-top scale-95 opacity-0
                                     invisible translate-y-2
@@ -314,7 +314,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                         <LuArrowRight size={16} className="shrink-0 text-teal-200/70 transition-transform group-hover/menu-item:translate-x-0.5 group-hover/menu-item:text-white" aria-hidden />
                                     </L>
 
-                                    <div className="grid overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.018] lg:grid-cols-[0.95fr_1.35fr_0.82fr]">
+                                    <div className="grid overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.018] lg:grid-cols-[0.9fr_1.55fr_0.78fr]">
                                         <div className="p-4">
                                             <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
                                                 Support areas
@@ -346,7 +346,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                             <div className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
                                                 Support tools
                                             </div>
-                                            <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+                                            <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2">
                                                 {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
                                                     const Icon = getMobileNavIcon(feature.href);
                                                     const label = getProductFeatureNavLabel(feature);
@@ -355,10 +355,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                             key={feature.href}
                                                             href={feature.href}
                                                             title={label}
-                                                            className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
+                                                            className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
                                                         >
                                                             <CompactMegaMenuIcon icon={Icon} compact />
-                                                            <span className="min-w-0 flex-1 truncate">
+                                                            <span className="min-w-0 flex-1 whitespace-nowrap">
                                                                 {label}
                                                             </span>
                                                         </L>
@@ -368,10 +368,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                         </div>
 
                                         <div className="border-t border-white/[0.06] bg-teal-300/[0.035] p-4 lg:border-l lg:border-t-0">
-                                            <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                                Featured
-                                            </div>
-                                            <p className="mt-3 text-sm font-semibold leading-snug text-white">
+                                            <p className="text-sm font-semibold leading-snug text-white">
                                                 Launch support before users arrive.
                                             </p>
                                             <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">
@@ -478,10 +475,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                             <L
                                                                 key={resourceLink.href}
                                                                 href={resourceLink.href}
-                                                                className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
+                                                                className="group/menu-item flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-[#d6d6ef] transition hover:bg-teal-400/[0.055] hover:text-white"
                                                             >
                                                                 <CompactMegaMenuIcon icon={resourceLink.icon} compact />
-                                                                <span className="min-w-0 flex-1 truncate">
+                                                                <span className="min-w-0 flex-1 whitespace-nowrap">
                                                                     {resourceLink.label}
                                                                 </span>
                                                             </L>
@@ -490,10 +487,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 </div>
 
                                                 <div className="border-t border-white/[0.06] bg-teal-300/[0.035] p-4 lg:border-l lg:border-t-0">
-                                                    <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                                        Featured
-                                                    </div>
-                                                    <p className="mt-3 text-sm font-semibold leading-snug text-white">
+                                                    <p className="text-sm font-semibold leading-snug text-white">
                                                         Prepare your support inputs before setup.
                                                     </p>
                                                     <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">

@@ -14,6 +14,17 @@ import type {
 
 const formatCount = (value: number) => new Intl.NumberFormat('en').format(value);
 
+const resolveStoreName = (storeInfo: FirebaseFirestore.DocumentData, fallback: string) => {
+  const candidates = [
+    storeInfo.name,
+    storeInfo.storeName,
+    storeInfo.businessName,
+    storeInfo.tenantName,
+  ];
+  const resolved = candidates.find((value) => typeof value === 'string' && value.trim());
+  return resolved ? String(resolved).trim().slice(0, 120) : fallback;
+};
+
 export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
   db: FirebaseFirestore.Firestore;
   tId: string;
@@ -49,9 +60,24 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     activeProjects: params.activeProjects,
     storeInfo: { ...params.storeInfo, storeId: params.sId },
   });
-  const questions = buildOwnerBusinessHealthQuestions().filter((question) => (
-    question.id !== 'today_stats' || Boolean(analyticsBuild?.doc.periods.today)
-  ));
+  const availablePeriods = Object.entries(analyticsBuild?.doc.periods || {})
+    .filter(([, period]) => Boolean(period && period.status !== 'not_available'))
+    .map(([periodKey]) => periodKey);
+  const hasTopItem = Object.values(analyticsBuild?.doc.periods || {})
+    .some((period) => Boolean(period?.topItems?.length));
+  const supportedDomains = [
+    'business_health',
+    ...(analyticsBuild ? ['analytics'] : []),
+    ...(params.activeProjects.length > 0 ? ['menu'] : []),
+  ];
+  const questions = buildOwnerBusinessHealthQuestions({
+    availablePeriods,
+    hasChecks: healthBlocks.checks.length > 0,
+    hasTopItem,
+    limit: 6,
+    mode: 'starter',
+    supportedDomains,
+  });
   const primaryPeriod = analyticsBuild?.doc.periods.today
     || analyticsBuild?.doc.periods.thisWeek
     || analyticsBuild?.doc.periods.last7Days
@@ -116,9 +142,20 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     sourceRefs,
     cost: {
       builderReadCount: analyticsBuild?.readCount || 0,
-      builderWriteCount: analyticsBuild ? 3 : 2,
+      builderWriteCount: analyticsBuild ? 4 : 3,
       chatHotPathReadCount: analyticsBuild ? 2 : 1,
     },
+  };
+  const topCheck = healthBlocks.checks[0];
+  const locationSummary = {
+    sId: params.sId,
+    storeName: resolveStoreName(params.storeInfo, `Store ${params.sId}`),
+    status: current.status,
+    actionCount: current.summary.actionCount,
+    lastCheckedAt: generatedAt,
+    localDate,
+    topReason: topCheck?.message || current.summary.ownerMessage,
+    sourceFactIds: (topCheck?.sourceFactIds?.length ? topCheck.sourceFactIds : sourceRefs.map((ref) => ref.id)).slice(0, 8),
   };
 
   const writeResult = await writeOwnerBusinessHealthDocs({
@@ -128,6 +165,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     localDate,
     current,
     analytics: analyticsBuild?.doc,
+    locationSummary,
   });
 
   return {

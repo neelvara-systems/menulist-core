@@ -15,6 +15,7 @@ import {
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -129,6 +130,10 @@ export const POST = withAuth(async (request, session) => {
         revalidateTag(`menu-store-${outletStoreId}`);
         revalidateTag(`store-${outletStoreId}`);
         revalidateTag('client-stores');
+        await invalidateOwnerBusinessAssistantPacketCache({
+            tId: tenantId,
+            sId: outletStoreId,
+        });
 
         return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
     } catch (error) {

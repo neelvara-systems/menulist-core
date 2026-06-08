@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
 import { revalidateTag } from 'next/cache';
 
@@ -77,6 +78,10 @@ export async function syncStorePlanEntitlementFromSubscription(
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    await invalidateOwnerBusinessAssistantPacketCache({
+        tId: subscription.tenantId,
+        sId: storeId,
+    });
 }
 
 export async function safeSyncStorePlanEntitlementFromSubscription(

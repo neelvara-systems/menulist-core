@@ -4,23 +4,27 @@ import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Text } = Typography;
 
-export function BusinessHealthSuggestedQuestions({ questions, onAsk, loading }: {
+export function BusinessHealthSuggestedQuestions({ questions, onAsk, loading, disabled, label = 'Suggested questions', limit = 6 }: {
   questions?: OwnerBusinessHealthQuestion[];
   onAsk: (question: OwnerBusinessHealthQuestion) => void;
   loading?: boolean;
+  disabled?: boolean;
+  label?: string;
+  limit?: number;
 }) {
   if (!questions?.length) return null;
 
   return (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
-      <Text type="secondary">Suggested questions</Text>
+      <Text type="secondary">{label}</Text>
       <div className={styles.questionGrid}>
-        {questions.slice(0, 6).map((question) => (
+        {questions.slice(0, limit).map((question) => (
           <Button
             key={question.id}
             className={styles.questionButton}
             onClick={() => onAsk(question)}
             loading={loading}
+            disabled={disabled}
           >
             {question.label}
           </Button>

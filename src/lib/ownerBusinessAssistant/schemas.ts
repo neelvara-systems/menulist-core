@@ -2,7 +2,16 @@ import { z } from 'zod';
 
 export const OwnerBusinessAssistantScopeSchema = z.object({
   projectId: z.string().min(1).max(160).optional(),
-  packetProfile: z.enum(['dashboard', 'page', 'answer']).optional(),
+  packetProfile: z.enum([
+    'health_card',
+    'analytics_periods',
+    'owner_question_basic',
+    'owner_question_actionable',
+    'multi_location_summary',
+    'dashboard',
+    'page',
+    'answer',
+  ]).optional(),
 });
 
 export const OwnerBusinessAssistantClientContextSchema = z.object({

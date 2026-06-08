@@ -171,6 +171,30 @@ export function removeCachedData(key: string): void {
 }
 
 /**
+ * Remove cached data whose original SWR/localStorage key starts with a prefix.
+ */
+export function removeCachedDataByPrefix(keyPrefix: string): number {
+    let removed = 0;
+    try {
+        const cachePrefix = createCacheKey(keyPrefix);
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith(cachePrefix)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach((key) => {
+            localStorage.removeItem(key);
+            removed++;
+        });
+    } catch (e) {
+        console.warn('[SWR Cache] Prefix remove failed:', e);
+    }
+    return removed;
+}
+
+/**
  * Clear all SWR cache from localStorage
  */
 export function clearAllCache(): void {

@@ -37,7 +37,7 @@ See [owner-business-assistant_architecture.md](./owner-business-assistant_archit
 ```text
 platformSummary/storesSummary
   + platformSummary/projects_{sId}
-  + cached public project/store projections
+  + cached public project/store projection facts only when already present
   + analytics/*_dashboard_summary
   + analytics/*_daily_{today}
   + analytics/*_weekly_*
@@ -75,7 +75,7 @@ ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: true,
 ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: true,
 ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
 ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: true,
-ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: false,
+ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: true,
 ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
 ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
 ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: true,
@@ -212,6 +212,13 @@ export type OwnerBusinessAnalyticsIndexDoc = {
   localDate: string;
   generatedAt: FirebaseFirestore.Timestamp;
   lastSettledLocalDate?: string;
+  projectScope?: {
+    totalActiveProjects: number;
+    indexedProjectCount: number;
+    indexedProjectIds: string[];
+    overflowProjectCount?: number;
+    defaultProjectId?: string;
+  };
   periods: {
     today?: OwnerBusinessAnalyticsPeriod;
     yesterday?: OwnerBusinessAnalyticsPeriod;
@@ -223,6 +230,7 @@ export type OwnerBusinessAnalyticsIndexDoc = {
     last30Days?: OwnerBusinessAnalyticsPeriod;
     overall?: OwnerBusinessAnalyticsPeriod;
   };
+  projectSummaries?: Record<string, OwnerBusinessProjectAnalyticsSummary>;
   unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
   sourceRefs: OwnerBusinessHealthSourceRef[];
   cost: {
@@ -233,6 +241,14 @@ export type OwnerBusinessAnalyticsIndexDoc = {
 ```
 
 The analytics index is the answer source for owner questions about today, this week, last week, this month, last month, last 7 days, last 30 days, and overall. Runtime answer code must not aggregate daily docs for arbitrary periods.
+
+Project/store scope rules:
+
+- `ownerBusinessAnalyticsIndex_{tId}_{sId}` remains one store-scoped document.
+- `periods` is the aggregate across indexed active projects for the current store.
+- `projectSummaries[projectId].periods` contains the selected-menu view.
+- The builder indexes active projects default-first and caps indexed projects at 10 to keep the document and scheduler reads bounded.
+- If a selected `projectId` is not in `projectSummaries`, the answer resolver returns not-enough-data instead of falling back to the store aggregate.
 
 Each answer must carry:
 
@@ -245,6 +261,7 @@ type OwnerAssistantAnswer = {
   sourceFactIds: string[];
   cards?: OwnerAssistantCard[];
   actions?: OwnerAssistantActionOption[];
+  suggestedQuestions?: OwnerBusinessHealthQuestion[];
 };
 ```
 
@@ -277,7 +294,7 @@ Required insertion behavior:
 1. Reuse the active project list loaded by the scheduler.
 2. Reuse dashboard summary doc IDs and active/default project context already handled by the scheduler.
 3. Build Business Health after pending settlement dates complete.
-4. Build the analytics index from dashboard summary, `daily30d`, existing weekly/monthly docs, and optional today single-doc overlay.
+4. Build the analytics index from bounded active project dashboard summaries and optional today daily docs, then aggregate store-level periods from the indexed project periods.
 5. If no settlement date is pending but the current doc or analytics index is missing/stale, rebuild from the latest summaries.
 6. Add the builder result to existing scheduler task results.
 7. Invoke the same builder path from `triggerStoreNightlyScheduler`.
@@ -318,6 +335,7 @@ Use one protected route group with fewer endpoints than the ChatGPT proposal.
 ```text
 src/app/api/owner-business-assistant/current/route.ts
 src/app/api/owner-business-assistant/analytics/route.ts
+src/app/api/owner-business-assistant/locations/route.ts
 src/app/api/owner-business-assistant/answer/route.ts
 src/app/api/owner-business-assistant/thread/[threadId]/route.ts
 src/app/api/owner-business-assistant/action/route.ts
@@ -330,8 +348,9 @@ Route behavior:
 | Route | Method | Purpose | Cache/Firebase hot path |
 | --- | --- | --- | --- |
 | `/current` | GET | Return current Business Health state | Browser/server cache hit = 0 reads; miss = 1 `platformSummary` read |
-| `/analytics` | GET | Return standard analytics periods | Cache hit = 0 reads; miss = 1 analytics-index read, optional 1 today doc |
-| `/answer` | POST | Resolve typed/suggested owner question through AI over context packet | Server context-packet cache hit = 0 reads; miss = current + analytics-index + cached project/store projection as needed + optional today doc |
+| `/analytics` | GET | Return standard analytics periods | Cache hit = 0 reads; miss = 1 analytics-index read |
+| `/locations` | GET | Return compact multi-location Business Health summary | 1 tenant summary doc + `storesSummary`; filters deactivated outlets and mapped store access; no detailed per-store packet reads |
+| `/answer` | POST | Resolve typed/suggested owner question through AI over context packet | Server context-packet cache hit = 0 reads; miss = current + analytics-index; runtime does not read daily docs |
 | `/thread/[threadId]` | GET | Load bounded history under the thread flag | 1 thread doc; capped `messages[]` is embedded in that doc |
 | `/action` | POST | Navigate, prepare, confirm, cancel, review, dismiss, assign | Depends on operation |
 | `/feedback` | POST | Store small answer feedback | 1 compact write under usage/feedback flag |
@@ -374,31 +393,51 @@ src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts
 src/lib/ownerBusinessAssistant/server/intentClassifier.ts
 src/lib/ownerBusinessAssistant/server/factGrounding.ts
 src/lib/ownerBusinessAssistant/server/analyticsPeriodResolver.ts
-src/lib/ownerBusinessAssistant/server/targetResolver.ts
 src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts
 src/lib/ownerBusinessAssistant/server/aiAnswerClient.ts
 src/lib/ownerBusinessAssistant/server/validateAiAnswer.ts
 src/lib/ownerBusinessAssistant/server/answerTemplates.ts
 src/lib/ownerBusinessAssistant/server/answerArtifacts.ts
 src/lib/ownerBusinessAssistant/server/refusals.ts
+src/lib/ownerBusinessAssistant/actions/actionTargetResolver.ts
 ```
 
 Resolver order:
 
 1. Derive tenant/store/project scope from session and verified selector context.
-2. Build a context-packet cache key from `tId`, `sId`, `projectId`, local business date, packet profile, and known source signature.
-3. Read `OwnerBusinessAssistantContextPacket` from browser-provided fallback or server cache when valid.
-4. On cache miss, read only compact docs/projections: current health doc, analytics index, cached public project/store projection, and optional today overlay; then write the packet cache.
+2. Build a stable context-packet cache key from `tId`, `sId`, packet profile, and `projectId` only when the packet includes project-scoped analytics facts. Implemented profiles are `health_card`, `analytics_periods`, `owner_question_actionable`, and `multi_location_summary`.
+3. Read `OwnerBusinessAssistantContextPacket` from server cache when present and not past packet `validUntil`; the packet carries local business date and source signatures for response metadata and stale-packet rejection.
+4. On cache miss, read only compact docs currently wired into the packet builder: current health doc and analytics index; today overlay facts are already folded into the index by the scheduler.
 5. Merge advisory client/page context into target candidates from packet facts.
 6. Classify question into approved intent/action/domain candidates.
 7. If the domain has no compact source in the packet, return unsupported/needs-more-data without live collection reads.
 8. Send the owner question, context packet, allowed schema, and answer rules to the AI model when `ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS` is enabled.
 9. Validate structured AI output: source fact IDs, unsupported claims, registered actions, permission scope, target scope, and public-truth guard.
 10. Use deterministic/template fallback only when AI answering is disabled, unavailable, or static dashboard rendering does not need provider output.
-11. Attach freshness, source fact IDs, cache metadata, supported action options, and packet-backed answer artifacts.
+11. Attach freshness, source fact IDs, cache metadata, route metrics, supported action options, and packet-backed answer artifacts.
 12. Return owner-safe response.
 
-The shared server cache value must be the reusable business-facts packet. Do not store selected item, visible row, or current screen state in the shared cache value or cache key; merge that request-time context after cache lookup and revalidate all targets before action preparation.
+The shared server cache value must be the reusable business-facts packet. Store-level packets use `p:_`; selected-menu packets use `p:{projectId}` because analytics periods and teasers differ. Do not store selected item, visible row, or current screen state in the shared cache value or cache key; merge request-time context after cache lookup and revalidate all targets before action preparation.
+
+Dashboard/current and analytics packets omit the action catalog. Only actionable question packets refresh and include the allowed action registry so dashboard/page packets stay smaller and action-flag churn does not invalidate read-only card data unnecessarily.
+
+Every public-truth write path that already invalidates MenuList public cache tags must also clear matching Business Health packet keys. Runtime coverage includes public client cache helpers, `/api/revalidate/menu`, project/outlet saves, temp status, domain changes, public menu claim, messaging publish, subscription entitlement sync, platform entity blocking, and the Functions writer after scheduler rebuilds.
+
+Server packet cache writes add each packet key to `owner-business-assistant:packet-index:v1:{tId}:{sId}`. Invalidation deletes exact indexed keys first, then runs a bounded legacy pattern sweep so old unindexed packets from before the key-index rollout cannot survive until their 24-hour TTL. Browser read-model caches for current, analytics, and locations also use a 10-minute stale guard in addition to immediate client-side public cache clearing from shared owner save helpers.
+
+Action target validation:
+
+- Action execution derives project scope from `projectId`, `targetKind='project'`, selected client context, or compact payload fields only for project-aware action definitions.
+- Project/menu-item/category actions validate membership through `platformSummary/projects_{sId}` first and fall back to `projects/{tId}/{sId}/{projectId}`.
+- Invalid, deleted, inactive, or missing projects are blocked before navigation, draft preparation, or workflow writes.
+- Store-level actions such as settings, billing, users, and feedback do not pay the project-summary read just because the frontend has a selected project.
+
+Suggested-question handling:
+
+- `/answer` validates every `suggestedQuestionId` against `src/data/shared/ownerBusinessHealthQuestionSuggestions.ts`.
+- When a valid suggested ID is present, the server replaces the submitted question with the catalog question before resolution, thread persistence, and answer-event logging.
+- Unknown suggested IDs return 400.
+- Free-text-disabled mode only allows valid catalog suggestions; arbitrary text cannot be smuggled through a suggestion ID.
 
 AI response schema:
 
@@ -411,6 +450,7 @@ type OwnerBusinessAssistantAiResponse = {
 	  artifacts?: OwnerAssistantAnswerArtifact[];
 	  cards?: OwnerAssistantCard[];
 	  actions?: OwnerAssistantActionOption[];
+	  suggestedQuestions?: OwnerBusinessHealthQuestion[];
 	  confidence: 'high' | 'medium' | 'low';
 };
 ```
@@ -491,7 +531,7 @@ Implemented registry entries:
 | `prepare_description_rewrite` / `menu_item_description_prepare` | "Rewrite this description" | Write a compact draft; existing editor remains the save path |
 | `prepare_review_reply` / `review_reply_prepare` | "Reply to this review" | Write a compact review-reply draft; no public posting |
 | `store_temp_status_set` / `store_temp_status_clear` | "Mark us closed today" / "Clear the notice" | Write a compact draft; existing temp-status path remains the public write path |
-| `mark_health_check_reviewed` / `dismiss_health_check` | "Done" / "Ignore this" | Write one compact action audit doc under the check-workflow flag |
+| `mark_health_check_reviewed` / `dismiss_health_check` | "Done" / "Ignore this" | Write one compact action audit doc under the check-workflow flag; desktop/mobile suppress the check locally for the current business date |
 
 Confirmed writes from assistant code must not perform raw Firestore `setDoc()` to project/store public truth. If in-assistant confirmed writes are enabled, create a server-safe mutation adapter that preserves the current `updateProject()` invariants: validation, sanitization, MCE/change detection, multi-outlet behavior, menu change logging, and public cache invalidation.
 
@@ -499,9 +539,12 @@ Confirmed writes from assistant code must not perform raw Firestore `setDoc()` t
 
 Core Business Health does not require chat transcripts for suggested questions. To minimize Firebase cost:
 
+- Starter suggestions are built by `src/data/shared/ownerBusinessHealthQuestionSuggestions.ts`, mirrored byte-for-byte to `functions/src/sharedData/ownerBusinessHealthQuestionSuggestions.ts`, and ranked from existing packet facts only.
 - Suggested-question answers can be stateless.
+- Answer-level follow-up suggestions are returned in the same answer response. They must not trigger a separate AI call or Firestore read.
 - Usage can be aggregate-only.
 - Thread persistence is a flag-gated path controlled by `ENABLE_OWNER_BUSINESS_HEALTH_THREADS`; writes occur only when the client supplies a bounded `threadId`.
+- When thread history is enabled, follow-up suggestions are embedded in the assistant message inside the existing `messages[]` array.
 - Action draft/audit writes are controlled by `ENABLE_OWNER_BUSINESS_ACTION_*` flags.
 
 Use compact collections:
@@ -582,7 +625,9 @@ Owner chat history:
 
 - `useOwnerBusinessAssistantAnswer()` creates a local bounded `threadId` only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled.
 - `/answer` persists the exchange only when the thread flag is enabled and the request carries `threadId`; it updates one thread document with a capped `messages[]` array.
+- The hook creates or reuses the local thread ID before the first `/answer` request, so the first exchange can persist.
 - `OwnerAssistantPanel` reads `/thread/[threadId]` and shows the latest bounded messages when available.
+- Desktop and mobile message lists render the pending owner question and latest answer from hook state while the one-doc thread history refreshes, then suppress duplicates by question text and answer ID.
 
 Dashboard placement:
 
@@ -610,12 +655,28 @@ Component:
 src/components/templates/main-app/platform/ownerBusinessAssistantMonitor/index.tsx
 ```
 
+Navigation:
+
+```text
+src/app/(main)/platform/owner-business-assistant/page.tsx
+  -> PlatformSettings initialTab="owner-business-assistant"
+src/components/templates/platform/settings/index.tsx
+  -> Platform tab: Business Health Monitor
+src/components/mobile/screens/MobileMoreScreen.tsx
+  -> More tab, Platform Monitoring section: Business Health Monitor
+src/components/mobile/screens/MobilePlatformInternalScreen.tsx
+  -> ownerBusinessAssistantMonitor wrapper for the same monitor component
+src/components/mobile/MobileShell.tsx
+  -> /platform/owner-business-assistant deep link maps to ownerBusinessAssistantMonitor on mobile
+```
+
 The monitor shows:
 
 - Recent questions and answers.
-- Answer status, intent, cache source, and confidence.
+- Answer status, intent, cache source, packet profile, route read/write counts, packet age, source coverage, and confidence.
 - Unsupported and needs-more-data counts.
 - Provider call count, units, internal paise cost, and owner paise charge.
+- Cache hit/fresh packet counts, average/max Firestore reads, and thread-write counts.
 - Recent Action Support records.
 - Recent answer feedback.
 
@@ -696,7 +757,7 @@ This is an engineering order. Every item belongs to the day-one implementation c
 3. Add scheduler health builder and analytics-index builder with unit tests.
 4. Add current and analytics APIs with server-side read/filter plus browser-cache metadata.
 5. Add context-packet builder and cache adapter with SWR/localStorage and optional Upstash-backed server cache.
-6. Add AI structured-answer resolver for typed and suggested questions over the context packet.
+6. Add AI structured-answer resolver for typed and suggested questions over the context packet; answer follow-up suggestions use the same answer call or deterministic packet fallback.
 7. Add deterministic fallback/refusal renderer for AI-disabled or provider-unavailable cases.
 8. Add desktop dashboard card, analytics strip, and full page.
 9. Add MobileShell mapping and mobile screen.

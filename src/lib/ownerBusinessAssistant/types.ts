@@ -15,6 +15,15 @@ export type OwnerBusinessHealthStatus =
 export type OwnerBusinessAssistantIntent = typeof OWNER_BUSINESS_ASSISTANT_INTENTS[number];
 export type OwnerBusinessAssistantDomain = typeof OWNER_BUSINESS_ASSISTANT_DOMAINS[number];
 export type OwnerBusinessAnalyticsPeriodKey = typeof OWNER_BUSINESS_ASSISTANT_SUPPORTED_PERIODS[number];
+export type OwnerBusinessAssistantPacketProfile =
+  | 'health_card'
+  | 'analytics_periods'
+  | 'owner_question_basic'
+  | 'owner_question_actionable'
+  | 'multi_location_summary'
+  | 'dashboard'
+  | 'page'
+  | 'answer';
 
 export type OwnerBusinessHealthBlockStatus = 'stable' | 'watch' | 'needs_review' | 'insufficient_data' | 'not_enabled';
 
@@ -64,6 +73,10 @@ export type OwnerBusinessAnalyticsPeriod = {
   key: OwnerBusinessAnalyticsPeriodKey;
   label: string;
   rangeLabel: string;
+  scope?: 'store' | 'project';
+  projectId?: string;
+  projectName?: string;
+  indexedProjectCount?: number;
   status: 'available' | 'partial' | 'not_available';
   metrics: {
     menuVisits?: number;
@@ -74,12 +87,22 @@ export type OwnerBusinessAnalyticsPeriod = {
     searches?: number;
     unavailableItemTaps?: number;
   };
-  topItems?: Array<{ itemId: string; name?: string; value: number; signal: 'views' | 'clicks' | 'attention' }>;
-  topCategories?: Array<{ categoryId: string; name?: string; value: number }>;
+  topItems?: Array<{ itemId: string; name?: string; projectId?: string; projectName?: string; value: number; signal: 'views' | 'clicks' | 'attention' }>;
+  topCategories?: Array<{ categoryId: string; name?: string; projectId?: string; projectName?: string; value: number }>;
   topSearches?: Array<{ term: string; count: number }>;
   sourceQuality?: Array<{ source: string; visits: number; actionRate?: number }>;
   freshnessLabel: string;
   sourceFactIds: string[];
+};
+
+export type OwnerBusinessProjectAnalyticsSummary = {
+  projectId: string;
+  projectName?: string;
+  isDefault?: boolean;
+  active?: boolean;
+  periods: Partial<Record<OwnerBusinessAnalyticsPeriodKey, OwnerBusinessAnalyticsPeriod>>;
+  unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
+  sourceRefs: OwnerBusinessHealthSourceRef[];
 };
 
 export type OwnerBusinessAnalyticsIndexDoc = {
@@ -89,7 +112,15 @@ export type OwnerBusinessAnalyticsIndexDoc = {
   localDate: string;
   generatedAt: string;
   lastSettledLocalDate?: string;
+  projectScope?: {
+    totalActiveProjects: number;
+    indexedProjectCount: number;
+    indexedProjectIds: string[];
+    overflowProjectCount?: number;
+    defaultProjectId?: string;
+  };
   periods: Partial<Record<OwnerBusinessAnalyticsPeriodKey, OwnerBusinessAnalyticsPeriod>>;
+  projectSummaries?: Record<string, OwnerBusinessProjectAnalyticsSummary>;
   unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
   sourceRefs: OwnerBusinessHealthSourceRef[];
   cost: {
@@ -156,6 +187,22 @@ export type OwnerBusinessDomainCapability = {
   sourceFactIds: string[];
 };
 
+export type OwnerBusinessAssistantRouteMetrics = {
+  route?: string;
+  packetProfile?: OwnerBusinessAssistantPacketProfile;
+  cacheSource: 'browser' | 'server' | 'fresh_firestore';
+  firestoreReadCount: number;
+  firestoreWriteCount: number;
+  packetAgeMinutes?: number;
+  packetValidUntil?: string;
+  sourceFactCount?: number;
+  providerUsed?: boolean;
+  answerEventWritten?: boolean;
+  threadWritten?: boolean;
+  unsupportedReason?: string;
+  domainCoverage?: Array<Pick<OwnerBusinessDomainCapability, 'domain' | 'status' | 'reason'>>;
+};
+
 export type OwnerBusinessHealthCurrentDoc = {
   version: 1;
   tId: string;
@@ -198,6 +245,26 @@ export type OwnerBusinessHealthCurrentDoc = {
   };
 };
 
+export type OwnerBusinessMultiLocationStoreSummary = {
+  sId: string;
+  storeName?: string;
+  status: OwnerBusinessHealthStatus;
+  actionCount: number;
+  lastCheckedAt: string;
+  localDate: string;
+  topReason?: string;
+  sourceFactIds: string[];
+};
+
+export type OwnerBusinessMultiLocationSummaryDoc = {
+  version: 1;
+  kind: 'ownerBusinessHealthMultiLocation';
+  tId: string;
+  generatedAt: string;
+  updatedAt: string;
+  stores: Record<string, OwnerBusinessMultiLocationStoreSummary>;
+};
+
 export type OwnerBusinessAssistantClientContext = {
   currentRoute?: string;
   mobileTab?: 'today' | 'menu' | 'share' | 'more';
@@ -232,11 +299,12 @@ export type OwnerBusinessAssistantContextPacket = {
     actionCatalog?: string;
   };
   health: OwnerBusinessHealthCurrentDoc;
-  analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs'>;
+  analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs' | 'projectScope'>;
   todayOverlay?: OwnerBusinessAnalyticsPeriod;
   domainFacts?: Record<string, unknown>;
   clientContext?: OwnerBusinessAssistantClientContext;
   allowedActions: OwnerBusinessActionDefinition[];
+  metrics?: OwnerBusinessAssistantRouteMetrics;
   answerRules: {
     refuseUnsupported: true;
     sourceFactIdsRequired: true;
@@ -257,12 +325,14 @@ export type OwnerBusinessAssistantAnswer = {
   artifacts?: OwnerAssistantAnswerArtifact[];
   cards?: Array<Record<string, unknown>>;
   actions?: OwnerBusinessAssistantActionOption[];
+  suggestedQuestions?: OwnerBusinessHealthQuestion[];
   confidence: 'high' | 'medium' | 'low';
   cache?: {
     source: OwnerBusinessAssistantContextPacket['cacheSource'];
     cacheKey?: string;
     generatedAt?: string;
   };
+  metrics?: OwnerBusinessAssistantRouteMetrics;
   remainingBalance?: unknown;
 };
 
@@ -284,6 +354,7 @@ export type OwnerBusinessAssistantActionResult = {
   href?: string;
   requiresConfirmation?: boolean;
   affectedSurface?: string;
+  metrics?: OwnerBusinessAssistantRouteMetrics;
 };
 
 export type OwnerBusinessAssistantFeedbackPayload = {

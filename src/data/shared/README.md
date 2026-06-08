@@ -34,6 +34,7 @@ Every file in this folder **MUST** be self-contained:
 |------|----------|---------|
 | `businessTypes.ts` | BUSINESS_TYPES, BUSINESS_CATEGORIES, category-level schema/catalog/offering defaults, type-level overrides, business-category helpers, FILTER_ALLOWLIST | Publish pipeline, approve route, AI prompts, public schema |
 | `defaultRoles.ts` | Role permissions, DEFAULT_ROLE_METADATA, createDefaultRoles | Store creation (onboarding, publish) |
+| `ownerBusinessHealthQuestionSuggestions.ts` | Business Health starter/follow-up question catalog and ranking helper | Owner Business Assistant app APIs and Cloud Functions health builder |
 
 ### Country Data
 

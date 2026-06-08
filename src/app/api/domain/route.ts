@@ -21,6 +21,7 @@ import {
     isVercelDomainConfigured,
     removeDomainFromVercelProject,
 } from "@lib/domains/vercelDomains";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -106,6 +107,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // Invalidate store cache so public pages pick up the new domain info
         revalidateTag('client-stores');
+        await invalidateOwnerBusinessAssistantPacketCache({
+            tId: tenantId,
+            sId: storeId,
+        });
 
         return NextResponse.json({
             success: true,
@@ -161,6 +166,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             });
             // Invalidate so subdomain→custom domain redirect activates immediately
             revalidateTag('client-stores');
+            await invalidateOwnerBusinessAssistantPacketCache({
+                tId: tenantId,
+                sId: storeId,
+            });
         }
 
         return NextResponse.json({
@@ -219,6 +228,10 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
 
     // Invalidate store cache so subdomain stops redirecting to removed domain
     revalidateTag('client-stores');
+    await invalidateOwnerBusinessAssistantPacketCache({
+        tId: tenantId,
+        sId: storeId,
+    });
 
     return NextResponse.json({
         success: true,

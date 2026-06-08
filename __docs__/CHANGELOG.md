@@ -6,18 +6,34 @@
 
 ---
 
+## June 8, 2026 — Business Health Cache And Location Hardening
+
+### Fixed
+
+- **Project-scoped analytics strip corrected** - Business Health analytics strip now reads the analytics-index packet for the selected menu instead of using store-wide current Health teaser data.
+- **Location summary cache scoped** - Multi-location Business Health SWR cache keys now include tenant/store scope so store switching cannot reuse the previous locations response.
+- **Deactivated outlets hidden from Business Health locations** - The locations API now filters multi-location rows through `storesSummary` active state before returning them.
+- **Business Health browser cache guard added** - Current, analytics, and location read-model caches now expire after a short local stale window, so missed browser invalidation cannot keep same-day Health facts pinned all day.
+- **Business Health packet invalidation indexed** - Upstash packet writes now maintain a store-scoped packet-key index for exact invalidation, with a bounded legacy cleanup sweep for old unindexed keys.
+- **Location freshness made explicit** - Desktop and mobile multi-location rows now show per-outlet check freshness so mixed outlet rebuild times are not shown as one global timestamp.
+
 ## June 8, 2026 — Business Health Monitoring And History
 
 ### New
 
 - **Owner chat history added behind a flag** - Business Health can now keep a bounded owner conversation thread only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled and a client `threadId` is present.
 - **Internal Business Health monitor added** - Platform users can review recent Business Health questions, answers, unsupported gaps, action usage, feedback, provider-call counts, units, internal cost, and owner-charge totals from `/platform/owner-business-assistant`.
+- **Business Health monitor is in Platform navigation** - Desktop Platform now includes a Business Health Monitor tab, and mobile platform admins can open the same monitor from More -> Platform Monitoring or the `/platform/owner-business-assistant` deep link.
 - **Ops Control Room links the monitor** - The internal `/ops` page now links to Business Health Monitor alongside existing platform monitoring tools.
+- **Business Health data coverage note added** - Dashboard, desktop, and mobile Business Health now show the settled date the check uses so owners do not read it as realtime data.
+- **Business Health follow-up questions added** - Starter questions are ranked from the cached health/analytics packet, and answers now return compact follow-up questions without a separate AI or Firebase read path.
 
 ### Cost
 
 - **Answer-event logging is separate from owner history** - Compact question/answer events write only when `ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING` is enabled. Deterministic answers log zero units and zero charge; provider cost appears only when a provider-backed answer is actually used.
 - **Owner chat history uses one thread document** - Business Health stores bounded `messages[]` inside `ownerBusinessAssistantThreads/{threadId}` instead of creating one Firestore document per chat message.
+- **Not-ready fallback cache rejected** - Business Health no longer persists first-run fallback packets in server or browser cache, so a store can show the generated check as soon as the scheduler writes source-backed facts.
+- **Question suggestions share existing writes** - Follow-up question IDs are stored only inside the existing thread message and answer-event documents when those flags are enabled.
 - **Transaction wording is ready for Business Health** - AI transaction labels now render Business Health answer/draft operations in owner-facing terms if provider-backed accounting is enabled later.
 
 ## June 8, 2026 — Business Health Cross-Check Hardening
@@ -29,10 +45,12 @@
 - **Analytics answers corrected** - Specific period questions now refuse when that period is unavailable instead of falling back to another period; unavailable "today" suggestions are hidden.
 - **Draft and thread writes hardened** - Review-reply and temporary-status prepare actions now write compact drafts correctly, check mark/dismiss uses one audit write, and thread persistence is opt-in with bounded `threadId` writes.
 - **Mobile action sheet connected** - Mobile Business Health can open returned action options only when Action Support is enabled.
+- **Build memory configuration restored** - Production builds now use the documented webpack worker path and keep webpack cache disabled, avoiding local heap-limit failures before route collection.
 
 ### Firebase
 
 - **Functions redeployed** - `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`, and `menulistMaintenanceScheduler` were redeployed to `ecomsai` after the builder changes.
+- **Stale assistant-message index removed** - The old live `ownerBusinessAssistantMessages` composite index was deleted by exact index ID; current chat history uses the single thread document pattern and needs no message-query index.
 
 ## June 7, 2026 — MenuList Business Health Implementation
 
@@ -46,12 +64,12 @@
 
 - **Read models and cleanup added** - The existing nightly scheduler can write Business Health current/snapshot docs and optional analytics index docs in `platformSummary`; the existing maintenance scheduler now cleans expired assistant workflow docs.
 - **Server-only access enforced** - Assistant workflow collections are denied to clients in Firestore rules and accessed through protected APIs/Admin SDK only.
-- **Assistant message index superseded** - The initial message-query index was added for bounded thread reads; the active thread-history path now stores bounded `messages[]` inside one thread document.
+- **Assistant message index removed from active config** - The initial message-query index was superseded; the active thread-history path now stores bounded `messages[]` inside one thread document.
 
 ### Cost
 
 - **Cache-first design implemented** - Browser cache and optional Upstash context cache are used before Firestore reads. Chat-time raw Firebase collection scans are not added.
-- **Cost-controlled owner testing** - Owner-testable paths are enabled, while provider-backed AI answers, direct public-truth mutation, media/image actions, and Upstash packet cache remain disabled to avoid surprise provider spend or unsafe writes.
+- **Cost-controlled owner testing** - Owner-testable paths and Upstash packet cache are enabled, while provider-backed AI answers, direct public-truth mutation, and media/image actions remain disabled to avoid surprise provider spend or unsafe writes.
 
 ## June 7, 2026 — MenuList Business Health Planning
 

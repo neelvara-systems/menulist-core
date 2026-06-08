@@ -74,7 +74,7 @@ const nextConfig = {
     },
     experimental: {
         serverComponentsExternalPackages: ['@google-cloud/tasks', 'firebase-admin'],
-        webpackBuildWorker: false,
+        webpackBuildWorker: true,
         serverSourceMaps: false,
         outputFileTracingExcludes: {
             '*': [
@@ -183,10 +183,9 @@ const nextConfig = {
 
         // Disable webpack cache where it is known to destabilize route builds:
         // - Local dev: stale/missing pack files can make app chunks 404.
-        // - Vercel build: cache stores all compiled module artifacts in RAM.
-        if (dev || (process.env.VERCEL === '1' && !dev)) {
-            config.cache = false;
-        }
+        // - Production builds: cache stores compiled module artifacts in RAM
+        //   and can push this repo over the Node heap limit before route output.
+        config.cache = false;
 
         return config;
     },

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { buildPlatformBlockDetails } from "@lib/platform/entityBlock";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -62,10 +63,14 @@ async function getTenantStoreIds(db: admin.firestore.Firestore, tenantId: string
     return fallbackStoreIds;
 }
 
-function revalidateStorePublicCache(storeId: string | number) {
+async function revalidateStorePublicCache(storeId: string | number, tenantId?: string | number) {
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+    await invalidateOwnerBusinessAssistantPacketCache({
+        tId: tenantId,
+        sId: storeId,
+    });
 }
 
 async function syncUserBlockAuthState({
@@ -156,7 +161,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         });
 
         const affectedStoreIds = await getTenantStoreIds(db, tenantId, blocked);
-        affectedStoreIds.forEach(revalidateStorePublicCache);
+        await Promise.all(affectedStoreIds.map((storeId) => revalidateStorePublicCache(storeId, tenantId)));
 
         return NextResponse.json({
             entity: {
@@ -187,7 +192,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 },
             },
         }, { merge: true });
-        revalidateStorePublicCache(storeId);
+        await revalidateStorePublicCache(storeId, existingEntity.tenantId);
 
         return NextResponse.json({
             entity: {

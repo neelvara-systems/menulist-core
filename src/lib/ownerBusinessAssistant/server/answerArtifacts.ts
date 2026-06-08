@@ -23,11 +23,15 @@ export function buildAnalyticsPeriodArtifacts(
   ];
 
   if (period.topItems?.length) {
+    const showMenuColumn = period.scope === 'store'
+      && (period.indexedProjectCount || 0) > 1
+      && period.topItems.some((item) => item.projectName);
     artifacts.push({
       type: 'compact_table',
-      columns: ['Item', 'Signal'],
+      columns: showMenuColumn ? ['Item', 'Menu', 'Signal'] : ['Item', 'Signal'],
       rows: period.topItems.slice(0, 5).map((item) => [
         item.name || item.itemId,
+        ...(showMenuColumn ? [item.projectName || item.projectId || 'Menu'] : []),
         `${formatNumber(item.value)} ${item.signal}`,
       ]),
       maxRows: 5,

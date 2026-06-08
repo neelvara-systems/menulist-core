@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
-import { getCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
+import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
 
@@ -13,30 +13,42 @@ type CurrentResponse = {
   };
 };
 
-const fetcher = async (url: string): Promise<CurrentResponse> => {
+const fetcher = async ([url]: readonly [string, string]): Promise<CurrentResponse> => {
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to load Business Health');
   return response.json();
 };
 
-export function useOwnerBusinessHealthCurrent(projectId?: string) {
+const isNotReadyFallbackResponse = (response: CurrentResponse | undefined) =>
+  response?.data?.status === 'not_ready' && !response.data.sourceRefs?.length;
+
+export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?: string | number) {
   const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH;
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.current}${params.toString() ? `?${params.toString()}` : ''}`;
-  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserCurrentPrefix}:${projectId || 'store'}`;
-  const cached = typeof window !== 'undefined' ? getCachedData<CurrentResponse>(cacheKey) : undefined;
+  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserCurrentPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
+  const cached = typeof window !== 'undefined'
+    ? getCachedData<CurrentResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+    : undefined;
+  const cachedNotReady = isNotReadyFallbackResponse(cached);
 
   const swr = useSWR<CurrentResponse>(
-    enabled ? url : null,
+    enabled ? [url, String(storeScopeKey || 'store')] as const : null,
     fetcher,
     {
-      fallbackData: cached,
+      fallbackData: cachedNotReady ? undefined : cached,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: typeof window === 'undefined' ? false : shouldRevalidate(cacheKey),
+      revalidateIfStale: typeof window === 'undefined' ? false : cachedNotReady || shouldRevalidate(cacheKey),
       dedupingInterval: 10 * 60 * 1000,
-      onSuccess: (data) => setCachedData(cacheKey, data, data.data?.localDate),
+      onSuccess: (data) => {
+        if (isNotReadyFallbackResponse(data)) {
+          removeCachedData(cacheKey);
+          return;
+        }
+        setCachedData(cacheKey, data, data.data?.localDate);
+      },
     },
   );
 

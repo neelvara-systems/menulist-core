@@ -51,6 +51,7 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
 
   const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
   logger.security('Rate Limit Exceeded', {
+    ...buildSecurityContext(params.session, params.request),
     endpoint: params.request.nextUrl.pathname,
     feature: params.feature,
     limit: rateLimitConfig.limit,

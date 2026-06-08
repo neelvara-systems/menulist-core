@@ -68,7 +68,7 @@ Before website copy goes live:
 4. Scheduler writes current summary.
 5. Context-packet cache serves repeated answer/page opens without Firebase reads.
 6. Analytics index answers standard period questions without runtime range scans.
-7. Suggested and typed questions use AI over the cached packet with structured validation.
+7. Suggested questions are packet-ranked without a separate provider call; typed answers use AI over the cached packet with structured validation when provider answering is enabled.
 8. Public-truth writes are confirmed or routed to existing publish screen.
 9. Firebase cost model matches implementation.
 10. Help doc is ready.

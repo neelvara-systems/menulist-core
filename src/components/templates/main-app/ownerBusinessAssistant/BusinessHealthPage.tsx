@@ -3,15 +3,21 @@
 import { Alert, Card, Space } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessContextPacket } from '@hook/ownerBusinessAssistant/useOwnerBusinessContextPacket';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useContext } from 'react';
 import { BusinessHealthAnalyticsStrip } from './BusinessHealthAnalyticsStrip';
 import { BusinessHealthHeader } from './BusinessHealthHeader';
+import { BusinessHealthLocationSummary } from './BusinessHealthLocationSummary';
 import { BusinessHealthPriorityChecks } from './BusinessHealthPriorityChecks';
 import { BusinessHealthSummaryCard } from './BusinessHealthSummaryCard';
 import { OwnerAssistantPanel } from './OwnerAssistantPanel';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 export function BusinessHealthPage({ projectId }: { projectId?: string }) {
-  const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(projectId);
+  const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
+  const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(projectId, storeDetails?.storeId);
+  const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
+    && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
 
   return (
     <div className={styles.pageShell}>
@@ -31,13 +37,23 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
           <div className={styles.summaryGrid}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <BusinessHealthSummaryCard current={current} />
-              <BusinessHealthAnalyticsStrip projectId={projectId} />
-              <BusinessHealthPriorityChecks checks={current?.suggestedChecks} projectId={projectId} />
+              <BusinessHealthLocationSummary
+                enabled={hasMultipleStores}
+                scopeKey={tenantDetails?.tenantId || storeDetails?.tenantId || storeDetails?.storeId}
+              />
+              <BusinessHealthAnalyticsStrip projectId={projectId} storeScopeKey={storeDetails?.storeId} />
+              <BusinessHealthPriorityChecks
+                checks={current?.suggestedChecks}
+                localDate={current?.localDate}
+                projectId={projectId}
+              />
             </Space>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <OwnerAssistantPanel
+                current={current}
                 projectId={projectId}
                 questions={FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions : undefined}
+                storeScopeKey={storeDetails?.storeId}
               />
             </Space>
           </div>

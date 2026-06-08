@@ -22,7 +22,7 @@ export function OwnerAssistantInput({ onAsk, loading, disabled }: {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onPressEnter={submit}
-        placeholder="Ask about today, this week, menu attention, or next checks"
+        placeholder={disabled ? 'Available after the latest check' : 'Ask about today, this week, menu attention, or next checks'}
         disabled={disabled}
         maxLength={800}
       />

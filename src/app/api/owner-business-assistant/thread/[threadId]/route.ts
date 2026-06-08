@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { OwnerBusinessAssistantThreadParamsSchema } from '@lib/ownerBusinessAssistant/schemas';
 import {
   applyOwnerBusinessAssistantRateLimit,
@@ -42,6 +44,9 @@ export const GET = withAuth(async (request: NextRequest, session, params) => {
     keyPrefix: 'owner-business-assistant-thread',
   });
   if (rateLimit) return rateLimit;
+
+  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health thread');
+  if (permissionError) return permissionError;
 
   const { tId, sId } = getOwnerAssistantSessionScope(session);
   const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);

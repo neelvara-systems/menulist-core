@@ -11,11 +11,12 @@ import ThemeModeSwitcher from '@organisms/themeModeSwitcher';
 import TimezoneSwitcher from '@organisms/timezoneSwitcher';
 import { getDarkColorState, getDarkModeState, getLightColorState, updateDarkThemeColor, updateLightThemeColor } from '@reduxSlices/clientThemeConfig';
 import PlatformUsers from '@template/platform/users';
+import OwnerBusinessAssistantMonitor from '@template/main-app/platform/ownerBusinessAssistantMonitor';
 import { TenantDataType } from '@type/platform/tenant';
 import { convertRGBtoOBJ, hexToRgbA } from '@util/utils';
 import { Button, Flex, theme, Typography } from 'antd';
 import { Fragment, useState } from 'react';
-import { LuBuilding, LuBuilding2, LuCaseUpper, LuDollarSign, LuImage, LuList, LuSettings, LuShieldOff, LuUser } from 'react-icons/lu';
+import { LuActivity, LuBuilding, LuBuilding2, LuCaseUpper, LuDollarSign, LuImage, LuList, LuSettings, LuShieldOff, LuUser } from 'react-icons/lu';
 import AssetsUploader from '../assets';
 import FontPresets from '../fontPresets';
 import PricingPlans from '../pricingPlans';
@@ -46,6 +47,7 @@ function PlatformSettings({ initialTab = '' }: { initialTab?: string } = {}) {
         { active: true, route: "fonts", name: "Font Presets", icon: <LuCaseUpper /> },
         { active: true, route: "assets", name: "Assets", icon: <LuImage /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "logs", name: "Logs", icon: <LuList /> },
+        { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "owner-business-assistant", name: "Business Health Monitor", icon: <LuActivity /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "users", name: "Users", icon: <LuUser /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "tenants", name: "Tenants", icon: <LuBuilding /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "stores", name: "Stores", icon: <LuBuilding2 /> },
@@ -65,6 +67,8 @@ function PlatformSettings({ initialTab = '' }: { initialTab?: string } = {}) {
         switch (activetab) {
             case "users":
                 return <PlatformUsers />
+            case "owner-business-assistant":
+                return <OwnerBusinessAssistantMonitor />
             case "tenants":
                 return <TenantsDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />
             case "stores":

@@ -121,6 +121,7 @@ const MobileResellerOnboardingScreen = dynamic(() => import('./MobileResellerOnb
 
 const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'entityBlocks',
+    'ownerBusinessAssistantMonitor',
     'platformTenants',
     'platformStores',
     'platformUsers',
@@ -192,6 +193,7 @@ export type MoreSubScreen =
     | 'answerlatticeHub'
     | 'resellerHub'
     | 'entityBlocks'
+    | 'ownerBusinessAssistantMonitor'
     | 'platformTenants'
     | 'platformStores'
     | 'platformUsers'
@@ -434,6 +436,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(currentScreen)) {
             return 'resellerHub';
         }
+        if (currentScreen === 'ownerBusinessAssistantMonitor') {
+            return 'main';
+        }
         if (isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
         }
@@ -506,6 +511,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'opsControlRoom', icon: <LuActivity color={token.colorError} size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
+        { key: 'ownerBusinessAssistantMonitor', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['business health', 'assistant', 'owner questions', 'answers', 'ai cost', 'action usage'], label: 'Business Health Monitor', description: 'Owner questions, answers, support gaps, action usage, and cost.', onClick: () => openSubScreen('ownerBusinessAssistantMonitor') },
         { key: 'schedulerMonitor', icon: <LuClock3 color={token.colorWarning} size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
         ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/answerlattice-intake') }] : []),

@@ -1,4 +1,5 @@
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '../constants';
+import { formatOwnerBusinessHealthDateKey } from '../freshness';
 import type {
   OwnerBusinessAssistantActionOption,
   OwnerBusinessAssistantContextPacket,
@@ -35,9 +36,17 @@ export function buildAnalyticsAnswer(
   intent: OwnerBusinessAssistantIntent,
 ) {
   const topItem = period.topItems?.[0];
-  const base = `${period.label}: ${formatNumber(period.metrics.menuVisits)} menu visits, ${formatNumber(period.metrics.itemClicks)} item clicks, and ${formatNumber(period.metrics.searches)} searches.`;
+  const scopeLabel = period.scope === 'project' && period.projectName
+    ? ` for ${period.projectName}`
+    : period.scope === 'store' && (period.indexedProjectCount || 0) > 1
+      ? ` across ${formatNumber(period.indexedProjectCount)} menus`
+      : '';
+  const topItemScope = topItem?.projectName && period.scope === 'store' && (period.indexedProjectCount || 0) > 1
+    ? ` in ${topItem.projectName}`
+    : '';
+  const base = `${period.label}${scopeLabel}: ${formatNumber(period.metrics.menuVisits)} menu visits, ${formatNumber(period.metrics.itemClicks)} item clicks, and ${formatNumber(period.metrics.searches)} searches.`;
   const extra = topItem
-    ? ` Top item was ${topItem.name || topItem.itemId} with ${formatNumber(topItem.value)} ${topItem.signal}.`
+    ? ` Top item was ${topItem.name || topItem.itemId}${topItemScope} with ${formatNumber(topItem.value)} ${topItem.signal}.`
     : '';
   const intentSuffix = intent === 'item_attention' && topItem
     ? ` This is the item getting the most attention for ${period.rangeLabel}.`
@@ -138,6 +147,12 @@ export function buildActionOptionsForIntent(
 }
 
 export const describeHealthStatus = (packet: OwnerBusinessAssistantContextPacket) => {
+  const throughDate = packet.health.sourceWindow?.lastSettledDate
+    || packet.health.sourceWindow?.today
+    || packet.health.localDate;
+  const throughLabel = formatOwnerBusinessHealthDateKey(throughDate);
   const label = OWNER_BUSINESS_HEALTH_STATUS_LABELS[packet.health.status];
-  return `${label} for ${packet.health.localDate}`;
+  return throughLabel
+    ? `${label}. Uses data through ${throughLabel}. Today may not be complete yet.`
+    : `${label}. Uses the latest available MenuList data.`;
 };

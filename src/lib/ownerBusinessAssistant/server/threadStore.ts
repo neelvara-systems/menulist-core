@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import type { OwnerBusinessAssistantAnswer } from '../types';
+import type { OwnerBusinessAssistantAnswer, OwnerBusinessHealthQuestion } from '../types';
 import type { OwnerBusinessAssistantAnswerRequest } from '../schemas';
 
 const THREAD_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -21,8 +21,21 @@ type StoredOwnerBusinessAssistantMessage = {
   answerId?: string;
   answerStatus?: string;
   sourceFactIds?: string[];
+  suggestedQuestions?: OwnerBusinessHealthQuestion[];
   createdAt: Timestamp;
 };
+
+const compactSuggestedQuestions = (
+  questions?: OwnerBusinessHealthQuestion[],
+): OwnerBusinessHealthQuestion[] => (
+  (questions || []).slice(0, 3).map((question) => ({
+    id: trimForStorage(question.id, 120),
+    label: trimForStorage(question.label, 120),
+    question: trimForStorage(question.question, 240),
+    intent: question.intent,
+    domain: question.domain,
+  }))
+);
 
 const trimThreadMessages = (
   messages: StoredOwnerBusinessAssistantMessage[],
@@ -82,6 +95,7 @@ export async function persistOwnerBusinessAssistantExchange(params: {
         answerId: params.answer.answerId,
         answerStatus: params.answer.status,
         sourceFactIds: params.answer.sourceFactIds.slice(0, 20),
+        suggestedQuestions: compactSuggestedQuestions(params.answer.suggestedQuestions),
         createdAt: Timestamp.fromMillis(now.toMillis() + 1),
       },
     ] as StoredOwnerBusinessAssistantMessage[]);

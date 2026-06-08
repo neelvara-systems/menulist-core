@@ -72,6 +72,8 @@ The AI result is advisory. The `/action` route performs the real target resoluti
 
 The implemented registry exposes safe navigation, compact draft storage, temporary-status draft storage, review-reply draft storage, and check workflow actions. Public-truth mutations are not executed directly by Business Health unless a registered adapter preserves the existing MenuList save, validation, audit, and cache-invalidation path.
 
+Successful low-risk navigation actions do not write audit docs by default. Blocked navigation, draft preparation, check workflow, permission failures, public-truth guard blocks, and risky outcomes remain auditable.
+
 | Action type | Owner request examples | Reuse path | Risk | Confirmation |
 | --- | --- | --- | --- | --- |
 | `navigate_business_health` | "Show me more" | `/business-health` route | Navigate | No |
@@ -184,12 +186,13 @@ Action Support has no cost on Business Health page open when disabled.
 
 | Flow | Reads | Writes |
 | --- | ---: | ---: |
-| Navigate action from cached packet | 0 Firestore reads | 0-1 audit |
+| Successful navigate action from cached packet | 0 Firestore reads unless project target validation is required | 0 audit writes |
+| Blocked/failed navigate action | 0-2 reads depending on target validation | 1 compact action audit write |
 | Prepare description draft | 0 Firestore reads in assistant draft path; provider work is separate and flag-gated | 1 draft + 1 action audit |
 | Prepare temporary status set/clear | 0 Firestore reads in assistant draft path | 1 draft + 1 action audit |
 | Prepare review reply | 0 Firestore reads when owner provides review text | 1 draft + 1 action audit |
 | Confirm public menu/store write | Not exposed directly by Business Health | Existing screen handles save and cache invalidation |
-| Mark/dismiss check | 0 | 1 compact action audit write |
+| Mark/dismiss check | 0 | 1 compact action audit write; desktop/mobile hide the check locally for the current business date |
 
 No action route may scan analytics, feedback, review, menu change logs, or all projects.
 

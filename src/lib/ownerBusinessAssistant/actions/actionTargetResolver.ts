@@ -1,4 +1,63 @@
 import type { OwnerBusinessAssistantActionRequest } from '../schemas';
+import { DB_COLLECTIONS } from '@constant/database';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+
+const extractProjectsSummaryMap = (
+  summaryDocData?: Record<string, any> | null,
+): Record<string, Record<string, any>> => {
+  if (!summaryDocData) return {};
+
+  const nestedProjects = summaryDocData.projects;
+  if (nestedProjects && typeof nestedProjects === 'object' && !Array.isArray(nestedProjects)) {
+    return nestedProjects as Record<string, Record<string, any>>;
+  }
+
+  return Object.fromEntries(
+    Object.entries(summaryDocData)
+      .filter(([key]) => key.startsWith('projects.'))
+      .map(([key, value]) => [key.replace('projects.', ''), value as Record<string, any>]),
+  );
+};
+
+const isActiveProjectRecord = (project: Record<string, any> | null | undefined) =>
+  Boolean(project && project.deleted !== true && project.active !== false);
+
+export async function validateOwnerBusinessAssistantProjectScope(params: {
+  tId: string | number;
+  sId: string | number;
+  projectId?: string | null;
+}) {
+  const projectId = params.projectId ? String(params.projectId) : '';
+  if (!projectId) {
+    return { valid: false, reason: 'missing_project' as const, readCount: 0 };
+  }
+
+  const summarySnap = await firestoreAdmin
+    .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+    .doc(`projects_${params.sId}`)
+    .get();
+  const summaryProjects = summarySnap.exists ? extractProjectsSummaryMap(summarySnap.data() as Record<string, any>) : {};
+  if (summaryProjects[projectId]) {
+    return isActiveProjectRecord(summaryProjects[projectId])
+      ? { valid: true as const, readCount: 1 }
+      : { valid: false as const, reason: 'inactive_project' as const, readCount: 1 };
+  }
+
+  const projectSnap = await firestoreAdmin
+    .collection(DB_COLLECTIONS.PROJECTS)
+    .doc(String(params.tId))
+    .collection(String(params.sId))
+    .doc(projectId)
+    .get();
+
+  if (!projectSnap.exists) {
+    return { valid: false as const, reason: 'not_found' as const, readCount: 2 };
+  }
+
+  return isActiveProjectRecord(projectSnap.data())
+    ? { valid: true as const, readCount: 2 }
+    : { valid: false as const, reason: 'inactive_project' as const, readCount: 2 };
+}
 
 export function resolveOwnerBusinessAssistantTarget(params: {
   tId: string | number;

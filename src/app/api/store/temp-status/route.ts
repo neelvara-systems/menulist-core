@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -100,6 +101,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         revalidateTag(`menu-store-${storeId}`);
         revalidateTag(`store-${storeId}`);
         revalidateTag('client-stores');
+        await invalidateOwnerBusinessAssistantPacketCache({
+            tId: tenantId,
+            sId: storeId,
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

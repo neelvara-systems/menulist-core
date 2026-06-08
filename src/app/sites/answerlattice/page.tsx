@@ -135,6 +135,7 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-owner-inputs',
         navLabel: 'Owner inputs',
+        navSummary: 'Docs, notes, screenshots, and release details become the source layer.',
         eyebrow: '01 / Owner inputs',
         title: 'Start from the support knowledge you already have.',
         description: 'Product docs, repeated replies, screenshots, recordings, release notes, and support notes become the source layer for customer-facing help.',
@@ -146,6 +147,7 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-in-app-help',
         navLabel: 'In-app help',
+        navSummary: 'Support appears on billing, onboarding, settings, and error screens.',
         eyebrow: '02 / In-app help',
         title: 'Give users help on the screen where they get stuck.',
         description: 'The widget brings support into billing, onboarding, settings, integrations, releases, and error screens without forcing users to leave the product.',
@@ -157,6 +159,7 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-hosted-help',
         navLabel: 'Hosted help',
+        navSummary: 'Docs, FAQ, and changelog stay tied to the same reviewed layer.',
         eyebrow: '03 / Hosted help',
         title: 'Publish a support home outside the product too.',
         description: 'Hosted help, documentation, FAQ answers, and changelog content stay connected to the same reviewed support layer.',
@@ -168,6 +171,7 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-gaps-fallback',
         navLabel: 'Gaps and fallback',
+        navSummary: 'Missing answers become tickets, feedback, and visible support gaps.',
         eyebrow: '04 / Gaps and fallback',
         title: 'When help is missing, users still get a path.',
         description: 'Tickets, low-rated answers, repeated questions, and feedback become visible support gaps instead of hidden founder work.',
@@ -179,6 +183,7 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-review-loop',
         navLabel: 'Review loop',
+        navSummary: 'Drafts stay reviewable until you approve customer-facing guidance.',
         eyebrow: '05 / Review loop',
         title: 'You decide what becomes official support.',
         description: 'Drafts and missing answers stay reviewable until you approve them, so the next user gets better support without you repeating the same reply.',
@@ -663,6 +668,7 @@ function SupportSurfaceStorySection() {
     const surfaceNavItems = SUPPORT_SURFACE_STORY.map((surface) => ({
         id: surface.id,
         label: surface.navLabel,
+        summary: surface.navSummary,
     }));
 
     return (
@@ -935,7 +941,7 @@ function FounderReviewSection() {
                     <div className="mt-6 grid gap-3 sm:grid-cols-2">
                         {REVIEW_SIGNALS.map((item) => (
                             <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 text-sm text-[#d6d6ef]">
-                                <span className="mt-0.5 text-teal-300">✓</span>
+                                <LuCheckCircle className="mt-0.5 shrink-0 text-teal-300" size={16} aria-hidden />
                                 {item}
                             </div>
                         ))}

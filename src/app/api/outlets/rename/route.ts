@@ -26,6 +26,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { isReservedOutletSlug } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { validateAPIInput } from '@lib/security/inputValidation';
@@ -208,6 +209,10 @@ export const POST = withAuth(async (request, session) => {
         revalidateTag(`menu-store-${outletStoreIdStr}`);
         revalidateTag(`store-${outletStoreIdStr}`);
         revalidateTag('client-stores');
+        await invalidateOwnerBusinessAssistantPacketCache({
+            tId: tenantId,
+            sId: outletStoreIdStr,
+        });
 
         return NextResponse.json({
             success: true,

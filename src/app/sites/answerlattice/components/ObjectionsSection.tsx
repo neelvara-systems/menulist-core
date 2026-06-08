@@ -25,17 +25,17 @@ const OBJECTIONS = [
 
 export default function ObjectionsSection() {
     return (
-        <section className="border-t border-white/[0.06] px-6 py-20">
+        <section className="al-objections">
             <div className="mx-auto max-w-4xl">
                 <SectionHeader
                     eyebrow="FAQ"
                     title="Questions founders ask before adding a support layer."
                 />
-                <div className="grid gap-4">
+                <div className="al-objections__list">
                     {OBJECTIONS.map((item) => (
-                        <article key={item.question} className="rounded-2xl border border-white/[0.06] bg-[#101028] p-5">
-                            <h3 className="text-lg font-semibold text-white">{item.question}</h3>
-                            <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{item.answer}</p>
+                        <article key={item.question} className="al-objections__card" data-answerlattice-reveal-item>
+                            <h3>{item.question}</h3>
+                            <p>{item.answer}</p>
                         </article>
                     ))}
                 </div>

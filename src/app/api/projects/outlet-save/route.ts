@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidPrice } from "@lib/extraction/validation";
+import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -475,6 +476,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         revalidateTag(`menu-store-${outletStoreId}`);
         revalidateTag(`store-${outletStoreId}`);
         revalidateTag("client-stores");
+        await invalidateOwnerBusinessAssistantPacketCache({
+            tId: tenantId,
+            sId: outletStoreId,
+            projectId: project.projectId,
+        });
 
         return NextResponse.json({ success: true, project: safeProject });
     } catch (error) {

@@ -4,11 +4,14 @@ import type { OwnerBusinessAssistantAnswer } from '../types';
 export const buildOwnerBusinessAssistantRefusal = (params: {
   answerId: string;
   reason?: string;
+  alternative?: string;
   sourceFactIds?: string[];
 }): OwnerBusinessAssistantAnswer => ({
   answerId: params.answerId,
   status: 'unsupported',
-  text: params.reason || OWNER_BUSINESS_ASSISTANT_COPY.unsupported,
+  text: [params.reason || OWNER_BUSINESS_ASSISTANT_COPY.unsupported, params.alternative]
+    .filter(Boolean)
+    .join(' '),
   freshnessLabel: 'No supported source',
   sourceFactIds: params.sourceFactIds || [],
   confidence: 'low',
