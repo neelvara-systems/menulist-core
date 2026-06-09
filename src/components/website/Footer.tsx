@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin } from 'react-icons/lu';
 import { FEATURE_FLAGS } from '@config/features';
 import BrandWordmark from './shared/BrandWordmark';
+import AnimateOnScroll, { AnimateStaggerChild } from './shared/AnimateOnScroll';
 import WebsiteButton from './shared/WebsiteButton';
 import WebsiteAnalyticsPreferencesButton from './shared/WebsiteAnalyticsPreferencesButton';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
@@ -67,35 +68,39 @@ export default function Footer() {
     <footer id="site-footer" className="ws-footer-revenue">
       {/* <FooterVeilCanvas /> */}
       <div className="ws-container">
-        <section className="ws-footer-cta" aria-labelledby="footer-cta-title">
-          <div>
-            <p className="ws-footer-eyebrow">{t('Footer.ctaEyebrow')}</p>
-            <h2 id="footer-cta-title">{t('Footer.ctaTitle')}</h2>
-            <p>{t('Footer.ctaBody')}</p>
-          </div>
-          <div className="ws-footer-cta__actions">
-            <WebsiteButton href="/create-menu">
-              {t('Footer.ctaPrimary')}
-            </WebsiteButton>
-            <Link href="/pricing" className="ws-footer-secondary-link">
-              {t('Footer.ctaSecondary')} <LuArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
+        <AnimateOnScroll preset="footer">
+          <section className="ws-footer-cta" aria-labelledby="footer-cta-title">
+            <div>
+              <p className="ws-footer-eyebrow">{t('Footer.ctaEyebrow')}</p>
+              <h2 id="footer-cta-title">{t('Footer.ctaTitle')}</h2>
+              <p>{t('Footer.ctaBody')}</p>
+            </div>
+            <div className="ws-footer-cta__actions">
+              <WebsiteButton href="/create-menu">
+                {t('Footer.ctaPrimary')}
+              </WebsiteButton>
+              <Link href="/pricing" className="ws-footer-secondary-link">
+                {t('Footer.ctaSecondary')} <LuArrowRight size={16} />
+              </Link>
+            </div>
+          </section>
+        </AnimateOnScroll>
 
         <section className="ws-footer-proof-grid" aria-label={t('Footer.proofLabel')}>
-          {proofItems.map((item) => (
-            <div key={item.title} className="ws-footer-proof-card">
-              <item.Icon size={20} />
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
+          {proofItems.map((item, index) => (
+            <AnimateStaggerChild key={item.title} index={index} preset="footer" className="ws-footer-proof-card-reveal">
+              <div className="ws-footer-proof-card">
+                <item.Icon size={20} />
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.desc}</p>
+                </div>
               </div>
-            </div>
+            </AnimateStaggerChild>
           ))}
         </section>
 
-        <div className="ws-footer-main">
+        <AnimateOnScroll preset="footer" delay={0.08} className="ws-footer-main">
           <div className="ws-footer-brand">
             <Link href="/" className="ws-footer-logo" aria-label="MenuList home">
               <BrandWordmark
@@ -163,9 +168,9 @@ export default function Footer() {
               </ul>
             </div>
           </nav>
-        </div>
+        </AnimateOnScroll>
 
-        <div className="ws-footer-bottom">
+        <AnimateOnScroll preset="fade" delay={0.12} className="ws-footer-bottom">
           <p>{t('Footer.copyright', { year: currentYear })}</p>
           <span className="ws-footer-bottom__tagline"><LuMapPin size={14} /> {t('Footer.bottomTagline')}</span>
           <div className="ws-footer-bottom__controls" role="group" aria-label={t('Footer.preferencesLabel')}>
@@ -173,7 +178,7 @@ export default function Footer() {
             <WebsiteLanguageSwitcher surface="footer" />
             <WebsiteThemeSwitcher />
           </div>
-        </div>
+        </AnimateOnScroll>
       </div>
     </footer>
   );

@@ -103,6 +103,71 @@ export interface OwnerBusinessAnalyticsIndexDoc {
   };
 }
 
+export type OwnerBusinessFeedbackThemeKey =
+  | 'wrong_price'
+  | 'hours'
+  | 'unavailable_item'
+  | 'service'
+  | 'quality'
+  | 'cleanliness'
+  | 'delivery'
+  | 'payment'
+  | 'other';
+
+export interface OwnerBusinessFeedbackPeriodSummary {
+  key: string;
+  label: string;
+  rangeLabel: string;
+  totalCount: number;
+  needsAttentionCount: number;
+  sourceFactIds: string[];
+}
+
+export interface OwnerBusinessFeedbackThemeSummary {
+  key: OwnerBusinessFeedbackThemeKey;
+  label: string;
+  count: number;
+}
+
+export interface OwnerBusinessFeedbackItemSummary {
+  feedbackId: string;
+  projectId?: string;
+  projectName?: string;
+  rating: number;
+  source?: 'menu_footer' | 'feedback_qr' | 'direct_link';
+  snippet?: string;
+  createdAt?: string;
+  localDate?: string;
+  sourceFactId: string;
+}
+
+export interface OwnerBusinessFeedbackProjectSummary {
+  projectId: string;
+  projectName?: string;
+  totalCount: number;
+  needsAttentionCount: number;
+  latestFeedbackAt?: string;
+  sourceFactIds: string[];
+}
+
+export interface OwnerBusinessFeedbackSummary {
+  version: 1;
+  status: OwnerBusinessHealthBlockStatus;
+  localDate: string;
+  generatedAt: string;
+  windowDays: number;
+  sampledCount: number;
+  truncated: boolean;
+  latestFeedbackAt?: string;
+  latestNeedsAttentionAt?: string;
+  periods: Record<string, OwnerBusinessFeedbackPeriodSummary | undefined>;
+  topThemes: OwnerBusinessFeedbackThemeSummary[];
+  latestNeedsAttention: OwnerBusinessFeedbackItemSummary[];
+  latestFeedback: OwnerBusinessFeedbackItemSummary[];
+  projectBreakdown: Record<string, OwnerBusinessFeedbackProjectSummary>;
+  sourceFactIds: string[];
+}
+
 export interface OwnerBusinessHealthCurrentDoc {
   version: 1;
   tId: string;
@@ -130,6 +195,7 @@ export interface OwnerBusinessHealthCurrentDoc {
     topItem?: { label: string; value: string; deltaLabel?: string; sourceFactId?: string };
     analyticsIndexDocId: string;
   };
+  feedbackSummary?: OwnerBusinessFeedbackSummary;
   blocks: Record<string, OwnerBusinessHealthBlock | undefined>;
   suggestedChecks: OwnerBusinessHealthCheck[];
   suggestedQuestions: OwnerBusinessHealthQuestion[];

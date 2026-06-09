@@ -78,7 +78,7 @@ Add to existing mobile registry:
 Mobile order:
 
 1. Mobile dashboard summary card: cached Business Health status, freshness, and selected-menu compact analytics before the detailed analytics tabs.
-2. Header on full Business Health screen: Business Health, branch selector if needed, status, last checked.
+2. Header on full Business Health screen: Business Health, branch selector if needed, local Business Health scope selector with `All menus`, status, last checked.
 3. Summary card.
 4. Compact analytics periods: Today, This week, This month.
 5. Compact location summary for multi-store tenants only.
@@ -88,7 +88,7 @@ Mobile order:
 9. Actions as bottom sheet.
 10. Source/freshness disclosure.
 
-Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
+Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The full mobile Business Health screen owns a local `All menus` / selected-menu scope that does not call the global mobile `selectProject()` handler. It resets to the active mobile project only until the owner touches the Business Health scope, and clears back to `All menus` if the scoped project disappears after store/project changes. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
 
 Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
 

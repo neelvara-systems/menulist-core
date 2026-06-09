@@ -7,12 +7,13 @@ import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Text } = Typography;
 
-export function OwnerAssistantActionSheet({ actions, projectId }: {
+export function OwnerAssistantActionSheet({ actions, projectId, storeScopeKey }: {
   actions?: OwnerBusinessAssistantActionOption[];
   projectId?: string;
+  storeScopeKey?: string | number;
 }) {
   const router = useRouter();
-  const { runAction, isLoading } = useOwnerBusinessAssistantAction(projectId);
+  const { runAction, isLoading } = useOwnerBusinessAssistantAction(projectId, storeScopeKey);
 
   if (!actions?.length) return null;
 

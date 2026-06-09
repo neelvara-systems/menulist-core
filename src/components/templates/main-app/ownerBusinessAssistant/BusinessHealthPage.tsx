@@ -4,25 +4,45 @@ import { Alert, Card, Space } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import { useOwnerBusinessContextPacket } from '@hook/ownerBusinessAssistant/useOwnerBusinessContextPacket';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { useContext } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { BusinessHealthAnalyticsStrip } from './BusinessHealthAnalyticsStrip';
 import { BusinessHealthHeader } from './BusinessHealthHeader';
 import { BusinessHealthLocationSummary } from './BusinessHealthLocationSummary';
 import { BusinessHealthPriorityChecks } from './BusinessHealthPriorityChecks';
+import { BusinessHealthProjectScopeSelector } from './BusinessHealthProjectScopeSelector';
 import { BusinessHealthSummaryCard } from './BusinessHealthSummaryCard';
 import { OwnerAssistantPanel } from './OwnerAssistantPanel';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 export function BusinessHealthPage({ projectId }: { projectId?: string }) {
   const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
+  const pathname = usePathname();
+  const router = useRouter();
+  const [scopedProjectId, setScopedProjectId] = useState<string | undefined>(projectId);
   const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(undefined, storeDetails?.storeId);
   const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
     && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
+  const handleScopeChange = useCallback((nextProjectId?: string) => {
+    setScopedProjectId(nextProjectId);
+    const nextPath = nextProjectId
+      ? `${pathname}?projectId=${encodeURIComponent(nextProjectId)}`
+      : pathname;
+    router.replace(nextPath, { scroll: false });
+  }, [pathname, router]);
+
+  useEffect(() => {
+    setScopedProjectId(projectId);
+  }, [projectId, storeDetails?.storeId]);
 
   return (
     <div className={styles.pageShell}>
       <Space direction="vertical" size="large" className={styles.businessHealthStack}>
         <BusinessHealthHeader current={current} onRefresh={refresh} />
+        <BusinessHealthProjectScopeSelector
+          onChange={handleScopeChange}
+          selectedProjectId={scopedProjectId}
+        />
         {error ? (
           <Alert
             type="warning"
@@ -40,18 +60,21 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
               <BusinessHealthLocationSummary
                 enabled={hasMultipleStores}
                 scopeKey={tenantDetails?.tenantId || storeDetails?.tenantId || storeDetails?.storeId}
+                storeScopeKey={storeDetails?.storeId}
               />
-              <BusinessHealthAnalyticsStrip projectId={projectId} storeScopeKey={storeDetails?.storeId} />
+              <BusinessHealthAnalyticsStrip projectId={scopedProjectId} storeScopeKey={storeDetails?.storeId} />
               <BusinessHealthPriorityChecks
                 checks={current?.suggestedChecks}
                 localDate={current?.localDate}
-                projectId={projectId}
+                projectId={scopedProjectId}
+                storeScopeKey={storeDetails?.storeId}
               />
             </Space>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <OwnerAssistantPanel
+                key={`${storeDetails?.storeId || 'store'}:${scopedProjectId || 'all'}`}
                 current={current}
-                projectId={projectId}
+                projectId={scopedProjectId}
                 questions={FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions : undefined}
                 storeScopeKey={storeDetails?.storeId}
               />

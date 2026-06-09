@@ -7,9 +7,18 @@ type AnimateCSSProperties = CSSProperties & {
   ["--ws-appear-delay"]?: string;
   ["--ws-appear-distance"]?: string;
   ["--ws-appear-duration"]?: string;
+  ["--ws-appear-opacity"]?: string;
 };
 
 type InViewRef = RefObject<HTMLDivElement | null>;
+type RevealMotion = "slide" | "fade";
+type RevealPreset = "default" | "hero" | "media" | "card" | "footer" | "fade";
+type RevealConfig = {
+  distance: number;
+  durationMs: number;
+  motion: RevealMotion;
+  pendingOpacity: number;
+};
 
 const REVEAL_DELAY_STEP = 0.09;
 const REVEAL_DISTANCE = 12;
@@ -17,12 +26,72 @@ const REVEAL_DURATION_MS = 520;
 const REVEAL_THRESHOLD = 0.1;
 const REVEAL_ROOT_MARGIN = "0px 0px -6% 0px";
 const REVEAL_FALLBACK_VP_CHECK_DELAY_MS = 120;
+const REVEAL_PRESETS: Record<RevealPreset, RevealConfig> = {
+  default: {
+    distance: REVEAL_DISTANCE,
+    durationMs: REVEAL_DURATION_MS,
+    motion: "slide",
+    pendingOpacity: 0.88,
+  },
+  hero: {
+    distance: 18,
+    durationMs: 720,
+    motion: "slide",
+    pendingOpacity: 0.78,
+  },
+  media: {
+    distance: 20,
+    durationMs: 760,
+    motion: "slide",
+    pendingOpacity: 0.72,
+  },
+  card: {
+    distance: 16,
+    durationMs: 640,
+    motion: "slide",
+    pendingOpacity: 0.74,
+  },
+  footer: {
+    distance: 18,
+    durationMs: 720,
+    motion: "slide",
+    pendingOpacity: 0.74,
+  },
+  fade: {
+    distance: 0,
+    durationMs: REVEAL_DURATION_MS,
+    motion: "fade",
+    pendingOpacity: 0.74,
+  },
+};
 
 interface AnimateOnScrollProps {
   children: ReactNode;
   delay?: number;
+  distance?: number;
+  durationMs?: number;
+  pendingOpacity?: number;
+  motion?: RevealMotion;
+  preset?: RevealPreset;
   className?: string;
   style?: CSSProperties;
+}
+
+function resolveRevealConfig({
+  distance,
+  durationMs,
+  motion,
+  pendingOpacity,
+  preset = "default",
+}: Pick<AnimateOnScrollProps, "distance" | "durationMs" | "motion" | "pendingOpacity" | "preset">): RevealConfig {
+  const presetConfig = REVEAL_PRESETS[preset];
+
+  return {
+    distance: distance ?? presetConfig.distance,
+    durationMs: durationMs ?? presetConfig.durationMs,
+    motion: motion ?? presetConfig.motion,
+    pendingOpacity: pendingOpacity ?? presetConfig.pendingOpacity,
+  };
 }
 
 function usePrefersReducedMotion() {
@@ -166,6 +235,11 @@ function useInViewReveal(ref: InViewRef, shouldReveal = false) {
 export default function AnimateOnScroll({
   children,
   delay = 0,
+  distance,
+  durationMs,
+  pendingOpacity,
+  motion,
+  preset,
   className,
   style,
 }: AnimateOnScrollProps) {
@@ -183,13 +257,15 @@ export default function AnimateOnScroll({
   ]
     .filter(Boolean)
     .join(" ");
+  const revealConfig = resolveRevealConfig({ distance, durationMs, motion, pendingOpacity, preset });
   const combinedStyle: AnimateCSSProperties = {
     ...style,
     "--ws-appear-delay": `${delay}s`,
-    "--ws-appear-distance": `${REVEAL_DISTANCE}px`,
-    "--ws-appear-duration": `${REVEAL_DURATION_MS}ms`,
-    transitionDuration: `${REVEAL_DURATION_MS}ms`,
-    willChange: "opacity, transform",
+    "--ws-appear-distance": revealConfig.motion === "fade" ? "0px" : `${revealConfig.distance}px`,
+    "--ws-appear-duration": `${revealConfig.durationMs}ms`,
+    "--ws-appear-opacity": `${revealConfig.pendingOpacity}`,
+    transitionDuration: `${revealConfig.durationMs}ms`,
+    willChange: revealConfig.motion === "fade" ? "opacity" : "opacity, transform",
   };
 
   return (
@@ -202,6 +278,11 @@ export default function AnimateOnScroll({
 interface AnimateStaggerChildProps {
   children: ReactNode;
   index?: number;
+  distance?: number;
+  durationMs?: number;
+  pendingOpacity?: number;
+  motion?: RevealMotion;
+  preset?: RevealPreset;
   className?: string;
   style?: CSSProperties;
 }
@@ -209,6 +290,11 @@ interface AnimateStaggerChildProps {
 export function AnimateStaggerChild({
   children,
   index = 0,
+  distance,
+  durationMs,
+  pendingOpacity,
+  motion,
+  preset,
   className,
   style,
 }: AnimateStaggerChildProps) {
@@ -227,13 +313,15 @@ export function AnimateStaggerChild({
   ]
     .filter(Boolean)
     .join(" ");
+  const revealConfig = resolveRevealConfig({ distance, durationMs, motion, pendingOpacity, preset });
   const combinedStyle: AnimateCSSProperties = {
     ...style,
     "--ws-appear-delay": `${delay}s`,
-    "--ws-appear-distance": `${REVEAL_DISTANCE}px`,
-    "--ws-appear-duration": `${REVEAL_DURATION_MS}ms`,
-    transitionDuration: `${REVEAL_DURATION_MS}ms`,
-    willChange: "opacity, transform",
+    "--ws-appear-distance": revealConfig.motion === "fade" ? "0px" : `${revealConfig.distance}px`,
+    "--ws-appear-duration": `${revealConfig.durationMs}ms`,
+    "--ws-appear-opacity": `${revealConfig.pendingOpacity}`,
+    transitionDuration: `${revealConfig.durationMs}ms`,
+    willChange: revealConfig.motion === "fade" ? "opacity" : "opacity, transform",
   };
 
   return (

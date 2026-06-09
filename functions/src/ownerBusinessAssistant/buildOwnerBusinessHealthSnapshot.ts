@@ -2,6 +2,7 @@ import { FUNCTION_FLAGS } from '../constants/features';
 import { getBusinessAnalyticsDateKey } from '../utils/businessDay';
 import { OWNER_BUSINESS_ASSISTANT_DOCS } from './constants';
 import { buildOwnerBusinessAnalyticsIndex } from './buildOwnerBusinessAnalyticsIndex';
+import { buildOwnerBusinessFeedbackSummary } from './buildOwnerBusinessFeedbackSummary';
 import { buildOwnerBusinessHealthBlocks } from './ownerBusinessHealthBlocks';
 import { buildOwnerBusinessHealthQuestions } from './ownerBusinessHealthIntentFixtures';
 import { buildOwnerBusinessHealthSourceRefs } from './ownerBusinessHealthSources';
@@ -50,14 +51,27 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
         activeProjects: params.activeProjects,
       })
     : null;
+  const feedbackBuild = await buildOwnerBusinessFeedbackSummary({
+    db: params.db,
+    tId: params.tId,
+    sId: params.sId,
+    activeProjects: params.activeProjects,
+    generatedAt,
+    localDate,
+    runAt: params.runAt,
+    timeZone: params.storeInfo.timeZone,
+    businessDayEndTime: params.businessDayEndTime,
+  });
   const healthBlocks = buildOwnerBusinessHealthBlocks({
     activeProjects: params.activeProjects,
     analytics: analyticsBuild?.doc,
+    feedbackSummary: feedbackBuild.summary,
   });
   const sourceRefs = buildOwnerBusinessHealthSourceRefs({
     generatedAt,
     analyticsDocIds: analyticsBuild?.analyticsDocIds || [],
     activeProjects: params.activeProjects,
+    feedbackSummary: feedbackBuild.summary,
     storeInfo: { ...params.storeInfo, storeId: params.sId },
   });
   const availablePeriods = Object.entries(analyticsBuild?.doc.periods || {})
@@ -69,6 +83,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     'business_health',
     ...(analyticsBuild ? ['analytics'] : []),
     ...(params.activeProjects.length > 0 ? ['menu'] : []),
+    'feedback_reviews',
   ];
   const questions = buildOwnerBusinessHealthQuestions({
     availablePeriods,
@@ -129,6 +144,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
       } : undefined,
       analyticsIndexDocId,
     } : undefined,
+    feedbackSummary: feedbackBuild.summary,
     blocks: healthBlocks.blocks,
     suggestedChecks: healthBlocks.checks,
     suggestedQuestions: questions,
@@ -137,11 +153,12 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
       { domain: 'business_health', status: 'supported', sourceFactIds: ['projects_summary'] },
       { domain: 'analytics', status: analyticsBuild ? 'supported' : 'unsupported', sourceFactIds: analyticsBuild?.doc.sourceRefs.map((ref) => ref.id) || [] },
       { domain: 'menu', status: params.activeProjects.length > 0 ? 'supported' : 'summary_only', sourceFactIds: ['projects_summary'] },
+      { domain: 'feedback_reviews', status: 'supported', sourceFactIds: feedbackBuild.summary.sourceFactIds },
     ],
     unsupportedData: analyticsBuild ? {} : { analytics: 'not_enabled' },
     sourceRefs,
     cost: {
-      builderReadCount: analyticsBuild?.readCount || 0,
+      builderReadCount: (analyticsBuild?.readCount || 0) + feedbackBuild.readCount,
       builderWriteCount: analyticsBuild ? 4 : 3,
       chatHotPathReadCount: analyticsBuild ? 2 : 1,
     },
@@ -173,7 +190,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     currentDocId: writeResult.currentDocId,
     analyticsIndexDocId: writeResult.analyticsIndexDocId,
     snapshotDocId: writeResult.snapshotDocId,
-    builderReadCount: analyticsBuild?.readCount || 0,
+    builderReadCount: (analyticsBuild?.readCount || 0) + feedbackBuild.readCount,
     builderWriteCount: writeResult.writeCount,
     status: current.status,
   };

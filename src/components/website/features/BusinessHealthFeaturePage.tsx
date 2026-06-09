@@ -16,6 +16,7 @@ import {
   LuShieldCheck,
   LuSmartphone,
 } from 'react-icons/lu';
+import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
@@ -324,14 +325,18 @@ function BusinessHealthStorySection() {
   return (
     <section ref={sectionRef} className="ws-section ws-business-health-feature-story">
       <div className="ws-container">
-        <div className="ws-business-health-feature-story__heading">
+        <AnimateOnScroll preset="card" className="ws-business-health-feature-story__heading">
           <p className="ws-page-hero__eyebrow">{t('storyEyebrow')}</p>
           <WebsiteHeadline as="h2" text={t('storyTitle')} />
           <p>{t('storySubtitle')}</p>
-        </div>
+        </AnimateOnScroll>
 
         <div className="ws-business-health-feature-story__pin">
-          <div className="ws-business-health-feature-story__layout">
+          <AnimateOnScroll
+            preset="fade"
+            delay={0.08}
+            className="ws-business-health-feature-story__layout"
+          >
             <div className="ws-business-health-feature-story__copy">
               <BusinessHealthStoryNav
                 activeId={storySections[activeIndex].id}
@@ -374,7 +379,7 @@ function BusinessHealthStorySection() {
                 );
               })}
             </div>
-          </div>
+          </AnimateOnScroll>
         </div>
       </div>
     </section>
@@ -388,7 +393,7 @@ export default function BusinessHealthFeaturePage() {
     <main className="ws-business-health-feature">
       <section className="ws-business-health-feature-hero">
         <div className="ws-container ws-business-health-feature-hero__inner">
-          <div className="ws-business-health-feature-hero__copy">
+          <AnimateOnScroll preset="hero" className="ws-business-health-feature-hero__copy">
             <p className="ws-page-hero__eyebrow">{t('heroEyebrow')}</p>
             <WebsiteHeadline
               as="h1"
@@ -400,17 +405,17 @@ export default function BusinessHealthFeaturePage() {
               <WebsiteButton href="/create-menu">{t('primaryCta')}</WebsiteButton>
               <WebsiteButton href="/features" variant="ghost">{t('secondaryCta')}</WebsiteButton>
             </div>
-          </div>
-          <div className="ws-business-health-feature-hero__visual">
+          </AnimateOnScroll>
+          <AnimateOnScroll preset="media" delay={0.1} className="ws-business-health-feature-hero__visual">
             <BusinessHealthPreview />
-          </div>
+          </AnimateOnScroll>
         </div>
       </section>
 
       <BusinessHealthStorySection />
 
       <section className="ws-section ws-section--subtle">
-        <div className="ws-container ws-business-health-feature-final">
+        <AnimateOnScroll preset="footer" className="ws-container ws-business-health-feature-final">
           <p className="ws-page-hero__eyebrow">{t('finalEyebrow')}</p>
           <WebsiteHeadline as="h2" text={t('finalTitle')} highlightedText={t('finalHighlight')} />
           <p>{t('finalSubtitle')}</p>
@@ -421,7 +426,7 @@ export default function BusinessHealthFeaturePage() {
               <LuArrowRight size={16} />
             </Link>
           </div>
-        </div>
+        </AnimateOnScroll>
       </section>
     </main>
   );

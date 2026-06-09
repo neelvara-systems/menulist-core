@@ -374,7 +374,9 @@ Rules:
 
 - Keep each page focused on one owner outcome, not a complete feature checklist.
 - Use the same split hero, proof preview, three story cards, four proof cards, and final CTA rhythm across these pages.
-- The header Features dropdown should link to these pages, but it should remain smaller and calmer than the Answerlattice product mega-menu.
+- Use the shared `AnimateOnScroll` reveal wrappers for the hero, section headings, card grids, footer, and final CTA so dedicated feature pages match the homepage motion system. Prefer the named `hero`, `media`, `card`, `footer`, and `fade` presets over one-off reveal values unless a section has a clear interaction reason.
+- For Business Health, keep the sticky story layout reveal opacity-only. Do not apply parent translate transforms around the sticky stacked-card layout because the cards already manage their own scroll-state transforms.
+- The header Features dropdown should link to these pages, but it should remain smaller and calmer than the Answerlattice product mega-menu. A compact proof/CTA panel is allowed when it reinforces one approved source without making MenuList feel like a broad software suite.
 - Do not use unsupported ranking, AI-placement, POS replacement, or full business-automation claims.
 
 ### 5.3 Owner Reassurance Placement

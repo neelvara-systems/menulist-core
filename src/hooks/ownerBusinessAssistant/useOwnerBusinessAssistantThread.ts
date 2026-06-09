@@ -8,10 +8,15 @@ const fetcher = async (url: string) => {
   return response.json();
 };
 
-export function useOwnerBusinessAssistantThread(threadId?: string) {
+export function useOwnerBusinessAssistantThread(threadId?: string, storeScopeKey?: string | number) {
   const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && Boolean(threadId);
+  const params = new URLSearchParams();
+  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
+  const url = threadId
+    ? `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.thread(threadId)}${params.toString() ? `?${params.toString()}` : ''}`
+    : null;
   const { data, error, isLoading, mutate } = useSWR(
-    enabled && threadId ? OWNER_BUSINESS_ASSISTANT_ENDPOINTS.thread(threadId) : null,
+    enabled && url ? url : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60 * 1000 },
   );

@@ -60,6 +60,50 @@ export async function requireAnyStorePermission(
     );
 }
 
+export async function requireAnyStorePermissionForStore(
+    request: NextRequest,
+    session: any,
+    permissions: PermissionKey[],
+    label: string,
+    storeId: string | number,
+    tenantId: string | number = getSessionTenantId(session),
+) {
+    const normalizedStoreId = Number(storeId);
+    const normalizedTenantId = Number(tenantId);
+    if (!normalizedStoreId || !normalizedTenantId) {
+        return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    }
+
+    const storeDoc = await admin.firestore()
+        .collection(DB_COLLECTIONS.STORES)
+        .doc(String(normalizedStoreId))
+        .get();
+
+    const storeData = storeDoc.data();
+    if (!storeDoc.exists || Number(storeData?.tenantId) !== normalizedTenantId || storeData?.active === false) {
+        logger.security("Authorization Failed - Permission Store Missing", {
+            ...buildSecurityContext(session, request),
+            endpoint: request.nextUrl.pathname,
+            label,
+            storeId: normalizedStoreId,
+            tenantId: normalizedTenantId,
+        }, "high");
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (isPlatformSession(session)) return null;
+
+    return requireAnyStorePermissionForStoreData(
+        request,
+        session,
+        storeData,
+        permissions,
+        label,
+        normalizedStoreId,
+        normalizedTenantId,
+    );
+}
+
 export function requireAnyStorePermissionForStoreData(
     request: NextRequest,
     session: any,

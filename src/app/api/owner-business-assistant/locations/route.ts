@@ -6,20 +6,20 @@ import { PERMISSIONS } from '@constant/permissions';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { getMappedStoreIdsForUser, isPlatformStoreAccessUser } from '@lib/multiOutlet/storeSwitchAccess';
+import { OwnerBusinessAssistantScopeSchema } from '@lib/ownerBusinessAssistant/schemas';
 import {
   OWNER_BUSINESS_ASSISTANT_DOCS,
   OWNER_BUSINESS_HEALTH_STATUS_LABELS,
 } from '@lib/ownerBusinessAssistant/constants';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import type {
   OwnerBusinessHealthStatus,
   OwnerBusinessMultiLocationStoreSummary,
 } from '@lib/ownerBusinessAssistant/types';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
@@ -100,17 +100,30 @@ export const GET = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health locations');
-  if (permissionError) return permissionError;
+  const parsedScope = OwnerBusinessAssistantScopeSchema
+    .pick({ storeId: true })
+    .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
+  if (!parsedScope.success) {
+    return NextResponse.json({ error: 'Invalid query', details: parsedScope.error.flatten() }, { status: 400 });
+  }
 
-  const { tId, sId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
+  const permissionError = await requireAnyStorePermissionForStore(
+    request,
+    session,
+    [PERMISSIONS.VIEW_ANALYTICS],
+    'Business Health locations',
+    scope.sId,
+    scope.tId,
+  );
+  if (permissionError) return permissionError;
 
   const [summarySnap, storesSummarySnap] = await Promise.all([
     firestoreAdmin
       .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-      .doc(OWNER_BUSINESS_ASSISTANT_DOCS.getMultiLocation(tId))
+      .doc(OWNER_BUSINESS_ASSISTANT_DOCS.getMultiLocation(scope.tId))
       .get(),
     firestoreAdmin
       .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -118,10 +131,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
       .get(),
   ]);
 
-  const sessionUser = buildSessionUserForStoreAccess(session, sId);
+  const sessionUser = buildSessionUserForStoreAccess(session, scope.sId);
   const mappedStoreIds = getMappedStoreIdsForUser(sessionUser);
   const platformUser = isPlatformStoreAccessUser(sessionUser);
-  const currentStoreId = Number(sId);
+  const currentStoreId = Number(scope.sId);
   if (!mappedStoreIds.size && Number.isFinite(currentStoreId) && currentStoreId > 0) {
     mappedStoreIds.add(currentStoreId);
   }

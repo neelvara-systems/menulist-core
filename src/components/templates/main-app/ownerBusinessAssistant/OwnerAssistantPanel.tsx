@@ -19,7 +19,7 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
     currentRoute: typeof window !== 'undefined' ? window.location.pathname : undefined,
     selectedProjectId: projectId,
   }, storeScopeKey);
-  const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId);
+  const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId, storeScopeKey);
   const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
   const canAskSuggested = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
   const canAskFreeText = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
@@ -81,7 +81,7 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
           onSuggestedQuestion={askSuggested}
           pendingQuestion={lastQuestion?.question}
         />
-        <OwnerAssistantActionSheet actions={answer?.actions} projectId={projectId} />
+        <OwnerAssistantActionSheet actions={answer?.actions} projectId={projectId} storeScopeKey={storeScopeKey} />
         {showStarterQuestions ? (
           <BusinessHealthSuggestedQuestions
             disabled={!canAskSuggested}

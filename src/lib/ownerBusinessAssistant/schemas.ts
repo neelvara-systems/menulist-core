@@ -1,7 +1,13 @@
 import { z } from 'zod';
 
+const OwnerBusinessAssistantStoreIdSchema = z.preprocess((value) => {
+  if (value === null || value === undefined || value === '') return undefined;
+  return String(value);
+}, z.string().min(1).max(80).regex(/^\d+$/).optional());
+
 export const OwnerBusinessAssistantScopeSchema = z.object({
   projectId: z.string().min(1).max(160).optional(),
+  storeId: OwnerBusinessAssistantStoreIdSchema,
   packetProfile: z.enum([
     'health_card',
     'analytics_periods',
@@ -51,6 +57,7 @@ const OwnerBusinessAssistantActionTargetKindSchema = z.enum([
 export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
   question: z.string().min(1).max(800),
   projectId: z.string().min(1).max(160).optional(),
+  storeId: OwnerBusinessAssistantStoreIdSchema,
   packetSignature: z.string().max(240).optional(),
   clientContext: OwnerBusinessAssistantClientContextSchema.optional(),
   suggestedQuestionId: z.string().max(120).optional(),
@@ -61,6 +68,7 @@ export const OwnerBusinessAssistantActionRequestSchema = z.object({
   operation: z.enum(['navigate', 'prepare', 'confirm', 'cancel', 'mark_reviewed', 'dismiss', 'assign']),
   actionType: z.string().min(1).max(120),
   projectId: z.string().min(1).max(160).optional(),
+  storeId: OwnerBusinessAssistantStoreIdSchema,
   targetKind: OwnerBusinessAssistantActionTargetKindSchema.optional(),
   targetId: z.string().max(180).optional(),
   draftId: z.string().max(180).optional(),
@@ -71,6 +79,7 @@ export const OwnerBusinessAssistantActionRequestSchema = z.object({
 
 export const OwnerBusinessAssistantFeedbackRequestSchema = z.object({
   answerId: z.string().min(1).max(180),
+  storeId: OwnerBusinessAssistantStoreIdSchema,
   rating: z.enum(['helpful', 'not_helpful']),
   reason: z.string().max(800).optional(),
   question: z.string().max(800).optional(),

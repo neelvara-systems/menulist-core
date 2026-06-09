@@ -19,8 +19,12 @@ const getLocationFreshnessLabel = (localDate?: string) => {
   return formatted ? `Checked ${formatted}` : null;
 };
 
-export function BusinessHealthLocationSummary({ enabled, scopeKey }: { enabled: boolean; scopeKey?: string | number | null }) {
-  const { stores, isLoading } = useOwnerBusinessLocationsSummary(enabled, scopeKey);
+export function BusinessHealthLocationSummary({ enabled, scopeKey, storeScopeKey }: {
+  enabled: boolean;
+  scopeKey?: string | number | null;
+  storeScopeKey?: string | number | null;
+}) {
+  const { stores, isLoading } = useOwnerBusinessLocationsSummary(enabled, scopeKey, storeScopeKey);
 
   if (!enabled) return null;
 

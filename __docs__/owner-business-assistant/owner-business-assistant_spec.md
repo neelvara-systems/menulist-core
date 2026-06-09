@@ -100,7 +100,7 @@ The permanent contract supports approved question intents. Free text can map to 
 | `weekly_changes` | Menu change log summary, public update summary | Brief list of changed items/settings |
 | `public_menu_status` | Public menu health, publish state, cache status where available | No action needed or open relevant screen |
 | `customer_interest` | Top category/item/click/view summaries | What customers checked most |
-| `feedback_pattern` | Guest feedback/reviewsState summaries | Repeated feedback pattern only |
+| `feedback_pattern` | Scheduler-built `feedbackSummary` from public guest feedback | Guest feedback count, needs-attention count, repeated deterministic theme, and route to Feedback inbox |
 | `next_action` | Prioritized checks | 1-3 actions, highest priority first |
 | `outlet_attention` | Store-level compact health states | Outlet needing attention and why |
 | `account_status` | Subscription/access summary | Plain account state, no billing speculation |
@@ -238,7 +238,7 @@ Disallowed in chat-time answer generation:
 - Aggregating daily docs per message.
 - Scanning all menu items per message.
 - Reading full project or store documents just because the owner asked a read-only question.
-- Loading raw review/feedback collections per message.
+- Loading raw review/feedback collections per message. Guest feedback questions must answer from `health.feedbackSummary`.
 - Loading scheduler logs per message except platform/admin diagnostics.
 - Reading public client routes for answer generation.
 

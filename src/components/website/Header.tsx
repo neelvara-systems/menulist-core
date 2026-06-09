@@ -152,28 +152,44 @@ export default function Header() {
                         <span>
                           <LuLayoutGrid size={18} aria-hidden="true" />
                         </span>
-                        <strong>{t("Header.featureOverviewTitle")}</strong>
-                        <small>{t("Header.featureOverviewDesc")}</small>
+                        <div className="ws-header-feature-menu__overview-text">
+                          <strong>{t("Header.featureOverviewTitle")}</strong>
+                          <small>{t("Header.featureOverviewDesc")}</small>
+                        </div>
                         <LuArrowRight size={18} aria-hidden="true" />
                       </Link>
-                      <div className="ws-header-feature-menu__grid">
-                        {websiteFeatureNavLinks.map((featureLink) => {
-                          const FeatureIcon = featureLink.icon;
-                          return (
-                            <Link
-                              key={featureLink.href}
-                              href={featureLink.href}
-                              role="menuitem"
-                              className="ws-header-feature-menu__item"
-                            >
-                              <FeatureIcon size={17} aria-hidden="true" />
-                              <span>
-                                <strong>{t(`Header.${featureLink.key}`)}</strong>
-                                <small>{t(`Header.${featureLink.key}Desc`)}</small>
-                              </span>
-                            </Link>
-                          );
-                        })}
+                      <div className="ws-header-feature-menu__body">
+                        <div className="ws-header-feature-menu__grid">
+                          {websiteFeatureNavLinks.map((featureLink) => {
+                            const FeatureIcon = featureLink.icon;
+                            return (
+                              <Link
+                                key={featureLink.href}
+                                href={featureLink.href}
+                                role="menuitem"
+                                className="ws-header-feature-menu__item"
+                              >
+                                <FeatureIcon size={17} aria-hidden="true" />
+                                <span>
+                                  <strong>{t(`Header.${featureLink.key}`)}</strong>
+                                  <small>{t(`Header.${featureLink.key}Desc`)}</small>
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+
+                        <aside className="ws-header-feature-menu__proof" aria-label={t("Header.featureProofTitle")}>
+                          <span>
+                            <LuBadgeCheck size={20} aria-hidden="true" />
+                          </span>
+                          <strong>{t("Header.featureProofTitle")}</strong>
+                          <small>{t("Header.featureProofDesc")}</small>
+                          <Link href="/create-menu">
+                            {t("Header.featureProofCta")}
+                            <LuArrowRight size={15} aria-hidden="true" />
+                          </Link>
+                        </aside>
                       </div>
                     </div>
                   </div>

@@ -15,21 +15,29 @@ type LocationsResponse = {
   };
 };
 
-const fetcher = async ([url]: readonly [string, string]): Promise<LocationsResponse> => {
+const fetcher = async ([url]: readonly [string, string, string]): Promise<LocationsResponse> => {
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to load Business Health locations');
   return response.json();
 };
 
-export function useOwnerBusinessLocationsSummary(enabled = true, scopeKey?: string | number | null) {
+export function useOwnerBusinessLocationsSummary(
+  enabled = true,
+  scopeKey?: string | number | null,
+  storeScopeKey?: string | number | null,
+) {
   const scope = String(scopeKey || 'tenant');
-  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${scope}`;
+  const selectedStoreScope = String(storeScopeKey || 'store');
+  const params = new URLSearchParams();
+  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
+  const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations}${params.toString() ? `?${params.toString()}` : ''}`;
+  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${scope}:${selectedStoreScope}`;
   const cached = typeof window !== 'undefined'
     ? getCachedData<LocationsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
   const swr = useSWR<LocationsResponse>(
     FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && enabled
-      ? [OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations, scope] as const
+      ? [url, scope, selectedStoreScope] as const
       : null,
     fetcher,
     {

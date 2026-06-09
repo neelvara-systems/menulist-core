@@ -8,10 +8,11 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { resolveProjectImageUrl } from '@lib/image/projectImageDisplay';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveSelectableProject } from '@lib/projects/projectSelection';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
-import { useEffect, useMemo } from 'react';
+import { useContext, useEffect, useMemo } from 'react';
 import { LuCheck, LuChevronDown, LuFolderOpen, LuSparkles, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
 
@@ -135,12 +136,15 @@ export const DashboardProjectSelector: React.FC<Props> = ({
 }) => {
     const { token } = useToken();
     const session = useClientAuthSession();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const activeStoreScope = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const activeTenantScope = storeDetails?.tenantId ? String(storeDetails.tenantId) : session?.tId ? String(session.tId) : null;
 
     const sessionLoading = session === null;
-    const sessionReady = session != null && session.sId != null && session.tId != null;
+    const sessionReady = session != null && activeStoreScope != null && activeTenantScope != null;
 
     const { data, isLoading } = useSWR(
-        sessionReady ? `dashboard-projects-${session!.tId}-${session!.sId}` : null,
+        sessionReady ? `dashboard-projects-${activeTenantScope}-${activeStoreScope}` : null,
         () => getMetadataProjectsList(true),
         { dedupingInterval: 3600000, revalidateOnFocus: false }
     );

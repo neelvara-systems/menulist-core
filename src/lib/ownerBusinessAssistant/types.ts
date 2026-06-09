@@ -129,6 +129,71 @@ export type OwnerBusinessAnalyticsIndexDoc = {
   };
 };
 
+export type OwnerBusinessFeedbackThemeKey =
+  | 'wrong_price'
+  | 'hours'
+  | 'unavailable_item'
+  | 'service'
+  | 'quality'
+  | 'cleanliness'
+  | 'delivery'
+  | 'payment'
+  | 'other';
+
+export type OwnerBusinessFeedbackPeriodSummary = {
+  key: OwnerBusinessAnalyticsPeriodKey | 'overall';
+  label: string;
+  rangeLabel: string;
+  totalCount: number;
+  needsAttentionCount: number;
+  sourceFactIds: string[];
+};
+
+export type OwnerBusinessFeedbackThemeSummary = {
+  key: OwnerBusinessFeedbackThemeKey;
+  label: string;
+  count: number;
+};
+
+export type OwnerBusinessFeedbackItemSummary = {
+  feedbackId: string;
+  projectId?: string;
+  projectName?: string;
+  rating: number;
+  source?: 'menu_footer' | 'feedback_qr' | 'direct_link';
+  snippet?: string;
+  createdAt?: string;
+  localDate?: string;
+  sourceFactId: string;
+};
+
+export type OwnerBusinessFeedbackProjectSummary = {
+  projectId: string;
+  projectName?: string;
+  totalCount: number;
+  needsAttentionCount: number;
+  latestFeedbackAt?: string;
+  sourceFactIds: string[];
+};
+
+export type OwnerBusinessFeedbackSummary = {
+  version: 1;
+  status: OwnerBusinessHealthBlockStatus;
+  localDate: string;
+  generatedAt: string;
+  windowDays: number;
+  sampledCount: number;
+  truncated: boolean;
+  latestFeedbackAt?: string;
+  latestNeedsAttentionAt?: string;
+  periods: Partial<Record<OwnerBusinessAnalyticsPeriodKey | 'overall', OwnerBusinessFeedbackPeriodSummary>>;
+  topThemes: OwnerBusinessFeedbackThemeSummary[];
+  latestNeedsAttention: OwnerBusinessFeedbackItemSummary[];
+  latestFeedback: OwnerBusinessFeedbackItemSummary[];
+  projectBreakdown: Record<string, OwnerBusinessFeedbackProjectSummary>;
+  sourceFactIds: string[];
+};
+
 export type OwnerAssistantAnswerArtifact =
   | { type: 'text'; body: string }
   | { type: 'metric_row'; metrics: Array<{ label: string; value: string; deltaLabel?: string }> }
@@ -230,6 +295,7 @@ export type OwnerBusinessHealthCurrentDoc = {
     topItem?: OwnerBusinessAnalyticsTeaser;
     analyticsIndexDocId: string;
   };
+  feedbackSummary?: OwnerBusinessFeedbackSummary;
   blocks: Record<string, OwnerBusinessHealthBlock | undefined>;
   suggestedChecks: OwnerBusinessHealthCheck[];
   suggestedQuestions: OwnerBusinessHealthQuestion[];

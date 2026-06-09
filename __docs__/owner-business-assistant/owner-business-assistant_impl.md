@@ -280,6 +280,7 @@ Add modules:
 ```text
 functions/src/ownerBusinessAssistant/buildOwnerBusinessHealthSnapshot.ts
 functions/src/ownerBusinessAssistant/buildOwnerBusinessAnalyticsIndex.ts
+functions/src/ownerBusinessAssistant/buildOwnerBusinessFeedbackSummary.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthBlocks.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthSources.ts
 functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters.ts
@@ -295,9 +296,11 @@ Required insertion behavior:
 2. Reuse dashboard summary doc IDs and active/default project context already handled by the scheduler.
 3. Build Business Health after pending settlement dates complete.
 4. Build the analytics index from bounded active project dashboard summaries and optional today daily docs, then aggregate store-level periods from the indexed project periods.
-5. If no settlement date is pending but the current doc or analytics index is missing/stale, rebuild from the latest summaries.
-6. Add the builder result to existing scheduler task results.
-7. Invoke the same builder path from `triggerStoreNightlyScheduler`.
+5. Build `feedbackSummary` from recent `guestFeedback` with `MAX_FEEDBACK_DOCS=80`, sanitized snippets, no contact fields, deterministic theme buckets, and capped latest items.
+6. Embed `feedbackSummary` in `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` and the daily snapshot. Do not create a separate hot-path feedback read model unless the current doc approaches size limits.
+7. If no settlement date is pending but the current doc or analytics index is missing/stale, rebuild from the latest summaries.
+8. Add the builder result to existing scheduler task results.
+9. Invoke the same builder path from `triggerStoreNightlyScheduler`.
 
 Builder rules:
 
@@ -306,6 +309,7 @@ Builder rules:
 - Write only when signature changed unless daily snapshot needs a new local date doc.
 - Write current doc and daily snapshot doc.
 - Write analytics index doc when the period signature changes.
+- Keep guest feedback reads scheduler-only and capped; `/answer`, `/current`, and `/analytics` must not read `guestFeedback`.
 - Record source availability and unsupported data explicitly.
 - Never call provider models inside the snapshot builder by default.
 
@@ -540,6 +544,7 @@ Confirmed writes from assistant code must not perform raw Firestore `setDoc()` t
 Core Business Health does not require chat transcripts for suggested questions. To minimize Firebase cost:
 
 - Starter suggestions are built by `src/data/shared/ownerBusinessHealthQuestionSuggestions.ts`, mirrored byte-for-byte to `functions/src/sharedData/ownerBusinessHealthQuestionSuggestions.ts`, and ranked from existing packet facts only.
+- Guest feedback suggestions are exposed only when the current Health packet supports `feedback_reviews`. The answer resolver uses `health.feedbackSummary`; it must not query `guestFeedback` at answer time.
 - Suggested-question answers can be stateless.
 - Answer-level follow-up suggestions are returned in the same answer response. They must not trigger a separate AI call or Firestore read.
 - Usage can be aggregate-only.
@@ -609,6 +614,7 @@ Components:
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthAnalyticsStrip.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx
+src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthProjectScopeSelector.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthHeader.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthSummaryCard.tsx
 src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPriorityChecks.tsx
@@ -635,6 +641,13 @@ Dashboard placement:
 - The card is useful without chat and shows current Health status, owner message, and freshness.
 - Add `BusinessHealthAnalyticsStrip` near the existing owner dashboard analytics area when the analytics index flag is enabled; analytics facts load from the scoped analytics-index hook instead of the Health card packet.
 - It opens `/business-health`.
+
+Business Health project scope:
+
+- The full Business Health page owns a local scope selector with `All menus` plus selectable menu projects for the active store.
+- This selector must not mutate the global dashboard/mobile selected project. It only controls Business Health analytics, owner questions, project-aware actions, and check-state local storage on this screen.
+- Current Health remains store-scoped even when a menu is selected. Analytics and answer packets include `projectId` only when the owner chooses a single menu.
+- If the selected menu id is no longer present after active-store or project-list changes, the screen clears Business Health scope back to `All menus` instead of sending stale project ids.
 
 Existing fit:
 

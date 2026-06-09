@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { getOwnerBusinessHealthQuestionById } from '@data/shared/ownerBusinessHealthQuestionSuggestions';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { logger } from '@lib/monitoring/logger';
 import { OwnerBusinessAssistantAnswerRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
@@ -13,8 +13,7 @@ import { resolveOwnerBusinessAssistantAnswer } from '@lib/ownerBusinessAssistant
 import { persistOwnerBusinessAssistantExchange } from '@lib/ownerBusinessAssistant/server/threadStore';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -65,13 +64,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health answer');
-  if (permissionError) return permissionError;
-
-  const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
-
   const json = await readJsonBody(request);
   if (!json) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -91,10 +83,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ error: 'Free-text questions are disabled' }, { status: 403 });
   }
 
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, normalizedRequest.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
+  const permissionError = await requireAnyStorePermissionForStore(
+    request,
+    session,
+    [PERMISSIONS.VIEW_ANALYTICS],
+    'Business Health answer',
+    scope.sId,
+    scope.tId,
+  );
+  if (permissionError) return permissionError;
+
   const answer = await resolveOwnerBusinessAssistantAnswer({
-    tId,
-    sId,
-    userId,
+    tId: scope.tId,
+    sId: scope.sId,
+    userId: scope.userId,
     request: normalizedRequest,
   });
 
@@ -114,9 +119,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && normalizedRequest.threadId) {
     try {
       const threadId = await persistOwnerBusinessAssistantExchange({
-        tId,
-        sId,
-        userId,
+        tId: scope.tId,
+        sId: scope.sId,
+        userId: scope.userId,
         request: normalizedRequest,
         answer,
       });
@@ -130,9 +135,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       }
     } catch (error) {
       logger.warn('Owner Business Assistant thread persistence failed', {
-        storeId: sId,
-        tenantId: tId,
-        userId,
+        storeId: scope.sId,
+        tenantId: scope.tId,
+        userId: scope.userId,
         threadId: normalizedRequest.threadId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -147,9 +152,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         answerEventWritten: true,
       };
       await logOwnerBusinessAssistantAnswerEvent({
-        tId,
-        sId,
-        userId,
+        tId: scope.tId,
+        sId: scope.sId,
+        userId: scope.userId,
         request: normalizedRequest,
         answer,
       });
@@ -160,9 +165,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         answerEventWritten: false,
       };
       logger.warn('Owner Business Assistant answer event logging failed', {
-        storeId: sId,
-        tenantId: tId,
-        userId,
+        storeId: scope.sId,
+        tenantId: scope.tId,
+        userId: scope.userId,
         answerId: answer.answerId,
         error: error instanceof Error ? error.message : String(error),
       });

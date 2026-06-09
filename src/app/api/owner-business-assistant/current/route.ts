@@ -2,13 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { buildOwnerBusinessAssistantContextPacket } from '@lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket';
 import { OwnerBusinessAssistantScopeSchema } from '@lib/ownerBusinessAssistant/schemas';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -26,23 +25,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health');
-  if (permissionError) return permissionError;
-
-  const { tId, sId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
-
   const parsedScope = OwnerBusinessAssistantScopeSchema
-    .pick({ projectId: true })
+    .pick({ projectId: true, storeId: true })
     .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (!parsedScope.success) {
     return NextResponse.json({ error: 'Invalid query', details: parsedScope.error.flatten() }, { status: 400 });
   }
 
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
+  const permissionError = await requireAnyStorePermissionForStore(
+    request,
+    session,
+    [PERMISSIONS.VIEW_ANALYTICS],
+    'Business Health',
+    scope.sId,
+    scope.tId,
+  );
+  if (permissionError) return permissionError;
+
   const packet = await buildOwnerBusinessAssistantContextPacket({
-    tId,
-    sId,
+    tId: scope.tId,
+    sId: scope.sId,
     projectId: parsedScope.data.projectId,
     packetProfile: 'health_card',
   });

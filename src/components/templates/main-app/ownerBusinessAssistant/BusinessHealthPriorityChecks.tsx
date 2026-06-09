@@ -11,14 +11,16 @@ import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Text } = Typography;
 
-export function BusinessHealthPriorityChecks({ checks, localDate, projectId }: {
+export function BusinessHealthPriorityChecks({ checks, localDate, projectId, storeScopeKey }: {
   checks?: OwnerBusinessHealthCheck[];
   localDate?: string;
   projectId?: string;
+  storeScopeKey?: string | number;
 }) {
   const router = useRouter();
   const { storeDetails } = useContext(PlatformGlobalDataContext);
-  const { runAction, isLoading } = useOwnerBusinessAssistantAction(projectId);
+  const effectiveStoreScopeKey = storeScopeKey || storeDetails?.storeId;
+  const { runAction, isLoading } = useOwnerBusinessAssistantAction(projectId, effectiveStoreScopeKey);
   const [suppressedCheckIds, setSuppressedCheckIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
     return new Set((checks || [])
@@ -26,7 +28,7 @@ export function BusinessHealthPriorityChecks({ checks, localDate, projectId }: {
         checkId: check.id,
         localDate,
         projectId,
-        storeId: storeDetails?.storeId,
+        storeId: effectiveStoreScopeKey,
       })))
       .map((check) => check.id));
   });
@@ -46,10 +48,10 @@ export function BusinessHealthPriorityChecks({ checks, localDate, projectId }: {
         checkId: check.id,
         localDate,
         projectId,
-        storeId: storeDetails?.storeId,
+        storeId: effectiveStoreScopeKey,
       })))
       .map((check) => check.id)));
-  }, [checks, localDate, projectId, storeDetails?.storeId]);
+  }, [checks, effectiveStoreScopeKey, localDate, projectId]);
 
   if (!visibleChecks.length) {
     return (
@@ -73,7 +75,7 @@ export function BusinessHealthPriorityChecks({ checks, localDate, projectId }: {
           checkId: check.id,
           localDate,
           projectId,
-          storeId: storeDetails?.storeId,
+          storeId: effectiveStoreScopeKey,
         }), operation);
       }
       setSuppressedCheckIds((previous) => new Set(previous).add(check.id));

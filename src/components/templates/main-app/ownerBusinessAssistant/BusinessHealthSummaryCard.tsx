@@ -13,6 +13,19 @@ const getStatusIcon = (status?: string) => {
   return <LuCheckCircle2 size={22} />;
 };
 
+const getFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
+  const feedback = current.feedbackSummary;
+  if (!feedback) return null;
+  const recent = feedback.periods.last30Days;
+  const total = recent?.totalCount ?? feedback.sampledCount;
+  const needsAttention = recent?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
+  if (!total && feedback.status === 'insufficient_data') return 'Guest feedback: no feedback received in the latest window.';
+  if (needsAttention > 0) {
+    return `Guest feedback: ${needsAttention} ${needsAttention === 1 ? 'item needs' : 'items need'} checking.`;
+  }
+  return 'Guest feedback: no feedback needs attention.';
+};
+
 export function BusinessHealthSummaryCard({ current }: { current: OwnerBusinessHealthCurrentDoc | null }) {
   if (!current) {
     return (
@@ -30,6 +43,7 @@ export function BusinessHealthSummaryCard({ current }: { current: OwnerBusinessH
         ? styles.statusIconInfo
       : '';
   const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
+  const feedbackLine = getFeedbackLine(current);
   const showNoActionNeeded = Boolean(
     current.summary.noActionNeeded &&
     current.status !== 'not_ready' &&
@@ -48,6 +62,13 @@ export function BusinessHealthSummaryCard({ current }: { current: OwnerBusinessH
           </div>
         </Space>
         {freshnessNote ? <Alert type="info" showIcon message={freshnessNote} /> : null}
+        {feedbackLine ? (
+          <Alert
+            type={current.feedbackSummary?.status === 'needs_review' ? 'warning' : 'info'}
+            showIcon
+            message={feedbackLine}
+          />
+        ) : null}
         <OwnerAssistantSourceDisclosure sources={current.sourceRefs} />
       </Space>
     </Card>

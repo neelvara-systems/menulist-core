@@ -4,12 +4,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { requireAnyStorePermission } from '@lib/permissions/server';
-import { OwnerBusinessAssistantThreadParamsSchema } from '@lib/ownerBusinessAssistant/schemas';
+import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
+import { OwnerBusinessAssistantScopeSchema, OwnerBusinessAssistantThreadParamsSchema } from '@lib/ownerBusinessAssistant/schemas';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -45,17 +44,30 @@ export const GET = withAuth(async (request: NextRequest, session, params) => {
   });
   if (rateLimit) return rateLimit;
 
-  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health thread');
-  if (permissionError) return permissionError;
+  const parsedScope = OwnerBusinessAssistantScopeSchema
+    .pick({ storeId: true })
+    .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
+  if (!parsedScope.success) {
+    return NextResponse.json({ error: 'Invalid query', details: parsedScope.error.flatten() }, { status: 400 });
+  }
 
-  const { tId, sId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
+  const permissionError = await requireAnyStorePermissionForStore(
+    request,
+    session,
+    [PERMISSIONS.VIEW_ANALYTICS],
+    'Business Health thread',
+    scope.sId,
+    scope.tId,
+  );
+  if (permissionError) return permissionError;
 
   const threadRef = firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS).doc(parsed.data.threadId);
   const threadSnap = await threadRef.get();
   const thread = threadSnap.exists ? threadSnap.data() : null;
-  if (!thread || String(thread.tId) !== String(tId) || String(thread.sId) !== String(sId)) {
+  if (!thread || String(thread.tId) !== String(scope.tId) || String(thread.sId) !== String(scope.sId)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

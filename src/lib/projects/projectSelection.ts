@@ -8,19 +8,29 @@ export type SelectableProject = {
 const OWNER_SELECTED_PROJECT_KEY = 'mobileSelectedProjectId';
 const LEGACY_DASHBOARD_PROJECT_KEY = 'menulist_dashboard_project_id';
 
+function getOwnerProjectStoreScope(storeId?: string | number | null) {
+    if (storeId === null || storeId === undefined || storeId === '') return null;
+    const normalized = String(storeId);
+    return normalized && normalized !== '0' ? normalized : null;
+}
+
 function getOwnerProjectStorageKey(storeId?: string | number | null) {
-    return storeId ? `${OWNER_SELECTED_PROJECT_KEY}:${String(storeId)}` : OWNER_SELECTED_PROJECT_KEY;
+    const storeScope = getOwnerProjectStoreScope(storeId);
+    return storeScope ? `${OWNER_SELECTED_PROJECT_KEY}:${storeScope}` : OWNER_SELECTED_PROJECT_KEY;
 }
 
 export function getStoredOwnerProjectId(storeId?: string | number | null) {
     if (typeof window === 'undefined') return null;
+    const hasStoreScope = Boolean(getOwnerProjectStoreScope(storeId));
 
     try {
         const scopedProjectId = window.localStorage.getItem(getOwnerProjectStorageKey(storeId));
         if (scopedProjectId) return scopedProjectId;
     } catch {
-        // Ignore storage access failures; session storage fallback below may still work.
+        // Ignore storage access failures; session storage fallback is only safe without a store scope.
     }
+
+    if (hasStoreScope) return null;
 
     try {
         return window.sessionStorage.getItem(LEGACY_DASHBOARD_PROJECT_KEY);

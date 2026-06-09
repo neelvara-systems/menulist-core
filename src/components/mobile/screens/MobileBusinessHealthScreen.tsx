@@ -15,14 +15,16 @@ import type {
     OwnerBusinessAnalyticsIndexDoc,
     OwnerBusinessAnalyticsPeriod,
     OwnerBusinessHealthCheck,
+    OwnerBusinessHealthCurrentDoc,
     OwnerBusinessHealthQuestion,
 } from '@lib/ownerBusinessAssistant/types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import { LuActivity, LuCheckCheck, LuCheckCircle2, LuExternalLink, LuLayoutDashboard, LuQrCode, LuSend, LuSettings, LuSparkles, LuUtensils, LuUser, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Input, Tag, Text, Title, Toast } from '../antd';
+import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuActivity, LuCheckCheck, LuCheckCircle2, LuExternalLink, LuLayoutDashboard, LuLayers, LuQrCode, LuSend, LuSettings, LuSparkles, LuUtensils, LuUser, LuX } from 'react-icons/lu';
+import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
+import { Button, Card, Flex, Input, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import MobileBusinessHealthActionSheet from '../sheets/MobileBusinessHealthActionSheet';
@@ -32,6 +34,7 @@ interface MobileBusinessHealthScreenProps {
 }
 
 const numberFormatter = new Intl.NumberFormat('en');
+const ALL_MENUS_SCOPE = '__all_menus__';
 
 const formatCount = (value?: number) => numberFormatter.format(
     typeof value === 'number' && Number.isFinite(value) ? value : 0,
@@ -61,37 +64,92 @@ const buildMobileAnalyticsMetrics = (
     ].filter(Boolean) as Array<{ key: string; label: string; value: string; delta?: string }>;
 };
 
+const getFeedbackSummaryLine = (current?: OwnerBusinessHealthCurrentDoc | null) => {
+    const feedback = current?.feedbackSummary;
+    if (!feedback) return null;
+    const needsAttention = feedback.periods?.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention?.length ?? 0;
+    if (needsAttention > 0) {
+        return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
+    }
+    const total = feedback.periods?.last30Days?.totalCount ?? feedback.sampledCount ?? 0;
+    return total > 0 ? 'Guest feedback is clear' : null;
+};
+
 export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHealthScreenProps) {
     const { token } = theme.useToken();
     const router = useRouter();
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
-    const { selectedProjectId } = useMobileProjects();
+    const { isLoading: isProjectsLoading, projectsList, selectedProjectId } = useMobileProjects();
+    const [businessHealthProjectId, setBusinessHealthProjectId] = useState<string | null>(selectedProjectId || null);
+    const [isScopeSelectorOpen, setIsScopeSelectorOpen] = useState(false);
+    const scopeTouchedRef = useRef(false);
+    const scopeStoreRef = useRef<string | number | null>(null);
+    const scopedProjectId = businessHealthProjectId || undefined;
     const { current, isLoading, refresh } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
-    const { analytics } = useOwnerBusinessAnalyticsIndex(selectedProjectId || undefined, storeDetails?.storeId);
-    const { answer, ask, threadId, lastQuestion, isLoading: isAnswering } = useOwnerBusinessAssistantAnswer(selectedProjectId || undefined, {
+    const { analytics } = useOwnerBusinessAnalyticsIndex(scopedProjectId, storeDetails?.storeId);
+    const { answer, ask, threadId, lastQuestion, isLoading: isAnswering } = useOwnerBusinessAssistantAnswer(scopedProjectId, {
         currentRoute: '/business-health',
         mobileTab: 'more',
-        selectedProjectId: selectedProjectId || undefined,
+        selectedProjectId: scopedProjectId,
     }, storeDetails?.storeId);
-    const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId);
-    const { runAction, isLoading: isActioning } = useOwnerBusinessAssistantAction(selectedProjectId || undefined);
+    const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId, storeDetails?.storeId);
+    const { runAction, isLoading: isActioning } = useOwnerBusinessAssistantAction(scopedProjectId, storeDetails?.storeId);
     const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
         && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
     const { stores: locationStores, isLoading: isLocationsLoading } = useOwnerBusinessLocationsSummary(
         hasMultipleStores,
         storeDetails?.tenantId || storeDetails?.storeId,
+        storeDetails?.storeId,
     );
     const [question, setQuestion] = useState('');
     const [actionSheetOpen, setActionSheetOpen] = useState(false);
     const [suppressedCheckIds, setSuppressedCheckIds] = useState<Set<string>>(() => new Set());
+    const scopeProjects = useMemo(
+        () => (projectsList || []).filter((project: any) => project?.projectId && project?.deleted !== true),
+        [projectsList],
+    );
+    const selectedScopeProject = useMemo(
+        () => businessHealthProjectId
+            ? scopeProjects.find((project: any) => project.projectId === businessHealthProjectId) || null
+            : null,
+        [businessHealthProjectId, scopeProjects],
+    );
+    const selectedScopeProjectName = selectedScopeProject?.name || 'Selected menu';
+    const scopeSelectorProjects = useMemo<ProjectSelectorItem[]>(() => [
+        {
+            id: ALL_MENUS_SCOPE,
+            name: 'All menus',
+            active: true,
+            secondaryLabel: scopeProjects.length ? `${scopeProjects.length} menus in this location` : 'Location-level view',
+        },
+        ...scopeProjects.map((project: any) => ({
+            id: project.projectId,
+            active: project.active !== false,
+            deleted: project.deleted === true,
+            isDefault: project.isDefault,
+            isSpecialMenu: project.isSpecialMenu === true,
+            name: project.name || 'Untitled',
+            projectImage: project.projectImage || null,
+            secondaryLabel: project.active === false ? 'Inactive menu' : undefined,
+            specialMenuBaseProjectId: project.specialMenuBaseProjectId,
+            specialMenuBaseProjectName: project.specialMenuBaseProjectId
+                ? scopeProjects.find((candidate: any) => candidate.projectId === project.specialMenuBaseProjectId)?.name
+                : undefined,
+            specialMenuEndsAt: project.specialMenuEndsAt,
+            specialMenuStatus: project.specialMenuStatus,
+        })),
+    ], [scopeProjects]);
     const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
     const isFreeTextAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
     const isSuggestedAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
     const canUpdateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
         && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW;
+    const canNavigateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
+        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION;
     const canSendQuestion = isFreeTextAskEnabled && Boolean(question.trim()) && !isAnswering;
     const askPlaceholder = isHealthReady ? 'Ask about today or this week' : 'Available after the latest check';
     const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
+    const feedbackSummaryLine = getFeedbackSummaryLine(current);
     const recentMessages = messages.slice(-8);
     const pendingQuestion = lastQuestion?.question.trim();
     const pendingQuestionInMessages = Boolean(pendingQuestion)
@@ -162,11 +220,41 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
             .filter((check) => window.localStorage.getItem(buildOwnerBusinessHealthCheckStateKey({
                 checkId: check.id,
                 localDate: current?.localDate,
-                projectId: selectedProjectId || undefined,
+                projectId: scopedProjectId,
                 storeId: storeDetails?.storeId,
             })))
             .map((check) => check.id)));
-    }, [current?.localDate, current?.suggestedChecks, selectedProjectId, storeDetails?.storeId]);
+    }, [current?.localDate, current?.suggestedChecks, scopedProjectId, storeDetails?.storeId]);
+
+    useEffect(() => {
+        const storeId = storeDetails?.storeId || null;
+        if (scopeStoreRef.current !== storeId) {
+            scopeStoreRef.current = storeId;
+            scopeTouchedRef.current = false;
+            setBusinessHealthProjectId(selectedProjectId || null);
+            return;
+        }
+
+        if (!scopeTouchedRef.current) {
+            setBusinessHealthProjectId(selectedProjectId || null);
+        }
+    }, [selectedProjectId, storeDetails?.storeId]);
+
+    useEffect(() => {
+        if (!businessHealthProjectId || isProjectsLoading) return;
+        const stillAvailable = scopeProjects.some((project: any) => project.projectId === businessHealthProjectId);
+        if (!stillAvailable) {
+            setBusinessHealthProjectId(null);
+            setQuestion('');
+        }
+    }, [businessHealthProjectId, isProjectsLoading, scopeProjects]);
+
+    const handleScopeSelect = (projectId: string) => {
+        scopeTouchedRef.current = true;
+        setBusinessHealthProjectId(projectId === ALL_MENUS_SCOPE ? null : projectId);
+        setIsScopeSelectorOpen(false);
+        setQuestion('');
+    };
 
     const handleAsk = async (value: string, suggestedQuestionId?: string) => {
         const normalized = value.trim();
@@ -229,7 +317,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                 window.localStorage.setItem(buildOwnerBusinessHealthCheckStateKey({
                     checkId: check.id,
                     localDate: current?.localDate,
-                    projectId: selectedProjectId || undefined,
+                    projectId: scopedProjectId,
                     storeId: storeDetails?.storeId,
                 }), operation);
             }
@@ -237,6 +325,22 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
             Toast.show({ content: operation === 'dismiss' ? 'Dismissed' : 'Marked as reviewed', duration: 1600 });
         } catch (error) {
             Toast.show({ content: error instanceof Error ? error.message : 'Action could not be completed', duration: 2200 });
+        }
+    };
+
+    const handleCheckOpen = async (check: OwnerBusinessHealthCheck) => {
+        if (!check.actionType) return;
+        try {
+            const result = await runAction({
+                operation: 'navigate',
+                actionType: check.actionType,
+                targetKind: 'store',
+                targetId: check.id,
+                payload: { checkId: check.id, source: 'mobile_business_health' },
+            });
+            if (result.href) router.push(result.href);
+        } catch (error) {
+            Toast.show({ content: error instanceof Error ? error.message : 'Screen could not be opened', duration: 2200 });
         }
     };
 
@@ -357,6 +461,32 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                 title="Business Health"
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
+                <ProjectSelectorTrigger
+                    clickable
+                    currentProject={selectedScopeProject ? {
+                        active: selectedScopeProject.active !== false,
+                        deleted: selectedScopeProject.deleted === true,
+                        id: selectedScopeProject.projectId,
+                        isDefault: selectedScopeProject.isDefault,
+                        isSpecialMenu: selectedScopeProject.isSpecialMenu === true,
+                        name: selectedScopeProjectName,
+                        projectImage: selectedScopeProject.projectImage || null,
+                        specialMenuBaseProjectId: selectedScopeProject.specialMenuBaseProjectId,
+                        specialMenuBaseProjectName: selectedScopeProject.specialMenuBaseProjectId
+                            ? scopeProjects.find((project: any) => project.projectId === selectedScopeProject.specialMenuBaseProjectId)?.name
+                            : undefined,
+                        specialMenuEndsAt: selectedScopeProject.specialMenuEndsAt,
+                        specialMenuStatus: selectedScopeProject.specialMenuStatus,
+                    } : {
+                        id: ALL_MENUS_SCOPE,
+                        name: 'All menus',
+                        active: true,
+                    }}
+                    helperText={selectedScopeProject ? 'Questions and analytics use this menu.' : 'Questions and analytics use all menus in this location.'}
+                    onClick={() => setIsScopeSelectorOpen(true)}
+                    rightContent={!selectedScopeProject ? <Tag color="processing"><LuLayers size={12} /> All</Tag> : undefined}
+                />
+
                 <Card>
                     <Flex gap={12} vertical>
                         <Flex align="center" gap={12}>
@@ -379,6 +509,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                             </Flex>
                         </Flex>
                         <Text>{current?.summary.ownerMessage || (isLoading ? 'Loading Business Health...' : 'Business Health is not ready yet.')}</Text>
+                        {feedbackSummaryLine ? <Text type="secondary" style={{ fontSize: 13 }}>{feedbackSummaryLine}</Text> : null}
                         {freshnessNote ? <Text type="secondary" style={{ fontSize: 13 }}>{freshnessNote}</Text> : null}
                         {showNoActionNeeded ? (
                             <Tag color="success"><LuCheckCircle2 size={14} /> No action needed</Tag>
@@ -453,6 +584,17 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                                         <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'default'}>{check.priority}</Tag>
                                     </Flex>
                                     <Text>{check.message}</Text>
+                                    {check.actionType && canNavigateChecks ? (
+                                        <Button
+                                            block
+                                            fill="solid"
+                                            loading={isActioning}
+                                            onClick={() => void handleCheckOpen(check)}
+                                            style={{ minHeight: 44 }}
+                                        >
+                                            <LuExternalLink size={16} /> Open
+                                        </Button>
+                                    ) : null}
                                     {canUpdateChecks ? (
                                         <Flex gap={8}>
                                             <Button
@@ -585,6 +727,38 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                 onSelect={(action) => void handleAction(action)}
                 open={actionSheetOpen}
             />
+            <Popup
+                bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+                onMaskClick={() => setIsScopeSelectorOpen(false)}
+                visible={isScopeSelectorOpen}
+            >
+                <Flex gap={16} style={{ maxHeight: 'min(78vh, 680px)', overflowY: 'auto' }} vertical>
+                    <Flex align="flex-start" justify="space-between" gap={12}>
+                        <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                            <Title level={3} style={{ margin: 0, textAlign: 'left' }}>
+                                Business Health scope
+                            </Title>
+                            <Text type="secondary" style={{ textAlign: 'left' }}>
+                                Choose all menus or one menu for analytics and questions.
+                            </Text>
+                        </Flex>
+                        <Button
+                            ariaLabel="Close"
+                            fill="none"
+                            onClick={() => setIsScopeSelectorOpen(false)}
+                            size="small"
+                            style={{ padding: 4 }}
+                        >
+                            <LuX size={18} />
+                        </Button>
+                    </Flex>
+                    <ProjectSelectorList
+                        currentProjectId={businessHealthProjectId || ALL_MENUS_SCOPE}
+                        onSelect={handleScopeSelect}
+                        projects={scopeSelectorProjects}
+                    />
+                </Flex>
+            </Popup>
         </Flex>
     );
 }

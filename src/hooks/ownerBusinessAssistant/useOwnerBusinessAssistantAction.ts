@@ -6,7 +6,7 @@ import type {
   OwnerBusinessAssistantActionTargetKind,
 } from '@lib/ownerBusinessAssistant/types';
 
-export function useOwnerBusinessAssistantAction(projectId?: string) {
+export function useOwnerBusinessAssistantAction(projectId?: string, storeScopeKey?: string | number) {
   const [result, setResult] = useState<OwnerBusinessAssistantActionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -26,7 +26,11 @@ export function useOwnerBusinessAssistantAction(projectId?: string) {
       const response = await fetch(OWNER_BUSINESS_ASSISTANT_ENDPOINTS.action, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, projectId }),
+        body: JSON.stringify({
+          ...params,
+          projectId,
+          storeId: storeScopeKey ? String(storeScopeKey) : undefined,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.data?.message || payload?.error || 'Action could not be completed.');
@@ -39,7 +43,7 @@ export function useOwnerBusinessAssistantAction(projectId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, storeScopeKey]);
 
   return { runAction, result, isLoading, error };
 }

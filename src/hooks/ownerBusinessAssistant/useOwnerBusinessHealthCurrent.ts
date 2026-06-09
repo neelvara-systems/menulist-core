@@ -26,6 +26,7 @@ export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?
   const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && (options?.enabled ?? true);
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
+  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.current}${params.toString() ? `?${params.toString()}` : ''}`;
   const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserCurrentPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
   const cached = typeof window !== 'undefined'

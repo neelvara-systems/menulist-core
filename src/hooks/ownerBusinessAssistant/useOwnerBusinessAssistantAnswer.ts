@@ -80,6 +80,7 @@ export function useOwnerBusinessAssistantAnswer(
         body: JSON.stringify({
           question,
           projectId,
+          storeId: storeScopeKey ? String(storeScopeKey) : undefined,
           suggestedQuestionId,
           threadId: nextThreadId,
           clientContext,

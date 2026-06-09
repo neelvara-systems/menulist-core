@@ -13,6 +13,17 @@ type MobileBusinessHealthMetric = {
     delta?: string;
 };
 
+const getFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
+    const feedback = current.feedbackSummary;
+    if (!feedback) return null;
+    const needsAttention = feedback.periods.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
+    if (needsAttention > 0) {
+        return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
+    }
+    const total = feedback.periods.last30Days?.totalCount ?? feedback.sampledCount;
+    return total > 0 ? 'Guest feedback is clear' : null;
+};
+
 export default function MobileBusinessHealthCard({
     current,
     freshnessNote,
@@ -40,6 +51,7 @@ export default function MobileBusinessHealthCard({
     const headline = current?.summary.headline || 'Latest check';
     const ownerMessage = current?.summary.ownerMessage || 'MenuList will show Business Health after the first store check finishes.';
     const displayFreshness = freshnessNote || current?.sourceRefs?.[0]?.freshnessLabel || current?.localDate || null;
+    const feedbackLine = getFeedbackLine(current);
 
     return (
         <Card>
@@ -69,6 +81,7 @@ export default function MobileBusinessHealthCard({
                         </Flex>
                         <Text strong>{headline}</Text>
                         <Text type="secondary">{ownerMessage}</Text>
+                        {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
                         {displayFreshness ? <Text type="secondary" style={{ fontSize: 12 }}>{displayFreshness}</Text> : null}
                     </Flex>
                 </Flex>

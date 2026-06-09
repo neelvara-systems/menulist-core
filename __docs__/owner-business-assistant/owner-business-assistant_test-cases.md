@@ -95,6 +95,9 @@ Scenarios:
 | Owner asks for QR/screen/app/domain/POS/billing/users | Answer opens or describes existing surface from compact status; no risky mutation |
 | Owner asks "mark closed today" | Temporary status draft is stored and owner completes the existing temp-status save path |
 | Owner asks "reply to this review" | Provider-text draft is refused/disabled until adapter and billing accounting are enabled; feedback navigation may be offered |
+| Owner asks "any guest feedback to check?" | Answer uses `health.feedbackSummary`; no `guestFeedback` read occurs in `/answer`; contact details are not included |
+| Public feedback has unresolved rating <= 3 | Scheduler adds `guest_feedback_needs_attention` check and `open_feedback_reviews` navigation action |
+| Public feedback contains phone/email in message | Scheduler snippet redacts contact-looking text before storing it in `feedbackSummary` |
 | AI cites unknown fact | Server rejects output and returns safe refusal/retry |
 | AI invents action ID | Server rejects action option |
 
@@ -162,6 +165,7 @@ Seed:
 - Existing daily/weekly/monthly analytics docs
 - Optional `menuIntelligence`
 - Optional feedback/review summaries
+- Guest feedback summary must be embedded in the current Health packet and capped at 80 recent docs in the scheduler only.
 
 Expected:
 

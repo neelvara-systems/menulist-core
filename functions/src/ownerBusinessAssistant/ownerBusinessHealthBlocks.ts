@@ -1,6 +1,7 @@
 import type {
   ActiveProjectEntry,
   OwnerBusinessAnalyticsIndexDoc,
+  OwnerBusinessFeedbackSummary,
   OwnerBusinessHealthBlock,
   OwnerBusinessHealthCheck,
   OwnerBusinessHealthStatus,
@@ -16,6 +17,7 @@ const firstAvailablePeriod = (analytics?: OwnerBusinessAnalyticsIndexDoc) =>
 export function buildOwnerBusinessHealthBlocks(params: {
   activeProjects: ActiveProjectEntry[];
   analytics?: OwnerBusinessAnalyticsIndexDoc;
+  feedbackSummary?: OwnerBusinessFeedbackSummary;
 }): {
   blocks: Record<string, OwnerBusinessHealthBlock>;
   checks: OwnerBusinessHealthCheck[];
@@ -27,6 +29,13 @@ export function buildOwnerBusinessHealthBlocks(params: {
   const hasProjects = params.activeProjects.length > 0;
   const menuVisits = period?.metrics.menuVisits || 0;
   const unavailableTaps = period?.metrics.unavailableItemTaps || 0;
+  const feedbackNeedsAttention = params.feedbackSummary?.periods.last30Days?.needsAttentionCount
+    ?? params.feedbackSummary?.latestNeedsAttention.length
+    ?? 0;
+  const feedbackTotal = params.feedbackSummary?.periods.last30Days?.totalCount
+    ?? params.feedbackSummary?.sampledCount
+    ?? 0;
+  const feedbackSourceFactIds = params.feedbackSummary?.sourceFactIds || [];
 
   blocks.publicTruth = {
     id: 'publicTruth',
@@ -57,6 +66,23 @@ export function buildOwnerBusinessHealthBlocks(params: {
       : 'MenuList does not yet have enough item attention data.',
     sourceFactIds: period?.sourceFactIds || [],
     actionType: period?.topItems?.length ? undefined : 'navigate_menu',
+  };
+
+  blocks.feedbackReviews = {
+    id: 'feedbackReviews',
+    title: 'Guest feedback',
+    status: feedbackNeedsAttention > 0
+      ? 'needs_review'
+      : feedbackTotal > 0
+        ? 'stable'
+        : 'insufficient_data',
+    message: feedbackNeedsAttention > 0
+      ? `${feedbackNeedsAttention} guest feedback ${feedbackNeedsAttention === 1 ? 'item needs' : 'items need'} checking.`
+      : feedbackTotal > 0
+        ? 'No guest feedback needs attention in the latest check.'
+        : 'No guest feedback was received in the latest feedback window.',
+    sourceFactIds: feedbackSourceFactIds,
+    actionType: feedbackNeedsAttention > 0 ? 'open_feedback_reviews' : undefined,
   };
 
   if (!hasProjects) {
@@ -92,6 +118,21 @@ export function buildOwnerBusinessHealthBlocks(params: {
       status: 'watch',
       actionType: 'navigate_menu',
       sourceFactIds: period?.sourceFactIds || [],
+    });
+  }
+
+  if (feedbackNeedsAttention > 0) {
+    const topTheme = params.feedbackSummary?.topThemes?.[0];
+    checks.push({
+      id: 'guest_feedback_needs_attention',
+      title: 'Review guest feedback',
+      message: topTheme
+        ? `${feedbackNeedsAttention} guest feedback ${feedbackNeedsAttention === 1 ? 'item needs' : 'items need'} checking. Main theme: ${topTheme.label}.`
+        : `${feedbackNeedsAttention} guest feedback ${feedbackNeedsAttention === 1 ? 'item needs' : 'items need'} checking.`,
+      priority: 'high',
+      status: 'needs_review',
+      actionType: 'open_feedback_reviews',
+      sourceFactIds: feedbackSourceFactIds,
     });
   }
 

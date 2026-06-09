@@ -120,6 +120,8 @@ The model must not receive raw Firebase collections.
 
 Non-analytics questions follow the same packet rule. Store profile, public menu/project facts, public availability, screen status, feedback/review signals, and operational checks are answerable only when the context packet contains cached owner-safe facts. The read-only Health path must not perform live full-document reads or collection scans to satisfy those questions.
 
+Guest feedback is allowed through `health.feedbackSummary` only. The summary contains counts, deterministic themes, project breakdown, and capped sanitized snippets; it does not include guest name, phone, email, or full raw messages. Owners open the existing Guest Feedback inbox for contact details or resolution work.
+
 The answer route must validate structured model output before rendering it.
 
 ## Dashboard Contract

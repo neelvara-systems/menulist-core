@@ -5,7 +5,7 @@ const INTENT_RULES: Array<{ intent: OwnerBusinessAssistantIntent; patterns: RegE
   { intent: 'item_attention', patterns: [/top item/i, /popular/i, /most viewed/i, /most clicked/i, /item/i] },
   { intent: 'analytics_period_summary', patterns: [/today/i, /week/i, /month/i, /visits/i, /clicks/i, /search/i, /stats/i, /analytics/i] },
   { intent: 'public_menu_status', patterns: [/public menu/i, /link/i, /published/i, /qr/i] },
-  { intent: 'feedback_pattern', patterns: [/review/i, /feedback/i, /rating/i] },
+  { intent: 'feedback_pattern', patterns: [/review/i, /feedback/i, /rating/i, /guest/i, /customer comment/i, /complaint/i] },
   { intent: 'next_action', patterns: [/what should i do/i, /next action/i, /need to do/i, /fix/i, /check/i] },
   { intent: 'outlet_attention', patterns: [/outlet/i, /location/i, /branch/i] },
   { intent: 'store_profile_status', patterns: [/profile/i, /business page/i, /store/i] },

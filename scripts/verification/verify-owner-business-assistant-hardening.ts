@@ -44,6 +44,42 @@ const health: OwnerBusinessHealthCurrentDoc = {
     noActionNeeded: true,
     actionCount: 0,
   },
+  feedbackSummary: {
+    version: 1,
+    status: 'stable',
+    localDate: '2026-06-08',
+    generatedAt: '2026-06-08T00:00:00.000Z',
+    windowDays: 90,
+    sampledCount: 1,
+    truncated: false,
+    periods: {
+      last30Days: {
+        key: 'last30Days',
+        label: 'Last 30 days',
+        rangeLabel: '2026-05-10 to 2026-06-08',
+        totalCount: 1,
+        needsAttentionCount: 0,
+        sourceFactIds: ['guest_feedback_test'],
+      },
+    },
+    topThemes: [],
+    latestNeedsAttention: [],
+    latestFeedback: [{
+      feedbackId: 'feedback-test',
+      projectId: 'project-a',
+      rating: 5,
+      sourceFactId: 'guest_feedback_test',
+    }],
+    projectBreakdown: {
+      'project-a': {
+        projectId: 'project-a',
+        totalCount: 1,
+        needsAttentionCount: 0,
+        sourceFactIds: ['guest_feedback_test'],
+      },
+    },
+    sourceFactIds: ['guest_feedback_summary', 'guest_feedback_test'],
+  },
   blocks: {},
   suggestedChecks: [],
   suggestedQuestions: [],
@@ -146,6 +182,21 @@ const contextPacketBuilder = readFileSync(join(repoRoot, 'src/lib/ownerBusinessA
 assert.match(contextPacketBuilder, /packetProfile !== 'health_card'/);
 assert.match(contextPacketBuilder, /packetProfile !== 'analytics_periods'/);
 assert.match(contextPacketBuilder, /numberFormatter/);
+assert.doesNotMatch(contextPacketBuilder, /GUEST_FEEDBACK/);
+
+const feedbackSummaryBuilder = readFileSync(join(repoRoot, 'functions/src/ownerBusinessAssistant/buildOwnerBusinessFeedbackSummary.ts'), 'utf8');
+assert.match(feedbackSummaryBuilder, /MAX_FEEDBACK_DOCS = 80/);
+assert.match(feedbackSummaryBuilder, /DB_COLLECTIONS\.GUEST_FEEDBACK/);
+assert.match(feedbackSummaryBuilder, /sanitizeSnippet/);
+assert.doesNotMatch(feedbackSummaryBuilder, /generateFeedbackAnalysis/);
+assert.doesNotMatch(feedbackSummaryBuilder, /customerName/);
+assert.doesNotMatch(feedbackSummaryBuilder, /customerPhone/);
+assert.doesNotMatch(feedbackSummaryBuilder, /customerEmail/);
+
+const feedbackAnswerTemplates = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/answerTemplates.ts'), 'utf8');
+assert.match(feedbackAnswerTemplates, /buildFeedbackPatternAnswer/);
+assert.match(feedbackAnswerTemplates, /feedbackSummary/);
+assert.doesNotMatch(feedbackAnswerTemplates, /guestFeedback/);
 
 const contextPacketCache = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/contextPacketCache.ts'), 'utf8');
 assert.match(contextPacketCache, /serverPacketIndexPrefix/);
@@ -155,15 +206,19 @@ assert.match(contextPacketCache, /isNotReadyFallbackPacket/);
 
 const locationsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessLocationsSummary.ts'), 'utf8');
 assert.match(locationsHook, /browserLocationsPrefix/);
-assert.match(locationsHook, /\[OWNER_BUSINESS_ASSISTANT_ENDPOINTS\.locations, scope\] as const/);
+assert.match(locationsHook, /selectedStoreScope/);
+assert.match(locationsHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
+assert.match(locationsHook, /\[url, scope, selectedStoreScope\] as const/);
 assert.match(locationsHook, /fallbackData: cached/);
 assert.match(locationsHook, /shouldRevalidate/);
 assert.match(locationsHook, /browserReadModelTtlMs/);
 
 const currentHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts'), 'utf8');
 assert.match(currentHook, /browserReadModelTtlMs/);
+assert.match(currentHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
 const analyticsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts'), 'utf8');
 assert.match(analyticsHook, /browserReadModelTtlMs/);
+assert.match(analyticsHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
 const contextPacketHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessContextPacket.ts'), 'utf8');
 assert.match(contextPacketHook, /useOwnerBusinessHealthCurrent/);
 assert.doesNotMatch(contextPacketHook, /useOwnerBusinessAnalyticsIndex/);
@@ -173,10 +228,17 @@ assert.doesNotMatch(analyticsStrip, /useOwnerBusinessHealthCurrent/);
 assert.match(analyticsStrip, /numberFormatter/);
 const dashboardHealthCard = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx'), 'utf8');
 assert.match(dashboardHealthCard, /useOwnerBusinessHealthCurrent\(undefined, storeDetails\?\.storeId\)/);
+const dashboardProjectSelector = readFileSync(join(repoRoot, 'src/components/templates/main-app/dashboard/OwnerDashboard/DashboardProjectSelector.tsx'), 'utf8');
+assert.match(dashboardProjectSelector, /activeStoreScope/);
+assert.match(dashboardProjectSelector, /dashboard-projects-\$\{activeTenantScope\}-\$\{activeStoreScope\}/);
+const ownerProjectSelection = readFileSync(join(repoRoot, 'src/lib/projects/projectSelection.ts'), 'utf8');
+assert.match(ownerProjectSelection, /const hasStoreScope/);
+assert.match(ownerProjectSelection, /if \(hasStoreScope\) return null/);
 
 const locationsRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/locations/route.ts'), 'utf8');
 assert.match(locationsRoute, /parseSummaryStores/);
 assert.match(locationsRoute, /doc\('storesSummary'\)/);
+assert.match(locationsRoute, /resolveOwnerAssistantSelectedStoreScope/);
 assert.match(locationsRoute, /isActiveStore/);
 assert.match(locationsRoute, /normalizeLocationStore/);
 assert.match(locationsRoute, /cleanSourceFactIds/);
@@ -189,12 +251,30 @@ assert.match(functionsInvalidator, /smembers/);
 
 const desktopLocations = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthLocationSummary.tsx'), 'utf8');
 assert.match(desktopLocations, /Checked/);
+assert.match(desktopLocations, /storeScopeKey/);
 const businessHealthPage = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx'), 'utf8');
 assert.match(businessHealthPage, /useOwnerBusinessContextPacket\(undefined, storeDetails\?\.storeId\)/);
+assert.match(businessHealthPage, /storeScopeKey=\{storeDetails\?\.storeId\}/);
+assert.match(businessHealthPage, /BusinessHealthProjectScopeSelector/);
+assert.match(businessHealthPage, /scopedProjectId/);
+assert.match(businessHealthPage, /key=\{`\$\{storeDetails\?\.storeId \|\| 'store'\}:\$\{scopedProjectId \|\| 'all'\}`\}/);
+const businessHealthScopeSelector = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthProjectScopeSelector.tsx'), 'utf8');
+assert.match(businessHealthScopeSelector, /getExistingProjectsListWithoutLoader/);
+assert.match(businessHealthScopeSelector, /ALL_MENUS_SCOPE/);
+assert.match(businessHealthScopeSelector, /if \(isLoading \|\| !selectedProjectId\) return/);
+assert.match(businessHealthScopeSelector, /onChange\(undefined\)/);
 const mobileHealthScreen = readFileSync(join(repoRoot, 'src/components/mobile/screens/MobileBusinessHealthScreen.tsx'), 'utf8');
 assert.match(mobileHealthScreen, /Checked/);
 assert.match(mobileHealthScreen, /useOwnerBusinessAnalyticsIndex/);
 assert.match(mobileHealthScreen, /useOwnerBusinessHealthCurrent\(undefined, storeDetails\?\.storeId\)/);
+assert.match(mobileHealthScreen, /useOwnerBusinessAssistantThread\(threadId, storeDetails\?\.storeId\)/);
+assert.match(mobileHealthScreen, /ALL_MENUS_SCOPE/);
+assert.match(mobileHealthScreen, /businessHealthProjectId/);
+assert.match(mobileHealthScreen, /useOwnerBusinessAssistantAction\(scopedProjectId, storeDetails\?\.storeId\)/);
+assert.match(mobileHealthScreen, /ProjectSelectorList/);
+assert.match(mobileHealthScreen, /ProjectSelectorTrigger/);
+assert.match(mobileHealthScreen, /isLoading: isProjectsLoading/);
+assert.match(mobileHealthScreen, /if \(!businessHealthProjectId \|\| isProjectsLoading\) return/);
 assert.doesNotMatch(mobileHealthScreen, /current\?\.analyticsTeaser/);
 const businessHealthRoute = readFileSync(join(repoRoot, 'src/app/(main)/business-health/page.tsx'), 'utf8');
 assert.match(businessHealthRoute, /normalizeProjectId/);
@@ -204,6 +284,8 @@ const requestSchemas = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssista
 assert.match(requestSchemas, /owner_question_actionable/);
 assert.match(requestSchemas, /multi_location_summary/);
 assert.match(requestSchemas, /projectId: z\.string\(\)\.min\(1\)\.max\(160\)\.optional\(\)/);
+assert.match(requestSchemas, /OwnerBusinessAssistantStoreIdSchema/);
+assert.match(requestSchemas, /storeId: OwnerBusinessAssistantStoreIdSchema/);
 assert.match(requestSchemas, /OwnerBusinessAssistantActionTargetKindSchema/);
 assert.match(requestSchemas, /targetKind: OwnerBusinessAssistantActionTargetKindSchema\.optional\(\)/);
 const featureFlags = readFileSync(join(repoRoot, 'src/config/features.ts'), 'utf8');
@@ -212,10 +294,14 @@ assert.match(featureFlags, /ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false/);
 const currentRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/current/route.ts'), 'utf8');
 assert.match(currentRoute, /OwnerBusinessAssistantScopeSchema/);
 assert.match(currentRoute, /safeParse\(Object\.fromEntries\(request\.nextUrl\.searchParams\.entries\(\)\)\)/);
+assert.match(currentRoute, /resolveOwnerAssistantSelectedStoreScope/);
+assert.match(currentRoute, /requireAnyStorePermissionForStore/);
 const analyticsRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/analytics/route.ts'), 'utf8');
 assert.match(analyticsRoute, /OwnerBusinessAssistantScopeSchema/);
 assert.match(analyticsRoute, /packetProfile: 'analytics_periods'/);
+assert.match(analyticsRoute, /resolveOwnerAssistantSelectedStoreScope/);
 const answerRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/answer/route.ts'), 'utf8');
+assert.match(answerRoute, /resolveOwnerAssistantSelectedStoreScope/);
 assert.match(answerRoute, /threadWritten: true/);
 assert.match(answerRoute, /answerEventWritten: true/);
 assert.match(answerRoute, /firestoreWriteCount: \(answer\.metrics\?\.firestoreWriteCount \?\? 0\) \+ 1/);

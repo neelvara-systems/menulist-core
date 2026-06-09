@@ -27,6 +27,7 @@ export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey
     && (options?.enabled ?? true);
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
+  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.analytics}${params.toString() ? `?${params.toString()}` : ''}`;
   const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserAnalyticsPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
   const cached = typeof window !== 'undefined'

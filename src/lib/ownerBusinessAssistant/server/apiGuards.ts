@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getRateLimitForFeature, type RateLimitFeature } from '@lib/rateLimit/configs';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
+import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
 import { buildSecurityContext } from '@lib/security/securityContext';
 import { verifyTenantAccess } from '@/middleware/auth';
 
@@ -11,6 +12,53 @@ export const getOwnerAssistantSessionScope = (session: any) => {
   const sId = session?.sId || session?.user?.storeId;
   const userId = session?.uId || session?.user?.id;
   return { tId, sId, userId };
+};
+
+const normalizeStoreId = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
+  ...(session?.user || {}),
+  platformRole: session?.platformRole || session?.user?.platformRole,
+  storeId: session?.user?.storeId || session?.sId || fallbackStoreId,
+  storeIds: session?.user?.storeIds || session?.storeIds,
+  stores: session?.user?.stores || session?.stores,
+});
+
+export const resolveOwnerAssistantSelectedStoreScope = (
+  request: NextRequest,
+  session: any,
+  requestedStoreId?: string | number | null,
+) => {
+  const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
+  if (!tId || !sId) {
+    return {
+      error: NextResponse.json({ error: 'User not onboarded' }, { status: 400 }),
+    };
+  }
+
+  const selectedStoreId = normalizeStoreId(requestedStoreId);
+  if (!selectedStoreId || String(selectedStoreId) === String(sId)) {
+    return { tId, sId, userId };
+  }
+
+  const sessionUser = buildSessionUserForStoreAccess(session, sId);
+  if (!canUserAccessStore({ sessionUser, storeId: selectedStoreId })) {
+    logger.security('Tenant Access Violation - Owner Business Assistant Store Scope', {
+      ...buildSecurityContext(session, request),
+      endpoint: request.nextUrl.pathname,
+      attemptedStoreId: selectedStoreId,
+      sessionStoreId: sId,
+      tenantId: tId,
+    }, 'critical');
+    return {
+      error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+    };
+  }
+
+  return { tId, sId: selectedStoreId, userId };
 };
 
 export const ensureOwnerAssistantTenantAccess = (

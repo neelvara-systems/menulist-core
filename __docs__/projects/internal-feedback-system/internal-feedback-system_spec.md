@@ -41,9 +41,17 @@ This feature is a **reputation firewall** — not a review management tool.
 
 Enable guests to submit private feedback to owners, creating a pressure-release valve before public reviews.
 
-### Internal Tracking (MOL Events Only)
+### Internal Tracking + Business Health Signal
 
-This feature has **no owner-facing metrics**. It exists to provide a private intake channel.
+This feature is still **not** an owner-facing feedback analytics dashboard. It exists to provide a private intake channel.
+
+Business Health may use the same `guestFeedback` source to show a quiet operational signal:
+
+- Guest feedback needing attention.
+- Repeated deterministic themes such as wrong price, hours, unavailable item, service, or quality.
+- One-tap route to the existing Guest Feedback inbox.
+
+Business Health summaries must be scheduler-built, capped, and PII-safe. They must not expose guest name, phone, email, full raw message text, or live raw collection reads in the owner question path.
 
 MOL logs these events for internal analytics only:
 
@@ -51,7 +59,7 @@ MOL logs these events for internal analytics only:
 - `FEEDBACK_RESOLVED` — Owner marked feedback as resolved
 - `FEEDBACK_GOOGLE_CTA_CLICKED` — Guest clicked Google Review link
 
-> **Doctrine Note:** Metrics create dashboards. Dashboards create explanations. Explanations kill authority. We track internally but never expose to owners.
+> **Doctrine Note:** Metrics create dashboards. Dashboards create explanations. Business Health may surface only the feedback state an owner must check now.
 
 ### Non-Goals (What This Is NOT)
 

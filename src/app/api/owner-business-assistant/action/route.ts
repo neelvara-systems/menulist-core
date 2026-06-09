@@ -5,8 +5,7 @@ import { OwnerBusinessAssistantActionRequestSchema } from '@lib/ownerBusinessAss
 import { executeOwnerBusinessAssistantAction } from '@lib/ownerBusinessAssistant/actions/actionExecutor';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -32,10 +31,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
-
   const json = await readJsonBody(request);
   if (!json) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -46,12 +41,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
   const result = await executeOwnerBusinessAssistantAction({
     request,
     session,
-    tId,
-    sId,
-    userId,
+    tId: scope.tId,
+    sId: scope.sId,
+    userId: scope.userId,
     body: parsed.data,
   });
 

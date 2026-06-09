@@ -16,6 +16,7 @@ import {
   buildActionOptionsForIntent,
   buildAnalyticsAnswer,
   buildBusinessStatusAnswer,
+  buildFeedbackPatternAnswer,
   describeHealthStatus,
 } from './answerTemplates';
 import { buildOwnerBusinessAssistantNotReady, buildOwnerBusinessAssistantRefusal } from './refusals';
@@ -156,6 +157,39 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         artifacts: analyticsAnswer.artifacts,
         actions: buildActionOptionsForIntent(packet, intent),
         confidence: analyticsAnswer.confidence as OwnerBusinessAssistantAnswer['confidence'],
+        cache: {
+          source: packet.cacheSource,
+          cacheKey: packet.cacheKey,
+          generatedAt: packet.generatedAt,
+        },
+      };
+    }
+  } else if (intent === 'feedback_pattern') {
+    const unsupportedDomain = getUnsupportedIntentDomain(packet, intent);
+    if (unsupportedDomain) {
+      fallback = buildOwnerBusinessAssistantRefusal({
+        answerId,
+        reason: `MenuList does not have enough ${OWNER_DOMAIN_LABELS[unsupportedDomain] || unsupportedDomain} data for that yet.`,
+        alternative: buildUnsupportedAlternative(unsupportedDomain),
+        sourceFactIds: packet.health.sourceRefs.map((ref) => ref.id),
+      });
+      fallback.actions = buildActionOptionsForIntent(packet, intent);
+      fallback.cache = {
+        source: packet.cacheSource,
+        cacheKey: packet.cacheKey,
+        generatedAt: packet.generatedAt,
+      };
+    } else {
+      const feedbackAnswer = buildFeedbackPatternAnswer(packet);
+      fallback = {
+        answerId,
+        status: 'answered',
+        text: feedbackAnswer.text,
+        freshnessLabel: describeHealthStatus(packet),
+        sourceFactIds: feedbackAnswer.sourceFactIds,
+        artifacts: feedbackAnswer.artifacts,
+        actions: buildActionOptionsForIntent(packet, intent),
+        confidence: feedbackAnswer.confidence as OwnerBusinessAssistantAnswer['confidence'],
         cache: {
           source: packet.cacheSource,
           cacheKey: packet.cacheKey,

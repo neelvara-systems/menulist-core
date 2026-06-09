@@ -5,10 +5,22 @@ import { LuActivity, LuArrowRight } from 'react-icons/lu';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
 import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
+import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import styles from './OwnerBusinessAssistant.module.scss';
 
 const { Paragraph, Text, Title } = Typography;
+
+const getDashboardFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
+  const feedback = current.feedbackSummary;
+  if (!feedback) return null;
+  const needsAttention = feedback.periods.last30Days?.needsAttentionCount ?? feedback.latestNeedsAttention.length;
+  if (needsAttention > 0) {
+    return `${needsAttention} guest feedback ${needsAttention === 1 ? 'item needs' : 'items need'} checking`;
+  }
+  const total = feedback.periods.last30Days?.totalCount ?? feedback.sampledCount;
+  return total > 0 ? 'Guest feedback is clear' : null;
+};
 
 export function BusinessHealthDashboardCard({ projectId }: { projectId?: string }) {
   const router = useRouter();
@@ -22,6 +34,7 @@ export function BusinessHealthDashboardCard({ projectId }: { projectId?: string 
 
   if (!current) return null;
   const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
+  const feedbackLine = getDashboardFeedbackLine(current);
 
   return (
     <Card className={styles.dashboardCard}>
@@ -32,6 +45,7 @@ export function BusinessHealthDashboardCard({ projectId }: { projectId?: string 
             <Text type="secondary">Business Health · {OWNER_BUSINESS_HEALTH_STATUS_LABELS[current.status]}</Text>
             <Title level={4} style={{ margin: '4px 0' }}>{current.summary.headline}</Title>
             <Paragraph style={{ margin: 0 }}>{current.summary.ownerMessage}</Paragraph>
+            {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
             {freshnessNote ? <Text type="secondary">{freshnessNote}</Text> : null}
           </div>
         </Space>

@@ -79,7 +79,7 @@ Domain posture:
 
 | Document | Operation | Trigger | Notes |
 | --- | --- | --- | --- |
-| `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | WRITE | Store-local scheduler run | Replaced when compact signature changes |
+| `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | WRITE | Store-local scheduler run | Replaced when compact signature changes; embeds capped `feedbackSummary` built from recent `guestFeedback` |
 | `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | WRITE | Store-local scheduler run or freshness rebuild | Store aggregate periods plus bounded per-project summaries for dashboard analytics and Q&A |
 | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | WRITE | First successful local-date run | Daily point-in-time proof; retention capped |
 | `platformSummary/ownerBusinessHealthMultiLocation_{tId}` | WRITE | Store-local Business Health rebuild | One compact tenant doc with `stores.{sId}` summary entries for multi-location comparison |
@@ -125,10 +125,10 @@ Target read cap:
 | Weekly/monthly period docs | 0-2 | Only if analytics index cannot use dashboard summary fields |
 | `menuIntelligence` | 0-1 | Existing per-project intelligence state |
 | Store health/account summary | 0-1 | Prefer data already in storesSummary/current store scope |
-| Feedback/reviews compact summary | 0-2 | No raw scans |
+| Guest feedback summary | 0-80 | Bounded scheduler-only read of recent `guestFeedback`; writes compact `feedbackSummary` into current Health. No owner runtime/raw chat scan. |
 | Recent changes compact/capped read | 0-1 | Prefer summary/capped recent changes |
 | Existing scheduler context | 0 | Reuse loaded store/project data where possible |
-| **Target total** | **2-24 reads** | Per due store per local day depending on indexed project count and enabled adapters; must not grow with event volume |
+| **Target total** | **2-104 reads** | Per due store per local day depending on indexed project count and whether recent guest feedback exists. Feedback is capped at 80 docs and never runs in owner question paths. |
 
 Target writes:
 

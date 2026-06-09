@@ -77,6 +77,8 @@ export async function executeOwnerBusinessAssistantAction(params: {
     request: params.request,
     session: params.session,
     definition,
+    tId: params.tId,
+    sId: params.sId,
   });
   if (permissionError) {
     return { success: false, status: 'blocked', message: 'You do not have permission for this action.', metrics: buildActionMetrics() };

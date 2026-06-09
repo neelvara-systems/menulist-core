@@ -1,9 +1,10 @@
-import type { ActiveProjectEntry, OwnerBusinessHealthSourceRef } from './types';
+import type { ActiveProjectEntry, OwnerBusinessFeedbackSummary, OwnerBusinessHealthSourceRef } from './types';
 
 export function buildOwnerBusinessHealthSourceRefs(params: {
   generatedAt: string;
   analyticsDocIds: string[];
   activeProjects: ActiveProjectEntry[];
+  feedbackSummary?: OwnerBusinessFeedbackSummary;
   storeInfo: FirebaseFirestore.DocumentData;
 }): OwnerBusinessHealthSourceRef[] {
   const projectSource: OwnerBusinessHealthSourceRef = {
@@ -25,6 +26,13 @@ export function buildOwnerBusinessHealthSourceRefs(params: {
   return [
     projectSource,
     ...analyticsSources,
+    ...(params.feedbackSummary ? [{
+      id: 'guest_feedback_summary',
+      source: 'Guest feedback',
+      docId: `guestFeedback_${params.storeInfo.storeId || params.storeInfo.sId || 'store'}_summary`,
+      generatedAt: params.generatedAt,
+      freshnessLabel: 'Updated from latest Business Health check',
+    }] : []),
     {
       id: 'store_summary',
       source: 'Store settings',

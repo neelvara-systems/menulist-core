@@ -6,6 +6,46 @@
 
 ---
 
+## June 9, 2026 — Business Health Guest Feedback Signal
+
+### Improved
+
+- **Guest feedback now contributes to Business Health** - The store-local Business Health builder creates a capped, PII-safe `feedbackSummary` from recent public guest feedback, adds a “Review guest feedback” check when low-rating unresolved feedback exists, and reuses the existing Feedback inbox navigation action.
+- **Feedback questions are grounded in the Health packet** - Owner questions such as “Any guest feedback to check?” answer from `health.feedbackSummary` only. The answer path does not query raw `guestFeedback`, does not include guest contact details, and does not call provider-backed sentiment analysis.
+- **Mobile Business Health checks can open target screens** - Mobile checks now include the same registry-backed open action as desktop, so feedback checks can route owners to the existing Feedback inbox.
+
+### Cost
+
+- **No new hot-path Firebase read** - `/current`, `/answer`, dashboard cards, and mobile Business Health reuse the existing current Health packet. The scheduler performs a bounded recent `guestFeedback` read capped at 80 docs per due store and writes the compact summary into existing `platformSummary` Health docs.
+
+## June 9, 2026 — Website Motion And Feature Navigation Polish
+
+### Improved
+
+- **Website reveal motion now has shared presets** - `AnimateOnScroll` and `AnimateStaggerChild` now support named `hero`, `media`, `card`, `footer`, and `fade` presets so homepage, footer, and dedicated feature campaign pages use consistent viewport-entry motion without hiding content by default.
+- **Features dropdown now includes a compact proof panel** - The desktop Features dropdown keeps the restrained MenuList navigation shape while adding a small proof/CTA panel that explains the feature pages as one approved-source system, not a broad software-suite menu.
+- **Homepage workflow propagation feels more deliberate** - Output pulses and destination-card highlights now arrive in a staggered sequence, so the input-to-MenuList-to-public-surfaces diagram reads as calm propagation instead of simultaneous flashing.
+- **Footer reveal polish added** - Footer CTA, proof cards, navigation, and preference controls now use the shared reveal system while preserving semantic footer structure and existing links.
+
+### Fixed
+
+- **Features dropdown overview row corrected** - The Feature overview card now keeps its icon, title/description, and arrow in one aligned row in both light and dark themes.
+- **Features dropdown overview interaction added** - The Feature overview card now has hover and keyboard-focus states so it reads as a clickable top-level link like the other dropdown items.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component, CSS, locale, and documentation polish only. It does not change owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
+## June 9, 2026 — Feature Campaign Scroll Reveal Parity
+
+### Fixed
+
+- **Feature campaign pages now match homepage scroll reveal behavior** - The new feature campaign pages now use the shared `AnimateOnScroll` and staggered card wrappers for hero, section heading, proof-card, and final CTA blocks, with explicit viewport-entry reveal opacity and distance. Business Health keeps its sticky story interaction by using fade-only reveal on the sticky layout while adding the same reveal treatment around stable hero, story heading, and CTA blocks.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component and documentation polish only. It does not change owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
 ## June 8, 2026 — Feature Navigation And Campaign Pages
 
 ### New

@@ -561,7 +561,7 @@ Validated reviewer findings:
 Fixes:
 
 - `BusinessHealthAnalyticsStrip` now reads `useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey)` and builds its tiles from the scoped analytics-index periods.
-- `useOwnerBusinessLocationsSummary` now includes scope in the SWR key: `[OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations, scope]`.
+- `useOwnerBusinessLocationsSummary` now includes route, tenant/store scope, and active store scope in the SWR key: `[url, scope, selectedStoreScope]`.
 - `/api/owner-business-assistant/locations` now reads `storesSummary`, parses legacy/nested summary shapes, filters inactive stores before permission filtering, and reports `firestoreReadCount: 2`.
 
 Validation commands:
@@ -609,17 +609,48 @@ End-to-end data-flow audit:
 - Action flow: frontend sends registered `operation/actionType/targetKind/targetId/projectId/payload`. The action route validates payload shape, checks session/tenant/rate limit, validates target kind against the registry, validates project membership through compact project summary before project-doc fallback, writes only drafts/audits for enabled non-navigation paths, and keeps direct public-truth/provider-text/media writes disabled.
 - Monitoring flow: `/api/platform/owner-business-assistant/monitor` reads capped answer events, actions, and feedback collections only. It serializes compact question/answer text, route metrics, provider/cost fields, source coverage, action usage, and feedback without exposing raw provider payloads, prompts, secrets, or unbounded transcripts.
 
+June 9 store/project scope audit:
+
+- Desktop Business Health has a local `All menus` / selected-menu scope selector backed by the active store project summary. It clears stale project ids after active-store or project-list changes and remounts the assistant panel by store/project scope so typed questions do not cross scopes.
+- Mobile Business Health uses the existing `MobileProjectsProvider` for project data but keeps a local Business Health scope. It does not call the global `selectProject()` handler, resets only before the owner touches the local scope, and clears invalid selected-menu scope after project loading finishes.
+- Store scope remains explicit on current, analytics, thread, answer, action, feedback, and locations routes. Project scope is only applied to analytics, answers, project-aware actions, and check-state keys; current Health and multi-location summaries stay store scoped.
+
+June 9 guest feedback signal audit:
+
+- Scheduler flow now calls `functions/src/ownerBusinessAssistant/buildOwnerBusinessFeedbackSummary.ts` from the existing store-local Business Health builder. It reads recent `guestFeedback` with `MAX_FEEDBACK_DOCS=80`, redacts contact-looking text, omits guest name/phone/email fields, and writes the compact `feedbackSummary` into `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` plus the daily snapshot.
+- Health blocks now add `feedbackReviews` and a `guest_feedback_needs_attention` check only when low-rating unresolved feedback exists. The check uses the existing `open_feedback_reviews` navigation action.
+- Answer flow handles `feedback_pattern` from `health.feedbackSummary`; `/answer`, `/current`, `/analytics`, owner UI hooks, and Business Health components do not query raw `guestFeedback`.
+- Suggested questions include guest feedback only when the packet advertises `feedback_reviews`, and the shared question catalog remains byte-identical between `src/data/shared` and `functions/src/sharedData`.
+
 Validation commands:
 
 ```bash
 npm run verify:owner-business-assistant
 git diff --check
-npx tsc --noEmit --incremental false --pretty false
-npm run build:verify
+npx tsc --noEmit --incremental false
 npm run lint
-npm run build
 npm --prefix functions run build
 npm --prefix functions run lint
+```
+
+Latest local validation for the guest feedback signal pass:
+
+```bash
+npm run verify:owner-business-assistant                         # passed
+git diff --check                                                # passed
+npx tsc --noEmit --incremental false                            # passed
+npm --prefix functions run build                                # passed
+npm run lint                                                    # passed
+npm --prefix functions run lint                                 # passed; existing functions Next pages-directory notice only
+firebase deploy --only functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring --project ecomsai
+                                                              # blocked after predeploy pass: Secret Manager latest-version validation returned HTTP 403 because billing is not enabled on Firebase project ecomsai
+```
+
+Full production smoke commands retained from the prior cross-check:
+
+```bash
+npm run build:verify
+npm run build
 PORT=3029 npm run start
 curl -sS -o /tmp/business-health.html -w '%{http_code} %{content_type}\n' -H 'x-forwarded-proto: https' http://localhost:3029/business-health
 curl -sS -o /tmp/business-health-project.html -w '%{http_code} %{content_type}\n' -H 'x-forwarded-proto: https' 'http://localhost:3029/business-health?projectId=test-project'

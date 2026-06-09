@@ -6,11 +6,10 @@ import { PERMISSIONS } from '@constant/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { OwnerBusinessAssistantFeedbackRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import {
   applyOwnerBusinessAssistantRateLimit,
-  ensureOwnerAssistantTenantAccess,
-  getOwnerAssistantSessionScope,
+  resolveOwnerAssistantSelectedStoreScope,
 } from '@lib/ownerBusinessAssistant/server/apiGuards';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
@@ -38,13 +37,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   });
   if (rateLimit) return rateLimit;
 
-  const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
-  const accessError = ensureOwnerAssistantTenantAccess(request, session, tId, sId);
-  if (accessError) return accessError;
-
-  const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Business Health feedback');
-  if (permissionError) return permissionError;
-
   const json = await readJsonBody(request);
   if (!json) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -55,12 +47,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const docId = `${parsed.data.answerId}_${userId || 'unknown'}`;
+  const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId);
+  if ('error' in scope && scope.error) return scope.error;
+
+  const permissionError = await requireAnyStorePermissionForStore(
+    request,
+    session,
+    [PERMISSIONS.VIEW_ANALYTICS],
+    'Business Health feedback',
+    scope.sId,
+    scope.tId,
+  );
+  if (permissionError) return permissionError;
+
+  const docId = `${parsed.data.answerId}_${scope.userId || 'unknown'}`;
   await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK).doc(docId).set({
     ...parsed.data,
-    tId: String(tId),
-    sId: String(sId),
-    userId: userId ? String(userId) : null,
+    tId: String(scope.tId),
+    sId: String(scope.sId),
+    userId: scope.userId ? String(scope.userId) : null,
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromMillis(Date.now() + FEEDBACK_RETENTION_MS),
     source: 'owner_business_assistant',
