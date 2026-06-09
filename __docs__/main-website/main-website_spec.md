@@ -1,6 +1,6 @@
 # Main Website Strategy Spec
 
-**Version:** 3.6.33 — Business Health Campaign Page
+**Version:** 3.6.37 — Featured Choices Feature Page
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
@@ -15,6 +15,8 @@
 > June 1, 2026 resource localization update: `/resources` is now an evergreen content layer with reviewed English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish resource coverage. Locale-prefixed resource URLs are discovery surfaces only after full source-versioned packs pass verifier coverage; they must stay separate from owner app, customer menu runtime, Firebase, Answerlattice, Canonica, GrowthOS, KitStamp, and other same-repo product surfaces.
 
 > June 8, 2026 Business Health update: the homepage now carries one focused Business Health section because the owner dashboard, mobile screen, APIs, scheduler read models, cache hardening, action guards, and monitoring surface are implemented. Public strategy must frame it as the owner-dashboard check that shows what needs attention, not as an AI assistant, chatbot, revenue optimizer, prediction product, or autonomous public-truth writer.
+
+> June 9, 2026 Featured Choices update: the Decision Intelligence capability is now represented publicly as `/features/featured-choices`. Buyer-facing copy must use Featured Choices, Featured choice, Quick choice, and Value choice, and must avoid internal Decision Blocks naming, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
 
 > June 8, 2026 Business Health Features update: the `/features` Operations group now also carries one compact Business Health card so the feature inventory matches the homepage USP. It must stay a calm owner-dashboard check claim: latest MenuList check, last checked date, customer attention, whether anything needs action, and No action needed when stable.
 
@@ -70,7 +72,7 @@
 
 ChatGPT had zero awareness of these built features:
 
-1. **Decision Blocks** — Most Popular, Quick Pick, Best Value sections auto-generated from customer behavior
+1. **Featured Choices** — Featured, Quick, and Value choices on the customer menu, with owner control and settled menu-signal support where enough activity exists
 2. **Menu Correctness Engine** — 17-rule validation before publish
 3. **Special Menu Switching** — Festival/event menus with auto-revert
 4. **Temp Status Banners** — "Closed today" banners that auto-expire

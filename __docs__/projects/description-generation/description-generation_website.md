@@ -1,5 +1,9 @@
 # Description Generation — Website Content
 
+## Current Public Website Placement
+
+As of June 9, 2026, description generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with menu images and customer languages. Do not create a standalone public description-generator page unless acquisition evidence later justifies it. Public website copy should say descriptions are prepared for owner review before publishing; avoid `AI-written`, unchecked publishing, ranking promises, and generic copywriting-tool positioning.
+
 ## Hero Section
 - **Headline:** Menu Descriptions That Make Customers Hungry
 - **Subheadline:** Professional, appetizing descriptions for every item on your menu. Generated in seconds, in any language.

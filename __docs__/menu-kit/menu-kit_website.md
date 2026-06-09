@@ -17,6 +17,10 @@
 
 Table cards, counter stickers, social images, and a placement guide. Your name, logo, colors, and QR are already included. Just download, print, and place.
 
+**Public feature page:** `/features/print-ready-kit`
+
+**Primary CTA:** Upload your menu →
+
 ---
 
 ## What You Get

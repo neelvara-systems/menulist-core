@@ -1,56 +1,102 @@
 # Decision Intelligence — Website Content
 
+**Status:** Current public website placement updated June 9, 2026
+**Public route:** `/features/featured-choices`
+**Public label:** Featured Choices
+
+## Current Main Website Placement
+
+Decision Intelligence is represented publicly as **Featured Choices**, not as an internal technical system. The dedicated page `/features/featured-choices` explains Featured, Quick, and Value choices as customer menu guidance from the current approved menu.
+
+This route is promoted in:
+
+- Header Features dropdown after Menu Content Prep.
+- Mobile Features navigation.
+- `/features` card: `Featured section`.
+- `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+
+## Public Copy Boundary
+
+Use:
+
+- `Featured Choices`
+- `Featured choice`
+- `Quick choice`
+- `Value choice`
+- `helps customers choose`
+- `from the current approved menu`
+- `owner can choose what appears`
+- `settled menu signals` where enough activity exists
+
+Avoid:
+
+- `Decision Intelligence` as public navigation or hero copy
+- `Decision Blocks` as buyer-facing page name
+- `AI-powered recommendations`
+- `Smart recommendations`
+- `algorithm`
+- `machine learning`
+- exact decision-time claims
+- guaranteed sales lift
+- guaranteed ordering behavior
+- ranking or discovery promises
+
 ## Hero Section
-- **Headline:** Help Customers Decide in 15 Seconds
-- **Subheadline:** Your menu automatically highlights what's popular, what's quick, and what's great value. Customers stop scrolling and start ordering.
-- **CTA Text:** See It In Action
-- **CTA Link:** /features/decision-blocks
+
+- **Headline:** Help customers choose from the current menu.
+- **Subheadline:** MenuList can show Featured, Quick, and Value choices from the approved menu so customers have a clearer starting point before they scroll.
+- **CTA Text:** Upload your menu
+- **CTA Link:** `/create-menu`
 
 ## Problem Statement
-Customers stare at a 50-item menu for 2 minutes, overwhelmed. They ask the waiter "what's good?" or play it safe with the same dish every time. Longer decision time means slower table turns and frustrated customers.
+
+Customers can get lost in a long menu. They may scroll, compare, ask staff what is good, or choose the same safe item again. The public menu needs a small amount of guidance without changing the normal menu structure.
 
 ## Solution Statement
-MenuList adds recommendation sections to the top of your menu — Most Popular, Quick Pick, and Best Value. Customers see what works and decide faster. You can leave it automatic or pin an item when you want direct control.
+
+MenuList can show Featured, Quick, and Value choices near the top of the customer menu. The owner can choose what appears when direct control matters, and the full approved menu remains browsable underneath.
 
 ## Feature Benefits
 
-### 1. Most Popular Right Now
-Shows what other customers are ordering. Social proof that helps new customers choose confidently.
-> **Visual:** "Most Popular" section with 3 highlighted items and subtle "Customer favorite" badge
+### 1. Helpful Starting Points
 
-### 2. Quick Pick
-Highlights items that are ready quickly. Perfect for lunch rushes when customers are in a hurry.
-> **Visual:** "Quick Pick" section with "Ready in 5 min" indicator
+Featured, Quick, and Value choices give customers a useful first look before the full menu list.
 
-### 3. Best Value
-Shows the best quality-to-price items. Helps price-conscious customers find great options without feeling cheap.
-> **Visual:** "Best Value" section with subtle value indicator
+### 2. Settled Customer Signals
 
-### 4. Automatic, With Owner Control
-Recommendations update after your store's daily analytics settle. You can also pin a specific item when you want it featured.
-> **Visual:** Clock icon showing "Updates automatically"
+Where enough menu activity exists, MenuList can use settled public-menu signals to keep choices connected to customer attention.
+
+### 3. Owner Control
+
+Owners can choose which item appears in each choice when they want to guide attention directly.
+
+### 4. Accuracy Boundary
+
+The feature should respect availability and menu state. It should not promote unavailable items or create a second menu source.
 
 ## How It Works
-1. **Automatic** — Recommendations appear on your menu without any setup
-2. **Based on behavior** — Uses customer menu views, taps, and recommendation taps
-3. **Updates automatically** — Fresh recommendations after the store's daily analytics settle
 
-## FAQ
+1. The approved menu remains the source.
+2. Featured, Quick, and Value choices can appear before the full menu.
+3. The owner can choose what appears when needed.
+4. Customers can still browse the normal menu.
 
-### Q: Do I need to set this up?
-**A:** No. Decision Blocks appear automatically once you have menu activity.
+## FAQ Inputs
 
-### Q: Can I control what appears in the recommendations?
-**A:** Yes. You can pin specific items to any block from Smart Recommendations.
+### Q: Does this change my menu order?
 
-### Q: Will customers know it's automated?
-**A:** No. It looks like curated recommendations, not algorithm output.
+**A:** No. Featured Choices guide the starting view. The normal menu structure remains available.
+
+### Q: Can I control what appears?
+
+**A:** Yes. Owners can choose the item shown in each choice when direct control is needed.
+
+### Q: Does MenuList promise more orders?
+
+**A:** No. The page should say MenuList helps customers choose from the approved menu, not that it guarantees sales lift.
 
 ## SEO Meta
-- **Page Title:** Menu Recommendations That Help Customers Decide | MenuList
-- **Meta Description:** Automatic menu recommendations that reduce customer decision time from 60 seconds to 15. Most Popular, Quick Pick, Best Value — all automatic.
-- **Target Keywords:** menu recommendations, restaurant decision blocks, help customers choose, reduce decision time
 
-## Approved Language
-### USE: "Recommendations", "helps customers decide", "updates automatically", "based on behavior"
-### NEVER USE: "AI-powered recommendations", "Smart picks", "Machine learning", "Algorithm"
+- **Page Title:** Featured Choices for Customer Menus | MenuList
+- **Meta Description:** Show Featured, Quick, and Value choices from the current approved menu so customers have a clearer starting point without changing the full menu.
+- **Target Keywords:** featured menu choices, menu recommendations, quick choice menu, value choice menu, help customers choose menu

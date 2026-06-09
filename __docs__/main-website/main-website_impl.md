@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.33 Business Health Campaign Page
-**Last Updated:** June 8, 2026
+**Status:** IMPLEMENTED — v3.6.37 Featured Choices Feature Page
+**Last Updated:** June 9, 2026
 **Audience:** Developers
 
 ---
@@ -27,8 +27,11 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/` | `(website)/page.tsx` | `HomePage` | Server shell with client homepage sections | Default from layout + server JSON-LD |
 | `/features` | `(website)/features/page.tsx` | `FeaturesPage` | Server | Per-page `export const metadata` |
 | `/features/menu-import` | `(website)/features/menu-import/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/menu-content-prep` | `(website)/features/menu-content-prep/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/featured-choices` | `(website)/features/featured-choices/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/official-business-page` | `(website)/features/official-business-page/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/qr-menu-links` | `(website)/features/qr-menu-links/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/print-ready-kit` | `(website)/features/print-ready-kit/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/owner-phone-dashboard` | `(website)/features/owner-phone-dashboard/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/business-health` | `(website)/features/business-health/page.tsx` | `BusinessHealthFeaturePage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/public-discovery` | `(website)/features/public-discovery/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
@@ -55,7 +58,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 149 routes (8 core + 1 feature campaign page + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 150 routes (8 core + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
@@ -118,7 +121,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Business Health campaign page:** v3.6.33 adds `/features/business-health` for marketing campaigns. The route shell lives in `src/app/(website)/features/business-health/page.tsx`, renders `BusinessHealthFeaturePage`, emits `WebsitePageStructuredData` with `path="/features/business-health"`, and uses a product-style Business Health preview followed by a MenuList-styled sticky story section modeled on Answerlattice's "From inputs to support surfaces" layout. The left rail tabs are `What it checks`, `Owner outcome`, and `Why owners can trust it`; the right side uses stacked sticky cards for the matching check/outcome/trust content. The homepage Business Health section links to the page through `View Business Health`, and the first `/features` Operations card is a link to the same route. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. `/business-health` remains the protected owner route and is not used as a public marketing URL.
 
-**Feature navigation and campaign pages:** v3.6.34 adds a compact Features dropdown to `Header.tsx`, backed by `src/components/website/features/featureNavigation.ts`. Desktop navigation promotes six owner-readable feature surfaces: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. Mobile navigation exposes the same nested links under Features. New feature campaign routes use the shared `FeatureDetailPage` and `featureDetailConfig.ts` for consistent hero, preview, story, proof, and CTA structure. Selected `/features` cards now link into these campaign pages. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+**Feature navigation and campaign pages:** v3.6.34 adds a compact Features dropdown to `Header.tsx`, backed by `src/components/website/features/featureNavigation.ts`. Desktop navigation promotes owner-readable feature surfaces that help SMB owners self-sell fastest. v3.6.35 adds `/features/print-ready-kit` for Menu Kit and print-file value: table cards, counter cards, stickers, posters, social files, and printer handoff from the current approved menu source. v3.6.36 adds `/features/menu-content-prep` for the setup/content job of preparing customer-friendly descriptions, menu images, and customer languages from the same approved menu source. v3.6.37 adds `/features/featured-choices` for customer-facing Featured, Quick, and Value choices from the current approved menu. Mobile navigation exposes the same nested links under Features. Shared feature campaign routes use `FeatureDetailPage` and `featureDetailConfig.ts` for consistent hero, preview, story, proof, CTA, and scroll-reveal structure. Selected `/features` cards now link into these campaign pages, including the Generated images, Descriptions written for you, and One-click translations cards pointing to Menu Content Prep, plus the Featured section card pointing to Featured Choices. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 

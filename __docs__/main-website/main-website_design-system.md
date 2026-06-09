@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** May 25, 2026
+**Last Updated:** June 9, 2026
 
 ---
 
@@ -368,7 +368,8 @@ Rules:
 
 ### 5.2.4 Shared Feature Campaign Pages
 
-Use `src/components/website/features/FeatureDetailPage.tsx` for the dedicated public feature pages added in v3.6.34: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, and Public Discovery.
+Use `src/components/website/features/FeatureDetailPage.tsx` for the dedicated public feature pages added in v3.6.34+:
+Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, and Public Discovery.
 
 Rules:
 

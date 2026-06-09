@@ -170,8 +170,11 @@ Contact: support@menulist.ai
 Feature pages:
 
 - https://menulist.ai/features/menu-import
+- https://menulist.ai/features/menu-content-prep
+- https://menulist.ai/features/featured-choices
 - https://menulist.ai/features/official-business-page
 - https://menulist.ai/features/qr-menu-links
+- https://menulist.ai/features/print-ready-kit
 - https://menulist.ai/features/owner-phone-dashboard
 - https://menulist.ai/features/business-health
 - https://menulist.ai/features/public-discovery

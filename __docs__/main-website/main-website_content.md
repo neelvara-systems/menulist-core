@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 8, 2026
+**Last Updated:** June 9, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -26,6 +26,8 @@
 > Privacy and analytics note (June 5, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Upload your menu` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
 > Business Health website note (June 8, 2026): Business Health is now visible on the main homepage after implementation proof. Public copy must describe it as an owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths. Do not call it an AI assistant, chatbot, autonomous business agent, revenue optimizer, or prediction system. Keep the owner promise narrow: MenuList shows what needs attention, and says No action needed when the latest check is stable.
+
+> Featured Choices website note (June 9, 2026): Decision Intelligence is publicly exposed as Featured Choices at `/features/featured-choices`. Public copy should say Featured, Quick, and Value choices help customers choose from the current approved menu. Do not use internal names, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
 
 ---
 
@@ -807,34 +809,77 @@ Key FAQ topics:
 
 - This hero should sell reduced owner work, not an abstract feature catalogue.
 - Keep the phone-first and owner-approval helper lines directly below the hero subline.
-- v3.6.34 wires the highest-selling feature cards to dedicated campaign pages and exposes them in the header Features dropdown. The dropdown should stay restrained and should not become a full product map.
+- v3.6.37 wires Featured Choices as a dedicated campaign page because customer-choice guidance is a differentiated customer-facing proof point. The dropdown should stay restrained and should not become a full product map.
+- v3.6.36 wires Menu Content Prep as a dedicated campaign page because descriptions, images, and translations are a high-friction owner setup job.
 
 ### Header Feature Dropdown And Campaign Pages
 
 **Dropdown links:**
 
 1. Menu Import — `/features/menu-import`
-2. Official Business Page — `/features/official-business-page`
-3. QR Menu and Links — `/features/qr-menu-links`
-4. Owner Phone Dashboard — `/features/owner-phone-dashboard`
-5. Business Health — `/features/business-health`
-6. Public Discovery — `/features/public-discovery`
+2. Menu Content Prep — `/features/menu-content-prep`
+3. Featured Choices — `/features/featured-choices`
+4. Official Business Page — `/features/official-business-page`
+5. QR Menu and Links — `/features/qr-menu-links`
+6. Print-ready Kit — `/features/print-ready-kit`
+7. Owner Phone Dashboard — `/features/owner-phone-dashboard`
+8. Business Health — `/features/business-health`
+9. Public Discovery — `/features/public-discovery`
 
 **Selection rationale:**
 
-- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, create one public customer source, share it through QR/links, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
-- POS sync, staff roles, analytics depth, print-file detail, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
+- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
+- POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
 
 **Campaign page pattern:**
 
 - Each new campaign page uses `FeatureDetailPage` for a focused hero, proof preview, three story cards, four trust/proof cards, and final CTA.
 - Copy must stay owner-readable. Avoid `AI-powered`, unsupported automation, ranking guarantees, POS replacement language, and generic dashboard-SaaS framing.
 
+### Menu Content Prep Page
+
+**Placement decision:**
+
+Expose content preparation as a dedicated feature page at `/features/menu-content-prep`, placed immediately after Menu Import in the header dropdown. This is the natural sequence: bring in the current menu, prepare the customer-facing content around it, then publish and share the approved source.
+
+**Owner-readable copy contract:**
+
+- `Menu content prep` means customer-friendly descriptions, menu images, and customer languages prepared from the approved menu data.
+- The page may say this removes writing, design, and translation work for owners.
+- The page must keep review-first language: content is prepared for owner review before publishing.
+- The page may mention plan and credit boundaries because generated images, descriptions, translations, and edits have usage implications.
+- The discovery angle is allowed only as clearer visible public menu text and language coverage for customers, search engines, and answer systems to read. Do not promise ranking, Google placement, ChatGPT citation, or special AI-search treatment.
+
+**Feature-card wiring:**
+
+- `/features` cards for `Generated images`, `Descriptions written for you`, and `One-click translations` link to `/features/menu-content-prep`.
+- Do not create three separate top-nav pages unless there is later evidence that each one needs its own acquisition surface.
+
+### Featured Choices Page
+
+**Placement decision:**
+
+Expose Featured Choices as a dedicated feature page at `/features/featured-choices`, placed after Menu Content Prep in the header dropdown. This makes the product story move from getting the current menu into MenuList, to preparing customer-ready content, to helping customers choose from the approved public menu.
+
+**Owner-readable copy contract:**
+
+- Public label is `Featured Choices`, not `Decision Intelligence`, `Decision Blocks`, `Smart Recommendations`, or `AI recommendations`.
+- The page may explain Featured, Quick, and Value choices as customer menu guidance from the current approved menu.
+- The page may explain owner control: owners can choose/pin what appears in the choices when needed.
+- The page may mention settled public-menu signals only as a source for helpful customer guidance where enough activity exists.
+- Do not claim exact decision-time reduction, guaranteed sales lift, ranking, customer ordering behavior, model training, or algorithmic authority.
+- Do not imply that Featured Choices changes the normal menu order. The normal customer menu remains browsable.
+
+**Feature-card wiring:**
+
+- `/features` card `Featured section` links to `/features/featured-choices`.
+- Keep `Menu analytics` and `Menu quality signals` as supporting Features page cards. Do not split them into standalone top-nav pages unless there is later evidence that they become primary acquisition surfaces.
+
 ### Print Files And Launch Kit Cards
 
 **Placement decision:**
 
-Keep print capability inside existing Features page groups. Do not create a dedicated public feature page or homepage section unless owner demand later proves that printable assets are a primary purchase driver.
+Keep print capability out of the homepage as a full section, but expose it as a dedicated feature page at `/features/print-ready-kit` because printable files are a high-friction, high-value owner job. The homepage may still mention `Print files` only as one compact output of the approved menu source.
 
 **Owner-readable copy contract:**
 

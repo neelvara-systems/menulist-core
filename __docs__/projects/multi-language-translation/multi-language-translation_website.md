@@ -1,5 +1,9 @@
 # Multi-Language Translation — Website Content
 
+## Current Public Website Placement
+
+As of June 9, 2026, multi-language translation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and menu images. Do not create a standalone public translation page unless acquisition evidence later justifies it. Public website copy should say customer languages can be prepared from the approved menu source and reviewed before publishing; avoid `AI translation`, universal-language claims, ranking promises, and automatic external-platform update claims.
+
 ## Hero Section
 - **Headline:** Your Menu, In Every Language Your Customers Speak
 - **Subheadline:** Add languages to your digital menu with one click. Customers choose their preferred language when they scan.

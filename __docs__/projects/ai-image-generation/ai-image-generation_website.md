@@ -1,5 +1,9 @@
 # AI Image Generation — Website Content
 
+## Current Public Website Placement
+
+As of June 9, 2026, menu image generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and customer languages. Do not create a standalone public image-generation page unless acquisition evidence later justifies it. Public website copy should say menu images can be prepared where plan and credits allow, then reviewed before publishing; avoid `AI-powered`, unchecked publishing, photoshoot-cost guarantees, and generic image-tool positioning.
+
 ## Hero Section
 - **Headline:** Professional Menu Photos Without a Photographer
 - **Subheadline:** Generate beautiful food images for every menu item. One click per item, or process your entire menu at once.

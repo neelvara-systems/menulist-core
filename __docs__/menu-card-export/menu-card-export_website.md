@@ -1,6 +1,6 @@
 # Menu Card Export — Website Content
 
-**Status:** Light website placement applied
+**Status:** Dedicated owner-facing feature page active via Print-ready Kit
 **Audience:** Public website copy planning
 **Last Updated:** June 2, 2026
 
@@ -11,10 +11,12 @@
 Placement decision, June 1, 2026: do **not** add a separate homepage feature section for Menu Card Export. The public website stays light for non-technical SMB owners. The implemented placement is:
 
 - Homepage hero/workflow output label: `Print files`.
-- Features page card: `Print files`.
+- Features page card: `Print files`, linked to `/features/print-ready-kit`.
+- Header feature dropdown: `Print-ready kit`.
+- Dedicated feature page: `/features/print-ready-kit`, covering Menu Kit assets plus print files/printer handoff from the current approved source.
 - `/resources/digital-menu-vs-pdf-menu`: explains that PDFs and printer handoff files are useful when generated from the current approved menu.
 
-Do not use the internal feature name `Menu Card Export` on the public website unless a dedicated feature page is deliberately created later.
+Do not use the internal feature name `Menu Card Export` on the public website. The approved public framing is `Print-ready kit` / `Print files`.
 
 AI layout suggestion should not be promoted as a public website feature yet. If pricing copy later needs it, use plain plan wording such as `layout suggestion on Pro and Premium`; do not use `AI-powered PDF`.
 
@@ -120,14 +122,12 @@ The export history shows when a file was created and whether the menu changed af
 
 ## SEO Meta
 
-No dedicated SEO page is active for this feature. The live website placement is handled by the Features page and `/resources/digital-menu-vs-pdf-menu`.
+The active dedicated page is `/features/print-ready-kit`. It must stay owner-facing and should not lead with the internal `Menu Card Export` name.
 
-If a dedicated page is deliberately approved later, do not lead with the internal name. Use owner-facing language:
-
-- **Page Title:** Print Files From Your Current Menu, Services, Or Catalog | MenuList
-- **Meta Description:** Create PDF and printer handoff files from your current MenuList business page without making the PDF the main public source.
-- **OG Title:** Print Your Current Menu, Services, Or Catalog
-- **OG Description:** Create printable files from the same business information customers open online.
+- **Page Title:** Print-ready Kit - MenuList | Table, Counter, Social, and Printer Files
+- **Meta Description:** Create table cards, counter cards, stickers, posters, social images, and printer handoff files from the same owner-approved menu source.
+- **OG Title:** Print-ready Kit - MenuList
+- **OG Description:** Create printable and social-ready files from the same menu source customers open online.
 - **Target Keywords:** print menu files, service list PDF, product catalog PDF, QR menu PDF
 
 ---

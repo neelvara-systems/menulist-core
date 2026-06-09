@@ -21,6 +21,18 @@
     <priority>0.86</priority>
   </url>
   <url>
+    <loc>https://menulist.ai/features/menu-content-prep</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.88</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/features/featured-choices</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.86</priority>
+  </url>
+  <url>
     <loc>https://menulist.ai/features/official-business-page</loc>
     <lastmod>2026-06-08</lastmod>
     <changefreq>monthly</changefreq>
@@ -29,6 +41,12 @@
   <url>
     <loc>https://menulist.ai/features/qr-menu-links</loc>
     <lastmod>2026-06-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.86</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/features/print-ready-kit</loc>
+    <lastmod>2026-06-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.86</priority>
   </url>

@@ -23,9 +23,15 @@ const groupIcons = [
 
 const featurePageHrefByCard = new Map<string, string>([
   ['0-0', '/features/menu-import'],
+  ['0-1', '/features/menu-content-prep'],
+  ['0-2', '/features/menu-content-prep'],
+  ['0-3', '/features/menu-content-prep'],
   ['1-0', '/features/qr-menu-links'],
   ['1-1', '/features/official-business-page'],
+  ['1-4', '/features/print-ready-kit'],
   ['1-5', '/features/public-discovery'],
+  ['2-2', '/features/print-ready-kit'],
+  ['3-0', '/features/featured-choices'],
   ['4-0', '/features/business-health'],
   ['4-8', '/features/owner-phone-dashboard'],
 ]);

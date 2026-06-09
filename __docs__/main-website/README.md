@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.34 (Feature Navigation And Campaign Pages)
+**Version:** 3.6.37 (Featured Choices Feature Page)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 8, 2026
+**Last Updated:** June 9, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.34** | **Feature Navigation And Campaign Pages** | **"Start from the menu you already have."** | **ACTIVE** |
+| **3.6.37** | **Featured Choices Feature Page** | **"Help customers choose from the current menu."** | **ACTIVE** |
 
-Version 3.6.34 adds a restrained Features dropdown to the desktop header and matching nested feature links to the mobile drawer. The dropdown promotes the highest-selling, owner-readable feature surfaces: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. New dedicated public campaign pages were added at `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`, while `/features/business-health` remains the existing Business Health campaign page. These routes are registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+Version 3.6.37 adds the dedicated public campaign page `/features/featured-choices` for the customer-facing Featured, Quick, and Value choices that can appear from the current approved menu. The header Features dropdown now places Featured Choices after Menu Content Prep, and the `/features` Featured section card links to the new page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. Copy stays owner-readable: it avoids `AI-powered`, internal Decision Intelligence naming, algorithm language, sales-lift promises, ranking promises, and exact decision-time claims. This is public website route/component/locale/discovery/docs only; Decision Blocks scoring, public menu rendering, owner dashboard controls, analytics, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.36 adds the dedicated public campaign page `/features/menu-content-prep` for the owner job of preparing customer-friendly descriptions, menu images, and customer languages from the same approved menu source before publishing. The header Features dropdown now places Menu Content Prep after Menu Import, and the `/features` Generated images, Descriptions written for you, and One-click translations cards link to the new page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. Copy stays outcome-led and review-first: it avoids `AI-powered` positioning, ranking/AI-placement promises, and unchecked public publishing claims. This is public website route/component/locale/discovery/docs only; owner dashboard runtime, generation providers, credits runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+
+Version 3.6.34 adds a restrained Features dropdown to the desktop header and matching nested feature links to the mobile drawer. As of v3.6.37, the dropdown promotes the highest-selling, owner-readable feature surfaces: Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, Business Health, and Public Discovery. Dedicated public campaign pages exist at `/features/menu-import`, `/features/menu-content-prep`, `/features/featured-choices`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/print-ready-kit`, `/features/owner-phone-dashboard`, and `/features/public-discovery`, while `/features/business-health` remains the custom Business Health campaign page. These routes are registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
 Version 3.6.33 adds the dedicated public campaign page `/features/business-health`. The page explains Business Health as MenuList's owner-dashboard check for latest business state, public surfaces, customer attention, last checked date, location state, safe next actions, and the No action needed stable state. The homepage Business Health section and the `/features` Business Health card now link to this page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. It does not use `/business-health`, which remains the protected owner app route. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
@@ -673,6 +677,8 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.37 | June 9, 2026 | Added `/features/featured-choices`, wired the Features page Featured section card and header navigation to it, and registered the page in sitemap/LLM discovery with owner-readable customer-choice language. |
+| 3.6.36 | June 9, 2026 | Added `/features/menu-content-prep`, wired Setup & Content cards and header navigation to it, and registered the page in sitemap/LLM discovery with review-first content-prep language. |
 | 3.6.30 | June 5, 2026 | Aligned website setup copy with the sign-in-first `/create-menu` path and softened recommendation, ICP, pricing, handwritten-menu, photoshoot, and copywriting claims. |
 | 3.6.29 | June 5, 2026 | Replaced the footer Light/System/Dark theme dropdown with a segmented icon control and fixed the selected light-mode contrast issue. |
 | 3.6.24 | June 2, 2026 | Added the public truth indexing guardrail for tenant OBP/menu metadata and per-tenant sitemap inclusion, and removed generated hidden FAQPage JSON-LD from OBP runtime. |

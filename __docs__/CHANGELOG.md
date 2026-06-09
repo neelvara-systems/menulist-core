@@ -6,6 +6,42 @@
 
 ---
 
+## June 9, 2026 — Featured Choices Feature Page
+
+### New
+
+- **Featured Choices added as a dedicated website feature page** - `/features/featured-choices` now explains Featured, Quick, and Value choices as customer menu guidance from the current approved menu.
+- **Feature navigation now includes Featured Choices** - The header Features dropdown places it after Menu Content Prep, and the `/features` Featured section card now links to the new page.
+- **Discovery files updated** - `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt` now include the new feature route.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website route, navigation, locale, discovery, and documentation work only. It does not change Decision Blocks scoring, public menu rendering, owner dashboard controls, analytics, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, or Vercel deployment.
+
+## June 9, 2026 — Menu Content Prep Feature Page
+
+### New
+
+- **Menu Content Prep added as a dedicated website feature page** - `/features/menu-content-prep` now presents customer-friendly descriptions, menu images, and customer languages as one setup/content outcome prepared from the same owner-approved menu source before publishing.
+- **Feature navigation now includes Menu Content Prep** - The header Features dropdown places it after Menu Import, and the `/features` Generated images, Descriptions written for you, and One-click translations cards now link to the new page.
+- **Discovery files updated** - `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt` now include the new feature route.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website route, navigation, locale, discovery, and documentation work only. It does not change content-generation providers, credit accounting, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, or Vercel deployment.
+
+## June 9, 2026 — Print-ready Kit Feature Page
+
+### New
+
+- **Print-ready Kit added as a dedicated website feature page** - `/features/print-ready-kit` now presents Menu Kit and print-file value as table cards, counter cards, stickers, posters, social images, and printer handoff files from the current owner-approved menu source.
+- **Feature navigation now includes Print-ready Kit** - The header Features dropdown and the `/features` Print files / Menu Kit cards now link to the new page.
+- **Discovery files updated** - `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt` now include the new feature route.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website route, navigation, locale, discovery, and documentation work only. It does not change Menu Kit generation, Print Assets runtime, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, or Vercel deployment.
+
 ## June 9, 2026 — Business Health Guest Feedback Signal
 
 ### Improved
