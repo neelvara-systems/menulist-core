@@ -1,5 +1,5 @@
 import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
-import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
+import { AnswerlatticeHubDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticePageStructuredData from './PageStructuredData';
 import PageHero from './PageHero';
@@ -37,6 +37,7 @@ export default function SeoLandingPage({
     canonicalPath,
 }: SeoLandingPageProps) {
     const diagramId = `al-seo-${(canonicalPath || title).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const visibleSetupSteps = setupSteps.slice(0, 6);
 
     return (
         <main className="al-page-flow">
@@ -104,21 +105,47 @@ export default function SeoLandingPage({
                 </div>
             </section>
 
-            <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
+            <section className="al-linear-proof border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Setup path"
                         title="Reviewed support stays the authority."
                         description="The setup path keeps source material, page context, and owner approval connected before answers become official."
                     />
-                    <AnswerlatticeSequenceDiagram
-                        idPrefix={`${diagramId}-setup`}
-                        splitAfter={Math.ceil(setupSteps.length / 2)}
-                        items={setupSteps.map((step, index) => ({
-                            title: `Step ${index + 1}`,
-                            detail: step,
-                        }))}
-                    />
+                    <div className="al-linear-proof__grid al-linear-proof__grid--compact">
+                        <article className="al-linear-proof__copy" data-answerlattice-reveal>
+                            <p className="al-linear-proof__kicker">01 / Support setup</p>
+                            <h3>Start with the support material you already have.</h3>
+                            <p>
+                                Docs, product pages, FAQ notes, tickets, and repeated replies become a reviewable setup path instead of scattered founder work.
+                            </p>
+                            <div className="al-linear-proof__chips">
+                                {setupSteps.slice(0, 4).map((step) => (
+                                    <span key={step}>{step}</span>
+                                ))}
+                            </div>
+                        </article>
+
+                        <div className="al-linear-proof__visual" data-answerlattice-reveal>
+                            <div className="al-linear-proof__mode-stack">
+                                {visibleSetupSteps.map((step, index) => (
+                                    <article key={step} className="al-linear-proof__mode">
+                                        <span className="al-linear-proof__card-index">{String(index + 1).padStart(2, '0')}</span>
+                                        <div>
+                                            <h3>{step}</h3>
+                                            <p>
+                                                {index === 0
+                                                    ? 'Create the support workspace and connect it to the product.'
+                                                    : index === visibleSetupSteps.length - 1
+                                                      ? 'Use missing answers and feedback to improve the next support pass.'
+                                                      : 'Keep this setup step tied to reviewed support material and product pages.'}
+                                            </p>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

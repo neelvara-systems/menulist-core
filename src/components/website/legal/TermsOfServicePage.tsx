@@ -153,12 +153,12 @@ export default function TermsOfServicePage() {
                         subtitle="A platform that helps businesses manage their official menu from one place."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--ws-space-3)', marginTop: 'var(--ws-space-10)', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 'var(--ws-space-3)', marginTop: 'var(--ws-space-10)', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {whatIsMenuList.map((fact, i) => (
                         <AnimateStaggerChild key={fact.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
                                 <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: 1 }}>{fact.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flexShrink: 0, maxWidth: '280px' }}>{fact.value}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '280px', overflowWrap: 'anywhere' }}>{fact.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}
@@ -173,7 +173,7 @@ export default function TermsOfServicePage() {
                         subtitle="What you agree to when you use MenuList."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {accountCards.map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -211,7 +211,7 @@ export default function TermsOfServicePage() {
                         subtitle="How team access works when a business adds staff to MenuList."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {staffAccessCards.map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -249,7 +249,7 @@ export default function TermsOfServicePage() {
                         subtitle="What belongs to you and what belongs to us."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {ownershipCards.map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -287,12 +287,12 @@ export default function TermsOfServicePage() {
                         subtitle="How billing works on MenuList."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--ws-space-3)', marginTop: 'var(--ws-space-10)', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 'var(--ws-space-3)', marginTop: 'var(--ws-space-10)', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {billingFacts.map((fact, i) => (
                         <AnimateStaggerChild key={fact.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
                                 <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: 1 }}>{fact.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flexShrink: 0, maxWidth: '280px' }}>{fact.value}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '280px', overflowWrap: 'anywhere' }}>{fact.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}
@@ -307,7 +307,7 @@ export default function TermsOfServicePage() {
                         subtitle="When and how accounts may be terminated, and our service disclaimers."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {terminationReasons.map((item, i) => {
                         const Icon = item.icon;
                         return (

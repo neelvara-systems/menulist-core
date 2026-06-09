@@ -3,13 +3,16 @@
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
-const REVEAL_DELAY_STEP = 0.06;
-const REVEAL_MAX_DELAY = 0.42;
+const REVEAL_DELAY_STEP = 0.05;
+const REVEAL_MAX_DELAY = 0.32;
 const EXPLICIT_REVEAL_SELECTOR = [
     "[data-answerlattice-reveal]",
     "[data-answerlattice-reveal-item]",
     "[data-answerlattice-asset-src]",
     "main h1:not(.al-home-hero-title)",
+    "main section:first-child p[class*='leading-relaxed']",
+    "main section:first-child a[class*='rounded-']",
+    ".al-page-hero__proof",
     ".al-page-hero__eyebrow",
     ".al-page-hero__title",
     ".al-page-hero__description",
@@ -26,8 +29,8 @@ const CARD_REVEAL_SELECTOR = [
     "main ol > li[class*='rounded-']",
     "main ul > li[class*='rounded-']",
 ].join(", ");
-const REVEAL_DISTANCE = "52px";
-const REVEAL_DURATION = "920ms";
+const REVEAL_DISTANCE = "38px";
+const REVEAL_DURATION = "840ms";
 const FALLBACK_VP_CHECK_DELAY_MS = 120;
 const ROOT_MARGIN = "0px 0px -6% 0px";
 const INTERSECTION_THRESHOLD = 0.1;

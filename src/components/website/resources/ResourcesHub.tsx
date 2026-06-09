@@ -1,6 +1,7 @@
 import type { WebsiteResourcesCopy } from '@/content/websiteResources/types';
 import { WEBSITE_RESOURCE_HUB_PATH, buildWebsiteResourcePath } from '@/content/websiteResources';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import ResourceAnalytics from './ResourceAnalytics';
 import ResourceCard from './ResourceCard';
 import ResourceTrackedLink from './ResourceTrackedLink';
@@ -35,64 +36,67 @@ export default function ResourcesHub({ copy, locale }: ResourcesHubProps) {
             <ResourceAnalytics locale={locale} pageType="hub" />
             <section className="ws-resources-hero">
                 <div className="ws-container ws-resources-hero__inner">
-                    <p className="ws-page-hero__eyebrow">{copy.hub.eyebrow}</p>
-                    <WebsiteHeadline
-                        as="h1"
-                        text={copy.hub.title}
-                        highlightedText={copy.hub.titleHighlight}
-                    />
-                    <p className="ws-resources-hero__subtitle">{copy.hub.subtitle}</p>
-                    <div className="ws-resources-hero__actions">
-                        <ResourceTrackedLink
-                            href={copy.hub.primaryCta.href}
-                            eventName="resource_primary_cta_click"
-                            eventProps={{
-                                cta_label: copy.hub.primaryCta.label,
-                                source_page: 'resources_hub',
-                            }}
-                            className="ws-btn ws-btn--primary"
-                        >
-                            {copy.hub.primaryCta.label}
-                        </ResourceTrackedLink>
-                        <ResourceTrackedLink
-                            href={secondaryCtaHref}
-                            eventName="resource_secondary_cta_click"
-                            eventProps={{
-                                cta_label: copy.hub.secondaryCta.label,
-                                source_page: 'resources_hub',
-                            }}
-                            className="ws-btn ws-btn--ghost"
-                        >
-                            {copy.hub.secondaryCta.label}
-                        </ResourceTrackedLink>
-                    </div>
-                    <div className="ws-resources-proof" aria-label={copy.hub.eyebrow}>
-                        {copy.hub.proofItems.map((item) => (
-                            <span key={item}>{item}</span>
-                        ))}
-                    </div>
+                    <AnimateOnScroll preset="hero">
+                        <p className="ws-page-hero__eyebrow">{copy.hub.eyebrow}</p>
+                        <WebsiteHeadline
+                            as="h1"
+                            text={copy.hub.title}
+                            highlightedText={copy.hub.titleHighlight}
+                        />
+                        <p className="ws-resources-hero__subtitle">{copy.hub.subtitle}</p>
+                        <div className="ws-resources-hero__actions">
+                            <ResourceTrackedLink
+                                href={copy.hub.primaryCta.href}
+                                eventName="resource_primary_cta_click"
+                                eventProps={{
+                                    cta_label: copy.hub.primaryCta.label,
+                                    source_page: 'resources_hub',
+                                }}
+                                className="ws-btn ws-btn--primary"
+                            >
+                                {copy.hub.primaryCta.label}
+                            </ResourceTrackedLink>
+                            <ResourceTrackedLink
+                                href={secondaryCtaHref}
+                                eventName="resource_secondary_cta_click"
+                                eventProps={{
+                                    cta_label: copy.hub.secondaryCta.label,
+                                    source_page: 'resources_hub',
+                                }}
+                                className="ws-btn ws-btn--ghost"
+                            >
+                                {copy.hub.secondaryCta.label}
+                            </ResourceTrackedLink>
+                        </div>
+                        <div className="ws-resources-proof" aria-label={copy.hub.eyebrow}>
+                            {copy.hub.proofItems.map((item) => (
+                                <span key={item}>{item}</span>
+                            ))}
+                        </div>
+                    </AnimateOnScroll>
                 </div>
             </section>
 
             <section className="ws-section">
                 <div className="ws-container">
-                    <div className="ws-resources-section-heading">
+                    <AnimateOnScroll preset="card" className="ws-resources-section-heading">
                         <WebsiteHeadline
                             as="h2"
                             text={copy.hub.clusterTitle}
                         />
                         <p>{copy.hub.clusterSubtitle}</p>
-                    </div>
+                    </AnimateOnScroll>
                     <div className="ws-resource-card-grid">
-                        {copy.articles.map((article) => (
-                            <ResourceCard
-                                key={article.slug}
-                                article={article}
-                                clusterLabels={copy.clusterLabels}
-                                linkLabel={copy.labels.readResource}
-                                locale={locale}
-                                sourcePage="resources_hub"
-                            />
+                        {copy.articles.map((article, index) => (
+                            <AnimateStaggerChild key={article.slug} index={index} preset="card">
+                                <ResourceCard
+                                    article={article}
+                                    clusterLabels={copy.clusterLabels}
+                                    linkLabel={copy.labels.readResource}
+                                    locale={locale}
+                                    sourcePage="resources_hub"
+                                />
+                            </AnimateStaggerChild>
                         ))}
                     </div>
                 </div>
@@ -100,21 +104,22 @@ export default function ResourcesHub({ copy, locale }: ResourcesHubProps) {
 
             <section className="ws-section ws-section--subtle">
                 <div className="ws-container">
-                    <div className="ws-resources-section-heading">
+                    <AnimateOnScroll preset="card" className="ws-resources-section-heading">
                         <WebsiteHeadline as="h2" text={copy.hub.toolTitle} />
                         <p>{copy.hub.toolSubtitle}</p>
-                    </div>
+                    </AnimateOnScroll>
                     <div className="ws-resource-card-grid ws-resource-card-grid--tools">
-                        {toolArticles.map((article) => (
-                            <ResourceCard
-                                key={article.slug}
-                                article={article}
-                                clusterLabels={copy.clusterLabels}
-                                eventName="resources_tool_card_click"
-                                linkLabel={copy.labels.readResource}
-                                locale={locale}
-                                sourcePage="resources_tools"
-                            />
+                        {toolArticles.map((article, index) => (
+                            <AnimateStaggerChild key={article.slug} index={index} preset="card">
+                                <ResourceCard
+                                    article={article}
+                                    clusterLabels={copy.clusterLabels}
+                                    eventName="resources_tool_card_click"
+                                    linkLabel={copy.labels.readResource}
+                                    locale={locale}
+                                    sourcePage="resources_tools"
+                                />
+                            </AnimateStaggerChild>
                         ))}
                     </div>
                 </div>

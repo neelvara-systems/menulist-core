@@ -10,8 +10,8 @@
 
 .al-scroll-reveal--pending {
     opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(0, var(--al-reveal-distance, 52px), 0) scale(0.972);
+    filter: blur(10px);
+    transform: translate3d(0, var(--al-reveal-distance, 38px), 0) scale(0.985);
     will-change: opacity, transform, filter;
 }
 

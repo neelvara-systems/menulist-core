@@ -369,15 +369,20 @@ Rules:
 ### 5.2.4 Shared Feature Campaign Pages
 
 Use `src/components/website/features/FeatureDetailPage.tsx` for the dedicated public feature pages added in v3.6.34+:
-Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, and Public Discovery.
+Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, Menu Quality Validation, and Public Discovery.
+
+The desktop Features dropdown should read as an elevated navigation surface, not a content card merged with the hero. v3.6.38 uses a viewport-centered top overview row, three-column feature grid, stronger shadow/border separation, and a compact bottom proof/CTA strip.
 
 Rules:
 
 - Keep each page focused on one owner outcome, not a complete feature checklist.
-- Use the same split hero, proof preview, three story cards, four proof cards, and final CTA rhythm across these pages.
-- Use the shared `AnimateOnScroll` reveal wrappers for the hero, section headings, card grids, footer, and final CTA so dedicated feature pages match the homepage motion system. Prefer the named `hero`, `media`, `card`, `footer`, and `fade` presets over one-off reveal values unless a section has a clear interaction reason.
+- Use the same split hero, proof preview, compact signal strip, sticky journey, support blocks, four proof cards, and final CTA rhythm across these pages.
+- Use `src/components/website/features/FeatureDetailJourney.tsx` for the shared sticky story section. Desktop uses a left rail with stacked story cards. Mobile uses a sticky horizontal pill rail with one-column cards.
+- Use the shared `AnimateOnScroll` reveal wrappers for the hero, preview, section headings, support blocks, proof cards, footer, and final CTA so dedicated feature pages match the homepage motion system. Prefer the named `hero`, `media`, `card`, `footer`, and `fade` presets over one-off reveal values unless a section has a clear interaction reason.
+- Resource hubs, resource article bodies, related-resource blocks, industry proof grids, industry fit cards, industry resource links, and industry final CTAs must also use the shared reveal wrappers so long-form discovery pages do not feel static beside the homepage and feature pages.
 - For Business Health, keep the sticky story layout reveal opacity-only. Do not apply parent translate transforms around the sticky stacked-card layout because the cards already manage their own scroll-state transforms.
 - The header Features dropdown should link to these pages, but it should remain smaller and calmer than the Answerlattice product mega-menu. A compact proof/CTA panel is allowed when it reinforces one approved source without making MenuList feel like a broad software suite.
+- Menu Quality Validation is a dedicated feature route and `/features` card destination, but it is intentionally not in the desktop dropdown in v3.6.39. The dropdown stays limited to the nine primary owner-evaluation paths.
 - Do not use unsupported ranking, AI-placement, POS replacement, or full business-automation claims.
 
 ### 5.3 Owner Reassurance Placement
@@ -659,6 +664,7 @@ Rules:
 
 - Light mode remains the default for light system preferences and for the main sales screenshots/asset direction.
 - Dark mode follows the user's system preference or existing saved theme preference through the website `ThemeProvider`.
+- Website routes must mount `WebsiteDocumentTheme.tsx` so the actual document body uses the same token-backed background/color as `.ws-page`; this prevents white overscroll in dark mode and restores previous body styles when leaving website routes.
 - Do not use pure black (`#000000`) as the website background. Use the `#121212` dark-gray family for the main page, then slightly lighter gray surfaces for cards, dropdowns, pricing tables, forms, and drawers.
 - The public theme control lives in the footer bottom row and must remain localized, keyboard accessible, and visually secondary. Do not duplicate it in the header, hero, or sticky CTA.
 - Product screenshots and generated website assets may remain light because customer public pages can follow each business brand; do not force screenshots into dark mode unless the asset itself is intentionally dark.

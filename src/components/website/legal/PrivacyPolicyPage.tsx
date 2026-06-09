@@ -155,7 +155,7 @@ export default function PrivacyPolicyPage() {
                         <AnimateStaggerChild key={fact.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
                                 <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: '1 1 0', minWidth: 0 }}>{fact.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '300px' }}>{fact.value}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '300px', overflowWrap: 'anywhere' }}>{fact.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}
@@ -170,7 +170,7 @@ export default function PrivacyPolicyPage() {
                         subtitle="What data we gather and how it reaches us."
                     />
                 </AnimateOnScroll>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     {dataCollected.map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -212,8 +212,8 @@ export default function PrivacyPolicyPage() {
                     {howWeUse.map((fact, i) => (
                         <AnimateStaggerChild key={fact.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
-                                <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: 1 }}>{fact.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flexShrink: 0, maxWidth: '220px' }}>{fact.value}</span>
+                                <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: '1 1 0', minWidth: 0 }}>{fact.label}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '260px', overflowWrap: 'anywhere' }}>{fact.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}
@@ -308,7 +308,7 @@ export default function PrivacyPolicyPage() {
                         <AnimateStaggerChild key={fact.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
                                 <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: '1 1 0', minWidth: 0 }}>{fact.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '300px' }}>{fact.value}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '300px', overflowWrap: 'anywhere' }}>{fact.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}
@@ -365,8 +365,8 @@ export default function PrivacyPolicyPage() {
                     {privacyRights.map((right, i) => (
                         <AnimateStaggerChild key={right.label} index={i}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
-                                <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: 1 }}>{right.label}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flexShrink: 0, maxWidth: '220px' }}>{right.value}</span>
+                                <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: '1 1 0', minWidth: 0 }}>{right.label}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '260px', overflowWrap: 'anywhere' }}>{right.value}</span>
                             </div>
                         </AnimateStaggerChild>
                     ))}

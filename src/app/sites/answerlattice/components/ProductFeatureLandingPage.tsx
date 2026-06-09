@@ -1,15 +1,10 @@
 import {
-    LuArrowRight,
     LuBookOpen,
-    LuDatabase,
     LuFileText,
     LuHelpCircle,
-    LuLink,
     LuMegaphone,
     LuRouter,
-    LuSearch,
     LuShieldCheck,
-    LuSparkles,
     LuTags,
     LuTicket,
 } from 'react-icons/lu';
@@ -43,65 +38,6 @@ function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }
     );
 }
 
-function FeatureCardVisual({ index }: { index: number }) {
-    const layouts = [
-        (
-            <div key="import" className="mt-8 flex items-center justify-center gap-4">
-                <div className="grid gap-2">
-                    <span className="h-11 w-9 rotate-[-8deg] rounded-md border border-white/[0.08] bg-white/[0.12]" />
-                    <span className="h-9 w-14 rounded-md border border-white/[0.08] bg-white/[0.08]" />
-                </div>
-                <LuArrowRight aria-hidden size={24} className="al-primary-accent-text" />
-                <div className="al-primary-accent-gradient flex h-16 w-20 items-center justify-center rounded-2xl text-white shadow-lg shadow-teal-500/20">
-                    <LuDatabase aria-hidden size={26} />
-                </div>
-            </div>
-        ),
-        (
-            <div key="flow" className="mt-8 flex items-center justify-center gap-3">
-                <div className="h-12 w-16 rounded-xl border border-white/[0.08] bg-white/[0.08]" />
-                <div className="al-primary-accent-line h-px w-12" />
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.08]">
-                    <LuSparkles aria-hidden size={24} className="al-primary-accent-text" />
-                </div>
-                <div className="al-primary-accent-line h-px w-12" />
-                <div className="h-12 w-20 rounded-xl border border-white/[0.08] bg-white/[0.08]" />
-            </div>
-        ),
-        (
-            <div key="list" className="mt-8 flex items-center justify-center">
-                <div className="w-full max-w-72 rounded-2xl border border-white/[0.08] bg-[#101028] p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                        <span className="h-3 w-20 rounded-full bg-white/[0.12]" />
-                        <span className="al-primary-accent-fill h-5 w-10 rounded-full" />
-                    </div>
-                    <div className="space-y-2">
-                        <span className="block h-8 rounded-lg bg-white/[0.055]" />
-                        <span className="block h-8 rounded-lg bg-white/[0.055]" />
-                        <span className="block h-8 rounded-lg bg-white/[0.055]" />
-                    </div>
-                </div>
-            </div>
-        ),
-        (
-            <div key="people" className="mt-8 flex items-center justify-center gap-3">
-                <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-4">
-                    <div className="mb-2 h-3 w-20 rounded-full bg-white/[0.12]" />
-                    <div className="h-3 w-28 rounded-full bg-white/[0.06]" />
-                </div>
-                <LuArrowRight aria-hidden size={20} className="al-primary-accent-text" />
-                <div className="flex -space-x-2">
-                    <span className="al-primary-accent-fill h-9 w-9 rounded-full border-2 border-[#09091a]" />
-                    <span className="al-primary-accent-fill-main h-9 w-9 rounded-full border-2 border-[#09091a]" />
-                    <span className="al-primary-accent-fill-hover h-9 w-9 rounded-full border-2 border-[#09091a]" />
-                </div>
-            </div>
-        ),
-    ];
-
-    return layouts[index % layouts.length];
-}
-
 export default function ProductFeatureLandingPage({
     feature,
     basePath = '',
@@ -119,7 +55,7 @@ export default function ProductFeatureLandingPage({
                         <p className="al-page-hero__eyebrow">{feature.eyebrow}</p>
                         <h1 className="al-page-hero__title">{feature.title}</h1>
                         <p className="al-page-hero__description">{feature.description}</p>
-                        <div className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-3">
+                        <div className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-2 xl:grid-cols-3">
                             {feature.heroBullets.map((bullet) => (
                                 <div key={bullet} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm font-medium leading-snug text-[#d6d6ef]">
                                     {bullet}
@@ -169,28 +105,43 @@ export default function ProductFeatureLandingPage({
                 </div>
             </section>
 
-            <section className="al-primary-radial-section-strong border-b border-white/[0.06] px-4 py-20 text-white sm:px-6">
+            <section className="al-linear-proof al-primary-radial-section-strong border-b border-white/[0.06] px-4 py-20 text-white sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow={feature.label}
                         title={feature.proofTitle}
                         description={feature.proofDescription}
                     />
-                    <div className="grid gap-5 md:grid-cols-2">
-                        {feature.cards.map((card, index) => {
+                    <div className="al-linear-proof__grid">
+                        <article className="al-linear-proof__copy" data-answerlattice-reveal>
+                            <p className="al-linear-proof__kicker">01 / {feature.label}</p>
+                            <h3>{feature.cards[0]?.title || feature.proofTitle}</h3>
+                            <p>{feature.cards[0]?.description || feature.proofDescription}</p>
+                            <div className="al-linear-proof__chips">
+                                {feature.heroBullets.slice(0, 4).map((bullet) => (
+                                    <span key={bullet}>{bullet}</span>
+                                ))}
+                            </div>
+                        </article>
+
+                        <div className="al-linear-proof__visual" data-answerlattice-reveal>
+                            <FeatureHeroMockup feature={feature} />
+                        </div>
+                    </div>
+
+                    <div className="al-linear-proof__cards">
+                        {feature.cards.slice(1).map((card, index) => {
                             const Icon = CARD_ICONS[index % CARD_ICONS.length];
                             return (
-                                <article key={card.title} className="min-h-[22rem] min-w-0 rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025] p-6">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h3 className="text-xl font-bold leading-snug text-white">{card.title}</h3>
-                                            <p className="mt-4 max-w-xl text-base leading-relaxed text-[#a0a0c0]">{card.description}</p>
-                                        </div>
-                                        <span className="al-primary-accent-text flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.05]">
-                                            <Icon aria-hidden size={20} />
+                                <article key={card.title} className="al-linear-proof__card" data-answerlattice-reveal-item>
+                                    <div className="al-linear-proof__card-header">
+                                        <span className="al-linear-proof__card-index">{String(index + 2).padStart(2, '0')}</span>
+                                        <span className="al-linear-proof__icon">
+                                            <Icon aria-hidden size={19} />
                                         </span>
                                     </div>
-                                    <FeatureCardVisual index={index} />
+                                    <h3>{card.title}</h3>
+                                    <p>{card.description}</p>
                                 </article>
                             );
                         })}

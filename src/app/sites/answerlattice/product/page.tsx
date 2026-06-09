@@ -234,29 +234,65 @@ function SupportLayerMap() {
 
 function OperatingModesSection() {
     return (
-        <section className="px-4 py-20 sm:px-6">
-            <div className="mx-auto max-w-6xl">
+        <section className="al-linear-proof border-t border-white/[0.06] px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Operating modes"
-                    title="Three modes for founder-led support."
-                    description="The product is easier to understand when each mode has a job: prepare support, operate support, then improve support truth."
+                    eyebrow="Operating spine"
+                    title="Support has three jobs: prepare, serve, and improve."
+                    description="AnswerLattice keeps those jobs connected instead of scattering setup, tickets, docs, feedback, and reviewed answers across separate places."
                 />
-                <div className="grid gap-4 lg:grid-cols-3">
-                    {OPERATING_MODES.map((mode) => {
+                <div className="al-linear-proof__grid">
+                    <article className="al-linear-proof__copy" data-answerlattice-reveal>
+                        <p className="al-linear-proof__kicker">01 / Founder-led support</p>
+                        <h3>One workflow from first setup to weekly review.</h3>
+                        <p>
+                            A founder should know what to prepare, what users can use today, and what needs review next.
+                            That is the product story behind the support layer.
+                        </p>
+                        <div className="al-linear-proof__chips">
+                            {SIGNUP_STEPS.slice(0, 5).map((step) => (
+                                <span key={step}>{step}</span>
+                            ))}
+                        </div>
+                    </article>
+
+                    <div className="al-linear-proof__visual" data-answerlattice-reveal>
+                        <div className="al-linear-proof__mode-stack">
+                            {OPERATING_MODES.map((mode, index) => {
+                                const Icon = mode.icon;
+                                return (
+                                    <article key={mode.title} className="al-linear-proof__mode">
+                                        <span className="al-linear-proof__card-index">{String(index + 1).padStart(2, '0')}</span>
+                                        <span className="al-linear-proof__icon">
+                                            <Icon aria-hidden size={19} />
+                                        </span>
+                                        <div>
+                                            <h3>{mode.title}</h3>
+                                            <p>{mode.description}</p>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="al-linear-proof__cards al-linear-proof__cards--three">
+                    {OPERATING_MODES.map((mode, index) => {
                         const Icon = mode.icon;
                         return (
-                            <article key={mode.title} className="rounded-[1.75rem] border border-white/[0.08] bg-white/[0.025] p-6">
-                                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-200">
-                                    <Icon aria-hidden size={22} />
-                                </span>
-                                <h3 className="mt-6 text-xl font-semibold text-white">{mode.title}</h3>
-                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{mode.description}</p>
-                                <ul className="mt-5 grid gap-2">
+                            <article key={mode.title} className="al-linear-proof__card" data-answerlattice-reveal-item>
+                                <div className="al-linear-proof__card-header">
+                                    <span className="al-linear-proof__card-index">{String(index + 1).padStart(2, '0')}</span>
+                                    <span className="al-linear-proof__icon">
+                                        <Icon aria-hidden size={19} />
+                                    </span>
+                                </div>
+                                <h3>{mode.title}</h3>
+                                <p>{mode.description}</p>
+                                <ul className="al-linear-proof__list">
                                     {mode.items.map((item) => (
-                                        <li key={item} className="flex items-start gap-2 text-sm text-[#d6d6ef]">
-                                            <span className="mt-1 text-teal-300">✓</span>
-                                            {item}
-                                        </li>
+                                        <li key={item}>{item}</li>
                                     ))}
                                 </ul>
                             </article>

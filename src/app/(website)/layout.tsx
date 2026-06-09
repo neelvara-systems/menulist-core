@@ -5,6 +5,7 @@ import "@styles/app.scss";
 import { Metadata } from 'next';
 import { getLocale } from 'next-intl/server';
 import WebsiteThemeShortcut from '@/components/website/shared/WebsiteThemeShortcut';
+import WebsiteDocumentTheme from '@/components/website/shared/WebsiteDocumentTheme';
 import WebsiteAuthProvider from "./WebsiteAuthProvider";
 
 
@@ -75,6 +76,7 @@ export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
         <LocalisationProvider locale={locale}>
             <WebsiteAuthProvider>
                 <ThemeProvider>
+                    <WebsiteDocumentTheme />
                     <WebsiteThemeShortcut />
                     <WebsiteAnalyticsConsent />
                     <>{children}</>

@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.37 Featured Choices Feature Page
+**Status:** IMPLEMENTED — v3.6.39 Feature Page Sticky Journey System
 **Last Updated:** June 9, 2026
 **Audience:** Developers
 
@@ -33,6 +33,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/features/qr-menu-links` | `(website)/features/qr-menu-links/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/print-ready-kit` | `(website)/features/print-ready-kit/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/owner-phone-dashboard` | `(website)/features/owner-phone-dashboard/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/features/menu-quality-validation` | `(website)/features/menu-quality-validation/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/business-health` | `(website)/features/business-health/page.tsx` | `BusinessHealthFeaturePage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/public-discovery` | `(website)/features/public-discovery/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/how-it-works` | `(website)/how-it-works/page.tsx` | `ProductPage` | Server | Per-page |
@@ -58,7 +59,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 150 routes (8 core + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 151 routes (8 core + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
@@ -80,8 +81,9 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 LocalisationProvider (locale from next-intl/server)
   → WebsiteAuthProvider (`src/app/(website)/WebsiteAuthProvider.tsx`)
     → ThemeProvider
-      → GoogleAnalytics
-      → ClarityAnalytics
+      → WebsiteDocumentTheme
+      → WebsiteThemeShortcut
+      → WebsiteAnalyticsConsent (gates GoogleAnalytics and ClarityAnalytics after accepted consent)
       → {children}
 ```
 
@@ -121,7 +123,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Business Health campaign page:** v3.6.33 adds `/features/business-health` for marketing campaigns. The route shell lives in `src/app/(website)/features/business-health/page.tsx`, renders `BusinessHealthFeaturePage`, emits `WebsitePageStructuredData` with `path="/features/business-health"`, and uses a product-style Business Health preview followed by a MenuList-styled sticky story section modeled on Answerlattice's "From inputs to support surfaces" layout. The left rail tabs are `What it checks`, `Owner outcome`, and `Why owners can trust it`; the right side uses stacked sticky cards for the matching check/outcome/trust content. The homepage Business Health section links to the page through `View Business Health`, and the first `/features` Operations card is a link to the same route. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. `/business-health` remains the protected owner route and is not used as a public marketing URL.
 
-**Feature navigation and campaign pages:** v3.6.34 adds a compact Features dropdown to `Header.tsx`, backed by `src/components/website/features/featureNavigation.ts`. Desktop navigation promotes owner-readable feature surfaces that help SMB owners self-sell fastest. v3.6.35 adds `/features/print-ready-kit` for Menu Kit and print-file value: table cards, counter cards, stickers, posters, social files, and printer handoff from the current approved menu source. v3.6.36 adds `/features/menu-content-prep` for the setup/content job of preparing customer-friendly descriptions, menu images, and customer languages from the same approved menu source. v3.6.37 adds `/features/featured-choices` for customer-facing Featured, Quick, and Value choices from the current approved menu. Mobile navigation exposes the same nested links under Features. Shared feature campaign routes use `FeatureDetailPage` and `featureDetailConfig.ts` for consistent hero, preview, story, proof, CTA, and scroll-reveal structure. Selected `/features` cards now link into these campaign pages, including the Generated images, Descriptions written for you, and One-click translations cards pointing to Menu Content Prep, plus the Featured section card pointing to Featured Choices. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+**Feature navigation and campaign pages:** v3.6.34 adds a compact Features dropdown to `Header.tsx`, backed by `src/components/website/features/featureNavigation.ts`. Desktop navigation promotes owner-readable feature surfaces that help SMB owners self-sell fastest. v3.6.35 adds `/features/print-ready-kit` for Menu Kit and print-file value: table cards, counter cards, stickers, posters, social files, and printer handoff from the current approved menu source. v3.6.36 adds `/features/menu-content-prep` for the setup/content job of preparing customer-friendly descriptions, menu images, and customer languages from the same approved menu source. v3.6.37 adds `/features/featured-choices` for customer-facing Featured, Quick, and Value choices from the current approved menu. v3.6.38 reshapes the desktop dropdown into a viewport-centered elevated overview row, three-column feature grid, and compact proof/CTA strip so it separates clearly from the hero. v3.6.39 adds `FeatureDetailJourney.tsx` so every generic `FeatureDetailPage` route uses a Business Health-style sticky journey: desktop left-rail steps, stacked right-side story panels, and a mobile sticky horizontal pill rail. It also adds `/features/menu-quality-validation` for menu quality, pricing integrity, and customer trust indicators while folding narrower suggestions into existing pages: content generation into Menu Content Prep, temporary status into Owner Phone Dashboard, business discovery attributes into Official Business Page/Public Discovery, and web sharing/presence placement into QR Menu and Links/Print-ready Kit. Desktop navigation remains restrained; mobile navigation groups the same top feature links as Start, Publish, and Operate. Selected `/features` cards now link into these campaign pages, including the Generated images, Descriptions written for you, and One-click translations cards pointing to Menu Content Prep, the Featured section card pointing to Featured Choices, and menu-quality/pricing-integrity/trust cards pointing to Menu Quality Validation. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 
@@ -132,6 +134,8 @@ LocalisationProvider (locale from next-intl/server)
 **Card rhythm polish:** v3.5.4 adds `WebsiteFeatureCard.tsx` as the shared public website proof/feature card pattern. It uses spacious card padding, calm border/background treatment, and a consistent top-right icon so homepage and supporting-page card grids do not feel compressed or visually inconsistent. v3.6.12 keeps the same pattern but removes the old vertical `space-between` distribution and fixed-feeling card minimum so subtitle and description copy stay visually connected while each grid row sizes from its tallest card content.
 
 **Dark theme color cohesion:** v3.5.5 keeps light mode intact while tightening dark mode around one dark-gray surface family, one blue action family, muted semantic states, and shared contrast-panel tokens. Footer, proof bands, discovery panels, product phone frames, and supporting card surfaces now reuse the same dark contrast variables instead of carrying separate hardcoded navy/cyan treatments. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+**Production readiness theme/motion polish:** v3.6.40 adds `WebsiteDocumentTheme.tsx` inside the `(website)` layout so website routes set and restore token-backed body background/color while mounted. This fixes dark-mode body/overscroll color without broad `body` rules that could leak into owner-dashboard pages. The pass also extends shared reveal wrappers to `ResourcesHub`, `ArticleLayout`, and `IndustryLandingPage`, applies mobile-safe grid sizing to legal pages, guards sticky feature-story containers against width bleed, and compacts the mobile analytics consent panel. Product runtime, pricing/payment, auth, Firebase, Cloud Functions, owner dashboard, and customer menu surfaces were not changed.
 
 **Workflow source map:** v3.5.6 replaces the compact homepage workflow pipeline in `InteractiveWorkflowSection.tsx` with a clearer input -> MenuList -> output source map. It uses the official `LogoMark`, existing workflow copy, locale-backed output labels, and website CSS tokens so the section explains photo/PDF/text input, owner review, and official public outputs without becoming the hero visual.
 
@@ -241,6 +245,7 @@ src/pages/
 | `SectionHeading.tsx` | Section heading wrapper backed by `WebsiteHeadline` |
 | `SectionWrapper.tsx` | Section layout wrapper with consistent spacing |
 | `WebsiteButton.tsx` | Styled CTA button |
+| `WebsiteDocumentTheme.tsx` | Website-layout helper that scopes body background/color to website routes and restores prior app body styles on unmount |
 | `WebsiteFeatureCard.tsx` | Shared spacious proof/feature card with consistent top-right icon placement |
 | `WebsiteHeadline.tsx` | Shared hero/section headline renderer with consistent highlight styling |
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |

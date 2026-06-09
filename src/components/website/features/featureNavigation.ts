@@ -17,6 +17,11 @@ export type WebsiteFeatureNavLink = {
   key: string;
 };
 
+export type WebsiteFeatureNavGroup = {
+  key: string;
+  links: WebsiteFeatureNavLink[];
+};
+
 export const websiteFeatureNavLinks: WebsiteFeatureNavLink[] = [
   { href: '/features/menu-import', key: 'featureMenuImport', icon: LuCamera },
   { href: '/features/menu-content-prep', key: 'featureMenuContentPrep', icon: LuFileText },
@@ -27,4 +32,42 @@ export const websiteFeatureNavLinks: WebsiteFeatureNavLink[] = [
   { href: '/features/owner-phone-dashboard', key: 'featureOwnerPhoneDashboard', icon: LuSmartphone },
   { href: '/features/business-health', key: 'featureBusinessHealth', icon: LuActivity },
   { href: '/features/public-discovery', key: 'featurePublicDiscovery', icon: LuSearch },
+];
+
+const byHref = new Map(websiteFeatureNavLinks.map((link) => [link.href, link]));
+
+function getFeatureLink(href: string) {
+  const link = byHref.get(href);
+  if (!link) {
+    throw new Error(`Missing website feature nav link for ${href}`);
+  }
+
+  return link;
+}
+
+export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
+  {
+    key: 'featureGroupStart',
+    links: [
+      getFeatureLink('/features/menu-import'),
+      getFeatureLink('/features/menu-content-prep'),
+      getFeatureLink('/features/featured-choices'),
+    ],
+  },
+  {
+    key: 'featureGroupPublish',
+    links: [
+      getFeatureLink('/features/official-business-page'),
+      getFeatureLink('/features/qr-menu-links'),
+      getFeatureLink('/features/print-ready-kit'),
+    ],
+  },
+  {
+    key: 'featureGroupOperate',
+    links: [
+      getFeatureLink('/features/owner-phone-dashboard'),
+      getFeatureLink('/features/business-health'),
+      getFeatureLink('/features/public-discovery'),
+    ],
+  },
 ];

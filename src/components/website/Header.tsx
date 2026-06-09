@@ -25,7 +25,7 @@ import {
 import BrandWordmark from "./shared/BrandWordmark";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
-import { websiteFeatureNavLinks } from "./features/featureNavigation";
+import { websiteFeatureNavGroups, websiteFeatureNavLinks } from "./features/featureNavigation";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -158,39 +158,39 @@ export default function Header() {
                         </div>
                         <LuArrowRight size={18} aria-hidden="true" />
                       </Link>
-                      <div className="ws-header-feature-menu__body">
-                        <div className="ws-header-feature-menu__grid">
-                          {websiteFeatureNavLinks.map((featureLink) => {
-                            const FeatureIcon = featureLink.icon;
-                            return (
-                              <Link
-                                key={featureLink.href}
-                                href={featureLink.href}
-                                role="menuitem"
-                                className="ws-header-feature-menu__item"
-                              >
-                                <FeatureIcon size={17} aria-hidden="true" />
-                                <span>
-                                  <strong>{t(`Header.${featureLink.key}`)}</strong>
-                                  <small>{t(`Header.${featureLink.key}Desc`)}</small>
-                                </span>
-                              </Link>
-                            );
-                          })}
-                        </div>
+                      <div className="ws-header-feature-menu__grid">
+                        {websiteFeatureNavLinks.map((featureLink) => {
+                          const FeatureIcon = featureLink.icon;
+                          return (
+                            <Link
+                              key={featureLink.href}
+                              href={featureLink.href}
+                              role="menuitem"
+                              className="ws-header-feature-menu__item"
+                            >
+                              <FeatureIcon size={17} aria-hidden="true" />
+                              <span>
+                                <strong>{t(`Header.${featureLink.key}`)}</strong>
+                                <small>{t(`Header.${featureLink.key}Desc`)}</small>
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
 
-                        <aside className="ws-header-feature-menu__proof" aria-label={t("Header.featureProofTitle")}>
-                          <span>
-                            <LuBadgeCheck size={20} aria-hidden="true" />
-                          </span>
+                      <aside className="ws-header-feature-menu__proof" aria-label={t("Header.featureProofTitle")}>
+                        <span>
+                          <LuBadgeCheck size={18} aria-hidden="true" />
+                        </span>
+                        <div className="ws-header-feature-menu__proof-copy">
                           <strong>{t("Header.featureProofTitle")}</strong>
                           <small>{t("Header.featureProofDesc")}</small>
-                          <Link href="/create-menu">
-                            {t("Header.featureProofCta")}
-                            <LuArrowRight size={15} aria-hidden="true" />
-                          </Link>
-                        </aside>
-                      </div>
+                        </div>
+                        <Link href="/create-menu">
+                          {t("Header.featureProofCta")}
+                          <LuArrowRight size={15} aria-hidden="true" />
+                        </Link>
+                      </aside>
                     </div>
                   </div>
                 );
@@ -461,20 +461,25 @@ export default function Header() {
                     </Link>
                     {item.key === "features" && (
                       <div className="ws-mobile-feature-links" aria-label={t("Header.featuresMenuTitle")}>
-                        {websiteFeatureNavLinks.map((featureLink) => {
-                          const FeatureIcon = featureLink.icon;
-                          return (
-                            <Link
-                              key={featureLink.href}
-                              href={featureLink.href}
-                              onClick={closeDrawer}
-                              className="ws-mobile-feature-link"
-                            >
-                              <FeatureIcon size={15} aria-hidden="true" />
-                              {t(`Header.${featureLink.key}`)}
-                            </Link>
-                          );
-                        })}
+                        {websiteFeatureNavGroups.map((group) => (
+                          <div key={group.key} className="ws-mobile-feature-links__group">
+                            <p>{t(`Header.${group.key}`)}</p>
+                            {group.links.map((featureLink) => {
+                              const FeatureIcon = featureLink.icon;
+                              return (
+                                <Link
+                                  key={featureLink.href}
+                                  href={featureLink.href}
+                                  onClick={closeDrawer}
+                                  className="ws-mobile-feature-link"
+                                >
+                                  <FeatureIcon size={15} aria-hidden="true" />
+                                  {t(`Header.${featureLink.key}`)}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ))}
                       </div>
                     )}
                     {item.key === "resources" && (

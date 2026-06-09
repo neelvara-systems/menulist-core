@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.37 (Featured Choices Feature Page)
+**Version:** 3.6.40 (Production Readiness Theme and Motion Polish)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 9, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.37** | **Featured Choices Feature Page** | **"Help customers choose from the current menu."** | **ACTIVE** |
+| **3.6.40** | **Production Readiness Theme and Motion Polish** | **"The website stays stable in light and dark mode."** | **ACTIVE** |
+
+Version 3.6.40 is the final production-readiness polish pass across the current public website. It adds a website-scoped document theme helper so dark mode colors the actual page body without leaking into owner-dashboard routes, extends shared viewport reveal wrappers to resource hub, resource article, and industry landing-page content, hardens legal-page grids against narrow-screen overflow, adds width guards around sticky feature-story layouts, and compacts the mobile analytics privacy panel. Local checks covered TypeScript, lint, diff whitespace, and representative light/dark browser passes for homepage, feature detail, resources, industry, and legal page types. This is public website component/CSS/docs polish only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.39 upgrades the shared dedicated feature page system after reviewing the external feature-page suggestions against codebase truth. Generic `FeatureDetailPage` routes now use a Business Health-style sticky journey section with desktop left-rail steps, stacked right-side panels, and a mobile sticky pill row. The pass adds `/features/menu-quality-validation` as the only new P0 dedicated page because menu-quality checks directly support MenuList's public-truth promise. Pricing integrity, customer trust indicators, and menu validation fold into that page; content generation stays folded into Menu Content Prep; temporary status stays folded into Owner Phone Dashboard; discovery attributes stay folded into Official Business Page and Public Discovery; web sharing and placement guidance stay folded into QR Menu and Links and Print-ready Kit. The mobile drawer groups the existing top feature links as Start, Publish, and Operate while the desktop dropdown remains restrained. `/features` quality/integrity cards now link to Menu Quality Validation, and the new route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, validation runtime, MCE/Menu Quality Signals, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, and Vercel deployment were not changed.
+
+Version 3.6.38 tightens the desktop Features dropdown after visual QA found the old tall proof panel blending into the hero area. The menu now uses a clearer viewport-centered elevated container, top overview row, compact three-column feature grid, and bottom proof/CTA strip. Feature and resource dropdown rows share cleaner hover/focus movement and border/background treatment. This is public website header/CSS/docs polish only; feature routes, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, and Vercel deployment were not changed.
 
 Version 3.6.37 adds the dedicated public campaign page `/features/featured-choices` for the customer-facing Featured, Quick, and Value choices that can appear from the current approved menu. The header Features dropdown now places Featured Choices after Menu Content Prep, and the `/features` Featured section card links to the new page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. Copy stays owner-readable: it avoids `AI-powered`, internal Decision Intelligence naming, algorithm language, sales-lift promises, ranking promises, and exact decision-time claims. This is public website route/component/locale/discovery/docs only; Decision Blocks scoring, public menu rendering, owner dashboard controls, analytics, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
@@ -671,12 +677,29 @@ Protected scope:
 
 - No copy, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, or public customer menu runtime was changed.
 
+## Stage 7.22 Production Readiness Theme + Motion Polish
+
+Stage 7.22 is the final light/dark and reveal-consistency pass for the current website:
+
+- Added `WebsiteDocumentTheme.tsx` so website routes mark the body and set token-backed body background/color while mounted, fixing dark-mode overscroll/background without touching owner-dashboard routes.
+- Extended shared `AnimateOnScroll` / `AnimateStaggerChild` usage to Resources hub, resource article, and Industry landing-page sections.
+- Hardened Privacy, Terms, and Refund policy metadata grids for narrow mobile widths.
+- Added width guards for sticky feature journey and Business Health story layouts.
+- Compacted the mobile analytics privacy prompt so consent choices remain clear without dominating the first viewport.
+
+Protected scope:
+
+- No copy claims, feature routes, pricing/payment runtime, auth behavior, owner-dashboard behavior, upload/extraction flow, customer menu runtime, Firebase rules, Cloud Functions, or Vercel deployment were changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.40 | June 9, 2026 | Final production-readiness polish: website-scoped body theme handling, resource/industry reveal parity, legal mobile overflow hardening, sticky layout width guards, compact mobile analytics consent, and light/dark runtime verification. |
+| 3.6.39 | June 9, 2026 | Upgraded generic feature campaign pages to a Business Health-style sticky journey layout, added `/features/menu-quality-validation`, grouped mobile feature navigation, folded secondary feature suggestions into the right existing pages, and registered the new route in sitemap/LLM discovery. |
+| 3.6.38 | June 9, 2026 | Tightened the desktop Features dropdown into a viewport-centered elevated overview + three-column feature grid + compact proof/CTA strip so it no longer visually blends into the hero. |
 | 3.6.37 | June 9, 2026 | Added `/features/featured-choices`, wired the Features page Featured section card and header navigation to it, and registered the page in sitemap/LLM discovery with owner-readable customer-choice language. |
 | 3.6.36 | June 9, 2026 | Added `/features/menu-content-prep`, wired Setup & Content cards and header navigation to it, and registered the page in sitemap/LLM discovery with review-first content-prep language. |
 | 3.6.30 | June 5, 2026 | Aligned website setup copy with the sign-in-first `/create-menu` path and softened recommendation, ICP, pricing, handwritten-menu, photoshoot, and copywriting claims. |

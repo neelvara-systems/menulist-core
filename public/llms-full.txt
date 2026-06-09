@@ -176,6 +176,7 @@ Feature pages:
 - https://menulist.ai/features/qr-menu-links
 - https://menulist.ai/features/print-ready-kit
 - https://menulist.ai/features/owner-phone-dashboard
+- https://menulist.ai/features/menu-quality-validation
 - https://menulist.ai/features/business-health
 - https://menulist.ai/features/public-discovery
 

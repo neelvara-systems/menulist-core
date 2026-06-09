@@ -6,6 +6,59 @@
 
 ---
 
+## June 9, 2026 — Website Production Readiness Polish
+
+### Improved
+
+- **Public website dark mode now owns the document background** - Website routes mount a scoped document theme helper so dark mode uses the website dark-gray token on the actual page body, preventing white overscroll or browser-edge flashes without leaking website styling into owner dashboard routes.
+- **Resources and industry pages now match the reveal system** - Resource hub cards, article sections, related resources, FAQ blocks, industry proof cards, fit cards, resource links, and final CTAs now use the shared visibility-safe website reveal wrappers.
+- **Mobile consent panel is more compact** - The analytics privacy prompt keeps Accept, Decline, and Privacy policy visible while reducing mobile first-viewport coverage and avoiding wrapped action labels.
+
+### Fixed
+
+- **Legal pages hardened for narrow screens** - Privacy, Terms, and Refund policy metadata grids now use mobile-safe grid minimums and wrapping rules so long values do not create horizontal overflow.
+- **Sticky feature layouts protected from width bleed** - Shared feature journey and Business Health sticky story containers now carry explicit min-width/width guards for desktop and mobile checks.
+
+### Verification
+
+- `npx tsc --noEmit --incremental false`
+- `npm run lint`
+- `git diff --check`
+- Local Chrome runtime checks across homepage, feature detail, resources, industry, and legal page types in light and dark mode for header/footer presence, body theme color, horizontal overflow, and pending reveal elements.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component, CSS, and documentation polish only. It does not change owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, or Vercel deployment.
+
+## June 9, 2026 — Feature Page Sticky Journey System
+
+### New
+
+- **Menu Quality Validation added as a dedicated website feature page** - `/features/menu-quality-validation` now explains menu quality checks, pricing integrity, public-readiness issues, and customer trust indicators before publishing.
+- **Feature detail pages now use a sticky journey layout** - Generic feature campaign pages now share a Business Health-style sticky section with desktop left-rail steps, stacked story panels, and a mobile horizontal step rail.
+- **Mobile feature navigation is grouped** - The mobile drawer now groups feature links as Start, Publish, and Operate so the feature navigation stays readable on phones.
+
+### Improved
+
+- **Secondary feature suggestions folded into stronger pages** - Content generation stays in Menu Content Prep, temporary status stays in Owner Phone Dashboard, discovery attributes stay in Official Business Page/Public Discovery, and web sharing/presence placement stays in QR Menu and Links/Print-ready Kit.
+- **Features page quality cards now route to validation** - Menu quality signals, pricing integrity, menu validation, and customer trust indicator cards now link to the new validation page.
+- **Discovery files updated** - `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt` now include the validation route.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website route, component, CSS, locale, discovery, and documentation work only. It does not change owner dashboard runtime, Menu Correctness Engine, Menu Quality Signals runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, or Vercel deployment.
+
+## June 9, 2026 — Feature Dropdown Layout Polish
+
+### Improved
+
+- **Features dropdown now has clearer modal separation** - The desktop Features menu now uses a viewport-centered elevated panel, stronger border/shadow separation, a compact three-column feature grid, and a bottom proof/CTA strip instead of a tall side proof panel that visually merged with the hero.
+- **Dropdown hover rhythm tightened** - Feature and resource menu rows now share cleaner hover/focus movement, borders, and background treatment.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website header/CSS/documentation polish only. It does not change feature routes, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, or Vercel deployment.
+
 ## June 9, 2026 — Featured Choices Feature Page
 
 ### New

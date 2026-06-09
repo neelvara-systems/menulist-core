@@ -830,11 +830,24 @@ Key FAQ topics:
 
 - These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
 - POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
+- v3.6.39 adds `/features/menu-quality-validation` as a dedicated page but keeps it out of the desktop dropdown to preserve the restrained top-nav shape. The route is reached from `/features` quality, pricing integrity, and customer-trust cards because validation is high-value proof but not the first nine-link evaluation path.
+- Mobile feature navigation groups the same top feature links as Start, Publish, and Operate so the drawer is readable on phone screens without becoming a full product sitemap.
 
 **Campaign page pattern:**
 
-- Each new campaign page uses `FeatureDetailPage` for a focused hero, proof preview, three story cards, four trust/proof cards, and final CTA.
+- Each generic campaign page uses `FeatureDetailPage` plus `FeatureDetailJourney` for a focused hero, product preview, compact signal strip, Business Health-style sticky journey, folded support blocks, four trust/proof cards, and final CTA.
 - Copy must stay owner-readable. Avoid `AI-powered`, unsupported automation, ranking guarantees, POS replacement language, and generic dashboard-SaaS framing.
+- Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
+
+**Validated external-suggestion decisions:**
+
+- Menu Quality & Validation became `/features/menu-quality-validation` because menu-quality checks, pricing integrity, and public trust indicators directly support MenuList's public-truth promise.
+- Content generation remains inside `/features/menu-content-prep` because descriptions, images, and translations are one setup-relief story.
+- Brand & Look and placement guidance remain inside `/features/print-ready-kit` because brand color, QR, social images, and printable files are rollout assets.
+- Temporary status banners remain inside `/features/owner-phone-dashboard` because they are phone-first daily operations, not a standalone public marketing page.
+- Business discovery attributes remain inside `/features/official-business-page` and `/features/public-discovery` because payment methods, amenities, services, and structured public details support the official-page/discovery story.
+- Web and sharing links remain inside `/features/qr-menu-links`.
+- External Menu Sync/POS remains an advanced Features-page/operations proof only until buyer demand and integration proof justify a dedicated public campaign page.
 
 ### Menu Content Prep Page
 
@@ -873,7 +886,27 @@ Expose Featured Choices as a dedicated feature page at `/features/featured-choic
 **Feature-card wiring:**
 
 - `/features` card `Featured section` links to `/features/featured-choices`.
-- Keep `Menu analytics` and `Menu quality signals` as supporting Features page cards. Do not split them into standalone top-nav pages unless there is later evidence that they become primary acquisition surfaces.
+- Keep `Menu analytics` as a supporting Features page card. Menu Quality now has a dedicated page because it directly supports the public-truth promise, but it should not be added to the desktop dropdown until the top-nav strategy changes.
+
+### Menu Quality Validation Page
+
+**Placement decision:**
+
+Expose menu validation as a dedicated feature page at `/features/menu-quality-validation`, but do not add it to the desktop header dropdown. The route is important enough for `/features` and SEO/discovery because pricing integrity, menu validation, missing details, and customer trust indicators are all part of keeping the public menu accurate.
+
+**Owner-readable copy contract:**
+
+- Public label is `Menu Quality Validation`, not `Smart validation`, `AI menu audit`, or internal Menu Correctness Engine naming.
+- The page may say MenuList checks for missing prices, empty categories, weak item detail, image gaps, and public-readiness issues before publishing.
+- It may explain pricing integrity as one owner-approved price reaching MenuList surfaces from the same source.
+- It may explain customer trust indicators such as freshness, sections, search, open status, and clear actions.
+- It must say validation guides owners and keeps owner approval final. Do not imply MenuList silently mutates public truth or auto-fixes prices/items without review.
+- It must avoid exact score/ranking claims unless runtime exposes verified public metrics.
+
+**Feature-card wiring:**
+
+- `/features` cards for `Menu quality signals`, `Pricing integrity`, `Menu validation`, and `Customer trust indicators` link to `/features/menu-quality-validation`.
+- Do not create separate pages for pricing integrity or customer trust indicators unless later buyer demand proves each can stand alone without becoming thin content.
 
 ### Print Files And Launch Kit Cards
 

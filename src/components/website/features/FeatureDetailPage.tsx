@@ -6,6 +6,7 @@ import { LuArrowRight } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import FeatureDetailJourney from './FeatureDetailJourney';
 import { featureDetailConfigs, type FeatureDetailSlug } from './featureDetailConfig';
 
 type FeatureDetailPageProps = {
@@ -58,22 +59,51 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
         </div>
       </section>
 
-      <section className="ws-section ws-feature-detail-story">
+      <section className="ws-feature-detail-strip" aria-label={t(`${config.key}.stripLabel`)}>
+        <div className="ws-container">
+          <AnimateOnScroll preset="card" className="ws-feature-detail-strip__inner">
+            {config.stripIcons.map((Icon, index) => (
+              <span key={index} className="ws-feature-detail-strip__item">
+                <Icon size={16} aria-hidden="true" />
+                {t(`${config.key}.strip${index}`)}
+              </span>
+            ))}
+          </AnimateOnScroll>
+        </div>
+      </section>
+
+      <FeatureDetailJourney config={config} />
+
+      <section className="ws-section ws-section--subtle ws-feature-detail-support">
         <div className="ws-container">
           <AnimateOnScroll preset="card" className="ws-feature-detail__section-heading">
-            <p className="ws-page-hero__eyebrow">{t(`${config.key}.storyEyebrow`)}</p>
-            <WebsiteHeadline as="h2" text={t(`${config.key}.storyTitle`)} highlightedText={t(`${config.key}.storyHighlight`)} />
-            <p>{t(`${config.key}.storySubtitle`)}</p>
+            <p className="ws-page-hero__eyebrow">{t(`${config.key}.supportEyebrow`)}</p>
+            <WebsiteHeadline
+              as="h2"
+              text={t(`${config.key}.supportTitle`)}
+              highlightedText={t(`${config.key}.supportHighlight`)}
+            />
+            <p>{t(`${config.key}.supportSubtitle`)}</p>
           </AnimateOnScroll>
 
-          <div className="ws-feature-detail-story__grid">
-            {config.storyIcons.map((Icon, index) => (
-              <AnimateStaggerChild key={index} index={index} preset="card" className="ws-feature-detail__reveal-card">
-                <article className="ws-feature-detail-story__card">
-                  <span className="ws-feature-detail-story__index">{index + 1}</span>
-                  <Icon size={22} aria-hidden="true" />
-                  <h3>{t(`${config.key}.story${index}Title`)}</h3>
-                  <p>{t(`${config.key}.story${index}Desc`)}</p>
+          <div className="ws-feature-detail-support__grid">
+            {[0, 1].map((sectionIndex) => (
+              <AnimateStaggerChild key={sectionIndex} index={sectionIndex} preset="card">
+                <article className="ws-feature-detail-support__section">
+                  <h3>{t(`${config.key}.support${sectionIndex}Title`)}</h3>
+                  <p>{t(`${config.key}.support${sectionIndex}Desc`)}</p>
+                  <div>
+                    {[0, 1, 2].map((cardIndex) => {
+                      const Icon = config.supportIcons[sectionIndex][cardIndex];
+
+                      return (
+                        <span key={cardIndex}>
+                          <Icon size={16} aria-hidden="true" />
+                          {t(`${config.key}.support${sectionIndex}Item${cardIndex}`)}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </article>
               </AnimateStaggerChild>
             ))}
@@ -81,7 +111,7 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
         </div>
       </section>
 
-      <section className="ws-section ws-section--subtle">
+      <section className="ws-section">
         <div className="ws-container">
           <AnimateOnScroll preset="card" className="ws-feature-detail__section-heading">
             <p className="ws-page-hero__eyebrow">{t(`${config.key}.proofEyebrow`)}</p>

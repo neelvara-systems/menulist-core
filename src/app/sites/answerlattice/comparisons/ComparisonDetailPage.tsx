@@ -101,19 +101,21 @@ export default function AnswerlatticeComparisonDetailPage({ comparisonPath }: { 
                             title="Compare by operating model, not by hype."
                             description="The useful question is where the source of authority lives: a chat response, a ticket queue, a document page, or a reviewed support knowledge layer."
                         />
-                        <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.06]">
-                            <div className="grid grid-cols-[0.8fr_1fr_1fr] border-b border-white/[0.06] bg-white/[0.04] text-xs font-semibold uppercase tracking-widest text-[#a0a0c0]">
-                                <div className="p-4">Question</div>
-                                <div className="border-l border-white/[0.06] p-4">Conventional path</div>
-                                <div className="border-l border-white/[0.06] p-4 text-teal-200">AnswerLattice path</div>
-                            </div>
-                            {comparison.tableRows.map((row) => (
-                                <div key={row.label} className="grid grid-cols-[0.8fr_1fr_1fr] border-b border-white/[0.06] last:border-b-0">
-                                    <div className="p-4 text-sm font-semibold text-white">{row.label}</div>
-                                    <div className="border-l border-white/[0.06] p-4 text-sm leading-relaxed text-[#a0a0c0]">{row.conventional}</div>
-                                    <div className="border-l border-white/[0.06] p-4 text-sm leading-relaxed text-[#d6d6ef]">{row.answerlattice}</div>
+                        <div className="overflow-x-auto rounded-[1.5rem] border border-white/[0.06]">
+                            <div className="min-w-[48rem]">
+                                <div className="grid grid-cols-[0.8fr_1fr_1fr] border-b border-white/[0.06] bg-white/[0.04] text-xs font-semibold uppercase tracking-widest text-[#a0a0c0]">
+                                    <div className="p-4">Question</div>
+                                    <div className="border-l border-white/[0.06] p-4">Conventional path</div>
+                                    <div className="border-l border-white/[0.06] p-4 text-teal-200">AnswerLattice path</div>
                                 </div>
-                            ))}
+                                {comparison.tableRows.map((row) => (
+                                    <div key={row.label} className="grid grid-cols-[0.8fr_1fr_1fr] border-b border-white/[0.06] last:border-b-0">
+                                        <div className="p-4 text-sm font-semibold text-white">{row.label}</div>
+                                        <div className="border-l border-white/[0.06] p-4 text-sm leading-relaxed text-[#a0a0c0]">{row.conventional}</div>
+                                        <div className="border-l border-white/[0.06] p-4 text-sm leading-relaxed text-[#d6d6ef]">{row.answerlattice}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </section>

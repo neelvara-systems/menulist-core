@@ -103,6 +103,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.84,
     },
     {
+        label: 'Menu Quality Validation',
+        path: '/features/menu-quality-validation',
+        description: 'Menu quality checks for missing prices, incomplete details, and public-readiness issues before publishing',
+        changeFrequency: 'monthly',
+        priority: 0.86,
+    },
+    {
         label: 'Business Health',
         path: '/features/business-health',
         description: 'Owner dashboard check for latest business state, freshness, customer attention, and safe next actions',

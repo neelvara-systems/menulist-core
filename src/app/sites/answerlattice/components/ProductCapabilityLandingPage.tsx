@@ -33,39 +33,6 @@ export type ProductCapabilityLandingPageProps = {
     proofItems?: ProductCapabilityMetric[];
 };
 
-function getBentoCardClass(index: number, totalCards: number) {
-    if (totalCards === 5) {
-        const fiveCardLayout = [
-            'md:col-span-2 lg:col-span-3',
-            'md:col-span-2 lg:col-span-3',
-            'lg:col-span-2',
-            'lg:col-span-2',
-            'lg:col-span-2',
-        ];
-
-        return fiveCardLayout[index] || '';
-    }
-
-    if (totalCards === 6) {
-        const sixCardLayout = [
-            'md:col-span-2 lg:col-span-3',
-            'md:col-span-2 lg:col-span-3',
-            'lg:col-span-2',
-            'lg:col-span-2',
-            'lg:col-span-2',
-            'lg:col-span-6',
-        ];
-
-        return sixCardLayout[index] || '';
-    }
-
-    if (index === 0) {
-        return 'md:col-span-2 lg:col-span-2';
-    }
-
-    return '';
-}
-
 export default function ProductCapabilityLandingPage({
     eyebrow,
     title,
@@ -160,21 +127,48 @@ export default function ProductCapabilityLandingPage({
                 </div>
             </section>
 
-            <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
+            <section className="al-linear-proof border-b border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="What this gives the owner"
                         title={bentoTitle}
                         description={bentoDescription}
                     />
-                    <div className={`grid gap-4 md:grid-cols-2 ${bentoCards.length >= 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'}`}>
-                        {bentoCards.map((card, index) => (
-                            <article
-                                key={card.title}
-                                className={`rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6 ${getBentoCardClass(index, bentoCards.length)}`}
-                            >
-                                <h3 className="text-lg font-semibold text-white">{card.title}</h3>
-                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{card.description}</p>
+                    <div className="al-linear-proof__grid al-linear-proof__grid--compact">
+                        <article className="al-linear-proof__copy" data-answerlattice-reveal>
+                            <p className="al-linear-proof__kicker">01 / {activeTab}</p>
+                            <h3>{bentoCards[0]?.title || bentoTitle}</h3>
+                            <p>{bentoCards[0]?.description || bentoDescription}</p>
+                            <div className="al-linear-proof__chips">
+                                {proofItems.slice(0, 4).map((item) => (
+                                    <span key={item.label}>{item.label}</span>
+                                ))}
+                            </div>
+                        </article>
+
+                        <div className="al-linear-proof__visual" data-answerlattice-reveal>
+                            <div className="al-linear-proof__mode-stack">
+                                {proofItems.map((item, index) => (
+                                    <article key={item.label} className="al-linear-proof__mode">
+                                        <span className="al-linear-proof__card-index">{String(index + 1).padStart(2, '0')}</span>
+                                        <div>
+                                            <h3>{item.label}</h3>
+                                            <p>{item.value}</p>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="al-linear-proof__cards">
+                        {bentoCards.slice(1).map((card, index) => (
+                            <article key={card.title} className="al-linear-proof__card" data-answerlattice-reveal-item>
+                                <div className="al-linear-proof__card-header">
+                                    <span className="al-linear-proof__card-index">{String(index + 2).padStart(2, '0')}</span>
+                                </div>
+                                <h3>{card.title}</h3>
+                                <p>{card.description}</p>
                             </article>
                         ))}
                     </div>

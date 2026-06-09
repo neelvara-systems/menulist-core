@@ -32,8 +32,12 @@ const featurePageHrefByCard = new Map<string, string>([
   ['1-5', '/features/public-discovery'],
   ['2-2', '/features/print-ready-kit'],
   ['3-0', '/features/featured-choices'],
+  ['3-3', '/features/menu-quality-validation'],
   ['4-0', '/features/business-health'],
   ['4-8', '/features/owner-phone-dashboard'],
+  ['5-0', '/features/menu-quality-validation'],
+  ['5-1', '/features/menu-quality-validation'],
+  ['5-2', '/features/menu-quality-validation'],
 ]);
 
 export default function FeaturesPage() {
