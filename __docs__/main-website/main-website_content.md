@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 9, 2026
+**Last Updated:** June 10, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -28,6 +28,8 @@
 > Business Health website note (June 8, 2026): Business Health is now visible on the main homepage after implementation proof. Public copy must describe it as an owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths. Do not call it an AI assistant, chatbot, autonomous business agent, revenue optimizer, or prediction system. Keep the owner promise narrow: MenuList shows what needs attention, and says No action needed when the latest check is stable.
 
 > Featured Choices website note (June 9, 2026): Decision Intelligence is publicly exposed as Featured Choices at `/features/featured-choices`. Public copy should say Featured, Quick, and Value choices help customers choose from the current approved menu. Do not use internal names, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
+
+> Final readiness QA note (June 10, 2026): Public brand wording in the website locale payload must stay `MenuList`, not `MenuList AI`, unless a legal/account context explicitly requires otherwise. Support-feedback labels bundled into the public website locale pack now follow this rule too.
 
 ---
 
@@ -102,6 +104,8 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 **Homepage resource cards:** The mounted `ResourcesSection` uses eight cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Keep Menu Source Audit as a high-intent resource page and hub/tool card, not as a homepage card, so the homepage follows the requested strategic cluster.
 
 **Localization rule:** English long-form resource content is the source of truth. Every active public website-switcher language now has reviewed structured resource coverage: Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish. Each pack covers all 15 articles, including long-form sections, checklists, comparison rows, FAQ, metadata, and CTAs. Future languages must stay on English fallback until complete reviewed packs pass `npm run verify:website-resource-locales` and their locale URLs are added to sitemap, `hreflang`, and LLM context.
+
+**Website copy-layer rule (June 10, 2026):** active marketing-surface text should stay in the `Website` locale namespace, including fallback states, placeholders, button labels, helper headings, and accessibility labels. The `/create-menu/preview/[draftId]` page is part of this contract: loading, processing, failure, expiry, empty-state, detected-detail, stats, and claim-form copy must not be hardcoded in the component. Legal policy bodies, static metadata titles, and pricing/account billing internals can remain static unless a dedicated localization pass is planned.
 
 ---
 
@@ -846,6 +850,8 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 
 - Each generic campaign page uses `FeatureDetailPage` plus `FeatureDetailJourney` for a focused hero, product preview, compact signal strip, Business Health-style sticky journey, folded support blocks, four trust/proof cards, and final CTA.
 - Copy must stay owner-readable. Avoid `AI-powered`, unsupported automation, ranking guarantees, POS replacement language, and generic dashboard-SaaS framing.
+- v3.6.49 replaces the generic hero preview card on generic campaign pages with `FeatureDetailVisual`, a shared product-proof visual renderer. Keep these visuals meaningful and feature-specific: they should show the source flow, public output, owner review state, correction loop, print assets, phone dashboard, or discovery source that the page is selling. Do not use stock artwork, fake screenshots, decorative AI art, or visual claims that are not already supported by page copy and product behavior.
+- v3.6.51 tightens those feature hero visuals for launch readiness. Treat each visual as one clean proof canvas: no repeated internal headline copy, no unnecessary nested browser/card borders, no redundant surface tags when the same meaning is already shown, and no sub-13px micro labels on mobile. Official Business Page uses the public-surface preview without the old browser border or duplicated bottom pills; Print-ready Kit uses readable row cards on mobile instead of squeezed mini columns.
 - Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
 - v3.6.45 keeps the shared desktop sticky journey as a left tab rail plus right story panel, but the right panel is one parent story card with a top narrative row and bottom full-width proof-card row. v3.6.46 keeps desktop panel height responsive with a tighter `32rem -> 72vh -> 39rem` clamp so taller screens do not create excessive empty card space. Do not return to a nested side-by-side copy/proof layout or internal copy/proof divider because it compresses copy-heavy proof cards and makes the panel feel split.
 - v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard now names the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.

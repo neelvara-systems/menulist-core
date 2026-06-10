@@ -102,7 +102,7 @@ export default function Footer() {
 
         <AnimateOnScroll preset="footer" delay={0.08} className="ws-footer-main">
           <div className="ws-footer-brand">
-            <Link href="/" className="ws-footer-logo" aria-label="MenuList home">
+            <Link href="/" className="ws-footer-logo" aria-label={t('Footer.homeAria')}>
               <BrandWordmark
                 className="ws-brand-wordmark"
                 iconHeight={26}

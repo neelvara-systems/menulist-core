@@ -1,80 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1200" viewBox="0 0 1440 1200">
     <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#070714"/>
-            <stop offset="0.48" stop-color="#0d0d22"/>
-            <stop offset="1" stop-color="#101028"/>
+        <linearGradient id="pageBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#07111d"/>
+            <stop offset="0.45" stop-color="#070714"/>
+            <stop offset="1" stop-color="#141031"/>
         </linearGradient>
-        <radialGradient id="glow" cx="50%" cy="10%" r="72%">
-            <stop offset="0" stop-color="#0f766e" stop-opacity="0.32"/>
-            <stop offset="0.45" stop-color="#5eead4" stop-opacity="0.12"/>
-            <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+        <radialGradient id="assetGlow" cx="54%" cy="8%" r="76%">
+            <stop offset="0" stop-color="#60a5fa" stop-opacity="0.30"/>
+            <stop offset="0.44" stop-color="#60a5fa" stop-opacity="0.08"/>
+            <stop offset="1" stop-color="#60a5fa" stop-opacity="0"/>
         </radialGradient>
         <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000000" flood-opacity="0.36"/>
+            <feDropShadow dx="0" dy="30" stdDeviation="38" flood-color="#000000" flood-opacity="0.42"/>
         </filter>
     </defs>
-    <rect width="1440" height="1200" fill="url(#bg)"/>
-    <rect width="1440" height="1200" fill="url(#glow)"/>
-    <rect x="72" y="64" width="1296" height="1072" rx="52" fill="#09091a" stroke="rgba(255,255,255,0.10)" stroke-width="2" filter="url(#softShadow)"/>
-    <rect x="92" y="88" width="1256" height="96" rx="32" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-    <circle cx="142" cy="136" r="12" fill="#ff6b6b"/>
-    <circle cx="182" cy="136" r="12" fill="#ffd166"/>
-    <circle cx="222" cy="136" r="12" fill="#06d6a0"/>
-    <rect x="1038" y="114" width="258" height="44" rx="22" fill="rgba(255,255,255,0.055)" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
-    <text x="1064" y="143" fill="#d6d6ef" font-size="20" font-weight="700">Sample workspace</text>
+    <rect width="1440" height="1200" fill="url(#pageBg)"/>
+    <rect width="1440" height="1200" fill="url(#assetGlow)"/>
+    <rect x="72" y="62" width="1296" height="1076" rx="52" fill="#09091a" stroke="rgba(255,255,255,0.12)" stroke-width="2" filter="url(#softShadow)"/>
+    <rect x="92" y="88" width="1256" height="96" rx="30" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+        <circle cx="142" cy="136" r="12" fill="#ff6b6b"/>
+        <circle cx="182" cy="136" r="12" fill="#ffd166"/>
+        <circle cx="222" cy="136" r="12" fill="#06d6a0"/>
+        <rect x="1014" y="112" width="286" height="48" rx="24" fill="rgba(255,255,255,0.055)" stroke="rgba(255,255,255,0.10)" stroke-width="1.5" />
+        <text x="1044" y="143" fill="#d6d6ef" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" >Sample SaaS workspace</text>
+    <rect x="112" y="218" width="256" height="858" rx="34" fill="#080818" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+        <rect x="150" y="258" width="72" height="72" rx="22" fill="#60a5fa"/>
+        <text x="174" y="306" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="800" >A</text>
+        <text x="242" y="286" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="22" font-weight="800" >AnswerLattice</text>
+        <text x="242" y="318" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="600" >Support truth</text>
+        <rect x="144" y="390" width="180" height="46" rx="16" fill="rgba(96,165,250,0.14)" stroke="rgba(96,165,250,0.4)" stroke-width="1.5" />
+                <text x="164" y="420" fill="#dffdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Setup</text><rect x="144" y="462" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="164" y="492" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Sources</text><rect x="144" y="534" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="164" y="564" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Surfaces</text><rect x="144" y="606" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="164" y="636" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Widget</text><rect x="144" y="678" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="164" y="708" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Review</text><rect x="144" y="750" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="164" y="780" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="750" >Help</text>
+    <text x="420" y="286" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="4">PRODUCT FEATURE</text>
+    <text x="420" y="344" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="50" font-weight="800" >Team Access</text>
+    <text x="420" y="386" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="22" font-weight="500" >Workspace roles, passcodes, reset controls, and force sign-out.</text>
+    <rect x="420" y="430" width="116" height="38" rx="19" fill="rgba(96,165,250,0.12)" stroke="rgba(96,165,250,0.34)" stroke-width="1.5" />
+        <text x="437" y="455" fill="#dffdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="700" >Owner</text><rect x="598" y="430" width="116" height="38" rx="19" fill="rgba(96,165,250,0.12)" stroke="rgba(96,165,250,0.34)" stroke-width="1.5" />
+        <text x="615" y="455" fill="#dffdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="700" >Manager</text><rect x="776" y="430" width="164" height="38" rx="19" fill="rgba(96,165,250,0.12)" stroke="rgba(96,165,250,0.34)" stroke-width="1.5" />
+        <text x="793" y="455" fill="#dffdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="700" >Support staff</text>
 
-    <rect x="112" y="218" width="256" height="858" rx="34" fill="#080818" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-    <rect x="150" y="258" width="72" height="72" rx="22" fill="#0f766e"/>
-    <text x="174" y="305" fill="#ffffff" font-size="34" font-weight="800">A</text>
-    <text x="242" y="286" fill="#ffffff" font-size="24" font-weight="700">AnswerLattice</text>
-    <text x="242" y="318" fill="#8f8faa" font-size="18">Workspace</text>
-    <rect x="144" y="392" width="180" height="46" rx="16" fill="rgba(94,234,212,0.13)" stroke="rgba(94,234,212,0.22)" stroke-width="1"/>
-            <text x="164" y="422" fill="#ccfbf1" font-size="18" font-weight="700">Activation</text><rect x="144" y="468" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <text x="164" y="498" fill="#8f8faa" font-size="18" font-weight="700">Surfaces</text><rect x="144" y="544" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <text x="164" y="574" fill="#8f8faa" font-size="18" font-weight="700">Widget</text><rect x="144" y="620" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <text x="164" y="650" fill="#8f8faa" font-size="18" font-weight="700">Feedback</text><rect x="144" y="696" width="180" height="46" rx="16" fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-            <text x="164" y="726" fill="#8f8faa" font-size="18" font-weight="700">Governance</text>
-
-    <text x="420" y="282" fill="#5eead4" font-size="22" font-weight="800" letter-spacing="4">PRODUCT FEATURE</text>
-    <text x="420" y="340" fill="#ffffff" font-size="54" font-weight="800">Team Access</text>
-    <text x="420" y="386" fill="#a0a0c0" font-size="25">Members, roles, passcodes, owner reset, force sign-out</text>
-
-    
-        <rect x="420" y="450" width="452" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
-        <rect x="448" y="478" width="84" height="10" rx="5" fill="#0f766e" opacity="0.78"/>
-        <text x="448" y="526" fill="#f8fafc" font-size="30" font-weight="700">Support context</text>
-        <text x="448" y="568" fill="#a0a0c0" font-size="22">Route, workflow, role, and page hints</text>
-        <rect x="448" y="614" width="396" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
-        <rect x="448" y="650" width="253" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
-    
-    
-        <rect x="904" y="450" width="344" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
-        <rect x="932" y="478" width="84" height="10" rx="5" fill="#5eead4" opacity="0.78"/>
-        <text x="932" y="526" fill="#f8fafc" font-size="30" font-weight="700">Widget result</text>
-        <text x="932" y="568" fill="#a0a0c0" font-size="22">Approved answer before fallback</text>
-        <rect x="932" y="614" width="288" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
-        <rect x="932" y="650" width="184" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
-    
-    
-        <rect x="420" y="732" width="384" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
-        <rect x="448" y="760" width="84" height="10" rx="5" fill="#f59e0b" opacity="0.78"/>
-        <text x="448" y="808" fill="#f8fafc" font-size="30" font-weight="700">Review queue</text>
-        <text x="448" y="850" fill="#a0a0c0" font-size="22">Drafts stay owner-reviewed</text>
-        <rect x="448" y="896" width="328" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
-        <rect x="448" y="932" width="209" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
-    
-    
-        <rect x="836" y="732" width="412" height="246" rx="28" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="2"/>
-        <rect x="864" y="760" width="84" height="10" rx="5" fill="#0f766e" opacity="0.78"/>
-        <text x="864" y="808" fill="#f8fafc" font-size="30" font-weight="700">Runtime checks</text>
-        <text x="864" y="850" fill="#a0a0c0" font-size="22">Allowed origins and blocked routes</text>
-        <rect x="864" y="896" width="356" height="18" rx="9" fill="rgba(255,255,255,0.08)"/>
-        <rect x="864" y="932" width="227" height="18" rx="9" fill="rgba(255,255,255,0.055)"/>
-    
-
-    <rect x="420" y="1016" width="828" height="38" rx="19" fill="rgba(255,255,255,0.055)"/>
-    <rect x="420" y="1016" width="550" height="38" rx="19" fill="#0f766e" opacity="0.72"/>
-    <text x="112" y="1120" fill="#6b6b8a" font-size="20">Dummy production asset slot - 1440 x 1200px - replace this PNG with approved capture</text>
+        <rect x="420" y="470" width="828" height="512" rx="30" fill="#101028" stroke="rgba(255,255,255,0.10)" stroke-width="1.5" />
+        <text x="458" y="528" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="800" >Workspace members</text>
+        <text x="458" y="594" fill="#6b6b8a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="2">Member</text><text x="718" y="594" fill="#6b6b8a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="2">Access</text><text x="978" y="594" fill="#6b6b8a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="2">Status</text>
+        <rect x="452" y="632" width="724" height="56" rx="18" fill="rgba(96,165,250,0.07)" stroke="rgba(96,165,250,0.34)" stroke-width="1.5" />
+                <text x="478" y="668" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="740" >Owner</text>
+                <text x="718" y="668" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="650" >full workspace control</text>
+                <text x="1010" y="668" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" >Active</text><rect x="452" y="710" width="724" height="56" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="478" y="746" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="740" >Manager</text>
+                <text x="718" y="746" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="650" >widget and help setup</text>
+                <text x="1010" y="746" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" >Active</text><rect x="452" y="788" width="724" height="56" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="478" y="824" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="740" >Support staff</text>
+                <text x="718" y="824" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="650" >tickets and review</text>
+                <text x="1010" y="824" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" >Active</text><rect x="452" y="866" width="724" height="56" rx="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.065)" stroke-width="1.5" />
+                <text x="478" y="902" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="18" font-weight="740" >Custom role</text>
+                <text x="718" y="902" fill="#a0a0c0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="17" font-weight="650" >scoped permissions</text>
+                <text x="1010" y="902" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="16" font-weight="800" >Active</text>
 </svg>

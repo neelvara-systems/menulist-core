@@ -63,6 +63,8 @@ export default function AnswerlatticePublicDemo() {
             <div className="rounded-[1.35rem] border border-white/[0.1] bg-[#101028] p-2 text-white">
                 <AnswerlatticeAssetImage
                     asset={ANSWERLATTICE_DEMO_SURFACE_ASSETS[surface.key]}
+                    assetSlotId="demo.page-aware-widget"
+                    assetRole={surface.key}
                     className="rounded-[1.1rem] border border-white/[0.08]"
                 />
             </div>

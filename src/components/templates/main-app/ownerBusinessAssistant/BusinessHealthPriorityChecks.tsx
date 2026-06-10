@@ -5,6 +5,10 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuCheckCheck, LuExternalLink, LuX } from 'react-icons/lu';
 import type { OwnerBusinessHealthCheck } from '@lib/ownerBusinessAssistant/types';
 import { buildOwnerBusinessHealthCheckStateKey } from '@lib/ownerBusinessAssistant/checkStateStorage';
+import {
+  getOwnerBusinessCheckActionLabel,
+  getOwnerBusinessCheckOwnerMessage,
+} from '@lib/ownerBusinessAssistant/businessSignals';
 import { useOwnerBusinessAssistantAction } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAction';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import styles from './OwnerBusinessAssistant.module.scss';
@@ -55,8 +59,8 @@ export function BusinessHealthPriorityChecks({ checks, localDate, projectId, sto
 
   if (!visibleChecks.length) {
     return (
-      <Card title="Checks" className={styles.dashboardCard}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No checks need attention" />
+      <Card title="Needs attention" className={styles.dashboardCard}>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No action needed" />
       </Card>
     );
   }
@@ -102,18 +106,18 @@ export function BusinessHealthPriorityChecks({ checks, localDate, projectId, sto
   };
 
   return (
-    <Card title="Checks" className={styles.dashboardCard}>
+    <Card title="Needs attention" className={styles.dashboardCard}>
       <div className={styles.checkList}>
         {visibleChecks.map((check) => (
           <div className={styles.checkItem} key={check.id}>
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <Space align="start" style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Text strong>{check.title}</Text>
-                <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'default'}>
-                  {check.priority}
+                <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'processing'}>
+                  {getOwnerBusinessCheckActionLabel(check)}
                 </Tag>
               </Space>
-              <Text>{check.message}</Text>
+              <Text>{getOwnerBusinessCheckOwnerMessage(check)}</Text>
               <Space wrap>
                 {check.actionType && canNavigate ? (
                   <Button size="small" icon={<LuExternalLink />} loading={isLoading} onClick={() => handleOpen(check)}>

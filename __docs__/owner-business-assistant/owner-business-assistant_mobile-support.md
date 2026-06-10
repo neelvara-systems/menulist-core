@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 8, 2026
+**Last Updated:** June 10, 2026
 
 ---
 
@@ -80,15 +80,15 @@ Mobile order:
 1. Mobile dashboard summary card: cached Business Health status, freshness, and selected-menu compact analytics before the detailed analytics tabs.
 2. Header on full Business Health screen: Business Health, branch selector if needed, local Business Health scope selector with `All menus`, status, last checked.
 3. Summary card.
-4. Compact analytics periods: Today, This week, This month.
+4. Compact activity signals: Menu views, Top demand, Best source.
 5. Compact location summary for multi-store tenants only.
-6. Priority checks, max 3 visible.
+6. Needs attention, max 4 visible, labeled as Promote, Fix, Restock, or Update.
 7. Suggested questions, 4-6 chips max only when source-backed health is ready.
 8. Answer panel.
 9. Actions as bottom sheet.
 10. Source/freshness disclosure.
 
-Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The full mobile Business Health screen owns a local `All menus` / selected-menu scope that does not call the global mobile `selectProject()` handler. It resets to the active mobile project only until the owner touches the Business Health scope, and clears back to `All menus` if the scoped project disappears after store/project changes. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
+Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The mobile dashboard and full mobile Business Health screen translate those already-loaded facts through `src/lib/ownerBusinessAssistant/businessSignals.ts`; this adds no mobile-specific DAL and no extra Firestore read path. The full mobile Business Health screen owns a local `All menus` / selected-menu scope that does not call the global mobile `selectProject()` handler. It resets to the active mobile project only until the owner touches the Business Health scope, and clears back to `All menus` if the scoped project disappears after store/project changes. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
 
 Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
 

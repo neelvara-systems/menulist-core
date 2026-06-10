@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
-import type { CSSProperties } from 'react';
+import { Fragment, type CSSProperties } from 'react';
 import {
     LuArrowRight,
     LuBell,
@@ -67,11 +67,76 @@ const HERO_TITLE_LINES = [
     ['without', 'hiring', 'a', 'support', 'team.'],
 ];
 
+const HERO_TITLE_TEXT = HERO_TITLE_LINES.map((line) => line.join(' ')).join(' ');
+
 const CAPABILITY_PROOF = [
     { label: 'In-app help', value: 'Users get support where they are stuck.' },
     { label: 'Hosted help', value: 'Docs, FAQs, and changelog live in one support layer.' },
     { label: 'Fallback path', value: 'Missing answers create tickets and support gaps.' },
     { label: 'Founder review', value: 'You approve what becomes official support.' },
+];
+
+const SUITE_BUILD_STEPS = [
+    {
+        title: 'Teach the support layer',
+        detail: 'Start from docs, FAQs, release notes, tickets, screenshots, and repeated replies.',
+        meta: 'Sources',
+    },
+    {
+        title: 'Map where users need help',
+        detail: 'Tie support topics to billing, onboarding, settings, releases, and errors.',
+        meta: 'Context',
+    },
+    {
+        title: 'Publish the support surfaces',
+        detail: 'Use one reviewed truth across widget, hosted help, FAQ, changelog, and fallback.',
+        meta: 'Surfaces',
+    },
+    {
+        title: 'Review what support missed',
+        detail: 'Tickets, ratings, stale guidance, and gaps become owner review work.',
+        meta: 'Loop',
+    },
+];
+
+const SUITE_CAPABILITIES = [
+    {
+        title: 'Answer inside the product',
+        description: 'Approved answers and fallback from the page where users get stuck.',
+        href: '/product/page-aware-widget',
+        icon: LuMessageSquare,
+        items: ['Widget', 'Safe context', 'Fallback'],
+    },
+    {
+        title: 'Publish a support home',
+        description: 'Docs, FAQs, owner answers, and changelog in one hosted help layer.',
+        href: '/product/support-control',
+        icon: LuBookOpen,
+        items: ['Help center', 'FAQ', 'Changelog'],
+    },
+    {
+        title: 'Keep tickets as fallback',
+        description: 'When approved support is missing, users still get a path.',
+        href: '/product/tickets',
+        icon: LuTicket,
+        items: ['Tickets', 'Support gaps', 'Safe context'],
+    },
+    {
+        title: 'Approve the official answer',
+        description: 'Drafts, feedback, and repeated misses stay reviewable before publishing.',
+        href: '/product/knowledge-governance',
+        icon: LuShieldCheck,
+        items: ['Approved answers', 'Coverage', 'Owner control'],
+    },
+];
+
+const INSTALL_SURFACES = [
+    { label: 'Next.js', href: '/install/frameworks/nextjs', detail: 'App Router and Pages Router guidance.' },
+    { label: 'React SPA', href: '/install/frameworks/react', detail: 'Client-side route context updates.' },
+    { label: 'Vue / Nuxt', href: '/install/frameworks/vue', detail: 'Framework install and context handoff.' },
+    { label: 'Plain HTML', href: '/install/frameworks/plain-html', detail: 'Script-tag setup for static products.' },
+    { label: 'Shopify-style', href: '/install/frameworks/shopify', detail: 'Theme-level widget placement.' },
+    { label: 'Webflow-style', href: '/install/frameworks/webflow', detail: 'Hosted-site custom-code install.' },
 ];
 
 const FOUNDER_PRESSURE = [
@@ -401,37 +466,44 @@ function HomepageHero({ basePath }: { basePath: string }) {
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto max-w-6xl text-center">
                     <p className="al-home-hero__eyebrow mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        The first 24/7 support layer for founder-led SaaS
+                        A complete support layer for founder-led SaaS
                     </p>
-                    <h1 className="al-home-hero-title mx-auto max-w-6xl text-4xl font-extrabold leading-[1.14] tracking-normal text-white sm:text-5xl lg:text-6xl xl:text-[4.2rem]">
+                    <h1
+                        className="al-home-hero-title mx-auto max-w-6xl text-4xl font-extrabold leading-[1.14] tracking-normal text-white sm:text-5xl lg:text-6xl xl:text-[4.2rem]"
+                        aria-label={HERO_TITLE_TEXT}
+                    >
                         {HERO_TITLE_LINES.map((line, lineIndex) => (
-                            <span
-                                key={line.join('-')}
-                                className={`al-home-hero-title__line ${lineIndex === 1 ? 'al-home-hero-title__line--gradient' : ''}`}
-                            >
-                                {lineIndex === 1 ? (
-                                    <span
-                                        className="al-home-hero-title__gradient-copy"
-                                        style={getHeroWordStyle(HERO_TITLE_LINES[0].length)}
-                                    >
-                                        {line.join(' ')}
-                                    </span>
-                                ) : (
-                                    line.map((word, wordIndex) => (
+                            <Fragment key={line.join('-')}>
+                                <span
+                                    className={`al-home-hero-title__line ${lineIndex === 1 ? 'al-home-hero-title__line--gradient' : ''}`}
+                                >
+                                    {lineIndex === 1 ? (
                                         <span
-                                            key={`${lineIndex}-${word}`}
-                                            className="al-home-hero-title__word"
-                                            style={getHeroWordStyle(wordIndex)}
+                                            className="al-home-hero-title__gradient-copy"
+                                            style={getHeroWordStyle(HERO_TITLE_LINES[0].length)}
                                         >
-                                            {word}
+                                            {line.join(' ')}
                                         </span>
-                                    ))
-                                )}
-                            </span>
+                                    ) : (
+                                        line.map((word, wordIndex) => (
+                                            <Fragment key={`${lineIndex}-${word}`}>
+                                                <span
+                                                    className="al-home-hero-title__word"
+                                                    style={getHeroWordStyle(wordIndex)}
+                                                >
+                                                    {word}
+                                                </span>
+                                                {wordIndex < line.length - 1 ? ' ' : null}
+                                            </Fragment>
+                                        ))
+                                    )}
+                                </span>
+                                {lineIndex < HERO_TITLE_LINES.length - 1 ? ' ' : null}
+                            </Fragment>
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        AnswerLattice turns your docs, FAQs, release notes, product pages, tickets, feedback, and repeated replies you already send into one trusted support layer with approved answers, ticket fallback, and a review loop that keeps support current.
+                        Connect docs, FAQs, tickets, feedback, releases, and product pages into one support layer: widget help, hosted help, fallback, and approved answers.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -466,6 +538,8 @@ function HomepageHero({ basePath }: { basePath: string }) {
                 <div className="al-home-hero__image mx-auto mt-12 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                     <AnswerlatticeAssetImage
                         asset={ANSWERLATTICE_HOME_HERO_ASSET}
+                        assetSlotId="home.hero.product-loop"
+                        assetRole="hero-product-scene"
                         priority
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />
@@ -473,6 +547,69 @@ function HomepageHero({ basePath }: { basePath: string }) {
 
                 <div className="al-home-hero__proof">
                     <PageProofStrip className="mx-auto mt-8 max-w-6xl text-left" items={CAPABILITY_PROOF} />
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function SupportSuiteSection({ basePath }: { basePath: string }) {
+    return (
+        <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+                <SectionHeader
+                    eyebrow="One support suite"
+                    title="Widget, help center, tickets, and approved answers in one layer."
+                    description="The familiar support surfaces stay connected without turning AnswerLattice into a generic helpdesk."
+                />
+
+                <div className="mt-10 grid gap-4 lg:grid-cols-4">
+                    {SUITE_CAPABILITIES.map((capability) => {
+                        const Icon = capability.icon;
+                        return (
+                            <AnswerlatticeLink
+                                key={capability.title}
+                                basePath={basePath}
+                                href={capability.href}
+                                className="group rounded-[1.75rem] border border-white/[0.08] bg-[#09091a] p-5 transition hover:border-teal-300/25 hover:bg-teal-400/[0.045]"
+                                data-answerlattice-reveal-item
+                            >
+                                <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-200">
+                                    <Icon aria-hidden size={20} />
+                                </span>
+                                <h3 className="mt-5 text-lg font-semibold leading-snug text-white">{capability.title}</h3>
+                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{capability.description}</p>
+                                <div className="mt-5 flex flex-wrap gap-2">
+                                    {capability.items.map((item) => (
+                                        <span key={item} className="rounded-full border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[11px] font-semibold text-[#a0a0c0]">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                                <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-teal-200 transition group-hover:text-white">
+                                    Explore
+                                    <LuArrowRight aria-hidden size={15} />
+                                </span>
+                            </AnswerlatticeLink>
+                        );
+                    })}
+                </div>
+
+                <div className="mt-8 rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
+                    <div className="grid gap-4 lg:grid-cols-4">
+                        {SUITE_BUILD_STEPS.map((step, index) => (
+                            <article key={step.title} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-bold text-teal-200">{String(index + 1).padStart(2, '0')}</span>
+                                    <em className="not-italic rounded-full border border-teal-300/15 bg-teal-300/[0.06] px-2 py-1 text-[11px] font-semibold text-teal-100">
+                                        {step.meta}
+                                    </em>
+                                </div>
+                                <h3 className="mt-4 text-base font-semibold text-white">{step.title}</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{step.detail}</p>
+                            </article>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>
@@ -614,6 +751,49 @@ function OwnerInputDiagram() {
     );
 }
 
+function InstallSurfaceSection({ basePath }: { basePath: string }) {
+    return (
+        <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+                <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+                    <div data-answerlattice-reveal>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Install path</p>
+                        <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
+                            Install without an enterprise project.
+                        </h2>
+                        <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
+                            Install confidence should be obvious: one widget contract, framework-specific setup paths, safe context rules, and verification before launch.
+                        </p>
+                        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                            <AnswerlatticeLink basePath={basePath} href="/install" className="rounded-xl bg-teal-700 px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800">
+                                Open install guide
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink basePath={basePath} href="/quickstarts" className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
+                                View quickstarts
+                            </AnswerlatticeLink>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {INSTALL_SURFACES.map((surface) => (
+                            <AnswerlatticeLink
+                                key={surface.href}
+                                basePath={basePath}
+                                href={surface.href}
+                                className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 transition hover:border-teal-300/25 hover:bg-teal-500/[0.045]"
+                                data-answerlattice-reveal-item
+                            >
+                                <h3 className="text-base font-semibold text-white">{surface.label}</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{surface.detail}</p>
+                            </AnswerlatticeLink>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function BusinessSolutionSection({ basePath }: { basePath: string }) {
     return (
         <section className="al-reference-section al-business-solution px-4 py-20 sm:px-6">
@@ -672,12 +852,16 @@ function SupportSurfaceStorySection() {
     }));
 
     return (
-        <section id="support-surfaces" className="al-reference-section al-surface-story px-4 py-20 sm:px-6">
+        <section
+            id="support-surfaces"
+            className="al-reference-section al-surface-story px-4 py-20 sm:px-6"
+            data-answerlattice-visual-slot="home.support-surfaces.sticky-story"
+        >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="From inputs to support surfaces"
                     title="One support layer across every place users ask for help."
-                    description="AnswerLattice turns what you already know into the support sequence users need: owner inputs, in-app help, hosted help, gaps and fallback, and a review loop that keeps support current."
+                    description="Start with source material. Serve help in-product and on hosted pages. Turn gaps into review work."
                 />
 
                 <div className="al-surface-story__layout">
@@ -712,6 +896,8 @@ function SupportSurfaceStorySection() {
                                     <div className="al-surface-story__media">
                                         <AnswerlatticeAssetImage
                                             asset={surface.asset}
+                                            assetSlotId="home.support-surfaces.sticky-story"
+                                            assetRole={surface.id}
                                             reveal={false}
                                             className="al-surface-story__asset"
                                             imageClassName="al-surface-story__asset-img"
@@ -729,7 +915,10 @@ function SupportSurfaceStorySection() {
 
 function ProductOverviewSection({ basePath }: { basePath: string }) {
     return (
-        <section className="al-reference-section al-product-overview px-4 py-20 sm:px-6">
+        <section
+            className="al-reference-section al-product-overview px-4 py-20 sm:px-6"
+            data-answerlattice-visual-slot="home.product-overview.feature-cards"
+        >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="Product overview"
@@ -761,6 +950,8 @@ function ProductOverviewSection({ basePath }: { basePath: string }) {
                             <div className="al-product-overview__hero-media">
                                 <AnswerlatticeAssetImage
                                     asset={feature.asset}
+                                    assetSlotId="home.product-overview.feature-cards"
+                                    assetRole={feature.label}
                                     className="al-product-overview__asset"
                                     imageClassName="al-product-overview__asset-img"
                                 />
@@ -783,6 +974,8 @@ function ProductOverviewSection({ basePath }: { basePath: string }) {
                                 <span className="al-product-overview__number">{String(index + 3).padStart(2, '0')}</span>
                                 <AnswerlatticeAssetImage
                                     asset={feature.asset}
+                                    assetSlotId="home.product-overview.feature-cards"
+                                    assetRole={feature.label}
                                     className="al-product-overview__mini-asset"
                                     imageClassName="al-product-overview__mini-img"
                                 />
@@ -867,6 +1060,8 @@ function InAppSupportSection() {
                 <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                     <AnswerlatticeAssetImage
                         asset={ANSWERLATTICE_DEMO_SURFACE_ASSETS.billing}
+                        assetSlotId="demo.page-aware-widget"
+                        assetRole="legacy-home-in-app-support"
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />
                 </div>
@@ -905,12 +1100,15 @@ function TrustAndFallbackSection() {
 
 function ConnectedLoopSection() {
     return (
-        <section className="px-4 py-20 sm:px-6">
+        <section
+            className="px-4 py-20 sm:px-6"
+            data-answerlattice-visual-slot="home.support-loop.diagram"
+        >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="Connected support surfaces"
-                    title="Your widget, help center, tickets, changelog, and feedback should share the same support truth."
-                    description="Publish help content, answer FAQs, collect tickets, announce changes, and review feedback from one connected support layer."
+                    title="Keep every support surface aligned."
+                    description="When an answer is missing, fallback becomes review work. When the fix is approved, the next user gets better support."
                 />
                 <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
                     <AnswerlatticeLoopDiagram idPrefix="al-home-support-loop" items={SUPPORT_LOOP} />
@@ -927,6 +1125,8 @@ function FounderReviewSection() {
                 <div className="order-2 rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3 lg:order-1">
                     <AnswerlatticeAssetImage
                         asset={ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS['Feedback review']}
+                        assetSlotId="home.product-overview.feature-cards"
+                        assetRole="legacy-home-founder-review"
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />
                 </div>
@@ -958,8 +1158,8 @@ function AiBuiltSaasSection() {
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
                     eyebrow="AI-built SaaS"
-                    title="AI helped you build faster. AnswerLattice helps you support what you shipped."
-                    description="Built for vibe coders, solo founders, technical founders, and small SaaS teams launching faster than traditional support processes can keep up."
+                    title="Built for founders shipping faster than support can keep up."
+                    description="For founders and small teams shipping faster than support processes can keep up."
                 />
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {BUILT_FOR.map((item) => (
@@ -979,8 +1179,8 @@ function PositioningBoundarySection() {
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
                     eyebrow="Not a chatbot"
-                    title="It sits between answering everything yourself and hiring a full support department."
-                    description="AnswerLattice is not another chatbot, not a full helpdesk, and not static docs. It is the first support layer for founder-led SaaS."
+                    title="Between DIY support and a full support team."
+                    description="A support layer for governed answers, fallback, and review. Not an AI autopilot."
                 />
                 <div className="grid gap-4 md:grid-cols-3">
                     {[
@@ -1008,15 +1208,11 @@ export default function AnswerlatticeHomePage() {
             <AnswerlatticeStructuredData />
             <main className="al-home-flow">
                 <HomepageHero basePath={basePath} />
-                <FounderPressureSection />
-                <BusinessSolutionSection basePath={basePath} />
+                <SupportSuiteSection basePath={basePath} />
                 <SupportSurfaceStorySection />
                 <ProductOverviewSection basePath={basePath} />
                 <ConnectedLoopSection />
-                <SetupPathSection />
-                <InAppSupportSection />
-                <TrustAndFallbackSection />
-                <FounderReviewSection />
+                <InstallSurfaceSection basePath={basePath} />
                 <AiBuiltSaasSection />
                 <PositioningBoundarySection />
                 <PricingPreviewSection basePath={basePath} />

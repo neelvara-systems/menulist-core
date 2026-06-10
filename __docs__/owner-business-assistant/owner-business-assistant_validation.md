@@ -3,7 +3,7 @@
 **Feature:** Owner Business Assistant / Business Health
 **Product:** MenuList
 **Status:** Enabled for owner testing behind separate safety flags
-**Validated:** June 8, 2026
+**Validated:** June 10, 2026
 
 ---
 
@@ -14,6 +14,14 @@ Business Health and Action Support are implemented as separate runtime tracks:
 - Business Health flags control dashboard/page/mobile/API read-only health behavior.
 - Action Support flags control navigation, drafts, check workflow writes, provider text/image actions, existing-screen handoffs, and public-truth guardrails.
 - Separate flags let Business Health stay read-only if Action Support is disabled, and let Action Support stay limited to navigation/drafts/check workflow while public-truth confirmed writes remain guarded.
+
+## June 10 Owner Signal Presentation Pass
+
+- Business Health now translates the existing current Health doc and analytics index into owner-facing daily signals instead of showing generic analytics labels first.
+- Desktop owner dashboard, desktop Business Health page, mobile dashboard, and mobile Business Health use the same `businessSignals` helper for Menu views, Top demand, Best source, and Needs attention.
+- Problem checks now carry owner action labels: Promote, Fix, Restock, or Update. The labels are presentation-only and do not change Action Support risk, permissions, Firestore writes, or the scheduler read model.
+- This pass intentionally rejected AOV/revenue lift, POS attribution, raw funnel dashboards, device/session metrics, passive out-of-stock impression tracking, and new `ml_*` events for owner UI.
+- Firebase cost is unchanged: the UI consumes already-loaded Business Health current and analytics-index responses, with no new collection, scheduler, API, Cloud Function, or Storage path.
 
 ## June 8 Cross-Check Fixes
 

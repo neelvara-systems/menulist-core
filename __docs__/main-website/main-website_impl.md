@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.45 Feature Journey Panel Polish
+**Status:** IMPLEMENTED — v3.6.51 Feature Visual Launch Polish
 **Last Updated:** June 10, 2026
 **Audience:** Developers
 
@@ -9,6 +9,8 @@
 ## 1. Architecture Overview
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
+
+The latest launch-polish pass keeps the feature-page visual proof system from v3.6.49 but simplifies the hero media treatment so feature visuals read as clean product-proof canvases: wider hero media columns, fewer nested borders, no duplicate internal marketing headlines, softer chips, and mobile-readable microcopy.
 
 ```
 Route Group: src/app/(website)/
@@ -65,7 +67,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
-- `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
+- `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
 - `/resources` and resource article routes are feature-gated by `ENABLE_WEBSITE_RESOURCES`.
 - Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
@@ -136,7 +138,13 @@ LocalisationProvider (locale from next-intl/server)
 
 **Feature card link affordance:** v3.6.44 also makes `/features` cards with a dedicated route visually distinct from static informational cards. `WebsiteFeatureCard` supports optional `leadingIcon` and `action` props. `FeaturesPage.tsx` opts into the leading-icon row for every feature card and passes a localized top-right `Features.cardAction` pill only when `feature.href` exists, while the link `aria-label` keeps the fuller `Features.cardCta` text. `website.css` gives `.ws-feature-card-link` cards a stronger resting border, subtle accent wash, compact `View` action, and clearer hover/focus movement. Non-clickable cards keep the same leading-icon structure without the action pill.
 
+**Feature card mobile layout:** v3.6.48 adds a narrow-screen override for `WebsiteFeatureCard` when `leadingIcon` and `action` are both present. Mobile cards use a two-column `icon + heading` row and place the `View` action below the heading, so long headings stay left-aligned and do not compete with the action pill. The desktop top-right action layout is unchanged.
+
+**Feature page visual proof system:** v3.6.49 adds `src/components/website/features/FeatureDetailVisual.tsx` and wires it into the shared `FeatureDetailPage` hero media slot. The component uses each `FeatureDetailConfig` slug, existing icon config, and existing `Website.FeatureDetail` locale keys to render feature-specific code-native product visuals: import source flow, content prep board, Featured Choices phone, Official Business Page public-surface card, QR/link kit, Print-ready Kit asset board, Owner Phone Dashboard phone panel, Menu Quality Validation checklist, Customer Feedback Loop correction flow, and Public Discovery source card. v3.6.51 widens the hero visual column, removes the nested browser border and redundant bottom pills from the Official Business Page visual, raises microcopy label sizes for mobile readability, and changes Print-ready Kit mobile assets from compressed three-column mini cards to compact rows. `website.css` owns the theme-aware visual system, responsive sizing, and mobile compaction rules. This is static public website component/CSS/docs work only; it does not add generated bitmap dependencies, owner dashboard runtime changes, customer menu runtime changes, Firebase changes, pricing/payment changes, auth changes, or Vercel deployment.
+
 **Feature journey panel polish:** v3.6.45 changes the shared `FeatureDetailJourney` desktop story panel from a nested two-column layout into a single parent story card with a top narrative row and full-width proof-card row. The parent panel owns the gradient/background, with no internal copy-vs-proof divider, so pages such as `/features/customer-feedback-loop` read as one cohesive story instead of two compartments. v3.6.46 tightens the desktop height clamp to `32rem -> 72vh -> 39rem`, reduces the largest internal gap/padding, and gives proof cards a controlled responsive minimum height. This keeps the left tab rail and sticky stacked-card behavior intact, gives the three supporting proof cards enough horizontal space, reduces empty vertical space on tall displays, and keeps mobile one-column. This is static website CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
+
+**Website content QA pass:** v3.6.47 moves the remaining active marketing-surface hardcoded copy into the `Website` locale namespace. `/create-menu/preview/[draftId]` now uses locale keys for loading, processing, expiry, failure, empty state, detected-detail labels, stats labels, claim-form placeholders, and claim errors. The feature-off `/create-menu` and preview fallback copy, industry landing helper headings, footer home aria label, and scroll-to-top aria label are also locale-backed. English/Hindi `Website` key parity, source literal scan, local public-route content smoke, lint, and TypeScript passed. Legal pages, metadata titles, and pricing/account billing internals were not restructured in this cleanup.
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 

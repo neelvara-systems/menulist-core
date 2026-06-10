@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
+import AnswerlatticeConceptIllustration from '../components/AnswerlatticeConceptIllustration';
 import PageProofStrip from '../components/PageProofStrip';
 import {
     AnswerlatticeInstallDocKey,
@@ -36,7 +37,7 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
                 <section className="al-page-hero">
                     <div className="al-page-hero__inner">
                         <p className="al-page-hero__eyebrow">AnswerLattice Agent Install Layer</p>
-                        <div className="grid gap-8 lg:grid-cols-[0.8fr_0.2fr] lg:items-end">
+                        <div className="grid gap-8 lg:grid-cols-[1fr_0.82fr] lg:items-center">
                             <div>
                                 <h1 className="al-page-hero__title">
                                     {doc.title}
@@ -52,23 +53,24 @@ export default function AnswerlatticeInstallContractPage({ docKey }: { docKey: A
                                         { label: 'Verification', value: 'Loaded, origin allowed, route allowed, context received' },
                                     ]}
                                 />
+                                <div className="mt-8 flex flex-wrap gap-3">
+                                    <AnswerlatticeLink
+                                        basePath={basePath}
+                                        href="/agents/answerlattice/answerlattice-agent-kit.zip"
+                                        className="al-page-hero__button al-page-hero__button--primary"
+                                    >
+                                        Download agent kit
+                                    </AnswerlatticeLink>
+                                    <AnswerlatticeLink
+                                        basePath={basePath}
+                                        href={doc.markdownPath}
+                                        className="al-page-hero__button al-page-hero__button--secondary"
+                                    >
+                                        View Markdown
+                                    </AnswerlatticeLink>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-3 lg:justify-end">
-                                <AnswerlatticeLink
-                                    basePath={basePath}
-                                    href="/agents/answerlattice/answerlattice-agent-kit.zip"
-                                    className="al-page-hero__button al-page-hero__button--primary"
-                                >
-                                    Download agent kit
-                                </AnswerlatticeLink>
-                                <AnswerlatticeLink
-                                    basePath={basePath}
-                                    href={doc.markdownPath}
-                                    className="al-page-hero__button al-page-hero__button--secondary"
-                                >
-                                    View Markdown
-                                </AnswerlatticeLink>
-                            </div>
+                            <AnswerlatticeConceptIllustration variant="install-verification" />
                         </div>
                     </div>
                 </section>

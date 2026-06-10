@@ -2726,7 +2726,7 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
 
 .al-home-hero-title__word {
     display: inline-block;
-    margin-right: 0.22em;
+    margin-right: 0;
     font-weight: inherit;
     opacity: 0;
     filter: blur(14px);

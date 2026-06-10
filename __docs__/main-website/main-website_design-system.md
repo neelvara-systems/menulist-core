@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 9, 2026
+**Last Updated:** June 10, 2026
 
 ---
 
@@ -377,6 +377,8 @@ Rules:
 
 - Keep each page focused on one owner outcome, not a complete feature checklist.
 - Use the same split hero, proof preview, compact signal strip, sticky journey, support blocks, four proof cards, and final CTA rhythm across these pages.
+- Use `src/components/website/features/FeatureDetailVisual.tsx` for the hero proof visual on generic dedicated feature pages. The visual must be code-native, theme-aware, responsive, and grounded in each page's existing locale copy and feature config. Do not add generic stock images, fake dashboards, or hardcoded English labels.
+- Feature hero visuals must read as one composed proof canvas, not a card inside a card inside a browser mockup. Avoid duplicate marketing headlines inside the visual, avoid redundant bottom pill rows when the inner visual already communicates the same surfaces, and keep microcopy at readable label size on mobile.
 - Use `src/components/website/features/FeatureDetailJourney.tsx` for the shared sticky story section. Desktop uses a left rail with stacked story cards; each story panel is one parent card with a top narrative row and a bottom full-width proof-card row so proof cards are not compressed. Desktop story height should stay viewport-aware but restrained with the shared `32rem -> 72vh -> 39rem` clamp; avoid oversized empty panels on tall displays. Avoid internal copy/proof dividers inside the story card. Mobile uses a sticky horizontal pill rail with one-column cards.
 - Use the shared `AnimateOnScroll` reveal wrappers for the hero, preview, section headings, support blocks, proof cards, footer, and final CTA so dedicated feature pages match the homepage motion system. Prefer the named `hero`, `media`, `card`, `footer`, and `fade` presets over one-off reveal values unless a section has a clear interaction reason.
 - Resource hubs, resource article bodies, related-resource blocks, industry proof grids, industry fit cards, industry resource links, and industry final CTAs must also use the shared reveal wrappers so long-form discovery pages do not feel static beside the homepage and feature pages.

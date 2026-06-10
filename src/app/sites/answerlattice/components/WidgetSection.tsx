@@ -106,6 +106,8 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                     <article className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#101028] p-2 text-white shadow-2xl shadow-black/25 lg:col-span-8 lg:row-span-2">
                         <AnswerlatticeAssetImage
                             asset={ANSWERLATTICE_WIDGET_RUNTIME_ASSET}
+                            assetSlotId="product.area.page-aware-widget"
+                            assetRole="widget-runtime"
                             className="rounded-[1.35rem] border border-white/[0.08]"
                         />
                     </article>

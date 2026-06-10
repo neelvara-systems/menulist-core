@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 8, 2026
+**Last Updated:** June 10, 2026
 
 ---
 
@@ -625,6 +625,7 @@ src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantInput.tsx
 src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantActionSheet.tsx
 src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantFreshnessLabel.tsx
 src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantSourceDisclosure.tsx
+src/lib/ownerBusinessAssistant/businessSignals.ts
 ```
 
 Owner chat history:
@@ -640,6 +641,7 @@ Dashboard placement:
 - Add `BusinessHealthDashboardCard` near the top of the owner dashboard.
 - The card is useful without chat and shows current Health status, owner message, and freshness.
 - Add `BusinessHealthAnalyticsStrip` near the existing owner dashboard analytics area when the analytics index flag is enabled; analytics facts load from the scoped analytics-index hook instead of the Health card packet.
+- Translate loaded Health and analytics facts into owner daily signals with `src/lib/ownerBusinessAssistant/businessSignals.ts`: Menu views, Top demand, Best source, and Needs attention mapped to Promote, Fix, Restock, or Update. This does not add Firestore reads, writes, events, POS claims, or new analytics collections.
 - It opens `/business-health`.
 
 Business Health project scope:

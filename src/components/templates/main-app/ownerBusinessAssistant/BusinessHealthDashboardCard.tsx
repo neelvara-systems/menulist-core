@@ -5,6 +5,10 @@ import { LuActivity, LuArrowRight } from 'react-icons/lu';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
 import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
+import {
+  getOwnerBusinessCheckActionLabel,
+  getOwnerBusinessCheckOwnerMessage,
+} from '@lib/ownerBusinessAssistant/businessSignals';
 import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import styles from './OwnerBusinessAssistant.module.scss';
@@ -43,6 +47,7 @@ export function BusinessHealthDashboardCard({ current: providedCurrent, isLoadin
   if (!current) return null;
   const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
   const feedbackLine = getDashboardFeedbackLine(current);
+  const firstSignal = current.suggestedChecks?.[0];
 
   return (
     <Card className={styles.dashboardCard}>
@@ -53,6 +58,12 @@ export function BusinessHealthDashboardCard({ current: providedCurrent, isLoadin
             <Text type="secondary">Business Health · {OWNER_BUSINESS_HEALTH_STATUS_LABELS[current.status]}</Text>
             <Title level={4} style={{ margin: '4px 0' }}>{current.summary.headline}</Title>
             <Paragraph style={{ margin: 0 }}>{current.summary.ownerMessage}</Paragraph>
+            {firstSignal ? (
+              <div className={styles.dashboardInlineSignal}>
+                <Text strong>{getOwnerBusinessCheckActionLabel(firstSignal)}</Text>
+                <Text>{getOwnerBusinessCheckOwnerMessage(firstSignal)}</Text>
+              </div>
+            ) : null}
             {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
             {freshnessNote ? <Text type="secondary">{freshnessNote}</Text> : null}
           </div>

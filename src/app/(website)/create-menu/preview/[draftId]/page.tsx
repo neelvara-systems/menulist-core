@@ -15,6 +15,7 @@ import '@/styles/website.css';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 import { FEATURE_FLAGS } from '@config/features';
 import { Metadata } from 'next';
+import { useTranslations } from 'next-intl';
 import PreviewClient from '../../PreviewClient';
 
 export const metadata: Metadata = {
@@ -31,6 +32,8 @@ interface PreviewPageProps {
 }
 
 export default function PreviewPage({ params }: PreviewPageProps) {
+    const t = useTranslations('Website');
+
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return (
             <div className="ws-page">
@@ -48,12 +51,12 @@ export default function PreviewPage({ params }: PreviewPageProps) {
                         <WebsiteHeadline
                             as="h1"
                             size="compact"
-                            text="Menu source preview is being prepared"
-                            highlightedText="source preview"
+                            text={t('CreateMenu.previewDisabledTitle')}
+                            highlightedText={t('CreateMenu.previewDisabledHighlight')}
                             style={{ marginBottom: '16px' }}
                         />
                         <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)' }}>
-                            Start from the guided setup for now.
+                            {t('CreateMenu.previewDisabledBody')}
                         </p>
                     </div>
                 </AnimateOnScroll>

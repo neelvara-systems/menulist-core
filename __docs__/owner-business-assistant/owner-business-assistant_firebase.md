@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags; Firebase rules/functions deployed
-**Last Updated:** June 8, 2026
+**Last Updated:** June 10, 2026
 
 ---
 
@@ -20,6 +20,12 @@
 - **Cache posture:** Browser cache first for UI reads; server context-packet cache first for typed answers; Firestore only on cache miss/stale/verified action reload
 - **Read posture:** All read-only answer domains must use cached packets, existing cached projections, or scheduler-built summaries. Direct live Firebase is for packet refresh on miss and write-path verification, not normal answering.
 - **Cost posture:** Cache-first and summary-first. No chat-time raw analytics ranges, menu scans, raw project scans, feedback/review scans, or assistant-owned public-truth writes.
+
+June 10 owner signal presentation pass:
+
+- Adds no Firestore collection, document, index, Cloud Function, Storage path, analytics event, or scheduler task.
+- Reuses already-loaded Business Health current and analytics-index responses in desktop and mobile UI.
+- Translates owner-visible labels only: Menu views, Top demand, Best source, and Needs attention mapped to Promote, Fix, Restock, or Update.
 
 ## Why This Uses `platformSummary`
 

@@ -81,17 +81,20 @@ function addPreviewDetail(
     });
 }
 
-function buildPublicPreviewDetectedDetails(draft: DraftData | null): OwnerDetectedDetail[] {
+function buildPublicPreviewDetectedDetails(
+    draft: DraftData | null,
+    t: ReturnType<typeof useTranslations>,
+): OwnerDetectedDetail[] {
     const profile = draft?.extractedBusinessProfile;
     const details: OwnerDetectedDetail[] = [];
-    addPreviewDetail(details, 'projectName', 'Menu name', getSuggestionText(profile?.project?.projectName) || draft?.suggestedProjectName);
-    addPreviewDetail(details, 'phoneNumber', 'Phone', getSuggestionText(profile?.identity?.phoneNumber));
-    addPreviewDetail(details, 'addressLine', 'Address', getSuggestionText(profile?.identity?.addressLine));
-    addPreviewDetail(details, 'currencyCode', 'Currency', getSuggestionText(profile?.identity?.currencyCode) || draft?.detectedCurrencyCode);
+    addPreviewDetail(details, 'projectName', t('CreateMenu.previewDetailMenuName'), getSuggestionText(profile?.project?.projectName) || draft?.suggestedProjectName);
+    addPreviewDetail(details, 'phoneNumber', t('CreateMenu.previewDetailPhone'), getSuggestionText(profile?.identity?.phoneNumber));
+    addPreviewDetail(details, 'addressLine', t('CreateMenu.previewDetailAddress'), getSuggestionText(profile?.identity?.addressLine));
+    addPreviewDetail(details, 'currencyCode', t('CreateMenu.previewDetailCurrency'), getSuggestionText(profile?.identity?.currencyCode) || draft?.detectedCurrencyCode);
     const brandColor = getSuggestionText(profile?.visualBrand?.brandAccentColor) || draft?.detectedBrandAccentColor || '';
     const imageBackground = getSuggestionText(profile?.visualBrand?.imageBackgroundColor) || draft?.detectedImageBackgroundColor || '';
-    addPreviewDetail(details, 'brandAccentColor', 'Brand color', brandColor, brandColor);
-    addPreviewDetail(details, 'imageBackgroundColor', 'Image background', imageBackground, imageBackground);
+    addPreviewDetail(details, 'brandAccentColor', t('CreateMenu.previewDetailBrandColor'), brandColor, brandColor);
+    addPreviewDetail(details, 'imageBackgroundColor', t('CreateMenu.previewDetailImageBackground'), imageBackground, imageBackground);
     return details;
 }
 
@@ -100,30 +103,30 @@ function normalizePreviewTag(tag: unknown): string {
     return tag.trim().toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
 }
 
-function formatPreviewTag(tag: string): string {
+function formatPreviewTag(tag: string, t: ReturnType<typeof useTranslations>): string {
     switch (tag) {
         case 'non-vegetarian':
         case 'non-veg':
         case 'nonveg':
-            return 'Non-veg';
+            return t('CreateMenu.previewTagNonVeg');
         case 'gluten-free':
         case 'glutenfree':
-            return 'Gluten free';
+            return t('CreateMenu.previewTagGlutenFree');
         case 'dairy-free':
         case 'dairyfree':
-            return 'Dairy free';
+            return t('CreateMenu.previewTagDairyFree');
         case 'keto':
-            return 'Keto';
+            return t('CreateMenu.previewTagKeto');
         case 'vegetarian':
-            return 'Vegetarian';
+            return t('CreateMenu.previewTagVegetarian');
         case 'vegan':
-            return 'Vegan';
+            return t('CreateMenu.previewTagVegan');
         case 'halal':
-            return 'Halal';
+            return t('CreateMenu.previewTagHalal');
         case 'kosher':
-            return 'Kosher';
+            return t('CreateMenu.previewTagKosher');
         case 'organic':
-            return 'Organic';
+            return t('CreateMenu.previewTagOrganic');
         default:
             return tag
                 .split('-')
@@ -182,19 +185,19 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }
 
             if (res.status === 410) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Draft expired.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorExpired') });
                 setLoading(false);
                 return 'expired';
             }
 
             if (res.status === 404) {
-                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Draft not found.' });
+                setDraft({ status: 'expired', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorNotFound') });
                 setLoading(false);
                 return 'not_found';
             }
 
             if (!res.ok) {
-                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Failed to load preview.' });
+                setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorLoadFailed') });
                 setLoading(false);
                 return 'error';
             }
@@ -204,11 +207,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setLoading(false);
             return data.status;
         } catch {
-            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: 'Connection error.' });
+            setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorConnection') });
             setLoading(false);
             return 'error';
         }
-    }, [draftId, router, sessionStatus, signInUrl]);
+    }, [draftId, router, sessionStatus, signInUrl, t]);
 
     // Poll for extraction completion
     useEffect(() => {
@@ -252,11 +255,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
     const handleClaim = async () => {
         if (!businessName.trim() || businessName.trim().length < 2) {
-            setClaimError('Please enter your business name (at least 2 characters).');
+            setClaimError(t('CreateMenu.previewClaimBusinessNameRequired'));
             return;
         }
         if (!city.trim() || city.trim().length < 2) {
-            setClaimError('Please enter your city or area.');
+            setClaimError(t('CreateMenu.previewClaimCityRequired'));
             return;
         }
         setClaiming(true);
@@ -279,7 +282,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setClaimError(data.error || 'Failed to publish. Please try again.');
+                setClaimError(data.error || t('CreateMenu.previewClaimFailed'));
                 setClaiming(false);
                 return;
             }
@@ -309,7 +312,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             });
             router.push(`/create-menu/success?${params.toString()}`);
         } catch {
-            setClaimError('Something went wrong. Please try again.');
+            setClaimError(t('CreateMenu.genericError'));
             setClaiming(false);
         }
     };
@@ -341,7 +344,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             <AnimateOnScroll>
                 <div style={containerStyle}>
                     <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
-                    <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>Loading your menu...</p>
+                    <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>{t('CreateMenu.previewLoading')}</p>
                     <style>{spinCSS}</style>
                 </div>
             </AnimateOnScroll>
@@ -355,10 +358,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 <div style={containerStyle}>
                     <LuLoader size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '20px' }}>
-                        Reading your menu...
+                        {t('CreateMenu.previewReadingTitle')}
                     </h2>
                     <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)', marginTop: '8px' }}>
-                        This can take a short moment.
+                        {t('CreateMenu.previewReadingSubtitle')}
                     </p>
                     <div style={{
                         width: '200px',
@@ -389,13 +392,13 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 <div style={containerStyle}>
                     <LuAlertCircle size={48} color="var(--ws-warning)" />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
-                        Draft expired
+                        {t('CreateMenu.previewExpiredTitle')}
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                        This draft has expired. Upload your current menu again to create a fresh review.
+                        {t('CreateMenu.previewExpiredBody')}
                     </p>
                     <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
-                        <LuUpload size={16} /> Upload menu
+                        <LuUpload size={16} /> {t('CreateMenu.previewUploadCta')}
                     </button>
                 </div>
             </AnimateOnScroll>
@@ -409,13 +412,13 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 <div style={containerStyle}>
                     <LuAlertCircle size={48} color="var(--ws-error)" />
                     <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
-                        Could not read your menu
+                        {t('CreateMenu.previewFailedTitle')}
                     </h2>
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                        {draft.error || 'Please try again with a clearer photo.'}
+                        {draft.error || t('CreateMenu.previewFailedFallback')}
                     </p>
                     <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
-                        <LuUpload size={16} /> Try Again
+                        <LuUpload size={16} /> {t('CreateMenu.tryAgain')}
                     </button>
                 </div>
             </AnimateOnScroll>
@@ -426,7 +429,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const { extractedData, detectedBusinessName, detectedBusinessType } = draft || {};
     const categories = extractedData?.categories || [];
     const items = extractedData?.items || [];
-    const detectedDetails = buildPublicPreviewDetectedDetails(draft);
+    const detectedDetails = buildPublicPreviewDetectedDetails(draft, t);
     const firstLanguage = extractedData?.languages?.[0];
     const lang = typeof firstLanguage === 'string'
         ? firstLanguage
@@ -453,10 +456,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         fontWeight: 600,
                         marginBottom: '16px',
                     }}>
-                        <LuCheck size={16} /> Ready for review
+                        <LuCheck size={16} /> {t('CreateMenu.previewReadyForReview')}
                     </div>
                     <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
-                        {detectedBusinessName || 'Your menu source'}
+                        {detectedBusinessName || t('CreateMenu.previewDefaultMenuSource')}
                     </h1>
                     {detectedBusinessType && (
                         <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
@@ -571,7 +574,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                                     padding: '2px 8px',
                                                                     borderRadius: '999px',
                                                                 }}>
-                                                                    {formatPreviewTag(tag)}
+                                                                    {formatPreviewTag(tag, t)}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -638,7 +641,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                             padding: '2px 8px',
                                                             borderRadius: '999px',
                                                         }}>
-                                                            {formatPreviewTag(tag)}
+                                                            {formatPreviewTag(tag, t)}
                                                         </span>
                                                     ))}
                                                 </span>
@@ -655,7 +658,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
                     {categories.length === 0 && items.length === 0 && (
                         <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                            <p style={{ color: 'var(--ws-text-muted)', fontSize: '14px' }}>No items extracted. Try uploading a clearer photo.</p>
+                            <p style={{ color: 'var(--ws-text-muted)', fontSize: '14px' }}>{t('CreateMenu.previewNoItems')}</p>
                         </div>
                     )}
                 </div>
@@ -670,11 +673,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 }}>
                     <div style={statBoxStyle}>
                         <span style={statNumberStyle}>{categories.length}</span>
-                        <span style={statLabelStyle}>Categories</span>
+                        <span style={statLabelStyle}>{t('CreateMenu.previewStatsCategories')}</span>
                     </div>
                     <div style={statBoxStyle}>
                         <span style={statNumberStyle}>{items.length}</span>
-                        <span style={statLabelStyle}>Items</span>
+                        <span style={statLabelStyle}>{t('CreateMenu.previewStatsItems')}</span>
                     </div>
                 </div>
             </AnimateOnScroll>
@@ -704,7 +707,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 type="text"
                                 value={businessName}
                                 onChange={(e) => { setBusinessName(e.target.value); setClaimError(null); }}
-                                placeholder="Your business name"
+                                placeholder={t('CreateMenu.previewBusinessNamePlaceholder')}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
@@ -722,7 +725,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 type="text"
                                 value={city}
                                 onChange={(e) => { setCity(e.target.value); setClaimError(null); }}
-                                placeholder="City or area"
+                                placeholder={t('CreateMenu.previewCityPlaceholder')}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
@@ -740,7 +743,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 type="tel"
                                 value={phone}
                                 onChange={(e) => { setPhone(e.target.value); setClaimError(null); }}
-                                placeholder="Public phone or WhatsApp number"
+                                placeholder={t('CreateMenu.previewPhonePlaceholder')}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
@@ -758,7 +761,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 type="text"
                                 value={addressLine}
                                 onChange={(e) => { setAddressLine(e.target.value); setClaimError(null); }}
-                                placeholder="Address (optional)"
+                                placeholder={t('CreateMenu.previewAddressPlaceholder')}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',

@@ -33,6 +33,53 @@ export type ProductCapabilityLandingPageProps = {
     proofItems?: ProductCapabilityMetric[];
 };
 
+const CAPABILITY_SUITE_ITEMS = [
+    {
+        label: 'Source',
+        value: 'Docs, product pages, FAQs, release notes, screenshots, tickets, and repeated replies become setup material.',
+    },
+    {
+        label: 'Surface',
+        value: 'The widget, hosted help center, FAQ, changelog, and ticket fallback share the same support layer.',
+    },
+    {
+        label: 'Control',
+        value: 'Drafts and generated guidance stay review work until the owner approves what becomes official.',
+    },
+    {
+        label: 'Loop',
+        value: 'Fallback, ratings, feedback, and stale support turn into the next review pass.',
+    },
+];
+
+const CAPABILITY_EVALUATION_ITEMS = [
+    {
+        title: 'Implementation path',
+        description: 'Check the widget contract, framework guides, safe context rules, and verification path before launch.',
+        href: '/install',
+        cta: 'Open install guide',
+    },
+    {
+        title: 'Trust boundary',
+        description: 'Review what the widget can see, what stays blocked, and how owner-approved answers remain authoritative.',
+        href: '/security',
+        cta: 'Review security',
+    },
+    {
+        title: 'Category fit',
+        description: 'Compare AnswerLattice with chatbots, helpdesks, and static knowledge bases before choosing the support layer.',
+        href: '/comparisons',
+        cta: 'Compare options',
+    },
+];
+
+const CAPABILITY_ASSET_SLOT_IDS: Record<string, string> = {
+    'Set up support': 'product.area.launch-setup',
+    'In-app help widget': 'product.area.page-aware-widget',
+    'Help center and tickets': 'product.area.support-control',
+    'Review approved answers': 'product.area.knowledge-governance',
+};
+
 export default function ProductCapabilityLandingPage({
     eyebrow,
     title,
@@ -55,6 +102,7 @@ export default function ProductCapabilityLandingPage({
     ],
 }: ProductCapabilityLandingPageProps) {
     const canvasAsset = ANSWERLATTICE_PRODUCT_AREA_ASSETS[activeTab as keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS];
+    const canvasAssetSlotId = CAPABILITY_ASSET_SLOT_IDS[activeTab];
 
     return (
         <main className="al-page-flow">
@@ -121,8 +169,28 @@ export default function ProductCapabilityLandingPage({
                     <div className="mx-auto mt-10 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                         <AnswerlatticeAssetImage
                             asset={canvasAsset}
+                            assetSlotId={canvasAssetSlotId}
+                            assetRole="product-area-hero-canvas"
                             className="rounded-[1.5rem] border border-white/[0.08]"
                         />
+                    </div>
+                </div>
+            </section>
+
+            <section className="border-b border-white/[0.06] bg-white/[0.012] px-4 py-16 sm:px-6">
+                <div className="mx-auto max-w-7xl">
+                    <SectionHeader
+                        eyebrow="Where this fits"
+                        title={`${activeTab} stays connected to the whole support suite.`}
+                        description="Founders can start with one support problem, then keep sources, user-facing surfaces, owner control, and support-gap review moving together."
+                    />
+                    <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                        {CAPABILITY_SUITE_ITEMS.map((item) => (
+                            <article key={item.label} className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-5" data-answerlattice-reveal-item>
+                                <h3 className="text-base font-semibold text-white">{item.label}</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{item.value}</p>
+                            </article>
+                        ))}
                     </div>
                 </div>
             </section>
@@ -207,6 +275,33 @@ export default function ProductCapabilityLandingPage({
                         >
                             Start support setup
                         </AnswerlatticeLink>
+                    </div>
+                </div>
+            </section>
+
+            <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
+                <div className="mx-auto max-w-7xl">
+                    <SectionHeader
+                        eyebrow="Before you launch"
+                        title="The support layer should be easy to evaluate before it touches users."
+                        description="Remove evaluation doubt with setup, security, and category-fit checks that stay tied to the implemented product."
+                    />
+                    <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                        {CAPABILITY_EVALUATION_ITEMS.map((item) => (
+                            <AnswerlatticeLink
+                                key={item.href}
+                                basePath={basePath}
+                                href={item.href}
+                                className="group rounded-[1.75rem] border border-white/[0.08] bg-[#09091a] p-6 transition hover:border-teal-300/25 hover:bg-teal-500/[0.045]"
+                                data-answerlattice-reveal-item
+                            >
+                                <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{item.description}</p>
+                                <span className="mt-5 inline-flex text-sm font-semibold text-teal-200 transition group-hover:text-white">
+                                    {item.cta}
+                                </span>
+                            </AnswerlatticeLink>
+                        ))}
                     </div>
                 </div>
             </section>

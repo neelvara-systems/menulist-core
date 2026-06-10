@@ -6,6 +6,112 @@
 
 ---
 
+## June 10, 2026 — MenuList Feature Visual Launch Polish
+
+### Fixed
+
+- **Feature hero visuals now read as one clean product canvas** - The dedicated feature-page hero visual system now gives the media column more room, removes the nested browser border from the Official Business Page visual, hides redundant bottom tags on that page, and softens proof chips so the visuals no longer feel boxed, repeated, or compressed.
+- **Feature visual microcopy is readable on mobile** - Small visual labels now stay at a readable website label size, and the Print-ready Kit mobile visual uses compact rows instead of three narrow mini cards.
+
+### Validation
+
+- **Desktop and mobile browser checks passed** - Representative feature pages were checked at desktop and 390px mobile widths with no horizontal overflow. Official Business Page now renders one occurrence of the hero visual headline, a wider visual canvas, no inner border, and no redundant bottom pill row.
+- **Theme checks passed** - The Official Business Page hero visual was checked through the website theme shortcut in light and dark mode; the visual kept the same dimensions and no overflow in both modes.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component/CSS/docs polish only. It changes no Firestore reads/writes, Cloud Functions, Storage paths, auth, pricing, payment, upload, extraction, customer menu runtime, owner dashboard runtime, or Vercel deployment behavior.
+
+## June 10, 2026 — MenuList Website Final Readiness QA
+
+### Fixed
+
+- **Legacy public brand wording removed from website locale payloads** - Support-feedback labels in the MenuList website locale pack now say `MenuList` instead of `MenuList AI`, matching the current public wordmark and avoiding stale AI-first branding in serialized public page payloads.
+
+### Validation
+
+- **Website brand scan passed** - The active website component tree, route group, main website docs, and locale packs no longer contain live `MenuList AI` marketing copy except archived historical prompt records.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website locale/docs cleanup only. It changes no runtime data access, auth, pricing, payment, upload, customer menu, Firebase rules, Cloud Functions, or Vercel deployment behavior.
+
+## June 10, 2026 — MenuList Feature Page Visual Proof Pass
+
+### Improved
+
+- **Dedicated feature pages now show product-proof visuals** - Generic MenuList feature campaign pages now use `FeatureDetailVisual.tsx` in the hero preview slot, replacing the old generic icon card with feature-specific product states for import, content prep, featured choices, Official Business Page, QR/link sharing, print-ready kit, owner phone dashboard, menu-quality validation, customer feedback loop, and public discovery.
+- **Visuals stay tied to real feature copy** - The new visuals reuse existing `Website.FeatureDetail` locale keys and feature config icons instead of adding hardcoded English, fake screenshots, or unsupported product claims.
+- **Mobile visuals are compacted for evaluation pages** - Print-ready Kit and Customer Feedback Loop use denser mobile visual grids, and import/content/QR/discovery layouts wrap their proof chips so the hero proof remains readable without horizontal overflow.
+
+### Validation
+
+- **Feature route smoke passed** - `/features/menu-import`, `/features/menu-content-prep`, `/features/featured-choices`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/print-ready-kit`, `/features/owner-phone-dashboard`, `/features/menu-quality-validation`, `/features/customer-feedback-loop`, and `/features/public-discovery` returned `200` locally.
+- **Desktop and mobile layout checks passed** - Browser checks across the ten generic feature pages confirmed the new visual slot renders on each route, desktop keeps the intended hero columns, 390px mobile uses one-column hero layout, and no route has horizontal overflow.
+- **Static checks passed** - `npm run lint`, `npx tsc --noEmit --incremental false`, and `git diff --check` completed successfully.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component/CSS/docs work only. It adds no Firestore reads/writes, Cloud Functions, Storage paths, Firebase rules, auth behavior, billing behavior, schedulers, or runtime AI calls.
+
+## June 10, 2026 — Answerlattice Support-Suite Website Pass
+
+### Improved
+
+- **Answerlattice homepage now presents the product as one support suite** - The public homepage keeps support-suite cards, install quickstarts, pricing, objections, and the connected support-surface story so buyers see widget, hosted help, fallback, feedback, changelog, and approved-answer review as one support layer.
+- **Answerlattice homepage is shorter for first-time buyers** - The rendered homepage path is reduced from 18 sections to 11 while preserving the sticky support-surface story, feature-wise product cards, and main USP signals, and moving repeated setup, trust, founder-review, and comparison detail to Product, feature, resource, security, and comparison pages.
+- **Answerlattice visual assets now have an inventory before asset creation** - Future homepage, feature-page, install, security, and demo visuals are tracked in `src/content/answerlatticePublic/visualAssets.ts`, and rendered product-media slots expose stable `data-answerlattice-asset-slot` metadata for the later asset pass.
+- **Answerlattice website assets now use product-scene visuals** - The 25 stable homepage, Product, product-area, feature, widget, and demo PNG slots now render generated Answerlattice dashboard/widget/governance scenes instead of generic dummy frames, with matching internal SVG sources and a manifest for future replacement.
+- **Answerlattice concept illustrations added** - Product, Install, Security, and Comparisons now use reusable inline SVG panels for source-to-answer flow, governance review, install verification, safe context, and category positioning instead of adding generic cartoon artwork.
+- **Answerlattice feature pages now reconnect to the full product** - Product-area and feature-page templates now explain where each narrower capability fits across setup, in-app support, hosted help, fallback, feedback, owner-approved answers, security boundaries, and category-fit checks.
+- **High-intent navigation is clearer** - The Answerlattice header now exposes Demo and Install as top-level links alongside Product, Use Cases, Resources, and Pricing.
+
+### Fixed
+
+- **Homepage animated H1 text now preserves readable spacing** - The animated word spans still keep the visual reveal treatment, but extracted text and the accessible label now read `Support your product users without hiring a support team.` instead of concatenating words across spans.
+
+### Validation
+
+- **Answerlattice public route smoke passed** - All 73 public Answerlattice routes rendered locally through `/__answerlattice` with 200-level responses, H1/title presence, Answerlattice site content, and no obvious error-page or bad asset text.
+- **Answerlattice browser route smoke passed** - Homepage, Product, all four product-area pages, all ten product-feature pages, Demo, Install, Security, Comparisons, and all three comparison-detail routes rendered locally at 1440px with no browser errors, no horizontal overflow, no broken loaded images, no placeholder alt text, and no bad asset text leakage.
+- **Answerlattice asset generation passed** - `node scripts/website-assets/generate-answerlattice-website-dummy-assets.js` regenerated all 25 stable PNG slots and source SVGs; manifest coverage and representative image inspection passed.
+- **Answerlattice concept illustration smoke passed** - Product, Install, Security, and Comparisons rendered the expected concept illustration slots on desktop; Product, Install, Security, and Comparisons used mobile-readable step cards at 390px; no horizontal overflow or browser errors were captured.
+- **Answerlattice mobile browser smoke passed** - Homepage, Product, Tickets, Feedback Review, Install, Security, and Comparisons rendered at 390px with no horizontal overflow, no browser errors, readable H1 text, generated assets where expected, and mobile step cards for concept illustrations.
+- **Static checks passed** - `npm run lint`, `npx tsc --noEmit --incremental false`, targeted `git diff --check`, asset manifest coverage, and placeholder/dummy wording scans completed successfully.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website and documentation work only. It adds no Firestore reads/writes, Cloud Functions, Storage paths, Firebase rules, auth behavior, billing behavior, schedulers, or runtime AI calls.
+
+## June 10, 2026 — Business Health Owner Signal Pass
+
+### Improved
+
+- **Business Health now shows owner-facing daily signals** - Existing Health and analytics read models are translated into Menu views, Top demand, Best source, and Needs attention instead of generic analytics labels.
+- **Problems now map to owner actions** - Business Health check cards and mobile summaries label issues as Promote, Fix, Restock, or Update so owners can see the practical next step faster.
+
+### Cost
+
+- **No Firebase cost change** - This is a presentation/read-model translation on already-loaded Business Health current and analytics-index responses. It does not add analytics events, Firestore reads/writes, Cloud Functions, Storage paths, POS/AOV attribution, or customer menu runtime changes.
+
+## June 10, 2026 — Website Content QA Pass
+
+### Fixed
+
+- **Mobile feature cards no longer squeeze headings** - On narrow screens, clickable feature cards now keep the icon and heading left-aligned and move the `View` action onto its own row, preventing the button from overlapping or compressing titles such as `Descriptions written for you`.
+- **Create-menu preview copy is now locale-backed** - Loading, processing, expiry, failure, empty-state, detected-detail, stats, claim-form placeholder, and claim-error strings on `/create-menu/preview/[draftId]` now read from `Website.CreateMenu` locale keys instead of hardcoded English.
+- **Marketing helper labels now follow the website copy layer** - Feature-off create-menu fallback copy, industry landing helper headings, footer home aria label, and the scroll-to-top aria label now use `Website` locale keys.
+
+### Validation
+
+- **Public website route/content smoke passed** - Checked homepage, feature pages, supporting pages, resource pages, industry pages, legal pages, `/create-menu`, and Trust & Security locally for 200 responses and placeholder/undefined/typo-pattern leakage.
+- **Locale key parity passed** - `Website` namespace key counts match across English and Hindi with no missing or extra keys.
+- **Static checks passed** - `npm run lint` and `npx tsc --noEmit --incremental false` completed successfully.
+
+### Cost
+
+- **No Firebase cost change** - This is public website component text, locale, and documentation cleanup only. It does not change create-menu extraction, claim runtime, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, auth, pricing, payment, or Vercel deployment.
+
 ## June 10, 2026 — Customer Feedback Loop Feature Page
 
 ### New

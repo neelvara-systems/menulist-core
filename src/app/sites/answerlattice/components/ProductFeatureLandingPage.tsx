@@ -10,6 +10,7 @@ import {
 } from 'react-icons/lu';
 import type { IconType } from 'react-icons';
 import type { AnswerlatticeProductFeature } from '../productFeatures';
+import { ANSWERLATTICE_PRODUCT_AREAS } from '../productAreas';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import { AnswerlatticeHubDiagram, AnswerlatticeSequenceDiagram } from './AnswerlatticeFlowDiagram';
 import AnswerlatticeAssetImage from './AnswerlatticeAssetImage';
@@ -28,12 +29,53 @@ const CARD_ICONS: IconType[] = [
     LuShieldCheck,
 ];
 
+const FEATURE_PAGE_PROOF_ITEMS = [
+    {
+        title: 'A familiar support surface',
+        description: 'Each feature is explained as something buyers already recognize: docs, FAQs, releases, tickets, feedback, notifications, or review work.',
+    },
+    {
+        title: 'Connected to the support suite',
+        description: 'The feature does not live alone. It connects back to widget answers, hosted help, fallback, and owner review.',
+    },
+    {
+        title: 'Owner control stays visible',
+        description: 'Drafts, generated content, ticket gaps, and feedback remain reviewable before anything becomes official support.',
+    },
+];
+
+const FEATURE_EVALUATION_ITEMS = [
+    {
+        title: 'Setup path',
+        description: 'Show how the feature fits into the widget, hosted help, fallback, and owner review before users depend on it.',
+        href: '/product',
+        cta: 'View product map',
+    },
+    {
+        title: 'Security boundary',
+        description: 'Review safe page context, blocked private data, owner roles, fallback behavior, and approved-answer authority.',
+        href: '/security',
+        cta: 'Review security',
+    },
+    {
+        title: 'Compare support options',
+        description: 'See where AnswerLattice fits against chatbots, helpdesks, and static knowledge bases without treating them as the same product.',
+        href: '/comparisons',
+        cta: 'Compare options',
+    },
+];
+
 function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }) {
     const asset = ANSWERLATTICE_FEATURE_ASSETS[feature.slug];
 
     return (
         <div className="relative mx-auto w-full max-w-xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-            <AnswerlatticeAssetImage asset={asset} className="rounded-[1.45rem] border border-white/[0.08]" />
+            <AnswerlatticeAssetImage
+                asset={asset}
+                assetSlotId="feature.template.hero-scene"
+                assetRole={feature.slug}
+                className="rounded-[1.45rem] border border-white/[0.08]"
+            />
         </div>
     );
 }
@@ -67,7 +109,7 @@ export default function ProductFeatureLandingPage({
                             items={[
                                 { label: 'Connected to', value: 'Widget, hosted help, tickets, and review' },
                                 { label: 'Authority rule', value: 'Drafts stay review work until approved' },
-                                { label: 'Conversion proof', value: 'Shows what the feature changes in the support loop' },
+                                { label: 'Buyer proof', value: 'Shows what the feature changes in the support loop' },
                             ]}
                         />
                         <div className="al-page-hero__actions">
@@ -197,6 +239,75 @@ export default function ProductFeatureLandingPage({
                             detail: item.description,
                         }))}
                     />
+                </div>
+            </section>
+
+            <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
+                <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+                    <div data-answerlattice-reveal>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Connected layer</p>
+                        <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
+                            {feature.label} is one part of the full support layer.
+                        </h2>
+                        <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
+                            A founder may start with {featureName}, but the value comes from keeping it connected to setup, in-app support, hosted help, fallback, and approved-answer review.
+                        </p>
+                        <div className="mt-6 grid gap-3">
+                            {FEATURE_PAGE_PROOF_ITEMS.map((item) => (
+                                <article key={item.title} className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5">
+                                    <h3 className="text-base font-semibold text-white">{item.title}</h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{item.description}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6">
+                        <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                            Explore the connected layer
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {ANSWERLATTICE_PRODUCT_AREAS.map((area) => (
+                                <AnswerlatticeLink
+                                    key={area.href}
+                                    basePath={basePath}
+                                    href={area.href}
+                                    className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 transition hover:border-teal-300/25 hover:bg-teal-500/[0.045]"
+                                    data-answerlattice-reveal-item
+                                >
+                                    <h3 className="text-base font-semibold text-white">{area.label}</h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{area.description}</p>
+                                </AnswerlatticeLink>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
+                <div className="mx-auto max-w-7xl">
+                    <SectionHeader
+                        eyebrow="Worth checking"
+                        title={`Before choosing ${featureName}, check the product fit.`}
+                        description="Answer the evaluation questions before setup: how it launches, what stays safe, and how it differs from nearby support tools."
+                    />
+                    <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                        {FEATURE_EVALUATION_ITEMS.map((item) => (
+                            <AnswerlatticeLink
+                                key={item.href}
+                                basePath={basePath}
+                                href={item.href}
+                                className="group rounded-[1.75rem] border border-white/[0.08] bg-[#09091a] p-6 transition hover:border-teal-300/25 hover:bg-teal-500/[0.045]"
+                                data-answerlattice-reveal-item
+                            >
+                                <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{item.description}</p>
+                                <span className="mt-5 inline-flex text-sm font-semibold text-teal-200 transition group-hover:text-white">
+                                    {item.cta}
+                                </span>
+                            </AnswerlatticeLink>
+                        ))}
+                    </div>
                 </div>
             </section>
 

@@ -7,6 +7,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import FeatureDetailJourney from './FeatureDetailJourney';
+import FeatureDetailVisual from './FeatureDetailVisual';
 import { featureDetailConfigs, type FeatureDetailSlug } from './featureDetailConfig';
 
 type FeatureDetailPageProps = {
@@ -16,7 +17,6 @@ type FeatureDetailPageProps = {
 export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
   const t = useTranslations('Website.FeatureDetail');
   const config = featureDetailConfigs[slug];
-  const HeroIcon = config.heroIcon;
 
   return (
     <main className={`ws-feature-detail ws-feature-detail--${slug}`}>
@@ -37,24 +37,7 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
           </AnimateOnScroll>
 
           <AnimateOnScroll preset="media" delay={0.1}>
-            <div className="ws-feature-detail-preview" aria-label={t(`${config.key}.previewLabel`)} role="group">
-              <div className="ws-feature-detail-preview__bar">
-                <span>{t(`${config.key}.previewMeta`)}</span>
-                <span>{t(`${config.key}.previewStatus`)}</span>
-              </div>
-              <div className="ws-feature-detail-preview__main">
-                <span>
-                  <HeroIcon size={30} aria-hidden="true" />
-                </span>
-                <h2>{t(`${config.key}.previewTitle`)}</h2>
-                <p>{t(`${config.key}.previewBody`)}</p>
-              </div>
-              <div className="ws-feature-detail-preview__pills">
-                {[0, 1, 2].map((index) => (
-                  <span key={index}>{t(`${config.key}.previewPill${index}`)}</span>
-                ))}
-              </div>
-            </div>
+            <FeatureDetailVisual config={config} />
           </AnimateOnScroll>
         </div>
       </section>

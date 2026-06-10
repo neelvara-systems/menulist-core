@@ -10,9 +10,16 @@ import { buildOwnerBusinessAssistantPacketCacheKey } from '@lib/ownerBusinessAss
 import { buildOwnerBusinessDomainCapabilities } from '@lib/ownerBusinessAssistant/server/domainCapabilityMatrix';
 import { buildOwnerBusinessAssistantRefusal } from '@lib/ownerBusinessAssistant/server/refusals';
 import { resolveOwnerBusinessAnalyticsPeriod } from '@lib/ownerBusinessAssistant/server/analyticsPeriodResolver';
+import {
+  buildOwnerBusinessActivityMetrics,
+  getOwnerBusinessCheckActionLabel,
+  getOwnerBusinessCheckOwnerMessage,
+  getOwnerBusinessPrimaryAnalyticsPeriod,
+} from '@lib/ownerBusinessAssistant/businessSignals';
 import type {
   OwnerBusinessActionDefinition,
   OwnerBusinessAnalyticsPeriod,
+  OwnerBusinessHealthCheck,
   OwnerBusinessHealthCurrentDoc,
 } from '@lib/ownerBusinessAssistant/types';
 
@@ -142,9 +149,33 @@ const lastMonthPeriod: OwnerBusinessAnalyticsPeriod = {
   scope: 'store',
   status: 'available',
   metrics: { menuVisits: 10 },
+  topItems: [{ itemId: 'item-a', name: 'Paneer Wrap', value: 5, signal: 'views' }],
+  sourceQuality: [
+    { source: 'instagram_link', visits: 7, actionRate: 0.4 },
+    { source: 'qr_table', visits: 2, actionRate: 1 },
+  ],
   freshnessLabel: 'Latest settled data',
   sourceFactIds: ['analytics_test'],
 };
+assert.equal(
+  getOwnerBusinessPrimaryAnalyticsPeriod({ lastMonth: lastMonthPeriod }),
+  null,
+  'dashboard activity should not invent a primary period from unsupported fallback order',
+);
+const activityMetrics = buildOwnerBusinessActivityMetrics(lastMonthPeriod);
+assert.equal(activityMetrics.find((metric) => metric.key === 'top-demand')?.detail, 'Promote: 5 views');
+assert.equal(activityMetrics.find((metric) => metric.key === 'best-source')?.detail, 'Update link: 7 visits');
+const unavailableCheck: OwnerBusinessHealthCheck = {
+  id: 'unavailable_item_taps',
+  title: 'Check unavailable items',
+  message: '3 taps happened on unavailable items.',
+  priority: 'medium',
+  status: 'watch',
+  actionType: 'navigate_menu',
+  sourceFactIds: ['analytics_test'],
+};
+assert.equal(getOwnerBusinessCheckActionLabel(unavailableCheck), 'Restock');
+assert.match(getOwnerBusinessCheckOwnerMessage(unavailableCheck), /Restock them or hide them/);
 assert.equal(
   resolveOwnerBusinessAnalyticsPeriod('which item was on top last month', { periods: { lastMonth: lastMonthPeriod } }),
   lastMonthPeriod,
@@ -227,7 +258,14 @@ assert.match(analyticsStrip, /useOwnerBusinessAnalyticsIndex/);
 assert.doesNotMatch(analyticsStrip, /useOwnerBusinessHealthCurrent/);
 assert.match(analyticsStrip, /enabled = true/);
 assert.match(analyticsStrip, /useOwnerBusinessAnalyticsIndex\(projectId, storeScopeKey, \{ enabled \}\)/);
-assert.match(analyticsStrip, /numberFormatter/);
+assert.match(analyticsStrip, /buildOwnerBusinessActivityMetrics/);
+assert.match(analyticsStrip, /getOwnerBusinessPrimaryAnalyticsPeriod/);
+assert.doesNotMatch(analyticsStrip, /numberFormatter/);
+const businessSignals = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/businessSignals.ts'), 'utf8');
+assert.match(businessSignals, /numberFormatter/);
+assert.match(businessSignals, /OwnerBusinessSignalAction = 'promote' \| 'fix' \| 'restock' \| 'update'/);
+assert.match(businessSignals, /Update link/);
+assert.match(businessSignals, /Restock them or hide them/);
 const dashboardHealthCard = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx'), 'utf8');
 assert.match(dashboardHealthCard, /usesProvidedCurrent/);
 assert.match(dashboardHealthCard, /useOwnerBusinessHealthCurrent\(undefined, storeScopeKey \|\| storeDetails\?\.storeId, \{ enabled: !usesProvidedCurrent \}\)/);

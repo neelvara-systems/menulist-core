@@ -7,13 +7,17 @@ import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/us
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { useOwnerBusinessLocationsSummary } from '@hook/ownerBusinessAssistant/useOwnerBusinessLocationsSummary';
+import {
+    buildOwnerBusinessActivityMetrics,
+    getOwnerBusinessCheckActionLabel,
+    getOwnerBusinessCheckOwnerMessage,
+    getOwnerBusinessPrimaryAnalyticsPeriod,
+} from '@lib/ownerBusinessAssistant/businessSignals';
 import { buildOwnerBusinessHealthCheckStateKey } from '@lib/ownerBusinessAssistant/checkStateStorage';
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
 import { formatOwnerBusinessHealthDateKey, getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
 import type {
     OwnerBusinessAssistantActionOption,
-    OwnerBusinessAnalyticsIndexDoc,
-    OwnerBusinessAnalyticsPeriod,
     OwnerBusinessHealthCheck,
     OwnerBusinessHealthCurrentDoc,
     OwnerBusinessHealthQuestion,
@@ -33,36 +37,7 @@ interface MobileBusinessHealthScreenProps {
     onBack: () => void;
 }
 
-const numberFormatter = new Intl.NumberFormat('en');
 const ALL_MENUS_SCOPE = '__all_menus__';
-
-const formatCount = (value?: number) => numberFormatter.format(
-    typeof value === 'number' && Number.isFinite(value) ? value : 0,
-);
-
-const firstAvailablePeriod = (
-    periods: OwnerBusinessAnalyticsIndexDoc['periods'] | undefined,
-) => periods?.today
-    || periods?.thisWeek
-    || periods?.last7Days
-    || periods?.yesterday
-    || null;
-
-const buildMobileAnalyticsMetrics = (
-    period: OwnerBusinessAnalyticsPeriod | undefined,
-) => {
-    if (!period) return [];
-    const topItem = period.topItems?.[0];
-    return [
-        { key: 'primary', label: period.label, value: `${formatCount(period.metrics.menuVisits)} visits` },
-        topItem ? {
-            key: 'top-item',
-            label: 'Top item',
-            value: topItem.name || topItem.itemId,
-            delta: `${formatCount(topItem.value)} ${topItem.signal}`,
-        } : null,
-    ].filter(Boolean) as Array<{ key: string; label: string; value: string; delta?: string }>;
-};
 
 const getFeedbackSummaryLine = (current?: OwnerBusinessHealthCurrentDoc | null) => {
     const feedback = current?.feedbackSummary;
@@ -200,7 +175,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
         [current?.suggestedChecks, suppressedCheckIds],
     );
     const analyticsMetrics = useMemo(
-        () => buildMobileAnalyticsMetrics(firstAvailablePeriod(analytics?.periods)),
+        () => buildOwnerBusinessActivityMetrics(getOwnerBusinessPrimaryAnalyticsPeriod(analytics?.periods)),
         [analytics?.periods],
     );
     const getLocationStatusColor = (status: string) => {
@@ -521,13 +496,13 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                 </Card>
 
                 {isHealthReady && analyticsMetrics.length ? (
-                    <Card title="Analytics">
+                    <Card title="Today">
                         <Flex gap={8} vertical>
                             {analyticsMetrics.map((metric) => (
                                 <Metric
                                     key={metric.key}
                                     label={metric.label}
-                                    value={metric.delta ? `${metric.value} - ${metric.delta}` : metric.value}
+                                    value={metric.detail ? `${metric.value} - ${metric.detail}` : metric.value}
                                 />
                             ))}
                         </Flex>
@@ -566,7 +541,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                 ) : null}
 
                 {visibleChecks.length ? (
-                    <Card title="Checks">
+                    <Card title="Needs attention">
                         <Flex gap={8} vertical>
                             {visibleChecks.slice(0, 4).map((check) => (
                                 <Flex
@@ -581,9 +556,11 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                                 >
                                     <Flex align="center" justify="space-between">
                                         <Text strong>{check.title}</Text>
-                                        <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'default'}>{check.priority}</Tag>
+                                        <Tag color={check.priority === 'high' ? 'error' : check.priority === 'medium' ? 'warning' : 'primary'}>
+                                            {getOwnerBusinessCheckActionLabel(check)}
+                                        </Tag>
                                     </Flex>
-                                    <Text>{check.message}</Text>
+                                    <Text>{getOwnerBusinessCheckOwnerMessage(check)}</Text>
                                     {check.actionType && canNavigateChecks ? (
                                         <Button
                                             block

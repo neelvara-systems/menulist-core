@@ -5,7 +5,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags; Firebase rules/functions deployed
-**Last Updated:** June 8, 2026
+**Last Updated:** June 10, 2026
 
 ---
 

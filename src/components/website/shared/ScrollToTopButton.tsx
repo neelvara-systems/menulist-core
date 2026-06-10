@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { LuArrowUp } from 'react-icons/lu';
 
 export default function ScrollToTopButton() {
+  const t = useTranslations('Website');
   const [enabled, setEnabled] = useState(false);
   const [visible, setVisible] = useState(false);
 
@@ -34,7 +36,7 @@ export default function ScrollToTopButton() {
   return (
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      aria-label="Scroll to top"
+      aria-label={t('Footer.scrollToTop')}
       style={{
         position: 'fixed',
         bottom: '32px',

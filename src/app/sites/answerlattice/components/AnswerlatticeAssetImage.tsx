@@ -2,6 +2,8 @@ import type { AnswerlatticeWebsiteAsset } from '../answerlatticeWebsiteAssets';
 
 type AnswerlatticeAssetImageProps = {
     asset: AnswerlatticeWebsiteAsset;
+    assetSlotId?: string;
+    assetRole?: string;
     className?: string;
     imageClassName?: string;
     priority?: boolean;
@@ -10,6 +12,8 @@ type AnswerlatticeAssetImageProps = {
 
 export default function AnswerlatticeAssetImage({
     asset,
+    assetSlotId,
+    assetRole,
     className = '',
     imageClassName = '',
     priority = false,
@@ -19,6 +23,8 @@ export default function AnswerlatticeAssetImage({
         <figure
             className={`w-full max-w-full overflow-hidden bg-[#09091a] ${className}`.trim()}
             data-answerlattice-reveal={reveal ? true : undefined}
+            data-answerlattice-asset-slot={assetSlotId}
+            data-answerlattice-asset-role={assetRole}
             data-answerlattice-asset-src={asset.src}
             data-answerlattice-asset-width={asset.width}
             data-answerlattice-asset-height={asset.height}

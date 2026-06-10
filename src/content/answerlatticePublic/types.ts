@@ -99,3 +99,30 @@ export type AnswerlatticeResourceArticle = {
     faq?: AnswerlatticeResourceArticleFaq[];
 };
 
+export type AnswerlatticeVisualAssetStatus =
+    | 'planned'
+    | 'generated-product-scene'
+    | 'implemented-vector';
+
+export type AnswerlatticeVisualAssetFormat =
+    | 'screen-or-short-loop'
+    | 'sequence-screens'
+    | 'feature-card-screens'
+    | 'animated-vector-diagram'
+    | 'animated-vector-or-short-loop'
+    | 'static-vector-illustration'
+    | 'short-loop'
+    | 'feature-screen-set';
+
+export type AnswerlatticeVisualAsset = {
+    id: string;
+    route: string;
+    placement: string;
+    status: AnswerlatticeVisualAssetStatus;
+    format: AnswerlatticeVisualAssetFormat;
+    currentAsset?: string;
+    futureAssetName: string;
+    visualDirection: string;
+    mustShow: string[];
+    mustAvoid: string[];
+};

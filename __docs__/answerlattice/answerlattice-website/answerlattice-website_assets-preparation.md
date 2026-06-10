@@ -1,29 +1,76 @@
 # AnswerLattice Website - Final Assets Preparation
 
-> **Status:** Implemented dummy asset contract for final website media
-> **Last Updated:** 2026-06-05
+> **Status:** Implemented production-ready generated product-scene assets, concept illustrations, and maintained visual-asset inventory
+> **Last Updated:** 2026-06-10
 > **Audience:** Product / Marketing / Design / Engineering
 
 ---
 
 ## Goal
 
-Prepare the final videos, screenshots, and product-media placeholders needed to make the AnswerLattice website feel concrete, credible, and conversion-ready without using random stock assets, fake customers, or unsupported product claims.
+Prepare the final videos, screenshots, and product-media assets needed to make the AnswerLattice website feel concrete, credible, and conversion-ready without using random stock assets, fake customers, or unsupported product claims.
 
-The current website screen mockups are image-backed dummy assets, not live HTML/CSS product-scene drawings. This gives design and product an exact view of layout, aspect ratio, crop, and spacing before final screenshots or GIFs are approved.
+The current website screen mockups are image-backed generated product scenes, not live HTML/CSS product-scene drawings. They are production-ready sample workspace visuals using the AnswerLattice product context, fixed crop, and stable filenames. The current concept illustrations are inline SVG panels used for abstract explanation, such as safe context, install verification, source-to-answer flow, governance, and category boundary. Final dashboard screenshots or short GIFs can still replace the same slots later after capture approval.
 
 ---
 
-## Current Dummy Asset Contract
+## Current Stable Asset Contract
 
-- Public dummy image slots live in `public/answerlattice-website-assets/dummy/`.
-- Every current screen asset is a PNG at exactly `1440 x 1200`.
+- Public image slots live in `public/answerlattice-website-assets/dummy/`. The directory name is retained for compatibility, but the current files are generated product-scene assets, not temporary stand-ins.
+- Every current screen asset is a production-ready sample workspace PNG at exactly `1440 x 1200`.
 - The site references screen slots through `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts`.
-- Screen-like website placeholders render through `AnswerlatticeAssetImage.tsx`, which preserves the intrinsic asset aspect ratio.
-- The deterministic generator is `scripts/website-assets/generate-answerlattice-website-dummy-assets.js`.
+- Screen-like website assets render through `AnswerlatticeAssetImage.tsx`, which preserves the intrinsic asset aspect ratio.
+- Concept illustrations render through `AnswerlatticeConceptIllustration.tsx` as inline SVG panels. They stay in code because they explain abstract product boundaries rather than captured dashboard state.
+- Every rendered product-media figure can carry `data-answerlattice-asset-slot` and `data-answerlattice-asset-role` attributes so future captures, SVGs, GIFs, or short loops map back to a known inventory slot.
+- The maintained future visual inventory lives in `src/content/answerlatticePublic/visualAssets.ts`.
+- The deterministic generator is `scripts/website-assets/generate-answerlattice-website-dummy-assets.js`; it now renders concrete AnswerLattice dashboard/widget/governance scenes from source SVGs before converting them to PNG.
 - Internal source SVGs and the generation manifest live in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
-- The public dummy folder should contain PNG screen slots only. Source SVGs, capture notes, and manifests stay internal.
-- Final production screenshots or GIFs should replace the same named slots and preserve `1440 x 1200` unless the registry and this document are updated together.
+- The public asset folder should contain PNG screen slots only. Source SVGs, capture notes, and manifests stay internal.
+- Final production dashboard screenshots or GIFs should replace the same named slots and preserve `1440 x 1200` unless the registry and this document are updated together.
+
+---
+
+## Maintained Visual Asset Inventory
+
+The website now has a code-maintained visual asset inventory in `src/content/answerlatticePublic/visualAssets.ts`. Use it before generating, requesting, capturing, or replacing any visual.
+
+| Inventory Slot | Current Status | Future Asset Direction |
+|----------------|----------------|------------------------|
+| `home.hero.product-loop` | Generated product scene | 12-18 second product loop showing source import, page-aware answer, fallback, and owner review |
+| `home.support-surfaces.sticky-story` | Generated product-scene sequence | Five-step sticky story: owner inputs, in-product help, hosted help, fallback gaps, approved-answer review |
+| `home.product-overview.feature-cards` | Generated product-scene/card set | Feature-wise product-control scenes for widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, and intake |
+| `home.support-loop.diagram` | Implemented vector diagram | Keep the current governed loop and tune pacing/captions only if needed |
+| `product.source-to-answer.illustration` | Implemented vector illustration | Product hero concept: sources flow into governed answer layer, then widget, hosted help, and review queue |
+| `product.governance-loop.illustration` | Implemented vector illustration | Approved-answer section concept: fallback, review queue, owner approval, future trusted answer |
+| `install.verification-flow` | Implemented vector illustration | Install verification path: script, allowed origin, blocked route, safe context, fallback ready |
+| `security.safe-context-boundary` | Implemented vector illustration | Boundary diagram for allowed context, blocked private data, approved answers, and fallback |
+| `comparisons.positioning-boundary.illustration` | Implemented vector illustration | Category-boundary visual showing AnswerLattice between chatbots, helpdesks, docs, and tickets |
+| `demo.page-aware-widget` | Generated product-scene set | Short page-aware widget loop across billing, onboarding, settings, and release questions |
+| `product.area.launch-setup` | Generated product scene | Product-area scene for first-session setup and widget readiness |
+| `product.area.page-aware-widget` | Generated product scene | Product-area scene for safe widget context and fallback |
+| `product.area.support-control` | Generated product scene | Product-area scene for hosted help, FAQ, changelog, tickets, and feedback |
+| `product.area.knowledge-governance` | Generated product scene | Product-area scene for drafts, stale guidance, repeated misses, and owner approval |
+| `feature.template.hero-scene` | Generated feature scenes | One concrete product scene per feature page, using consistent AnswerLattice visual language |
+
+Do not add a new public visual asset until its slot is either already present in the inventory or added there first with purpose, route, status, must-show, and must-avoid notes.
+
+---
+
+## Crisp-Informed Asset Direction
+
+The site should borrow the product-led rhythm of modern support websites without copying their cartoon, mascot, or generic helpdesk style.
+
+What to adopt:
+- feature pages should use a strong hero visual, concise outcome cards, one workflow proof, connected-suite proof, and FAQ/CTA;
+- homepage visuals should show suite breadth early and then explain the product through sticky cards and feature-wise product scenes;
+- concept illustrations should explain abstract boundaries such as safe context, install verification, answer governance, and category positioning;
+- motion should explain state transitions, not decorate the page.
+
+What to avoid:
+- mascot-led illustrations;
+- generic customer-support cartoons;
+- fake customer logos, fake metrics, or broad automation claims;
+- visuals that make AnswerLattice look like a helpdesk, live chat suite, or autonomous AI chatbot.
 
 ---
 
@@ -66,7 +113,7 @@ The current website screen mockups are image-backed dummy assets, not live HTML/
 | Knowledge Intake | Pre-Onboarding, Product features | `/answerlattice/knowledge-intake`, `AnswerlatticeKnowledgeIntake.tsx` | Source links, docs/files, screenshot/recording text extraction, draft review state |
 | Widget Management | Widget page, Security page | `/answerlattice/widget`, `AnswerlatticeWidgetManagement.tsx` | Allowed origins, blocked routes, context key, appearance, runtime checks |
 | Install Center | Day-one launch pack, Install page | `/answerlattice/install-center`, `AnswerlatticeInstallCenter.tsx` | Agent packet, framework quickstarts, script install, verifier status |
-| Hosted Help | Hosted help center page | `/answerlattice/help`, `HostedHelpClient.tsx` | Published docs, FAQs, release notes, custom help domain placeholder |
+| Hosted Help | Hosted help center page | `/answerlattice/help`, `HostedHelpClient.tsx` | Published docs, FAQs, release notes, custom help domain state |
 | FAQ Management | Product features, FAQ proof | `/answerlattice/faqs`, `AnswerlatticeFaqManagement.tsx` | Owner-written Q&A, article-backed FAQ, surface/context assignment |
 | Tickets and fallback | Comparison, closed loop, Support Control | `/answerlattice/tickets` | Missing answer captured with safe page/debug context and review status |
 | Feedback Review | Product preview, proof pack | `/answerlattice/feedback`, `AnswerlatticeFeedbackReview.tsx` | Rating, product-area feedback, feature request, Support Board handoff |
@@ -98,7 +145,7 @@ Use this consistent sample data across screenshots and videos:
 
 ## Website Placement Plan
 
-| Website Surface | Preferred Asset | Fallback Placeholder |
+| Website Surface | Preferred Asset | Current Stable Asset |
 |-----------------|-----------------|----------------------|
 | Homepage hero | 12-18 sec product loop or high-fidelity dashboard screenshot | `answerlattice-home-hero-workspace.png` |
 | Conversion proof band | Six small UI crops or icon cards tied to product proof | Current compact icon cards, not screen mockups |
@@ -117,7 +164,7 @@ Use this consistent sample data across screenshots and videos:
 ## Capture Checklist
 
 - Desktop screenshots: 1440 x 1200 minimum, browser UI hidden unless the browser frame is part of the designed mock.
-- Current dummy screen slots are exactly 1440 x 1200 PNGs. Final production screenshots or GIF poster frames should keep that size unless the registry changes.
+- Current generated product-scene slots are exactly 1440 x 1200 PNGs. Final production screenshots or GIF poster frames should keep that size unless the registry changes.
 - Mobile screenshots: 390 x 844 and 430 x 932 for hero, navigation, demo, widget, and pricing.
 - Videos: 1440p source, export MP4 and WebM, no audio unless a narrated version is intentionally prepared.
 - Cursor movement: slow, purposeful, no random scrolling.

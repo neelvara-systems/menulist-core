@@ -2,6 +2,10 @@
 
 import type { OwnerBusinessHealthCurrentDoc } from '@lib/ownerBusinessAssistant/types';
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
+import {
+    getOwnerBusinessCheckActionLabel,
+    getOwnerBusinessCheckOwnerMessage,
+} from '@lib/ownerBusinessAssistant/businessSignals';
 import { theme } from 'antd';
 import { LuActivity, LuArrowRight, LuCheckCircle2 } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text } from '../antd';
@@ -52,6 +56,7 @@ export default function MobileBusinessHealthCard({
     const ownerMessage = current?.summary.ownerMessage || 'MenuList will show Business Health after the first store check finishes.';
     const displayFreshness = freshnessNote || current?.sourceRefs?.[0]?.freshnessLabel || current?.localDate || null;
     const feedbackLine = getFeedbackLine(current);
+    const firstSignal = current.suggestedChecks?.[0];
 
     return (
         <Card>
@@ -81,6 +86,21 @@ export default function MobileBusinessHealthCard({
                         </Flex>
                         <Text strong>{headline}</Text>
                         <Text type="secondary">{ownerMessage}</Text>
+                        {firstSignal ? (
+                            <Flex
+                                gap={6}
+                                style={{
+                                    background: token.colorFillAlter,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 8,
+                                    padding: 8,
+                                }}
+                                vertical
+                            >
+                                <Text strong>{getOwnerBusinessCheckActionLabel(firstSignal)}</Text>
+                                <Text type="secondary">{getOwnerBusinessCheckOwnerMessage(firstSignal)}</Text>
+                            </Flex>
+                        ) : null}
                         {feedbackLine ? <Text type="secondary">{feedbackLine}</Text> : null}
                         {displayFreshness ? <Text type="secondary" style={{ fontSize: 12 }}>{displayFreshness}</Text> : null}
                     </Flex>

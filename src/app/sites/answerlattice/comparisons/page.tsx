@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
+import AnswerlatticeConceptIllustration from '../components/AnswerlatticeConceptIllustration';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import PageProofStrip from '../components/PageProofStrip';
 import SectionHeader from '../components/SectionHeader';
@@ -45,6 +46,10 @@ export default function AnswerlatticeComparisonsPage() {
                             { label: 'No vendor claims', value: 'Generic category comparisons only' },
                             { label: 'Core boundary', value: 'Support knowledge layer, not helpdesk replacement' },
                         ]}
+                    />
+                    <AnswerlatticeConceptIllustration
+                        variant="positioning-boundary"
+                        className="mx-auto mt-8 max-w-5xl text-left"
                     />
                 </section>
 

@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.78
-> **Last Updated:** 2026-06-07
+> **Version:** 1.2.85
+> **Last Updated:** 2026-06-10
 > **Audience:** Developers
 
 ---
@@ -47,7 +47,9 @@ Visible AnswerLattice website diagrams stay vector-based. `AnswerlatticeFlowDiag
 
 Diagram centers use a single soft outer ripple around the logo mark and do not render a second static inner strip. Shared pulse keyframes travel to the visible route endpoint and fade there; cross diagrams launch all logo-origin pulses together so the center reads as one listening source.
 
-Screen-like product placeholders use raster website assets, not hand-drawn HTML/CSS dashboard mockups. The asset registry in `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` points to the public dummy PNG slots under `public/answerlattice-website-assets/dummy/`, and `AnswerlatticeAssetImage.tsx` preserves their intrinsic `1440 x 1200` aspect ratio. The generator `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` creates those PNGs without new npm dependencies and keeps source SVGs plus the manifest in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
+Screen-like product scenes use raster website assets, not hand-drawn HTML/CSS dashboard mockups. The asset registry in `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` points to stable PNG slots under `public/answerlattice-website-assets/dummy/`; the directory name is retained for compatibility, but the current files are production-ready generated sample workspace visuals. `AnswerlatticeAssetImage.tsx` preserves their intrinsic `1440 x 1200` aspect ratio while exposing `data-answerlattice-asset-slot` and `data-answerlattice-asset-role` for future visual QA. The maintained future visual inventory lives in `src/content/answerlatticePublic/visualAssets.ts`. The generator `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` creates concrete AnswerLattice dashboard, widget, support, and governance scenes without new npm dependencies and keeps source SVGs plus the manifest in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
+
+Concept illustrations use `AnswerlatticeConceptIllustration.tsx`, a zero-dependency inline SVG component for abstract buyer concepts that should not be represented as fake dashboard screenshots. Current variants cover source-to-answer, governance loop, install verification, safe-context boundary, and category positioning. These panels are used on Product, Install, Security, and Comparisons pages to reduce explanatory text while preserving the AnswerLattice non-goals: no mascot art, no helpdesk replacement framing, no chatbot/autopilot claims, and no fake customer proof.
 
 `src/app/sites/answerlattice/scroll-reveal.css` must not leave visible sections on a persistent `translate3d(0, 0, 0)` or `will-change` compositing layer. Pending reveal can use a temporary transform, but the visible state returns to `transform: none` and `will-change: auto` so inline SVG diagrams remain vector-painted and do not look rasterized when the browser zoom level changes.
 
@@ -138,15 +140,16 @@ src/app/sites/answerlattice/
 ├── llms.txt/route.ts              # Short product-domain agent-readable context
 ├── llms-full.txt/route.ts         # Extended product-domain agent-readable context and boundaries
 ├── siteConfig.ts                  # Shared public site metadata and route registry
-├── answerlatticeWebsiteAssets.ts  # Fixed-size website screen-asset registry for dummy/final screenshot slots
+├── answerlatticeWebsiteAssets.ts  # Fixed-size website screen-asset registry for generated/final product-scene slots
 ├── enginePillars.ts               # Implemented AnswerLattice engine pillar copy
 ├── systemCoverage.ts              # Code-backed system coverage groups for homepage
 └── components/
-    ├── Header.tsx                 # Shared header with desktop nav and right-side mobile drawer
+    ├── Header.tsx                 # Shared header with Product/Demo/Install/Use Cases/Resources/Pricing nav and right-side mobile drawer
     ├── Footer.tsx                 # Shared footer with public-route link columns and bottom theme switcher
     ├── AnswerlatticeThemeProvider.tsx # Light/System/Dark provider with AnswerLattice-scoped persistence and browser theme-color updates
     ├── AnswerlatticeThemeSwitcher.tsx # Shared icon segmented control for Light/System/Dark
-    ├── AnswerlatticeAssetImage.tsx    # Shared raster screen-asset renderer that preserves intrinsic dimensions
+    ├── AnswerlatticeAssetImage.tsx    # Shared raster screen-asset renderer that preserves intrinsic dimensions and exposes asset-slot metadata
+    ├── AnswerlatticeConceptIllustration.tsx # Reusable inline SVG concept panels for safe context, install, source-to-answer, governance, and positioning boundaries
     ├── AnswerlatticeLogoMark.tsx       # Shared wrapper for the atom-level inline SVG-path logo
     ├── AnswerlatticeFlowDiagram.tsx    # Reusable animated hub, column-sequence, and loop diagrams
     ├── AnswerlatticeProofBlocks.tsx    # Reusable before/after, status snapshot, and decision proof blocks
@@ -157,7 +160,7 @@ src/app/sites/answerlattice/
     ├── AnswerlatticeResourceAnalytics.tsx # Resource/referrer analytics tracker, no Firestore writes
     ├── AnswerlatticeScrollReveal.tsx   # Layout-level reveal observer for public sections, cards, CTA controls, and footer groups
     ├── HeroSection.tsx            # Page-aware support-answer hero with inline sample workspace preview
-    ├── HomeProofBandSection.tsx   # Homepage conversion proof band for core buyer claims
+    ├── HomeProofBandSection.tsx   # Retained conversion proof band component; compressed homepage uses PageProofStrip inside the hero
     ├── SupportKnowledgeMapSection.tsx # Visual source map for support inputs, the AnswerLattice answer layer, and output surfaces
     ├── HomePageAwareDemoSection.tsx # Embedded generic-vs-AnswerLattice demo
     ├── ClosedLoopSection.tsx      # Page question to reviewed support-fix loop diagram
@@ -171,13 +174,13 @@ src/app/sites/answerlattice/
     ├── PillarsSection.tsx         # Homepage AnswerLattice engine pillar sequence diagram
     ├── SystemCoverageSection.tsx  # Homepage Launch/Support/Governance/Runtime hub diagram
     ├── HowItWorksSection.tsx      # Homepage 5-step animated sequence
-    ├── ComparisonSection.tsx      # Homepage comparison table
+    ├── ComparisonSection.tsx      # Product category comparison table
     ├── PricingPreviewSection.tsx  # Compact homepage pricing checkpoint linking to full pricing details
     ├── ObjectionsSection.tsx      # Top buyer objections before final CTA
     ├── SeoLandingPage.tsx         # Shared static SEO landing page component
     ├── UseCaseLandingPage.tsx     # Shared wrapper for role-specific use-case pages
-    ├── ProductCapabilityLandingPage.tsx # Shared template for product-area landing pages
-    ├── ProductFeatureLandingPage.tsx # Shared template for KB/FAQ/changelog/ticket feature pages
+    ├── ProductCapabilityLandingPage.tsx # Shared template for product-area landing pages with suite-fit framing
+    ├── ProductFeatureLandingPage.tsx # Shared template for product feature pages with connected-suite framing
     ├── StructuredData.tsx         # Homepage Organization/WebSite/SoftwareApplication/WebPage/Breadcrumb JSON-LD
     ├── PageStructuredData.tsx     # Per-route WebPage + BreadcrumbList JSON-LD from ANSWERLATTICE_PUBLIC_PAGES
     └── CTASection.tsx             # Homepage bottom CTA
@@ -193,6 +196,7 @@ src/content/answerlatticePublic/
 ├── articles.ts     # Resource article registry and related-article lookup
 ├── comparisons.ts  # Category comparison registry
 ├── developerDocs.ts # Developer-doc registry
+├── visualAssets.ts # Maintained visual-slot inventory and asset guardrails
 └── types.ts        # Shared public-content types
 ```
 
@@ -208,13 +212,18 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - "vibe-coded SaaS" is treated as an SEO/campaign alias, not the main public buyer label
 - homepage and product page expose the implemented AnswerLattice engine pillars: Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
+- June 10 market-pattern pass moved the homepage from a long feature catalog toward a product-led support-suite story: support-suite cards, setup path, install quickstarts, positioning boundary, and category comparison entered the main conversion path without adding runtime reads or unsupported helpdesk claims.
+- June 10 homepage compression pass reduced the rendered homepage from 18 sections to 11, shortened hero/suite/support-surface copy, preserved the sticky support-surface story and feature-wise product overview cards, and moved repeated setup/trust/comparison detail into Product, feature, resource, security, and comparison pages.
+- June 10 product page and shared feature/capability templates now reconnect every narrower feature page back to the broader suite: setup, in-app support, hosted help, fallback, feedback, and owner-approved answers.
+- June 10 competitive cross-check pass added shared evaluation strips to product-area and product-feature templates so each page answers setup path, security boundary, and category-fit questions before the final CTA.
+- June 10 visual asset pass replaced generic dummy frames with 25 production-ready generated product-scene PNGs and matching internal SVG sources for homepage, Product, product-area, feature, widget, and demo slots while preserving stable filenames and dimensions.
+- June 10 concept illustration pass added reusable inline SVG explainers for source-to-answer flow, governance loop, install verification, safe-context boundary, and category positioning on Product, Install, Security, and Comparisons without adding homepage length.
 - homepage now leads with product-user support rather than SaaS-user-only wording, keeps the 24/7 claim in the eyebrow, and uses setup/demo CTAs plus capability chips
 - homepage includes a support-surface story section in `page.tsx` that walks from owner inputs to in-app help, hosted help, fallback gaps, and the review loop using image-backed product assets and sticky desktop cards
-- homepage adds `HomeProofBandSection.tsx` immediately after the hero so page-aware answers, approved knowledge, hosted help, feedback gaps, widget install, and source preparation are not missed before the deeper story
-- homepage includes a restrained tabbed product-proof preview across desktop, tablet, and mobile, showing activation, product surfaces, widget install, feedback review, and governance queue states
+- homepage folds compact proof into the hero through `PageProofStrip` so page-aware answers, approved knowledge, hosted help, fallback, feedback gaps, widget install, and source preparation are not missed before the deeper story
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
 - `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
-- header links include `/demo`, the desktop Product dropdown uses compact title-only rows for product areas and features, and the desktop Resources navigation now uses the same compact title-only overview-plus-guides pattern for high-priority resource articles plus the resources hub
+- header links include `/demo` and `/install`, the desktop Product dropdown uses compact title-only rows for product areas and features, and the desktop Resources navigation now uses the same compact title-only overview-plus-guides pattern for high-priority resource articles plus the resources hub
 - header mobile navigation is client-gated to confirmed sub-1280px viewports so the hamburger trigger does not appear beside desktop navigation on wide screens
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
@@ -247,16 +256,16 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 24 AI-built SaaS pass changed the homepage hero to "You shipped the app. Now users need correct answers.", moved the page-aware demo directly after the hero, and teaches approved answers before advanced AnswerLattice vocabulary.
 - May 24 AI-built SaaS pass added `/use-cases/ai-built-saas` and `/use-cases/vibe-coded-saas` as a canonicalized alias for campaign/search traffic.
 - May 22 conversion pass changed the homepage hero to outcome-first buyer language while keeping "governed answer infrastructure" as secondary category language.
-- Homepage now embeds the static demo directly in the buying path and shows generic answer vs AnswerLattice answer for each demo surface.
-- Homepage adds best-fit/not-fit qualification, 10-minute setup sequence, security-at-a-glance controls, a compact pricing checkpoint, and top buyer objections.
+- Homepage links to the static demo from the buying path; the deeper generic-answer vs AnswerLattice-answer walkthrough stays on `/demo` so the homepage remains shorter.
+- Homepage keeps a compact pricing checkpoint and top buyer objections; detailed fit qualification, setup sequence, and security controls stay on Product, Install, Pricing, Security, and resource routes.
 - `/pricing` now defines support credits in plain language and gives plan-fit guidance for Starter, Growth, and Studio.
 - `/install` now includes developer handoff examples and a runtime verification mock so technical founders can see the implementation path.
 - `/install` is now the AnswerLattice Agent Install Layer: the public site exposes copyable AI-agent instructions, framework pages, Markdown mirrors, public agent files, and the frozen v1 widget contract from one generator.
 - `/use-cases` now includes concrete sample questions, generic answers, and AnswerLattice answers for each scenario.
 - Three static SEO landing pages were added: `/page-aware-support-widget`, `/hosted-help-center-for-saas`, and `/support-widget-for-solo-founders`.
 - Optional conversion tracking uses GA/measurement events only when a public measurement ID exists; it does not call Firestore or AnswerLattice APIs.
-- The homepage now borrows the modern product-scene pattern from high-performing SaaS sites: the first proof after the hero is a restrained tabbed preview with one stable product frame rather than another text grid or decorative parallax effect.
-- The product scene is implemented as responsive HTML/CSS instead of a static raster screenshot so it does not expose private workspace data, does not become stale after dashboard UI changes, and keeps public browsing at zero Firebase cost.
+- The compressed homepage uses an image-backed hero product scene plus compact proof strip instead of another long text grid or decorative parallax effect.
+- Public product scenes are static website assets or controlled HTML/CSS previews; they do not expose private workspace data, do not call Firebase, and keep public browsing at zero Firebase cost.
 - The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
 - May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `answerlattice.com` get AnswerLattice-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to generic platform context.
 - May 22 positioning pass made the demo the hero primary CTA and reframed the homepage around page-aware support truth rather than generic AI support.
@@ -394,6 +403,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `terms-of-service/page.tsx` — Terms of service page
 - `Footer.tsx` — Footer (no state needed)
 - `HeroSection.tsx`, `ProductPreviewSection.tsx`, `WidgetSection.tsx`, `PillarsSection.tsx`, `SystemCoverageSection.tsx`, `HowItWorksSection.tsx`, `ComparisonSection.tsx`, `CTASection.tsx`
+- `page.tsx` also owns the homepage-only support-suite, support-surface story, install-surface, AI-built SaaS fit, and positioning-boundary sections as server-rendered static content. Founder-pressure, product-overview, trust/fallback, founder-review, setup-path, and category-comparison detail remains available through Product, feature, resource, security, and comparison routes instead of rendering as separate homepage sections.
 
 ### Client Components (`'use client'`)
 - `demo/AnswerlatticePublicDemo.tsx` — Account-free demo state
@@ -403,7 +413,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `components/AnswerlatticeScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
-- `Header.tsx` — Desktop Product and Resources dropdowns stay CSS-driven. Full desktop navigation starts at the `xl` breakpoint so tablet and narrow laptop widths use the drawer instead of a cramped desktop header. The Product dropdown is left-aligned from the Product nav group, stays inside the viewport, and uses compact title-only rows with icons instead of descriptive body copy so the menu remains a fast chooser. The Resources dropdown mirrors that compact treatment with a Resources overview row, a Resource guides section, small icon tiles, and title-only rows for high-priority public resource articles. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
+- `Header.tsx` — Desktop Product and Resources dropdowns stay CSS-driven, while Demo and Install are direct top-level links for high-intent evaluation. Full desktop navigation starts at the `xl` breakpoint so tablet and narrow laptop widths use the drawer instead of a cramped desktop header. The Product dropdown is left-aligned from the Product nav group, stays inside the viewport, and uses compact title-only rows with icons instead of descriptive body copy so the menu remains a fast chooser. The Resources dropdown mirrors that compact treatment with a Resources overview row, a Resource guides section, small icon tiles, and title-only rows for high-priority public resource articles. Mobile navigation is a small client drawer that opens from the right, locks body scroll, closes on backdrop/Escape/link click, groups Product Areas, Product Features, and Other into separate cards, includes route icons for every drawer item, and includes safe-area bottom padding. The drawer uses separate mounted and visible states so it paints off-screen before opening and stays mounted long enough to animate closed.
 
 ---
 
@@ -465,6 +475,13 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-10 | 1.2.85 | Added reusable AnswerLattice concept illustrations for source-to-answer, governance loop, install verification, safe-context boundary, and category positioning across Product, Install, Security, and Comparisons |
+| 2026-06-10 | 1.2.84 | Generated 25 production-ready AnswerLattice product-scene PNGs and internal source SVGs for the maintained website visual slots while preserving stable asset paths |
+| 2026-06-10 | 1.2.83 | Added the maintained AnswerLattice visual asset inventory and data attributes for current/future visual slots without generating new assets |
+| 2026-06-10 | 1.2.82 | Restored the feature-wise Product Overview cards after the sticky support-surface story while keeping the homepage compressed at 11 rendered sections |
+| 2026-06-10 | 1.2.81 | Compressed the homepage render path from 18 sections to 10, shortening hero, support-suite, and support-surface copy while preserving widget, hosted help, tickets, approved answers, feedback, changelog, install, pricing, and not-helpdesk signals |
+| 2026-06-10 | 1.2.80 | Added shared product-area and product-feature evaluation strips for setup, security, and category-fit checks after cross-checking high-performing support feature-page patterns |
+| 2026-06-10 | 1.2.79 | Applied the product-led support-suite website pass: homepage now adds suite, install, and comparison sections; Product now includes category comparison; shared product-area and product-feature templates reconnect each page to the broader support suite; header promotes Demo and Install as top-level high-intent paths |
 | 2026-06-07 | 1.2.78 | Added the homepage support-surface story, frame rail motion, product-user hero wording, and input-to-support output diagram updates while keeping the public site static and scoped to existing product routes |
 | 2026-06-06 | 1.2.77 | Synced public launch-setup, product-preview, and updates copy with Activation first-client launch proof without claiming Jira, native helpdesk, or mutation-proposal scans from the website |
 | 2026-06-06 | 1.2.76 | Gated the mobile hamburger trigger to confirmed mobile viewports and normalized shared non-home hero typography/alignment in the product-scoped stylesheet without changing the homepage hero |

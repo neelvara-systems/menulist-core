@@ -28,6 +28,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
 
                     <h1 className="al-page-hero__title relative mx-auto w-full break-words lg:mx-0">
                         <span className="block">Support your product users</span>
+                        {' '}
                         <span className="answerlattice-hero-gradient mt-1 block">
                             <span className="block sm:inline">without hiring</span>
                             <span className="block sm:inline"> a support team.</span>
@@ -85,6 +86,8 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                 <article className="relative mx-auto min-w-0 w-full max-w-full rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:max-w-2xl lg:max-w-none" aria-label="Sample AnswerLattice workspace preview">
                     <AnswerlatticeAssetImage
                         asset={ANSWERLATTICE_HOME_HERO_ASSET}
+                        assetSlotId="home.hero.product-loop"
+                        assetRole="shared-hero-product-scene"
                         priority
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />

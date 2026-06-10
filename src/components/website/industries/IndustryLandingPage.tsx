@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { LuArrowRight, LuCheckCircle2 } from 'react-icons/lu';
 import type { WebsiteIndustryPage } from '@/content/websiteIndustries';
 import WebsiteButton from '../shared/WebsiteButton';
@@ -10,6 +11,8 @@ interface IndustryLandingPageProps {
 }
 
 export default function IndustryLandingPage({ page }: IndustryLandingPageProps) {
+    const t = useTranslations('Website');
+
     return (
         <main className="ws-industry-page">
             <section className="ws-industry-hero">
@@ -35,7 +38,7 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
             <section className="ws-section">
                 <div className="ws-container ws-industry-summary">
                     <AnimateOnScroll preset="card">
-                        <p className="ws-page-hero__eyebrow">Best fit</p>
+                        <p className="ws-page-hero__eyebrow">{t('Industry.bestFit')}</p>
                         <WebsiteHeadline as="h2" text={page.audience} />
                     </AnimateOnScroll>
                     <div className="ws-industry-proof-grid">
@@ -54,8 +57,8 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
             <section className="ws-section ws-section--subtle">
                 <div className="ws-container">
                     <AnimateOnScroll preset="card" className="ws-industry-section-heading">
-                        <p className="ws-page-hero__eyebrow">How MenuList fits</p>
-                        <WebsiteHeadline as="h2" text="Keep the public menu current without adding another public source." />
+                        <p className="ws-page-hero__eyebrow">{t('Industry.howMenuListFits')}</p>
+                        <WebsiteHeadline as="h2" text={t('Industry.fitSectionTitle')} />
                     </AnimateOnScroll>
                     <div className="ws-industry-fit-grid">
                         {page.fit.map((item, index) => (
@@ -73,8 +76,8 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
             <section className="ws-section">
                 <div className="ws-container ws-industry-resources">
                     <AnimateOnScroll preset="card">
-                        <p className="ws-page-hero__eyebrow">Related resources</p>
-                        <WebsiteHeadline as="h2" text="Read the guides that match this business type." />
+                        <p className="ws-page-hero__eyebrow">{t('Industry.relatedResources')}</p>
+                        <WebsiteHeadline as="h2" text={t('Industry.resourcesSectionTitle')} />
                     </AnimateOnScroll>
                     <div className="ws-industry-resource-links">
                         {page.resourceLinks.map((item, index) => (
@@ -92,7 +95,7 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
             <section className="ws-section ws-section--subtle">
                 <div className="ws-container">
                     <AnimateOnScroll preset="card" className="ws-industry-section-heading">
-                        <WebsiteHeadline as="h2" text="Questions owners ask" />
+                        <WebsiteHeadline as="h2" text={t('Industry.questionsTitle')} />
                     </AnimateOnScroll>
                     <div className="ws-resource-faq__grid">
                         {page.faq.map((item, index) => (

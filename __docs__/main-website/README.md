@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.40 (Production Readiness Theme and Motion Polish)
+**Version:** 3.6.51 (Feature Visual Launch Polish)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 9, 2026
+**Last Updated:** June 10, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.40** | **Production Readiness Theme and Motion Polish** | **"The website stays stable in light and dark mode."** | **ACTIVE** |
+| **3.6.51** | **Feature Visual Launch Polish** | **"Dedicated feature visuals are clean, readable, and launch-ready."** | **ACTIVE** |
+
+Version 3.6.51 is the feature visual launch-polish pass after screenshot review found the Official Business Page hero visual too nested and compressed. The shared feature-detail hero now gives the media column more room, `FeatureDetailVisual` avoids duplicate internal marketing headlines, the Official Business Page visual removes the nested browser border and redundant bottom pill row, visual chips use softer treatment, and mobile microcopy/print asset cards stay readable without horizontal overflow. Local browser checks covered representative feature pages at desktop and 390px mobile widths plus light/dark theme toggling. This is static public website component/CSS/docs polish only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.50 is the final website readiness QA pass after the feature-page visual work. It keeps the implemented site as the only canonical website source, runs the public route/content scan again, and removes legacy `MenuList AI` wording from support-feedback labels in the website locale packs so the public page payload stays aligned with the current `MenuList` brand rule. This is static public website locale/docs cleanup only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.49 adds a shared `FeatureDetailVisual.tsx` product-proof visual system to the generic dedicated feature pages. The old text/icon hero preview now becomes a feature-specific visual for import, content prep, Featured Choices, Official Business Page, QR menu and links, Print-ready Kit, Owner Phone Dashboard, Menu Quality Validation, Customer Feedback Loop, and Public Discovery. The visuals reuse existing locale copy and feature config icons instead of adding fake screenshots or hardcoded English, and mobile layouts are compacted for print assets and feedback-flow pages. Local checks covered the ten feature routes, desktop/mobile overflow, lint, TypeScript, and diff whitespace. This is public website component/CSS/docs work only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.40 is the final production-readiness polish pass across the current public website. It adds a website-scoped document theme helper so dark mode colors the actual page body without leaking into owner-dashboard routes, extends shared viewport reveal wrappers to resource hub, resource article, and industry landing-page content, hardens legal-page grids against narrow-screen overflow, adds width guards around sticky feature-story layouts, and compacts the mobile analytics privacy panel. Local checks covered TypeScript, lint, diff whitespace, and representative light/dark browser passes for homepage, feature detail, resources, industry, and legal page types. This is public website component/CSS/docs polish only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 

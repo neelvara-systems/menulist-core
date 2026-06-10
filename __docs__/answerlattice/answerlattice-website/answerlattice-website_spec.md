@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.59
-> **Last Updated:** 2026-06-06
+> **Version:** 1.2.85
+> **Last Updated:** 2026-06-10
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -41,25 +41,24 @@ Public fit and setup copy must not imply founders need existing support volume b
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what AnswerLattice is in < 5 seconds: the first 24/7 support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the static demo as the secondary proof path.
+**Goal:** Communicate what AnswerLattice is in < 5 seconds: a complete first support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the static demo, install path, and product-suite pages as supporting proof paths.
 
 **Sections:**
-1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow may carry the 24/7 category claim; the headline should not repeat 24/7. The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement.
-2. **Capability Proof Strip** — Compact proof of widget, hosted help, approved answers, ticket fallback, feedback review, changelog, and safe context. Use capability proof until real customer proof exists.
-3. **Founder Support Pressure** — Before/after section for the emotional post-launch moment: building got faster, but user support still becomes the founder's responsibility.
-4. **Input-to-Support Diagram** — Vertical three-row diagram inside the founder-pressure panel: owner inputs on top, AnswerLattice mark in the middle, generated support outputs below. Outputs should render as a compact 2x2 grid on desktop and emphasize in-app widget, help center, FAQ answers, and documentation rather than implying AnswerLattice generates tickets or changelogs.
-5. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
-6. **Product Overview** — Clean product overview cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
-7. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
-8. **User-Side Product Proof** — Product screenshot/asset section showing the user getting help on a concrete Billing/Onboarding/Settings page.
-9. **Founder-Side Review Proof** — Product screenshot/asset section showing support gaps, stale answers, low-rated replies, and draft improvements awaiting review.
-10. **Differentiation** — Three-card section: not a chatbot, not static docs, not a full helpdesk.
-11. **Use-Case Strip** — Compact navigation cards for AI-built SaaS, solo founders, launch-stage products, active SaaS, small teams, and studios/agencies.
-12. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
-13. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
-14. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
+1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow may carry the complete-support-layer category claim; the headline should not repeat 24/7. The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement. The compact capability proof strip lives inside this hero until real customer proof exists.
+2. **Support Suite** — Four compact suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers. This is the homepage's clearest product-suite framing and must not turn into a helpdesk or chatbot replacement claim.
+3. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
+4. **Product Overview** — Feature-wise product cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
+5. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
+6. **Install Surface Quickstarts** — Install confidence section for the widget contract, framework-specific setup paths, safe context rules, and verification before launch.
+7. **AI-Built SaaS Fit** — Compact fit strip for AI-built SaaS, solo founders, technical founders, and small SaaS teams launching faster than traditional support processes.
+8. **Positioning Boundary** — Three-card boundary: not a chatbot, not static docs, not a full helpdesk.
+9. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
+10. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
+11. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
 
-The homepage must stay diagram-controlled: one hero product scene, one capability proof strip, one input-to-support diagram, one support-surface story, one large support-improvement loop diagram, product proof screenshots, one comparison card group, pricing, FAQ preview, and final CTA. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
+The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite section, the sticky support-surface story, one feature-wise product overview card section, one large support-improvement loop diagram, one install-confidence section, concise fit/positioning/pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and category comparison belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
+
+Visual assets for the homepage and feature pages must be planned through `src/content/answerlatticePublic/visualAssets.ts` before generation or capture. Current stable PNG slots are generated product-scene assets at `1440 x 1200`; final screenshots or GIFs may replace them only when they preserve the same product-truth, safe-context, fallback, and owner-review meaning. Concept illustrations may use inline SVG when the subject is abstract, such as safe context, install verification, source-to-answer flow, governance loop, or category positioning. Decorative mascot/cartoon assets, fake customers, fake metrics, and unsupported helpdesk/chatbot claims are not part of the AnswerLattice public-site style.
 
 ### 2. Product (`/product`)
 **Goal:** Explain the product in founder/operator language while preserving the real AnswerLattice architecture.
@@ -69,6 +68,8 @@ The homepage must stay diagram-controlled: one hero product scene, one capabilit
 - Product area cards that route to landing-style subpages for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers
 - Product feature directory that exposes the support-system details behind team access, knowledge intake, knowledge base, FAQ management, changelog, tickets, Support Board, feedback review, workflow notifications, and proactive help without making the homepage longer
 - Team access should be presented as production readiness inside setup, security, pricing, and a dedicated feature page because it affects workspace trust and buyer evaluation.
+- Connected support-suite section that shows setup, in-app help, hosted help, tickets, feedback, and approved-answer review as one product system before the page moves into narrower feature detail.
+- Category comparison section that separates AnswerLattice from chatbots, helpdesks, and static knowledge bases without unsupported competitor-specific claims.
 - Day-One Launch Pack section that packages quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
 - Product scene reused from the homepage so buyers see the owner workflow before the architecture deep dive
 - AnswerLattice Engine section:
@@ -90,7 +91,7 @@ Product-area subpages:
 - `/product/support-control`
 - `/product/knowledge-governance`
 
-Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, compact proof strip, large browser-style product canvas, bento benefit grid, animated workflow sequence, and CTA. These pages stay static and may only claim implemented AnswerLattice behavior.
+Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, connected support-suite framing, compact proof strip, large browser-style product canvas, bento benefit grid, animated workflow sequence, evaluation strip for setup/security/category-fit checks, and CTA. These pages stay static and may only claim implemented AnswerLattice behavior.
 
 Each product-area subpage must include the same proof-and-action treatment above the product canvas: Start support setup, demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
 
@@ -105,7 +106,7 @@ Product-feature subpages:
 - `/product/workflow-notifications`
 - `/product/proactive-help`
 
-Feature pages must use buyer-facing wording and avoid overclaiming. FAQ Management can claim owner-written answers, article-backed FAQ suggestions, article links, tags, entities, surface/context assignment, and published answers before fallback, while preserving approved-answer priority. Team Access can claim AnswerLattice workspace members, AnswerLattice role permissions, email or owner-passcode login, owner reset, and force sign-out, while keeping access scoped to AnswerLattice workspaces. Support Board can claim private owner/staff cards, internal notes, status history, selected support follow-up, assignee context, and reviewed answer handoff, but must not imply every ticket/signal syncs by default or that cards publish answers automatically. Feedback Review can claim private ratings, product-area feedback, feature requests, suggestions, owner review, Support Board handoff, and answer-proposal review, but must not imply a public roadmap, public voting board, or automatic knowledge publishing. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior. Each feature page must include a compact proof strip near the hero so the buyer sees how the feature connects to the widget, hosted help, tickets, and review queue before reading deeper workflow detail.
+Feature pages must use buyer-facing wording and avoid overclaiming. FAQ Management can claim owner-written answers, article-backed FAQ suggestions, article links, tags, entities, surface/context assignment, and published answers before fallback, while preserving approved-answer priority. Team Access can claim AnswerLattice workspace members, AnswerLattice role permissions, email or owner-passcode login, owner reset, and force sign-out, while keeping access scoped to AnswerLattice workspaces. Support Board can claim private owner/staff cards, internal notes, status history, selected support follow-up, assignee context, and reviewed answer handoff, but must not imply every ticket/signal syncs by default or that cards publish answers automatically. Feedback Review can claim private ratings, product-area feedback, feature requests, suggestions, owner review, Support Board handoff, and answer-proposal review, but must not imply a public roadmap, public voting board, or automatic knowledge publishing. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior. Each feature page must include a compact proof strip near the hero, a connected-suite section after the detailed workflow, and a buyer evaluation strip for setup path, security boundary, and category comparison so the buyer sees how the feature connects to setup, widget, hosted help, tickets, feedback, review queue, and product-fit checks before the FAQ/CTA.
 
 ### 3. Use Cases (`/use-cases`)
 **Goal:** Help small SaaS operators recognize when AnswerLattice is useful.
@@ -471,7 +472,7 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
-The desktop header should stay v1-simple: Product, Use Cases, Resources, Pricing, and the primary `Start support setup` CTA. Demo stays available from page CTAs and Resources instead of becoming another top-level item. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
+The desktop header should stay product-led and high-intent: Product, Demo, Install, Use Cases, Resources, Pricing, and the primary `Start support setup` CTA. Demo and Install are top-level because the buyer needs to see the product and implementation path quickly. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
 
 The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch proof checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
 
@@ -598,6 +599,8 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-10 | 1.2.85 | Added the concept-illustration requirement for abstract AnswerLattice boundaries such as safe context, install verification, source-to-answer, governance loop, and category positioning |
+| 2026-06-10 | 1.2.84 | Required stable website visual slots to use concrete product-scene assets or approved final captures rather than generic placeholders or decorative illustrations |
 | 2026-06-07 | 1.2.59 | Updated the homepage contract around product-user support, a vertical input-to-support output diagram, and a scroll-led support-surface story inspired by modern product pages while preserving helpdesk/autopilot guardrails |
 | 2026-06-06 | 1.2.58 | Synced launch-setup, product preview, and updates copy with Activation first-client launch proof while keeping Signal Queue as the proposal-quality confirmation surface |
 | 2026-06-06 | 1.2.57 | Removed desktop hamburger exposure by gating the mobile drawer trigger to confirmed mobile viewports and normalized shared non-home hero alignment, spacing, and typography while leaving the homepage hero unchanged |

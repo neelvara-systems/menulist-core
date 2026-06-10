@@ -10,10 +10,12 @@ import {
     LuTicket,
 } from 'react-icons/lu';
 import AnswerlatticeAssetImage from '../components/AnswerlatticeAssetImage';
+import AnswerlatticeConceptIllustration from '../components/AnswerlatticeConceptIllustration';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
+import ComparisonSection from '../components/ComparisonSection';
 import PageHero from '../components/PageHero';
 import SectionHeader from '../components/SectionHeader';
 import {
@@ -131,6 +133,13 @@ const FEATURE_SECTIONS: Array<{
     },
 ];
 
+const PRODUCT_PAGE_ASSET_SLOT_IDS: Record<keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS, string> = {
+    'Set up support': 'product.area.launch-setup',
+    'In-app help widget': 'product.area.page-aware-widget',
+    'Help center and tickets': 'product.area.support-control',
+    'Review approved answers': 'product.area.knowledge-governance',
+};
+
 const TRUST_ITEMS = [
     {
         title: 'Product map',
@@ -174,38 +183,7 @@ const SIGNUP_STEPS = [
 
 function ProductSystemVisual() {
     return (
-        <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/35">
-            <div className="rounded-[1.5rem] border border-white/[0.08] bg-[#101028] p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
-                    <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-widest text-teal-200">Support moment</div>
-                        <div className="mt-1 text-lg font-bold text-white">User asks from /billing</div>
-                    </div>
-                    <span className="rounded-full border border-teal-300/20 bg-teal-400/10 px-3 py-1 text-xs font-semibold text-teal-100">
-                        Safe context
-                    </span>
-                </div>
-                <div className="mt-5 grid gap-4">
-                    {[
-                        ['Widget', 'Question received with page, role, and workflow hints.'],
-                        ['Approved answer', 'Billing guidance served before fallback.'],
-                        ['Fallback gap', 'Missing policy opens a ticket and review item.'],
-                    ].map(([title, detail], index) => (
-                        <article key={title} className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
-                            <div className="flex items-start gap-3">
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-xs font-bold text-teal-200">
-                                    {index + 1}
-                                </span>
-                                <div>
-                                    <h3 className="text-sm font-semibold text-white">{title}</h3>
-                                    <p className="mt-1 text-sm leading-relaxed text-[#a0a0c0]">{detail}</p>
-                                </div>
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            </div>
-        </div>
+        <AnswerlatticeConceptIllustration variant="source-to-answer" showHeader={false} />
     );
 }
 
@@ -342,6 +320,8 @@ function FeatureSplitSection({ section }: { section: typeof FEATURE_SECTIONS[num
         <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
             <AnswerlatticeAssetImage
                 asset={ANSWERLATTICE_PRODUCT_AREA_ASSETS[section.image]}
+                assetSlotId={PRODUCT_PAGE_ASSET_SLOT_IDS[section.image]}
+                assetRole="product-page-feature-split"
                 className="rounded-[1.5rem] border border-white/[0.08]"
             />
         </div>
@@ -419,18 +399,7 @@ function ApprovedAnswersSection() {
                             ))}
                         </div>
                     </article>
-                    <div className="grid gap-4">
-                        {[
-                            ['AI can draft', 'Drafts help you move faster, but stay in review.'],
-                            ['Founder approves', 'Billing, policies, setup, and product behavior stay under your control.'],
-                            ['Users get trusted help', 'The widget serves reviewed answers before fallback.'],
-                        ].map(([title, detail]) => (
-                            <article key={title} className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
-                                <h3 className="text-lg font-semibold text-white">{title}</h3>
-                                <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{detail}</p>
-                            </article>
-                        ))}
-                    </div>
+                    <AnswerlatticeConceptIllustration variant="governance-loop" />
                 </div>
             </div>
         </section>
@@ -511,6 +480,8 @@ function ReviewAndGovernanceSections() {
                         <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                             <AnswerlatticeAssetImage
                                 asset={ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS['Answer review']}
+                                assetSlotId="product.area.knowledge-governance"
+                                assetRole="product-page-review-rhythm"
                                 className="rounded-[1.5rem] border border-white/[0.08]"
                             />
                         </div>
@@ -686,6 +657,7 @@ export default function AnswerlatticeProductPage() {
                 <FallbackAndReleaseSections />
                 <ReviewAndGovernanceSections />
                 <DifferenceAndSignupSections basePath={basePath} />
+                <ComparisonSection />
                 <FinalCta basePath={basePath} />
             </main>
             <AnswerlatticeFooter basePath={basePath} />

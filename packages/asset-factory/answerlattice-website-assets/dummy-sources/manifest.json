@@ -8,8 +8,9 @@
       "width": 1440,
       "height": 1200,
       "group": "Homepage hero workspace",
-      "title": "Billing support",
-      "detail": "Approved answer + safe context + review queue"
+      "title": "Billing support workspace",
+      "detail": "Approved answer, safe page context, and review queue in one governed support layer.",
+      "scene": "workspace"
     },
     {
       "file": "answerlattice-widget-runtime.png",
@@ -17,8 +18,9 @@
       "width": 1440,
       "height": 1200,
       "group": "Widget runtime",
-      "title": "Billing invoices",
-      "detail": "Allowed origin + safe context + widget answer"
+      "title": "Billing page widget",
+      "detail": "The widget uses safe page hints to serve reviewed support without exposing private data.",
+      "scene": "widget"
     },
     {
       "file": "answerlattice-product-preview-activation.png",
@@ -27,7 +29,8 @@
       "height": 1200,
       "group": "Product preview",
       "title": "Activation command center",
-      "detail": "Launch readiness, imports, surfaces, widget verification"
+      "detail": "First setup connects sources, product pages, widget readiness, and review coverage.",
+      "scene": "checklist"
     },
     {
       "file": "answerlattice-product-preview-surfaces.png",
@@ -36,7 +39,8 @@
       "height": 1200,
       "group": "Product preview",
       "title": "Product surfaces",
-      "detail": "Billing, onboarding, team settings, releases, errors"
+      "detail": "Support coverage follows the pages where users actually ask for help.",
+      "scene": "surfaces"
     },
     {
       "file": "answerlattice-product-preview-widget.png",
@@ -45,7 +49,8 @@
       "height": 1200,
       "group": "Product preview",
       "title": "Widget install",
-      "detail": "Origins, blocked routes, context, runtime checks"
+      "detail": "One script, allowed origins, blocked routes, safe context, and runtime checks.",
+      "scene": "install"
     },
     {
       "file": "answerlattice-product-preview-feedback.png",
@@ -54,7 +59,8 @@
       "height": 1200,
       "group": "Product preview",
       "title": "Feedback review",
-      "detail": "Private ratings, feature requests, Support Board handoff"
+      "detail": "Ratings, suggestions, and feature requests stay private until the owner turns them into support work.",
+      "scene": "board"
     },
     {
       "file": "answerlattice-product-preview-governance.png",
@@ -63,7 +69,8 @@
       "height": 1200,
       "group": "Product preview",
       "title": "Answer review",
-      "detail": "Canonical coverage, drift pressure, mutation proposals"
+      "detail": "Drafts and repeated misses become governed review work before answers become official.",
+      "scene": "governance"
     },
     {
       "file": "answerlattice-product-area-launch-setup.png",
@@ -72,7 +79,8 @@
       "height": 1200,
       "group": "Product area",
       "title": "Set up support",
-      "detail": "Workspace, team, starter sources, mapped pages"
+      "detail": "From starter sources to mapped product pages and widget readiness.",
+      "scene": "checklist"
     },
     {
       "file": "answerlattice-product-area-widget.png",
@@ -81,7 +89,8 @@
       "height": 1200,
       "group": "Product area",
       "title": "In-app help widget",
-      "detail": "Safe page hints, screenshot boundary, allowed domains"
+      "detail": "Safe context, approved answers, and fallback from the exact product page.",
+      "scene": "widget"
     },
     {
       "file": "answerlattice-product-area-support-control.png",
@@ -90,7 +99,8 @@
       "height": 1200,
       "group": "Product area",
       "title": "Help center and tickets",
-      "detail": "Hosted help, FAQ, fallback tickets, support gaps"
+      "detail": "Hosted help, FAQ, changelog, fallback tickets, and feedback share one support layer.",
+      "scene": "help"
     },
     {
       "file": "answerlattice-product-area-governance.png",
@@ -99,7 +109,8 @@
       "height": 1200,
       "group": "Product area",
       "title": "Review approved answers",
-      "detail": "Drafts, repeated misses, stale answers, owner approval"
+      "detail": "Drafts, repeated misses, stale answers, and owner approval in one review lane.",
+      "scene": "governance"
     },
     {
       "file": "answerlattice-feature-team-access.png",
@@ -108,7 +119,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Team Access",
-      "detail": "Members, roles, passcodes, owner reset, force sign-out"
+      "detail": "Workspace roles, passcodes, reset controls, and force sign-out.",
+      "scene": "table"
     },
     {
       "file": "answerlattice-feature-knowledge-intake.png",
@@ -117,7 +129,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Knowledge Intake",
-      "detail": "Links, files, screenshots, recordings, review drafts"
+      "detail": "Selected links, files, screenshots, recordings, and repeated replies become review drafts.",
+      "scene": "intake"
     },
     {
       "file": "answerlattice-feature-knowledge-base.png",
@@ -126,7 +139,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Knowledge Base",
-      "detail": "Articles, source links, hosted help, widget suggestions"
+      "detail": "Reviewed articles power hosted help, widget suggestions, FAQs, and approved answers.",
+      "scene": "help"
     },
     {
       "file": "answerlattice-feature-faq-management.png",
@@ -135,7 +149,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "FAQ Management",
-      "detail": "Owner Q&A, article-backed FAQs, context assignment"
+      "detail": "Owner Q&A, article-backed FAQs, context assignment, and review state.",
+      "scene": "faq"
     },
     {
       "file": "answerlattice-feature-changelog.png",
@@ -144,7 +159,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Changelog",
-      "detail": "Release notes, affected answers, drift review"
+      "detail": "Release notes connect to affected support answers and drift review.",
+      "scene": "timeline"
     },
     {
       "file": "answerlattice-feature-tickets.png",
@@ -153,7 +169,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Tickets",
-      "detail": "Fallback capture, safe debug context, knowledge signals"
+      "detail": "Fallback capture keeps safe context and turns missing coverage into knowledge signals.",
+      "scene": "tickets"
     },
     {
       "file": "answerlattice-feature-support-board.png",
@@ -162,7 +179,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Support Board",
-      "detail": "Private cards, internal notes, answer-proposal handoff"
+      "detail": "Private owner/staff cards, internal notes, selected follow-up, and answer-proposal handoff.",
+      "scene": "board"
     },
     {
       "file": "answerlattice-feature-feedback-review.png",
@@ -171,7 +189,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Feedback Review",
-      "detail": "Ratings, suggestions, product-area support signals"
+      "detail": "Ratings, suggestions, and feature requests become private support review signals.",
+      "scene": "board"
     },
     {
       "file": "answerlattice-feature-workflow-notifications.png",
@@ -180,7 +199,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Workflow Notifications",
-      "detail": "Slack/email events, filters, test delivery, health"
+      "detail": "Slack and email governance alerts with filters, test delivery, and compact health.",
+      "scene": "notifications"
     },
     {
       "file": "answerlattice-feature-proactive-help.png",
@@ -189,7 +209,8 @@
       "height": 1200,
       "group": "Product feature",
       "title": "Proactive Help",
-      "detail": "Active triggers, approved summaries, configured prompts"
+      "detail": "Configured prompts tied to active triggers and approved support summaries.",
+      "scene": "proactive"
     },
     {
       "file": "answerlattice-demo-surface-billing.png",
@@ -198,7 +219,8 @@
       "height": 1200,
       "group": "Page-aware demo",
       "title": "Billing page",
-      "detail": "Invoice question gets billing-specific approved answer"
+      "detail": "Invoice question gets billing-specific approved guidance.",
+      "scene": "demo"
     },
     {
       "file": "answerlattice-demo-surface-onboarding.png",
@@ -207,7 +229,8 @@
       "height": 1200,
       "group": "Page-aware demo",
       "title": "Onboarding page",
-      "detail": "Setup question gets starter-source guidance"
+      "detail": "Setup question gets starter-source guidance.",
+      "scene": "demo"
     },
     {
       "file": "answerlattice-demo-surface-settings.png",
@@ -216,7 +239,8 @@
       "height": 1200,
       "group": "Page-aware demo",
       "title": "Team settings page",
-      "detail": "Permission question becomes scoped support review"
+      "detail": "Permission question becomes scoped support review.",
+      "scene": "demo"
     },
     {
       "file": "answerlattice-demo-surface-release.png",
@@ -225,7 +249,8 @@
       "height": 1200,
       "group": "Page-aware demo",
       "title": "Release page",
-      "detail": "Usage-limit release triggers stale-answer review"
+      "detail": "Usage-limit release triggers stale-answer review.",
+      "scene": "demo"
     }
   ]
 }

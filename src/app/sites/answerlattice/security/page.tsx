@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../components/Footer';
 import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
+import AnswerlatticeConceptIllustration from '../components/AnswerlatticeConceptIllustration';
 import { AnswerlatticeHubDiagram } from '../components/AnswerlatticeFlowDiagram';
 import { AnswerlatticeStatusBoard } from '../components/AnswerlatticeProofBlocks';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
@@ -364,19 +365,24 @@ export default function AnswerlatticeSecurityPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Source intake boundary</p>
-                        <h2 className="text-2xl font-bold text-white">Import selected evidence, not everything.</h2>
-                        <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Use public product or docs pages you select, supported files, screenshots, and short recordings that are safe to process. AnswerLattice does not crawl an entire private app, retain raw media by default, or make generated intake output official without owner review.
-                        </p>
-                    </div>
-                    <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Page context boundary</p>
-                        <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>
-                        <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data. If users attach a screenshot, keep it deliberate and avoid pages that show secrets.
-                        </p>
+                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.86fr_1.14fr] lg:items-center">
+                        <div className="grid gap-5">
+                            <article className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Source intake boundary</p>
+                                <h2 className="text-2xl font-bold text-white">Import selected evidence, not everything.</h2>
+                                <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
+                                    Use public product or docs pages you select, supported files, screenshots, and short recordings that are safe to process. AnswerLattice does not crawl an entire private app, retain raw media by default, or make generated intake output official without owner review.
+                                </p>
+                            </article>
+                            <article className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Page context boundary</p>
+                                <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>
+                                <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
+                                    Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data. If users attach a screenshot, keep it deliberate and avoid pages that show secrets.
+                                </p>
+                            </article>
+                        </div>
+                        <AnswerlatticeConceptIllustration variant="safe-context-boundary" />
                     </div>
                 </section>
 

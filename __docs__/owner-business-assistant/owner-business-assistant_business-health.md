@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 8, 2026
+**Last Updated:** June 10, 2026
 
 ---
 
@@ -131,9 +131,12 @@ The owner dashboard should show:
 1. Business Health status card.
 2. Latest check time.
 3. No action needed / needs review state.
-4. Compact analytics strip for Today, This week, This month.
-5. Clear data freshness note: `Uses data through {date}. Today may not be complete yet.`
-6. Entry to the full Business Health page.
+4. Compact activity strip using owner language: Menu views, Top demand, Best source.
+5. Needs attention, mapped to owner actions: Promote, Fix, Restock, or Update.
+6. Clear data freshness note: `Uses data through {date}. Today may not be complete yet.`
+7. Entry to the full Business Health page.
+
+Raw analytics labels such as conversion funnel, bounce rate, session duration, device type, or attribution model must not be primary owner UI. If a metric cannot map to Promote, Fix, Restock, or Update, keep it internal or hide it from the owner surface.
 
 Desktop and mobile dashboards both follow this contract. Desktop renders `BusinessHealthDashboardCard` and `BusinessHealthAnalyticsStrip` near the top of the owner dashboard. Mobile renders `MobileBusinessHealthCard` before the detailed analytics tabs and feeds it from the same cached current Health and selected-menu analytics-index hooks.
 

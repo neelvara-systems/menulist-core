@@ -58,7 +58,12 @@ function ProductPreviewFrame({
 
     return (
         <div id={id} className="w-full max-w-full rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-            <AnswerlatticeAssetImage asset={asset} className="rounded-[1.5rem] border border-white/[0.08]" />
+            <AnswerlatticeAssetImage
+                asset={asset}
+                assetSlotId="home.product-overview.feature-cards"
+                assetRole={tab}
+                className="rounded-[1.5rem] border border-white/[0.08]"
+            />
         </div>
     );
 }

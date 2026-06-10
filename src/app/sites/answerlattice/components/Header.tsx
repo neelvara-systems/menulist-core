@@ -35,6 +35,8 @@ import useIsMobile from '../../../../hooks/useIsMobile';
 
 const NAV_LINKS = [
     { label: 'Product', href: '/product' },
+    { label: 'Demo', href: '/demo' },
+    { label: 'Install', href: '/install' },
     { label: 'Use Cases', href: '/use-cases' },
     { label: 'Resources', href: '/resources' },
     { label: 'Pricing', href: '/pricing' },
@@ -42,9 +44,7 @@ const NAV_LINKS = [
 
 const MOBILE_OTHER_LINKS = [
     ...NAV_LINKS.filter((link) => link.href !== '/product'),
-    { label: 'Demo', href: '/demo' },
     { label: 'Pre-Onboarding', href: '/pre-onboarding' },
-    { label: 'Install', href: '/install' },
     { label: 'Security', href: '/security' },
     { label: 'Developers', href: '/developers' },
     { label: 'Comparisons', href: '/comparisons' },
